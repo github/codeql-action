@@ -16,7 +16,7 @@ module.exports = {
     },
   },
   plugins: {
-    prettierPlugin,
+    prettier: prettierPlugin,
     'eslint-comments': eslintComments,
     import: importPlugin,
     'i18n-text': fixupPluginRules(i18nTextPlugin),
@@ -131,7 +131,7 @@ module.exports = {
     'prefer-rest-params': 'error',
     'prefer-spread': 'error',
     'prefer-template': 'error',
-    'prettierPlugin/prettier': 'error',
+    'prettier/prettier': 'error',
     'require-yield': 'error',
     'use-isnan': 'error',
     'valid-typeof': 'error',

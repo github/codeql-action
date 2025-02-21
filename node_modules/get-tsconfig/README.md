@@ -38,7 +38,8 @@ For TypeScript related tooling to correctly parse `tsconfig.json` file without d
 ## API
 
 ### getTsconfig(searchPath?, configName?, cache?)
-Searches for a `tsconfig.json` file and parses it. Returns `null` if a config file cannot be found, or an object containing the path and parsed TSConfig object if found.
+
+Searches for a tsconfig file (defaults to `tsconfig.json`) in the `searchPath` and parses it. (If you already know the tsconfig path, use [`parseTsconfig`](#parsetsconfigtsconfigpath-cache) instead). Returns `null` if a config file cannot be found, or an object containing the path and parsed TSConfig object if found.
 
 Returns:
 
@@ -102,7 +103,8 @@ console.log(getTsconfig('.', 'jsconfig.json'))
 ---
 
 ### parseTsconfig(tsconfigPath, cache?)
-The `tsconfig.json` parser used internally by `getTsconfig`. Returns the parsed tsconfig as `TsConfigJsonResolved`.
+
+Parse the tsconfig file provided. Used internally by `getTsconfig`. Returns the parsed tsconfig as `TsConfigJsonResolved`.
 
 #### tsconfigPath
 Type: `string`
@@ -124,6 +126,8 @@ import { parseTsconfig } from 'get-tsconfig'
 // Must pass in a path to an existing tsconfig.json file
 console.log(parseTsconfig('./path/to/tsconfig.custom.json'))
 ```
+
+---
 
 ### createFileMatcher(tsconfig: TsconfigResult, caseSensitivePaths?: boolean)
 

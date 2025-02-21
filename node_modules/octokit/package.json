@@ -1,0 +1,59 @@
+{
+  "name": "octokit",
+  "version": "4.1.2",
+  "type": "module",
+  "description": "The all-batteries-included GitHub SDK for Browsers, Node.js, and Deno",
+  "keywords": [
+    "github",
+    "api",
+    "sdk",
+    "octokit"
+  ],
+  "author": "Gregor Martynus (https://github.com/gr2m)",
+  "repository": "github:octokit/octokit.js",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/app": "^15.1.4",
+    "@octokit/core": "^6.1.4",
+    "@octokit/oauth-app": "^7.1.6",
+    "@octokit/plugin-paginate-graphql": "^5.2.4",
+    "@octokit/plugin-paginate-rest": "^11.4.2",
+    "@octokit/plugin-rest-endpoint-methods": "^13.3.1",
+    "@octokit/plugin-retry": "^7.1.4",
+    "@octokit/plugin-throttling": "^9.4.0",
+    "@octokit/request-error": "^6.1.7",
+    "@octokit/types": "^13.7.0"
+  },
+  "devDependencies": {
+    "@octokit/tsconfig": "^4.0.0",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "fetch-mock": "^11.0.0",
+    "glob": "^11.0.0",
+    "mockdate": "^3.0.5",
+    "prettier": "3.5.1",
+    "semantic-release-plugin-update-version-in-files": "^1.1.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "publishConfig": {
+    "provenance": true
+  },
+  "files": [
+    "dist-*/**",
+    "bin/**"
+  ],
+  "types": "./dist-types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-types/index.d.ts",
+      "import": "./dist-bundle/index.js",
+      "default": "./dist-bundle/index.js"
+    }
+  },
+  "sideEffects": false
+}

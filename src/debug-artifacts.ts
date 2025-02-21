@@ -44,44 +44,46 @@ export async function uploadCombinedSarifArtifacts(
 
   // Upload Actions SARIF artifacts for debugging when environment variable is set
   if (process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] === "true") {
-    logger.info(
-      "Uploading available combined SARIF files as Actions debugging artifact...",
-    );
+    await withGroup("Uploading combined SARIF debug artifact", async () => {
+      logger.info(
+        "Uploading available combined SARIF files as Actions debugging artifact...",
+      );
 
-    const baseTempDir = path.resolve(tempDir, "combined-sarif");
+      const baseTempDir = path.resolve(tempDir, "combined-sarif");
 
-    const toUpload: string[] = [];
+      const toUpload: string[] = [];
 
-    if (fs.existsSync(baseTempDir)) {
-      const outputDirs = fs.readdirSync(baseTempDir);
+      if (fs.existsSync(baseTempDir)) {
+        const outputDirs = fs.readdirSync(baseTempDir);
 
-      for (const outputDir of outputDirs) {
-        const sarifFiles = fs
-          .readdirSync(path.resolve(baseTempDir, outputDir))
-          .filter((f) => f.endsWith(".sarif"));
+        for (const outputDir of outputDirs) {
+          const sarifFiles = fs
+            .readdirSync(path.resolve(baseTempDir, outputDir))
+            .filter((f) => f.endsWith(".sarif"));
 
-        for (const sarifFile of sarifFiles) {
-          toUpload.push(path.resolve(baseTempDir, outputDir, sarifFile));
+          for (const sarifFile of sarifFiles) {
+            toUpload.push(path.resolve(baseTempDir, outputDir, sarifFile));
+          }
         }
       }
-    }
 
-    try {
-      await uploadDebugArtifacts(
-        logger,
-        toUpload,
-        baseTempDir,
-        "combined-sarif-artifacts",
-        gitHubVariant,
-        codeQlVersion,
-      );
-    } catch (e) {
-      logger.warning(
-        `Failed to upload combined SARIF files as Actions debugging artifact. Reason: ${getErrorMessage(
-          e,
-        )}`,
-      );
-    }
+      try {
+        await uploadDebugArtifacts(
+          logger,
+          toUpload,
+          baseTempDir,
+          "combined-sarif-artifacts",
+          gitHubVariant,
+          codeQlVersion,
+        );
+      } catch (e) {
+        logger.warning(
+          `Failed to upload combined SARIF files as Actions debugging artifact. Reason: ${getErrorMessage(
+            e,
+          )}`,
+        );
+      }
+    });
   }
 }
 

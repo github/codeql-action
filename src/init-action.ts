@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
+import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
 import {
@@ -13,6 +14,7 @@ import {
   getRequiredInput,
   getTemporaryDirectory,
   persistInputs,
+  isDefaultSetup,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import {
@@ -30,7 +32,7 @@ import {
   makeDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Feature, featureConfig, Features } from "./feature-flags";
 import {
   checkInstallPython311,
   cleanupDatabaseClusterDirectory,
@@ -72,7 +74,6 @@ import {
   getErrorMessage,
 } from "./util";
 import { validateWorkflow } from "./workflow";
-
 /** Fields of the init status report that can be sent before `config` is populated. */
 interface InitStatusReport extends StatusReportBase {
   /** Value given by the user as the "tools" input. */
@@ -574,6 +575,31 @@ async function run() {
         (await features.getValue(Feature.CppBuildModeNone, codeql));
       logger.info(`Setting C++ build-mode: none to ${value}`);
       core.exportVariable(bmnVar, value);
+    }
+
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
+    if (config.languages.includes(Language.rust)) {
+      const feat = Feature.RustAnalysis;
+      const minVer = featureConfig[feat].minimumVersion as string;
+      const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
+      // if in default setup, it means the feature flag was on when rust was enabled
+      // if the feature flag gets turned off, let's not have rust analysis throwing a configuration error
+      // in that case rust analysis will be disabled only when default setup is refreshed
+      if (isDefaultSetup() || (await features.getValue(feat, codeql))) {
+        core.exportVariable(envVar, "true");
+      }
+      if (process.env[envVar] !== "true") {
+        throw new ConfigurationError(
+          `Experimental and not officially supported Rust analysis requires setting ${envVar}=true in the environment`,
+        );
+      }
+      const actualVer = (await codeql.getVersion()).version;
+      if (semver.lt(actualVer, minVer)) {
+        throw new ConfigurationError(
+          `Experimental rust analysis is supported by CodeQL CLI version ${minVer} or higher, but found version ${actualVer}`,
+        );
+      }
+      logger.info("Experimental rust analysis enabled");
     }
 
     // Restore dependency cache(s), if they exist.

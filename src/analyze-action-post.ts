@@ -11,7 +11,7 @@ import { getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import { getActionsLogger, withGroup } from "./logging";
+import { getActionsLogger } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
 async function runWrapper() {
@@ -31,12 +31,10 @@ async function runWrapper() {
       if (config !== undefined) {
         const codeql = await getCodeQL(config.codeQLCmd);
         const version = await codeql.getVersion();
-        await withGroup("Uploading combined SARIF debug artifact", () =>
-          debugArtifacts.uploadCombinedSarifArtifacts(
-            logger,
-            config.gitHubVersion.type,
-            version.version,
-          ),
+        await debugArtifacts.uploadCombinedSarifArtifacts(
+          logger,
+          config.gitHubVersion.type,
+          version.version,
         );
       }
     }

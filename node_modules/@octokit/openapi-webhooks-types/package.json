@@ -1,0 +1,18 @@
+{
+  "name": "@octokit/openapi-webhooks-types",
+  "description": "Generated TypeScript definitions based on GitHub's OpenAPI spec for api.github.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/octokit/openapi-webhooks.git",
+    "directory": "packages/openapi-webhooks-types"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "version": "9.1.0",
+  "main": "",
+  "types": "types.d.ts",
+  "author": "wolfy1339 <webmaster@wolfy1339.com>",
+  "license": "MIT"
+}

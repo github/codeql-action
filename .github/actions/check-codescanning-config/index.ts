@@ -8,7 +8,7 @@ const actualConfig = loadActualConfig()
 
 const rawExpectedConfig = process.argv[3].trim()
 if (!rawExpectedConfig) {
-  core.info('No expected configuration provided')
+  core.setFailed('No expected configuration provided')
 } else {
   core.startGroup('Expected generated user config')
   core.info(yaml.dump(JSON.parse(rawExpectedConfig)))

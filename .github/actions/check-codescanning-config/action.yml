@@ -63,9 +63,7 @@ runs:
       shell: bash
       env:
         EXPECTED_CONFIG_FILE_CONTENTS: '${{ inputs.expected-config-file-contents }}'
-      run: |
-        echo "EXPECTED_CONFIG_FILE_CONTENTS = $EXPECTED_CONFIG_FILE_CONTENTS"
-        ts-node ./index.ts "$RUNNER_TEMP/user-config.yaml" "$EXPECTED_CONFIG_FILE_CONTENTS"
+      run: ts-node ./index.ts "$RUNNER_TEMP/user-config.yaml" "$EXPECTED_CONFIG_FILE_CONTENTS"
     - name: Clean up
       shell: bash
       if: always()

@@ -53,7 +53,6 @@ runs:
         db-location: ${{ runner.temp }}/codescanning-config-cli-test
       env:
         CODEQL_ACTION_TEST_MODE: 'true'
-        EXPECTED_CONFIG_FILE_CONTENTS: '${{ inputs.expected-config-file-contents }}'
 
     - name: Install dependencies
       shell: bash
@@ -62,7 +61,11 @@ runs:
     - name: Check config
       working-directory: ${{ github.action_path }}
       shell: bash
-      run: echo "$EXPECTED_CONFIG_FILE_CONTENTS"; ts-node ./index.ts "$RUNNER_TEMP/user-config.yaml" "$EXPECTED_CONFIG_FILE_CONTENTS"
+      env:
+        EXPECTED_CONFIG_FILE_CONTENTS: '${{ inputs.expected-config-file-contents }}'
+      run: |
+        echo "EXPECTED_CONFIG_FILE_CONTENTS = $EXPECTED_CONFIG_FILE_CONTENTS"
+        ts-node ./index.ts "$RUNNER_TEMP/user-config.yaml" "$EXPECTED_CONFIG_FILE_CONTENTS"
     - name: Clean up
       shell: bash
       if: always()

@@ -3,7 +3,7 @@ description: '[Experimental] Attempt to infer a build environment suitable for a
 author: 'GitHub'
 inputs:
   token:
-    description: "GitHub token to use for authenticating with this instance of GitHub. The token needs the `security-events: write` permission."
+    description: "GitHub token to use for authenticating with this instance of GitHub. The token must be the built-in GitHub Actions token, and the workflow must have the `security-events: write` permission. Most of the time it is advisable to avoid specifying this input so that the workflow falls back to using the default value."
     required: false
     default: ${{ github.token }}
   matrix:

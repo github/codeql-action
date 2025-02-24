@@ -53,7 +53,7 @@ runs:
         db-location: ${{ runner.temp }}/codescanning-config-cli-test
       env:
         CODEQL_ACTION_TEST_MODE: 'true'
-        EXPECTED_CONFIG_FILE_CONTENTS: ${{ inputs.expected-config-file-contents }}
+        EXPECTED_CONFIG_FILE_CONTENTS: '${{ inputs.expected-config-file-contents }}'
 
     - name: Install dependencies
       shell: bash

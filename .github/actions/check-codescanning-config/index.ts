@@ -7,6 +7,7 @@ import * as assert from 'assert'
 const actualConfig = loadActualConfig()
 
 const rawExpectedConfig = process.argv[3].trim()
+core.info("rawExpectedConfig: " + rawExpectedConfig)
 if (!rawExpectedConfig) {
   core.setFailed('No expected configuration provided')
 } else {

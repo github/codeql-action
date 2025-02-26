@@ -1054,11 +1054,12 @@ export async function checkDiskUsage(
     const diskUsage = await checkDiskSpace(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
     );
+    const mbInBytes = 1024 * 1024;
     const gbInBytes = 1024 * 1024 * 1024;
     if (diskUsage.free < 2 * gbInBytes) {
       const message =
         "The Actions runner is running low on disk space " +
-        `(${(diskUsage.free / gbInBytes).toPrecision(4)} GB available).`;
+        `(${(diskUsage.free / mbInBytes).toPrecision(4)} MB available).`;
       if (process.env[EnvVar.HAS_WARNED_ABOUT_DISK_SPACE] !== "true") {
         logger.warning(message);
       } else {

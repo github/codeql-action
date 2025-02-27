@@ -1,3 +1,4 @@
+import assert from "assert";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -585,19 +586,31 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
 
-      const overwriteFlag = isSupportedToolsFeature(
-        await this.getVersion(),
-        ToolsFeature.ForceOverwrite,
-      )
-        ? "--force-overwrite"
-        : "--overwrite";
+      const overlayDatabaseEnv = process.env["CODEQL_OVERLAY_DATABASE_INIT"];
+      if (overlayDatabaseEnv === "overlay") {
+        assert(config.buildMode === BuildMode.None);
+        extraArgs.push("--overlay");
+      } else if (overlayDatabaseEnv === "overlay-base") {
+        assert(config.buildMode === BuildMode.None);
+        extraArgs.push("--overlay-base");
+      }
+
+      const overwriteFlags =
+        overlayDatabaseEnv === "overlay"
+          ? []
+          : isSupportedToolsFeature(
+                await this.getVersion(),
+                ToolsFeature.ForceOverwrite,
+              )
+            ? ["--force-overwrite"]
+            : ["--overwrite"];
 
       await runCli(
         cmd,
         [
           "database",
           "init",
-          overwriteFlag,
+          ...overwriteFlags,
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
@@ -786,12 +799,17 @@ export async function getCodeQLForCmd(
       databasePath: string,
       flags: string[],
     ): Promise<void> {
+      const overlayDatabaseEnv = process.env["CODEQL_OVERLAY_DATABASE_INIT"];
+      const cacheFlags =
+        overlayDatabaseEnv === "overlay-base"
+          ? []
+          : ["--expect-discarded-cache"];
       const codeqlArgs = [
         "database",
         "run-queries",
         ...flags,
         databasePath,
-        "--expect-discarded-cache",
+        ...cacheFlags,
         "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",

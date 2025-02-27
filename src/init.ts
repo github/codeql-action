@@ -163,6 +163,11 @@ export function cleanupDatabaseClusterDirectory(
   // for testing.
   rmSync = fs.rmSync,
 ): void {
+  const overlayDatabaseEnv = process.env["CODEQL_OVERLAY_DATABASE_INIT"];
+  if (overlayDatabaseEnv === "overlay") {
+    return;
+  }
+
   if (
     fs.existsSync(config.dbLocation) &&
     (fs.statSync(config.dbLocation).isFile() ||

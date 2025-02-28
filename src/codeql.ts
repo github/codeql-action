@@ -22,7 +22,11 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
-import { isAnalyzingDefaultBranch } from "./git-utils";
+import {
+  getAllFileOids,
+  getGitRoot,
+  isAnalyzingDefaultBranch,
+} from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
@@ -624,6 +628,28 @@ export async function getCodeQLForCmd(
         ],
         { stdin: externalRepositoryToken },
       );
+
+      const baseFileOidsPath = path.join(
+        config.dbLocation,
+        "git-file-oids.json",
+      );
+      if (overlayDatabaseEnv === "overlay") {
+        const baseFileOids = JSON.parse(
+          await fs.promises.readFile(baseFileOidsPath, "utf-8"),
+        );
+        const headFileOids = await getAllFileOids(sourceRoot);
+        const changes = compareFileOids(baseFileOids, headFileOids);
+
+        const repoRoot = await getGitRoot(sourceRoot);
+        changes.forEach((change) => {
+          logger.info(`Changed file: ${path.join(repoRoot, change)}`);
+        });
+      }
+      if (overlayDatabaseEnv === "overlay-base") {
+        const gitFileOids = await getAllFileOids(sourceRoot);
+        const gitFileOidsJson = JSON.stringify(gitFileOids);
+        await fs.promises.writeFile(baseFileOidsPath, gitFileOidsJson);
+      }
     },
     async runAutobuild(config: Config, language: Language) {
       applyAutobuildAzurePipelinesTimeoutFix();
@@ -1336,4 +1362,25 @@ async function getJobRunUuidSarifOptions(codeql: CodeQL) {
     ))
     ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
     : [];
+}
+
+function compareFileOids(
+  baseFileOids: { [key: string]: string },
+  headFileOids: { [key: string]: string },
+): string[] {
+  const changes: string[] = [];
+
+  for (const [path, oid] of Object.entries(headFileOids)) {
+    if (!(path in baseFileOids) || baseFileOids[path] !== oid) {
+      changes.push(path);
+    }
+  }
+
+  for (const path of Object.keys(baseFileOids)) {
+    if (!(path in headFileOids)) {
+      changes.push(path);
+    }
+  }
+
+  return changes;
 }

@@ -300,6 +300,58 @@ export const decodeGitFilePath = function (filePath: string): string {
   return filePath;
 };
 
+/**
+ * Get the oids of all files in HEAD.
+ *
+ * @returns a map from file paths to the corresponding oid.
+ * @throws {Error} if "git ls-tree" produces unexpected output.
+ */
+export const getAllFileOids = async function (
+  checkoutPath: string,
+): Promise<{ [key: string]: string }> {
+  const stdout = await runGitCommand(
+    checkoutPath,
+    ["ls-tree", "--format=%(objectname)_%(path)", "-r", "HEAD"],
+    "Cannot list file OIDs in HEAD.",
+  );
+
+  const fileOidMap: { [key: string]: string } = {};
+  const regex = /^([0-9a-f]{40})_(.+)$/;
+  for (const line of stdout.split("\n")) {
+    if (line) {
+      const match = line.match(regex);
+      if (match) {
+        const oid = match[1];
+        const path = decodeGitFilePath(match[2]);
+        fileOidMap[path] = oid;
+      } else {
+        throw new Error(`Unexpected "git ls-tree" output: ${line}`);
+      }
+    }
+  }
+  return fileOidMap;
+};
+
+/**
+ * Get the root of the Git repository.
+ *
+ * @param checkoutPath The path to the Git repository.
+ * @returns The root of the Git repository.
+ */
+export const getGitRoot = async function (checkoutPath: string): Promise<string> {
+  try {
+    const stdout = await runGitCommand(
+      checkoutPath,
+      ["rev-parse", "--show-toplevel"],
+      "Cannot determine the root of the Git repository.",
+    );
+    return stdout.trim();
+  } catch (error) {
+    core.error(`Failed to get the Git root: ${error}`);
+    throw error;
+  }
+};
+
 function getRefFromEnv(): string {
   // To workaround a limitation of Actions dynamic workflows not setting
   // the GITHUB_REF in some cases, we accept also the ref within the

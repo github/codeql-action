@@ -8,8 +8,8 @@ A fast and minimal alternative to globby and fast-glob, meant to behave the same
 Both globby and fast-glob present some behavior no other globbing lib has,
 which makes it hard to manually replace with something smaller and better.
 
-This library uses only two subdependencies, compared to `globby`'s [23](https://npmgraph.js.org/?q=globby@14.0.2)
-and `fast-glob`'s [17](https://npmgraph.js.org/?q=fast-glob@3.3.2).
+This library uses only two subdependencies, compared to `globby`'s [23](https://npmgraph.js.org/?q=globby@14.1.0)
+and `fast-glob`'s [17](https://npmgraph.js.org/?q=fast-glob@3.3.3).
 
 ## Usage
 
@@ -41,23 +41,28 @@ globSync(['src/**/*.ts'], { ignore: ['**/*.d.ts'] });
 - `expandDirectories`: Whether to expand directories. Disable to best match `fast-glob`. Defaults to `true`.
 - `onlyDirectories`: Enable to only return directories. Disables `onlyFiles` if set. Defaults to `false`.
 - `onlyFiles`: Enable to only return files. Defaults to `true`.
+- `debug`: Enable debug logs. Useful for development purposes.
 
 ## Used by
 
 `tinyglobby` is downloaded many times by projects all around the world. Here's a list of notable projects that use it:
 
 <!-- should be sorted by weekly download count -->
+- [`vite`](https://github.com/vitejs/vite)
+- [`node-gyp`](https://github.com/nodejs/node-gyp)
+- [`eslint-import-resolver-typescript`](https://github.com/import-js/eslint-import-resolver-typescript)
 - [`vitest`](https://github.com/vitest-dev/vitest)
 - [`ts-morph`](https://github.com/dsherret/ts-morph)
+- [`nx`](https://github.com/nrwl/nx)
 - [`sort-package-json`](https://github.com/keithamus/sort-package-json)
+- [`unimport`](https://github.com/unjs/unimport)
 - [`tsup`](https://github.com/egoist/tsup)
+- [`vite-plugin-checker`](https://github.com/fi3ework/vite-plugin-checker)
 - [`cspell`](https://github.com/streetsidesoftware/cspell)
 - [`nuxt`](https://github.com/nuxt/nuxt)
-- [`vite-plugin-pwa`](https://github.com/vite-pwa/vite-plugin-pwa)
-- [`size-limit`](https://github.com/ai/size-limit)
 - [`postcss-mixins`](https://github.com/postcss/postcss-mixins)
 - [`unocss`](https://github.com/unocss/unocss)
 - [`vitepress`](https://github.com/vuejs/vitepress)
-- [`pkg.pr.new`](https://github.com/stackblitz-labs/pkg.pr.new)
+- [`pkg-pr-new`](https://github.com/stackblitz-labs/pkg.pr.new)
 - Your own project? [Open an issue](https://github.com/SuperchupuDev/tinyglobby/issues)
 if you feel like this list is incomplete.

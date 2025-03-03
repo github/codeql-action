@@ -564,9 +564,17 @@ export async function getCodeQLForCmd(
       }
 
       if (config.languages.indexOf(Language.actions) >= 0) {
-        extraArgs.push("--search-path");
-        const extractorPath = path.resolve(__dirname, "../actions-extractor");
-        extraArgs.push(extractorPath);
+        // We originally added an embedded version of the Actions extractor to the CodeQL Action
+        // itself in order to deploy the extractor between CodeQL releases. When we did add the
+        // extractor to the CLI, though, its autobuild script was missing the execute bit.
+        // 2.20.6 is the first CLI release with the fully-functional extractor in the CLI. For older
+        // versions, we'll keep using the embedded extractor. We can remove the embedded extractor
+        // once 2.20.6 is deployed in the runner images.
+        if (!(await util.codeQlVersionAtLeast(codeql, "2.20.6"))) {
+          extraArgs.push("--search-path");
+          const extractorPath = path.resolve(__dirname, "../actions-extractor");
+          extraArgs.push(extractorPath);
+        }
       }
 
       const codeScanningConfigFile = await generateCodeScanningConfig(

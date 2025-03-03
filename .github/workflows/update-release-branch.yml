@@ -124,7 +124,7 @@ jobs:
       pull-requests: write # needed to create pull request
     steps:
     - name: Generate token
-      uses: actions/create-github-app-token@v1.11.5
+      uses: actions/create-github-app-token@v1.11.6
       id: app-token
       with:
         app-id: ${{ vars.AUTOMATION_APP_ID }}

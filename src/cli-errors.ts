@@ -136,6 +136,7 @@ export enum CliConfigErrorCategory {
   OutOfMemoryOrDisk = "OutOfMemoryOrDisk",
   PackCannotBeFound = "PackCannotBeFound",
   PackMissingAuth = "PackMissingAuth",
+  RateLimitExhausted = "RateLimitExhausted",
   SwiftBuildFailed = "SwiftBuildFailed",
   UnsupportedBuildMode = "UnsupportedBuildMode",
 }
@@ -263,6 +264,13 @@ export const cliErrorsConfig: Record<
       new RegExp("GitHub Container registry .* 403 Forbidden"),
       new RegExp(
         "Do you need to specify a token to authenticate to the registry?",
+      ),
+    ],
+  },
+  [CliConfigErrorCategory.RateLimitExhausted]: {
+    cliErrorMessageCandidates: [
+      new RegExp(
+        "API rate limit exceeded for installation\\. If you reach out to GitHub Support for help, please include the request ID",
       ),
     ],
   },

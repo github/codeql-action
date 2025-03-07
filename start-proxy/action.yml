@@ -10,7 +10,7 @@ inputs:
     description: Base64 encoded JSON configuration for the URLs and credentials of the package registries
     required: false
   token:
-    description: GitHub token to use for authenticating with this instance of GitHub, used to upload debug artifacts.
+    description: "GitHub token to use for authenticating with this instance of GitHub. The token must be the built-in GitHub Actions token, and the workflow must have the `security-events: write` permission. Most of the time it is advisable to avoid specifying this input so that the workflow falls back to using the default value."
     default: ${{ github.token }}
     required: false
   language:

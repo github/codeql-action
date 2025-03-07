@@ -295,12 +295,16 @@ async function run() {
       logger,
     );
 
+    const cleanupLevel =
+      actionsUtil.getOptionalInput("cleanup-level") || "brutal";
+
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,
         memory,
         util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
+        cleanupLevel,
         diffRangePackDir,
         actionsUtil.getOptionalInput("category"),
         config,
@@ -309,12 +313,8 @@ async function run() {
       );
     }
 
-    if (actionsUtil.getOptionalInput("cleanup-level") !== "none") {
-      await runCleanup(
-        config,
-        actionsUtil.getOptionalInput("cleanup-level") || "brutal",
-        logger,
-      );
+    if (cleanupLevel !== "none") {
+      await runCleanup(config, cleanupLevel, logger);
     }
 
     const dbLocations: { [lang: string]: string } = {};

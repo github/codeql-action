@@ -24,6 +24,11 @@ import {
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import {
+  OverlayDatabaseMode,
+  writeBaseDatabaseOidsFile,
+  writeOverlayChangedFilesFile,
+} from "./overlay-database-utils";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -82,6 +87,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
+    overlayDatabaseMode: OverlayDatabaseMode,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -552,6 +558,7 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
+      overlayDatabaseMode: OverlayDatabaseMode,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -606,12 +613,21 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
+      if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
+        await writeOverlayChangedFilesFile(config, sourceRoot, logger);
+        extraArgs.push("--overlay");
+      } else if (overlayDatabaseMode === OverlayDatabaseMode.OverlayBase) {
+        extraArgs.push("--overlay-base");
+      }
+
       await runCli(
         cmd,
         [
           "database",
           "init",
-          overwriteFlag,
+          ...(overlayDatabaseMode === OverlayDatabaseMode.Overlay
+            ? []
+            : [overwriteFlag]),
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
@@ -625,6 +641,10 @@ export async function getCodeQLForCmd(
         ],
         { stdin: externalRepositoryToken },
       );
+
+      if (overlayDatabaseMode === OverlayDatabaseMode.OverlayBase) {
+        await writeBaseDatabaseOidsFile(config, sourceRoot);
+      }
     },
     async runAutobuild(config: Config, language: Language) {
       applyAutobuildAzurePipelinesTimeoutFix();
@@ -805,7 +825,6 @@ export async function getCodeQLForCmd(
         "run-queries",
         ...flags,
         databasePath,
-        "--expect-discarded-cache",
         "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",

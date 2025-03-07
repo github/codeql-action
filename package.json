@@ -56,9 +56,6 @@
     "uuid": "^11.1.0",
     "zlib": "^1.0.5"
   },
-  "//": [
-    "micromatch is an unspecified dependency of ava"
-  ],
   "devDependencies": {
     "@ava/typescript": "4.1.0",
     "@eslint/compat": "^1.1.1",
@@ -82,7 +79,6 @@
     "eslint-plugin-github": "^5.1.8",
     "eslint-plugin-import": "2.29.1",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "micromatch": "4.0.8",
     "nock": "^14.0.1",
     "removeNPMAbsolutePaths": "3.0.1",
     "sinon": "^19.0.2",

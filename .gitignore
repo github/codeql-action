@@ -9,3 +9,5 @@ node_modules/.cache/
 eslint.sarif
 # for local incremental compilation
 tsconfig.tsbuildinfo
+*.cmd
+*.ps1

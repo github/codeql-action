@@ -1212,3 +1212,15 @@ export async function isBinaryAccessible(
     return false;
   }
 }
+
+/**
+ * Checks if path `target` starts with path `base`.
+ *
+ * @param target Path that might be under `base`
+ * @param base Path that might contain `target`
+ * @returns True if path `target` is under path `base`
+ */
+export function pathStartsWith(target: string, base: string): boolean {
+  const relative = path.relative(base, target);
+  return !relative.startsWith("..") && !path.isAbsolute(relative);
+}

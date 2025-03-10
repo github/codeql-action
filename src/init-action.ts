@@ -42,6 +42,7 @@ import {
 } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { parseRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -687,6 +688,7 @@ async function run() {
       "Runner.Worker.exe",
       getOptionalInput("registries"),
       apiDetails,
+      OverlayDatabaseMode.None,
       logger,
     );
     if (tracerConfig !== undefined) {

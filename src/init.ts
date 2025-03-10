@@ -11,6 +11,7 @@ import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language, isScannedLanguage } from "./languages";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -86,6 +87,7 @@ export async function runInit(
   processName: string | undefined,
   registriesInput: string | undefined,
   apiDetails: GitHubApiCombinedDetails,
+  overlayDatabaseMode: OverlayDatabaseMode,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
@@ -109,6 +111,7 @@ export async function runInit(
         sourceRoot,
         processName,
         qlconfigFile,
+        overlayDatabaseMode,
         logger,
       ),
   );

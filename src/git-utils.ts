@@ -300,6 +300,28 @@ export const decodeGitFilePath = function (filePath: string): string {
   return filePath;
 };
 
+/**
+ * Get the root of the Git repository.
+ *
+ * @param sourceRoot The source root of the code being analyzed.
+ * @returns The root of the Git repository.
+ */
+export const getGitRoot = async function (
+  sourceRoot: string,
+): Promise<string | undefined> {
+  try {
+    const stdout = await runGitCommand(
+      sourceRoot,
+      ["rev-parse", "--show-toplevel"],
+      `Cannot find Git repository root from the source root ${sourceRoot}.`,
+    );
+    return stdout.trim();
+  } catch {
+    // Errors are already logged by runGitCommand()
+    return undefined;
+  }
+};
+
 function getRefFromEnv(): string {
   // To workaround a limitation of Actions dynamic workflows not setting
   // the GITHUB_REF in some cases, we accept also the ref within the

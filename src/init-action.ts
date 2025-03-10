@@ -36,6 +36,7 @@ import { Feature, featureConfig, Features } from "./feature-flags";
 import {
   checkInstallPython311,
   cleanupDatabaseClusterDirectory,
+  getOverlayDatabaseMode,
   initCodeQL,
   initConfig,
   runInit,
@@ -396,7 +397,22 @@ async function run() {
   }
 
   try {
-    cleanupDatabaseClusterDirectory(config, logger);
+    const sourceRoot = path.resolve(
+      getRequiredEnvParam("GITHUB_WORKSPACE"),
+      getOptionalInput("source-root") || "",
+    );
+
+    const overlayDatabaseMode = await getOverlayDatabaseMode(
+      (await codeql.getVersion()).version,
+      config,
+      sourceRoot,
+      logger,
+    );
+    logger.info(`Using overlay database mode: ${overlayDatabaseMode}`);
+
+    if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
+      cleanupDatabaseClusterDirectory(config, logger);
+    }
 
     if (zstdAvailability) {
       await recordZstdAvailability(config, zstdAvailability);
@@ -676,11 +692,6 @@ async function run() {
       }
     }
 
-    const sourceRoot = path.resolve(
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
-      getOptionalInput("source-root") || "",
-    );
-
     const tracerConfig = await runInit(
       codeql,
       config,
@@ -688,7 +699,7 @@ async function run() {
       "Runner.Worker.exe",
       getOptionalInput("registries"),
       apiDetails,
-      OverlayDatabaseMode.None,
+      overlayDatabaseMode,
       logger,
     );
     if (tracerConfig !== undefined) {

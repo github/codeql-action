@@ -11,6 +11,7 @@ import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { getJavaDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
@@ -166,6 +167,12 @@ export async function runExtraction(
         ) {
           await setupCppAutobuild(codeql, logger);
         }
+
+        if (language === Language.java && config.buildMode === BuildMode.None) {
+          process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
+            getJavaDependencyDir();
+        }
+
         await codeql.extractUsingBuildMode(config, language);
       } else {
         await codeql.extractScannedLanguage(config, language);

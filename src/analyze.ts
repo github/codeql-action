@@ -548,6 +548,7 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  cleanupLevel: string,
   diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
@@ -555,20 +556,22 @@ export async function runQueries(
   features: FeatureEnablement,
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
+  const queryFlags = [memoryFlag, threadsFlag];
+
+  if (cleanupLevel !== "overlay") {
+    queryFlags.push("--expect-discarded-cache");
+  }
 
   statusReport.analysis_is_diff_informed = diffRangePackDir !== undefined;
-  const dataExtensionFlags = diffRangePackDir
-    ? [
-        `--additional-packs=${diffRangePackDir}`,
-        "--extension-packs=codeql-action/pr-diff-range",
-      ]
-    : [];
+  if (diffRangePackDir) {
+    queryFlags.push(`--additional-packs=${diffRangePackDir}`);
+    queryFlags.push("--extension-packs=codeql-action/pr-diff-range");
+  }
   const sarifRunPropertyFlag = diffRangePackDir
     ? "--sarif-run-property=incrementalMode=diff-informed"
     : undefined;
 
   const codeql = await getCodeQL(config.codeQLCmd);
-  const queryFlags = [memoryFlag, threadsFlag, ...dataExtensionFlags];
 
   for (const language of config.languages) {
     try {

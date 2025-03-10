@@ -24,6 +24,7 @@ import {
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -82,6 +83,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
+    overlayDatabaseMode: OverlayDatabaseMode,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -552,6 +554,7 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
+      overlayDatabaseMode: OverlayDatabaseMode,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -606,12 +609,20 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
+      if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
+        extraArgs.push("--overlay");
+      } else if (overlayDatabaseMode === OverlayDatabaseMode.OverlayBase) {
+        extraArgs.push("--overlay-base");
+      }
+
       await runCli(
         cmd,
         [
           "database",
           "init",
-          overwriteFlag,
+          ...(overlayDatabaseMode === OverlayDatabaseMode.Overlay
+            ? []
+            : [overwriteFlag]),
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,

@@ -29,7 +29,12 @@ interface CacheConfig {
 const CODEQL_DEPENDENCY_CACHE_PREFIX = "codeql-dependencies";
 const CODEQL_DEPENDENCY_CACHE_VERSION = 1;
 
-export function getJavaDependencyDir(): string {
+/**
+ * Returns a path to a directory intended to be used to store .jar files
+ * for the Java `build-mode: none` extractor.
+ * @returns The path to the directory that should be used by the `build-mode: none` extractor.
+ */
+export function getJavaTempDependencyDir(): string {
   return join(getTemporaryDirectory(), "codeql_java", "repository");
 }
 
@@ -44,7 +49,7 @@ const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
       // Gradle
       join(os.homedir(), ".gradle", "caches"),
       // CodeQL Java build-mode: none
-      getJavaDependencyDir(),
+      getJavaTempDependencyDir(),
     ],
     hash: [
       // Maven

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Dependency caching should now cache more dependencies for Java `build-mode: none` extractions. This should speed up workflows and avoid inconsistent alerts in some cases.
 
 ## 3.28.11 - 07 Mar 2025
 

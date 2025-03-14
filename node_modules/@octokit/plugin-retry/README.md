@@ -46,7 +46,7 @@ const octokit = new MyOctokit({ auth: "secret123" });
 octokit.request("/").catch((error) => {
   if (error.request.request.retryCount) {
     console.log(
-      `request failed after ${error.request.request.retryCount} retries`
+      `request failed after ${error.request.request.retryCount} retries`,
     );
   }
 
@@ -84,7 +84,7 @@ octokit
   .catch((error) => {
     if (error.request.request.retryCount) {
       console.log(
-        `request failed after ${error.request.request.retryCount} retries`
+        `request failed after ${error.request.request.retryCount} retries`,
       );
     }
 

@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
+import * as github from "@actions/github";
 import * as io from "@actions/io";
 import del from "del";
 import * as yaml from "js-yaml";
@@ -256,18 +257,10 @@ async function finalizeDatabaseCreation(
 /**
  * Set up the diff-informed analysis feature.
  *
- * @param baseRef The base branch name, used for calculating the diff range.
- * @param headLabel The label that uniquely identifies the head branch across
- * repositories, used for calculating the diff range.
- * @param codeql
- * @param logger
- * @param features
  * @returns Absolute path to the directory containing the extension pack for
  * the diff range information, or `undefined` if the feature is disabled.
  */
 export async function setupDiffInformedQueryRun(
-  baseRef: string,
-  headLabel: string,
   codeql: CodeQL,
   logger: Logger,
   features: FeatureEnablement,
@@ -275,6 +268,15 @@ export async function setupDiffInformedQueryRun(
   if (!(await features.getValue(Feature.DiffInformedQueries, codeql))) {
     return undefined;
   }
+
+  const pull_request = github.context.payload.pull_request;
+  if (!pull_request) {
+    return undefined;
+  }
+
+  const baseRef = pull_request.base.ref as string;
+  const headLabel = pull_request.head.label as string;
+
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {

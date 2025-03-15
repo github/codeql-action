@@ -4,6 +4,7 @@ import { join } from "path";
 import * as actionsCache from "@actions/cache";
 import * as glob from "@actions/glob";
 
+import { getTemporaryDirectory } from "./actions-util";
 import { getTotalCacheSize } from "./caching-utils";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
@@ -29,6 +30,15 @@ const CODEQL_DEPENDENCY_CACHE_PREFIX = "codeql-dependencies";
 const CODEQL_DEPENDENCY_CACHE_VERSION = 1;
 
 /**
+ * Returns a path to a directory intended to be used to store .jar files
+ * for the Java `build-mode: none` extractor.
+ * @returns The path to the directory that should be used by the `build-mode: none` extractor.
+ */
+export function getJavaTempDependencyDir(): string {
+  return join(getTemporaryDirectory(), "codeql_java", "repository");
+}
+
+/**
  * Default caching configurations per language.
  */
 const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
@@ -38,6 +48,8 @@ const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
       join(os.homedir(), ".m2", "repository"),
       // Gradle
       join(os.homedir(), ".gradle", "caches"),
+      // CodeQL Java build-mode: none
+      getJavaTempDependencyDir(),
     ],
     hash: [
       // Maven

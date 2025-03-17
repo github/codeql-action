@@ -26,3 +26,4 @@ isSupportedNodeModule("node:http2", "1.0.0"); // false, added in 1.0.13
 - **Only Bun v1.0.0+ is supported**
 - You can also pass `latest` as Bun version
 - Inspired by [is-core-module](https://github.com/inspect-js/is-core-module) and made for [eslint-import-resolver-typescript](https://github.com/import-js/eslint-import-resolver-typescript)
+- Runtime-independent

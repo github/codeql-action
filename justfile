@@ -24,9 +24,6 @@ test: build
 test_file filename: build
     npx ava --verbose {{filename}}
 
-# FOTIS: This shouldn't really be needed, as it's covered by `sync`,
-# however, I recall having messed my environment such that this was the
-# only solution, so keeping it here for convenience & docs.
 [doc("Refresh the .js build artefacts in the lib directory")]
 [confirm]
 refresh-lib:

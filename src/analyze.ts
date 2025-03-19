@@ -11,6 +11,7 @@ import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { getJavaTempDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
@@ -166,6 +167,16 @@ export async function runExtraction(
         ) {
           await setupCppAutobuild(codeql, logger);
         }
+
+        // The Java `build-mode: none` extractor places dependencies (.jar files) in the
+        // database scratch directory by default. For dependency caching purposes, we want
+        // a stable path that caches can be restored into and that we can cache at the
+        // end of the workflow (i.e. that does not get removed when the scratch directory is).
+        if (language === Language.java && config.buildMode === BuildMode.None) {
+          process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
+            getJavaTempDependencyDir();
+        }
+
         await codeql.extractUsingBuildMode(config, language);
       } else {
         await codeql.extractScannedLanguage(config, language);
@@ -548,6 +559,7 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  cleanupLevel: string,
   diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
@@ -555,20 +567,22 @@ export async function runQueries(
   features: FeatureEnablement,
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
+  const queryFlags = [memoryFlag, threadsFlag];
+
+  if (cleanupLevel !== "overlay") {
+    queryFlags.push("--expect-discarded-cache");
+  }
 
   statusReport.analysis_is_diff_informed = diffRangePackDir !== undefined;
-  const dataExtensionFlags = diffRangePackDir
-    ? [
-        `--additional-packs=${diffRangePackDir}`,
-        "--extension-packs=codeql-action/pr-diff-range",
-      ]
-    : [];
+  if (diffRangePackDir) {
+    queryFlags.push(`--additional-packs=${diffRangePackDir}`);
+    queryFlags.push("--extension-packs=codeql-action/pr-diff-range");
+  }
   const sarifRunPropertyFlag = diffRangePackDir
     ? "--sarif-run-property=incrementalMode=diff-informed"
     : undefined;
 
   const codeql = await getCodeQL(config.codeQLCmd);
-  const queryFlags = [memoryFlag, threadsFlag, ...dataExtensionFlags];
 
   for (const language of config.languages) {
     try {

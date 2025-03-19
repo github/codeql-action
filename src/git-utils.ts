@@ -10,7 +10,7 @@ import {
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 async function runGitCommand(
-  checkoutPath: string | undefined,
+  workingDirectory: string | undefined,
   args: string[],
   customErrorMessage: string,
 ): Promise<string> {
@@ -28,7 +28,7 @@ async function runGitCommand(
           stderr += data.toString();
         },
       },
-      cwd: checkoutPath,
+      cwd: workingDirectory,
     }).exec();
     return stdout;
   } catch (error) {
@@ -251,6 +251,44 @@ export const getGitRoot = async function (
     // Errors are already logged by runGitCommand()
     return undefined;
   }
+};
+
+/**
+ * Returns the Git OIDs of all tracked files (in the index and in the working
+ * tree) that are under the given base path, including files in active
+ * submodules. Untracked files and files not under the given base path are
+ * ignored.
+ *
+ * @param basePath A path into the Git repository.
+ * @returns a map from file paths (relative to `basePath`) to Git OIDs.
+ * @throws {Error} if "git ls-tree" produces unexpected output.
+ */
+export const getFileOidsUnderPath = async function (
+  basePath: string,
+): Promise<{ [key: string]: string }> {
+  // Without the --full-name flag, the path is relative to the current working
+  // directory of the git command, which is basePath.
+  const stdout = await runGitCommand(
+    basePath,
+    ["ls-files", "--recurse-submodules", "--format=%(objectname)_%(path)"],
+    "Cannot list Git OIDs of tracked files.",
+  );
+
+  const fileOidMap: { [key: string]: string } = {};
+  const regex = /^([0-9a-f]{40})_(.+)$/;
+  for (const line of stdout.split("\n")) {
+    if (line) {
+      const match = line.match(regex);
+      if (match) {
+        const oid = match[1];
+        const path = decodeGitFilePath(match[2]);
+        fileOidMap[path] = oid;
+      } else {
+        throw new Error(`Unexpected "git ls-files" output: ${line}`);
+      }
+    }
+  }
+  return fileOidMap;
 };
 
 function getRefFromEnv(): string {

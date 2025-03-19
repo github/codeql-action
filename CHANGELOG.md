@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 3.28.12 - 19 Mar 2025
 
 - Dependency caching should now cache more dependencies for Java `build-mode: none` extractions. This should speed up workflows and avoid inconsistent alerts in some cases.
 - Update default CodeQL bundle version to 2.20.7. [#2810](https://github.com/github/codeql-action/pull/2810)

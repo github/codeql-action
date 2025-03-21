@@ -9,8 +9,8 @@ import {
 } from "./actions-util";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
-async function runGitCommand(
-  checkoutPath: string | undefined,
+export const runGitCommand = async function (
+  workingDirectory: string | undefined,
   args: string[],
   customErrorMessage: string,
 ): Promise<string> {
@@ -28,7 +28,7 @@ async function runGitCommand(
           stderr += data.toString();
         },
       },
-      cwd: checkoutPath,
+      cwd: workingDirectory,
     }).exec();
     return stdout;
   } catch (error) {
@@ -40,7 +40,7 @@ async function runGitCommand(
     core.info(`git call failed. ${customErrorMessage} Error: ${reason}`);
     throw error;
   }
-}
+};
 
 /**
  * Gets the SHA of the commit that is currently checked out.
@@ -251,6 +251,47 @@ export const getGitRoot = async function (
     // Errors are already logged by runGitCommand()
     return undefined;
   }
+};
+
+/**
+ * Returns the Git OIDs of all tracked files (in the index and in the working
+ * tree) that are under the given base path, including files in active
+ * submodules. Untracked files and files not under the given base path are
+ * ignored.
+ *
+ * @param basePath A path into the Git repository.
+ * @returns a map from file paths (relative to `basePath`) to Git OIDs.
+ * @throws {Error} if "git ls-tree" produces unexpected output.
+ */
+export const getFileOidsUnderPath = async function (
+  basePath: string,
+): Promise<{ [key: string]: string }> {
+  // Without the --full-name flag, the path is relative to the current working
+  // directory of the git command, which is basePath.
+  const stdout = await runGitCommand(
+    basePath,
+    ["ls-files", "--recurse-submodules", "--format=%(objectname)_%(path)"],
+    "Cannot list Git OIDs of tracked files.",
+  );
+
+  const fileOidMap: { [key: string]: string } = {};
+  // With --format=%(objectname)_%(path), the output is a list of lines like:
+  // 30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js
+  // d89514599a9a99f22b4085766d40af7b99974827_lib/git-utils.js.map
+  const regex = /^([0-9a-f]{40})_(.+)$/;
+  for (const line of stdout.split("\n")) {
+    if (line) {
+      const match = line.match(regex);
+      if (match) {
+        const oid = match[1];
+        const path = decodeGitFilePath(match[2]);
+        fileOidMap[path] = oid;
+      } else {
+        throw new Error(`Unexpected "git ls-files" output: ${line}`);
+      }
+    }
+  }
+  return fileOidMap;
 };
 
 function getRefFromEnv(): string {

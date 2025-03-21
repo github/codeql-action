@@ -254,6 +254,25 @@ async function finalizeDatabaseCreation(
   };
 }
 
+interface PullRequestBranches {
+  base: string;
+  head: string;
+}
+
+function getPullRequestBranches(): PullRequestBranches | undefined {
+  const pullRequest = github.context.payload.pull_request;
+  if (pullRequest) {
+    return {
+      base: pullRequest.base.ref,
+      // We use the head label instead of the head ref here, because the head
+      // ref lacks owner information and by itself does not uniquely identify
+      // the head branch (which may be in a forked repository).
+      head: pullRequest.head.label,
+    };
+  }
+  return undefined;
+}
+
 /**
  * Set up the diff-informed analysis feature.
  *
@@ -269,22 +288,22 @@ export async function setupDiffInformedQueryRun(
     return undefined;
   }
 
-  const pull_request = github.context.payload.pull_request;
-  if (!pull_request) {
+  const branches = getPullRequestBranches();
+  if (!branches) {
+    logger.info(
+      "Not performing diff-informed analysis " +
+        "because we are not analyzing a pull request.",
+    );
     return undefined;
   }
-
-  const baseRef = pull_request.base.ref as string;
-  const headLabel = pull_request.head.label as string;
 
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {
-      const diffRanges = await getPullRequestEditedDiffRanges(
-        baseRef,
-        headLabel,
-        logger,
+      logger.info(
+        `Calculating diff ranges for ${branches.base}...${branches.head}`,
       );
+      const diffRanges = await getPullRequestEditedDiffRanges(branches, logger);
       const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
       if (packDir === undefined) {
         logger.warning(
@@ -304,9 +323,7 @@ export async function setupDiffInformedQueryRun(
 /**
  * Return the file line ranges that were added or modified in the pull request.
  *
- * @param baseRef The base branch name, used for calculating the diff range.
- * @param headLabel The label that uniquely identifies the head branch across
- * repositories, used for calculating the diff range.
+ * @param branches The base and head branches of the pull request.
  * @param logger
  * @returns An array of tuples, where each tuple contains the absolute path of a
  * file, the start line and the end line (both 1-based and inclusive) of an
@@ -314,11 +331,10 @@ export async function setupDiffInformedQueryRun(
  * not triggered by a pull request or if there was an error.
  */
 async function getPullRequestEditedDiffRanges(
-  baseRef: string,
-  headLabel: string,
+  branches: PullRequestBranches,
   logger: Logger,
 ): Promise<DiffThunkRange[] | undefined> {
-  const fileDiffs = await getFileDiffsWithBasehead(baseRef, headLabel, logger);
+  const fileDiffs = await getFileDiffsWithBasehead(branches, logger);
   if (fileDiffs === undefined) {
     return undefined;
   }
@@ -357,14 +373,13 @@ interface FileDiff {
 }
 
 async function getFileDiffsWithBasehead(
-  baseRef: string,
-  headLabel: string,
+  branches: PullRequestBranches,
   logger: Logger,
 ): Promise<FileDiff[] | undefined> {
   const ownerRepo = util.getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
   const owner = ownerRepo[0];
   const repo = ownerRepo[1];
-  const basehead = `${baseRef}...${headLabel}`;
+  const basehead = `${branches.base}...${branches.head}`;
   try {
     const response = await getApiClient().rest.repos.compareCommitsWithBasehead(
       {

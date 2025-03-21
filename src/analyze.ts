@@ -270,6 +270,19 @@ function getPullRequestBranches(): PullRequestBranches | undefined {
       head: pullRequest.head.label,
     };
   }
+
+  // PR analysis under Default Setup does not have the pull_request context,
+  // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
+  const codeScanningRef = process.env.CODE_SCANNING_REF;
+  const codeScanningBaseBranch = process.env.CODE_SCANNING_BASE_BRANCH;
+  if (codeScanningRef && codeScanningBaseBranch) {
+    return {
+      base: codeScanningBaseBranch,
+      // PR analysis under Default Setup analyzes the PR head commit instead of
+      // the merge commit, so we can use the provided ref directly.
+      head: codeScanningRef,
+    };
+  }
   return undefined;
 }
 

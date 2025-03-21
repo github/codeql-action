@@ -527,6 +527,15 @@ function writeDiffRangeDataExtensionPack(
     return undefined;
   }
 
+  if (ranges.length === 0) {
+    // An empty diff range means that there are no added or modified lines in
+    // the pull request. But the `restrictAlertsTo` extensible predicate
+    // interprets an empty data extension differently, as an indication that
+    // all alerts should be included. So we need to specifically set the diff
+    // range to a non-empty list that cannot match any alert location.
+    ranges = [{ path: "", startLine: 0, endLine: 0 }];
+  }
+
   const diffRangeDir = path.join(
     actionsUtil.getTemporaryDirectory(),
     "pr-diff-range",

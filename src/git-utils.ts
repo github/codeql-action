@@ -9,7 +9,7 @@ import {
 } from "./actions-util";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
-async function runGitCommand(
+export const runGitCommand = async function (
   workingDirectory: string | undefined,
   args: string[],
   customErrorMessage: string,
@@ -40,7 +40,7 @@ async function runGitCommand(
     core.info(`git call failed. ${customErrorMessage} Error: ${reason}`);
     throw error;
   }
-}
+};
 
 /**
  * Gets the SHA of the commit that is currently checked out.
@@ -275,6 +275,9 @@ export const getFileOidsUnderPath = async function (
   );
 
   const fileOidMap: { [key: string]: string } = {};
+  // With --format=%(objectname)_%(path), the output is a list of lines like:
+  // 30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js
+  // d89514599a9a99f22b4085766d40af7b99974827_lib/git-utils.js.map
   const regex = /^([0-9a-f]{40})_(.+)$/;
   for (const line of stdout.split("\n")) {
     if (line) {

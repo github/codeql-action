@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   parserOptions: {
     sourceType: 'module',
     ecmaFeatures: {

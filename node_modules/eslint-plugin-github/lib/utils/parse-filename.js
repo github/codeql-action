@@ -1,6 +1,6 @@
-const path = require('path')
+import path from 'node:path'
 
-module.exports = function parseFilename(filename) {
+export default function parseFilename(filename) {
   const ext = path.extname(filename)
 
   return {

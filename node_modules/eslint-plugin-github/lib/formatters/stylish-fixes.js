@@ -1,18 +1,11 @@
-'use strict'
+import childProcess from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import SourceCodeFixer from 'eslint/lib/linter/source-code-fixer.js'
+import getRuleURI from 'eslint-rule-documentation'
 
-const childProcess = require('child_process')
-const fs = require('fs')
-const os = require('os')
-const path = require('path')
-let SourceCodeFixer = null
-try {
-  SourceCodeFixer = require('eslint/lib/linter/source-code-fixer')
-} catch {
-  SourceCodeFixer = require('eslint/lib/util/source-code-fixer')
-}
-const getRuleURI = require('eslint-rule-documentation')
-
-module.exports = function (results) {
+export default function stylishFixes(results) {
   let output = '\n'
   let errors = 0
   let warnings = 0

@@ -1,21 +1,31 @@
-const github = require('./plugin')
+import github from './plugin.js'
+import flatBrowserConfig from './configs/flat/browser.js'
+import flatInternalConfig from './configs/flat/internal.js'
+import flatRecommendedConfig from './configs/flat/recommended.js'
+import flatTypescriptConfig from './configs/flat/typescript.js'
+import flatReactConfig from './configs/flat/react.js'
+import browserConfig from './configs/browser.js'
+import internalConfig from './configs/internal.js'
+import recommendedConfig from './configs/recommended.js'
+import typescriptConfig from './configs/typescript.js'
+import reactConfig from './configs/react.js'
 
 const getFlatConfig = () => ({
-  browser: require('./configs/flat/browser'),
-  internal: require('./configs/flat/internal'),
-  recommended: require('./configs/flat/recommended'),
-  typescript: require('./configs/flat/typescript'),
-  react: require('./configs/flat/react'),
+  browser: flatBrowserConfig,
+  internal: flatInternalConfig,
+  recommended: flatRecommendedConfig,
+  typescript: flatTypescriptConfig,
+  react: flatReactConfig,
 })
 
-module.exports = {
+export default {
   rules: github.rules,
   configs: {
-    browser: require('./configs/browser'),
-    internal: require('./configs/internal'),
-    recommended: require('./configs/recommended'),
-    typescript: require('./configs/typescript'),
-    react: require('./configs/react'),
+    browser: browserConfig,
+    internal: internalConfig,
+    recommended: recommendedConfig,
+    typescript: typescriptConfig,
+    react: reactConfig,
   },
   getFlatConfigs: getFlatConfig,
 }

@@ -1,8 +1,9 @@
-const {getProp, getLiteralPropValue} = require('jsx-ast-utils')
-const {elementRoles} = require('aria-query')
-const {getElementType} = require('./get-element-type')
-const ObjectMap = require('./object-map')
+import jsxAstUtils from 'jsx-ast-utils'
+import {elementRoles} from 'aria-query'
+import {getElementType} from './get-element-type.js'
+import ObjectMap from './object-map.js'
 
+const {getProp, getLiteralPropValue} = jsxAstUtils
 const elementRolesMap = cleanElementRolesMap()
 
 /*
@@ -41,7 +42,7 @@ function cleanElementRolesMap() {
   We construct a key and look up the element's role in `elementRolesMap`.
   If there is no match, we return undefined.
 */
-function getRole(context, node) {
+export function getRole(context, node) {
   // Early return if role is explicitly set
   const explicitRole = getLiteralPropValue(getProp(node.attributes, 'role'))
   if (explicitRole) {
@@ -107,5 +108,3 @@ function getRole(context, node) {
   // Get the element’s implicit role
   return elementRolesMap.get(key)?.[0]
 }
-
-module.exports = {getRole}

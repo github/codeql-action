@@ -1,13 +1,13 @@
-const globals = require('globals')
-const github = require('../../plugin')
-const prettierPlugin = require('eslint-plugin-prettier')
-const eslintComments = require('eslint-plugin-eslint-comments')
-const importPlugin = require('eslint-plugin-import')
-const i18nTextPlugin = require('eslint-plugin-i18n-text')
-const noOnlyTestsPlugin = require('eslint-plugin-no-only-tests')
-const {fixupPluginRules} = require('@eslint/compat')
+import globals from 'globals'
+import github from '../../plugin.js'
+import prettierPlugin from 'eslint-plugin-prettier'
+import eslintComments from 'eslint-plugin-eslint-comments'
+import importPlugin from 'eslint-plugin-import'
+import i18nTextPlugin from 'eslint-plugin-i18n-text'
+import noOnlyTestsPlugin from 'eslint-plugin-no-only-tests'
+import {fixupPluginRules} from '@eslint/compat'
 
-module.exports = {
+export default {
   languageOptions: {
     ecmaVersion: 6,
     sourceType: 'module',

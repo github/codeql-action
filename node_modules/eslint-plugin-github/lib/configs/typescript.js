@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   extends: ['plugin:@typescript-eslint/recommended', 'prettier', 'plugin:escompat/typescript-2020'],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'escompat', 'github'],

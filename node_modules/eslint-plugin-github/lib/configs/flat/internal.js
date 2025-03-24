@@ -1,7 +1,7 @@
-const github = require('../../plugin')
-const {fixupPluginRules} = require('@eslint/compat')
+import github from '../../plugin.js'
+import {fixupPluginRules} from '@eslint/compat'
 
-module.exports = {
+export default {
   plugins: {github: fixupPluginRules(github)},
   rules: {
     'github/authenticity-token': 'error',

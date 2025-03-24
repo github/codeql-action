@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   parserOptions: {
     ecmaFeatures: {
       ecmaVersion: 6,

@@ -1,4 +1,6 @@
-const {elementType, getProp, getLiteralPropValue} = require('jsx-ast-utils')
+import jsxAstUtils from 'jsx-ast-utils'
+
+const {elementType, getProp, getLiteralPropValue} = jsxAstUtils
 
 /*
 Allows custom component to be mapped to an element type.
@@ -7,7 +9,7 @@ If a prop determines the type, it can be specified with `props`.
 
 For now, we only support the mapping of one prop type to an element type, rather than combinations of props.
 */
-function getElementType(context, node, lazyElementCheck = false) {
+export function getElementType(context, node, lazyElementCheck = false) {
   const {settings} = context
 
   if (lazyElementCheck) {
@@ -33,5 +35,3 @@ function getElementType(context, node, lazyElementCheck = false) {
   // check if the default component is also defined in the configuration
   return checkConditionalMap ? settings.github.components[rawElement] : rawElement
 }
-
-module.exports = {getElementType}

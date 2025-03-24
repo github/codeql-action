@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   plugins: ['github'],
   rules: {
     'github/authenticity-token': 'error',

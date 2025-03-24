@@ -1,5 +1,5 @@
 const ignoredFilenames = ['<text>', '<input>']
 
-module.exports = function isIgnoredFilename(filename) {
+export default function isIgnoredFilename(filename) {
   return ignoredFilenames.indexOf(filename) !== -1
 }

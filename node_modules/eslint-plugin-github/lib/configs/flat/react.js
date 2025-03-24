@@ -1,8 +1,8 @@
-const github = require('../../plugin')
-const jsxA11yPlugin = require('eslint-plugin-jsx-a11y')
-const {fixupPluginRules} = require('@eslint/compat')
+import github from '../../plugin.js'
+import jsxA11yPlugin from 'eslint-plugin-jsx-a11y'
+import {fixupPluginRules} from '@eslint/compat'
 
-module.exports = {
+export default {
   ...jsxA11yPlugin.flatConfigs.recommended,
   languageOptions: {
     sourceType: 'module',

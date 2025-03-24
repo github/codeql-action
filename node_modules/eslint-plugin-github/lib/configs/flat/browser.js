@@ -1,10 +1,10 @@
-const globals = require('globals')
-const github = require('../../plugin')
-const importPlugin = require('eslint-plugin-import')
-const escompat = require('eslint-plugin-escompat')
-const {fixupPluginRules} = require('@eslint/compat')
+import globals from 'globals'
+import github from '../../plugin.js'
+import importPlugin from 'eslint-plugin-import'
+import escompat from 'eslint-plugin-escompat'
+import {fixupPluginRules} from '@eslint/compat'
 
-module.exports = {
+export default {
   ...escompat.configs['flat/recommended'],
   languageOptions: {
     globals: {

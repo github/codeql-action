@@ -1,10 +1,10 @@
 // @ts-check
-const {isDeepStrictEqual} = require('util')
+import {isDeepStrictEqual} from 'node:util'
 
 /**
  * ObjectMap extends Map, but determines key equality using Node.js’ `util.isDeepStrictEqual` rather than using [SameValueZero](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map#key_equality). This makes using objects as keys a bit simpler.
  */
-module.exports = class ObjectMap extends Map {
+export default class ObjectMap extends Map {
   #data
 
   constructor(iterable = []) {

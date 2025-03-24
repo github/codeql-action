@@ -14,7 +14,7 @@ function getNodeName(node, options) {
   }
 }
 
-module.exports = function getExportedName(programNode, options) {
+export default function getExportedName(programNode, options) {
   for (let i = 0; i < programNode.body.length; i += 1) {
     const node = programNode.body[i]
 

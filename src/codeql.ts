@@ -24,7 +24,11 @@ import {
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import {
+  OverlayDatabaseMode,
+  writeBaseDatabaseOidsFile,
+  writeOverlayChangesFile,
+} from "./overlay-database-utils";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -610,7 +614,12 @@ export async function getCodeQLForCmd(
         : "--overwrite";
 
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
-        extraArgs.push("--overlay");
+        const overlayChangesFile = await writeOverlayChangesFile(
+          config,
+          sourceRoot,
+          logger,
+        );
+        extraArgs.push(`--overlay-changes=${overlayChangesFile}`);
       } else if (overlayDatabaseMode === OverlayDatabaseMode.OverlayBase) {
         extraArgs.push("--overlay-base");
       }
@@ -636,6 +645,10 @@ export async function getCodeQLForCmd(
         ],
         { stdin: externalRepositoryToken },
       );
+
+      if (overlayDatabaseMode === OverlayDatabaseMode.OverlayBase) {
+        await writeBaseDatabaseOidsFile(config, sourceRoot);
+      }
     },
     async runAutobuild(config: Config, language: Language) {
       applyAutobuildAzurePipelinesTimeoutFix();

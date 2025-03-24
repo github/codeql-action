@@ -305,3 +305,90 @@ test("decodeGitFilePath quoted strings", async (t) => {
     "\x07\b\f\n\r\t\v",
   );
 });
+
+test("getFileOidsUnderPath returns correct file mapping", async (t) => {
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(
+      "30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js\n" +
+        "d89514599a9a99f22b4085766d40af7b99974827_lib/git-utils.js.map\n" +
+        "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_src/git-utils.ts",
+    );
+
+  try {
+    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+    t.deepEqual(result, {
+      "lib/git-utils.js": "30d998ded095371488be3a729eb61d86ed721a18",
+      "lib/git-utils.js.map": "d89514599a9a99f22b4085766d40af7b99974827",
+      "src/git-utils.ts": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+    });
+
+    t.deepEqual(runGitCommandStub.firstCall.args, [
+      "/fake/path",
+      ["ls-files", "--recurse-submodules", "--format=%(objectname)_%(path)"],
+      "Cannot list Git OIDs of tracked files.",
+    ]);
+  } finally {
+    runGitCommandStub.restore();
+  }
+});
+
+test("getFileOidsUnderPath handles quoted paths", async (t) => {
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(
+      "30d998ded095371488be3a729eb61d86ed721a18_lib/normal-file.js\n" +
+        'd89514599a9a99f22b4085766d40af7b99974827_"lib/file with spaces.js"\n' +
+        'a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_"lib/file\\twith\\ttabs.js"',
+    );
+
+  try {
+    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+    t.deepEqual(result, {
+      "lib/normal-file.js": "30d998ded095371488be3a729eb61d86ed721a18",
+      "lib/file with spaces.js": "d89514599a9a99f22b4085766d40af7b99974827",
+      "lib/file\twith\ttabs.js": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+    });
+  } finally {
+    runGitCommandStub.restore();
+  }
+});
+
+test("getFileOidsUnderPath handles empty output", async (t) => {
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves("");
+
+  try {
+    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+    t.deepEqual(result, {});
+  } finally {
+    runGitCommandStub.restore();
+  }
+});
+
+test("getFileOidsUnderPath throws on unexpected output format", async (t) => {
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(
+      "30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js\n" +
+        "invalid-line-format\n" +
+        "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_src/git-utils.ts",
+    );
+
+  try {
+    await t.throwsAsync(
+      async () => {
+        await gitUtils.getFileOidsUnderPath("/fake/path");
+      },
+      {
+        instanceOf: Error,
+        message: 'Unexpected "git ls-files" output: invalid-line-format',
+      },
+    );
+  } finally {
+    runGitCommandStub.restore();
+  }
+});

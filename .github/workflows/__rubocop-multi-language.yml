@@ -46,7 +46,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Set up Ruby
-        uses: ruby/setup-ruby@922ebc4c5262cd14e07bb0e1db020984b6c064fe # v1.226.0
+        uses: ruby/setup-ruby@1a615958ad9d422dd932dc1d5823942ee002799f # v1.227.0
         with:
           ruby-version: 2.6
       - name: Install Code Scanning integration

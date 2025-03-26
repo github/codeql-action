@@ -17,6 +17,7 @@ import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
+import { getRepositoryNwo } from "./repository";
 import {
   ConfigurationError,
   isHTTPError,
@@ -393,16 +394,15 @@ export async function sendStatusReport<S extends StatusReportBase>(
     return;
   }
 
-  const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
-  const [owner, repo] = nwo.split("/");
+  const nwo = getRepositoryNwo();
   const client = getApiClient();
 
   try {
     await client.request(
       "PUT /repos/:owner/:repo/code-scanning/analysis/status",
       {
-        owner,
-        repo,
+        owner: nwo.owner,
+        repo: nwo.repo,
         data: statusReportJSON,
       },
     );

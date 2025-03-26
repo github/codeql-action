@@ -298,7 +298,24 @@ async function run() {
 
   core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
-  const configFile = getOptionalInput("config-file");
+  let configFile = getOptionalInput("config-file");
+  if (configFile === undefined) {
+    const defaultLocation = path.join(
+      getRequiredEnvParam("GITHUB_WORKSPACE"),
+      ".github",
+      "codeql",
+      "codeql.yml",
+    );
+
+    if (fs.existsSync(defaultLocation)) {
+      configFile = defaultLocation;
+      logger.info(
+        `Using default config file location: ${path.resolve(configFile)}`,
+      );
+    } else {
+      logger.info("No config file found.");
+    }
+  }
 
   try {
     const statusReportBase = await createStatusReportBase(

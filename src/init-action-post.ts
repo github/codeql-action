@@ -17,7 +17,7 @@ import * as debugArtifacts from "./debug-artifacts";
 import { Features } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import {
   StatusReportBase,
   sendStatusReport,
@@ -26,12 +26,7 @@ import {
   ActionName,
   getJobStatusDisplayName,
 } from "./status-report";
-import {
-  checkDiskUsage,
-  checkGitHubVersionInRange,
-  getRequiredEnvParam,
-  wrapError,
-} from "./util";
+import { checkDiskUsage, checkGitHubVersionInRange, wrapError } from "./util";
 
 interface InitPostStatusReport
   extends StatusReportBase,
@@ -52,9 +47,7 @@ async function runWrapper() {
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
-    const repositoryNwo = parseRepositoryNwo(
-      getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
+    const repositoryNwo = getRepositoryNwo();
     const features = new Features(
       gitHubVersion,
       repositoryNwo,

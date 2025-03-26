@@ -21,7 +21,7 @@ import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
-import { parseRepositoryNwo, RepositoryNwo } from "./repository";
+import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
@@ -624,11 +624,7 @@ export async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  const sarifID = await uploadPayload(
-    payload,
-    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    logger,
-  );
+  const sarifID = await uploadPayload(payload, getRepositoryNwo(), logger);
 
   logger.endGroup();
 

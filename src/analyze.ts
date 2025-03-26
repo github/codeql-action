@@ -22,6 +22,7 @@ import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
+import { getRepositoryNwo } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
@@ -389,15 +390,13 @@ async function getFileDiffsWithBasehead(
   branches: PullRequestBranches,
   logger: Logger,
 ): Promise<FileDiff[] | undefined> {
-  const ownerRepo = util.getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
-  const owner = ownerRepo[0];
-  const repo = ownerRepo[1];
+  const repositoryNwo = getRepositoryNwo();
   const basehead = `${branches.base}...${branches.head}`;
   try {
     const response = await getApiClient().rest.repos.compareCommitsWithBasehead(
       {
-        owner,
-        repo,
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
         basehead,
         per_page: 1,
       },

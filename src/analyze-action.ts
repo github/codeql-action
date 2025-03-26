@@ -26,7 +26,7 @@ import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
   ActionName,
@@ -251,9 +251,7 @@ async function run() {
       logger,
     );
 
-    const repositoryNwo = parseRepositoryNwo(
-      util.getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
+    const repositoryNwo = getRepositoryNwo();
 
     const gitHubVersion = await getGitHubVersion();
 
@@ -359,7 +357,7 @@ async function run() {
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {
       await uploadLib.waitForProcessing(
-        parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
+        getRepositoryNwo(),
         uploadResult.sarifID,
         getActionsLogger(),
       );

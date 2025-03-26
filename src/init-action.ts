@@ -312,8 +312,6 @@ async function run() {
       logger.info(
         `Using default config file location: ${path.resolve(configFile)}`,
       );
-    } else {
-      logger.info("No config file found.");
     }
   }
 

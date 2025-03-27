@@ -10,7 +10,7 @@ import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
-import { RepositoryNwo, parseRepositoryNwo } from "./repository";
+import { RepositoryNwo, getRepositoryNwo } from "./repository";
 import { JobStatus } from "./status-report";
 import * as uploadLib from "./upload-lib";
 import {
@@ -255,9 +255,7 @@ async function removeUploadedSarif(
     const client = getApiClient();
 
     try {
-      const repositoryNwo = parseRepositoryNwo(
-        getRequiredEnvParam("GITHUB_REPOSITORY"),
-      );
+      const repositoryNwo = getRepositoryNwo();
 
       // Wait to make sure the analysis is ready for download before requesting it.
       await delay(5000);

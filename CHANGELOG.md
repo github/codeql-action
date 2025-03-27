@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Default location for CodeQL configurations to be located and automatically loaded if present.
 
 ## 3.28.13 - 24 Mar 2025
 

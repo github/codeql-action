@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import * as github from "@actions/github";
 import * as io from "@actions/io";
 import del from "del";
 import * as yaml from "js-yaml";
@@ -16,6 +15,8 @@ import { getJavaTempDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
+  PullRequestBranches,
+  shouldPerformDiffInformedAnalysis,
   writeDiffRangesJsonFile,
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
@@ -253,64 +254,6 @@ async function finalizeDatabaseCreation(
     scanned_language_extraction_duration_ms: Math.round(extractionTime),
     trap_import_duration_ms: Math.round(trapImportTime),
   };
-}
-
-interface PullRequestBranches {
-  base: string;
-  head: string;
-}
-
-function getPullRequestBranches(): PullRequestBranches | undefined {
-  const pullRequest = github.context.payload.pull_request;
-  if (pullRequest) {
-    return {
-      base: pullRequest.base.ref,
-      // We use the head label instead of the head ref here, because the head
-      // ref lacks owner information and by itself does not uniquely identify
-      // the head branch (which may be in a forked repository).
-      head: pullRequest.head.label,
-    };
-  }
-
-  // PR analysis under Default Setup does not have the pull_request context,
-  // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
-  const codeScanningRef = process.env.CODE_SCANNING_REF;
-  const codeScanningBaseBranch = process.env.CODE_SCANNING_BASE_BRANCH;
-  if (codeScanningRef && codeScanningBaseBranch) {
-    return {
-      base: codeScanningBaseBranch,
-      // PR analysis under Default Setup analyzes the PR head commit instead of
-      // the merge commit, so we can use the provided ref directly.
-      head: codeScanningRef,
-    };
-  }
-  return undefined;
-}
-
-/**
- * Check if the action should perform diff-informed analysis.
- *
- * @returns If the action should perform diff-informed analysis, return
- * the base and head branches that should be used to compute the diff ranges.
- * Otherwise return `undefined`.
- */
-async function shouldPerformDiffInformedAnalysis(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger,
-): Promise<PullRequestBranches | undefined> {
-  if (!(await features.getValue(Feature.DiffInformedQueries, codeql))) {
-    return undefined;
-  }
-
-  const branches = getPullRequestBranches();
-  if (!branches) {
-    logger.info(
-      "Not performing diff-informed analysis " +
-        "because we are not analyzing a pull request.",
-    );
-  }
-  return branches;
 }
 
 /**

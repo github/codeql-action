@@ -17,7 +17,7 @@ import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
   writeDiffRangesJsonFile,
-} from "./diff-filtering-utils";
+} from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";

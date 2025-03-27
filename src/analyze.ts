@@ -22,7 +22,7 @@ import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
-import { getRepositoryNwo } from "./repository";
+import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
@@ -390,7 +390,12 @@ async function getFileDiffsWithBasehead(
   branches: PullRequestBranches,
   logger: Logger,
 ): Promise<FileDiff[] | undefined> {
-  const repositoryNwo = getRepositoryNwo();
+  // Check CODE_SCANNING_REPOSITORY first. If it is empty or not set, fall back
+  // to GITHUB_REPOSITORY.
+  const repositoryNwo = getRepositoryNwoFromEnv(
+    "CODE_SCANNING_REPOSITORY",
+    "GITHUB_REPOSITORY",
+  );
   const basehead = `${branches.base}...${branches.head}`;
   try {
     const response = await getApiClient().rest.repos.compareCommitsWithBasehead(

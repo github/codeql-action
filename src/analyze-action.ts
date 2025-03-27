@@ -22,6 +22,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { uploadDependencyCaches } from "./dependency-caching";
+import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -269,11 +270,14 @@ async function run() {
       logger,
     );
 
-    const diffRangePackDir = await setupDiffInformedQueryRun(
+    const branches = await shouldPerformDiffInformedAnalysis(
       codeql,
-      logger,
       features,
+      logger,
     );
+    const diffRangePackDir = branches
+      ? await setupDiffInformedQueryRun(branches, logger)
+      : undefined;
 
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);

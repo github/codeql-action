@@ -16,7 +16,6 @@ import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
   PullRequestBranches,
-  shouldPerformDiffInformedAnalysis,
   writeDiffRangesJsonFile,
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
@@ -263,19 +262,9 @@ async function finalizeDatabaseCreation(
  * the diff range information, or `undefined` if the feature is disabled.
  */
 export async function setupDiffInformedQueryRun(
-  codeql: CodeQL,
+  branches: PullRequestBranches,
   logger: Logger,
-  features: FeatureEnablement,
 ): Promise<string | undefined> {
-  const branches = await shouldPerformDiffInformedAnalysis(
-    codeql,
-    features,
-    logger,
-  );
-  if (!branches) {
-    return undefined;
-  }
-
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {

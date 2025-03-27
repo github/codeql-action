@@ -173,10 +173,16 @@ export interface AugmentationProperties {
    * Whether or not the packs input combines with the packs in the config.
    */
   packsInputCombines: boolean;
+
   /**
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
+
+  /**
+   * Default query filters to apply to the queries in the config.
+   */
+  defaultQueryFilters?: QueryFilter[];
 }
 
 /**
@@ -188,6 +194,7 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
+  defaultQueryFilters: [],
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -461,7 +468,7 @@ export async function getDefaultConfig({
     logger,
   );
 
-  const augmentationProperties = calculateAugmentation(
+  const augmentationProperties = await calculateAugmentation(
     packsInput,
     queriesInput,
     languages,
@@ -567,7 +574,7 @@ async function loadConfig({
     logger,
   );
 
-  const augmentationProperties = calculateAugmentation(
+  const augmentationProperties = await calculateAugmentation(
     packsInput,
     queriesInput,
     languages,
@@ -617,11 +624,11 @@ async function loadConfig({
  *     not have exactly one language.
  */
 // exported for testing.
-export function calculateAugmentation(
+export async function calculateAugmentation(
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
   languages: Language[],
-): AugmentationProperties {
+): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
   const packsInput = parsePacksFromInput(
     rawPacksInput,
@@ -634,11 +641,14 @@ export function calculateAugmentation(
     queriesInputCombines,
   );
 
+  const defaultQueryFilters: QueryFilter[] = [];
+
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
+    defaultQueryFilters,
   };
 }
 

@@ -809,11 +809,12 @@ const calculateAugmentationMacro = test.macro({
     languages: Language[],
     expectedAugmentationProperties: configUtils.AugmentationProperties,
   ) => {
-    const actualAugmentationProperties = configUtils.calculateAugmentation(
-      rawPacksInput,
-      rawQueriesInput,
-      languages,
-    );
+    const actualAugmentationProperties =
+      await configUtils.calculateAugmentation(
+        rawPacksInput,
+        rawQueriesInput,
+        languages,
+      );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
   },
   title: (_, title) => `Calculate Augmentation: ${title}`,
@@ -830,6 +831,7 @@ test(
     queriesInput: undefined,
     packsInputCombines: false,
     packsInput: undefined,
+    defaultQueryFilters: [],
   } as configUtils.AugmentationProperties,
 );
 
@@ -844,6 +846,7 @@ test(
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
     packsInputCombines: false,
     packsInput: undefined,
+    defaultQueryFilters: [],
   } as configUtils.AugmentationProperties,
 );
 
@@ -858,6 +861,7 @@ test(
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
     packsInputCombines: false,
     packsInput: undefined,
+    defaultQueryFilters: [],
   } as configUtils.AugmentationProperties,
 );
 
@@ -872,6 +876,7 @@ test(
     queriesInput: undefined,
     packsInputCombines: false,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    defaultQueryFilters: [],
   } as configUtils.AugmentationProperties,
 );
 
@@ -886,6 +891,7 @@ test(
     queriesInput: undefined,
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
+    defaultQueryFilters: [],
   } as configUtils.AugmentationProperties,
 );
 
@@ -898,7 +904,7 @@ const calculateAugmentationErrorMacro = test.macro({
     languages: Language[],
     expectedError: RegExp | string,
   ) => {
-    t.throws(
+    await t.throwsAsync(
       () =>
         configUtils.calculateAugmentation(
           rawPacksInput,

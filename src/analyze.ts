@@ -288,16 +288,17 @@ function getPullRequestBranches(): PullRequestBranches | undefined {
 }
 
 /**
- * Set up the diff-informed analysis feature.
+ * Check if the action should perform diff-informed analysis.
  *
- * @returns Absolute path to the directory containing the extension pack for
- * the diff range information, or `undefined` if the feature is disabled.
+ * @returns If the action should perform diff-informed analysis, return
+ * the base and head branches that should be used to compute the diff ranges.
+ * Otherwise return `undefined`.
  */
-export async function setupDiffInformedQueryRun(
+async function shouldPerformDiffInformedAnalysis(
   codeql: CodeQL,
-  logger: Logger,
   features: FeatureEnablement,
-): Promise<string | undefined> {
+  logger: Logger,
+): Promise<PullRequestBranches | undefined> {
   if (!(await features.getValue(Feature.DiffInformedQueries, codeql))) {
     return undefined;
   }
@@ -308,6 +309,27 @@ export async function setupDiffInformedQueryRun(
       "Not performing diff-informed analysis " +
         "because we are not analyzing a pull request.",
     );
+  }
+  return branches;
+}
+
+/**
+ * Set up the diff-informed analysis feature.
+ *
+ * @returns Absolute path to the directory containing the extension pack for
+ * the diff range information, or `undefined` if the feature is disabled.
+ */
+export async function setupDiffInformedQueryRun(
+  codeql: CodeQL,
+  logger: Logger,
+  features: FeatureEnablement,
+): Promise<string | undefined> {
+  const branches = await shouldPerformDiffInformedAnalysis(
+    codeql,
+    features,
+    logger,
+  );
+  if (!branches) {
     return undefined;
   }
 

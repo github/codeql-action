@@ -122,6 +122,8 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
   res = api.wrapApiConfigurationError(httpError);
   t.is(res, httpError);
 
+  // For other HTTP errors, we wrap them as Configuration errors if they contain
+  // specific error messages.
   const httpNotFoundError = new util.HTTPError("commit not found", 404);
   res = api.wrapApiConfigurationError(httpNotFoundError);
   t.deepEqual(res, new util.ConfigurationError("commit not found"));
@@ -134,7 +136,7 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
   t.deepEqual(
     res,
     new util.ConfigurationError(
-      "ref 'refs/heads/jitsi' not found in this repository",
+      "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
     ),
   );
 

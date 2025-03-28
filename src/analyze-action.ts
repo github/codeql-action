@@ -22,7 +22,7 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { uploadDependencyCaches } from "./dependency-caching";
-import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
@@ -270,7 +270,7 @@ async function run() {
       logger,
     );
 
-    const branches = await shouldPerformDiffInformedAnalysis(
+    const branches = await getDiffInformedAnalysisBranches(
       codeql,
       features,
       logger,

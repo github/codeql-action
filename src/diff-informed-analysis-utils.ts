@@ -42,12 +42,26 @@ function getPullRequestBranches(): PullRequestBranches | undefined {
 
 /**
  * Check if the action should perform diff-informed analysis.
+ */
+export async function shouldPerformDiffInformedAnalysis(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<boolean> {
+  return (
+    (await getDiffInformedAnalysisBranches(codeql, features, logger)) !==
+    undefined
+  );
+}
+
+/**
+ * Get the branches to use for diff-informed analysis.
  *
  * @returns If the action should perform diff-informed analysis, return
  * the base and head branches that should be used to compute the diff ranges.
  * Otherwise return `undefined`.
  */
-export async function shouldPerformDiffInformedAnalysis(
+export async function getDiffInformedAnalysisBranches(
   codeql: CodeQL,
   features: FeatureEnablement,
   logger: Logger,

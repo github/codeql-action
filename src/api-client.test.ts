@@ -149,4 +149,22 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
     res,
     new util.ConfigurationError("API rate limit exceeded for installation"),
   );
+
+  const badCredentialsError = new util.HTTPError("Bad credentials", 401);
+  res = api.wrapApiConfigurationError(badCredentialsError);
+  t.deepEqual(res, new util.ConfigurationError("Bad credentials"));
+
+  const notFoundError = new util.HTTPError("Not Found", 404);
+  res = api.wrapApiConfigurationError(notFoundError);
+  t.deepEqual(res, new util.ConfigurationError("Not Found"));
+
+  const resourceNotAccessibleError = new util.HTTPError(
+    "Resource not accessible by integration",
+    403,
+  );
+  res = api.wrapApiConfigurationError(resourceNotAccessibleError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError("Resource not accessible by integration"),
+  );
 });

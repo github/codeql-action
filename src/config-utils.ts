@@ -8,6 +8,7 @@ import * as semver from "semver";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL } from "./codeql";
+import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
@@ -173,10 +174,16 @@ export interface AugmentationProperties {
    * Whether or not the packs input combines with the packs in the config.
    */
   packsInputCombines: boolean;
+
   /**
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
+
+  /**
+   * Default query filters to apply to the queries in the config.
+   */
+  defaultQueryFilters?: QueryFilter[];
 }
 
 /**
@@ -188,6 +195,7 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
+  defaultQueryFilters: [],
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -461,10 +469,13 @@ export async function getDefaultConfig({
     logger,
   );
 
-  const augmentationProperties = calculateAugmentation(
+  const augmentationProperties = await calculateAugmentation(
+    codeql,
+    features,
     packsInput,
     queriesInput,
     languages,
+    logger,
   );
 
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
@@ -567,10 +578,13 @@ async function loadConfig({
     logger,
   );
 
-  const augmentationProperties = calculateAugmentation(
+  const augmentationProperties = await calculateAugmentation(
+    codeql,
+    features,
     packsInput,
     queriesInput,
     languages,
+    logger,
   );
 
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
@@ -605,11 +619,14 @@ async function loadConfig({
  * and the CLI does not know about these inputs so we need to inject them into
  * the config file sent to the CLI.
  *
+ * @param codeql The CodeQL object.
+ * @param features The feature enablement object.
  * @param rawPacksInput The packs input from the action configuration.
  * @param rawQueriesInput The queries input from the action configuration.
  * @param languages The languages that the config file is for. If the packs input
  *    is non-empty, then there must be exactly one language. Otherwise, an
  *    error is thrown.
+ * @param logger The logger to use for logging.
  *
  * @returns The properties that need to be augmented in the config file.
  *
@@ -617,11 +634,14 @@ async function loadConfig({
  *     not have exactly one language.
  */
 // exported for testing.
-export function calculateAugmentation(
+export async function calculateAugmentation(
+  codeql: CodeQL,
+  features: FeatureEnablement,
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
   languages: Language[],
-): AugmentationProperties {
+  logger: Logger,
+): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
   const packsInput = parsePacksFromInput(
     rawPacksInput,
@@ -634,11 +654,17 @@ export function calculateAugmentation(
     queriesInputCombines,
   );
 
+  const defaultQueryFilters: QueryFilter[] = [];
+  if (await shouldPerformDiffInformedAnalysis(codeql, features, logger)) {
+    defaultQueryFilters.push({ exclude: { tags: "exclude-from-incremental" } });
+  }
+
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
+    defaultQueryFilters,
   };
 }
 

@@ -14,7 +14,7 @@ import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
-import { readDiffRangesJsonFile } from "./diff-filtering-utils";
+import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";

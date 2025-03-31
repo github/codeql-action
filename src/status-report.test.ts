@@ -15,6 +15,7 @@ import {
   setupActionsVars,
   createTestConfig,
 } from "./testing-utils";
+import { InvalidSarifUploadError } from "./upload-lib";
 import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 
 setupTests(test);
@@ -241,5 +242,13 @@ test("getActionStatus handling correctly various types of errors", (t) => {
     getActionsStatus(wrapError(new ConfigurationError("arbitrary error"))),
     "user-error",
     "We still recognise a wrapped ConfigurationError as a user error",
+  );
+
+  t.is(
+    getActionsStatus(
+      new InvalidSarifUploadError("SyntaxError: Unexpected end of JSON input"),
+    ),
+    "user-error",
+    "We recognise an InvalidSarifUploadError as a user error",
   );
 });

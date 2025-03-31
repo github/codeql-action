@@ -18,6 +18,7 @@ import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
+import { InvalidSarifUploadError } from "./upload-lib";
 import {
   ConfigurationError,
   isHTTPError,
@@ -173,7 +174,14 @@ export function getActionsStatus(
   otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
-    return error instanceof ConfigurationError ? "user-error" : "failure";
+    if (
+      error instanceof ConfigurationError ||
+      error instanceof InvalidSarifUploadError
+    ) {
+      return "user-error";
+    }
+
+    return "failure";
   } else {
     return "success";
   }

@@ -734,23 +734,32 @@ export async function waitForProcessing(
 /**
  * Returns whether the provided processing errors are a configuration error.
  */
-function shouldConsiderConfigurationError(processingErrors: string[]): boolean {
+export function shouldConsiderConfigurationError(
+  processingErrors: string[],
+): boolean {
+  const expectedConfigErrors = [
+    "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
+    "rejecting delivery as the repository has too many logical alerts",
+  ];
+
   return (
     processingErrors.length === 1 &&
-    processingErrors[0] ===
-      "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled"
+    expectedConfigErrors.some((msg) => processingErrors[0].includes(msg))
   );
 }
 
 /**
  * Returns whether the provided processing errors are the result of an invalid SARIF upload request.
  */
-function shouldConsiderInvalidRequest(processingErrors: string[]): boolean {
+export function shouldConsiderInvalidRequest(
+  processingErrors: string[],
+): boolean {
   return processingErrors.every(
     (error) =>
       error.startsWith("rejecting SARIF") ||
       error.startsWith("an invalid URI was provided as a SARIF location") ||
       error.startsWith("locationFromSarifResult: expected artifact location") ||
+      error.startsWith("SyntaxError: Unexpected end of JSON input") ||
       error.startsWith(
         "could not convert rules: invalid security severity value, is not a number",
       ) ||

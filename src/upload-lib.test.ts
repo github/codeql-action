@@ -405,6 +405,47 @@ test("shouldShowCombineSarifFilesDeprecationWarning when environment variable is
   );
 });
 
+test("shouldConsiderConfigurationError correctly detects configuration errors", (t) => {
+  const error1 = [
+    "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
+  ];
+  t.true(uploadLib.shouldConsiderConfigurationError(error1));
+
+  const error2 = [
+    "rejecting delivery as the repository has too many logical alerts",
+  ];
+  t.true(uploadLib.shouldConsiderConfigurationError(error2));
+
+  // We fail cases where we get > 1 error messages back
+  const error3 = [
+    "rejecting delivery as the repository has too many alerts",
+    "extra error message",
+  ];
+  t.false(uploadLib.shouldConsiderConfigurationError(error3));
+});
+
+test("shouldConsiderInvalidRequest returns correct recognises processing errors", (t) => {
+  const error1 = [
+    "rejecting SARIF",
+    "an invalid URI was provided as a SARIF location",
+  ];
+  t.true(uploadLib.shouldConsiderInvalidRequest(error1));
+
+  const error2 = [
+    "locationFromSarifResult: expected artifact location",
+    "SyntaxError: Unexpected end of JSON input",
+  ];
+  t.true(uploadLib.shouldConsiderInvalidRequest(error2));
+
+  // We expect ALL errors to be of processing errors, for the outcome to be classified as
+  // an invalid SARIF upload error.
+  const error3 = [
+    "could not convert rules: invalid security severity value, is not a number",
+    "an unknown error occurred",
+  ];
+  t.false(uploadLib.shouldConsiderInvalidRequest(error3));
+});
+
 function createMockSarif(id?: string, tool?: string) {
   return {
     runs: [

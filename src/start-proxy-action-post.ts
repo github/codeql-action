@@ -22,7 +22,11 @@ async function runWrapper() {
     // Kill the running proxy
     const pid = core.getState("proxy-process-pid");
     if (pid) {
-      process.kill(Number(pid));
+      try {
+        process.kill(Number(pid));
+      } catch (error) {
+        logger.error(`Failed to kill proxy process: ${getErrorMessage(error)}`);
+      }
     }
 
     const config = await configUtils.getConfig(

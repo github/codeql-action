@@ -245,6 +245,9 @@ export function wrapApiConfigurationError(e: unknown) {
     if (
       e.message.includes("API rate limit exceeded for installation") ||
       e.message.includes("commit not found") ||
+      e.message.includes("Bad credentials") ||
+      e.message.includes("Not Found") ||
+      e.message.includes("Resource not accessible by integration") ||
       /ref .* not found in this repository/.test(e.message)
     ) {
       return new ConfigurationError(e.message);

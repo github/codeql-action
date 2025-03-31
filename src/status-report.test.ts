@@ -216,7 +216,7 @@ test("getActionStatus handling correctly various types of errors", (t) => {
       "multiple things went wrong",
     ),
     "user-error",
-    "getActionsStatus should return failure if passed a configuration error and an additional failure cause",
+    "getActionsStatus should return user-error if passed a configuration error and an additional failure cause",
   );
 
   t.is(

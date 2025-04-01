@@ -433,7 +433,7 @@ test("shouldConsiderInvalidRequest returns correct recognises processing errors"
 
   const error2 = [
     "locationFromSarifResult: expected artifact location",
-    "SyntaxError: Unexpected end of JSON input",
+    "an invalid URI was provided as a SARIF location",
   ];
   t.true(uploadLib.shouldConsiderInvalidRequest(error2));
 

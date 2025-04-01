@@ -170,14 +170,16 @@ export interface DatabaseCreationTimings {
 }
 
 export function getActionsStatus(
+  isThirdPartyAnalysis: boolean,
   error?: unknown,
   otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
-    if (
-      error instanceof ConfigurationError ||
-      error instanceof InvalidSarifUploadError
-    ) {
+    if (error instanceof ConfigurationError) {
+      return "user-error";
+    }
+
+    if (error instanceof InvalidSarifUploadError && isThirdPartyAnalysis) {
       return "user-error";
     }
 

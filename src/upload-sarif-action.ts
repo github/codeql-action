@@ -104,8 +104,9 @@ async function run() {
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
+    const isThirdPartyAnalysis = !isFirstPartyAnalysis(ActionName.UploadSarif);
     const error =
-      !isFirstPartyAnalysis(ActionName.UploadSarif) &&
+      isThirdPartyAnalysis &&
       unwrappedError instanceof upload_lib.InvalidSarifUploadError
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);
@@ -114,7 +115,7 @@ async function run() {
 
     const errorStatusReportBase = await createStatusReportBase(
       ActionName.UploadSarif,
-      getActionsStatus(error),
+      getActionsStatus(isThirdPartyAnalysis, error),
       startedAt,
       undefined,
       await checkDiskUsage(logger),

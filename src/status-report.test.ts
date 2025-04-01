@@ -193,26 +193,37 @@ test("createStatusReportBase_firstParty", async (t) => {
 });
 
 test("getActionStatus handling correctly various types of errors", (t) => {
+  const isThirdPartyAnalysis = true;
+  const isFirstPartyAnalysis = !isThirdPartyAnalysis;
+
   t.is(
-    getActionsStatus(new Error("arbitrary error")),
+    getActionsStatus(isFirstPartyAnalysis, new Error("arbitrary error")),
     "failure",
     "We categorise an arbitrary error as a failure",
   );
 
   t.is(
-    getActionsStatus(new ConfigurationError("arbitrary error")),
+    getActionsStatus(
+      isFirstPartyAnalysis,
+      new ConfigurationError("arbitrary error"),
+    ),
     "user-error",
     "We categorise a ConfigurationError as a user error",
   );
 
   t.is(
-    getActionsStatus(new Error("exit code 1"), "multiple things went wrong"),
+    getActionsStatus(
+      isFirstPartyAnalysis,
+      new Error("exit code 1"),
+      "multiple things went wrong",
+    ),
     "failure",
     "getActionsStatus should return failure if passed an arbitrary error and an additional failure cause",
   );
 
   t.is(
     getActionsStatus(
+      isFirstPartyAnalysis,
       new ConfigurationError("exit code 1"),
       "multiple things went wrong",
     ),
@@ -221,34 +232,47 @@ test("getActionStatus handling correctly various types of errors", (t) => {
   );
 
   t.is(
-    getActionsStatus(),
+    getActionsStatus(isFirstPartyAnalysis),
     "success",
     "getActionsStatus should return success if no error is passed",
   );
 
   t.is(
-    getActionsStatus(new Object()),
+    getActionsStatus(isFirstPartyAnalysis, new Object()),
     "failure",
     "getActionsStatus should return failure if passed an arbitrary object",
   );
 
   t.is(
-    getActionsStatus(null, "an error occurred"),
+    getActionsStatus(isFirstPartyAnalysis, null, "an error occurred"),
     "failure",
     "getActionsStatus should return failure if passed null and an additional failure cause",
   );
 
   t.is(
-    getActionsStatus(wrapError(new ConfigurationError("arbitrary error"))),
+    getActionsStatus(
+      isFirstPartyAnalysis,
+      wrapError(new ConfigurationError("arbitrary error")),
+    ),
     "user-error",
     "We still recognise a wrapped ConfigurationError as a user error",
   );
 
   t.is(
     getActionsStatus(
+      isThirdPartyAnalysis,
       new InvalidSarifUploadError("SyntaxError: Unexpected end of JSON input"),
     ),
     "user-error",
-    "We recognise an InvalidSarifUploadError as a user error",
+    "We recognise an InvalidSarifUploadError as a user error if the tool that generated the SARIF file is not ours",
+  );
+
+  t.is(
+    getActionsStatus(
+      isFirstPartyAnalysis,
+      new InvalidSarifUploadError("arbitrary error"),
+    ),
+    "failure",
+    "We recognise an InvalidSarifUploadError as a failure if the tool that generated the SARIF file is ours",
   );
 });

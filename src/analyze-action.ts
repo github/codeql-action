@@ -34,6 +34,7 @@ import {
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
+  isFirstPartyAnalysis,
   StatusReportBase,
 } from "./status-report";
 import {
@@ -72,7 +73,12 @@ async function sendStatusReport(
   trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   logger: Logger,
 ) {
-  const status = getActionsStatus(error, stats?.analyze_failure_language);
+  const isThirdPartyAnalysis = !isFirstPartyAnalysis(ActionName.Analyze);
+  const status = getActionsStatus(
+    isThirdPartyAnalysis,
+    error,
+    stats?.analyze_failure_language,
+  );
   const statusReportBase = await createStatusReportBase(
     ActionName.Analyze,
     status,

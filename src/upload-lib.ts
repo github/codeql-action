@@ -759,7 +759,6 @@ export function shouldConsiderInvalidRequest(
       error.startsWith("rejecting SARIF") ||
       error.startsWith("an invalid URI was provided as a SARIF location") ||
       error.startsWith("locationFromSarifResult: expected artifact location") ||
-      error.startsWith("SyntaxError: Unexpected end of JSON input") ||
       error.startsWith(
         "could not convert rules: invalid security severity value, is not a number",
       ) ||

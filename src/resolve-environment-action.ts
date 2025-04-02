@@ -16,7 +16,6 @@ import {
   createStatusReportBase,
   getActionsStatus,
   ActionName,
-  isFirstPartyAnalysis,
 } from "./status-report";
 import {
   checkActionVersion,
@@ -83,12 +82,9 @@ async function run() {
         `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`,
       );
 
-      const isThirdPartyAnalysis = !isFirstPartyAnalysis(
-        ActionName.ResolveEnvironment,
-      );
       const statusReportBase = await createStatusReportBase(
         ActionName.ResolveEnvironment,
-        getActionsStatus(isThirdPartyAnalysis, error),
+        getActionsStatus(error),
         startedAt,
         config,
         await checkDiskUsage(logger),

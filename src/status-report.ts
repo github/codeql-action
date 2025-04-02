@@ -18,7 +18,6 @@ import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
-import { InvalidSarifUploadError } from "./upload-lib";
 import {
   ConfigurationError,
   isHTTPError,
@@ -170,20 +169,11 @@ export interface DatabaseCreationTimings {
 }
 
 export function getActionsStatus(
-  isThirdPartyAnalysis: boolean,
   error?: unknown,
   otherFailureCause?: string,
 ): ActionStatus {
   if (error || otherFailureCause) {
-    if (error instanceof ConfigurationError) {
-      return "user-error";
-    }
-
-    if (error instanceof InvalidSarifUploadError && isThirdPartyAnalysis) {
-      return "user-error";
-    }
-
-    return "failure";
+    return error instanceof ConfigurationError ? "user-error" : "failure";
   } else {
     return "success";
   }

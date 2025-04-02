@@ -51,7 +51,6 @@ import {
   StatusReportBase,
   createStatusReportBase,
   getActionsStatus,
-  isFirstPartyAnalysis,
   sendStatusReport,
 } from "./status-report";
 import { ZstdAvailability } from "./tar";
@@ -137,10 +136,9 @@ async function sendCompletedStatusReport(
   logger: Logger,
   error?: Error,
 ) {
-  const isThirdPartyAnalysis = !isFirstPartyAnalysis(ActionName.Init);
   const statusReportBase = await createStatusReportBase(
     ActionName.Init,
-    getActionsStatus(isThirdPartyAnalysis, error),
+    getActionsStatus(error),
     startedAt,
     config,
     await checkDiskUsage(logger),

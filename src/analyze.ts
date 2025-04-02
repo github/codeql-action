@@ -11,15 +11,18 @@ import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { getJavaTempDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
+  PullRequestBranches,
   writeDiffRangesJsonFile,
-} from "./diff-filtering-utils";
+} from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
+import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
@@ -166,6 +169,16 @@ export async function runExtraction(
         ) {
           await setupCppAutobuild(codeql, logger);
         }
+
+        // The Java `build-mode: none` extractor places dependencies (.jar files) in the
+        // database scratch directory by default. For dependency caching purposes, we want
+        // a stable path that caches can be restored into and that we can cache at the
+        // end of the workflow (i.e. that does not get removed when the scratch directory is).
+        if (language === Language.java && config.buildMode === BuildMode.None) {
+          process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
+            getJavaTempDependencyDir();
+        }
+
         await codeql.extractUsingBuildMode(config, language);
       } else {
         await codeql.extractScannedLanguage(config, language);
@@ -245,33 +258,20 @@ async function finalizeDatabaseCreation(
 /**
  * Set up the diff-informed analysis feature.
  *
- * @param baseRef The base branch name, used for calculating the diff range.
- * @param headLabel The label that uniquely identifies the head branch across
- * repositories, used for calculating the diff range.
- * @param codeql
- * @param logger
- * @param features
  * @returns Absolute path to the directory containing the extension pack for
  * the diff range information, or `undefined` if the feature is disabled.
  */
 export async function setupDiffInformedQueryRun(
-  baseRef: string,
-  headLabel: string,
-  codeql: CodeQL,
+  branches: PullRequestBranches,
   logger: Logger,
-  features: FeatureEnablement,
 ): Promise<string | undefined> {
-  if (!(await features.getValue(Feature.DiffInformedQueries, codeql))) {
-    return undefined;
-  }
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {
-      const diffRanges = await getPullRequestEditedDiffRanges(
-        baseRef,
-        headLabel,
-        logger,
+      logger.info(
+        `Calculating diff ranges for ${branches.base}...${branches.head}`,
       );
+      const diffRanges = await getPullRequestEditedDiffRanges(branches, logger);
       const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
       if (packDir === undefined) {
         logger.warning(
@@ -291,9 +291,7 @@ export async function setupDiffInformedQueryRun(
 /**
  * Return the file line ranges that were added or modified in the pull request.
  *
- * @param baseRef The base branch name, used for calculating the diff range.
- * @param headLabel The label that uniquely identifies the head branch across
- * repositories, used for calculating the diff range.
+ * @param branches The base and head branches of the pull request.
  * @param logger
  * @returns An array of tuples, where each tuple contains the absolute path of a
  * file, the start line and the end line (both 1-based and inclusive) of an
@@ -301,11 +299,10 @@ export async function setupDiffInformedQueryRun(
  * not triggered by a pull request or if there was an error.
  */
 async function getPullRequestEditedDiffRanges(
-  baseRef: string,
-  headLabel: string,
+  branches: PullRequestBranches,
   logger: Logger,
 ): Promise<DiffThunkRange[] | undefined> {
-  const fileDiffs = await getFileDiffsWithBasehead(baseRef, headLabel, logger);
+  const fileDiffs = await getFileDiffsWithBasehead(branches, logger);
   if (fileDiffs === undefined) {
     return undefined;
   }
@@ -344,19 +341,21 @@ interface FileDiff {
 }
 
 async function getFileDiffsWithBasehead(
-  baseRef: string,
-  headLabel: string,
+  branches: PullRequestBranches,
   logger: Logger,
 ): Promise<FileDiff[] | undefined> {
-  const ownerRepo = util.getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
-  const owner = ownerRepo[0];
-  const repo = ownerRepo[1];
-  const basehead = `${baseRef}...${headLabel}`;
+  // Check CODE_SCANNING_REPOSITORY first. If it is empty or not set, fall back
+  // to GITHUB_REPOSITORY.
+  const repositoryNwo = getRepositoryNwoFromEnv(
+    "CODE_SCANNING_REPOSITORY",
+    "GITHUB_REPOSITORY",
+  );
+  const basehead = `${branches.base}...${branches.head}`;
   try {
     const response = await getApiClient().rest.repos.compareCommitsWithBasehead(
       {
-        owner,
-        repo,
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
         basehead,
         per_page: 1,
       },
@@ -486,6 +485,15 @@ function writeDiffRangeDataExtensionPack(
     return undefined;
   }
 
+  if (ranges.length === 0) {
+    // An empty diff range means that there are no added or modified lines in
+    // the pull request. But the `restrictAlertsTo` extensible predicate
+    // interprets an empty data extension differently, as an indication that
+    // all alerts should be included. So we need to specifically set the diff
+    // range to a non-empty list that cannot match any alert location.
+    ranges = [{ path: "", startLine: 0, endLine: 0 }];
+  }
+
   const diffRangeDir = path.join(
     actionsUtil.getTemporaryDirectory(),
     "pr-diff-range",
@@ -548,6 +556,7 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
+  cleanupLevel: string,
   diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
@@ -555,20 +564,22 @@ export async function runQueries(
   features: FeatureEnablement,
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
+  const queryFlags = [memoryFlag, threadsFlag];
+
+  if (cleanupLevel !== "overlay") {
+    queryFlags.push("--expect-discarded-cache");
+  }
 
   statusReport.analysis_is_diff_informed = diffRangePackDir !== undefined;
-  const dataExtensionFlags = diffRangePackDir
-    ? [
-        `--additional-packs=${diffRangePackDir}`,
-        "--extension-packs=codeql-action/pr-diff-range",
-      ]
-    : [];
+  if (diffRangePackDir) {
+    queryFlags.push(`--additional-packs=${diffRangePackDir}`);
+    queryFlags.push("--extension-packs=codeql-action/pr-diff-range");
+  }
   const sarifRunPropertyFlag = diffRangePackDir
     ? "--sarif-run-property=incrementalMode=diff-informed"
     : undefined;
 
   const codeql = await getCodeQL(config.codeQLCmd);
-  const queryFlags = [memoryFlag, threadsFlag, ...dataExtensionFlags];
 
   for (const language of config.languages) {
     try {

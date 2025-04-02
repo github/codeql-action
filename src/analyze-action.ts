@@ -3,7 +3,6 @@ import path from "path";
 import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
-import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
 import {
@@ -23,11 +22,12 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { uploadDependencyCaches } from "./dependency-caching";
+import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
   ActionName,
@@ -252,9 +252,7 @@ async function run() {
       logger,
     );
 
-    const repositoryNwo = parseRepositoryNwo(
-      util.getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
+    const repositoryNwo = getRepositoryNwo();
 
     const gitHubVersion = await getGitHubVersion();
 
@@ -272,16 +270,14 @@ async function run() {
       logger,
     );
 
-    const pull_request = github.context.payload.pull_request;
-    const diffRangePackDir =
-      pull_request &&
-      (await setupDiffInformedQueryRun(
-        pull_request.base.ref as string,
-        pull_request.head.label as string,
-        codeql,
-        logger,
-        features,
-      ));
+    const branches = await getDiffInformedAnalysisBranches(
+      codeql,
+      features,
+      logger,
+    );
+    const diffRangePackDir = branches
+      ? await setupDiffInformedQueryRun(branches, logger)
+      : undefined;
 
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
@@ -295,12 +291,16 @@ async function run() {
       logger,
     );
 
+    const cleanupLevel =
+      actionsUtil.getOptionalInput("cleanup-level") || "brutal";
+
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,
         memory,
         util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
+        cleanupLevel,
         diffRangePackDir,
         actionsUtil.getOptionalInput("category"),
         config,
@@ -309,12 +309,8 @@ async function run() {
       );
     }
 
-    if (actionsUtil.getOptionalInput("cleanup-level") !== "none") {
-      await runCleanup(
-        config,
-        actionsUtil.getOptionalInput("cleanup-level") || "brutal",
-        logger,
-      );
+    if (cleanupLevel !== "none") {
+      await runCleanup(config, cleanupLevel, logger);
     }
 
     const dbLocations: { [lang: string]: string } = {};
@@ -365,7 +361,7 @@ async function run() {
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {
       await uploadLib.waitForProcessing(
-        parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
+        getRepositoryNwo(),
         uploadResult.sarifID,
         getActionsLogger(),
       );

@@ -14,14 +14,14 @@ import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
-import { readDiffRangesJsonFile } from "./diff-filtering-utils";
+import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
-import { parseRepositoryNwo, RepositoryNwo } from "./repository";
+import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
@@ -624,11 +624,7 @@ export async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  const sarifID = await uploadPayload(
-    payload,
-    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    logger,
-  );
+  const sarifID = await uploadPayload(payload, getRepositoryNwo(), logger);
 
   logger.endGroup();
 

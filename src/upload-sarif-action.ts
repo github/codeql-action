@@ -12,7 +12,7 @@ import {
   StatusReportBase,
   getActionsStatus,
   ActionName,
-  isFirstPartyAnalysis,
+  isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
@@ -104,7 +104,6 @@ async function run() {
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
-    const isThirdPartyAnalysis = !isFirstPartyAnalysis(ActionName.UploadSarif);
     // This is testing the error to check if it belongs to one of two categories we reliably
     // know to be configuration errors in certain cases.
     const configurationErrorCandidate =
@@ -113,7 +112,8 @@ async function run() {
       // There was a problem validating the JSON (SARIF) file.
       unwrappedError instanceof SyntaxError;
     const error =
-      isThirdPartyAnalysis && configurationErrorCandidate
+      isThirdPartyAnalysis(ActionName.UploadSarif) &&
+      configurationErrorCandidate
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);
     const message = error.message;

@@ -55,6 +55,13 @@ export function isFirstPartyAnalysis(actionName: ActionName): boolean {
   return process.env[EnvVar.INIT_ACTION_HAS_RUN] === "true";
 }
 
+/**
+ * @returns true if the analysis is considered to be third party.
+ */
+export function isThirdPartyAnalysis(actionName: ActionName): boolean {
+  return !isFirstPartyAnalysis(actionName);
+}
+
 export type ActionStatus =
   | "aborted" // Only used in the init Action, if init failed before initializing the tracer due to something other than a configuration error.
   | "failure"

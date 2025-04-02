@@ -4,7 +4,7 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import {
   ConfigurationError,
   getRequiredEnvParam,
@@ -123,17 +123,15 @@ export async function getGitHubVersion(): Promise<GitHubVersion> {
  * Get the path of the currently executing workflow relative to the repository root.
  */
 export async function getWorkflowRelativePath(): Promise<string> {
-  const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
-  const owner = repo_nwo[0];
-  const repo = repo_nwo[1];
+  const repo_nwo = getRepositoryNwo();
   const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
   const apiClient = getApiClient();
   const runsResponse = await apiClient.request(
     "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
     {
-      owner,
-      repo,
+      owner: repo_nwo.owner,
+      repo: repo_nwo.repo,
       run_id,
     },
   );
@@ -218,9 +216,7 @@ export async function listActionsCaches(
   key: string,
   ref: string,
 ): Promise<ActionsCacheItem[]> {
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
+  const repositoryNwo = getRepositoryNwo();
 
   return await getApiClient().paginate(
     "GET /repos/{owner}/{repo}/actions/caches",
@@ -235,9 +231,7 @@ export async function listActionsCaches(
 
 /** Delete an Actions cache item by its ID. */
 export async function deleteActionsCache(id: number) {
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
+  const repositoryNwo = getRepositoryNwo();
 
   await getApiClient().rest.actions.deleteActionsCacheById({
     owner: repositoryNwo.owner,
@@ -249,9 +243,9 @@ export async function deleteActionsCache(id: number) {
 export function wrapApiConfigurationError(e: unknown) {
   if (isHTTPError(e)) {
     if (
-      e.message.includes("API rate limit exceeded for site ID installation") ||
+      e.message.includes("API rate limit exceeded for installation") ||
       e.message.includes("commit not found") ||
-      /^ref .* not found in this repository$/.test(e.message)
+      /ref .* not found in this repository/.test(e.message)
     ) {
       return new ConfigurationError(e.message);
     }

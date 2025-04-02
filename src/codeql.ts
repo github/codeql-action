@@ -24,6 +24,11 @@ import {
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+import {
+  OverlayDatabaseMode,
+  writeBaseDatabaseOidsFile,
+  writeOverlayChangesFile,
+} from "./overlay-database-utils";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -82,6 +87,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
+    overlayDatabaseMode: OverlayDatabaseMode,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -377,7 +383,13 @@ export async function setupCodeQL(
       zstdAvailability,
     };
   } catch (e) {
-    throw new Error(
+    const ErrorClass =
+      e instanceof util.ConfigurationError ||
+      (e instanceof Error && e.message.includes("ENOSPC")) // out of disk space
+        ? util.ConfigurationError
+        : Error;
+
+    throw new ErrorClass(
       `Unable to download and extract CodeQL CLI: ${getErrorMessage(e)}${
         e instanceof Error && e.stack ? `\n\nDetails: ${e.stack}` : ""
       }`,
@@ -546,6 +558,7 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
+      overlayDatabaseMode: OverlayDatabaseMode,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -586,12 +599,25 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
+      if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
+        const overlayChangesFile = await writeOverlayChangesFile(
+          config,
+          sourceRoot,
+          logger,
+        );
+        extraArgs.push(`--overlay-changes=${overlayChangesFile}`);
+      } else if (overlayDatabaseMode === OverlayDatabaseMode.OverlayBase) {
+        extraArgs.push("--overlay-base");
+      }
+
       await runCli(
         cmd,
         [
           "database",
           "init",
-          overwriteFlag,
+          ...(overlayDatabaseMode === OverlayDatabaseMode.Overlay
+            ? []
+            : [overwriteFlag]),
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
@@ -605,6 +631,10 @@ export async function getCodeQLForCmd(
         ],
         { stdin: externalRepositoryToken },
       );
+
+      if (overlayDatabaseMode === OverlayDatabaseMode.OverlayBase) {
+        await writeBaseDatabaseOidsFile(config, sourceRoot);
+      }
     },
     async runAutobuild(config: Config, language: Language) {
       applyAutobuildAzurePipelinesTimeoutFix();
@@ -785,7 +815,6 @@ export async function getCodeQLForCmd(
         "run-queries",
         ...flags,
         databasePath,
-        "--expect-discarded-cache",
         "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
@@ -1231,6 +1260,15 @@ async function generateCodeScanningConfig(
   if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
     delete augmentedConfig.packs;
   }
+
+  augmentedConfig["query-filters"] = [
+    ...(config.augmentationProperties.defaultQueryFilters || []),
+    ...(augmentedConfig["query-filters"] || []),
+  ];
+  if (augmentedConfig["query-filters"]?.length === 0) {
+    delete augmentedConfig["query-filters"];
+  }
+
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,
   );

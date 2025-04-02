@@ -9,6 +9,7 @@ import {
 
 declare module 'node:http' {
   interface Agent {
+    options?: http.AgentOptions
     createConnection(options: any, callback: any): net.Socket
   }
 }
@@ -33,15 +34,23 @@ export class MockAgent extends http.Agent {
 
   public createConnection(options: any, callback: any): net.Socket {
     const createConnection =
-      (this.customAgent instanceof http.Agent &&
-        this.customAgent.createConnection) ||
-      super.createConnection
+      this.customAgent instanceof http.Agent
+        ? this.customAgent.createConnection
+        : super.createConnection
+
+    const createConnectionOptions =
+      this.customAgent instanceof http.Agent
+        ? {
+            ...options,
+            ...this.customAgent.options,
+          }
+        : options
 
     const socket = new MockHttpSocket({
       connectionOptions: options,
       createConnection: createConnection.bind(
         this.customAgent || this,
-        options,
+        createConnectionOptions,
         callback
       ),
       onRequest: this.onRequest.bind(this),
@@ -66,15 +75,23 @@ export class MockHttpsAgent extends https.Agent {
 
   public createConnection(options: any, callback: any): net.Socket {
     const createConnection =
-      (this.customAgent instanceof https.Agent &&
-        this.customAgent.createConnection) ||
-      super.createConnection
+      this.customAgent instanceof https.Agent
+        ? this.customAgent.createConnection
+        : super.createConnection
+
+    const createConnectionOptions =
+      this.customAgent instanceof https.Agent
+        ? {
+            ...options,
+            ...this.customAgent.options,
+          }
+        : options
 
     const socket = new MockHttpSocket({
       connectionOptions: options,
       createConnection: createConnection.bind(
         this.customAgent || this,
-        options,
+        createConnectionOptions,
         callback
       ),
       onRequest: this.onRequest.bind(this),

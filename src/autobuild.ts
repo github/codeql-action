@@ -9,9 +9,9 @@ import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
-import { BuildMode, getRequiredEnvParam } from "./util";
+import { BuildMode } from "./util";
 
 export async function determineAutobuildLanguages(
   codeql: CodeQL,
@@ -117,9 +117,7 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
   const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
   const gitHubVersion = await getGitHubVersion();
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
+  const repositoryNwo = getRepositoryNwo();
   const features = new Features(
     gitHubVersion,
     repositoryNwo,

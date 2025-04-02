@@ -104,16 +104,9 @@ async function run() {
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
-    // This is testing the error to check if it belongs to one of two categories we reliably
-    // know to be configuration errors in certain cases.
-    const configurationErrorCandidate =
-      // There was a problem uploading the SARIF file (perhaps rejected by the backend)
-      unwrappedError instanceof upload_lib.InvalidSarifUploadError ||
-      // There was a problem validating the JSON (SARIF) file.
-      unwrappedError instanceof SyntaxError;
     const error =
       isThirdPartyAnalysis(ActionName.UploadSarif) &&
-      configurationErrorCandidate
+      unwrappedError instanceof upload_lib.InvalidSarifUploadError
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);
     const message = error.message;

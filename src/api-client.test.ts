@@ -149,4 +149,24 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
     res,
     new util.ConfigurationError("API rate limit exceeded for installation"),
   );
+
+  const tokenSuggestionMessage =
+    "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
+  const badCredentialsError = new util.HTTPError("Bad credentials", 401);
+  res = api.wrapApiConfigurationError(badCredentialsError);
+  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+
+  const notFoundError = new util.HTTPError("Not Found", 404);
+  res = api.wrapApiConfigurationError(notFoundError);
+  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+
+  const resourceNotAccessibleError = new util.HTTPError(
+    "Resource not accessible by integration",
+    403,
+  );
+  res = api.wrapApiConfigurationError(resourceNotAccessibleError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError("Resource not accessible by integration"),
+  );
 });

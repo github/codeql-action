@@ -4,6 +4,7 @@ import { Interceptor } from './Interceptor'
 import { BatchInterceptor } from './BatchInterceptor'
 import { ClientRequestInterceptor } from './interceptors/ClientRequest'
 import { XMLHttpRequestInterceptor } from './interceptors/XMLHttpRequest'
+import { FetchInterceptor } from './interceptors/fetch'
 import { handleRequest } from './utils/handleRequest'
 import { RequestController } from './RequestController'
 import { FetchResponse } from './utils/fetchUtils'
@@ -30,7 +31,7 @@ export interface SerializedResponse {
 }
 
 export class RemoteHttpInterceptor extends BatchInterceptor<
-  [ClientRequestInterceptor, XMLHttpRequestInterceptor]
+  [ClientRequestInterceptor, XMLHttpRequestInterceptor, FetchInterceptor]
 > {
   constructor() {
     super({
@@ -38,6 +39,7 @@ export class RemoteHttpInterceptor extends BatchInterceptor<
       interceptors: [
         new ClientRequestInterceptor(),
         new XMLHttpRequestInterceptor(),
+        new FetchInterceptor(),
       ],
     })
   }

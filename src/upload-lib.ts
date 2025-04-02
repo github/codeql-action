@@ -568,9 +568,16 @@ export async function uploadFiles(
 
   const gitHubVersion = await getGitHubVersion();
 
-  // Validate that the files we were asked to upload are all valid SARIF files
-  for (const file of sarifFiles) {
-    validateSarifFileSchema(file, logger);
+  try {
+    // Validate that the files we were asked to upload are all valid SARIF files
+    for (const file of sarifFiles) {
+      validateSarifFileSchema(file, logger);
+    }
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      throw new InvalidSarifUploadError(e.message);
+    }
+    throw e;
   }
 
   let sarif = await combineSarifFilesUsingCLI(

@@ -12,7 +12,7 @@ import {
   StatusReportBase,
   getActionsStatus,
   ActionName,
-  isFirstPartyAnalysis,
+  isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
@@ -105,7 +105,7 @@ async function run() {
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
     const error =
-      !isFirstPartyAnalysis(ActionName.UploadSarif) &&
+      isThirdPartyAnalysis(ActionName.UploadSarif) &&
       unwrappedError instanceof upload_lib.InvalidSarifUploadError
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);

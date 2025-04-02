@@ -25,7 +25,6 @@ import {
   getActionsStatus,
   ActionName,
   getJobStatusDisplayName,
-  isFirstPartyAnalysis,
 } from "./status-report";
 import { checkDiskUsage, checkGitHubVersionInRange, wrapError } from "./util";
 
@@ -75,11 +74,9 @@ async function runWrapper() {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
 
-    const isThirdPartyAnalysis = !isFirstPartyAnalysis(ActionName.InitPost);
-
     const statusReportBase = await createStatusReportBase(
       ActionName.InitPost,
-      getActionsStatus(isThirdPartyAnalysis, error),
+      getActionsStatus(error),
       startedAt,
       config,
       await checkDiskUsage(logger),

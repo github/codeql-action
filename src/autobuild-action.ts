@@ -18,7 +18,6 @@ import {
   createStatusReportBase,
   sendStatusReport,
   ActionName,
-  isFirstPartyAnalysis,
 } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
 import {
@@ -47,8 +46,7 @@ async function sendCompletedStatusReport(
 ) {
   initializeEnvironment(getActionVersion());
 
-  const isThirdPartyAnalysis = !isFirstPartyAnalysis(ActionName.Autobuild);
-  const status = getActionsStatus(isThirdPartyAnalysis, cause, failingLanguage);
+  const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
     ActionName.Autobuild,
     status,

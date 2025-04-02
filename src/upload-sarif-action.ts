@@ -121,7 +121,7 @@ async function run() {
 
     const errorStatusReportBase = await createStatusReportBase(
       ActionName.UploadSarif,
-      getActionsStatus(isThirdPartyAnalysis, error),
+      getActionsStatus(error),
       startedAt,
       undefined,
       await checkDiskUsage(logger),

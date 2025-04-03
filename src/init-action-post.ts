@@ -106,7 +106,9 @@ async function runWrapper() {
       ...uploadFailedSarifResult,
       job_status: initActionPostHelper.getFinalJobStatus(),
     };
+    logger.info("Sending status report for init-post step.");
     await sendStatusReport(statusReport);
+    logger.info("Status report sent for init-post step.");
   }
 }
 

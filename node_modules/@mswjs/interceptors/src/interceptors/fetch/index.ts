@@ -144,6 +144,14 @@ export class FetchInterceptor extends Interceptor<HttpRequestEventMap> {
         'no mocked response received, performing request as-is...'
       )
 
+      /**
+       * @note Clone the request instance right before performing it.
+       * This preserves any modifications made to the intercepted request
+       * in the "request" listener. This also allows the user to read the
+       * request body in the "response" listener (otherwise "unusable").
+       */
+      const requestCloneForResponseEvent = request.clone()
+
       return pureFetch(request).then(async (response) => {
         this.logger.info('original fetch performed', response)
 
@@ -155,7 +163,7 @@ export class FetchInterceptor extends Interceptor<HttpRequestEventMap> {
           await emitAsync(this.emitter, 'response', {
             response: responseClone,
             isMockedResponse: false,
-            request,
+            request: requestCloneForResponseEvent,
             requestId,
           })
         }

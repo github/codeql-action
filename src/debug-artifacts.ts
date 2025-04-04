@@ -4,7 +4,7 @@ import * as path from "path";
 import * as artifact from "@actions/artifact";
 import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
-import AdmZip from "adm-zip";
+import archiver from "archiver";
 import del from "del";
 
 import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
@@ -344,9 +344,24 @@ async function createPartialDatabaseBundle(
   if (fs.existsSync(databaseBundlePath)) {
     await del(databaseBundlePath, { force: true });
   }
-  const zip = new AdmZip();
-  zip.addLocalFolder(databasePath);
-  zip.writeZip(databaseBundlePath);
+  const output = fs.createWriteStream(databaseBundlePath);
+  const zip = archiver("zip");
+
+  zip.on("error", (err) => {
+    throw err;
+  });
+
+  zip.on("warning", (err) => {
+    // Ignore ENOENT warnings. There's nothing anyone can do about it.
+    if (err.code !== "ENOENT") {
+      throw err;
+    }
+  });
+
+  zip.pipe(output);
+  zip.directory(databasePath, false);
+  await zip.finalize();
+
   return databaseBundlePath;
 }
 

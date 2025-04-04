@@ -112,8 +112,7 @@ export const featureConfig: Record<
   [Feature.DiffInformedQueries]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
-    minimumVersion: undefined,
-    toolsFeature: ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
+    minimumVersion: "2.21.0",
   },
   [Feature.DisableCsharpBuildless]: {
     defaultValue: false,

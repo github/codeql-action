@@ -352,7 +352,10 @@ async function createPartialDatabaseBundle(
   });
 
   zip.on("warning", (err) => {
-    throw err;
+    // Ignore ENOENT warnings. There's nothing anyone can do about it.
+    if (err.code !== "ENOENT") {
+      throw err;
+    }
   });
 
   zip.pipe(output);

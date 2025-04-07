@@ -592,6 +592,8 @@ export class MockHttpSocket extends MockSocket {
       'Failed to handle a response: request does not exist'
     )
 
+    FetchResponse.setUrl(this.request.url, response)
+
     /**
      * @fixme Stop relying on the "X-Request-Id" request header
      * to figure out if one interceptor has been invoked within another.

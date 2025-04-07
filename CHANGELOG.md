@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.28.15 - 07 Apr 2025
+
+- Fix bug where the action would fail if it tried to produce a debug artifact with more than 65535 files. [#2842](https://github.com/github/codeql-action/pull/2842)
+
 ## 3.28.14 - 07 Apr 2025
 
 - Update default CodeQL bundle version to 2.21.0. [#2838](https://github.com/github/codeql-action/pull/2838)

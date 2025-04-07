@@ -5,13 +5,17 @@ import * as actionsUtil from "./actions-util";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { ActionName, createStatusReportBase } from "./status-report";
+import {
+  ActionName,
+  createStatusReportBase,
+  getActionsStatus,
+} from "./status-report";
 import {
   setupTests,
   setupActionsVars,
   createTestConfig,
 } from "./testing-utils";
-import { BuildMode, withTmpDir } from "./util";
+import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 
 setupTests(test);
 
@@ -185,4 +189,57 @@ test("createStatusReportBase_firstParty", async (t) => {
       true,
     );
   });
+});
+
+test("getActionStatus handling correctly various types of errors", (t) => {
+  t.is(
+    getActionsStatus(new Error("arbitrary error")),
+    "failure",
+    "We categorise an arbitrary error as a failure",
+  );
+
+  t.is(
+    getActionsStatus(new ConfigurationError("arbitrary error")),
+    "user-error",
+    "We categorise a ConfigurationError as a user error",
+  );
+
+  t.is(
+    getActionsStatus(new Error("exit code 1"), "multiple things went wrong"),
+    "failure",
+    "getActionsStatus should return failure if passed an arbitrary error and an additional failure cause",
+  );
+
+  t.is(
+    getActionsStatus(
+      new ConfigurationError("exit code 1"),
+      "multiple things went wrong",
+    ),
+    "user-error",
+    "getActionsStatus should return user-error if passed a configuration error and an additional failure cause",
+  );
+
+  t.is(
+    getActionsStatus(),
+    "success",
+    "getActionsStatus should return success if no error is passed",
+  );
+
+  t.is(
+    getActionsStatus(new Object()),
+    "failure",
+    "getActionsStatus should return failure if passed an arbitrary object",
+  );
+
+  t.is(
+    getActionsStatus(null, "an error occurred"),
+    "failure",
+    "getActionsStatus should return failure if passed null and an additional failure cause",
+  );
+
+  t.is(
+    getActionsStatus(wrapError(new ConfigurationError("arbitrary error"))),
+    "user-error",
+    "We still recognise a wrapped ConfigurationError as a user error",
+  );
 });

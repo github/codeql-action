@@ -22,11 +22,12 @@ import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { uploadDependencyCaches } from "./dependency-caching";
+import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
   ActionName,
@@ -251,9 +252,7 @@ async function run() {
       logger,
     );
 
-    const repositoryNwo = parseRepositoryNwo(
-      util.getRequiredEnvParam("GITHUB_REPOSITORY"),
-    );
+    const repositoryNwo = getRepositoryNwo();
 
     const gitHubVersion = await getGitHubVersion();
 
@@ -271,11 +270,14 @@ async function run() {
       logger,
     );
 
-    const diffRangePackDir = await setupDiffInformedQueryRun(
+    const branches = await getDiffInformedAnalysisBranches(
       codeql,
-      logger,
       features,
+      logger,
     );
+    const diffRangePackDir = branches
+      ? await setupDiffInformedQueryRun(branches, logger)
+      : undefined;
 
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
@@ -359,7 +361,7 @@ async function run() {
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {
       await uploadLib.waitForProcessing(
-        parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
+        getRepositoryNwo(),
         uploadResult.sarifID,
         getActionsLogger(),
       );

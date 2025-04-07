@@ -14,14 +14,14 @@ import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
-import { readDiffRangesJsonFile } from "./diff-filtering-utils";
+import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
-import { parseRepositoryNwo, RepositoryNwo } from "./repository";
+import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
@@ -568,9 +568,16 @@ export async function uploadFiles(
 
   const gitHubVersion = await getGitHubVersion();
 
-  // Validate that the files we were asked to upload are all valid SARIF files
-  for (const file of sarifFiles) {
-    validateSarifFileSchema(file, logger);
+  try {
+    // Validate that the files we were asked to upload are all valid SARIF files
+    for (const file of sarifFiles) {
+      validateSarifFileSchema(file, logger);
+    }
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      throw new InvalidSarifUploadError(e.message);
+    }
+    throw e;
   }
 
   let sarif = await combineSarifFilesUsingCLI(
@@ -624,11 +631,7 @@ export async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  const sarifID = await uploadPayload(
-    payload,
-    parseRepositoryNwo(util.getRequiredEnvParam("GITHUB_REPOSITORY")),
-    logger,
-  );
+  const sarifID = await uploadPayload(payload, getRepositoryNwo(), logger);
 
   logger.endGroup();
 
@@ -738,18 +741,26 @@ export async function waitForProcessing(
 /**
  * Returns whether the provided processing errors are a configuration error.
  */
-function shouldConsiderConfigurationError(processingErrors: string[]): boolean {
+export function shouldConsiderConfigurationError(
+  processingErrors: string[],
+): boolean {
+  const expectedConfigErrors = [
+    "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
+    "rejecting delivery as the repository has too many logical alerts",
+  ];
+
   return (
     processingErrors.length === 1 &&
-    processingErrors[0] ===
-      "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled"
+    expectedConfigErrors.some((msg) => processingErrors[0].includes(msg))
   );
 }
 
 /**
  * Returns whether the provided processing errors are the result of an invalid SARIF upload request.
  */
-function shouldConsiderInvalidRequest(processingErrors: string[]): boolean {
+export function shouldConsiderInvalidRequest(
+  processingErrors: string[],
+): boolean {
   return processingErrors.every(
     (error) =>
       error.startsWith("rejecting SARIF") ||

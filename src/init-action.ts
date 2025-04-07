@@ -44,7 +44,7 @@ import {
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay-database-utils";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -281,9 +281,7 @@ async function run() {
   checkGitHubVersionInRange(gitHubVersion, logger);
   checkActionVersion(getActionVersion(), gitHubVersion);
 
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
+  const repositoryNwo = getRepositoryNwo();
 
   const features = new Features(
     gitHubVersion,

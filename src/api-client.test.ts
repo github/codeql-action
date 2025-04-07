@@ -104,3 +104,69 @@ test("getGitHubVersion for GHE_DOTCOM", async (t) => {
   });
   t.deepEqual({ type: util.GitHubVariant.GHE_DOTCOM }, gheDotcom);
 });
+
+test("wrapApiConfigurationError correctly wraps specific configuration errors", (t) => {
+  // We don't reclassify arbitrary errors
+  const arbitraryError = new Error("arbitrary error");
+  let res = api.wrapApiConfigurationError(arbitraryError);
+  t.is(res, arbitraryError);
+
+  // Same goes for arbitrary errors
+  const configError = new util.ConfigurationError("arbitrary error");
+  res = api.wrapApiConfigurationError(configError);
+  t.is(res, configError);
+
+  // If an HTTP error doesn't contain a specific error message, we don't
+  // wrap is an an API error.
+  const httpError = new util.HTTPError("arbitrary HTTP error", 456);
+  res = api.wrapApiConfigurationError(httpError);
+  t.is(res, httpError);
+
+  // For other HTTP errors, we wrap them as Configuration errors if they contain
+  // specific error messages.
+  const httpNotFoundError = new util.HTTPError("commit not found", 404);
+  res = api.wrapApiConfigurationError(httpNotFoundError);
+  t.deepEqual(res, new util.ConfigurationError("commit not found"));
+
+  const refNotFoundError = new util.HTTPError(
+    "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
+    404,
+  );
+  res = api.wrapApiConfigurationError(refNotFoundError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError(
+      "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
+    ),
+  );
+
+  const apiRateLimitError = new util.HTTPError(
+    "API rate limit exceeded for installation",
+    403,
+  );
+  res = api.wrapApiConfigurationError(apiRateLimitError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError("API rate limit exceeded for installation"),
+  );
+
+  const tokenSuggestionMessage =
+    "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
+  const badCredentialsError = new util.HTTPError("Bad credentials", 401);
+  res = api.wrapApiConfigurationError(badCredentialsError);
+  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+
+  const notFoundError = new util.HTTPError("Not Found", 404);
+  res = api.wrapApiConfigurationError(notFoundError);
+  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+
+  const resourceNotAccessibleError = new util.HTTPError(
+    "Resource not accessible by integration",
+    403,
+  );
+  res = api.wrapApiConfigurationError(resourceNotAccessibleError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError("Resource not accessible by integration"),
+  );
+});

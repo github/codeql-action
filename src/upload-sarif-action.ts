@@ -5,14 +5,14 @@ import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Features } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import {
   createStatusReportBase,
   sendStatusReport,
   StatusReportBase,
   getActionsStatus,
   ActionName,
-  isFirstPartyAnalysis,
+  isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
 import {
@@ -20,7 +20,6 @@ import {
   checkActionVersion,
   checkDiskUsage,
   getErrorMessage,
-  getRequiredEnvParam,
   initializeEnvironment,
   isInTestMode,
   wrapError,
@@ -63,9 +62,7 @@ async function run() {
   // Make inputs accessible in the `post` step.
   actionsUtil.persistInputs();
 
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
+  const repositoryNwo = getRepositoryNwo();
   const features = new Features(
     gitHubVersion,
     repositoryNwo,
@@ -100,7 +97,7 @@ async function run() {
       core.debug("In test mode. Waiting for processing is disabled.");
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
       await upload_lib.waitForProcessing(
-        parseRepositoryNwo(getRequiredEnvParam("GITHUB_REPOSITORY")),
+        getRepositoryNwo(),
         uploadResult.sarifID,
         logger,
       );
@@ -108,7 +105,7 @@ async function run() {
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {
     const error =
-      !isFirstPartyAnalysis(ActionName.UploadSarif) &&
+      isThirdPartyAnalysis(ActionName.UploadSarif) &&
       unwrappedError instanceof upload_lib.InvalidSarifUploadError
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);

@@ -17,6 +17,7 @@ import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
+import { getRepositoryNwo } from "./repository";
 import {
   ConfigurationError,
   isHTTPError,
@@ -52,6 +53,13 @@ export function isFirstPartyAnalysis(actionName: ActionName): boolean {
     return true;
   }
   return process.env[EnvVar.INIT_ACTION_HAS_RUN] === "true";
+}
+
+/**
+ * @returns true if the analysis is considered to be third party.
+ */
+export function isThirdPartyAnalysis(actionName: ActionName): boolean {
+  return !isFirstPartyAnalysis(actionName);
 }
 
 export type ActionStatus =
@@ -393,16 +401,15 @@ export async function sendStatusReport<S extends StatusReportBase>(
     return;
   }
 
-  const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
-  const [owner, repo] = nwo.split("/");
+  const nwo = getRepositoryNwo();
   const client = getApiClient();
 
   try {
     await client.request(
       "PUT /repos/:owner/:repo/code-scanning/analysis/status",
       {
-        owner,
-        repo,
+        owner: nwo.owner,
+        repo: nwo.repo,
         data: statusReportJSON,
       },
     );

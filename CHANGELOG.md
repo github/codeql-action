@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## 3.28.15 - 07 Apr 2025
 
-No user facing changes.
+- Fix bug where the action would fail if it tried to produce a debug artifact with more than 65535 files. [#2842](https://github.com/github/codeql-action/pull/2842)
 
 ## 3.28.14 - 07 Apr 2025
 

@@ -1,4 +1,5 @@
 import { ChildProcess, spawn } from "child_process";
+import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
@@ -29,6 +30,7 @@ type BasicAuthCredentials = {
 
 type ProxyConfig = {
   all_credentials: Credential[];
+  ca_certificate_file?: string;
   ca: CertificateAuthority;
   proxy_auth?: BasicAuthCredentials;
 };
@@ -118,6 +120,22 @@ async function runWrapper() {
     ca,
   };
 
+  // Try to write the certificate to disk. Some extractors may use this to populate
+  // the `SSL_CERT_FILE` environment variable.
+  try {
+    const certificatePath = path.join(
+      actionsUtil.getTemporaryDirectory(),
+      "codeql_package_proxy.crt",
+    );
+    fs.writeFileSync(certificatePath, ca.cert);
+
+    proxyConfig.ca_certificate_file = certificatePath;
+  } catch (error) {
+    logger.error(
+      `Failed to write the proxy certificate to disk: ${util.getErrorMessage(error)}`,
+    );
+  }
+
   // Start the Proxy
   const proxyBin = await getProxyBinaryPath();
   await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
@@ -171,6 +189,7 @@ async function startProxy(
     core.setOutput("proxy_host", host);
     core.setOutput("proxy_port", port.toString());
     core.setOutput("proxy_ca_certificate", config.ca.cert);
+    core.setOutput("proxy_ca_certificate_file", config.ca_certificate_file);
 
     const registry_urls = config.all_credentials
       .filter((credential) => credential.url !== undefined)

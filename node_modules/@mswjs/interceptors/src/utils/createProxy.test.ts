@@ -90,8 +90,10 @@ it('spies on the constructor', () => {
   }
 
   const constructorCall = vi.fn<
-    [ConstructorParameters<typeof OriginalClass>, Function],
-    typeof OriginalClass
+    (
+      args: ConstructorParameters<typeof OriginalClass>,
+      next: () => typeof OriginalClass
+    ) => typeof OriginalClass
   >((args, next) => next())
 
   const ProxyClass = createProxy(OriginalClass, {

@@ -1274,6 +1274,15 @@ async function generateCodeScanningConfig(
   if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
     delete augmentedConfig.packs;
   }
+
+  augmentedConfig["query-filters"] = [
+    ...(config.augmentationProperties.defaultQueryFilters || []),
+    ...(augmentedConfig["query-filters"] || []),
+  ];
+  if (augmentedConfig["query-filters"]?.length === 0) {
+    delete augmentedConfig["query-filters"];
+  }
+
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,
   );

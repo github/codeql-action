@@ -517,6 +517,7 @@ extensions:
   - addsTo:
       pack: codeql/util
       extensible: restrictAlertsTo
+      checkPresence: false
     data:
 `;
 

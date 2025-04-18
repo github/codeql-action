@@ -297,6 +297,11 @@ async function run() {
 
   const configFile = getOptionalInput("config-file");
 
+  const sourceRoot = path.resolve(
+    getRequiredEnvParam("GITHUB_WORKSPACE"),
+    getOptionalInput("source-root") || "",
+  );
+
   try {
     const statusReportBase = await createStatusReportBase(
       ActionName.Init,
@@ -363,6 +368,7 @@ async function run() {
       tempDir: getTemporaryDirectory(),
       codeql,
       workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+      sourceRoot,
       githubVersion: gitHubVersion,
       apiDetails,
       features,
@@ -390,11 +396,6 @@ async function run() {
   }
 
   try {
-    const sourceRoot = path.resolve(
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
-      getOptionalInput("source-root") || "",
-    );
-
     const overlayDatabaseMode = await getOverlayDatabaseMode(
       (await codeql.getVersion()).version,
       config,

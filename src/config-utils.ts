@@ -10,9 +10,13 @@ import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
+import { getGitRoot } from "./git-utils";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import {
+  CODEQL_OVERLAY_MINIMUM_VERSION,
+  OverlayDatabaseMode,
+} from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
@@ -20,6 +24,7 @@ import {
   prettyPrintPack,
   ConfigurationError,
   BuildMode,
+  codeQlVersionAtLeast,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -744,6 +749,38 @@ async function getOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   logger: Logger,
 ): Promise<OverlayDatabaseMode> {
+  const overlayDatabaseMode = process.env.CODEQL_OVERLAY_DATABASE_MODE;
+
+  if (
+    overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
+    overlayDatabaseMode === OverlayDatabaseMode.OverlayBase
+  ) {
+    if (buildMode !== BuildMode.None) {
+      logger.warning(
+        `Cannot build an ${overlayDatabaseMode} database because ` +
+          `build-mode is set to "${buildMode}" instead of "none". ` +
+          "Falling back to creating a normal full database instead.",
+      );
+      return OverlayDatabaseMode.None;
+    }
+    if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
+      logger.warning(
+        `Cannot build an ${overlayDatabaseMode} database because ` +
+          `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
+          "Falling back to creating a normal full database instead.",
+      );
+      return OverlayDatabaseMode.None;
+    }
+    if ((await getGitRoot(sourceRoot)) === undefined) {
+      logger.warning(
+        `Cannot build an ${overlayDatabaseMode} database because ` +
+          `the source root "${sourceRoot}" is not inside a git repository. ` +
+          "Falling back to creating a normal full database instead.",
+      );
+      return OverlayDatabaseMode.None;
+    }
+    return overlayDatabaseMode as OverlayDatabaseMode;
+  }
   return OverlayDatabaseMode.None;
 }
 

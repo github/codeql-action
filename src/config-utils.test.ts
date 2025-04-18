@@ -61,6 +61,7 @@ function createTestInitConfigInputs(
       tempDir: "",
       codeql: {} as CodeQL,
       workspacePath: "",
+      sourceRoot: "",
       githubVersion,
       apiDetails: {
         auth: "token",
@@ -816,6 +817,8 @@ const calculateAugmentationMacro = test.macro({
         rawPacksInput,
         rawQueriesInput,
         languages,
+        "", // sourceRoot
+        undefined, // buildMode
         mockLogger,
       );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
@@ -901,6 +904,8 @@ const calculateAugmentationErrorMacro = test.macro({
           rawPacksInput,
           rawQueriesInput,
           languages,
+          "", // sourceRoot
+          undefined, // buildMode
           mockLogger,
         ),
       { message: expectedError },

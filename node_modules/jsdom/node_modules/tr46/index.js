@@ -132,7 +132,7 @@ function validateLabel(label, {
     // be a lowercase letter (a-z), a digit (0-9), or a hyphen-minus (U+002D). (Note: This excludes uppercase ASCII
     // A-Z which are mapped in UTS #46 and disallowed in IDNA2008.)"
     if (useSTD3ASCIIRules && codePoint <= 0x7F) {
-      if (!/^[a-z][0-9]-$/u.test(ch)) {
+      if (!/^(?:[a-z]|[0-9]|-)$/u.test(ch)) {
         return false;
       }
     }

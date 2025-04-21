@@ -1,4 +1,4 @@
-Copyright (c) 2017 Gregor Martynus
+Copyright (c) GitHub 2025 - Licensed as MIT.
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

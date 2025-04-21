@@ -683,6 +683,7 @@ export async function calculateAugmentation(
     buildMode,
     logger,
   );
+  logger.info(`Using overlay database mode: ${overlayDatabaseMode}`);
 
   const defaultQueryFilters: QueryFilter[] = [];
   if (await shouldPerformDiffInformedAnalysis(codeql, features, logger)) {

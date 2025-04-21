@@ -6,7 +6,11 @@ import * as io from "@actions/io";
 import del from "del";
 import * as yaml from "js-yaml";
 
-import * as actionsUtil from "./actions-util";
+import {
+  getRequiredInput,
+  getTemporaryDirectory,
+  PullRequestBranches,
+} from "./actions-util";
 import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
 import { CodeQL, getCodeQL } from "./codeql";
@@ -15,7 +19,6 @@ import { getJavaTempDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
-  PullRequestBranches,
   writeDiffRangesJsonFile,
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
@@ -392,7 +395,7 @@ function getDiffRanges(
   // uses forward slashes as the path separator, so on Windows we need to
   // replace any backslashes with forward slashes.
   const filename = path
-    .join(actionsUtil.getRequiredInput("checkout_path"), fileDiff.filename)
+    .join(getRequiredInput("checkout_path"), fileDiff.filename)
     .replaceAll(path.sep, "/");
 
   if (fileDiff.patch === undefined) {
@@ -498,10 +501,7 @@ function writeDiffRangeDataExtensionPack(
     ranges = [{ path: "", startLine: 0, endLine: 0 }];
   }
 
-  const diffRangeDir = path.join(
-    actionsUtil.getTemporaryDirectory(),
-    "pr-diff-range",
-  );
+  const diffRangeDir = path.join(getTemporaryDirectory(), "pr-diff-range");
 
   // We expect the Actions temporary directory to already exist, so are mainly
   // using `recursive: true` to avoid errors if the directory already exists,

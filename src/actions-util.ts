@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as github from "@actions/github";
 import * as io from "@actions/io";
 import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
@@ -363,3 +364,48 @@ export const restoreInputs = function () {
     }
   }
 };
+
+export interface PullRequestBranches {
+  base: string;
+  head: string;
+}
+
+/**
+ * Returns the base and head branches of the pull request being analyzed.
+ *
+ * @returns the base and head branches of the pull request, or undefined if
+ * we are not analyzing a pull request.
+ */
+export function getPullRequestBranches(): PullRequestBranches | undefined {
+  const pullRequest = github.context.payload.pull_request;
+  if (pullRequest) {
+    return {
+      base: pullRequest.base.ref,
+      // We use the head label instead of the head ref here, because the head
+      // ref lacks owner information and by itself does not uniquely identify
+      // the head branch (which may be in a forked repository).
+      head: pullRequest.head.label,
+    };
+  }
+
+  // PR analysis under Default Setup does not have the pull_request context,
+  // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
+  const codeScanningRef = process.env.CODE_SCANNING_REF;
+  const codeScanningBaseBranch = process.env.CODE_SCANNING_BASE_BRANCH;
+  if (codeScanningRef && codeScanningBaseBranch) {
+    return {
+      base: codeScanningBaseBranch,
+      // PR analysis under Default Setup analyzes the PR head commit instead of
+      // the merge commit, so we can use the provided ref directly.
+      head: codeScanningRef,
+    };
+  }
+  return undefined;
+}
+
+/**
+ * Returns whether we are analyzing a pull request.
+ */
+export function isAnalyzingPullRequest(): boolean {
+  return getPullRequestBranches() !== undefined;
+}

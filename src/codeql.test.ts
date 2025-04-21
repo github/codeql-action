@@ -24,7 +24,6 @@ import { DocUrl } from "./doc-url";
 import { FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { ToolsSource } from "./setup-codeql";
 import {
   setupTests,
@@ -515,7 +514,6 @@ const injectedConfigMacro = test.macro({
         "",
         undefined,
         undefined,
-        OverlayDatabaseMode.None,
         getRunnerLogger(true),
       );
 
@@ -726,7 +724,6 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
       "",
       undefined,
       "/path/to/qlconfig.yml",
-      OverlayDatabaseMode.None,
       getRunnerLogger(true),
     );
 
@@ -756,7 +753,6 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
       "",
       undefined,
       undefined, // undefined qlconfigFile
-      OverlayDatabaseMode.None,
       getRunnerLogger(true),
     );
 
@@ -1010,7 +1006,6 @@ test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OP
     "sourceRoot",
     undefined,
     undefined,
-    OverlayDatabaseMode.None,
     getRunnerLogger(false),
   );
 

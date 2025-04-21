@@ -87,7 +87,6 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
-    overlayDatabaseMode: OverlayDatabaseMode,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -564,7 +563,6 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
-      overlayDatabaseMode: OverlayDatabaseMode,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -602,6 +600,8 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
+      const overlayDatabaseMode =
+        config.augmentationProperties.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
           config,

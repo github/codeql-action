@@ -695,6 +695,7 @@ export async function calculateAugmentation(
     buildMode,
     logger,
   );
+  logger.info(`Using overlay database mode: ${overlayDatabaseMode}`);
 
   const qualityQueriesInput = parseQueriesFromInput(
     rawQualityQueriesInput,

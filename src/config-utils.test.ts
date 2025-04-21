@@ -830,12 +830,8 @@ test(
   undefined,
   [Language.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+    ...configUtils.defaultAugmentationProperties,
+  },
 );
 
 test(
@@ -845,12 +841,9 @@ test(
   " a, b , c, d",
   [Language.javascript],
   {
-    queriesInputCombines: false,
+    ...configUtils.defaultAugmentationProperties,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -860,12 +853,10 @@ test(
   "   +   a, b , c, d ",
   [Language.javascript],
   {
+    ...configUtils.defaultAugmentationProperties,
     queriesInputCombines: true,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -875,12 +866,9 @@ test(
   undefined,
   [Language.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
-    packsInputCombines: false,
+    ...configUtils.defaultAugmentationProperties,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -890,12 +878,10 @@ test(
   undefined,
   [Language.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
+    ...configUtils.defaultAugmentationProperties,
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 const calculateAugmentationErrorMacro = test.macro({

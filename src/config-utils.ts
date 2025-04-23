@@ -5,12 +5,13 @@ import { performance } from "perf_hooks";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
 
+import { isAnalyzingPullRequest } from "./actions-util";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { getGitRoot } from "./git-utils";
+import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -743,6 +744,19 @@ function parseQueriesFromInput(
   return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
 }
 
+/**
+ * Calculate and validate the overlay database mode to use.
+ *
+ * - If the environment variable `CODEQL_OVERLAY_DATABASE_MODE` is set, use it.
+ * - Otherwise, if `Feature.OverlayAnalysis` is enabled, calculate the mode
+ *   based on what we are analyzing.
+ *   - If we are analyzing a pull request, use `Overlay`.
+ *   - If we are analyzing the default branch, use `OverlayBase`.
+ * - Otherwise, use `None`.
+ *
+ * For `Overlay` and `OverlayBase`, the function performs further checks and
+ * reverts to `None` if any check should fail.
+ */
 async function getOverlayDatabaseMode(
   codeql: CodeQL,
   features: FeatureEnablement,
@@ -750,39 +764,67 @@ async function getOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   logger: Logger,
 ): Promise<OverlayDatabaseMode> {
-  const overlayDatabaseMode = process.env.CODEQL_OVERLAY_DATABASE_MODE;
+  let overlayDatabaseMode = OverlayDatabaseMode.None;
 
+  const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
+  // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
+  // treated as if the environment variable was not set.
   if (
-    overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
-    overlayDatabaseMode === OverlayDatabaseMode.OverlayBase
+    modeEnv === OverlayDatabaseMode.Overlay ||
+    modeEnv === OverlayDatabaseMode.OverlayBase ||
+    modeEnv === OverlayDatabaseMode.None
   ) {
-    if (buildMode !== BuildMode.None) {
-      logger.warning(
-        `Cannot build an ${overlayDatabaseMode} database because ` +
-          `build-mode is set to "${buildMode}" instead of "none". ` +
-          "Falling back to creating a normal full database instead.",
+    overlayDatabaseMode = modeEnv;
+    logger.info(
+      `Setting overlay database mode to ${overlayDatabaseMode} ` +
+        "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
+    );
+  } else if (await features.getValue(Feature.OverlayAnalysis, codeql)) {
+    if (isAnalyzingPullRequest()) {
+      overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+      logger.info(
+        `Setting overlay database mode to ${overlayDatabaseMode} ` +
+          "because we are analyzing a pull request.",
       );
-      return OverlayDatabaseMode.None;
-    }
-    if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
-      logger.warning(
-        `Cannot build an ${overlayDatabaseMode} database because ` +
-          `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
-          "Falling back to creating a normal full database instead.",
+    } else if (await isAnalyzingDefaultBranch()) {
+      overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+      logger.info(
+        `Setting overlay database mode to ${overlayDatabaseMode} ` +
+          "because we are analyzing the default branch.",
       );
-      return OverlayDatabaseMode.None;
     }
-    if ((await getGitRoot(sourceRoot)) === undefined) {
-      logger.warning(
-        `Cannot build an ${overlayDatabaseMode} database because ` +
-          `the source root "${sourceRoot}" is not inside a git repository. ` +
-          "Falling back to creating a normal full database instead.",
-      );
-      return OverlayDatabaseMode.None;
-    }
-    return overlayDatabaseMode as OverlayDatabaseMode;
   }
-  return OverlayDatabaseMode.None;
+
+  if (overlayDatabaseMode === OverlayDatabaseMode.None) {
+    return OverlayDatabaseMode.None;
+  }
+
+  if (buildMode !== BuildMode.None) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        `build-mode is set to "${buildMode}" instead of "none". ` +
+        "Falling back to creating a normal full database instead.",
+    );
+    return OverlayDatabaseMode.None;
+  }
+  if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
+        "Falling back to creating a normal full database instead.",
+    );
+    return OverlayDatabaseMode.None;
+  }
+  if ((await getGitRoot(sourceRoot)) === undefined) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        `the source root "${sourceRoot}" is not inside a git repository. ` +
+        "Falling back to creating a normal full database instead.",
+    );
+    return OverlayDatabaseMode.None;
+  }
+
+  return overlayDatabaseMode;
 }
 
 /**

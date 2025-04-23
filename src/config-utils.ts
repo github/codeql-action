@@ -201,6 +201,18 @@ export interface AugmentationProperties {
    * The overlay database mode to use.
    */
   overlayDatabaseMode: OverlayDatabaseMode;
+
+  /**
+   * Whether to use caching for overlay databases. If it is true, the action
+   * will upload the created overlay-base database to the actions cache, and
+   * download an overlay-base database from the actions cache before it creates
+   * a new overlay database. If it is false, the action assumes that the
+   * workflow will be responsible for managing database storage and retrieval.
+   *
+   * This property has no effect unless `overlayDatabaseMode` is `Overlay` or
+   * `OverlayBase`.
+   */
+  useOverlayDatabaseCaching: boolean;
 }
 
 /**
@@ -215,6 +227,7 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   qualityQueriesInput: undefined,
   extraQueryExclusions: [],
   overlayDatabaseMode: OverlayDatabaseMode.None,
+  useOverlayDatabaseCaching: false,
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -689,14 +702,18 @@ export async function calculateAugmentation(
     rawQueriesInput,
     queriesInputCombines,
   );
-  const overlayDatabaseMode = await getOverlayDatabaseMode(
-    codeql,
-    features,
-    sourceRoot,
-    buildMode,
-    logger,
+  const { overlayDatabaseMode, useOverlayDatabaseCaching } =
+    await getOverlayDatabaseMode(
+      codeql,
+      features,
+      sourceRoot,
+      buildMode,
+      logger,
+    );
+  logger.info(
+    `Using overlay database mode: ${overlayDatabaseMode} ` +
+      `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
-  logger.info(`Using overlay database mode: ${overlayDatabaseMode}`);
 
   const qualityQueriesInput = parseQueriesFromInput(
     rawQualityQueriesInput,
@@ -718,6 +735,7 @@ export async function calculateAugmentation(
     qualityQueriesInput,
     extraQueryExclusions,
     overlayDatabaseMode,
+    useOverlayDatabaseCaching,
   };
 }
 
@@ -745,17 +763,25 @@ function parseQueriesFromInput(
 }
 
 /**
- * Calculate and validate the overlay database mode to use.
+ * Calculate and validate the overlay database mode and caching to use.
  *
  * - If the environment variable `CODEQL_OVERLAY_DATABASE_MODE` is set, use it.
+ *   In this case, the workflow is responsible for managing database storage and
+ *   retrieval, and the action will not perform overlay database caching. Think
+ *   of it as a "manual control" mode where the calling workflow is responsible
+ *   for making sure that everything is set up correctly.
  * - Otherwise, if `Feature.OverlayAnalysis` is enabled, calculate the mode
- *   based on what we are analyzing.
- *   - If we are analyzing a pull request, use `Overlay`.
- *   - If we are analyzing the default branch, use `OverlayBase`.
+ *   based on what we are analyzing. Think of it as a "automatic control" mode
+ *   where the action will do the right thing by itself.
+ *   - If we are analyzing a pull request, use `Overlay` with caching.
+ *   - If we are analyzing the default branch, use `OverlayBase` with caching.
  * - Otherwise, use `None`.
  *
  * For `Overlay` and `OverlayBase`, the function performs further checks and
  * reverts to `None` if any check should fail.
+ *
+ * @returns An object containing the overlay database mode and whether the
+ * action should perform overlay-base database caching.
  */
 async function getOverlayDatabaseMode(
   codeql: CodeQL,
@@ -763,8 +789,12 @@ async function getOverlayDatabaseMode(
   sourceRoot: string,
   buildMode: BuildMode | undefined,
   logger: Logger,
-): Promise<OverlayDatabaseMode> {
+): Promise<{
+  overlayDatabaseMode: OverlayDatabaseMode;
+  useOverlayDatabaseCaching: boolean;
+}> {
   let overlayDatabaseMode = OverlayDatabaseMode.None;
+  let useOverlayDatabaseCaching = false;
 
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
@@ -782,21 +812,28 @@ async function getOverlayDatabaseMode(
   } else if (await features.getValue(Feature.OverlayAnalysis, codeql)) {
     if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+      useOverlayDatabaseCaching = true;
       logger.info(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "because we are analyzing a pull request.",
+          "with caching because we are analyzing a pull request.",
       );
     } else if (await isAnalyzingDefaultBranch()) {
       overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+      useOverlayDatabaseCaching = true;
       logger.info(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "because we are analyzing the default branch.",
+          "with caching because we are analyzing the default branch.",
       );
     }
   }
 
+  const nonOverlayAnalysis = {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  };
+
   if (overlayDatabaseMode === OverlayDatabaseMode.None) {
-    return OverlayDatabaseMode.None;
+    return nonOverlayAnalysis;
   }
 
   if (buildMode !== BuildMode.None) {
@@ -805,7 +842,7 @@ async function getOverlayDatabaseMode(
         `build-mode is set to "${buildMode}" instead of "none". ` +
         "Falling back to creating a normal full database instead.",
     );
-    return OverlayDatabaseMode.None;
+    return nonOverlayAnalysis;
   }
   if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
     logger.warning(
@@ -813,7 +850,7 @@ async function getOverlayDatabaseMode(
         `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return OverlayDatabaseMode.None;
+    return nonOverlayAnalysis;
   }
   if ((await getGitRoot(sourceRoot)) === undefined) {
     logger.warning(
@@ -821,10 +858,13 @@ async function getOverlayDatabaseMode(
         `the source root "${sourceRoot}" is not inside a git repository. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return OverlayDatabaseMode.None;
+    return nonOverlayAnalysis;
   }
 
-  return overlayDatabaseMode;
+  return {
+    overlayDatabaseMode,
+    useOverlayDatabaseCaching,
+  };
 }
 
 /**

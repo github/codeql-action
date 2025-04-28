@@ -1,7 +1,7 @@
 # CSS Calc <img src="https://cssdb.org/images/css.svg" alt="for CSS" width="90" height="90" align="right">
 
 [<img alt="npm version" src="https://img.shields.io/npm/v/@csstools/css-calc.svg" height="20">][npm-url]
-[<img alt="Build Status" src="https://github.com/csstools/postcss-plugins/workflows/test/badge.svg" height="20">][cli-url]
+[<img alt="Build Status" src="https://github.com/csstools/postcss-plugins/actions/workflows/test.yml/badge.svg?branch=main" height="20">][cli-url]
 [<img alt="Discord" src="https://shields.io/badge/Discord-5865F2?logo=discord&logoColor=white">][discord]
 
 Implemented from : https://drafts.csswg.org/css-values-4/ on 2023-02-17

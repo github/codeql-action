@@ -43,6 +43,13 @@ export class CodeQLAnalysisError extends Error {
 
 export interface QueriesStatusReport {
   /**
+   * Time taken in ms to run queries for actions (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
+  analyze_builtin_queries_actions_duration_ms?: number;
+  /**
    * Time taken in ms to run queries for cpp (or undefined if this language was not analyzed).
    *
    * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
@@ -98,6 +105,8 @@ export interface QueriesStatusReport {
    */
   analyze_builtin_queries_swift_duration_ms?: number;
 
+  /** Time taken in ms to interpret results for actions (or undefined if this language was not analyzed). */
+  interpret_results_actions_duration_ms?: number;
   /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
   interpret_results_cpp_duration_ms?: number;
   /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */

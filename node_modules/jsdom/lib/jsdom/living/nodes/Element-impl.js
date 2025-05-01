@@ -76,9 +76,7 @@ class ElementImpl extends NodeImpl {
     this._attributeList = [];
     // Used for caching.
     this._attributesByNameMap = new Map();
-    this._attributes = NamedNodeMap.createImpl(this._globalObject, [], {
-      element: this
-    });
+    this._attributes = null;
 
     this._cachedTagName = null;
   }
@@ -144,7 +142,7 @@ class ElementImpl extends NodeImpl {
     // All these are invariants during the instance lifetime so we can safely cache the computed tagName.
     // We could create it during construction but since we already identified this as potentially slow we do it lazily.
     if (this._cachedTagName === null) {
-      if (this.namespaceURI === HTML_NS && this._ownerDocument._parsingMode === "html") {
+      if (this._namespaceURI === HTML_NS && this._ownerDocument._parsingMode === "html") {
         this._cachedTagName = asciiUppercase(this._qualifiedName);
       } else {
         this._cachedTagName = this._qualifiedName;
@@ -154,6 +152,12 @@ class ElementImpl extends NodeImpl {
   }
 
   get attributes() {
+    if (!this._attributes) {
+      this._attributes = NamedNodeMap.createImpl(this._globalObject, [], {
+        element: this
+      });
+    }
+
     return this._attributes;
   }
 

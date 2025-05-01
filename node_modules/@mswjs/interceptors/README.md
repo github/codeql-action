@@ -104,6 +104,21 @@ You can respond to the intercepted HTTP request by constructing a Fetch API Resp
 - Does **not** provide any request matching logic;
 - Does **not** handle requests by default.
 
+## Limitations
+
+- Interceptors will hang indefinitely if you call `req.end()` in the `connect` event listener of the respective `socket`:
+
+```ts
+req.on('socket', (socket) => {
+  socket.on('connect', () => {
+    // ❌ While this is allowed in Node.js, this cannot be handled in Interceptors.
+    req.end()
+  })
+})
+```
+
+> This limitation is intrinsic to the interception algorithm used by the library. In order for it to emit the `connect` event on the socket, the library must know if you've handled the request in any way (e.g. responded with a mocked response or errored it). For that, it emits the `request` event on the interceptor where you can handle the request. Since you can consume the request stream in the `request` event, it waits until the request body stream is complete (i.e. until `req.end()` is called). This creates a catch 22 that causes this limitation.
+
 ## Getting started
 
 ```bash

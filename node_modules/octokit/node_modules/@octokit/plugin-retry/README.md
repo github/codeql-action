@@ -1,6 +1,6 @@
 # plugin-retry.js
 
-> Retries requests for server 4xx/5xx responses except `400`, `401`, `403`, `404`, `422`, and `451`.
+> Retries requests for server 4xx/5xx responses except `400`, `401`, `403`, `404`, `410`, `422`, and `451`.
 
 [![@latest](https://img.shields.io/npm/v/@octokit/plugin-retry.svg)](https://www.npmjs.com/package/@octokit/plugin-retry)
 [![Build Status](https://github.com/octokit/plugin-retry.js/workflows/Test/badge.svg)](https://github.com/octokit/plugin-retry.js/actions?workflow=Test)

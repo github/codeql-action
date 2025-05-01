@@ -26,6 +26,14 @@ it('resolves the response promise with the error provided to "errorWith"', async
   await expect(controller[kResponsePromise]).resolves.toEqual(error)
 })
 
+it('resolves the response promise with an arbitrary object provided to "errorWith"', async () => {
+  const controller = new RequestController(new Request('http://localhost'))
+  const error = { message: 'Oops!' }
+  controller.errorWith(error)
+
+  await expect(controller[kResponsePromise]).resolves.toEqual(error)
+})
+
 it('throws when calling "respondWith" multiple times', () => {
   const controller = new RequestController(new Request('http://localhost'))
   controller.respondWith(new Response('hello world'))

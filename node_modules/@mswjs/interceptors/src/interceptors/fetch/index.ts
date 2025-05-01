@@ -12,6 +12,7 @@ import { followFetchRedirect } from './utils/followRedirect'
 import { decompressResponse } from './utils/decompression'
 import { hasConfigurableGlobal } from '../../utils/hasConfigurableGlobal'
 import { FetchResponse } from '../../utils/fetchUtils'
+import { setRawRequest } from '../../getRawRequest'
 
 export class FetchInterceptor extends Interceptor<HttpRequestEventMap> {
   static symbol = Symbol('fetch')
@@ -45,10 +46,18 @@ export class FetchInterceptor extends Interceptor<HttpRequestEventMap> {
         typeof input === 'string' &&
         typeof location !== 'undefined' &&
         !canParseUrl(input)
-          ? new URL(input, location.origin)
+          ? new URL(input, location.href)
           : input
 
       const request = new Request(resolvedInput, init)
+
+      /**
+       * @note Set the raw request only if a Request instance was provided to fetch.
+       */
+      if (input instanceof Request) {
+        setRawRequest(request, input)
+      }
+
       const responsePromise = new DeferredPromise<Response>()
       const controller = new RequestController(request)
 

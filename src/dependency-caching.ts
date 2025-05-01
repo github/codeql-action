@@ -41,42 +41,44 @@ export function getJavaTempDependencyDir(): string {
 /**
  * Default caching configurations per language.
  */
-const CODEQL_DEFAULT_CACHE_CONFIG: { [language: string]: CacheConfig } = {
-  java: {
-    paths: [
-      // Maven
-      join(os.homedir(), ".m2", "repository"),
-      // Gradle
-      join(os.homedir(), ".gradle", "caches"),
-      // CodeQL Java build-mode: none
-      getJavaTempDependencyDir(),
-    ],
-    hash: [
-      // Maven
-      "**/pom.xml",
-      // Gradle
-      "**/*.gradle*",
-      "**/gradle-wrapper.properties",
-      "buildSrc/**/Versions.kt",
-      "buildSrc/**/Dependencies.kt",
-      "gradle/*.versions.toml",
-      "**/versions.properties",
-    ],
-  },
-  csharp: {
-    paths: [join(os.homedir(), ".nuget", "packages")],
-    hash: [
-      // NuGet
-      "**/packages.lock.json",
-      // Paket
-      "**/paket.lock",
-    ],
-  },
-  go: {
-    paths: [join(os.homedir(), "go", "pkg", "mod")],
-    hash: ["**/go.sum"],
-  },
-};
+function getDefaultCacheConfig(): { [language: string]: CacheConfig } {
+  return {
+    java: {
+      paths: [
+        // Maven
+        join(os.homedir(), ".m2", "repository"),
+        // Gradle
+        join(os.homedir(), ".gradle", "caches"),
+        // CodeQL Java build-mode: none
+        getJavaTempDependencyDir(),
+      ],
+      hash: [
+        // Maven
+        "**/pom.xml",
+        // Gradle
+        "**/*.gradle*",
+        "**/gradle-wrapper.properties",
+        "buildSrc/**/Versions.kt",
+        "buildSrc/**/Dependencies.kt",
+        "gradle/*.versions.toml",
+        "**/versions.properties",
+      ],
+    },
+    csharp: {
+      paths: [join(os.homedir(), ".nuget", "packages")],
+      hash: [
+        // NuGet
+        "**/packages.lock.json",
+        // Paket
+        "**/paket.lock",
+      ],
+    },
+    go: {
+      paths: [join(os.homedir(), "go", "pkg", "mod")],
+      hash: ["**/go.sum"],
+    },
+  };
+}
 
 async function makeGlobber(patterns: string[]): Promise<glob.Globber> {
   return glob.create(patterns.join("\n"));
@@ -96,7 +98,7 @@ export async function downloadDependencyCaches(
   const restoredCaches: Language[] = [];
 
   for (const language of languages) {
-    const cacheConfig = CODEQL_DEFAULT_CACHE_CONFIG[language];
+    const cacheConfig = getDefaultCacheConfig()[language];
 
     if (cacheConfig === undefined) {
       logger.info(
@@ -150,7 +152,7 @@ export async function downloadDependencyCaches(
  */
 export async function uploadDependencyCaches(config: Config, logger: Logger) {
   for (const language of config.languages) {
-    const cacheConfig = CODEQL_DEFAULT_CACHE_CONFIG[language];
+    const cacheConfig = getDefaultCacheConfig()[language];
 
     if (cacheConfig === undefined) {
       logger.info(

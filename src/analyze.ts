@@ -498,7 +498,13 @@ function writeDiffRangeDataExtensionPack(
     actionsUtil.getTemporaryDirectory(),
     "pr-diff-range",
   );
-  fs.mkdirSync(diffRangeDir);
+
+  // We expect the Actions temporary directory to already exist, so are mainly
+  // using `recursive: true` to avoid errors if the directory already exists,
+  // for example if the analyze Action is run multiple times in the same job.
+  // This is not really something that is supported, but we make use of it in
+  // tests.
+  fs.mkdirSync(diffRangeDir, { recursive: true });
   fs.writeFileSync(
     path.join(diffRangeDir, "qlpack.yml"),
     `

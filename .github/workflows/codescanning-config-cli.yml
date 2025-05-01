@@ -3,6 +3,9 @@
 name: Code-Scanning config CLI tests
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Diff informed queries add an additional query filter which is not yet
+  # taken into account by these tests.
+  CODEQL_ACTION_DIFF_INFORMED_QUERIES: false
 
 on:
   push:

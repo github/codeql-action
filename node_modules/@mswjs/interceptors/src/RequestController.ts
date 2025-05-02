@@ -13,7 +13,9 @@ export class RequestController {
    * @note This promise cannot be rejected. It's either infinitely
    * pending or resolved with whichever Response was passed to `respondWith()`.
    */
-  [kResponsePromise]: DeferredPromise<Response | Error | undefined>;
+  [kResponsePromise]: DeferredPromise<
+    Response | Record<string, any> | undefined
+  >;
 
   /**
    * Internal flag indicating if this request has been handled.
@@ -46,7 +48,7 @@ export class RequestController {
     this[kResponsePromise].resolve(response)
 
     /**
-     * @note The request conrtoller doesn't do anything
+     * @note The request controller doesn't do anything
      * apart from letting the interceptor await the response
      * provided by the developer through the response promise.
      * Each interceptor implements the actual respondWith/errorWith
@@ -55,12 +57,14 @@ export class RequestController {
   }
 
   /**
-   * Error this request with the given error.
+   * Error this request with the given reason.
+   *
    * @example
    * controller.errorWith()
    * controller.errorWith(new Error('Oops!'))
+   * controller.errorWith({ message: 'Oops!'})
    */
-  public errorWith(error?: Error): void {
+  public errorWith(reason?: Error | Record<string, any>): void {
     invariant.as(
       InterceptorError,
       !this[kRequestHandled],
@@ -76,6 +80,6 @@ export class RequestController {
      * This helps us differentiate between unhandled exceptions
      * and intended errors ("errorWith") while waiting for the response.
      */
-    this[kResponsePromise].resolve(error)
+    this[kResponsePromise].resolve(reason)
   }
 }

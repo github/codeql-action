@@ -1,5 +1,5 @@
 // this can be removed once we only support Node 20+
-export * from "node:crypto";
+export { subtle } from "node:crypto";
 import { createPrivateKey } from "node:crypto";
 
 import { isPkcs1 } from "./utils.js";

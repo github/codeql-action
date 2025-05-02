@@ -1562,7 +1562,7 @@ if (typeof BigInt === "function") {
 
   // Override
   Long.fromValue = function fromValueWithBigInt(value, unsigned) {
-    if (typeof value === "bigint") return fromBigInt(value, unsigned);
+    if (typeof value === "bigint") return Long.fromBigInt(value, unsigned);
     return fromValue(value, unsigned);
   };
 

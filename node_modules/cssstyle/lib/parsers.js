@@ -33,7 +33,7 @@ var lengthRegEx = new RegExp(
 );
 var percentRegEx = new RegExp(`^${NUMBER}%$`);
 var angleRegEx = new RegExp(`^${NUMBER}(?:deg|g?rad|turn)$`);
-var urlRegEx = /^url\(\s*([^)]*)\s*\)$/;
+var urlRegEx = /^url\(\s*((?:[^)]|\\\))*)\s*\)$/;
 var stringRegEx = /^("[^"]*"|'[^']*')$/;
 var varRegEx = /^var\(|(?<=[*/\s(])var\(/;
 var calcRegEx =
@@ -218,24 +218,45 @@ exports.parseUrl = function parseUrl(val) {
     str = str.substr(1, str.length - 2);
   }
 
+  var urlstr = '';
+  var escaped = false;
   var i;
   for (i = 0; i < str.length; i++) {
     switch (str[i]) {
+      case '\\':
+        if (escaped) {
+          urlstr += '\\\\';
+          escaped = false;
+        } else {
+          escaped = true;
+        }
+        break;
       case '(':
       case ')':
       case ' ':
       case '\t':
       case '\n':
       case "'":
-      case '"':
-        return undefined;
-      case '\\':
-        i++;
+        if (!escaped) {
+          return undefined;
+        }
+        urlstr += str[i];
+        escaped = false;
         break;
+      case '"':
+        if (!escaped) {
+          return undefined;
+        }
+        urlstr += '\\"';
+        escaped = false;
+        break;
+      default:
+        urlstr += str[i];
+        escaped = false;
     }
   }
 
-  return 'url(' + str + ')';
+  return 'url("' + urlstr + '")';
 };
 
 exports.parseString = function parseString(val) {

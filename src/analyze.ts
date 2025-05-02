@@ -43,6 +43,13 @@ export class CodeQLAnalysisError extends Error {
 
 export interface QueriesStatusReport {
   /**
+   * Time taken in ms to run queries for actions (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
+  analyze_builtin_queries_actions_duration_ms?: number;
+  /**
    * Time taken in ms to run queries for cpp (or undefined if this language was not analyzed).
    *
    * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
@@ -98,6 +105,8 @@ export interface QueriesStatusReport {
    */
   analyze_builtin_queries_swift_duration_ms?: number;
 
+  /** Time taken in ms to interpret results for actions (or undefined if this language was not analyzed). */
+  interpret_results_actions_duration_ms?: number;
   /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
   interpret_results_cpp_duration_ms?: number;
   /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
@@ -498,7 +507,13 @@ function writeDiffRangeDataExtensionPack(
     actionsUtil.getTemporaryDirectory(),
     "pr-diff-range",
   );
-  fs.mkdirSync(diffRangeDir);
+
+  // We expect the Actions temporary directory to already exist, so are mainly
+  // using `recursive: true` to avoid errors if the directory already exists,
+  // for example if the analyze Action is run multiple times in the same job.
+  // This is not really something that is supported, but we make use of it in
+  // tests.
+  fs.mkdirSync(diffRangeDir, { recursive: true });
   fs.writeFileSync(
     path.join(diffRangeDir, "qlpack.yml"),
     `

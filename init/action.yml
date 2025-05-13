@@ -115,7 +115,6 @@ inputs:
       (which for GitHub-hosted runners is 2 for Linux and Windows and 3 for macOS).
       This input also sets the number of threads that can later be used by the "analyze" action.
     required: false
-    default: "${{ env.CODEQL_THREADS }}"
   debug:
     description: >-
       Enable debugging mode.

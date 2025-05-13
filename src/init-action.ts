@@ -547,8 +547,7 @@ async function run() {
     );
     core.exportVariable(
       "CODEQL_THREADS",
-      process.env["CODEQL_THREADS"] ||
-        getThreadsFlagValue(getOptionalInput("threads"), logger).toString(),
+      getThreadsFlagValue(getOptionalInput("threads"), logger).toString(),
     );
 
     // Disable Kotlin extractor if feature flag set

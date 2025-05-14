@@ -444,8 +444,8 @@ export function readSarifFile(sarifFilePath: string): SarifFile {
   }
 }
 
-// Validates that the given file path refers to a valid SARIF file.
-// Throws an error if the file is invalid.
+// Validates the given SARIF object and throws an error if the SARIF object is invalid.
+// The file path is only used in error messages to improve clarity.
 export function validateSarifFileSchema(
   sarif: SarifFile,
   sarifFilePath: string,

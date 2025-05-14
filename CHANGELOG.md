@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- `threads` and `ram` inputs may be set via CODEQL_THREADS and CODEQL_RAM runner environment variables. [#2891](https://github.com/github/codeql-action/pull/2891)
 
 ## 3.28.17 - 02 May 2025
 

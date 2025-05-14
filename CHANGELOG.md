@@ -6,6 +6,14 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 No user facing changes.
 
+## 3.28.17 - 02 May 2025
+
+- Update default CodeQL bundle version to 2.21.2. [#2872](https://github.com/github/codeql-action/pull/2872)
+
+## 3.28.16 - 23 Apr 2025
+
+- Update default CodeQL bundle version to 2.21.1. [#2863](https://github.com/github/codeql-action/pull/2863)
+
 ## 3.28.15 - 07 Apr 2025
 
 - Fix bug where the action would fail if it tried to produce a debug artifact with more than 65535 files. [#2842](https://github.com/github/codeql-action/pull/2842)

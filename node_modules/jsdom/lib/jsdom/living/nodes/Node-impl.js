@@ -13,7 +13,6 @@ const NodeList = require("../generated/NodeList");
 
 const { nodeRoot, nodeLength, isInclusiveAncestor } = require("../helpers/node");
 const { domSymbolTree } = require("../helpers/internal-constants");
-const { documentBaseURLSerialized } = require("../helpers/document-base-url");
 const { queueTreeMutationRecord } = require("../helpers/mutation-observers");
 const { enqueueCECallbackReaction, tryUpgradeElement } = require("../helpers/custom-elements");
 const {
@@ -36,7 +35,7 @@ function nodeEquals(a, b) {
       break;
     case NODE_TYPE.ELEMENT_NODE:
       if (a._namespaceURI !== b._namespaceURI || a._prefix !== b._prefix || a._localName !== b._localName ||
-          a._attributes.length !== b._attributes.length) {
+          a._attributeList.length !== b._attributeList.length) {
         return false;
       }
       break;
@@ -362,7 +361,7 @@ class NodeImpl extends EventTargetImpl {
   }
 
   get baseURI() {
-    return documentBaseURLSerialized(this._ownerDocument);
+    return this._ownerDocument.baseURLSerialized();
   }
 
   compareDocumentPosition(other) {
@@ -612,8 +611,8 @@ class NodeImpl extends EventTargetImpl {
 
   // https://dom.spec.whatwg.org/#concept-node-ensure-pre-insertion-validity
   _preInsertValidity(nodeImpl, childImpl) {
-    const { nodeType, nodeName } = nodeImpl;
-    const { nodeType: parentType, nodeName: parentName } = this;
+    const { nodeType } = nodeImpl;
+    const parentType = this.nodeType;
 
     if (
       parentType !== NODE_TYPE.DOCUMENT_NODE &&
@@ -621,7 +620,7 @@ class NodeImpl extends EventTargetImpl {
       parentType !== NODE_TYPE.ELEMENT_NODE
     ) {
       throw DOMException.create(this._globalObject, [
-        `Node can't be inserted in a ${parentName} parent.`,
+        `Node can't be inserted in a ${this.nodeName} parent.`,
         "HierarchyRequestError"
       ]);
     }
@@ -650,7 +649,7 @@ class NodeImpl extends EventTargetImpl {
       nodeType !== NODE_TYPE.COMMENT_NODE
     ) {
       throw DOMException.create(this._globalObject, [
-        `${nodeName} node can't be inserted in parent node.`,
+        `${nodeImpl.nodeName} node can't be inserted in parent node.`,
         "HierarchyRequestError"
       ]);
     }
@@ -660,7 +659,7 @@ class NodeImpl extends EventTargetImpl {
       (nodeType === NODE_TYPE.DOCUMENT_TYPE_NODE && parentType !== NODE_TYPE.DOCUMENT_NODE)
     ) {
       throw DOMException.create(this._globalObject, [
-        `${nodeName} node can't be inserted in ${parentName} parent.`,
+        `${nodeImpl.nodeName} node can't be inserted in ${this.nodeName} parent.`,
         "HierarchyRequestError"
       ]);
     }
@@ -674,7 +673,7 @@ class NodeImpl extends EventTargetImpl {
           const nodeChildrenElements = nodeChildren.filter(child => child.nodeType === NODE_TYPE.ELEMENT_NODE);
           if (nodeChildrenElements.length > 1) {
             throw DOMException.create(this._globalObject, [
-              `Invalid insertion of ${nodeName} node in ${parentName} node.`,
+              `Invalid insertion of ${nodeImpl.nodeName} node in ${this.nodeName} node.`,
               "HierarchyRequestError"
             ]);
           }
@@ -682,7 +681,7 @@ class NodeImpl extends EventTargetImpl {
           const hasNodeTextChildren = nodeChildren.some(child => child.nodeType === NODE_TYPE.TEXT_NODE);
           if (hasNodeTextChildren) {
             throw DOMException.create(this._globalObject, [
-              `Invalid insertion of ${nodeName} node in ${parentName} node.`,
+              `Invalid insertion of ${nodeImpl.nodeName} node in ${this.nodeName} node.`,
               "HierarchyRequestError"
             ]);
           }
@@ -700,7 +699,7 @@ class NodeImpl extends EventTargetImpl {
             )
           ) {
             throw DOMException.create(this._globalObject, [
-              `Invalid insertion of ${nodeName} node in ${parentName} node.`,
+              `Invalid insertion of ${nodeImpl.nodeName} node in ${this.nodeName} node.`,
               "HierarchyRequestError"
             ]);
           }
@@ -718,7 +717,7 @@ class NodeImpl extends EventTargetImpl {
             )
           ) {
             throw DOMException.create(this._globalObject, [
-              `Invalid insertion of ${nodeName} node in ${parentName} node.`,
+              `Invalid insertion of ${nodeImpl.nodeName} node in ${this.nodeName} node.`,
               "HierarchyRequestError"
             ]);
           }
@@ -735,7 +734,7 @@ class NodeImpl extends EventTargetImpl {
             (!childImpl && parentChildren.some(child => child.nodeType === NODE_TYPE.ELEMENT_NODE))
           ) {
             throw DOMException.create(this._globalObject, [
-              `Invalid insertion of ${nodeName} node in ${parentName} node.`,
+              `Invalid insertion of ${nodeImpl.nodeName} node in ${this.nodeName} node.`,
               "HierarchyRequestError"
             ]);
           }

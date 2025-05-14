@@ -40,9 +40,28 @@ export declare type conversionOptions = {
      */
     rawPercentages?: boolean;
     /**
-     * Seed the pseudo random number generator used in `random()`
+     * The values used to generate random value cache keys.
      */
-    randomSeed?: number;
+    randomCaching?: {
+        /**
+         * The name of the property the random function is used in.
+         */
+        propertyName: string;
+        /**
+         * N is the index of the random function among other random functions in the same property value.
+         */
+        propertyN: number;
+        /**
+         * An element ID identifying the element the style is being applied to.
+         * When omitted any `random()` call will not be computed.
+         */
+        elementID: string;
+        /**
+         * A document ID identifying the Document the styles are from.
+         * When omitted any `random()` call will not be computed.
+         */
+        documentID: string;
+    };
 };
 
 export declare type GlobalsWithStrings = Map<string, TokenDimension | TokenNumber | TokenPercentage | string>;

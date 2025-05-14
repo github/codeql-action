@@ -100,7 +100,13 @@ const INTERFACE_TAG_MAPPING = {
     __proto__: null,
     SVGElement: [],
     SVGGraphicsElement: [],
+    SVGDefsElement: ["defs"],
+    SVGDescElement: ["desc"],
+    SVGGElement: ["g"],
+    SVGMetadataElement: ["metadata"],
     SVGSVGElement: ["svg"],
+    SVGSwitchElement: ["switch"],
+    SVGSymbolElement: ["symbol"],
     SVGTitleElement: ["title"]
   }
 };

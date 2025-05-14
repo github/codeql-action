@@ -750,8 +750,8 @@ export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
 }
 
-/*
- * Returns whether we are in test mode.
+/**
+ * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
  *
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
@@ -759,7 +759,20 @@ export function isInTestMode(): boolean {
   return process.env[EnvVar.TEST_MODE] === "true";
 }
 
-/*
+/**
+ * Get the testing environment.
+ *
+ * This is set if the CodeQL Action is running in a non-production environment.
+ */
+export function getTestingEnvironment(): string | undefined {
+  const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
+  if (testingEnvironment === "") {
+    return undefined;
+  }
+  return testingEnvironment;
+}
+
+/**
  * Returns whether the path in the argument represents an existing directory.
  */
 export function doesDirectoryExist(dirPath: string): boolean {

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Skip validating SARIF produced by CodeQL for improved performance. [#2894](https://github.com/github/codeql-action/pull/2894)
 
 ## 3.28.17 - 02 May 2025
 

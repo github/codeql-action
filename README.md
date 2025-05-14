@@ -70,10 +70,11 @@ We typically release new minor versions of the CodeQL Action and Bundle when a n
 
 | Minimum CodeQL Action | Minimum CodeQL Bundle Version | GitHub Environment | Notes |
 |-----------------------|-------------------------------|--------------------|-------|
-| `v3.26.6`  | `2.18.4` | Enterprise Server 3.15 | |
-| `v3.25.11` | `2.17.6` | Enterprise Server 3.14 | |
-| `v3.24.11` | `2.16.6` | Enterprise Server 3.13 | |
-| `v3.22.12` | `2.15.5` | Enterprise Server 3.12 | |
+| `v3.28.12`  | `2.20.7` | Enterprise Server 3.17 | |
+| `v3.28.6`  | `2.20.3` | Enterprise Server 3.16 | |
+| `v3.28.6`  | `2.20.3` | Enterprise Server 3.15 | |
+| `v3.28.6` | `2.20.3` | Enterprise Server 3.14 | |
+| `v3.28.6` | `2.20.3` | Enterprise Server 3.13 | |
 
 See the full list of GHES release and deprecation dates at [GitHub Enterprise Server releases](https://docs.github.com/en/enterprise-server/admin/all-releases#releases-of-github-enterprise-server).
 

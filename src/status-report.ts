@@ -29,6 +29,7 @@ import {
   assertNever,
   BuildMode,
   getErrorMessage,
+  getTestingEnvironment,
 } from "./util";
 
 export enum ActionName {
@@ -277,10 +278,10 @@ export async function createStatusReportBase(
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
     const codeQlCliVersion = getCachedCodeQlVersion();
     const actionRef = process.env["GITHUB_ACTION_REF"] || "";
-    const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
+    const testingEnvironment = getTestingEnvironment();
     // re-export the testing environment variable so that it is available to subsequent steps,
     // even if it was only set for this step
-    if (testingEnvironment !== "") {
+    if (testingEnvironment) {
       core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
     }
     const isSteadyStateDefaultSetupRun =
@@ -303,7 +304,7 @@ export async function createStatusReportBase(
       started_at: workflowStartedAt,
       status,
       steady_state_default_setup: isSteadyStateDefaultSetupRun,
-      testing_environment: testingEnvironment,
+      testing_environment: testingEnvironment || "",
       workflow_name: workflowName,
       workflow_run_attempt: workflowRunAttempt,
       workflow_run_id: workflowRunID,

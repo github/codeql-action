@@ -17,14 +17,22 @@ test.beforeEach(() => {
 test("validateSarifFileSchema - valid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/valid-sarif.sarif`;
   t.notThrows(() =>
-    uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger(true)),
+    uploadLib.validateSarifFileSchema(
+      uploadLib.readSarifFile(inputFile),
+      inputFile,
+      getRunnerLogger(true),
+    ),
   );
 });
 
 test("validateSarifFileSchema - invalid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/invalid-sarif.sarif`;
   t.throws(() =>
-    uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger(true)),
+    uploadLib.validateSarifFileSchema(
+      uploadLib.readSarifFile(inputFile),
+      inputFile,
+      getRunnerLogger(true),
+    ),
   );
 });
 
@@ -314,7 +322,11 @@ test("accept results with invalid artifactLocation.uri value", (t) => {
   } as Logger;
 
   const sarifFile = `${__dirname}/../src/testdata/with-invalid-uri.sarif`;
-  uploadLib.validateSarifFileSchema(sarifFile, mockLogger);
+  uploadLib.validateSarifFileSchema(
+    uploadLib.readSarifFile(sarifFile),
+    sarifFile,
+    mockLogger,
+  );
 
   t.deepEqual(loggedMessages.length, 3);
   t.deepEqual(

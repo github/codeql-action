@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
+import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
 
@@ -9,6 +10,8 @@ import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { DocUrl } from "./doc-url";
+import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
@@ -389,6 +392,22 @@ export async function getRawLanguages(
     .split(",")
     .map((x) => x.trim().toLowerCase())
     .filter((x) => x.length > 0);
+
+  if (
+    rawLanguages.length > 1 &&
+    process.env[EnvVar.SUPPRESS_SINGLE_LANGUAGE_PER_JOB_RECOMMENDATION] !==
+      "true"
+  ) {
+    core.notice(
+      "When creating a new setup of CodeQL, we recommend analyzing each language within its own Actions job for the best experience. " +
+        "If you do not need a highly customizable code scanning configuration, consider using default setup for code scanning. " +
+        "Otherwise, consider using a matrix to analyze each language in its own job. " +
+        // Space before period to avoid issues copying links
+        `For more information, see ${DocUrl.CONFIGURE_DEFAULT_SETUP} and ${DocUrl.ACTIONS_MATRIX} . ` +
+        `To suppress this recommendation, set the environment variable ${EnvVar.SUPPRESS_SINGLE_LANGUAGE_PER_JOB_RECOMMENDATION} to "true".`,
+    );
+  }
+
   let autodetected: boolean;
   if (rawLanguages.length) {
     autodetected = false;

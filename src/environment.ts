@@ -79,6 +79,9 @@ export enum EnvVar {
   /** Whether to suppress the warning if the current CLI will soon be unsupported. */
   SUPPRESS_DEPRECATED_SOON_WARNING = "CODEQL_ACTION_SUPPRESS_DEPRECATED_SOON_WARNING",
 
+  /** Whether to suppress the recommendation for analyzing a single language per job. */
+  SUPPRESS_SINGLE_LANGUAGE_PER_JOB_RECOMMENDATION = "CODEQL_ACTION_SUPPRESS_SINGLE_LANGUAGE_PER_JOB_RECOMMENDATION",
+
   /** Whether to disable uploading SARIF results or status reports to the GitHub API */
   TEST_MODE = "CODEQL_ACTION_TEST_MODE",
 

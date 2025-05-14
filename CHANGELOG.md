@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Skip validating SARIF produced by CodeQL for improved performance. [#2894](https://github.com/github/codeql-action/pull/2894)
+- The number of threads and amount of RAM used by CodeQL can now be set via the `CODEQL_THREADS` and `CODEQL_RAM` runner environment variables. If set, these environment variables override the `threads` and `ram` inputs respectively. [#2891](https://github.com/github/codeql-action/pull/2891)
 
 ## 3.28.17 - 02 May 2025
 

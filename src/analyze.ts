@@ -26,7 +26,6 @@ import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
-import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
 import { BuildMode } from "./util";
 
@@ -630,7 +629,7 @@ export async function runQueries(
       logger.info(analysisSummary);
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
-        const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile, logger);
+        const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile);
 
         const perQueryAlertCountEventReport: EventReport = {
           event: "codeql database interpret-results",
@@ -682,11 +681,7 @@ export async function runQueries(
   }
 
   /** Get an object with all queries and their counts parsed from a SARIF file path. */
-  function getPerQueryAlertCounts(
-    sarifPath: string,
-    log: Logger,
-  ): Record<string, number> {
-    validateSarifFileSchema(sarifPath, log);
+  function getPerQueryAlertCounts(sarifPath: string): Record<string, number> {
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifPath, "utf8"),
     ) as util.SarifFile;

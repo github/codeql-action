@@ -7,9 +7,12 @@ import * as yaml from "js-yaml";
 
 import * as api from "./api-client";
 import { CodeQL } from "./codeql";
-import { EnvVar } from "./environment";
 import { Logger } from "./logging";
-import { getRequiredEnvParam, isInTestMode } from "./util";
+import {
+  getRequiredEnvParam,
+  getTestingEnvironment,
+  isInTestMode,
+} from "./util";
 
 export interface WorkflowJobStep {
   name?: string;
@@ -358,10 +361,7 @@ function getInputOrThrow(
  * This allows us to test workflow parsing functionality as a CodeQL Action PR check.
  */
 function getAnalyzeActionName() {
-  if (
-    isInTestMode() ||
-    process.env[EnvVar.TESTING_ENVIRONMENT] === "codeql-action-pr-checks"
-  ) {
+  if (isInTestMode() || getTestingEnvironment() === "codeql-action-pr-checks") {
     return "./analyze";
   } else {
     return "github/codeql-action/analyze";

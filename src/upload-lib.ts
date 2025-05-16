@@ -434,18 +434,35 @@ function countResultsInSarif(sarif: string): number {
   return numResults;
 }
 
-// Validates that the given file path refers to a valid SARIF file.
-// Throws an error if the file is invalid.
-export function validateSarifFileSchema(sarifFilePath: string, logger: Logger) {
-  logger.info(`Validating ${sarifFilePath}`);
-  let sarif;
+export function readSarifFile(sarifFilePath: string): SarifFile {
   try {
-    sarif = JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
+    return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
   } catch (e) {
     throw new InvalidSarifUploadError(
       `Invalid SARIF. JSON syntax error: ${getErrorMessage(e)}`,
     );
   }
+}
+
+// Validates the given SARIF object and throws an error if the SARIF object is invalid.
+// The file path is only used in error messages to improve clarity.
+export function validateSarifFileSchema(
+  sarif: SarifFile,
+  sarifFilePath: string,
+  logger: Logger,
+) {
+  if (
+    areAllRunsProducedByCodeQL([sarif]) &&
+    // We want to validate CodeQL SARIF in testing environments.
+    !util.getTestingEnvironment()
+  ) {
+    logger.debug(
+      `Skipping SARIF schema validation for ${sarifFilePath} as all runs are produced by CodeQL.`,
+    );
+    return;
+  }
+
+  logger.info(`Validating ${sarifFilePath}`);
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const schema = require("../src/sarif-schema-2.1.0.json") as jsonschema.Schema;
 
@@ -551,41 +568,44 @@ export function buildPayload(
 }
 
 /**
- * Uploads a single SARIF file or a directory of SARIF files depending on what `sarifPath` refers
+ * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
  * to.
  */
 export async function uploadFiles(
-  sarifPath: string,
+  inputSarifPath: string,
   checkoutPath: string,
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadResult> {
-  const sarifFiles = getSarifFilePaths(sarifPath);
+  const sarifPaths = getSarifFilePaths(inputSarifPath);
 
   logger.startGroup("Uploading results");
-  logger.info(`Processing sarif files: ${JSON.stringify(sarifFiles)}`);
+  logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
 
   const gitHubVersion = await getGitHubVersion();
 
-  try {
+  let sarif: SarifFile;
+
+  if (sarifPaths.length > 1) {
     // Validate that the files we were asked to upload are all valid SARIF files
-    for (const file of sarifFiles) {
-      validateSarifFileSchema(file, logger);
+    for (const sarifPath of sarifPaths) {
+      const parsedSarif = readSarifFile(sarifPath);
+      validateSarifFileSchema(parsedSarif, sarifPath, logger);
     }
-  } catch (e) {
-    if (e instanceof SyntaxError) {
-      throw new InvalidSarifUploadError(e.message);
-    }
-    throw e;
+
+    sarif = await combineSarifFilesUsingCLI(
+      sarifPaths,
+      gitHubVersion,
+      features,
+      logger,
+    );
+  } else {
+    const sarifPath = sarifPaths[0];
+    sarif = readSarifFile(sarifPath);
+    validateSarifFileSchema(sarif, sarifPath, logger);
   }
 
-  let sarif = await combineSarifFilesUsingCLI(
-    sarifFiles,
-    gitHubVersion,
-    features,
-    logger,
-  );
   sarif = filterAlertsByDiffRange(logger, sarif);
   sarif = await fingerprints.addFingerprints(sarif, checkoutPath, logger);
 

@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 3.28.18 - 16 May 2025
 
 - Update default CodeQL bundle version to 2.21.3. [#2893](https://github.com/github/codeql-action/pull/2893)
 - Skip validating SARIF produced by CodeQL for improved performance. [#2894](https://github.com/github/codeql-action/pull/2894)

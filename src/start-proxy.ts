@@ -18,10 +18,10 @@ const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
   python: "python_index",
   ruby: "rubygems_server",
   rust: "cargo_registry",
+  go: "goproxy_server",
   // We do not have an established proxy type for these languages, thus leaving empty.
   actions: "",
   cpp: "",
-  go: "",
   swift: "",
 } as const;
 

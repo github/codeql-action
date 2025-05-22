@@ -1,5 +1,27 @@
+import { canParseUrl } from './canParseUrl'
+import { getValueBySymbol } from './getValueBySymbol'
+
 export interface FetchResponseInit extends ResponseInit {
   url?: string
+}
+
+interface UndiciFetchInternalState {
+  aborted: boolean
+  rangeRequested: boolean
+  timingAllowPassed: boolean
+  requestIncludesCredentials: boolean
+  type: ResponseType
+  status: number
+  statusText: string
+  timingInfo: unknown
+  cacheState: unknown
+  headersList: Record<symbol, Map<string, unknown>>
+  urlList: Array<URL>
+  body?: {
+    stream: ReadableStream
+    source: unknown
+    length: number
+  }
 }
 
 export class FetchResponse extends Response {
@@ -28,20 +50,25 @@ export class FetchResponse extends Response {
   }
 
   static setUrl(url: string | undefined, response: Response): void {
-    if (!url) {
+    if (!url || url === 'about:' || !canParseUrl(url)) {
       return
     }
 
-    if (response.url != '') {
-      return
-    }
+    const state = getValueBySymbol<UndiciFetchInternalState>('state', response)
 
-    Object.defineProperty(response, 'url', {
-      value: url,
-      enumerable: true,
-      configurable: true,
-      writable: false,
-    })
+    if (state) {
+      // In Undici, push the URL to the internal list of URLs.
+      // This will respect the `response.url` getter logic correctly.
+      state.urlList.push(new URL(url))
+    } else {
+      // In other libraries, redefine the `url` property directly.
+      Object.defineProperty(response, 'url', {
+        value: url,
+        enumerable: true,
+        configurable: true,
+        writable: false,
+      })
+    }
   }
 
   /**
@@ -72,12 +99,10 @@ export class FetchResponse extends Response {
        * @note Undici keeps an internal "Symbol(state)" that holds
        * the actual value of response status. Update that in Node.js.
        */
-      const stateSymbol = Object.getOwnPropertySymbols(this).find(
-        (symbol) => symbol.description === 'state'
-      )
-      if (stateSymbol) {
-        const state = Reflect.get(this, stateSymbol) as object
-        Reflect.set(state, 'status', status)
+      const state = getValueBySymbol<UndiciFetchInternalState>('state', this)
+
+      if (state) {
+        state.status = status
       } else {
         Object.defineProperty(this, 'status', {
           value: status,

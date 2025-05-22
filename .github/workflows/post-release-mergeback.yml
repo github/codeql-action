@@ -168,7 +168,7 @@ jobs:
             --draft
 
       - name: Generate token
-        uses: actions/create-github-app-token@v1.12.0
+        uses: actions/create-github-app-token@v2.0.6
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}

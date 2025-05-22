@@ -26,7 +26,6 @@ import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
-import { validateSarifFileSchema } from "./upload-lib";
 import * as util from "./util";
 import { BuildMode } from "./util";
 
@@ -42,6 +41,13 @@ export class CodeQLAnalysisError extends Error {
 }
 
 export interface QueriesStatusReport {
+  /**
+   * Time taken in ms to run queries for actions (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
+  analyze_builtin_queries_actions_duration_ms?: number;
   /**
    * Time taken in ms to run queries for cpp (or undefined if this language was not analyzed).
    *
@@ -98,6 +104,8 @@ export interface QueriesStatusReport {
    */
   analyze_builtin_queries_swift_duration_ms?: number;
 
+  /** Time taken in ms to interpret results for actions (or undefined if this language was not analyzed). */
+  interpret_results_actions_duration_ms?: number;
   /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
   interpret_results_cpp_duration_ms?: number;
   /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
@@ -498,7 +506,13 @@ function writeDiffRangeDataExtensionPack(
     actionsUtil.getTemporaryDirectory(),
     "pr-diff-range",
   );
-  fs.mkdirSync(diffRangeDir);
+
+  // We expect the Actions temporary directory to already exist, so are mainly
+  // using `recursive: true` to avoid errors if the directory already exists,
+  // for example if the analyze Action is run multiple times in the same job.
+  // This is not really something that is supported, but we make use of it in
+  // tests.
+  fs.mkdirSync(diffRangeDir, { recursive: true });
   fs.writeFileSync(
     path.join(diffRangeDir, "qlpack.yml"),
     `
@@ -517,6 +531,7 @@ extensions:
   - addsTo:
       pack: codeql/util
       extensible: restrictAlertsTo
+      checkPresence: false
     data:
 `;
 
@@ -614,7 +629,7 @@ export async function runQueries(
       logger.info(analysisSummary);
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
-        const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile, logger);
+        const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile);
 
         const perQueryAlertCountEventReport: EventReport = {
           event: "codeql database interpret-results",
@@ -666,11 +681,7 @@ export async function runQueries(
   }
 
   /** Get an object with all queries and their counts parsed from a SARIF file path. */
-  function getPerQueryAlertCounts(
-    sarifPath: string,
-    log: Logger,
-  ): Record<string, number> {
-    validateSarifFileSchema(sarifPath, log);
+  function getPerQueryAlertCounts(sarifPath: string): Record<string, number> {
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifPath, "utf8"),
     ) as util.SarifFile;

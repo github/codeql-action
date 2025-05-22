@@ -9,6 +9,28 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
   your `tools:` property to a specific version of the CodeQL CLI earlier than v2.20.4, you will need to update to at least CodeQL v2.20.4 or disable
   `actions` analysis.
 
+## 3.28.18 - 16 May 2025
+
+- Update default CodeQL bundle version to 2.21.3. [#2893](https://github.com/github/codeql-action/pull/2893)
+- Skip validating SARIF produced by CodeQL for improved performance. [#2894](https://github.com/github/codeql-action/pull/2894)
+- The number of threads and amount of RAM used by CodeQL can now be set via the `CODEQL_THREADS` and `CODEQL_RAM` runner environment variables. If set, these environment variables override the `threads` and `ram` inputs respectively. [#2891](https://github.com/github/codeql-action/pull/2891)
+
+## 3.28.17 - 02 May 2025
+
+- Update default CodeQL bundle version to 2.21.2. [#2872](https://github.com/github/codeql-action/pull/2872)
+
+## 3.28.16 - 23 Apr 2025
+
+- Update default CodeQL bundle version to 2.21.1. [#2863](https://github.com/github/codeql-action/pull/2863)
+
+## 3.28.15 - 07 Apr 2025
+
+- Fix bug where the action would fail if it tried to produce a debug artifact with more than 65535 files. [#2842](https://github.com/github/codeql-action/pull/2842)
+
+## 3.28.14 - 07 Apr 2025
+
+- Update default CodeQL bundle version to 2.21.0. [#2838](https://github.com/github/codeql-action/pull/2838)
+
 ## 3.28.13 - 24 Mar 2025
 
 No user facing changes.

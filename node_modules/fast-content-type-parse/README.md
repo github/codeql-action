@@ -4,7 +4,7 @@
 
 [![NPM version](https://img.shields.io/npm/v/fast-content-type-parse.svg?style=flat)](https://www.npmjs.com/package/fast-content-type-parse)
 [![NPM downloads](https://img.shields.io/npm/dm/fast-content-type-parse.svg?style=flat)](https://www.npmjs.com/package/fast-content-type-parse)
-[![CI](https://github.com/fastify/fast-content-type-parse/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fastify/fast-content-type-parse/actions/workflows/ci.yml)
+[![CI](https://github.com/fastify/fast-content-type-parse/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fastify/fast-content-type-parse/actions/workflows/ci.yml)
 [![neostandard javascript style](https://img.shields.io/badge/code_style-neostandard-brightgreen?style=flat)](https://github.com/neostandard/neostandard)
 [![Security Responsible Disclosure](https://img.shields.io/badge/Security-Responsible%20Disclosure-yellow.svg)](https://github.com/fastify/.github/blob/main/SECURITY.md)
 

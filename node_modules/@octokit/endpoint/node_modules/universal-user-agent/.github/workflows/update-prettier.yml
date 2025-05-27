@@ -1,5 +1,5 @@
 name: Update Prettier
-"on":
+on:
   push:
     branches:
       - renovate/prettier-*

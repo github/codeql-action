@@ -2,8 +2,6 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: "/"
-    reviewers:
-      - "github/codeql-production-shield"
     schedule:
       interval: weekly
     labels:
@@ -26,8 +24,6 @@ updates:
           - "*"
   - package-ecosystem: github-actions
     directory: "/"
-    reviewers:
-      - "github/codeql-production-shield"
     schedule:
       interval: weekly
     groups:
@@ -36,8 +32,6 @@ updates:
           - "*"
   - package-ecosystem: github-actions
     directory: "/.github/actions/setup-swift/" # All subdirectories outside of "/.github/workflows" must be explicitly included.
-    reviewers:
-      - "github/codeql-production-shield"
     schedule:
       interval: weekly
     groups:

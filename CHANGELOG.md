@@ -8,6 +8,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
   The `actions` extractor has been included in the CodeQL CLI since v2.20.6. If your workflow has enabled the `actions` language _and_ you have pinned
   your `tools:` property to a specific version of the CodeQL CLI earlier than v2.20.6, you will need to update to at least CodeQL v2.20.6 or disable
   `actions` analysis.
+- Update default CodeQL bundle version to 2.21.4. [#2910](https://github.com/github/codeql-action/pull/2910)
 
 ## 3.28.18 - 16 May 2025
 

@@ -1,7 +1,7 @@
 name: "C/C++: autoinstalling dependencies is skipped (macOS)"
 description: "Checks that running C/C++ autobuild with autoinstalling dependencies explicitly enabled is a no-op on macOS"
 operatingSystems: ["macos"]
-versions: ["nightly-latest"]  # This is not released yet, will come with 2.15.2
+versions: ["linked", "nightly-latest"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:

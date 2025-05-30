@@ -37,7 +37,7 @@ export async function determineAutobuildLanguages(
     async (language) => await codeql.isTracedLanguage(language),
   );
 
-  if (!autobuildLanguages) {
+  if (!autobuildLanguages.length) {
     logger.info(
       "None of the languages in this project require extra build steps",
     );

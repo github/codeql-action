@@ -11,7 +11,7 @@ import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { getGitRoot } from "./git-utils";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import {
   CODEQL_OVERLAY_MINIMUM_VERSION,
@@ -162,7 +162,7 @@ export async function checkInstallPython311(
   codeql: CodeQL,
 ) {
   if (
-    languages.includes(Language.python) &&
+    languages.includes(KnownLanguage.python) &&
     process.platform === "win32" &&
     !(await codeql.getVersion()).features?.supportsPython312
   ) {

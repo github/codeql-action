@@ -20,7 +20,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
@@ -163,12 +163,12 @@ export async function runExtraction(
 
     if (await shouldExtractLanguage(codeql, config, language)) {
       logger.startGroup(`Extracting ${language}`);
-      if (language === Language.python) {
+      if (language === String(KnownLanguage.python)) {
         await setupPythonExtractor(logger);
       }
       if (config.buildMode) {
         if (
-          language === Language.cpp &&
+          language === String(KnownLanguage.cpp) &&
           config.buildMode === BuildMode.Autobuild
         ) {
           await setupCppAutobuild(codeql, logger);
@@ -178,7 +178,10 @@ export async function runExtraction(
         // database scratch directory by default. For dependency caching purposes, we want
         // a stable path that caches can be restored into and that we can cache at the
         // end of the workflow (i.e. that does not get removed when the scratch directory is).
-        if (language === Language.java && config.buildMode === BuildMode.None) {
+        if (
+          language === String(KnownLanguage.java) &&
+          config.buildMode === BuildMode.None
+        ) {
           process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
             getJavaTempDependencyDir();
         }
@@ -759,7 +762,7 @@ export async function warnIfGoInstalledAfterInit(
 
       addDiagnostic(
         config,
-        Language.go,
+        KnownLanguage.go,
         makeDiagnostic(
           "go/workflow/go-installed-after-codeql-init",
           "Go was installed after the `codeql-action/init` Action was run",

@@ -1225,3 +1225,19 @@ export async function isBinaryAccessible(
     return false;
   }
 }
+
+export async function asyncFilter<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<T[]> {
+  const results = await Promise.all(array.map(predicate));
+  return array.filter((_, index) => results[index]);
+}
+
+export async function asyncSome<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<boolean> {
+  const results = await Promise.all(array.map(predicate));
+  return results.some((result) => result);
+}

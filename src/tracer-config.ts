@@ -3,16 +3,15 @@ import * as path from "path";
 
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
-import { isTracedLanguage } from "./languages";
 import { Logger } from "./logging";
-import { BuildMode } from "./util";
+import { asyncSome, BuildMode } from "./util";
 
 export type TracerConfig = {
   env: { [key: string]: string };
 };
 
 export async function shouldEnableIndirectTracing(
-  _codeql: CodeQL,
+  codeql: CodeQL,
   config: Config,
 ): Promise<boolean> {
   // We don't need to trace build mode none, or languages which unconditionally don't need tracing.
@@ -27,7 +26,7 @@ export async function shouldEnableIndirectTracing(
   }
 
   // Otherwise, use direct tracing if any of the languages need to be traced.
-  return config.languages.some((l) => isTracedLanguage(l));
+  return asyncSome(config.languages, (l) => codeql.isTracedLanguage(l));
 }
 
 /**

@@ -49,17 +49,3 @@ export function parseLanguage(language: string): Language | undefined {
 
   return undefined;
 }
-
-export function isTracedLanguage(language: Language): boolean {
-  return [
-    Language.cpp,
-    Language.csharp,
-    Language.go,
-    Language.java,
-    Language.swift,
-  ].includes(language);
-}
-
-export function isScannedLanguage(language: Language): boolean {
-  return !isTracedLanguage(language);
-}

@@ -1,11 +1,6 @@
 import test from "ava";
 
-import {
-  Language,
-  isScannedLanguage,
-  isTracedLanguage,
-  parseLanguage,
-} from "./languages";
+import { Language, parseLanguage } from "./languages";
 import { setupTests } from "./testing-utils";
 
 setupTests(test);
@@ -35,30 +30,4 @@ test("parseLanguage", async (t) => {
   t.deepEqual(parseLanguage("foo"), undefined);
   t.deepEqual(parseLanguage(" "), undefined);
   t.deepEqual(parseLanguage(""), undefined);
-});
-
-test("isTracedLanguage", async (t) => {
-  t.true(isTracedLanguage(Language.cpp));
-  t.true(isTracedLanguage(Language.csharp));
-  t.true(isTracedLanguage(Language.go));
-  t.true(isTracedLanguage(Language.java));
-  t.true(isTracedLanguage(Language.swift));
-
-  t.false(isTracedLanguage(Language.javascript));
-  t.false(isTracedLanguage(Language.python));
-  t.false(isTracedLanguage(Language.ruby));
-  t.false(isTracedLanguage(Language.rust));
-});
-
-test("isScannedLanguage", async (t) => {
-  t.false(isScannedLanguage(Language.cpp));
-  t.false(isScannedLanguage(Language.csharp));
-  t.false(isScannedLanguage(Language.go));
-  t.false(isScannedLanguage(Language.java));
-  t.false(isScannedLanguage(Language.swift));
-
-  t.true(isScannedLanguage(Language.javascript));
-  t.true(isScannedLanguage(Language.python));
-  t.true(isScannedLanguage(Language.ruby));
-  t.true(isScannedLanguage(Language.rust));
 });

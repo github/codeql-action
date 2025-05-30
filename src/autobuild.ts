@@ -7,13 +7,13 @@ import * as configUtils from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
-import { isTracedLanguage, Language } from "./languages";
+import { Language } from "./languages";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
-import { BuildMode } from "./util";
+import { asyncFilter, BuildMode } from "./util";
 
 export async function determineAutobuildLanguages(
-  _codeql: CodeQL,
+  codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
 ): Promise<Language[] | undefined> {
@@ -32,8 +32,9 @@ export async function determineAutobuildLanguages(
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got
   // them from the GitHub API, so try to build the first language on the list.
-  const autobuildLanguages = config.languages.filter((l) =>
-    isTracedLanguage(l),
+  const autobuildLanguages = await asyncFilter(
+    config.languages,
+    async (language) => await codeql.isTracedLanguage(language),
   );
 
   if (!autobuildLanguages) {

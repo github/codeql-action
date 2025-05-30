@@ -20,7 +20,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
-import { isScannedLanguage, Language } from "./languages";
+import { Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
@@ -161,7 +161,7 @@ export async function runExtraction(
       continue;
     }
 
-    if (shouldExtractLanguage(config, language)) {
+    if (await shouldExtractLanguage(codeql, config, language)) {
       logger.startGroup(`Extracting ${language}`);
       if (language === Language.python) {
         await setupPythonExtractor(logger);
@@ -192,15 +192,16 @@ export async function runExtraction(
   }
 }
 
-function shouldExtractLanguage(
+async function shouldExtractLanguage(
+  codeql: CodeQL,
   config: configUtils.Config,
   language: Language,
-): boolean {
+): Promise<boolean> {
   return (
     config.buildMode === BuildMode.None ||
     (config.buildMode === BuildMode.Autobuild &&
       process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") ||
-    (!config.buildMode && isScannedLanguage(language))
+    (!config.buildMode && (await codeql.isScannedLanguage(language)))
   );
 }
 

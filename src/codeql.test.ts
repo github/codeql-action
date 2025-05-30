@@ -18,7 +18,7 @@ import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
 import { FeatureEnablement } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { ToolsSource } from "./setup-codeql";
@@ -47,7 +47,7 @@ test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 
   stubConfig = createTestConfig({
-    languages: [Language.cpp],
+    languages: [KnownLanguage.cpp],
   });
 });
 
@@ -116,7 +116,7 @@ async function stubCodeql(): Promise<codeql.CodeQL> {
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon
     .stub(codeqlObject, "isTracedLanguage")
-    .withArgs(Language.cpp)
+    .withArgs(KnownLanguage.cpp)
     .resolves(true);
   return codeqlObject;
 }
@@ -907,7 +907,7 @@ test("runTool summarizes autobuilder errors", async (t) => {
   sinon.stub(io, "which").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
+    async () => await codeqlObject.runAutobuild(stubConfig, KnownLanguage.java),
     {
       instanceOf: util.ConfigurationError,
       message:
@@ -933,7 +933,7 @@ test("runTool truncates long autobuilder errors", async (t) => {
   sinon.stub(io, "which").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
+    async () => await codeqlObject.runAutobuild(stubConfig, KnownLanguage.java),
     {
       instanceOf: util.ConfigurationError,
       message:

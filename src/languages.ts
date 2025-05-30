@@ -1,10 +1,12 @@
 /**
  * A CodeQL language.
  *
- * To facilitate adding new languages, this is _not_ an exhaustive list of
- * languages supported by CodeQL.
+ * To facilitate adding new languages, this is a typedef rather than an
+ * exhaustive list of languages supported by CodeQL.
  */
-export enum Language {
+export type Language = string;
+
+export enum KnownLanguage {
   csharp = "csharp",
   cpp = "cpp",
   go = "go",

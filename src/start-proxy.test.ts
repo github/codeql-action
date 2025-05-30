@@ -1,6 +1,6 @@
 import test from "ava";
 
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import * as startProxyExports from "./start-proxy";
 import { parseLanguage } from "./start-proxy";
@@ -118,24 +118,24 @@ test("getCredentials throws an error when non-printable characters are used", as
 
 test("parseLanguage", async (t) => {
   // Exact matches
-  t.deepEqual(parseLanguage("csharp"), Language.csharp);
-  t.deepEqual(parseLanguage("cpp"), Language.cpp);
-  t.deepEqual(parseLanguage("go"), Language.go);
-  t.deepEqual(parseLanguage("java"), Language.java);
-  t.deepEqual(parseLanguage("javascript"), Language.javascript);
-  t.deepEqual(parseLanguage("python"), Language.python);
-  t.deepEqual(parseLanguage("rust"), Language.rust);
+  t.deepEqual(parseLanguage("csharp"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("cpp"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("go"), KnownLanguage.go);
+  t.deepEqual(parseLanguage("java"), KnownLanguage.java);
+  t.deepEqual(parseLanguage("javascript"), KnownLanguage.javascript);
+  t.deepEqual(parseLanguage("python"), KnownLanguage.python);
+  t.deepEqual(parseLanguage("rust"), KnownLanguage.rust);
 
   // Aliases
-  t.deepEqual(parseLanguage("c"), Language.cpp);
-  t.deepEqual(parseLanguage("c++"), Language.cpp);
-  t.deepEqual(parseLanguage("c#"), Language.csharp);
-  t.deepEqual(parseLanguage("kotlin"), Language.java);
-  t.deepEqual(parseLanguage("typescript"), Language.javascript);
+  t.deepEqual(parseLanguage("c"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("c++"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("c#"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("kotlin"), KnownLanguage.java);
+  t.deepEqual(parseLanguage("typescript"), KnownLanguage.javascript);
 
   // spaces and case-insensitivity
-  t.deepEqual(parseLanguage("  \t\nCsHaRp\t\t"), Language.csharp);
-  t.deepEqual(parseLanguage("  \t\nkOtLin\t\t"), Language.java);
+  t.deepEqual(parseLanguage("  \t\nCsHaRp\t\t"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("  \t\nkOtLin\t\t"), KnownLanguage.java);
 
   // Not matches
   t.deepEqual(parseLanguage("foo"), undefined);

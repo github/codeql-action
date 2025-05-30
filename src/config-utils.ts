@@ -10,7 +10,7 @@ import { CachingKind, getCachingKind } from "./caching-utils";
 import { CodeQL, getSupportedLanguageMap } from "./codeql";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
@@ -313,7 +313,7 @@ export async function getLanguages(
   );
 
   const languageMap = await getSupportedLanguageMap(codeql);
-  const languagesSet = new Set<string>();
+  const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
   // Make sure they are supported
@@ -344,8 +344,7 @@ export async function getLanguages(
     logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
-  // TODO: use a typealias for Language and rename Language to KnownLanguage
-  return languages as Language[];
+  return languages;
 }
 
 /**
@@ -1127,7 +1126,7 @@ export async function parseBuildModeInput(
   }
 
   if (
-    languages.includes(Language.csharp) &&
+    languages.includes(KnownLanguage.csharp) &&
     (await features.getValue(Feature.DisableCsharpBuildless))
   ) {
     logger.warning(
@@ -1137,7 +1136,7 @@ export async function parseBuildModeInput(
   }
 
   if (
-    languages.includes(Language.java) &&
+    languages.includes(KnownLanguage.java) &&
     (await features.getValue(Feature.DisableJavaBuildlessEnabled))
   ) {
     logger.warning(

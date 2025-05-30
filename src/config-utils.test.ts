@@ -16,7 +16,7 @@ import {
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -353,7 +353,7 @@ test("load non-empty input", async (t) => {
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
-      languages: [Language.javascript],
+      languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
       originalUserInput: {
         name: "my config",
@@ -700,7 +700,7 @@ const invalidPackNameMacro = test.macro({
     parsePacksErrorMacro.exec(
       t,
       name,
-      [Language.cpp],
+      [KnownLanguage.cpp],
       new RegExp(`^"${name}" is not a valid pack$`),
     ),
   title: (_providedTitle: string | undefined, arg: string | undefined) =>
@@ -708,23 +708,23 @@ const invalidPackNameMacro = test.macro({
 });
 
 test("no packs", parsePacksMacro, "", [], undefined);
-test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [Language.cpp], {
-  [Language.cpp]: ["a/b", "c/d@1.2.3"],
+test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [KnownLanguage.cpp], {
+  [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
 });
 test(
   "two packs with spaces",
   parsePacksMacro,
   " a/b , c/d@1.2.3 ",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: ["a/b", "c/d@1.2.3"],
+    [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
   },
 );
 test(
   "two packs with language",
   parsePacksErrorMacro,
   "a/b,c/d@1.2.3",
-  [Language.cpp, Language.java],
+  [KnownLanguage.cpp, KnownLanguage.java],
   new RegExp(
     "Cannot specify a 'packs' input in a multi-language analysis. " +
       "Use a codeql-config.yml file instead and specify packs by language.",
@@ -752,9 +752,9 @@ test(
     // (globbing is not done)
     "c/d@1.2.3:+*)_(",
   ].join(","),
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       "c/d@1.0",
       "c/d@~1.0.0",
       "c/d@~1.0.0:a/b",
@@ -866,7 +866,7 @@ test(
   "All empty",
   undefined,
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
@@ -881,7 +881,7 @@ test(
   "With queries",
   undefined,
   " a, b , c, d",
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     queriesInputCombines: false,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
@@ -896,7 +896,7 @@ test(
   "With queries combining",
   undefined,
   "   +   a, b , c, d ",
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     queriesInputCombines: true,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
@@ -911,7 +911,7 @@ test(
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
@@ -926,7 +926,7 @@ test(
   "With packs combining",
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
@@ -966,7 +966,7 @@ test(
   "Plus (+) with nothing else (queries)",
   undefined,
   "   +   ",
-  [Language.javascript],
+  [KnownLanguage.javascript],
   /The workflow property "queries" is invalid/,
 );
 
@@ -975,7 +975,7 @@ test(
   "Plus (+) with nothing else (packs)",
   "   +   ",
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   /The workflow property "packs" is invalid/,
 );
 
@@ -984,7 +984,7 @@ test(
   "Packs input with multiple languages",
   "   +  a/b, c/d ",
   undefined,
-  [Language.javascript, Language.java],
+  [KnownLanguage.javascript, KnownLanguage.java],
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
 
@@ -1002,7 +1002,7 @@ test(
   "Invalid packs",
   " a-pack-without-a-scope ",
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   /"a-pack-without-a-scope" is not a valid pack/,
 );
 
@@ -1101,10 +1101,10 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
       betterResolveLanguages: () =>
         Promise.resolve({
           aliases: {
-            "c#": Language.csharp,
-            c: Language.cpp,
-            kotlin: Language.java,
-            typescript: Language.javascript,
+            "c#": KnownLanguage.csharp,
+            c: KnownLanguage.cpp,
+            kotlin: KnownLanguage.java,
+            typescript: KnownLanguage.javascript,
           },
           extractors: {
             cpp: [stubExtractorEntry],
@@ -1146,12 +1146,12 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 for (const { displayName, language, feature } of [
   {
     displayName: "Java",
-    language: Language.java,
+    language: KnownLanguage.java,
     feature: Feature.DisableJavaBuildlessEnabled,
   },
   {
     displayName: "C#",
-    language: Language.csharp,
+    language: KnownLanguage.csharp,
     feature: Feature.DisableCsharpBuildless,
   },
 ]) {
@@ -1171,7 +1171,7 @@ for (const { displayName, language, feature } of [
     const messages: LoggedMessage[] = [];
     const buildMode = await configUtils.parseBuildModeInput(
       "none",
-      [Language.python],
+      [KnownLanguage.python],
       createFeatures([feature]),
       getRecordingLogger(messages),
     );

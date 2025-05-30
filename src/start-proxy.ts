@@ -1,4 +1,4 @@
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ConfigurationError } from "./util";
 
@@ -20,14 +20,14 @@ export type Credential = {
  * Action since this Action does not use CodeQL, so we're accepting some hardcoding
  * for this Action.
  */
-const LANGUAGE_ALIASES: { [lang: string]: Language } = {
-  c: Language.cpp,
-  "c++": Language.cpp,
-  "c#": Language.csharp,
-  kotlin: Language.java,
-  typescript: Language.javascript,
-  "javascript-typescript": Language.javascript,
-  "java-kotlin": Language.java,
+const LANGUAGE_ALIASES: { [lang: string]: KnownLanguage } = {
+  c: KnownLanguage.cpp,
+  "c++": KnownLanguage.cpp,
+  "c#": KnownLanguage.csharp,
+  kotlin: KnownLanguage.java,
+  typescript: KnownLanguage.javascript,
+  "javascript-typescript": KnownLanguage.javascript,
+  "java-kotlin": KnownLanguage.java,
 };
 
 /**
@@ -36,13 +36,13 @@ const LANGUAGE_ALIASES: { [lang: string]: Language } = {
  * Exported for testing, do not use this outside of the start-proxy Action
  * (see the `LANGUAGE_ALIASES` docstring for more info).
  */
-export function parseLanguage(language: string): Language | undefined {
+export function parseLanguage(language: string): KnownLanguage | undefined {
   // Normalize to lower case
   language = language.trim().toLowerCase();
 
   // See if it's an exact match
-  if (language in Language) {
-    return language as Language;
+  if (language in KnownLanguage) {
+    return language as KnownLanguage;
   }
 
   // Check language aliases, but return the original language name,
@@ -54,7 +54,7 @@ export function parseLanguage(language: string): Language | undefined {
   return undefined;
 }
 
-const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<Language, string>> = {
+const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string>> = {
   java: "maven_repository",
   csharp: "nuget_feed",
   javascript: "npm_registry",

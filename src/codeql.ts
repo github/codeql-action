@@ -1370,3 +1370,21 @@ async function getJobRunUuidSarifOptions(codeql: CodeQL) {
     ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
     : [];
 }
+
+export async function getSupportedLanguageMap(
+  codeql: CodeQL,
+): Promise<Record<string, string>> {
+  const resolveResult = await codeql.betterResolveLanguages();
+  const supportedLanguages: Record<string, string> = {};
+  // Populate canonical language names
+  for (const extractor of Object.keys(resolveResult.extractors)) {
+    supportedLanguages[extractor] = extractor;
+  }
+  // Populate language aliases
+  if (resolveResult.aliases) {
+    for (const [alias, extractor] of Object.entries(resolveResult.aliases)) {
+      supportedLanguages[alias] = extractor;
+    }
+  }
+  return supportedLanguages;
+}

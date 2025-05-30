@@ -122,6 +122,14 @@ test("load empty config", async (t) => {
     const languages = "javascript,python";
 
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -166,6 +174,14 @@ test("loading config saves config", async (t) => {
     const logger = getRunnerLogger(true);
 
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -297,6 +313,13 @@ test("load non-existent input", async (t) => {
 test("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -421,6 +444,14 @@ test("Using config input and file together, config input should be used.", async
       extraSearchPath: string | undefined;
     }> = [];
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries(
         queries: string[],
         extraSearchPath: string | undefined,
@@ -454,6 +485,13 @@ test("Using config input and file together, config input should be used.", async
 test("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -1006,7 +1044,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 [
   {
     name: "languages from input",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "jAvAscript, \n jaVa",
     languagesInRepository: ["SwiFt", "other"],
     expectedLanguages: ["javascript", "java"],
@@ -1014,7 +1051,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "languages from github api",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "",
     languagesInRepository: ["  jAvAscript\n \t", " jaVa", "SwiFt", "other"],
     expectedLanguages: ["javascript", "java"],
@@ -1022,7 +1058,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "aliases from input",
-    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
     languagesInput: "  typEscript\n \t, C#, c , KoTlin",
     languagesInRepository: ["SwiFt", "other"],
     expectedLanguages: ["javascript", "csharp", "cpp", "java"],
@@ -1030,7 +1065,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "duplicate languages from input",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "jAvAscript, \n jaVa, kotlin, typescript",
     languagesInRepository: ["SwiFt", "other"],
     expectedLanguages: ["javascript", "java"],
@@ -1038,7 +1072,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "aliases from github api",
-    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
     languagesInput: "",
     languagesInRepository: ["  typEscript\n \t", " C#", "c", "other"],
     expectedLanguages: ["javascript", "csharp", "cpp"],
@@ -1046,7 +1079,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "no languages",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "",
     languagesInRepository: [],
     expectedApiCall: true,
@@ -1054,7 +1086,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "unrecognized languages from input",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "a, b, c, javascript",
     languagesInRepository: [],
     expectedApiCall: false,
@@ -1063,15 +1094,26 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 ].forEach((args) => {
   test(`getLanguages: ${args.name}`, async (t) => {
     const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
-    const languages = args.codeqlResolvedLanguages.reduce(
-      (acc, lang) => ({
-        ...acc,
-        [lang]: true,
-      }),
-      {},
-    );
+    const stubExtractorEntry = {
+      extractor_root: "",
+    };
     const codeQL = setCodeQL({
-      resolveLanguages: () => Promise.resolve(languages),
+      betterResolveLanguages: () =>
+        Promise.resolve({
+          aliases: {
+            "c#": Language.csharp,
+            c: Language.cpp,
+            kotlin: Language.java,
+            typescript: Language.javascript,
+          },
+          extractors: {
+            cpp: [stubExtractorEntry],
+            csharp: [stubExtractorEntry],
+            java: [stubExtractorEntry],
+            javascript: [stubExtractorEntry],
+            python: [stubExtractorEntry],
+          },
+        }),
     });
 
     if (args.expectedLanguages) {

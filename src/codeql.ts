@@ -582,10 +582,7 @@ export async function getCodeQLForCmd(
         extraArgs.push("--external-repository-token-stdin");
       }
 
-      if (
-        config.buildMode !== undefined &&
-        (await this.supportsFeature(ToolsFeature.BuildModeOption))
-      ) {
+      if (config.buildMode !== undefined) {
         extraArgs.push(`--build-mode=${config.buildMode}`);
       }
       if (qlconfigFile !== undefined) {

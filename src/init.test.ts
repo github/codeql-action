@@ -3,12 +3,7 @@ import path from "path";
 
 import test from "ava";
 
-import { Config } from "./config-utils";
-import {
-  cleanupDatabaseClusterDirectory,
-  printPathFiltersWarning,
-} from "./init";
-import { Language } from "./languages";
+import { cleanupDatabaseClusterDirectory } from "./init";
 import {
   LoggedMessage,
   createTestConfig,
@@ -18,30 +13,6 @@ import {
 import { ConfigurationError, withTmpDir } from "./util";
 
 setupTests(test);
-
-test("printPathFiltersWarning does not trigger when 'paths' and 'paths-ignore' are undefined", async (t) => {
-  const messages: LoggedMessage[] = [];
-  printPathFiltersWarning(
-    {
-      languages: [Language.cpp],
-      originalUserInput: {},
-    } as Partial<Config> as Config,
-    getRecordingLogger(messages),
-  );
-  t.is(messages.length, 0);
-});
-
-test("printPathFiltersWarning does not trigger when 'paths' and 'paths-ignore' are empty", async (t) => {
-  const messages: LoggedMessage[] = [];
-  printPathFiltersWarning(
-    {
-      languages: [Language.cpp],
-      originalUserInput: { paths: [], "paths-ignore": [] },
-    } as Partial<Config> as Config,
-    getRecordingLogger(messages),
-  );
-  t.is(messages.length, 0);
-});
 
 test("cleanupDatabaseClusterDirectory cleans up where possible", async (t) => {
   await withTmpDir(async (tmpDir: string) => {

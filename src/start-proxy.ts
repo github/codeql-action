@@ -11,7 +11,7 @@ export type Credential = {
   token?: string;
 };
 
-const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
+const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<Language, string>> = {
   java: "maven_repository",
   csharp: "nuget_feed",
   javascript: "npm_registry",
@@ -19,10 +19,6 @@ const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
   ruby: "rubygems_server",
   rust: "cargo_registry",
   go: "goproxy_server",
-  // We do not have an established proxy type for these languages, thus leaving empty.
-  actions: "",
-  cpp: "",
-  swift: "",
 } as const;
 
 // getCredentials returns registry credentials from action inputs.

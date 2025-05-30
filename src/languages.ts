@@ -1,6 +1,10 @@
-// All the languages supported by CodeQL
+/**
+ * A CodeQL language.
+ *
+ * To facilitate adding new languages, this is _not_ an exhaustive list of
+ * languages supported by CodeQL.
+ */
 export enum Language {
-  actions = "actions",
   csharp = "csharp",
   cpp = "cpp",
   go = "go",

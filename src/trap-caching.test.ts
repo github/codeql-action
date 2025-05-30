@@ -15,7 +15,7 @@ import {
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
   createFeatures,
@@ -41,7 +41,7 @@ const stubCodeql = setCodeQL({
   async betterResolveLanguages() {
     return {
       extractors: {
-        [Language.javascript]: [
+        [KnownLanguage.javascript]: [
           {
             extractor_root: "some_root",
             extractor_options: {
@@ -65,7 +65,7 @@ const stubCodeql = setCodeQL({
             },
           },
         ],
-        [Language.cpp]: [
+        [KnownLanguage.cpp]: [
           {
             extractor_root: "other_root",
           },
@@ -76,7 +76,7 @@ const stubCodeql = setCodeQL({
 });
 
 const testConfigWithoutTmpDir = createTestConfig({
-  languages: [Language.javascript, Language.cpp],
+  languages: [KnownLanguage.javascript, KnownLanguage.cpp],
   trapCaches: {
     javascript: "/some/cache/dir",
   },
@@ -84,7 +84,7 @@ const testConfigWithoutTmpDir = createTestConfig({
 
 function getTestConfigWithTempDir(tempDir: string): configUtils.Config {
   return createTestConfig({
-    languages: [Language.javascript, Language.ruby],
+    languages: [KnownLanguage.javascript, KnownLanguage.ruby],
     tempDir,
     dbLocation: path.resolve(tempDir, "codeql_databases"),
     trapCaches: {
@@ -100,7 +100,7 @@ test("check flags for JS, analyzing default branch", async (t) => {
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
     const result = await getTrapCachingExtractorConfigArgsForLang(
       config,
-      Language.javascript,
+      KnownLanguage.javascript,
     );
     t.deepEqual(result, [
       `-O=javascript.trap.cache.dir=${path.resolve(tmpDir, "jsCache")}`,
@@ -131,10 +131,10 @@ test("get languages that support TRAP caching", async (t) => {
   const logger = getRecordingLogger(loggedMessages);
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
     stubCodeql,
-    [Language.javascript, Language.cpp],
+    [KnownLanguage.javascript, KnownLanguage.cpp],
     logger,
   );
-  t.deepEqual(languagesSupportingCaching, [Language.javascript]);
+  t.deepEqual(languagesSupportingCaching, [KnownLanguage.javascript]);
 });
 
 test("upload cache key contains right fields", async (t) => {
@@ -178,7 +178,7 @@ test("download cache looks for the right key and creates dir", async (t) => {
     );
     await downloadTrapCaches(
       stubCodeql,
-      [Language.javascript, Language.cpp],
+      [KnownLanguage.javascript, KnownLanguage.cpp],
       logger,
     );
     t.assert(

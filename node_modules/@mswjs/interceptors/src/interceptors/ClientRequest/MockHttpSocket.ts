@@ -181,6 +181,20 @@ export class MockHttpSocket extends MockSocket {
     const socket = this.createConnection()
     this.originalSocket = socket
 
+    /**
+     * @note Inherit the original socket's connection handle.
+     * Without this, each push to the mock socket results in a
+     * new "connection" listener being added (i.e. buffering pushes).
+     * @see https://github.com/nodejs/node/blob/b18153598b25485ce4f54d0c5cb830a9457691ee/lib/net.js#L734
+     */
+    if ('_handle' in socket) {
+      Object.defineProperty(this, '_handle', {
+        value: socket._handle,
+        enumerable: true,
+        writable: true,
+      })
+    }
+
     // If the developer destroys the socket, destroy the original connection.
     this.once('error', (error) => {
       socket.destroy(error)

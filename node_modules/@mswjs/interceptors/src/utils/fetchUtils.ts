@@ -90,8 +90,9 @@ export class FetchResponse extends Response {
     const finalBody = FetchResponse.isResponseWithBody(status) ? body : null
 
     super(finalBody, {
-      ...init,
       status: safeStatus,
+      statusText: init.statusText,
+      headers: init.headers,
     })
 
     if (status !== safeStatus) {

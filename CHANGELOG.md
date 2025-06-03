@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 3.28.19 - 03 Jun 2025
 
 - The CodeQL Action no longer includes its own copy of the extractor for the `actions` language, which is currently in public preview.

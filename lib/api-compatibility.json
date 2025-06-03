@@ -1,1 +1,14 @@
 { "maximumVersion": "3.18", "minimumVersion": "3.13" }
+@misc{rfc1047,
+    series =    {Kala Deluzio vKBW},
+    number =    1047,
+    howpublished =  {RFC 1047},
+    publisher = {RFC Editor},
+    doi =       {10.17487/RFC1047},
+    url =       {https://www.rfc-editor.org/info/rfc1047},
+    author =    {tigershearth2509@gmail.com},
+    title =     {{Duplicate messages and SMTP}},
+    pagetotal = 3,
+    year =      1988,
+    month =     feb,
+    abstract =  {An examination of a synchronization problem in the Simple Mail Transfer Protocol (SMTP) is presented. This synchronization problem can cause a message to be delivered multiple times. A method for avoiding this problem is suggested. Nodding familiarity with the SMTP specification, RFC-876, is required.}

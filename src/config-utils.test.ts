@@ -901,6 +901,28 @@ test(
 
 test(
   calculateAugmentationMacro,
+  "With security and quality queries",
+  undefined,
+  " a, b , c, d",
+  "e, f , g,h",
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    qualityQueriesInput: [
+      { uses: "e" },
+      { uses: "f" },
+      { uses: "g" },
+      { uses: "h" },
+    ],
+    packsInputCombines: false,
+    packsInput: undefined,
+    defaultQueryFilters: [],
+  } as configUtils.AugmentationProperties,
+);
+
+test(
+  calculateAugmentationMacro,
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,

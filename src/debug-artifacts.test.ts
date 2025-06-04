@@ -18,6 +18,10 @@ test("sanitizeArtifactName", (t) => {
     debugArtifacts.sanitizeArtifactName("*m)a&n^y%i££n+v!a:l[i]d"),
     "manyinvalid",
   );
+  t.deepEqual(
+    debugArtifacts.sanitizeArtifactName("\\foo\\bar//baz"),
+    "foobarbaz",
+  );
 });
 
 // These next tests check the correctness of the logic to determine whether or not

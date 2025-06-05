@@ -8,7 +8,7 @@ import * as actionsUtil from "./actions-util";
 import { exportedForTesting, runQueries } from "./analyze";
 import { setCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
   setupTests,
@@ -36,7 +36,7 @@ test("status report fields", async (t) => {
     const threadsFlag = "";
     sinon.stub(uploadLib, "validateSarifFileSchema");
 
-    for (const language of Object.values(Language)) {
+    for (const language of Object.values(KnownLanguage)) {
       setCodeQL({
         databaseRunQueries: async () => {},
         packDownload: async () => ({ packs: [] }),

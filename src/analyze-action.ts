@@ -25,7 +25,7 @@ import { uploadDependencyCaches } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
@@ -95,7 +95,10 @@ async function sendStatusReport(
         ...report,
         trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
         trap_cache_upload_size_bytes: Math.round(
-          await getTotalCacheSize(Object.values(config.trapCaches), logger),
+          await getTotalCacheSize(
+            Object.values(config.trapCaches).filter((x) => x !== undefined),
+            logger,
+          ),
         ),
       };
       await statusReport.sendStatusReport(trapCacheUploadStatusReport);
@@ -118,8 +121,11 @@ function hasBadExpectErrorInput(): boolean {
  * indicating whether Go extraction has extracted at least one file.
  */
 function doesGoExtractionOutputExist(config: Config): boolean {
-  const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
-  const trapDirectory = path.join(golangDbDirectory, "trap", Language.go);
+  const golangDbDirectory = util.getCodeQLDatabasePath(
+    config,
+    KnownLanguage.go,
+  );
+  const trapDirectory = path.join(golangDbDirectory, "trap", KnownLanguage.go);
   return (
     fs.existsSync(trapDirectory) &&
     fs
@@ -151,7 +157,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * whether any extraction output already exists for Go.
  */
 async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
-  if (!config.languages.includes(Language.go)) {
+  if (!config.languages.includes(KnownLanguage.go)) {
     return;
   }
   if (config.buildMode) {
@@ -164,7 +170,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     logger.debug("Won't run Go autobuild since it has already been run.");
     return;
   }
-  if (dbIsFinalized(config, Language.go, logger)) {
+  if (dbIsFinalized(config, KnownLanguage.go, logger)) {
     logger.debug(
       "Won't run Go autobuild since there is already a finalized database for Go.",
     );
@@ -187,7 +193,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   logger.debug(
     "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
   );
-  await runAutobuild(config, Language.go, logger);
+  await runAutobuild(config, KnownLanguage.go, logger);
 }
 
 async function run() {

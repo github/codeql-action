@@ -28,7 +28,7 @@ import {
 } from "./util";
 
 export function sanitizeArtifactName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+  return name.replace(/[^a-zA-Z0-9_-]+/g, "");
 }
 
 /**

@@ -10,17 +10,15 @@ import { Feature, featureConfig, Features } from "./feature-flags";
 import { isTracedLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
-import { ToolsFeature } from "./tools-features";
 import { BuildMode } from "./util";
 
 export async function determineAutobuildLanguages(
-  codeql: CodeQL,
+  _codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
 ): Promise<Language[] | undefined> {
   if (
-    (config.buildMode === BuildMode.None &&
-      (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))) ||
+    config.buildMode === BuildMode.None ||
     config.buildMode === BuildMode.Manual
   ) {
     logger.info(
@@ -160,10 +158,7 @@ export async function runAutobuild(
   if (language === Language.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }
-  if (
-    config.buildMode &&
-    (await codeQL.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))
-  ) {
+  if (config.buildMode) {
     await codeQL.extractUsingBuildMode(config, language);
   } else {
     await codeQL.runAutobuild(config, language);

@@ -27,6 +27,7 @@ import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import { uploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
@@ -335,6 +336,9 @@ async function run() {
 
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
+
+    // Possibly upload the overlay-base database to actions cache
+    await uploadOverlayBaseDatabaseToCache(codeql, config, logger);
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();

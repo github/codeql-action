@@ -133,6 +133,31 @@ const CACHE_PREFIX = "codeql-overlay-base-database";
 const MAX_CACHE_OPERATION_MS = 120_000; // Two minutes
 
 /**
+ * Checks that the overlay-base database is valid by checking for the
+ * existence of the base database OIDs file.
+ *
+ * @param config The configuration object
+ * @param logger The logger instance
+ * @param warningPrefix Prefix for the check failure warning message
+ * @returns True if the verification succeeded, false otherwise
+ */
+export function checkOverlayBaseDatabase(
+  config: Config,
+  logger: Logger,
+  warningPrefix: string,
+): boolean {
+  // An overlay-base database should contain the base database OIDs file.
+  const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
+  if (!fs.existsSync(baseDatabaseOidsFilePath)) {
+    logger.warning(
+      `${warningPrefix}: ${baseDatabaseOidsFilePath} does not exist`,
+    );
+    return false;
+  }
+  return true;
+}
+
+/**
  * Uploads the overlay-base database to the GitHub Actions cache. If conditions
  * for uploading are not met, the function does nothing and returns false.
  *
@@ -172,14 +197,12 @@ export async function uploadOverlayBaseDatabaseToCache(
     return false;
   }
 
-  // An overlay-base database should contain the base database OIDs file.
-  // Verifying that the file exists serves as a sanity check.
-  const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
-  if (!fs.existsSync(baseDatabaseOidsFilePath)) {
-    logger.warning(
-      "Cannot upload overlay-base database to cache: " +
-        `${baseDatabaseOidsFilePath} does not exist`,
-    );
+  const databaseIsValid = checkOverlayBaseDatabase(
+    config,
+    logger,
+    "Abort uploading overlay-base database to cache",
+  );
+  if (!databaseIsValid) {
     return false;
   }
 

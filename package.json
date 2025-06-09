@@ -70,7 +70,7 @@
     "@types/node": "20.9.0",
     "@types/semver": "^7.7.0",
     "@types/sinon": "^17.0.4",
-    "@typescript-eslint/eslint-plugin": "^8.33.1",
+    "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.32.1",
     "ava": "^5.3.1",
     "eslint": "^8.57.1",

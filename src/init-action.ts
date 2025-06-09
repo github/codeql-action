@@ -41,7 +41,7 @@ import {
   initConfig,
   runInit,
 } from "./init";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
@@ -232,7 +232,10 @@ async function sendCompletedStatusReport(
       packs: JSON.stringify(packs),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
-        await getTotalCacheSize(Object.values(config.trapCaches), logger),
+        await getTotalCacheSize(
+          Object.values(config.trapCaches).filter((x) => x !== undefined),
+          logger,
+        ),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
       query_filters: JSON.stringify(
@@ -339,6 +342,31 @@ async function run() {
     }
     core.endGroup();
 
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
+    if (getOptionalInput("languages")?.includes(String(KnownLanguage.rust))) {
+      const feat = Feature.RustAnalysis;
+      const minVer = featureConfig[feat].minimumVersion as string;
+      const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
+      // if in default setup, it means the feature flag was on when rust was enabled
+      // if the feature flag gets turned off, let's not have rust analysis throwing a configuration error
+      // in that case rust analysis will be disabled only when default setup is refreshed
+      if (isDefaultSetup() || (await features.getValue(feat, codeql))) {
+        core.exportVariable(envVar, "true");
+      }
+      if (process.env[envVar] !== "true") {
+        throw new ConfigurationError(
+          `Experimental and not officially supported Rust analysis requires setting ${envVar}=true in the environment`,
+        );
+      }
+      const actualVer = (await codeql.getVersion()).version;
+      if (semver.lt(actualVer, minVer)) {
+        throw new ConfigurationError(
+          `Experimental rust analysis is supported by CodeQL CLI version ${minVer} or higher, but found version ${actualVer}`,
+        );
+      }
+      logger.info("Experimental rust analysis enabled");
+    }
+
     config = await initConfig({
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
@@ -442,7 +470,7 @@ async function run() {
     }
 
     if (
-      config.languages.includes(Language.swift) &&
+      config.languages.includes(KnownLanguage.swift) &&
       process.platform === "linux"
     ) {
       logger.warning(
@@ -451,7 +479,7 @@ async function run() {
     }
 
     if (
-      config.languages.includes(Language.go) &&
+      config.languages.includes(KnownLanguage.go) &&
       process.platform === "linux"
     ) {
       try {
@@ -509,7 +537,7 @@ async function run() {
         if (e instanceof FileCmdNotFoundError) {
           addDiagnostic(
             config,
-            Language.go,
+            KnownLanguage.go,
             makeDiagnostic(
               "go/workflow/file-program-unavailable",
               "The `file` program is required on Linux, but does not appear to be installed",
@@ -559,7 +587,7 @@ async function run() {
       core.exportVariable(kotlinLimitVar, "2.1.20");
     }
 
-    if (config.languages.includes(Language.cpp)) {
+    if (config.languages.includes(KnownLanguage.cpp)) {
       const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
       if (process.env[envVar]) {
         logger.info(
@@ -578,38 +606,13 @@ async function run() {
     }
 
     // Set CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE
-    if (config.languages.includes(Language.cpp)) {
+    if (config.languages.includes(KnownLanguage.cpp)) {
       const bmnVar = "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE";
       const value =
         process.env[bmnVar] ||
         (await features.getValue(Feature.CppBuildModeNone, codeql));
       logger.info(`Setting C++ build-mode: none to ${value}`);
       core.exportVariable(bmnVar, value);
-    }
-
-    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
-    if (config.languages.includes(Language.rust)) {
-      const feat = Feature.RustAnalysis;
-      const minVer = featureConfig[feat].minimumVersion as string;
-      const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
-      // if in default setup, it means the feature flag was on when rust was enabled
-      // if the feature flag gets turned off, let's not have rust analysis throwing a configuration error
-      // in that case rust analysis will be disabled only when default setup is refreshed
-      if (isDefaultSetup() || (await features.getValue(feat, codeql))) {
-        core.exportVariable(envVar, "true");
-      }
-      if (process.env[envVar] !== "true") {
-        throw new ConfigurationError(
-          `Experimental and not officially supported Rust analysis requires setting ${envVar}=true in the environment`,
-        );
-      }
-      const actualVer = (await codeql.getVersion()).version;
-      if (semver.lt(actualVer, minVer)) {
-        throw new ConfigurationError(
-          `Experimental rust analysis is supported by CodeQL CLI version ${minVer} or higher, but found version ${actualVer}`,
-        );
-      }
-      logger.info("Experimental rust analysis enabled");
     }
 
     // Restore dependency cache(s), if they exist.

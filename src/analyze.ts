@@ -24,7 +24,6 @@ import { isScannedLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
-import { ToolsFeature } from "./tools-features";
 import { endTracingForCluster } from "./tracer-config";
 import * as util from "./util";
 import { BuildMode } from "./util";
@@ -167,10 +166,7 @@ export async function runExtraction(
       if (language === Language.python) {
         await setupPythonExtractor(logger);
       }
-      if (
-        config.buildMode &&
-        (await codeql.supportsFeature(ToolsFeature.TraceCommandUseBuildMode))
-      ) {
+      if (config.buildMode) {
         if (
           language === Language.cpp &&
           config.buildMode === BuildMode.Autobuild

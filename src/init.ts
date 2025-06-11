@@ -11,8 +11,8 @@ import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { getGitRoot } from "./git-utils";
-import { Language, isScannedLanguage } from "./languages";
-import { Logger } from "./logging";
+import { Language } from "./languages";
+import { Logger, withGroupAsync } from "./logging";
 import {
   CODEQL_OVERLAY_MINIMUM_VERSION,
   OverlayDatabaseMode,
@@ -20,7 +20,6 @@ import {
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
-import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
@@ -69,20 +68,10 @@ export async function initCodeQL(
 
 export async function initConfig(
   inputs: configUtils.InitConfigInputs,
-  codeql: CodeQL,
 ): Promise<configUtils.Config> {
-  const logger = inputs.logger;
-  logger.startGroup("Load language configuration");
-  const config = await configUtils.initConfig(inputs);
-  if (
-    !(await codeql.supportsFeature(
-      ToolsFeature.InformsAboutUnsupportedPathFilters,
-    ))
-  ) {
-    printPathFiltersWarning(config, logger);
-  }
-  logger.endGroup();
-  return config;
+  return await withGroupAsync("Load language configuration", async () => {
+    return await configUtils.initConfig(inputs);
+  });
 }
 
 export async function getOverlayDatabaseMode(
@@ -162,23 +151,6 @@ export async function runInit(
       ),
   );
   return await getCombinedTracerConfig(codeql, config);
-}
-
-export function printPathFiltersWarning(
-  config: configUtils.Config,
-  logger: Logger,
-) {
-  // Index include/exclude/filters only work in javascript/python/ruby.
-  // If any other languages are detected/configured then show a warning.
-  if (
-    (config.originalUserInput.paths?.length ||
-      config.originalUserInput["paths-ignore"]?.length) &&
-    !config.languages.every(isScannedLanguage)
-  ) {
-    logger.warning(
-      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby',
-    );
-  }
 }
 
 /**

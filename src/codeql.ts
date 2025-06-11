@@ -280,7 +280,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.15.5";
+const CODEQL_MINIMUM_VERSION = "2.16.6";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -582,10 +582,7 @@ export async function getCodeQLForCmd(
         extraArgs.push("--external-repository-token-stdin");
       }
 
-      if (
-        config.buildMode !== undefined &&
-        (await this.supportsFeature(ToolsFeature.BuildModeOption))
-      ) {
+      if (config.buildMode !== undefined) {
         extraArgs.push(`--build-mode=${config.buildMode}`);
       }
       if (qlconfigFile !== undefined) {

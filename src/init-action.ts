@@ -587,7 +587,7 @@ async function run() {
       core.exportVariable(bmnVar, value);
     }
 
-    // For rust: set CODEQL_ENABLE_EXPERIMENTAL_FEATURE, unless codeql already supports rust without it
+    // For rust: set CODEQL_ENABLE_EXPERIMENTAL_FEATURES, unless codeql already supports rust without it
     if (
       config.languages.includes(Language.rust) &&
       !(await codeql.resolveLanguages()).rust

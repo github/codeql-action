@@ -342,6 +342,7 @@ async function run() {
     config = await initConfig({
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
+      qualityQueriesInput: getOptionalInput("quality-queries"),
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       configFile,

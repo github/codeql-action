@@ -1219,13 +1219,19 @@ async function generateCodeScanningConfig(
   const augmentedConfig = cloneObject(config.originalUserInput);
 
   // Inject the queries from the input
-  if (config.augmentationProperties.queriesInput) {
+  if (
+    config.augmentationProperties.queriesInput ||
+    config.augmentationProperties.qualityQueriesInput
+  ) {
     if (config.augmentationProperties.queriesInputCombines) {
       augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        config.augmentationProperties.queriesInput,
+        config.augmentationProperties.queriesInput || [],
+        config.augmentationProperties.qualityQueriesInput || [],
       );
     } else {
-      augmentedConfig.queries = config.augmentationProperties.queriesInput;
+      augmentedConfig.queries = (
+        config.augmentationProperties.queriesInput || []
+      ).concat(config.augmentationProperties.qualityQueriesInput || []);
     }
   }
   if (augmentedConfig.queries?.length === 0) {

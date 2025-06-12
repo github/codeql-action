@@ -30,6 +30,8 @@ runs:
         mv * .github ../action/
         mv ../action/tests/multi-language-repo/{*,.github} .
         mv ../action/.github/workflows .github
+        # Needed since `setup-go` has a post step
+        mv ../action/.github/actions .github/actions
     - id: get-url
       name: Determine URL
       shell: bash

@@ -587,8 +587,11 @@ async function run() {
       core.exportVariable(bmnVar, value);
     }
 
-    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
-    if (config.languages.includes(Language.rust)) {
+    // For rust: set CODEQL_ENABLE_EXPERIMENTAL_FEATURE, unless codeql already supports rust without it
+    if (
+      config.languages.includes(Language.rust) &&
+      !(await codeql.resolveLanguages()).rust
+    ) {
       const feat = Feature.RustAnalysis;
       const minVer = featureConfig[feat].minimumVersion as string;
       const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";

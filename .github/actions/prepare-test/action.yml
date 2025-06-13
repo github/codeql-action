@@ -12,6 +12,10 @@ inputs:
     description: "If true, we setup kotlin"
     default: 'true'
     required: true
+  setup-go:
+    description: "If true, we setup go"
+    default: 'true'
+    required: true
 outputs:
   tools-url:
     description: "The value that should be passed as the 'tools' input of the 'init' step."
@@ -26,6 +30,8 @@ runs:
         mv * .github ../action/
         mv ../action/tests/multi-language-repo/{*,.github} .
         mv ../action/.github/workflows .github
+        # Needed since `setup-go` has a post step
+        mv ../action/.github/actions .github/actions
     - id: get-url
       name: Determine URL
       shell: bash
@@ -80,3 +86,9 @@ runs:
       if: ${{ inputs.setup-kotlin == 'true' }}
       with:
         version: 1.8.21
+
+    - uses: actions/setup-go@v5
+      if: ${{ inputs.setup-go == 'true' }}
+      with:
+        go-version: ">=1.21.0"
+        cache: false

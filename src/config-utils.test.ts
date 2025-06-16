@@ -47,6 +47,7 @@ function createTestInitConfigInputs(
     {
       languagesInput: undefined,
       queriesInput: undefined,
+      qualityQueriesInput: undefined,
       packsInput: undefined,
       configFile: undefined,
       dbLocation: undefined,
@@ -806,6 +807,7 @@ const calculateAugmentationMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
+    rawQualityQueriesInput: string | undefined,
     languages: Language[],
     expectedAugmentationProperties: configUtils.AugmentationProperties,
   ) => {
@@ -815,6 +817,7 @@ const calculateAugmentationMacro = test.macro({
         createFeatures([]),
         rawPacksInput,
         rawQueriesInput,
+        rawQualityQueriesInput,
         languages,
         mockLogger,
       );
@@ -828,10 +831,12 @@ test(
   "All empty",
   undefined,
   undefined,
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
+    qualityQueriesInput: undefined,
     packsInputCombines: false,
     packsInput: undefined,
     defaultQueryFilters: [],
@@ -843,10 +848,12 @@ test(
   "With queries",
   undefined,
   " a, b , c, d",
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    qualityQueriesInput: undefined,
     packsInputCombines: false,
     packsInput: undefined,
     defaultQueryFilters: [],
@@ -858,10 +865,56 @@ test(
   "With queries combining",
   undefined,
   "   +   a, b , c, d ",
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: true,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    qualityQueriesInput: undefined,
+    packsInputCombines: false,
+    packsInput: undefined,
+    defaultQueryFilters: [],
+  } as configUtils.AugmentationProperties,
+);
+
+test(
+  calculateAugmentationMacro,
+  "With quality queries",
+  undefined,
+  undefined,
+  " a, b , c, d",
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: undefined,
+    qualityQueriesInput: [
+      { uses: "a" },
+      { uses: "b" },
+      { uses: "c" },
+      { uses: "d" },
+    ],
+    packsInputCombines: false,
+    packsInput: undefined,
+    defaultQueryFilters: [],
+  } as configUtils.AugmentationProperties,
+);
+
+test(
+  calculateAugmentationMacro,
+  "With security and quality queries",
+  undefined,
+  " a, b , c, d",
+  "e, f , g,h",
+  [Language.javascript],
+  {
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    qualityQueriesInput: [
+      { uses: "e" },
+      { uses: "f" },
+      { uses: "g" },
+      { uses: "h" },
+    ],
     packsInputCombines: false,
     packsInput: undefined,
     defaultQueryFilters: [],
@@ -873,10 +926,12 @@ test(
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
+    qualityQueriesInput: undefined,
     packsInputCombines: false,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
     defaultQueryFilters: [],
@@ -888,10 +943,12 @@ test(
   "With packs combining",
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
+  undefined,
   [Language.javascript],
   {
     queriesInputCombines: false,
     queriesInput: undefined,
+    qualityQueriesInput: undefined,
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
     defaultQueryFilters: [],
@@ -904,6 +961,7 @@ const calculateAugmentationErrorMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
+    rawQualityQueriesInput: string | undefined,
     languages: Language[],
     expectedError: RegExp | string,
   ) => {
@@ -914,6 +972,7 @@ const calculateAugmentationErrorMacro = test.macro({
           createFeatures([]),
           rawPacksInput,
           rawQueriesInput,
+          rawQualityQueriesInput,
           languages,
           mockLogger,
         ),
@@ -928,6 +987,7 @@ test(
   "Plus (+) with nothing else (queries)",
   undefined,
   "   +   ",
+  undefined,
   [Language.javascript],
   /The workflow property "queries" is invalid/,
 );
@@ -936,6 +996,7 @@ test(
   calculateAugmentationErrorMacro,
   "Plus (+) with nothing else (packs)",
   "   +   ",
+  undefined,
   undefined,
   [Language.javascript],
   /The workflow property "packs" is invalid/,
@@ -946,6 +1007,7 @@ test(
   "Packs input with multiple languages",
   "   +  a/b, c/d ",
   undefined,
+  undefined,
   [Language.javascript, Language.java],
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
@@ -955,6 +1017,7 @@ test(
   "Packs input with no languages",
   "   +  a/b, c/d ",
   undefined,
+  undefined,
   [],
   /No languages specified/,
 );
@@ -963,6 +1026,7 @@ test(
   calculateAugmentationErrorMacro,
   "Invalid packs",
   " a-pack-without-a-scope ",
+  undefined,
   undefined,
   [Language.javascript],
   /"a-pack-without-a-scope" is not a valid pack/,

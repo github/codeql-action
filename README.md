@@ -55,7 +55,7 @@ For compiled languages:
 
 - `manual` build mode will typically produce the most precise results, but it is more difficult to set up and will cause the analysis to take slightly more time to run.
 - `autobuild` build mode is simpler to set up, but will only work for projects with generic build steps that can be guessed by the heuristics of the autobuild scripts. If `autobuild` fails, then you must switch to `manual` or `none`. If `autobuild` succeeds, then the results and run time will be the same as `manual` mode.
-- `none` build mode is also simpler to set up and is slightly faster to run, but there is a possibility that some alerts will be missed. This may happen if your repository does any code generation during compilation or if there are any dependencies downloaded from registries that the workflow does not have access to. `none` is not yet supported by C/C++, Swift, Go, or Kotlin.
+- `none` build mode is also simpler to set up and is slightly faster to run, but there is a possibility that some alerts will be missed. This may happen if your repository does any code generation during compilation or if there are any dependencies downloaded from registries that the workflow does not have access to. `none` is not yet supported by Swift, Go, or Kotlin and is currently in `public preview` for C/C++.
 
 
 ## Supported versions of the CodeQL Action

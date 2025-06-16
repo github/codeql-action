@@ -561,6 +561,14 @@ extensions:
   return diffRangeDir;
 }
 
+function resolveQuerySuiteAlias(language: Language, query: string): string {
+  if (query === "code-quality") {
+    return `${language}-code-quality.qls`;
+  }
+
+  return query;
+}
+
 // Runs queries and creates sarif files in the given folder
 export async function runQueries(
   sarifFolder: string,
@@ -626,7 +634,9 @@ export async function runQueries(
         );
         const qualityAnalysisSummary = await runInterpretResults(
           language,
-          config.augmentationProperties.qualityQueriesInput.map((i) => i.uses),
+          config.augmentationProperties.qualityQueriesInput.map((i) =>
+            resolveQuerySuiteAlias(language, i.uses),
+          ),
           qualitySarifFile,
           config.debugMode,
         );

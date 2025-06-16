@@ -26,7 +26,7 @@ steps:
   - name: Check config properties appear in SARIF
     uses: actions/github-script@v7
     env:
-      SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
+      SARIF_PATH: "${{ runner.temp }}/results/javascript.quality.sarif"
     with:
       script: |
         const fs = require('fs');

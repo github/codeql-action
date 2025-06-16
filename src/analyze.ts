@@ -618,6 +618,22 @@ export async function runQueries(
         sarifFile,
         config.debugMode,
       );
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        logger.info(`Interpreting quality results for ${language}`);
+        const qualitySarifFile = path.join(
+          sarifFolder,
+          `${language}.quality.sarif`,
+        );
+        const qualityAnalysisSummary = await runInterpretResults(
+          language,
+          config.augmentationProperties.qualityQueriesInput.map((i) => i.uses),
+          qualitySarifFile,
+          config.debugMode,
+        );
+
+        // TODO: move
+        logger.info(qualityAnalysisSummary);
+      }
       const endTimeInterpretResults = new Date();
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();

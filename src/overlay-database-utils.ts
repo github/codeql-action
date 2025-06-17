@@ -231,6 +231,90 @@ export async function uploadOverlayBaseDatabaseToCache(
   return true;
 }
 
+/**
+ * Downloads the overlay-base database from the GitHub Actions cache. If conditions
+ * for downloading are not met, the function does nothing and returns false.
+ *
+ * @param codeql The CodeQL instance
+ * @param config The configuration object
+ * @param logger The logger instance
+ * @returns A promise that resolves to true if the download was performed and
+ * successfully completed, or false otherwise
+ */
+export async function downloadOverlayBaseDatabaseFromCache(
+  codeql: CodeQL,
+  config: Config,
+  logger: Logger,
+): Promise<boolean> {
+  const overlayDatabaseMode = config.augmentationProperties.overlayDatabaseMode;
+  if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
+    logger.debug(
+      `Overlay database mode is ${overlayDatabaseMode}. ` +
+        "Skip downloading overlay-base database from cache.",
+    );
+    return false;
+  }
+  if (!config.augmentationProperties.useOverlayDatabaseCaching) {
+    logger.debug(
+      "Overlay database caching is disabled. " +
+        "Skip downloading overlay-base database from cache.",
+    );
+    return false;
+  }
+  if (isInTestMode()) {
+    logger.debug(
+      "In test mode. Skip downloading overlay-base database from cache.",
+    );
+    return false;
+  }
+
+  const dbLocation = config.dbLocation;
+  const codeQlVersion = (await codeql.getVersion()).version;
+  const restoreKey = getCacheRestoreKey(config, codeQlVersion);
+
+  logger.info(
+    `Looking in Actions cache for overlay-base database with restore key ${restoreKey}`,
+  );
+
+  try {
+    const foundKey = await withTimeout(
+      MAX_CACHE_OPERATION_MS,
+      actionsCache.restoreCache([dbLocation], restoreKey),
+      () => {
+        logger.info("Timed out downloading overlay-base database from cache");
+      },
+    );
+
+    if (foundKey === undefined) {
+      logger.info("No overlay-base database found in Actions cache");
+      return false;
+    }
+
+    logger.info(
+      `Downloaded overlay-base database in cache with key ${foundKey}`,
+    );
+  } catch (error) {
+    logger.warning(
+      "Failed to download overlay-base database from cache: " +
+        `${error instanceof Error ? error.message : String(error)}`,
+    );
+    return false;
+  }
+
+  const databaseIsValid = checkOverlayBaseDatabase(
+    config,
+    logger,
+    "Downloaded overlay-base database is invalid",
+  );
+  if (!databaseIsValid) {
+    logger.warning("Downloaded overlay-base database failed validation");
+    return false;
+  }
+
+  logger.info(`Successfully downloaded overlay-base database to ${dbLocation}`);
+  return true;
+}
+
 function generateCacheKey(config: Config, codeQlVersion: string): string {
   const sha = process.env.GITHUB_SHA || "unknown";
   return `${getCacheRestoreKey(config, codeQlVersion)}${sha}`;

@@ -42,7 +42,10 @@ import {
 } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import {
+  downloadOverlayBaseDatabaseFromCache,
+  OverlayDatabaseMode,
+} from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -398,6 +401,34 @@ async function run() {
   }
 
   try {
+    if (
+      config.augmentationProperties.overlayDatabaseMode ===
+        OverlayDatabaseMode.Overlay &&
+      config.augmentationProperties.useOverlayDatabaseCaching
+    ) {
+      // OverlayDatabaseMode.Overlay comes in two flavors: with database
+      // caching, or without. The flavor with database caching is intended to be
+      // an "automatic control" mode, which is supposed to be fail-safe. If we
+      // cannot download an overlay-base database, we revert to
+      // OverlayDatabaseMode.None so that the workflow can continue to run.
+      //
+      // The flavor without database caching is intended to be a "manual
+      // control" mode, where the workflow is supposed to make all the
+      // necessary preparations. So, in that mode, we would assume that
+      // everything is in order and let the analysis fail if that turns out not
+      // to be the case.
+      const overlayDatabaseDownloaded =
+        await downloadOverlayBaseDatabaseFromCache(codeql, config, logger);
+      if (!overlayDatabaseDownloaded) {
+        config.augmentationProperties.overlayDatabaseMode =
+          OverlayDatabaseMode.None;
+        logger.info(
+          "No overlay-base database found in cache, " +
+            `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
+        );
+      }
+    }
+
     if (
       config.augmentationProperties.overlayDatabaseMode !==
       OverlayDatabaseMode.Overlay

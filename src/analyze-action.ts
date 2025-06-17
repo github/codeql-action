@@ -329,6 +329,18 @@ async function run() {
         logger,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
+
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        const qualityUploadResult = await uploadLib.uploadFiles(
+          outputDir,
+          actionsUtil.getRequiredInput("checkout_path"),
+          actionsUtil.getOptionalInput("category"),
+          features,
+          logger,
+          uploadLib.CodeQualityTarget,
+        );
+        core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
+      }
     } else {
       logger.info("Not uploading results");
     }

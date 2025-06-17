@@ -561,6 +561,14 @@ extensions:
   return diffRangeDir;
 }
 
+function resolveQuerySuiteAlias(language: Language, query: string): string {
+  if (query === "code-quality") {
+    return `${language}-code-quality.qls`;
+  }
+
+  return query;
+}
+
 // Runs queries and creates sarif files in the given folder
 export async function runQueries(
   sarifFolder: string,
@@ -618,6 +626,24 @@ export async function runQueries(
         sarifFile,
         config.debugMode,
       );
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        logger.info(`Interpreting quality results for ${language}`);
+        const qualitySarifFile = path.join(
+          sarifFolder,
+          `${language}.quality.sarif`,
+        );
+        const qualityAnalysisSummary = await runInterpretResults(
+          language,
+          config.augmentationProperties.qualityQueriesInput.map((i) =>
+            resolveQuerySuiteAlias(language, i.uses),
+          ),
+          qualitySarifFile,
+          config.debugMode,
+        );
+
+        // TODO: move
+        logger.info(qualityAnalysisSummary);
+      }
       const endTimeInterpretResults = new Date();
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();

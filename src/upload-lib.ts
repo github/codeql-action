@@ -376,14 +376,21 @@ export interface UploadResult {
   sarifID: string;
 }
 
+const qualityIsSarif = (name: string) => name.endsWith(".quality.sarif");
+const defaultIsSarif = (name: string) =>
+  name.endsWith(".sarif") && !qualityIsSarif(name);
+
 // Recursively walks a directory and returns all SARIF files it finds.
 // Does not follow symlinks.
-export function findSarifFilesInDir(sarifPath: string): string[] {
+export function findSarifFilesInDir(
+  sarifPath: string,
+  isSarif: (name: string) => boolean = defaultIsSarif,
+): string[] {
   const sarifFiles: string[] = [];
   const walkSarifFiles = (dir: string) => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isFile() && entry.name.endsWith(".sarif")) {
+      if (entry.isFile() && isSarif(entry.name)) {
         sarifFiles.push(path.resolve(dir, entry.name));
       } else if (entry.isDirectory()) {
         walkSarifFiles(path.resolve(dir, entry.name));

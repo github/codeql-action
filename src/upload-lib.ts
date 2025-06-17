@@ -582,18 +582,21 @@ export interface UploadTarget {
   name: string;
   target: SARIF_UPLOAD_TARGET;
   sarifFilter: (name: string) => boolean;
+  sentinelPrefix: string;
 }
 
 export const CodeScanningTarget: UploadTarget = {
   name: "code scanning",
   target: SARIF_UPLOAD_TARGET.CODE_SCANNING_UPLOAD_TARGET,
   sarifFilter: defaultIsSarif,
+  sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };
 
 export const CodeQualityTarget: UploadTarget = {
   name: "code quality",
   target: SARIF_UPLOAD_TARGET.CODE_QUALITY_UPLOAD_TARGET,
   sarifFilter: qualityIsSarif,
+  sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
 
 /**
@@ -651,7 +654,7 @@ export async function uploadFiles(
   const toolNames = util.getToolNames(sarif);
 
   logger.debug(`Validating that each SARIF run has a unique category`);
-  validateUniqueCategory(sarif);
+  validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
   logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
   logger.debug(`Compressing serialized SARIF`);
@@ -868,7 +871,10 @@ function handleProcessingResultForUnsuccessfulExecution(
   }
 }
 
-export function validateUniqueCategory(sarif: SarifFile): void {
+export function validateUniqueCategory(
+  sarif: SarifFile,
+  sentinelPrefix: string = CodeScanningTarget.sentinelPrefix,
+): void {
   // duplicate categories are allowed in the same sarif file
   // but not across multiple sarif files
   const categories = {} as Record<string, { id?: string; tool?: string }>;
@@ -881,7 +887,7 @@ export function validateUniqueCategory(sarif: SarifFile): void {
   }
 
   for (const [category, { id, tool }] of Object.entries(categories)) {
-    const sentinelEnvVar = `CODEQL_UPLOAD_SARIF_${category}`;
+    const sentinelEnvVar = `${sentinelPrefix}${category}`;
     if (process.env[sentinelEnvVar]) {
       // This is always a configuration error, even for first-party runs.
       throw new ConfigurationError(

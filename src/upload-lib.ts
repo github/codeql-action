@@ -405,7 +405,10 @@ export function findSarifFilesInDir(
   return sarifFiles;
 }
 
-function getSarifFilePaths(sarifPath: string) {
+function getSarifFilePaths(
+  sarifPath: string,
+  isSarif: (name: string) => boolean = defaultIsSarif,
+) {
   if (!fs.existsSync(sarifPath)) {
     // This is always a configuration error, even for first-party runs.
     throw new ConfigurationError(`Path does not exist: ${sarifPath}`);
@@ -413,7 +416,7 @@ function getSarifFilePaths(sarifPath: string) {
 
   let sarifFiles: string[];
   if (fs.lstatSync(sarifPath).isDirectory()) {
-    sarifFiles = findSarifFilesInDir(sarifPath);
+    sarifFiles = findSarifFilesInDir(sarifPath, isSarif);
     if (sarifFiles.length === 0) {
       // This is always a configuration error, even for first-party runs.
       throw new ConfigurationError(
@@ -611,7 +614,10 @@ export async function uploadFiles(
   logger: Logger,
   uploadTarget: UploadTarget = CodeScanningTarget,
 ): Promise<UploadResult> {
-  const sarifPaths = getSarifFilePaths(inputSarifPath);
+  const sarifPaths = getSarifFilePaths(
+    inputSarifPath,
+    uploadTarget.sarifFilter,
+  );
 
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
   logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);

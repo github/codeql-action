@@ -306,12 +306,19 @@ function getAutomationID(
   return api.computeAutomationID(analysis_key, environment);
 }
 
+// Enumerates API endpoints that accept SARIF files.
+export enum SARIF_UPLOAD_TARGET {
+  CODE_SCANNING_UPLOAD_TARGET = "PUT /repos/:owner/:repo/code-scanning/analysis",
+  CODE_QUALITY_UPLOAD_TARGET = "PUT /repos/:owner/:repo/code-quality/analysis",
+}
+
 // Upload the given payload.
 // If the request fails then this will retry a small number of times.
 async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
+  target: SARIF_UPLOAD_TARGET = SARIF_UPLOAD_TARGET.CODE_SCANNING_UPLOAD_TARGET,
 ): Promise<string> {
   logger.info("Uploading results");
 
@@ -332,14 +339,11 @@ async function uploadPayload(
   const client = api.getApiClient();
 
   try {
-    const response = await client.request(
-      "PUT /repos/:owner/:repo/code-scanning/analysis",
-      {
-        owner: repositoryNwo.owner,
-        repo: repositoryNwo.repo,
-        data: payload,
-      },
-    );
+    const response = await client.request(target, {
+      owner: repositoryNwo.owner,
+      repo: repositoryNwo.repo,
+      data: payload,
+    });
 
     logger.debug(`response status: ${response.status}`);
     logger.info("Successfully uploaded results");
@@ -574,6 +578,24 @@ export function buildPayload(
   return payloadObj;
 }
 
+export interface UploadTarget {
+  name: string;
+  target: SARIF_UPLOAD_TARGET;
+  sarifFilter: (name: string) => boolean;
+}
+
+export const CodeScanningTarget: UploadTarget = {
+  name: "code scanning",
+  target: SARIF_UPLOAD_TARGET.CODE_SCANNING_UPLOAD_TARGET,
+  sarifFilter: defaultIsSarif,
+};
+
+export const CodeQualityTarget: UploadTarget = {
+  name: "code quality",
+  target: SARIF_UPLOAD_TARGET.CODE_QUALITY_UPLOAD_TARGET,
+  sarifFilter: qualityIsSarif,
+};
+
 /**
  * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
  * to.
@@ -584,10 +606,11 @@ export async function uploadFiles(
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
+  uploadTarget: UploadTarget = CodeScanningTarget,
 ): Promise<UploadResult> {
   const sarifPaths = getSarifFilePaths(inputSarifPath);
 
-  logger.startGroup("Uploading results");
+  logger.startGroup(`Uploading ${uploadTarget.name} results`);
   logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
 
   const gitHubVersion = await getGitHubVersion();
@@ -658,7 +681,12 @@ export async function uploadFiles(
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload
-  const sarifID = await uploadPayload(payload, getRepositoryNwo(), logger);
+  const sarifID = await uploadPayload(
+    payload,
+    getRepositoryNwo(),
+    logger,
+    uploadTarget.target,
+  );
 
   logger.endGroup();
 

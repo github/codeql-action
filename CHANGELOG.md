@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fix bug in PR analysis where user-provided `include` query filter fails to exclude non-included queries. [#2938](https://github.com/github/codeql-action/pull/2938)
 
 ## 3.29.0 - 11 Jun 2025
 

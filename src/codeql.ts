@@ -1266,8 +1266,12 @@ async function generateCodeScanningConfig(
   }
 
   augmentedConfig["query-filters"] = [
-    ...(config.augmentationProperties.extraQueryExclusions || []),
+    // Ordering matters. If the first filter is an inclusion, it implicitly
+    // excludes all queries that are not included. If it is an exclusion,
+    // it implicitly includes all queries that are not excluded. So user
+    // filters (if any) should always be first to preserve intent.
     ...(augmentedConfig["query-filters"] || []),
+    ...(config.augmentationProperties.extraQueryExclusions || []),
   ];
   if (augmentedConfig["query-filters"]?.length === 0) {
     delete augmentedConfig["query-filters"];

@@ -1266,7 +1266,7 @@ async function generateCodeScanningConfig(
   }
 
   augmentedConfig["query-filters"] = [
-    ...(config.augmentationProperties.defaultQueryFilters || []),
+    ...(config.augmentationProperties.extraQueryExclusions || []),
     ...(augmentedConfig["query-filters"] || []),
   ];
   if (augmentedConfig["query-filters"]?.length === 0) {

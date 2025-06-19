@@ -14,7 +14,11 @@ import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import { CliError } from "./cli-errors";
 import * as codeql from "./codeql";
-import { AugmentationProperties, Config } from "./config-utils";
+import {
+  AugmentationProperties,
+  Config,
+  defaultAugmentationProperties,
+} from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
 import { FeatureEnablement } from "./feature-flags";
@@ -537,8 +541,7 @@ test(
   "basic",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
   },
   {},
   {},
@@ -548,8 +551,7 @@ test(
   "injected packs from input",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
   },
   {},
@@ -562,7 +564,7 @@ test(
   "injected packs from input with existing packs combines",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInputCombines: true,
     packsInput: ["xxx", "yyy"],
   },
@@ -584,8 +586,7 @@ test(
   "injected packs from input with existing packs overrides",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
   },
   {
@@ -605,8 +606,7 @@ test(
   "injected queries from input",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {},
@@ -626,8 +626,7 @@ test(
   "injected queries from input overrides",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -651,8 +650,8 @@ test(
   "injected queries from input combines",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
-    packsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -679,6 +678,7 @@ test(
   "injected queries from input combines 2",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -700,6 +700,7 @@ test(
   "injected queries and packs, but empty",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [],

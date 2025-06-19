@@ -186,9 +186,9 @@ export interface AugmentationProperties {
   packsInput?: string[];
 
   /**
-   * Default query filters to apply to the queries in the config.
+   * Extra query exclusions to append to the config.
    */
-  defaultQueryFilters?: QueryFilter[];
+  extraQueryExclusions?: ExcludeQueryFilter[];
 }
 
 /**
@@ -201,7 +201,7 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInput: undefined,
   queriesInput: undefined,
   qualityQueriesInput: undefined,
-  defaultQueryFilters: [],
+  extraQueryExclusions: [],
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -671,9 +671,11 @@ export async function calculateAugmentation(
     false,
   );
 
-  const defaultQueryFilters: QueryFilter[] = [];
+  const extraQueryExclusions: ExcludeQueryFilter[] = [];
   if (await shouldPerformDiffInformedAnalysis(codeql, features, logger)) {
-    defaultQueryFilters.push({ exclude: { tags: "exclude-from-incremental" } });
+    extraQueryExclusions.push({
+      exclude: { tags: "exclude-from-incremental" },
+    });
   }
 
   return {
@@ -682,7 +684,7 @@ export async function calculateAugmentation(
     queriesInput,
     queriesInputCombines,
     qualityQueriesInput,
-    defaultQueryFilters,
+    extraQueryExclusions,
   };
 }
 

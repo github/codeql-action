@@ -834,13 +834,8 @@ test(
   undefined,
   [Language.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
-    qualityQueriesInput: undefined,
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+    ...configUtils.defaultAugmentationProperties,
+  },
 );
 
 test(
@@ -851,13 +846,9 @@ test(
   undefined,
   [Language.javascript],
   {
-    queriesInputCombines: false,
+    ...configUtils.defaultAugmentationProperties,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-    qualityQueriesInput: undefined,
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -868,13 +859,10 @@ test(
   undefined,
   [Language.javascript],
   {
+    ...configUtils.defaultAugmentationProperties,
     queriesInputCombines: true,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-    qualityQueriesInput: undefined,
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -885,18 +873,14 @@ test(
   " a, b , c, d",
   [Language.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
+    ...configUtils.defaultAugmentationProperties,
     qualityQueriesInput: [
       { uses: "a" },
       { uses: "b" },
       { uses: "c" },
       { uses: "d" },
     ],
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -907,7 +891,7 @@ test(
   "e, f , g,h",
   [Language.javascript],
   {
-    queriesInputCombines: false,
+    ...configUtils.defaultAugmentationProperties,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
     qualityQueriesInput: [
       { uses: "e" },
@@ -915,10 +899,7 @@ test(
       { uses: "g" },
       { uses: "h" },
     ],
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -929,13 +910,9 @@ test(
   undefined,
   [Language.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
-    qualityQueriesInput: undefined,
-    packsInputCombines: false,
+    ...configUtils.defaultAugmentationProperties,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -946,13 +923,10 @@ test(
   undefined,
   [Language.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
-    qualityQueriesInput: undefined,
+    ...configUtils.defaultAugmentationProperties,
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 const calculateAugmentationErrorMacro = test.macro({

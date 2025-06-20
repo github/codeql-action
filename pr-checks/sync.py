@@ -108,6 +108,22 @@ for file in (this_dir / 'checks').glob('*.yml'):
         },
     ]
 
+    installGo = False
+    if checkSpecification.get('installGo'):
+        installGo = True if checkSpecification['installGo'].lower() == "true" else False
+
+    if installGo:
+        steps.append({
+            'name': 'Install Go',
+            'uses': 'actions/setup-go@v5',
+            'with': {
+                'go-version': '>=1.21.0',
+                # to avoid potentially misleading autobuilder results where we expect it to download
+                # dependencies successfully, but they actually come from a warm cache
+                'cache': False
+            }
+        })
+
     # If container initialisation steps are present in the check specification,
     # make sure to execute them first.
     if 'container' in checkSpecification and 'container-init-steps' in checkSpecification:

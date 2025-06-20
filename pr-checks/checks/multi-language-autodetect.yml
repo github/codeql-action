@@ -1,11 +1,8 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection for macOS"
 operatingSystems: ["macos", "ubuntu"]
+installGo: "true"
 steps:
-  - uses: actions/setup-go@v5
-    with:
-      go-version: ">=1.21.0"
-
   - uses: ./../action/init
     id: init
     with:

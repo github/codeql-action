@@ -1,4 +1,5 @@
 #!/bin/bash
+set -eo pipefail
 
 gcc -o main main.c
 

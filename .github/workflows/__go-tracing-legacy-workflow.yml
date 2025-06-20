@@ -75,11 +75,10 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - uses: actions/setup-go@v5
+      - name: Install Go
+        uses: actions/setup-go@v5
         with:
-          go-version: ~1.24.0
-      # to avoid potentially misleading autobuilder results where we expect it to download
-      # dependencies successfully, but they actually come from a warm cache
+          go-version: '>=1.21.0'
           cache: false
       - uses: ./../action/init
         with:

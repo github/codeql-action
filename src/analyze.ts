@@ -25,6 +25,7 @@ import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { isScannedLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { getRepositoryNwoFromEnv } from "./repository";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
@@ -604,6 +605,7 @@ export async function runQueries(
 ): Promise<QueriesStatusReport> {
   const statusReport: QueriesStatusReport = {};
   const queryFlags = [memoryFlag, threadsFlag];
+  const incrementalMode: string[] = [];
 
   if (cleanupLevel !== "overlay") {
     queryFlags.push("--expect-discarded-cache");
@@ -613,10 +615,18 @@ export async function runQueries(
   if (diffRangePackDir) {
     queryFlags.push(`--additional-packs=${diffRangePackDir}`);
     queryFlags.push("--extension-packs=codeql-action/pr-diff-range");
+    incrementalMode.push("diff-informed");
   }
-  const sarifRunPropertyFlag = diffRangePackDir
-    ? "--sarif-run-property=incrementalMode=diff-informed"
-    : undefined;
+  if (
+    config.augmentationProperties.overlayDatabaseMode ===
+    OverlayDatabaseMode.Overlay
+  ) {
+    incrementalMode.push("overlay");
+  }
+  const sarifRunPropertyFlag =
+    incrementalMode.length > 0
+      ? `--sarif-run-property=incrementalMode=${incrementalMode.join(",")}`
+      : undefined;
 
   const codeql = await getCodeQL(config.codeQLCmd);
 

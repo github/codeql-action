@@ -37,6 +37,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     };
     sinon.stub(configUtils, "getConfig").resolves({
       gitHubVersion,
+      augmentationProperties: {},
       languages: [],
       packs: [],
       trapCaches: {},

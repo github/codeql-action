@@ -61,6 +61,17 @@ jobs:
           sed -i "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-v[0-9.]\+/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
           sed -i "s/\"v2.0.[0-9]\+\"/\"v2.0.$NOW\"/g" ./src/start-proxy-action.ts
 
+      - name: Compile TypeScript and commit changes
+        shell: bash
+        run: |
+          set -exu
+          git checkout -b "${{ steps.checks.outputs.target_branch }}"
+
+          npm run build
+          git add ./src/start-proxy-action.ts
+          git add ./lib
+          git commit -m "Update release used by \`start-proxy\` action"
+
       - name: Push changes and open PR
         shell: bash
         env:
@@ -79,17 +90,10 @@ jobs:
           EOF
           )
 
-          git checkout -b "${{ steps.checks.outputs.target_branch }}"
-
-          npm run build
-          git add ./src/start-proxy-action.ts
-          git add ./lib
-          git commit -m "$pr_title"
-
           git push origin "${{ steps.checks.outputs.target_branch }}"
           gh pr create \
             --head "${{ steps.checks.outputs.target_branch }}" \
             --base "main" \
             --title "${pr_title}" \
             --body "${pr_body}" \
-            --draft
+            ${{ (github.event_name == 'workflow_dispatch' && '--draft') || '--dry-run' }}

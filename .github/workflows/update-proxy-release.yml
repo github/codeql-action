@@ -49,7 +49,7 @@ jobs:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           set -exu
-          pr_title="Update release used by `start-proxy` to $RELEASE_TAG"
+          pr_title="Update release used by \`start-proxy\` to $RELEASE_TAG"
           pr_body=$(cat << EOF
             This PR updates the `start-proxy` action to use the private registry proxy binaries that
             are attached as release assets to the `$RELEASE_TAG` release.

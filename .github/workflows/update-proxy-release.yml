@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           NOW=$(date +"%Y%m%d%H%M%S") # only used to make sure we don't fetch stale binaries from the toolcache
-          sed -i '' "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-[0-9.]*/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
+          sed -i '' "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-v[0-9.]*/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
           sed -i '' "s/\"v2.0.[0-9]*\"/\"v2.0.$NOW\"/g" ./src/start-proxy-action.ts
 
       - name: Push changes and open PR

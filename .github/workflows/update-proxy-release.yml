@@ -29,6 +29,13 @@ jobs:
             exit 1
           fi
 
+      - name: Check that the release exists
+        shell: bash
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          (gh release view --repo ${{ github.event.repository.full_name }} --json "assets" "$RELEASE_TAG" && echo "Release found.") || exit 1
+
       - name: Install Node
         uses: actions/setup-node@v4
 

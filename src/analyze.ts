@@ -561,9 +561,17 @@ extensions:
   return diffRangeDir;
 }
 
+const defaultSuites: Set<string> = new Set([
+  "security-experimental",
+  "security-extended",
+  "security-and-quality",
+  "code-quality",
+  "code-scanning",
+]);
+
 function resolveQuerySuiteAlias(language: Language, query: string): string {
-  if (query === "code-quality") {
-    return `${language}-code-quality.qls`;
+  if (defaultSuites.has(query)) {
+    return `${language}-${query}.qls`;
   }
 
   return query;

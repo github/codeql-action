@@ -604,7 +604,11 @@ function securityQueries(
   }
 
   if (config.originalUserInput["queries"]) {
-    results.push(...config.originalUserInput["queries"].map((q) => q.uses));
+    results.push(
+      ...config.originalUserInput["queries"].map((q) =>
+        resolveQuerySuiteAlias(language, q.uses),
+      ),
+    );
   }
 
   return results;

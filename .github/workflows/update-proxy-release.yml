@@ -51,13 +51,13 @@ jobs:
           set -exu
           pr_title="Update release used by \`start-proxy\` to \`$RELEASE_TAG\`"
           pr_body=$(cat << EOF
-            This PR updates the `start-proxy` action to use the private registry proxy binaries that
-            are attached as release assets to the `$RELEASE_TAG` release.
+            This PR updates the \`start-proxy\` action to use the private registry proxy binaries that
+            are attached as release assets to the \`$RELEASE_TAG\` release.
 
 
             Please do the following before merging:
 
-              - [ ] Verify that the changes to the code are correct.
+            - [ ] Verify that the changes to the code are correct.
           EOF
           )
 

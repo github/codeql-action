@@ -11,7 +11,7 @@ import { Credential, getCredentials } from "./start-proxy";
 import * as util from "./util";
 
 const UPDATEJOB_PROXY = "update-job-proxy";
-const UPDATEJOB_PROXY_VERSION = "v2.0.20250424171100";
+const UPDATEJOB_PROXY_VERSION = "v2.0.20250623114229";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.21.1/";
 const KEY_SIZE = 2048;

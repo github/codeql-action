@@ -589,6 +589,27 @@ export function resolveQuerySuiteAlias(
   return query;
 }
 
+function defaultQueries(language: Language): string {
+  return `codeql/${language}-queries`;
+}
+
+function securityQueries(
+  config: configUtils.Config,
+  language: Language,
+): string[] {
+  const results: string[] = [];
+
+  if (!config.originalUserInput["disable-default-queries"]) {
+    results.push(defaultQueries(language));
+  }
+
+  if (config.originalUserInput["queries"]) {
+    results.push(...config.originalUserInput["queries"].map((q) => q.uses));
+  }
+
+  return results;
+}
+
 // Runs queries and creates sarif files in the given folder
 export async function runQueries(
   sarifFolder: string,
@@ -642,7 +663,7 @@ export async function runQueries(
       const startTimeInterpretResults = new Date();
       const analysisSummary = await runInterpretResults(
         language,
-        undefined,
+        securityQueries(config, language),
         sarifFile,
         config.debugMode,
       );

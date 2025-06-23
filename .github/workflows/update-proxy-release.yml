@@ -21,6 +21,14 @@ jobs:
     env:
       RELEASE_TAG: ${{ inputs.tag || 'codeql-bundle-v2.22.0' }}
     steps:
+      - name: Check release tag format
+        shell: bash
+        run: |
+          if ! [[ $RELEASE_TAG =~ ^codeql-bundle-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: expected a CodeQL bundle tag in the 'codeql-bundle-vM.N.P' format."
+            exit 1
+          fi
+
       - name: Install Node
         uses: actions/setup-node@v4
 
@@ -40,8 +48,8 @@ jobs:
         shell: bash
         run: |
           NOW=$(date +"%Y%m%d%H%M%S") # only used to make sure we don't fetch stale binaries from the toolcache
-          sed -i '' "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-v[0-9.]*/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
-          sed -i '' "s/\"v2.0.[0-9]*\"/\"v2.0.$NOW\"/g" ./src/start-proxy-action.ts
+          sed -i "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-v[0-9.]\+/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
+          sed -i "s/\"v2.0.[0-9]\+\"/\"v2.0.$NOW\"/g" ./src/start-proxy-action.ts
 
       - name: Push changes and open PR
         shell: bash

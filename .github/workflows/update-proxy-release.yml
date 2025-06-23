@@ -45,7 +45,7 @@ jobs:
       - name: Push changes and open PR
         shell: bash
         env:
-          BRANCH: "dependency-proxy/$RELEASE_TAG"
+          BRANCH: "dependency-proxy/${{ env.RELEASE_TAG }}"
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           set -exu

@@ -15,6 +15,8 @@ jobs:
     permissions:
       contents: write # needed to push the updated files
       pull-requests: write # needed to create the PR
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - name: Install Node
         uses: actions/setup-node@v4
@@ -34,20 +36,20 @@ jobs:
         shell: bash
         run: |
           NOW=$(date +"%Y%m%d%H%M%S") # only used to make sure we don't fetch stale binaries from the toolcache
-          sed -i '' 's|https://github.com/github/codeql-action/releases/download/codeql-bundle-[0-9.]*/|https://github.com/github/codeql-action/releases/download/${{ inputs.tag }}/|g' ./src/start-proxy-action.ts
+          sed -i '' "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-[0-9.]*/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
           sed -i '' "s/\"v2.0.[0-9]*\"/\"v2.0.$NOW\"/g" ./src/start-proxy-action.ts
 
       - name: Push changes and open PR
         shell: bash
         env:
-          BRANCH: "dependency-proxy/${{ inputs.tag }}"
+          BRANCH: "dependency-proxy/$RELEASE_TAG"
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           set -exu
-          pr_title="Update release used by `start-proxy` to ${{ inputs.tag }}"
+          pr_title="Update release used by `start-proxy` to $RELEASE_TAG"
           pr_body=$(cat << EOF
             This PR updates the `start-proxy` action to use the private registry proxy binaries that
-            are attached as release assets to the `${{ inputs.tag }}` release.
+            are attached as release assets to the `$RELEASE_TAG` release.
 
 
             Please do the following before merging:

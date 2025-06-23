@@ -14,7 +14,7 @@ jobs:
   update:
     name: Update code and create PR
     timeout-minutes: 15
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write # needed to push the updated files
       pull-requests: write # needed to create the PR

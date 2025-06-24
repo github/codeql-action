@@ -1,8 +1,5 @@
 name: Update dependency proxy release assets
 on:
-  push:
-    branches:
-      - mbg/update-proxy-binaries # for testing
   workflow_dispatch:
     inputs:
       tag:
@@ -19,7 +16,7 @@ jobs:
       contents: write # needed to push the updated files
       pull-requests: write # needed to create the PR
     env:
-      RELEASE_TAG: ${{ inputs.tag || 'codeql-bundle-v2.22.0' }}
+      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - name: Check release tag format
         id: checks

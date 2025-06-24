@@ -327,6 +327,16 @@ test("validateUniqueCategory for multiple runs", (t) => {
   t.throws(() => uploadLib.validateUniqueCategory(sarif2));
 });
 
+test("validateUniqueCategory with different prefixes", (t) => {
+  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif()));
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif(),
+      uploadLib.CodeQualityTarget.sentinelPrefix,
+    ),
+  );
+});
+
 test("accept results with invalid artifactLocation.uri value", (t) => {
   const loggedMessages: string[] = [];
   const mockLogger = {

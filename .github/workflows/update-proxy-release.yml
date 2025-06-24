@@ -37,7 +37,7 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
-          (gh release view --repo ${{ github.event.repository.full_name }} --json "assets" "$RELEASE_TAG" && echo "Release found.") || exit 1
+          (gh release view --repo "$GITHUB_REPOSITORY" --json "assets" "$RELEASE_TAG" && echo "Release found.") || exit 1
 
       - name: Install Node
         uses: actions/setup-node@v4
@@ -63,9 +63,11 @@ jobs:
 
       - name: Compile TypeScript and commit changes
         shell: bash
+        env:
+          TARGET_BRANCH: ${{ steps.checks.outputs.target_branch }}
         run: |
           set -exu
-          git checkout -b "${{ steps.checks.outputs.target_branch }}"
+          git checkout -b "$TARGET_BRANCH"
 
           npm run build
           git add ./src/start-proxy-action.ts
@@ -76,6 +78,8 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          TARGET_BRANCH: ${{ steps.checks.outputs.target_branch }}
+          PR_FLAG: ${{ (github.event_name == 'workflow_dispatch' && '--draft') || '--dry-run' }}
         run: |
           set -exu
           pr_title="Update release used by \`start-proxy\` to \`$RELEASE_TAG\`"
@@ -91,10 +95,10 @@ jobs:
           EOF
           )
 
-          git push origin "${{ steps.checks.outputs.target_branch }}"
+          git push origin "$TARGET_BRANCH"
           gh pr create \
-            --head "${{ steps.checks.outputs.target_branch }}" \
+            --head "$TARGET_BRANCH" \
             --base "main" \
             --title "${pr_title}" \
             --body "${pr_body}" \
-            ${{ (github.event_name == 'workflow_dispatch' && '--draft') || '--dry-run' }}
+            $PR_FLAG

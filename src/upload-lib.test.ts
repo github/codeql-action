@@ -122,6 +122,10 @@ test("finding SARIF files", async (t) => {
       "file",
     );
 
+    // add some `.quality.sarif` files that should be ignored, unless we look for them specifically
+    fs.writeFileSync(path.join(tmpDir, "a.quality.sarif"), "");
+    fs.writeFileSync(path.join(tmpDir, "dir1", "b.quality.sarif"), "");
+
     const sarifFiles = uploadLib.findSarifFilesInDir(tmpDir);
 
     t.deepEqual(sarifFiles, [
@@ -129,6 +133,16 @@ test("finding SARIF files", async (t) => {
       path.join(tmpDir, "b.sarif"),
       path.join(tmpDir, "dir1", "d.sarif"),
       path.join(tmpDir, "dir1", "dir2", "e.sarif"),
+    ]);
+
+    const qualitySarifFiles = uploadLib.findSarifFilesInDir(
+      tmpDir,
+      uploadLib.qualityIsSarif,
+    );
+
+    t.deepEqual(qualitySarifFiles, [
+      path.join(tmpDir, "a.quality.sarif"),
+      path.join(tmpDir, "dir1", "b.quality.sarif"),
     ]);
   });
 });

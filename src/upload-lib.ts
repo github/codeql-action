@@ -380,8 +380,8 @@ export interface UploadResult {
   sarifID: string;
 }
 
-const qualityIsSarif = (name: string) => name.endsWith(".quality.sarif");
-const defaultIsSarif = (name: string) =>
+export const qualityIsSarif = (name: string) => name.endsWith(".quality.sarif");
+export const defaultIsSarif = (name: string) =>
   name.endsWith(".sarif") && !qualityIsSarif(name);
 
 // Recursively walks a directory and returns all SARIF files it finds.

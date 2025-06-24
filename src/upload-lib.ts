@@ -581,6 +581,7 @@ export function buildPayload(
   return payloadObj;
 }
 
+// Represents configurations for different services that we can upload SARIF to.
 export interface UploadTarget {
   name: string;
   target: SARIF_UPLOAD_TARGET;
@@ -588,6 +589,7 @@ export interface UploadTarget {
   sentinelPrefix: string;
 }
 
+// Represents the Code Scanning upload target.
 export const CodeScanningTarget: UploadTarget = {
   name: "code scanning",
   target: SARIF_UPLOAD_TARGET.CODE_SCANNING_UPLOAD_TARGET,
@@ -595,6 +597,7 @@ export const CodeScanningTarget: UploadTarget = {
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };
 
+// Represents the Code Quality upload target.
 export const CodeQualityTarget: UploadTarget = {
   name: "code quality",
   target: SARIF_UPLOAD_TARGET.CODE_QUALITY_UPLOAD_TARGET,

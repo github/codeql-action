@@ -405,7 +405,7 @@ export function findSarifFilesInDir(
   return sarifFiles;
 }
 
-function getSarifFilePaths(
+export function getSarifFilePaths(
   sarifPath: string,
   isSarif: (name: string) => boolean = defaultIsSarif,
 ) {
@@ -622,6 +622,27 @@ export async function uploadFiles(
     uploadTarget.sarifFilter,
   );
 
+  return uploadSpecifiedFiles(
+    sarifPaths,
+    checkoutPath,
+    category,
+    features,
+    logger,
+    uploadTarget,
+  );
+}
+
+/**
+ * Uploads the given array of SARIF files.
+ */
+export async function uploadSpecifiedFiles(
+  sarifPaths: string[],
+  checkoutPath: string,
+  category: string | undefined,
+  features: FeatureEnablement,
+  logger: Logger,
+  uploadTarget: UploadTarget = CodeScanningTarget,
+): Promise<UploadResult> {
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
   logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
 

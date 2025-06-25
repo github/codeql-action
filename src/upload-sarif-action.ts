@@ -83,14 +83,32 @@ async function run() {
   }
 
   try {
+    const sarifPath = actionsUtil.getRequiredInput("sarif_file");
+    const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
+    const category = actionsUtil.getOptionalInput("category");
+
     const uploadResult = await upload_lib.uploadFiles(
-      actionsUtil.getRequiredInput("sarif_file"),
-      actionsUtil.getRequiredInput("checkout_path"),
-      actionsUtil.getOptionalInput("category"),
+      sarifPath,
+      checkoutPath,
+      category,
       features,
       logger,
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
+
+    // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
+    const qualitySarifFiles = upload_lib.getSarifFilePaths(sarifPath);
+
+    if (qualitySarifFiles.length !== 0) {
+      await upload_lib.uploadSpecifiedFiles(
+        qualitySarifFiles,
+        checkoutPath,
+        category,
+        features,
+        logger,
+        upload_lib.CodeQualityTarget,
+      );
+    }
 
     // We don't upload results in test mode, so don't wait for processing
     if (isInTestMode()) {
@@ -101,6 +119,8 @@ async function run() {
         uploadResult.sarifID,
         logger,
       );
+      // The code quality service does not currently have an endpoint to wait for SARIF processing,
+      // so we can't wait for that here.
     }
     await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
   } catch (unwrappedError) {

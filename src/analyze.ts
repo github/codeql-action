@@ -624,6 +624,16 @@ export async function runQueries(
     try {
       const sarifFile = path.join(sarifFolder, `${language}.sarif`);
 
+      const queries: string[] = [];
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        queries.push(`path:${config.tempDir}/config-queries.qls`);
+
+        for (const qualityQuery of config.augmentationProperties
+          .qualityQueriesInput) {
+          queries.push(resolveQuerySuiteAlias(language, qualityQuery.uses));
+        }
+      }
+
       // The work needed to generate the query suites
       // is done in the CLI. We just need to make a single
       // call to run all the queries for each language and
@@ -631,7 +641,7 @@ export async function runQueries(
       logger.startGroup(`Running queries for ${language}`);
       const startTimeRunQueries = new Date().getTime();
       const databasePath = util.getCodeQLDatabasePath(config, language);
-      await codeql.databaseRunQueries(databasePath, queryFlags);
+      await codeql.databaseRunQueries(databasePath, queryFlags, queries);
       logger.debug(`Finished running queries for ${language}.`);
       // TODO should not be using `builtin` here. We should be using `all` instead.
       // The status report does not support `all` yet.

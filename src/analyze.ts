@@ -626,7 +626,13 @@ export async function runQueries(
 
       const queries: string[] = [];
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
-        queries.push(`path:${config.tempDir}/config-queries.qls`);
+        queries.push(
+          path.join(
+            util.getCodeQLDatabasePath(config, language),
+            "temp",
+            "config-queries.qls",
+          ),
+        );
 
         for (const qualityQuery of config.augmentationProperties
           .qualityQueriesInput) {

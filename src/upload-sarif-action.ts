@@ -97,7 +97,10 @@ async function run() {
     core.setOutput("sarif-id", uploadResult.sarifID);
 
     // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-    const qualitySarifFiles = upload_lib.getSarifFilePaths(sarifPath);
+    const qualitySarifFiles = upload_lib.getSarifFilePaths(
+      sarifPath,
+      upload_lib.CodeQualityTarget.sarifPredicate,
+    );
 
     if (qualitySarifFiles.length !== 0) {
       await upload_lib.uploadSpecifiedFiles(

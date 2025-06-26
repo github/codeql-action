@@ -126,7 +126,10 @@ test("finding SARIF files", async (t) => {
     fs.writeFileSync(path.join(tmpDir, "a.quality.sarif"), "");
     fs.writeFileSync(path.join(tmpDir, "dir1", "b.quality.sarif"), "");
 
-    const sarifFiles = uploadLib.findSarifFilesInDir(tmpDir);
+    const sarifFiles = uploadLib.findSarifFilesInDir(
+      tmpDir,
+      uploadLib.CodeScanningTarget.sarifPredicate,
+    );
 
     t.deepEqual(sarifFiles, [
       path.join(tmpDir, "a.sarif"),

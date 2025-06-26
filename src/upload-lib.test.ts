@@ -137,7 +137,7 @@ test("finding SARIF files", async (t) => {
 
     const qualitySarifFiles = uploadLib.findSarifFilesInDir(
       tmpDir,
-      uploadLib.qualityIsSarif,
+      uploadLib.CodeQualityTarget.sarifPredicate,
     );
 
     t.deepEqual(qualitySarifFiles, [

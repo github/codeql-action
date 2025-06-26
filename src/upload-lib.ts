@@ -380,15 +380,11 @@ export interface UploadResult {
   sarifID: string;
 }
 
-export const qualityIsSarif = (name: string) => name.endsWith(".quality.sarif");
-export const defaultIsSarif = (name: string) =>
-  name.endsWith(".sarif") && !qualityIsSarif(name);
-
 // Recursively walks a directory and returns all SARIF files it finds.
 // Does not follow symlinks.
 export function findSarifFilesInDir(
   sarifPath: string,
-  isSarif: (name: string) => boolean = defaultIsSarif,
+  isSarif: (name: string) => boolean = CodeScanningTarget.sarifPredicate,
 ): string[] {
   const sarifFiles: string[] = [];
   const walkSarifFiles = (dir: string) => {
@@ -407,7 +403,7 @@ export function findSarifFilesInDir(
 
 export function getSarifFilePaths(
   sarifPath: string,
-  isSarif: (name: string) => boolean = defaultIsSarif,
+  isSarif: (name: string) => boolean = CodeScanningTarget.sarifPredicate,
 ) {
   if (!fs.existsSync(sarifPath)) {
     // This is always a configuration error, even for first-party runs.
@@ -585,7 +581,7 @@ export function buildPayload(
 export interface UploadTarget {
   name: string;
   target: SARIF_UPLOAD_ENDPOINT;
-  sarifFilter: (name: string) => boolean;
+  sarifPredicate: (name: string) => boolean;
   sentinelPrefix: string;
 }
 
@@ -593,7 +589,7 @@ export interface UploadTarget {
 export const CodeScanningTarget: UploadTarget = {
   name: "code scanning",
   target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING_UPLOAD_TARGET,
-  sarifFilter: defaultIsSarif,
+  sarifPredicate: (name) => name.endsWith(".sarif") && !CodeQualityTarget.sarifPredicate(name),
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };
 
@@ -601,7 +597,7 @@ export const CodeScanningTarget: UploadTarget = {
 export const CodeQualityTarget: UploadTarget = {
   name: "code quality",
   target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY_UPLOAD_TARGET,
-  sarifFilter: qualityIsSarif,
+  sarifPredicate: (name) => name.endsWith(".quality.sarif"),
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
 
@@ -619,7 +615,7 @@ export async function uploadFiles(
 ): Promise<UploadResult> {
   const sarifPaths = getSarifFilePaths(
     inputSarifPath,
-    uploadTarget.sarifFilter,
+    uploadTarget.sarifPredicate,
   );
 
   return uploadSpecifiedFiles(

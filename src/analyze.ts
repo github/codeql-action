@@ -571,22 +571,22 @@ export const defaultSuites: Set<string> = new Set([
 ]);
 
 /**
- * If `query` is the name of a default query suite, it is resolved into the corresponding
- * query suite name for the given `language`. Otherwise, `query` is returned as is.
+ * If `maybeSuite` is the name of a default query suite, it is resolved into the corresponding
+ * query suite name for the given `language`. Otherwise, `maybeSuite` is returned as is.
  *
  * @param language The language for which to resolve the default query suite name.
- * @param query The string that potentially contains the name of a default query suite.
+ * @param maybeSuite The string that potentially contains the name of a default query suite.
  * @returns Returns the resolved query suite name, or the unmodified input.
  */
 export function resolveQuerySuiteAlias(
   language: Language,
-  query: string,
+  maybeSuite: string,
 ): string {
-  if (defaultSuites.has(query)) {
-    return `${language}-${query}.qls`;
+  if (defaultSuites.has(maybeSuite)) {
+    return `${language}-${maybeSuite}.qls`;
   }
 
-  return query;
+  return maybeSuite;
 }
 
 // Runs queries and creates sarif files in the given folder

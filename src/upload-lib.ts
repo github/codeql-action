@@ -318,7 +318,7 @@ async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
-  target: SARIF_UPLOAD_ENDPOINT = SARIF_UPLOAD_ENDPOINT.CODE_SCANNING_UPLOAD_TARGET,
+  target: SARIF_UPLOAD_ENDPOINT,
 ): Promise<string> {
   logger.info("Uploading results");
 
@@ -384,7 +384,7 @@ export interface UploadResult {
 // Does not follow symlinks.
 export function findSarifFilesInDir(
   sarifPath: string,
-  isSarif: (name: string) => boolean = CodeScanningTarget.sarifPredicate,
+  isSarif: (name: string) => boolean,
 ): string[] {
   const sarifFiles: string[] = [];
   const walkSarifFiles = (dir: string) => {
@@ -403,7 +403,7 @@ export function findSarifFilesInDir(
 
 export function getSarifFilePaths(
   sarifPath: string,
-  isSarif: (name: string) => boolean = CodeScanningTarget.sarifPredicate,
+  isSarif: (name: string) => boolean,
 ) {
   if (!fs.existsSync(sarifPath)) {
     // This is always a configuration error, even for first-party runs.
@@ -611,7 +611,7 @@ export async function uploadFiles(
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
-  uploadTarget: UploadTarget = CodeScanningTarget,
+  uploadTarget: UploadTarget,
 ): Promise<UploadResult> {
   const sarifPaths = getSarifFilePaths(
     inputSarifPath,

@@ -327,6 +327,7 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         features,
         logger,
+        uploadLib.CodeScanningTarget,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
 

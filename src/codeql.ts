@@ -157,7 +157,9 @@ export interface CodeQL {
     dbName: string,
   ): Promise<void>;
   /**
-   * Run 'codeql database run-queries'.
+   * Run 'codeql database run-queries'. If no `queries` are specified, then the CLI
+   * will automatically use the `config-queries.qls` (if it exists) or default queries
+   * for the language.
    */
   databaseRunQueries(
     databasePath: string,

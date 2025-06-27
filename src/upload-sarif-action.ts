@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -98,20 +100,24 @@ async function run() {
     core.setOutput("sarif-id", uploadResult.sarifID);
 
     // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-    const qualitySarifFiles = upload_lib.getSarifFilePaths(
-      sarifPath,
-      upload_lib.CodeQualityTarget.sarifPredicate,
-    );
-
-    if (qualitySarifFiles.length !== 0) {
-      await upload_lib.uploadSpecifiedFiles(
-        qualitySarifFiles,
-        checkoutPath,
-        category,
-        features,
-        logger,
-        upload_lib.CodeQualityTarget,
+    // Code quality can currently only be enabled on top of security, so we'd currently always expect to
+    // have a directory for the results here.
+    if (fs.lstatSync(sarifPath).isDirectory()) {
+      const qualitySarifFiles = upload_lib.findSarifFilesInDir(
+        sarifPath,
+        upload_lib.CodeQualityTarget.sarifPredicate,
       );
+
+      if (qualitySarifFiles.length !== 0) {
+        await upload_lib.uploadSpecifiedFiles(
+          qualitySarifFiles,
+          checkoutPath,
+          category,
+          features,
+          logger,
+          upload_lib.CodeQualityTarget,
+        );
+      }
     }
 
     // We don't upload results in test mode, so don't wait for processing

@@ -96,12 +96,13 @@ test("getCredentials filters by language when specified", async (t) => {
     { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
     { type: "maven_repository", host: "maven.pkg.github.com", token: "def" },
     { type: "nuget_feed", host: "nuget.pkg.github.com", token: "ghi" },
+    { type: "goproxy_server", host: "goproxy.example.com", token: "jkl" },
   ];
 
   const credentials = startProxyExports.getCredentials(
     getRunnerLogger(true),
     undefined,
-    Buffer.from(JSON.stringify(mixedCredentials)).toString("base64"),
+    toEncodedJSON(mixedCredentials),
     "java",
   );
   t.is(credentials.length, 1);
@@ -113,10 +114,9 @@ test("getCredentials returns all credentials when no language specified", async 
     { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
     { type: "maven_repository", host: "maven.pkg.github.com", token: "def" },
     { type: "nuget_feed", host: "nuget.pkg.github.com", token: "ghi" },
+    { type: "goproxy_server", host: "goproxy.example.com", token: "jkl" },
   ];
-  const credentialsInput = Buffer.from(
-    JSON.stringify(mixedCredentials),
-  ).toString("base64");
+  const credentialsInput = toEncodedJSON(mixedCredentials);
 
   const credentials = startProxyExports.getCredentials(
     getRunnerLogger(true),
@@ -124,7 +124,7 @@ test("getCredentials returns all credentials when no language specified", async 
     credentialsInput,
     undefined,
   );
-  t.is(credentials.length, 3);
+  t.is(credentials.length, mixedCredentials.length);
 });
 
 test("getCredentials throws an error when non-printable characters are used", async (t) => {

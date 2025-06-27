@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: 'PR Check - Packaging: Config and input'
+name: PR Check - Quality queries input
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -22,7 +22,7 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
-  packaging-config-inputs-js:
+  quality-queries:
     strategy:
       fail-fast: false
       matrix:
@@ -34,18 +34,12 @@ jobs:
           - os: windows-latest
             version: linked
           - os: ubuntu-latest
-            version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
-          - os: ubuntu-latest
             version: nightly-latest
           - os: macos-latest
             version: nightly-latest
           - os: windows-latest
             version: nightly-latest
-    name: 'Packaging: Config and input'
+    name: Quality queries input
     permissions:
       contents: read
       security-events: read
@@ -61,46 +55,46 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '>=1.21.0'
-          cache: false
       - uses: ./../action/init
         with:
-          config-file: .github/codeql/codeql-config-packaging3.yml
-          packs: +codeql-testing/codeql-pack1@1.0.0
           languages: javascript
+          quality-queries: code-quality
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - name: Build code
-        shell: bash
-        run: ./build.sh
       - uses: ./../action/analyze
         with:
           output: ${{ runner.temp }}/results
           upload-database: false
-
-      - name: Check results
-        uses: ./../action/.github/actions/check-sarif
+      - name: Upload SARIF
+        uses: actions/upload-artifact@v4
         with:
-          sarif-file: ${{ runner.temp }}/results/javascript.sarif
-          queries-run:
-            javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
-          queries-not-run: foo,bar
+          name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+          path: ${{ runner.temp }}/results/javascript.sarif
+          retention-days: 7
+      - name: Check config properties appear in SARIF
+        uses: actions/github-script@v7
+        env:
+          SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
+        with:
+          script: |
+            const fs = require('fs');
 
-      - name: Assert Results
-        shell: bash
-        run: |
-          cd "$RUNNER_TEMP/results"
-          # We should have 4 hits from these rules
-          EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+            const run = sarif.runs[0];
+            const configSummary = run.properties.codeqlConfigSummary;
 
-          # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
-          RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
-          echo "Found matching rules '$RULES'"
-          if [ "$RULES" != "$EXPECTED_RULES" ]; then
-            echo "Did not match expected rules '$EXPECTED_RULES'."
-            exit 1
-          fi
+            if (configSummary === undefined) {
+              core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
+            }
+            if (configSummary.disableDefaultQueries !== false) {
+              core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' +
+                `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
+            }
+            const expectedQueries = [{ type: 'builtinSuite', uses: 'code-quality' }];
+            // Use JSON.stringify to deep-equal the arrays.
+            if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
+              core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` +
+                `${JSON.stringify(configSummary.queries)}.`);
+            }
+            core.info('Finished config export tests.');
     env:
       CODEQL_ACTION_TEST_MODE: true

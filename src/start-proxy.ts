@@ -72,6 +72,10 @@ export function getCredentials(
 
   const out: Credential[] = [];
   for (const e of parsed) {
+    if (e === null || typeof e !== "object") {
+      throw new ConfigurationError("Invalid credentials - must be an object");
+    }
+
     // Mask credentials to reduce chance of accidental leakage in logs.
     if (e.password !== undefined) {
       core.setSecret(e.password);

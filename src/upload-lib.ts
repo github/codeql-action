@@ -589,7 +589,8 @@ export interface UploadTarget {
 export const CodeScanningTarget: UploadTarget = {
   name: "code scanning",
   target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING_UPLOAD_TARGET,
-  sarifPredicate: (name) => name.endsWith(".sarif") && !CodeQualityTarget.sarifPredicate(name),
+  sarifPredicate: (name) =>
+    name.endsWith(".sarif") && !CodeQualityTarget.sarifPredicate(name),
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };
 

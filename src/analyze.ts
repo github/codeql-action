@@ -561,6 +561,34 @@ extensions:
   return diffRangeDir;
 }
 
+// A set of default query suite names that are understood by the CLI.
+export const defaultSuites: Set<string> = new Set([
+  "security-experimental",
+  "security-extended",
+  "security-and-quality",
+  "code-quality",
+  "code-scanning",
+]);
+
+/**
+ * If `maybeSuite` is the name of a default query suite, it is resolved into the corresponding
+ * query suite name for the given `language`. Otherwise, `maybeSuite` is returned as is.
+ *
+ * @param language The language for which to resolve the default query suite name.
+ * @param maybeSuite The string that potentially contains the name of a default query suite.
+ * @returns Returns the resolved query suite name, or the unmodified input.
+ */
+export function resolveQuerySuiteAlias(
+  language: Language,
+  maybeSuite: string,
+): string {
+  if (defaultSuites.has(maybeSuite)) {
+    return `${language}-${maybeSuite}.qls`;
+  }
+
+  return maybeSuite;
+}
+
 // Runs queries and creates sarif files in the given folder
 export async function runQueries(
   sarifFolder: string,
@@ -596,6 +624,22 @@ export async function runQueries(
     try {
       const sarifFile = path.join(sarifFolder, `${language}.sarif`);
 
+      const queries: string[] = [];
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        queries.push(
+          path.join(
+            util.getCodeQLDatabasePath(config, language),
+            "temp",
+            "config-queries.qls",
+          ),
+        );
+
+        for (const qualityQuery of config.augmentationProperties
+          .qualityQueriesInput) {
+          queries.push(resolveQuerySuiteAlias(language, qualityQuery.uses));
+        }
+      }
+
       // The work needed to generate the query suites
       // is done in the CLI. We just need to make a single
       // call to run all the queries for each language and
@@ -603,7 +647,7 @@ export async function runQueries(
       logger.startGroup(`Running queries for ${language}`);
       const startTimeRunQueries = new Date().getTime();
       const databasePath = util.getCodeQLDatabasePath(config, language);
-      await codeql.databaseRunQueries(databasePath, queryFlags);
+      await codeql.databaseRunQueries(databasePath, queryFlags, queries);
       logger.debug(`Finished running queries for ${language}.`);
       // TODO should not be using `builtin` here. We should be using `all` instead.
       // The status report does not support `all` yet.
@@ -618,6 +662,24 @@ export async function runQueries(
         sarifFile,
         config.debugMode,
       );
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        logger.info(`Interpreting quality results for ${language}`);
+        const qualitySarifFile = path.join(
+          sarifFolder,
+          `${language}.quality.sarif`,
+        );
+        const qualityAnalysisSummary = await runInterpretResults(
+          language,
+          config.augmentationProperties.qualityQueriesInput.map((i) =>
+            resolveQuerySuiteAlias(language, i.uses),
+          ),
+          qualitySarifFile,
+          config.debugMode,
+        );
+
+        // TODO: move
+        logger.info(qualityAnalysisSummary);
+      }
       const endTimeInterpretResults = new Date();
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();

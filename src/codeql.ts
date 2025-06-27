@@ -157,9 +157,15 @@ export interface CodeQL {
     dbName: string,
   ): Promise<void>;
   /**
-   * Run 'codeql database run-queries'.
+   * Run 'codeql database run-queries'. If no `queries` are specified, then the CLI
+   * will automatically use the `config-queries.qls` (if it exists) or default queries
+   * for the language.
    */
-  databaseRunQueries(databasePath: string, flags: string[]): Promise<void>;
+  databaseRunQueries(
+    databasePath: string,
+    flags: string[],
+    queries?: string[],
+  ): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
    */
@@ -806,6 +812,7 @@ export async function getCodeQLForCmd(
     async databaseRunQueries(
       databasePath: string,
       flags: string[],
+      queries: string[] = [],
     ): Promise<void> {
       const codeqlArgs = [
         "database",
@@ -815,6 +822,7 @@ export async function getCodeQLForCmd(
         "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
+        ...queries,
         ...getExtraOptionsFromEnv(["database", "run-queries"], {
           ignoringOptions: ["--expect-discarded-cache"],
         }),
@@ -1219,20 +1227,13 @@ async function generateCodeScanningConfig(
   const augmentedConfig = cloneObject(config.originalUserInput);
 
   // Inject the queries from the input
-  if (
-    config.augmentationProperties.queriesInput ||
-    config.augmentationProperties.qualityQueriesInput
-  ) {
-    const queryInputs = (
-      config.augmentationProperties.queriesInput || []
-    ).concat(config.augmentationProperties.qualityQueriesInput || []);
-
+  if (config.augmentationProperties.queriesInput) {
     if (config.augmentationProperties.queriesInputCombines) {
       augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        queryInputs,
+        config.augmentationProperties.queriesInput,
       );
     } else {
-      augmentedConfig.queries = queryInputs;
+      augmentedConfig.queries = config.augmentationProperties.queriesInput;
     }
   }
   if (augmentedConfig.queries?.length === 0) {

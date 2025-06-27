@@ -27,6 +27,30 @@ const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
   swift: "",
 } as const;
 
+/**
+ * Checks that `value` is neither `undefined` nor `null`.
+ * @param value The value to test.
+ * @returns Narrows the type of `value` to exclude `undefined` and `null`.
+ */
+function isDefined<T>(value: T | null | undefined): value is T {
+  return value !== undefined && value !== null;
+}
+
+/**
+ * In some cases, the backend will provide `e.password` even if it is actually a token.
+ * However, `e.username` will be undefined if `e.password` is actually a token.
+ * @param e The credential to return the token or password for.
+ * @returns A partial `Credential` object that includes the appropriate token or password.
+ */
+function getTokenOrPassword(e: Credential): Partial<Credential> {
+  // If we have a token already, then the password isn't it.
+  if (isDefined(e.token)) return { token: e.token };
+  // If `username` is undefined, then the password is a token.
+  if (e.username === undefined) return { token: e.password };
+  // Otherwise, if `username` is defined, then the password is a password.
+  return { password: e.password };
+}
+
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
@@ -63,17 +87,28 @@ export function getCredentials(
     throw new ConfigurationError("Invalid credentials format.");
   }
 
+  // Check that the parsed data is indeed an array.
+  if (!Array.isArray(parsed)) {
+    throw new ConfigurationError(
+      "Expected credentials data to be an array of configurations, but it is not.",
+    );
+  }
+
   const out: Credential[] = [];
   for (const e of parsed) {
+    if (e === null || typeof e !== "object") {
+      throw new ConfigurationError("Invalid credentials - must be an object");
+    }
+
     // Mask credentials to reduce chance of accidental leakage in logs.
-    if (e.password !== undefined) {
+    if (isDefined(e.password)) {
       core.setSecret(e.password);
     }
-    if (e.token !== undefined) {
+    if (isDefined(e.token)) {
       core.setSecret(e.token);
     }
 
-    if (e.url === undefined && e.host === undefined) {
+    if (!isDefined(e.url) && !isDefined(e.host)) {
       // The proxy needs one of these to work. If both are defined, the url has the precedence.
       throw new ConfigurationError(
         "Invalid credentials - must specify host or url",
@@ -108,8 +143,7 @@ export function getCredentials(
       host: e.host,
       url: e.url,
       username: e.username,
-      password: e.password,
-      token: e.token,
+      ...getTokenOrPassword(e),
     });
   }
   return out;

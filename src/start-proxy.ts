@@ -27,6 +27,15 @@ const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
   swift: "",
 } as const;
 
+/**
+ * Checks that `value` is neither `undefined` nor `null`.
+ * @param value The value to test.
+ * @returns Narrows the type of `value` to exclude `undefined` and `null`.
+ */
+function isDefined<T>(value: T | null | undefined): value is T {
+  return value !== undefined && value !== null;
+}
+
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
@@ -77,14 +86,14 @@ export function getCredentials(
     }
 
     // Mask credentials to reduce chance of accidental leakage in logs.
-    if (e.password !== undefined) {
+    if (isDefined(e.password)) {
       core.setSecret(e.password);
     }
-    if (e.token !== undefined) {
+    if (isDefined(e.token)) {
       core.setSecret(e.token);
     }
 
-    if (e.url === undefined && e.host === undefined) {
+    if (!isDefined(e.url) && !isDefined(e.host)) {
       // The proxy needs one of these to work. If both are defined, the url has the precedence.
       throw new ConfigurationError(
         "Invalid credentials - must specify host or url",

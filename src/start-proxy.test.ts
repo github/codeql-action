@@ -69,22 +69,26 @@ test("getCredentials throws error when credential is not an object", async (t) =
 });
 
 test("getCredentials throws error when credential missing host and url", async (t) => {
-  const registryCredentials = Buffer.from(
-    JSON.stringify([{ type: "npm_registry", token: "abc" }]),
-  ).toString("base64");
+  const testCredentials = [
+    [{ type: "npm_registry", token: "abc" }],
+    [{ type: "npm_registry", token: "abc", host: null }],
+    [{ type: "npm_registry", token: "abc", url: null }],
+  ].map(toEncodedJSON);
 
-  t.throws(
-    () =>
-      startProxyExports.getCredentials(
-        getRunnerLogger(true),
-        undefined,
-        registryCredentials,
-        undefined,
-      ),
-    {
-      message: "Invalid credentials - must specify host or url",
-    },
-  );
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must specify host or url",
+      },
+    );
+  }
 });
 
 test("getCredentials filters by language when specified", async (t) => {

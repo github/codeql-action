@@ -308,8 +308,8 @@ function getAutomationID(
 
 // Enumerates API endpoints that accept SARIF files.
 export enum SARIF_UPLOAD_ENDPOINT {
-  CODE_SCANNING_UPLOAD_TARGET = "PUT /repos/:owner/:repo/code-scanning/analysis",
-  CODE_QUALITY_UPLOAD_TARGET = "PUT /repos/:owner/:repo/code-quality/analysis",
+  CODE_SCANNING = "PUT /repos/:owner/:repo/code-scanning/analysis",
+  CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
 }
 
 // Upload the given payload.
@@ -588,7 +588,7 @@ export interface UploadTarget {
 // Represents the Code Scanning upload target.
 export const CodeScanningTarget: UploadTarget = {
   name: "code scanning",
-  target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING_UPLOAD_TARGET,
+  target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING,
   sarifPredicate: (name) =>
     name.endsWith(".sarif") && !CodeQualityTarget.sarifPredicate(name),
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
@@ -597,7 +597,7 @@ export const CodeScanningTarget: UploadTarget = {
 // Represents the Code Quality upload target.
 export const CodeQualityTarget: UploadTarget = {
   name: "code quality",
-  target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY_UPLOAD_TARGET,
+  target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY,
   sarifPredicate: (name) => name.endsWith(".quality.sarif"),
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };

@@ -67,40 +67,51 @@ jobs:
       - name: Upload security SARIF
         uses: actions/upload-artifact@v4
         with:
-          name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+          name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
           path: ${{ runner.temp }}/results/javascript.sarif
           retention-days: 7
       - name: Upload quality SARIF
         uses: actions/upload-artifact@v4
         with:
-          name: config-export-${{ matrix.os }}-${{ matrix.version }}.quality.sarif.json
+          name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.quality.sarif.json
           path: ${{ runner.temp }}/results/javascript.quality.sarif
           retention-days: 7
-      - name: Check config properties appear in SARIF
+      - name: Check quality query does not appear in security SARIF
+        uses: actions/github-script@v7
+        env:
+          SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
+          EXPECT_PRESENT: 'false'
+        with:
+          script: ${{ env.CHECK_SCRIPT }}
+      - name: Check quality query appears in quality SARIF
         uses: actions/github-script@v7
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.quality.sarif
+          EXPECT_PRESENT: 'true'
         with:
-          script: |
-            const fs = require('fs');
-
-            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
-            const run = sarif.runs[0];
-            const configSummary = run.properties.codeqlConfigSummary;
-
-            if (configSummary === undefined) {
-              core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
-            }
-            if (configSummary.disableDefaultQueries !== false) {
-              core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' +
-                `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
-            }
-            const expectedQueries = [{ type: 'builtinSuite', uses: 'code-quality' }];
-            // Use JSON.stringify to deep-equal the arrays.
-            if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
-              core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` +
-                `${JSON.stringify(configSummary.queries)}.`);
-            }
-            core.info('Finished config export tests.');
+          script: ${{ env.CHECK_SCRIPT }}
     env:
+      CHECK_SCRIPT: |
+        const fs = require('fs');
+
+        const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+        const expectPresent = JSON.parse(process.env['EXPECT_PRESENT']);
+        const run = sarif.runs[0];
+        const extensions = run.tool.extensions;
+
+        if (extensions === undefined) {
+          core.setFailed('`extensions` property not found in the SARIF run property bag.');
+        }
+
+        // ID of a query we want to check the presence for
+        const targetId = 'js/regex/always-matches';
+        const found = extensions.find(extension => extension.rules && extension.rules.find(rule => rule.id === targetId));
+
+        if (found && expectPresent) {
+          console.log(`Found rule with id '${targetId}'.`);
+        } else if (!found && !expectPresent) {
+          console.log(`Rule with id '${targetId}' was not found.`);
+        } else {
+          core.setFailed(`${ found ? "Found" : "Didn't find" } rule ${targetId}`);
+        }
       CODEQL_ACTION_TEST_MODE: true

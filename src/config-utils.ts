@@ -171,6 +171,11 @@ export interface AugmentationProperties {
   queriesInput?: Array<{ uses: string }>;
 
   /**
+   * The quality queries input from the `with` block of the action declaration.
+   */
+  qualityQueriesInput?: Array<{ uses: string }>;
+
+  /**
    * Whether or not the packs input combines with the packs in the config.
    */
   packsInputCombines: boolean;
@@ -181,9 +186,9 @@ export interface AugmentationProperties {
   packsInput?: string[];
 
   /**
-   * Default query filters to apply to the queries in the config.
+   * Extra query exclusions to append to the config.
    */
-  defaultQueryFilters?: QueryFilter[];
+  extraQueryExclusions?: ExcludeQueryFilter[];
 }
 
 /**
@@ -195,7 +200,8 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
-  defaultQueryFilters: [],
+  qualityQueriesInput: undefined,
+  extraQueryExclusions: [],
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -405,6 +411,7 @@ export async function getRawLanguages(
 export interface InitConfigInputs {
   languagesInput: string | undefined;
   queriesInput: string | undefined;
+  qualityQueriesInput: string | undefined;
   packsInput: string | undefined;
   configFile: string | undefined;
   dbLocation: string | undefined;
@@ -440,6 +447,7 @@ type LoadConfigInputs = Omit<InitConfigInputs, "configInput"> & {
 export async function getDefaultConfig({
   languagesInput,
   queriesInput,
+  qualityQueriesInput,
   packsInput,
   buildModeInput,
   dbLocation,
@@ -474,6 +482,7 @@ export async function getDefaultConfig({
     features,
     packsInput,
     queriesInput,
+    qualityQueriesInput,
     languages,
     logger,
   );
@@ -528,6 +537,7 @@ async function downloadCacheWithTime(
 async function loadConfig({
   languagesInput,
   queriesInput,
+  qualityQueriesInput,
   packsInput,
   buildModeInput,
   configFile,
@@ -583,6 +593,7 @@ async function loadConfig({
     features,
     packsInput,
     queriesInput,
+    qualityQueriesInput,
     languages,
     logger,
   );
@@ -639,6 +650,7 @@ export async function calculateAugmentation(
   features: FeatureEnablement,
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
+  rawQualityQueriesInput: string | undefined,
   languages: Language[],
   logger: Logger,
 ): Promise<AugmentationProperties> {
@@ -654,9 +666,16 @@ export async function calculateAugmentation(
     queriesInputCombines,
   );
 
-  const defaultQueryFilters: QueryFilter[] = [];
+  const qualityQueriesInput = parseQueriesFromInput(
+    rawQualityQueriesInput,
+    false,
+  );
+
+  const extraQueryExclusions: ExcludeQueryFilter[] = [];
   if (await shouldPerformDiffInformedAnalysis(codeql, features, logger)) {
-    defaultQueryFilters.push({ exclude: { tags: "exclude-from-incremental" } });
+    extraQueryExclusions.push({
+      exclude: { tags: "exclude-from-incremental" },
+    });
   }
 
   return {
@@ -664,7 +683,8 @@ export async function calculateAugmentation(
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
-    defaultQueryFilters,
+    qualityQueriesInput,
+    extraQueryExclusions,
   };
 }
 

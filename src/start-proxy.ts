@@ -1,3 +1,5 @@
+import * as core from "@actions/core";
+
 import { parseLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { ConfigurationError } from "./util";
@@ -63,6 +65,14 @@ export function getCredentials(
 
   const out: Credential[] = [];
   for (const e of parsed) {
+    // Mask credentials to reduce chance of accidental leakage in logs.
+    if (e.password !== undefined) {
+      core.setSecret(e.password);
+    }
+    if (e.token !== undefined) {
+      core.setSecret(e.token);
+    }
+
     if (e.url === undefined && e.host === undefined) {
       // The proxy needs one of these to work. If both are defined, the url has the precedence.
       throw new ConfigurationError(

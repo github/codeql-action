@@ -6,6 +6,9 @@ import { setupTests } from "./testing-utils";
 
 setupTests(test);
 
+const toEncodedJSON = (data: any) =>
+  Buffer.from(JSON.stringify(data)).toString("base64");
+
 test("getCredentials prefers registriesCredentials over registrySecrets", async (t) => {
   const registryCredentials = Buffer.from(
     JSON.stringify([
@@ -44,6 +47,25 @@ test("getCredentials throws an error when configurations are not an array", asyn
         "Expected credentials data to be an array of configurations, but it is not.",
     },
   );
+});
+
+test("getCredentials throws error when credential is not an object", async (t) => {
+  const testCredentials = [["foo"], [null]].map(toEncodedJSON);
+
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must be an object",
+      },
+    );
+  }
 });
 
 test("getCredentials throws error when credential missing host and url", async (t) => {

@@ -63,6 +63,13 @@ export function getCredentials(
     throw new ConfigurationError("Invalid credentials format.");
   }
 
+  // Check that the parsed data is indeed an array.
+  if (!Array.isArray(parsed)) {
+    throw new ConfigurationError(
+      "Expected credentials data to be an array of configurations, but it is not.",
+    );
+  }
+
   const out: Credential[] = [];
   for (const e of parsed) {
     // Mask credentials to reduce chance of accidental leakage in logs.

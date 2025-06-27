@@ -26,6 +26,26 @@ test("getCredentials prefers registriesCredentials over registrySecrets", async 
   t.is(credentials[0].host, "npm.pkg.github.com");
 });
 
+test("getCredentials throws an error when configurations are not an array", async (t) => {
+  const registryCredentials = Buffer.from(
+    JSON.stringify({ type: "npm_registry", token: "abc" }),
+  ).toString("base64");
+
+  t.throws(
+    () =>
+      startProxyExports.getCredentials(
+        getRunnerLogger(true),
+        undefined,
+        registryCredentials,
+        undefined,
+      ),
+    {
+      message:
+        "Expected credentials data to be an array of configurations, but it is not.",
+    },
+  );
+});
+
 test("getCredentials throws error when credential missing host and url", async (t) => {
   const registryCredentials = Buffer.from(
     JSON.stringify([{ type: "npm_registry", token: "abc" }]),

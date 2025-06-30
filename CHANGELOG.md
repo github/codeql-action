@@ -4,7 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- Experimental: When the `quality-queries` input for the `init` action is provided with an argument, separate `.quality.sarif` files are produced and uploaded for each language with the results of the specified queries. Do not use this in production as it is part of an internal experiment and subject to change at any time. [#2376](https://github.com/github/codeql-action/pull/2935)
+No user facing changes.
+
+## 3.29.2 - 30 Jun 2025
+
+- Experimental: When the `quality-queries` input for the `init` action is provided with an argument, separate `.quality.sarif` files are produced and uploaded for each language with the results of the specified queries. Do not use this in production as it is part of an internal experiment and subject to change at any time. [#2935](https://github.com/github/codeql-action/pull/2935)
 
 ## 3.29.1 - 27 Jun 2025
 

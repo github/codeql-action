@@ -5,7 +5,12 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { exportedForTesting, runQueries } from "./analyze";
+import {
+  exportedForTesting,
+  runQueries,
+  defaultSuites,
+  resolveQuerySuiteAlias,
+} from "./analyze";
 import { setCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
 import { Language } from "./languages";
@@ -319,4 +324,26 @@ test("getDiffRanges: no diff context lines", async (t) => {
 test("getDiffRanges: malformed thunk header", async (t) => {
   const diffRanges = runGetDiffRanges(2, ["@@ 30 +50,2 @@", "+1", "+2"]);
   t.deepEqual(diffRanges, undefined);
+});
+
+test("resolveQuerySuiteAlias", (t) => {
+  // default query suite names should resolve to something language-specific ending in `.qls`.
+  for (const suite of defaultSuites) {
+    const resolved = resolveQuerySuiteAlias(Language.go, suite);
+    t.assert(
+      resolved.endsWith(".qls"),
+      "Resolved default suite doesn't end in .qls",
+    );
+    t.assert(
+      resolved.indexOf(Language.go) >= 0,
+      "Resolved default suite doesn't contain language name",
+    );
+  }
+
+  // other inputs should be returned unchanged
+  const names = ["foo", "bar", "codeql/go-queries@1.0"];
+
+  for (const name of names) {
+    t.deepEqual(resolveQuerySuiteAlias(Language.go, name), name);
+  }
 });

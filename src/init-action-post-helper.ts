@@ -104,6 +104,7 @@ async function maybeUploadFailedSarif(
     category,
     features,
     logger,
+    uploadLib.CodeScanningTarget,
   );
   await uploadLib.waitForProcessing(
     repositoryNwo,

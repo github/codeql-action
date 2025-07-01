@@ -1,10 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { getTemporaryDirectory } from "./actions-util";
+import * as actionsCache from "@actions/cache";
+
+import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
+import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
-import { getFileOidsUnderPath } from "./git-utils";
+import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger } from "./logging";
+import { isInTestMode, withTimeout } from "./util";
 
 export enum OverlayDatabaseMode {
   Overlay = "overlay",
@@ -121,4 +125,112 @@ function computeChangedFiles(
     }
   }
   return changes;
+}
+
+// Constants for database caching
+const CACHE_VERSION = 1;
+const CACHE_PREFIX = "codeql-overlay-base-database";
+const MAX_CACHE_OPERATION_MS = 120_000; // Two minutes
+
+/**
+ * Uploads the overlay-base database to the GitHub Actions cache. If conditions
+ * for uploading are not met, the function does nothing and returns false.
+ *
+ * This function uses the `checkout_path` input to determine the repository path
+ * and works only when called from `analyze` or `upload-sarif`.
+ *
+ * @param codeql The CodeQL instance
+ * @param config The configuration object
+ * @param logger The logger instance
+ * @returns A promise that resolves to true if the upload was performed and
+ * successfully completed, or false otherwise
+ */
+export async function uploadOverlayBaseDatabaseToCache(
+  codeql: CodeQL,
+  config: Config,
+  logger: Logger,
+): Promise<boolean> {
+  const overlayDatabaseMode = config.augmentationProperties.overlayDatabaseMode;
+  if (overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase) {
+    logger.debug(
+      `Overlay database mode is ${overlayDatabaseMode}. ` +
+        "Skip uploading overlay-base database to cache.",
+    );
+    return false;
+  }
+  if (!config.augmentationProperties.useOverlayDatabaseCaching) {
+    logger.debug(
+      "Overlay database caching is disabled. " +
+        "Skip uploading overlay-base database to cache.",
+    );
+    return false;
+  }
+  if (isInTestMode()) {
+    logger.debug(
+      "In test mode. Skip uploading overlay-base database to cache.",
+    );
+    return false;
+  }
+
+  // An overlay-base database should contain the base database OIDs file.
+  // Verifying that the file exists serves as a sanity check.
+  const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
+  if (!fs.existsSync(baseDatabaseOidsFilePath)) {
+    logger.warning(
+      "Cannot upload overlay-base database to cache: " +
+        `${baseDatabaseOidsFilePath} does not exist`,
+    );
+    return false;
+  }
+
+  const dbLocation = config.dbLocation;
+  const codeQlVersion = (await codeql.getVersion()).version;
+  const checkoutPath = getRequiredInput("checkout_path");
+  const cacheKey = await generateCacheKey(config, codeQlVersion, checkoutPath);
+  logger.info(
+    `Uploading overlay-base database to Actions cache with key ${cacheKey}`,
+  );
+
+  try {
+    const cacheId = await withTimeout(
+      MAX_CACHE_OPERATION_MS,
+      actionsCache.saveCache([dbLocation], cacheKey),
+      () => {},
+    );
+    if (cacheId === undefined) {
+      logger.warning("Timed out while uploading overlay-base database");
+      return false;
+    }
+  } catch (error) {
+    logger.warning(
+      "Failed to upload overlay-base database to cache: " +
+        `${error instanceof Error ? error.message : String(error)}`,
+    );
+    return false;
+  }
+  logger.info(`Successfully uploaded overlay-base database from ${dbLocation}`);
+  return true;
+}
+
+async function generateCacheKey(
+  config: Config,
+  codeQlVersion: string,
+  checkoutPath: string,
+): Promise<string> {
+  const sha = await getCommitOid(checkoutPath);
+  return `${getCacheRestoreKey(config, codeQlVersion)}${sha}`;
+}
+
+function getCacheRestoreKey(config: Config, codeQlVersion: string): string {
+  // The restore key (prefix) specifies which cached overlay-base databases are
+  // compatible with the current analysis: the cached database must have the
+  // same cache version and the same CodeQL bundle version.
+  //
+  // Actions cache supports using multiple restore keys to indicate preference.
+  // Technically we prefer a cached overlay-base database with the same SHA as
+  // we are analyzing. However, since overlay-base databases are built from the
+  // default branch and used in PR analysis, it is exceedingly unlikely that
+  // the commit SHA will ever be the same, so we can just leave it out.
+  const languages = [...config.languages].sort().join("_");
+  return `${CACHE_PREFIX}-${CACHE_VERSION}-${languages}-${codeQlVersion}-`;
 }

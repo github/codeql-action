@@ -16,7 +16,7 @@ import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
-import { FeatureEnablement } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
@@ -145,6 +145,52 @@ export async function shouldShowCombineSarifFilesDeprecationWarning(
   );
 }
 
+export async function throwIfCombineSarifFilesDisabled(
+  sarifObjects: util.SarifFile[],
+  features: FeatureEnablement,
+  githubVersion: GitHubVersion,
+) {
+  if (
+    !(await shouldDisableCombineSarifFiles(
+      sarifObjects,
+      features,
+      githubVersion,
+    ))
+  ) {
+    return;
+  }
+
+  // TODO: Update this changelog URL to the correct one when it's published.
+  const deprecationMoreInformationMessage =
+    "For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-from-a-single-upload";
+
+  throw new ConfigurationError(
+    `The CodeQL Action does not support uploading multiple SARIF runs with the same category. Please update your workflow to upload a single run per category. ${deprecationMoreInformationMessage}`,
+  );
+}
+
+// Checks whether combining SARIF files should be disabled.
+async function shouldDisableCombineSarifFiles(
+  sarifObjects: util.SarifFile[],
+  features: FeatureEnablement,
+  githubVersion: GitHubVersion,
+) {
+  // Never block on GHES versions before 3.18.0
+  if (
+    githubVersion.type === GitHubVariant.GHES &&
+    semver.lt(githubVersion.version, "3.18.0")
+  ) {
+    return false;
+  }
+
+  if (areAllRunsUnique(sarifObjects)) {
+    // If all runs are unique, we can safely combine them.
+    return false;
+  }
+
+  return features.getValue(Feature.DisableCombineSarifFiles);
+}
+
 // Takes a list of paths to sarif files and combines them together using the
 // CLI `github merge-results` command when all SARIF files are produced by
 // CodeQL. Otherwise, it will fall back to combining the files in the action.
@@ -167,11 +213,17 @@ async function combineSarifFilesUsingCLI(
   const deprecationWarningMessage =
     gitHubVersion.type === GitHubVariant.GHES
       ? "and will be removed in GitHub Enterprise Server 3.18"
-      : "and will be removed on June 4, 2025";
+      : "and will be removed in July 2025";
   const deprecationMoreInformationMessage =
     "For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-from-a-single-upload";
 
   if (!areAllRunsProducedByCodeQL(sarifObjects)) {
+    await throwIfCombineSarifFilesDisabled(
+      sarifObjects,
+      features,
+      gitHubVersion,
+    );
+
     logger.debug(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
@@ -235,6 +287,12 @@ async function combineSarifFilesUsingCLI(
       ToolsFeature.SarifMergeRunsFromEqualCategory,
     ))
   ) {
+    await throwIfCombineSarifFilesDisabled(
+      sarifObjects,
+      features,
+      gitHubVersion,
+    );
+
     logger.warning(
       "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
     );

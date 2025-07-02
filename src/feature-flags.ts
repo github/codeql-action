@@ -46,6 +46,7 @@ export enum Feature {
   CppBuildModeNone = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
+  DisableCombineSarifFiles = "disable_combine_sarif_files",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
@@ -113,6 +114,11 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
     minimumVersion: "2.21.0",
+  },
+  [Feature.DisableCombineSarifFiles]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_DISABLE_COMBINE_SARIF_FILES",
+    minimumVersion: undefined,
   },
   [Feature.DisableCsharpBuildless]: {
     defaultValue: false,

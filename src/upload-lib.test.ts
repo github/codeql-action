@@ -3,8 +3,9 @@ import * as path from "path";
 
 import test from "ava";
 
+import { Feature } from "./feature-flags";
 import { getRunnerLogger, Logger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { createFeatures, setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
@@ -437,6 +438,105 @@ test("shouldShowCombineSarifFilesDeprecationWarning when environment variable is
   t.false(
     await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on dotcom with feature flag", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([Feature.DisableCombineSarifFiles]),
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on dotcom without feature flag", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([]),
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.13", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([Feature.DisableCombineSarifFiles]),
+      {
+        type: GitHubVariant.GHES,
+        version: "3.13.2",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.14", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([Feature.DisableCombineSarifFiles]),
+      {
+        type: GitHubVariant.GHES,
+        version: "3.14.0",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([Feature.DisableCombineSarifFiles]),
+      {
+        type: GitHubVariant.GHES,
+        version: "3.18.0",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with only 1 run", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def")],
+      createFeatures([Feature.DisableCombineSarifFiles]),
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with distinct categories", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("def", "def")],
+      createFeatures([Feature.DisableCombineSarifFiles]),
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with distinct tools", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
+      createFeatures([Feature.DisableCombineSarifFiles]),
       {
         type: GitHubVariant.DOTCOM,
       },

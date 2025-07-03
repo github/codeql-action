@@ -12,6 +12,7 @@ import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-util
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Language, parseLanguage } from "./languages";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
@@ -189,6 +190,11 @@ export interface AugmentationProperties {
    * Extra query exclusions to append to the config.
    */
   extraQueryExclusions?: ExcludeQueryFilter[];
+
+  /**
+   * The overlay database mode to use.
+   */
+  overlayDatabaseMode: OverlayDatabaseMode;
 }
 
 /**
@@ -202,6 +208,7 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   queriesInput: undefined,
   qualityQueriesInput: undefined,
   extraQueryExclusions: [],
+  overlayDatabaseMode: OverlayDatabaseMode.None,
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -426,6 +433,7 @@ export interface InitConfigInputs {
   tempDir: string;
   codeql: CodeQL;
   workspacePath: string;
+  sourceRoot: string;
   githubVersion: GitHubVersion;
   apiDetails: api.GitHubApiCombinedDetails;
   features: FeatureEnablement;
@@ -459,6 +467,7 @@ export async function getDefaultConfig({
   repository,
   tempDir,
   codeql,
+  sourceRoot,
   githubVersion,
   features,
   logger,
@@ -484,6 +493,8 @@ export async function getDefaultConfig({
     queriesInput,
     qualityQueriesInput,
     languages,
+    sourceRoot,
+    buildMode,
     logger,
   );
 
@@ -551,6 +562,7 @@ async function loadConfig({
   tempDir,
   codeql,
   workspacePath,
+  sourceRoot,
   githubVersion,
   apiDetails,
   features,
@@ -595,6 +607,8 @@ async function loadConfig({
     queriesInput,
     qualityQueriesInput,
     languages,
+    sourceRoot,
+    buildMode,
     logger,
   );
 
@@ -637,6 +651,8 @@ async function loadConfig({
  * @param languages The languages that the config file is for. If the packs input
  *    is non-empty, then there must be exactly one language. Otherwise, an
  *    error is thrown.
+ * @param sourceRoot The source root of the repository.
+ * @param buildMode The build mode to use.
  * @param logger The logger to use for logging.
  *
  * @returns The properties that need to be augmented in the config file.
@@ -652,6 +668,8 @@ export async function calculateAugmentation(
   rawQueriesInput: string | undefined,
   rawQualityQueriesInput: string | undefined,
   languages: Language[],
+  sourceRoot: string,
+  buildMode: BuildMode | undefined,
   logger: Logger,
 ): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
@@ -664,6 +682,13 @@ export async function calculateAugmentation(
   const queriesInput = parseQueriesFromInput(
     rawQueriesInput,
     queriesInputCombines,
+  );
+  const overlayDatabaseMode = await getOverlayDatabaseMode(
+    codeql,
+    features,
+    sourceRoot,
+    buildMode,
+    logger,
   );
 
   const qualityQueriesInput = parseQueriesFromInput(
@@ -685,6 +710,7 @@ export async function calculateAugmentation(
     queriesInputCombines,
     qualityQueriesInput,
     extraQueryExclusions,
+    overlayDatabaseMode,
   };
 }
 
@@ -709,6 +735,16 @@ function parseQueriesFromInput(
     );
   }
   return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
+}
+
+async function getOverlayDatabaseMode(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  sourceRoot: string,
+  buildMode: BuildMode | undefined,
+  logger: Logger,
+): Promise<OverlayDatabaseMode> {
+  return OverlayDatabaseMode.None;
 }
 
 /**

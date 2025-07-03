@@ -494,6 +494,7 @@ export async function getDefaultConfig({
 
   const augmentationProperties = await calculateAugmentation(
     codeql,
+    repository,
     features,
     packsInput,
     queriesInput,
@@ -608,6 +609,7 @@ async function loadConfig({
 
   const augmentationProperties = await calculateAugmentation(
     codeql,
+    repository,
     features,
     packsInput,
     queriesInput,
@@ -651,6 +653,7 @@ async function loadConfig({
  * the config file sent to the CLI.
  *
  * @param codeql The CodeQL object.
+ * @param repository The repository to analyze.
  * @param features The feature enablement object.
  * @param rawPacksInput The packs input from the action configuration.
  * @param rawQueriesInput The queries input from the action configuration.
@@ -669,6 +672,7 @@ async function loadConfig({
 // exported for testing.
 export async function calculateAugmentation(
   codeql: CodeQL,
+  repository: RepositoryNwo,
   features: FeatureEnablement,
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
@@ -691,6 +695,7 @@ export async function calculateAugmentation(
   );
   const overlayDatabaseMode = await getOverlayDatabaseMode(
     codeql,
+    repository,
     features,
     languages,
     sourceRoot,
@@ -760,6 +765,7 @@ function parseQueriesFromInput(
  */
 async function getOverlayDatabaseMode(
   codeql: CodeQL,
+  repository: RepositoryNwo,
   features: FeatureEnablement,
   languages: Language[],
   sourceRoot: string,
@@ -781,7 +787,12 @@ async function getOverlayDatabaseMode(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
-  } else if (await features.getValue(Feature.OverlayAnalysis, codeql)) {
+  } else if (
+    // TODO: Remove the repository owner check once support for overlay analysis
+    // stabilizes, and no more backward-incompatible changes are expected.
+    ["github", "dsp-testing"].includes(repository.owner) &&
+    (await features.getValue(Feature.OverlayAnalysis, codeql))
+  ) {
     if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
       logger.info(

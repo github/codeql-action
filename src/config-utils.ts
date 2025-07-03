@@ -789,7 +789,7 @@ function parseQueriesFromInput(
  * @returns An object containing the overlay database mode and whether the
  * action should perform overlay-base database caching.
  */
-async function getOverlayDatabaseMode(
+export async function getOverlayDatabaseMode(
   codeql: CodeQL,
   repository: RepositoryNwo,
   features: FeatureEnablement,

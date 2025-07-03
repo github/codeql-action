@@ -119,7 +119,9 @@ async function runWrapper() {
   };
 
   // Start the Proxy
-  const proxyBin = await getProxyBinaryPath();
+  const proxyBin =
+    actionsUtil.getOptionalInput("proxy_binary") ??
+    (await getProxyBinaryPath());
   await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
 }
 

@@ -297,6 +297,14 @@ async function run() {
 
   const configFile = getOptionalInput("config-file");
 
+  // path.resolve() respects the intended semantics of source-root. If
+  // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
+  // source-root is absolute, it is used as given.
+  const sourceRoot = path.resolve(
+    getRequiredEnvParam("GITHUB_WORKSPACE"),
+    getOptionalInput("source-root") || "",
+  );
+
   try {
     const statusReportBase = await createStatusReportBase(
       ActionName.Init,
@@ -363,6 +371,7 @@ async function run() {
       tempDir: getTemporaryDirectory(),
       codeql,
       workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+      sourceRoot,
       githubVersion: gitHubVersion,
       apiDetails,
       features,
@@ -390,11 +399,6 @@ async function run() {
   }
 
   try {
-    const sourceRoot = path.resolve(
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
-      getOptionalInput("source-root") || "",
-    );
-
     const overlayDatabaseMode = await getOverlayDatabaseMode(
       (await codeql.getVersion()).version,
       config,

@@ -175,12 +175,16 @@ async function shouldDisableCombineSarifFiles(
   features: FeatureEnablement,
   githubVersion: GitHubVersion,
 ) {
-  // Never block on GHES versions before 3.18.0
-  if (
-    githubVersion.type === GitHubVariant.GHES &&
-    semver.lt(githubVersion.version, "3.18.0")
-  ) {
-    return false;
+  if (githubVersion.type === GitHubVariant.GHES) {
+    // Never block on GHES versions before 3.18.
+    if (semver.lt(githubVersion.version, "3.18.0-0")) {
+      return false;
+    }
+  } else {
+    // Never block when the feature flag is disabled.
+    if (!(await features.getValue(Feature.DisableCombineSarifFiles))) {
+      return false;
+    }
   }
 
   if (areAllRunsUnique(sarifObjects)) {
@@ -188,7 +192,9 @@ async function shouldDisableCombineSarifFiles(
     return false;
   }
 
-  return features.getValue(Feature.DisableCombineSarifFiles);
+  // Combining SARIF files is not supported and Code Scanning will return an
+  // error if multiple runs with the same category are uploaded.
+  return true;
 }
 
 // Takes a list of paths to sarif files and combines them together using the

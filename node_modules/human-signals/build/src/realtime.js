@@ -1,7 +1,7 @@
 
 export const getRealtimeSignals=()=>{
 const length=SIGRTMAX-SIGRTMIN+1;
-return Array.from({length},getRealtimeSignal);
+return Array.from({length},getRealtimeSignal)
 };
 
 const getRealtimeSignal=(value,index)=>({

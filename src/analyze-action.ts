@@ -27,10 +27,6 @@ import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import {
-  OverlayDatabaseMode,
-  uploadOverlayBaseDatabaseToCache,
-} from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
@@ -295,15 +291,8 @@ async function run() {
       logger,
     );
 
-    // An overlay-base database should always use the 'overlay' cleanup level
-    // to preserve the cached intermediate results.
-    //
-    // Note that we may be overriding the 'cleanup-level' input parameter.
     const cleanupLevel =
-      config.augmentationProperties.overlayDatabaseMode ===
-      OverlayDatabaseMode.OverlayBase
-        ? "overlay"
-        : actionsUtil.getOptionalInput("cleanup-level") || "brutal";
+      actionsUtil.getOptionalInput("cleanup-level") || "brutal";
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
@@ -359,9 +348,6 @@ async function run() {
 
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
-
-    // Possibly upload the overlay-base database to actions cache
-    await uploadOverlayBaseDatabaseToCache(codeql, config, logger);
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();

@@ -36,16 +36,14 @@ import { Feature, featureConfig, Features } from "./feature-flags";
 import {
   checkInstallPython311,
   cleanupDatabaseClusterDirectory,
+  getOverlayDatabaseMode,
   initCodeQL,
   initConfig,
   runInit,
 } from "./init";
 import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import {
-  downloadOverlayBaseDatabaseFromCache,
-  OverlayDatabaseMode,
-} from "./overlay-database-utils";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -299,14 +297,6 @@ async function run() {
 
   const configFile = getOptionalInput("config-file");
 
-  // path.resolve() respects the intended semantics of source-root. If
-  // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
-  // source-root is absolute, it is used as given.
-  const sourceRoot = path.resolve(
-    getRequiredEnvParam("GITHUB_WORKSPACE"),
-    getOptionalInput("source-root") || "",
-  );
-
   try {
     const statusReportBase = await createStatusReportBase(
       ActionName.Init,
@@ -373,7 +363,6 @@ async function run() {
       tempDir: getTemporaryDirectory(),
       codeql,
       workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
-      sourceRoot,
       githubVersion: gitHubVersion,
       apiDetails,
       features,
@@ -401,38 +390,20 @@ async function run() {
   }
 
   try {
-    if (
-      config.augmentationProperties.overlayDatabaseMode ===
-        OverlayDatabaseMode.Overlay &&
-      config.augmentationProperties.useOverlayDatabaseCaching
-    ) {
-      // OverlayDatabaseMode.Overlay comes in two flavors: with database
-      // caching, or without. The flavor with database caching is intended to be
-      // an "automatic control" mode, which is supposed to be fail-safe. If we
-      // cannot download an overlay-base database, we revert to
-      // OverlayDatabaseMode.None so that the workflow can continue to run.
-      //
-      // The flavor without database caching is intended to be a "manual
-      // control" mode, where the workflow is supposed to make all the
-      // necessary preparations. So, in that mode, we would assume that
-      // everything is in order and let the analysis fail if that turns out not
-      // to be the case.
-      const overlayDatabaseDownloaded =
-        await downloadOverlayBaseDatabaseFromCache(codeql, config, logger);
-      if (!overlayDatabaseDownloaded) {
-        config.augmentationProperties.overlayDatabaseMode =
-          OverlayDatabaseMode.None;
-        logger.info(
-          "No overlay-base database found in cache, " +
-            `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
-        );
-      }
-    }
+    const sourceRoot = path.resolve(
+      getRequiredEnvParam("GITHUB_WORKSPACE"),
+      getOptionalInput("source-root") || "",
+    );
 
-    if (
-      config.augmentationProperties.overlayDatabaseMode !==
-      OverlayDatabaseMode.Overlay
-    ) {
+    const overlayDatabaseMode = await getOverlayDatabaseMode(
+      (await codeql.getVersion()).version,
+      config,
+      sourceRoot,
+      logger,
+    );
+    logger.info(`Using overlay database mode: ${overlayDatabaseMode}`);
+
+    if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
       cleanupDatabaseClusterDirectory(config, logger);
     }
 
@@ -704,6 +675,7 @@ async function run() {
       "Runner.Worker.exe",
       getOptionalInput("registries"),
       apiDetails,
+      overlayDatabaseMode,
       logger,
     );
     if (tracerConfig !== undefined) {

@@ -7,7 +7,6 @@ import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
@@ -53,7 +52,6 @@ export enum Feature {
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   ExtractToToolcache = "extract_to_toolcache",
-  OverlayAnalysis = "overlay_analysis",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   RustAnalysis = "rust_analysis",
@@ -149,11 +147,6 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_EXTRACT_TOOLCACHE",
     minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysis]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS",
-    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   },
   [Feature.PythonDefaultIsToNotExtractStdlib]: {
     defaultValue: false,

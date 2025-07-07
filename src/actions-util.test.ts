@@ -1,46 +1,11 @@
-import * as github from "@actions/github";
 import test from "ava";
 
-import { getPullRequestBranches, isAnalyzingPullRequest } from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
 import { setupTests } from "./testing-utils";
 import { initializeEnvironment } from "./util";
 
 setupTests(test);
-
-function withMockedContext<T>(mockPayload: any, testFn: () => T): T {
-  const originalPayload = github.context.payload;
-  github.context.payload = mockPayload;
-  try {
-    return testFn();
-  } finally {
-    github.context.payload = originalPayload;
-  }
-}
-
-function withMockedEnv<T>(
-  envVars: Record<string, string | undefined>,
-  testFn: () => T,
-): T {
-  const originalEnv = { ...process.env };
-
-  // Apply environment changes
-  for (const [key, value] of Object.entries(envVars)) {
-    if (value === undefined) {
-      delete process.env[key];
-    } else {
-      process.env[key] = value;
-    }
-  }
-
-  try {
-    return testFn();
-  } finally {
-    // Restore original environment
-    process.env = originalEnv;
-  }
-}
 
 test("computeAutomationID()", async (t) => {
   let actualAutomationID = computeAutomationID(
@@ -91,102 +56,6 @@ test("computeAutomationID()", async (t) => {
     actualAutomationID,
     ".github/workflows/codeql-analysis.yml:analyze/",
   );
-});
-
-test("getPullRequestBranches() with pull request context", (t) => {
-  withMockedContext(
-    {
-      pull_request: {
-        number: 123,
-        base: { ref: "main" },
-        head: { label: "user:feature-branch" },
-      },
-    },
-    () => {
-      t.deepEqual(getPullRequestBranches(), {
-        base: "main",
-        head: "user:feature-branch",
-      });
-      t.is(isAnalyzingPullRequest(), true);
-    },
-  );
-});
-
-test("getPullRequestBranches() returns undefined with push context", (t) => {
-  withMockedContext(
-    {
-      push: {
-        ref: "refs/heads/main",
-      },
-    },
-    () => {
-      t.is(getPullRequestBranches(), undefined);
-      t.is(isAnalyzingPullRequest(), false);
-    },
-  );
-});
-
-test("getPullRequestBranches() with Default Setup environment variables", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
-      {
-        CODE_SCANNING_REF: "refs/heads/feature-branch",
-        CODE_SCANNING_BASE_BRANCH: "main",
-      },
-      () => {
-        t.deepEqual(getPullRequestBranches(), {
-          base: "main",
-          head: "refs/heads/feature-branch",
-        });
-        t.is(isAnalyzingPullRequest(), true);
-      },
-    );
-  });
-});
-
-test("getPullRequestBranches() returns undefined when only CODE_SCANNING_REF is set", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
-      {
-        CODE_SCANNING_REF: "refs/heads/feature-branch",
-        CODE_SCANNING_BASE_BRANCH: undefined,
-      },
-      () => {
-        t.is(getPullRequestBranches(), undefined);
-        t.is(isAnalyzingPullRequest(), false);
-      },
-    );
-  });
-});
-
-test("getPullRequestBranches() returns undefined when only CODE_SCANNING_BASE_BRANCH is set", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
-      {
-        CODE_SCANNING_REF: undefined,
-        CODE_SCANNING_BASE_BRANCH: "main",
-      },
-      () => {
-        t.is(getPullRequestBranches(), undefined);
-        t.is(isAnalyzingPullRequest(), false);
-      },
-    );
-  });
-});
-
-test("getPullRequestBranches() returns undefined when no PR context", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
-      {
-        CODE_SCANNING_REF: undefined,
-        CODE_SCANNING_BASE_BRANCH: undefined,
-      },
-      () => {
-        t.is(getPullRequestBranches(), undefined);
-        t.is(isAnalyzingPullRequest(), false);
-      },
-    );
-  });
 });
 
 test("initializeEnvironment", (t) => {

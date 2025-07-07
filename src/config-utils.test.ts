@@ -6,6 +6,7 @@ import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import {
@@ -16,8 +17,10 @@ import {
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
+import * as gitUtils from "./git-utils";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -25,6 +28,7 @@ import {
   createFeatures,
   getRecordingLogger,
   LoggedMessage,
+  mockCodeQLVersion,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -62,6 +66,7 @@ function createTestInitConfigInputs(
       tempDir: "",
       codeql: {} as CodeQL,
       workspacePath: "",
+      sourceRoot: "",
       githubVersion,
       apiDetails: {
         auth: "token",
@@ -814,11 +819,14 @@ const calculateAugmentationMacro = test.macro({
     const actualAugmentationProperties =
       await configUtils.calculateAugmentation(
         getCachedCodeQL(),
+        { owner: "github", repo: "repo" },
         createFeatures([]),
         rawPacksInput,
         rawQueriesInput,
         rawQualityQueriesInput,
         languages,
+        "", // sourceRoot
+        undefined, // buildMode
         mockLogger,
       );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
@@ -943,11 +951,14 @@ const calculateAugmentationErrorMacro = test.macro({
       () =>
         configUtils.calculateAugmentation(
           getCachedCodeQL(),
+          { owner: "github", repo: "repo" },
           createFeatures([]),
           rawPacksInput,
           rawQueriesInput,
           rawQualityQueriesInput,
           languages,
+          "", // sourceRoot
+          undefined, // buildMode
           mockLogger,
         ),
       { message: expectedError },
@@ -1192,3 +1203,324 @@ for (const { displayName, language, feature } of [
     ]);
   });
 }
+
+interface OverlayDatabaseModeTestSetup {
+  overlayDatabaseEnvVar: string | undefined;
+  isFeatureEnabled: boolean;
+  isPullRequest: boolean;
+  isDefaultBranch: boolean;
+  repositoryOwner: string;
+  buildMode: BuildMode | undefined;
+  languages: Language[];
+  codeqlVersion: string;
+  gitRoot: string | undefined;
+}
+
+const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
+  overlayDatabaseEnvVar: undefined,
+  isFeatureEnabled: false,
+  isPullRequest: false,
+  isDefaultBranch: false,
+  repositoryOwner: "github",
+  buildMode: BuildMode.None,
+  languages: [Language.javascript],
+  codeqlVersion: "2.21.0",
+  gitRoot: "/some/git/root",
+};
+
+const getOverlayDatabaseModeMacro = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    _title: string,
+    setupOverrides: Partial<OverlayDatabaseModeTestSetup>,
+    expected: {
+      overlayDatabaseMode: OverlayDatabaseMode;
+      useOverlayDatabaseCaching: boolean;
+    },
+  ) => {
+    return await withTmpDir(async (tempDir) => {
+      const messages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(messages);
+
+      // Save the original environment
+      const originalEnv = { ...process.env };
+
+      try {
+        const setup = {
+          ...defaultOverlayDatabaseModeTestSetup,
+          ...setupOverrides,
+        };
+
+        // Set up environment variable if specified
+        delete process.env.CODEQL_OVERLAY_DATABASE_MODE;
+        if (setup.overlayDatabaseEnvVar !== undefined) {
+          process.env.CODEQL_OVERLAY_DATABASE_MODE =
+            setup.overlayDatabaseEnvVar;
+        }
+
+        // Mock feature flags
+        const features = createFeatures(
+          setup.isFeatureEnabled ? [Feature.OverlayAnalysis] : [],
+        );
+
+        // Mock isAnalyzingPullRequest function
+        sinon
+          .stub(actionsUtil, "isAnalyzingPullRequest")
+          .returns(setup.isPullRequest);
+
+        // Mock repository owner
+        const repository = {
+          owner: setup.repositoryOwner,
+          repo: "test-repo",
+        };
+
+        // Set up CodeQL mock
+        const codeql = mockCodeQLVersion(setup.codeqlVersion);
+
+        // Mock git root detection
+        if (setup.gitRoot !== undefined) {
+          sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
+        }
+
+        // Mock default branch detection
+        sinon
+          .stub(gitUtils, "isAnalyzingDefaultBranch")
+          .resolves(setup.isDefaultBranch);
+
+        const result = await configUtils.getOverlayDatabaseMode(
+          codeql,
+          repository,
+          features,
+          setup.languages,
+          tempDir, // sourceRoot
+          setup.buildMode,
+          logger,
+        );
+
+        t.deepEqual(result, expected);
+      } finally {
+        // Restore the original environment
+        process.env = originalEnv;
+      }
+    });
+  },
+  title: (_, title) => `getOverlayDatabaseMode: ${title}`,
+});
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override - Overlay",
+  {
+    overlayDatabaseEnvVar: "overlay",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override - OverlayBase",
+  {
+    overlayDatabaseEnvVar: "overlay-base",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override - None",
+  {
+    overlayDatabaseEnvVar: "none",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Ignore invalid environment variable",
+  {
+    overlayDatabaseEnvVar: "invalid-mode",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Ignore feature flag when analyzing non-default branch",
+  {
+    isFeatureEnabled: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch when feature enabled",
+  {
+    isFeatureEnabled: true,
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when feature disabled",
+  {
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR when feature enabled",
+  {
+    isFeatureEnabled: true,
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when feature disabled",
+  {
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay PR analysis by env for dsp-testing",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryOwner: "dsp-testing",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay PR analysis by env for other-org",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryOwner: "other-org",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay PR analysis by feature flag for dsp-testing",
+  {
+    isFeatureEnabled: true,
+    isPullRequest: true,
+    repositoryOwner: "dsp-testing",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay PR analysis by feature flag for other-org",
+  {
+    isFeatureEnabled: true,
+    isPullRequest: true,
+    repositoryOwner: "other-org",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to autobuild with traced language",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    buildMode: BuildMode.Autobuild,
+    languages: [Language.java],
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to no build mode with traced language",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    buildMode: undefined,
+    languages: [Language.java],
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to old CodeQL version",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    codeqlVersion: "2.14.0",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to missing git root",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitRoot: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);

@@ -473,7 +473,7 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.13", async (t) => {
   await t.notThrowsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      createFeatures([Feature.DisableCombineSarifFiles]),
+      createFeatures([]),
       {
         type: GitHubVariant.GHES,
         version: "3.13.2",
@@ -486,10 +486,49 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.14", async (t) => {
   await t.notThrowsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      createFeatures([Feature.DisableCombineSarifFiles]),
+      createFeatures([]),
       {
         type: GitHubVariant.GHES,
         version: "3.14.0",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.17", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([]),
+      {
+        type: GitHubVariant.GHES,
+        version: "3.17.0",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.18 pre", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([]),
+      {
+        type: GitHubVariant.GHES,
+        version: "3.18.0.pre1",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.18 alpha", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([]),
+      {
+        type: GitHubVariant.GHES,
+        version: "3.18.0-alpha.1",
       },
     ),
   );
@@ -499,7 +538,7 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
   await t.throwsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      createFeatures([Feature.DisableCombineSarifFiles]),
+      createFeatures([]),
       {
         type: GitHubVariant.GHES,
         version: "3.18.0",

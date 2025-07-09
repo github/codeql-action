@@ -459,17 +459,8 @@ export interface InitConfigInputs {
   logger: Logger;
 }
 
-type GetDefaultConfigInputs = Omit<
-  InitConfigInputs,
-  "configFile" | "configInput"
->;
-
-type LoadConfigInputs = Omit<InitConfigInputs, "configInput"> & {
-  configFile: string;
-};
-
 /**
- * Get the default config for when the user has not supplied one.
+ * Get the default config, populated without user configuration file.
  */
 export async function getDefaultConfig({
   languagesInput,
@@ -490,7 +481,7 @@ export async function getDefaultConfig({
   githubVersion,
   features,
   logger,
-}: GetDefaultConfigInputs): Promise<Config> {
+}: InitConfigInputs): Promise<Config> {
   const languages = await getLanguages(
     codeql,
     languagesInput,
@@ -560,91 +551,6 @@ async function downloadCacheWithTime(
     trapCacheDownloadTime = performance.now() - start;
   }
   return { trapCaches, trapCacheDownloadTime };
-}
-
-/**
- * Load the config from the given file.
- */
-async function loadConfig({
-  languagesInput,
-  queriesInput,
-  qualityQueriesInput,
-  packsInput,
-  buildModeInput,
-  configFile,
-  dbLocation,
-  trapCachingEnabled,
-  dependencyCachingEnabled,
-  debugMode,
-  debugArtifactName,
-  debugDatabaseName,
-  repository,
-  tempDir,
-  codeql,
-  workspacePath,
-  sourceRoot,
-  githubVersion,
-  apiDetails,
-  features,
-  logger,
-}: LoadConfigInputs): Promise<Config> {
-  const parsedYAML = await loadUserConfig(
-    configFile,
-    workspacePath,
-    apiDetails,
-    tempDir,
-  );
-
-  const languages = await getLanguages(
-    codeql,
-    languagesInput,
-    repository,
-    logger,
-  );
-
-  const buildMode = await parseBuildModeInput(
-    buildModeInput,
-    languages,
-    features,
-    logger,
-  );
-
-  const augmentationProperties = await calculateAugmentation(
-    codeql,
-    repository,
-    features,
-    packsInput,
-    queriesInput,
-    qualityQueriesInput,
-    languages,
-    sourceRoot,
-    buildMode,
-    logger,
-  );
-
-  const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
-    trapCachingEnabled,
-    codeql,
-    languages,
-    logger,
-  );
-
-  return {
-    languages,
-    buildMode,
-    originalUserInput: parsedYAML,
-    tempDir,
-    codeQLCmd: codeql.getPath(),
-    gitHubVersion: githubVersion,
-    dbLocation: dbLocationOrDefault(dbLocation, tempDir),
-    debugMode,
-    debugArtifactName,
-    debugDatabaseName,
-    augmentationProperties,
-    trapCaches,
-    trapCacheDownloadTime,
-    dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
-  };
 }
 
 async function loadUserConfig(
@@ -1065,8 +971,6 @@ function userConfigFromActionPath(tempDir: string): string {
  * a default config. The parsed config is then stored to a known location.
  */
 export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
-  let config: Config;
-
   const { logger, tempDir } = inputs;
 
   // if configInput is set, it takes precedence over configFile
@@ -1081,14 +985,21 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     logger.debug(`Using config from action input: ${inputs.configFile}`);
   }
 
-  // If no config file was provided create an empty one
+  let userConfig: UserConfig = {};
   if (!inputs.configFile) {
     logger.debug("No configuration file was provided");
-    config = await getDefaultConfig(inputs);
   } else {
-    // Convince the type checker that inputs.configFile is defined.
-    config = await loadConfig({ ...inputs, configFile: inputs.configFile });
+    logger.debug(`Using configuration file: ${inputs.configFile}`);
+    userConfig = await loadUserConfig(
+      inputs.configFile,
+      inputs.workspacePath,
+      inputs.apiDetails,
+      tempDir,
+    );
   }
+
+  const config = await getDefaultConfig(inputs);
+  config.originalUserInput = userConfig;
 
   // Save the config so we can easily access it again in the future
   await saveConfig(config, logger);

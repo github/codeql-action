@@ -195,7 +195,7 @@ export interface AugmentationProperties {
   /**
    * Extra query exclusions to append to the config.
    */
-  extraQueryExclusions?: ExcludeQueryFilter[];
+  extraQueryExclusions: ExcludeQueryFilter[];
 
   /**
    * The overlay database mode to use.
@@ -496,13 +496,10 @@ export async function getDefaultConfig({
   );
 
   const augmentationProperties = await calculateAugmentation(
-    codeql,
-    features,
     packsInput,
     queriesInput,
     qualityQueriesInput,
     languages,
-    logger,
   );
 
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
@@ -579,14 +576,11 @@ async function loadUserConfig(
  * and the CLI does not know about these inputs so we need to inject them into
  * the config file sent to the CLI.
  *
- * @param codeql The CodeQL object.
- * @param features The feature enablement object.
  * @param rawPacksInput The packs input from the action configuration.
  * @param rawQueriesInput The queries input from the action configuration.
  * @param languages The languages that the config file is for. If the packs input
  *    is non-empty, then there must be exactly one language. Otherwise, an
  *    error is thrown.
- * @param logger The logger to use for logging.
  *
  * @returns The properties that need to be augmented in the config file.
  *
@@ -595,13 +589,10 @@ async function loadUserConfig(
  */
 // exported for testing.
 export async function calculateAugmentation(
-  codeql: CodeQL,
-  features: FeatureEnablement,
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
   rawQualityQueriesInput: string | undefined,
   languages: Language[],
-  logger: Logger,
 ): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
   const packsInput = parsePacksFromInput(
@@ -620,20 +611,13 @@ export async function calculateAugmentation(
     false,
   );
 
-  const extraQueryExclusions: ExcludeQueryFilter[] = [];
-  if (await shouldPerformDiffInformedAnalysis(codeql, features, logger)) {
-    extraQueryExclusions.push({
-      exclude: { tags: "exclude-from-incremental" },
-    });
-  }
-
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
     qualityQueriesInput,
-    extraQueryExclusions,
+    extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
   };
@@ -998,6 +982,19 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   );
   augmentationProperties.overlayDatabaseMode = overlayDatabaseMode;
   augmentationProperties.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+
+  if (
+    overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
+    (await shouldPerformDiffInformedAnalysis(
+      inputs.codeql,
+      inputs.features,
+      logger,
+    ))
+  ) {
+    augmentationProperties.extraQueryExclusions.push({
+      exclude: { tags: "exclude-from-incremental" },
+    });
+  }
 
   // Save the config so we can easily access it again in the future
   await saveConfig(config, logger);

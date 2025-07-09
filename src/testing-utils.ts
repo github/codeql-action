@@ -335,6 +335,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       augmentationProperties: {
         packsInputCombines: false,
         queriesInputCombines: false,
+        extraQueryExclusions: [],
       },
       trapCaches: {},
       trapCacheDownloadTime: 0,

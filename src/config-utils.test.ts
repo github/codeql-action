@@ -819,14 +819,11 @@ const calculateAugmentationMacro = test.macro({
     const actualAugmentationProperties =
       await configUtils.calculateAugmentation(
         getCachedCodeQL(),
-        { owner: "github", repo: "repo" },
         createFeatures([]),
         rawPacksInput,
         rawQueriesInput,
         rawQualityQueriesInput,
         languages,
-        "", // sourceRoot
-        undefined, // buildMode
         mockLogger,
       );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
@@ -951,14 +948,11 @@ const calculateAugmentationErrorMacro = test.macro({
       () =>
         configUtils.calculateAugmentation(
           getCachedCodeQL(),
-          { owner: "github", repo: "repo" },
           createFeatures([]),
           rawPacksInput,
           rawQueriesInput,
           rawQualityQueriesInput,
           languages,
-          "", // sourceRoot
-          undefined, // buildMode
           mockLogger,
         ),
       { message: expectedError },

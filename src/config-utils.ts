@@ -477,7 +477,6 @@ export async function getDefaultConfig({
   repository,
   tempDir,
   codeql,
-  sourceRoot,
   githubVersion,
   features,
   logger,
@@ -498,14 +497,11 @@ export async function getDefaultConfig({
 
   const augmentationProperties = await calculateAugmentation(
     codeql,
-    repository,
     features,
     packsInput,
     queriesInput,
     qualityQueriesInput,
     languages,
-    sourceRoot,
-    buildMode,
     logger,
   );
 
@@ -584,15 +580,12 @@ async function loadUserConfig(
  * the config file sent to the CLI.
  *
  * @param codeql The CodeQL object.
- * @param repository The repository to analyze.
  * @param features The feature enablement object.
  * @param rawPacksInput The packs input from the action configuration.
  * @param rawQueriesInput The queries input from the action configuration.
  * @param languages The languages that the config file is for. If the packs input
  *    is non-empty, then there must be exactly one language. Otherwise, an
  *    error is thrown.
- * @param sourceRoot The source root of the repository.
- * @param buildMode The build mode to use.
  * @param logger The logger to use for logging.
  *
  * @returns The properties that need to be augmented in the config file.
@@ -603,14 +596,11 @@ async function loadUserConfig(
 // exported for testing.
 export async function calculateAugmentation(
   codeql: CodeQL,
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
   rawQualityQueriesInput: string | undefined,
   languages: Language[],
-  sourceRoot: string,
-  buildMode: BuildMode | undefined,
   logger: Logger,
 ): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
@@ -623,20 +613,6 @@ export async function calculateAugmentation(
   const queriesInput = parseQueriesFromInput(
     rawQueriesInput,
     queriesInputCombines,
-  );
-  const { overlayDatabaseMode, useOverlayDatabaseCaching } =
-    await getOverlayDatabaseMode(
-      codeql,
-      repository,
-      features,
-      languages,
-      sourceRoot,
-      buildMode,
-      logger,
-    );
-  logger.info(
-    `Using overlay database mode: ${overlayDatabaseMode} ` +
-      `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
 
   const qualityQueriesInput = parseQueriesFromInput(
@@ -658,8 +634,8 @@ export async function calculateAugmentation(
     queriesInputCombines,
     qualityQueriesInput,
     extraQueryExclusions,
-    overlayDatabaseMode,
-    useOverlayDatabaseCaching,
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
   };
 }
 
@@ -999,7 +975,29 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   }
 
   const config = await getDefaultConfig(inputs);
+  const augmentationProperties = config.augmentationProperties;
   config.originalUserInput = userConfig;
+
+  // The choice of overlay database mode depends on the selection of languages
+  // and queries, which in turn depends on the user config and the augmentation
+  // properties. So we need to calculate the overlay database mode after the
+  // rest of the config has been populated.
+  const { overlayDatabaseMode, useOverlayDatabaseCaching } =
+    await getOverlayDatabaseMode(
+      inputs.codeql,
+      inputs.repository,
+      inputs.features,
+      config.languages,
+      inputs.sourceRoot,
+      config.buildMode,
+      logger,
+    );
+  logger.info(
+    `Using overlay database mode: ${overlayDatabaseMode} ` +
+      `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
+  );
+  augmentationProperties.overlayDatabaseMode = overlayDatabaseMode;
+  augmentationProperties.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
 
   // Save the config so we can easily access it again in the future
   await saveConfig(config, logger);

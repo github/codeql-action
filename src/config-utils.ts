@@ -8,7 +8,7 @@ import * as semver from "semver";
 import { isAnalyzingPullRequest } from "./actions-util";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
-import { CodeQL } from "./codeql";
+import { type CodeQL } from "./codeql";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
@@ -26,6 +26,7 @@ import {
   ConfigurationError,
   BuildMode,
   codeQlVersionAtLeast,
+  cloneObject,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -1312,4 +1313,65 @@ export async function parseBuildModeInput(
     return BuildMode.Autobuild;
   }
   return input as BuildMode;
+}
+
+export function generateCodeScanningConfig(
+  originalUserInput: UserConfig,
+  augmentationProperties: AugmentationProperties,
+): UserConfig {
+  // make a copy so we can modify it
+  const augmentedConfig = cloneObject(originalUserInput);
+
+  // Inject the queries from the input
+  if (augmentationProperties.queriesInput) {
+    if (augmentationProperties.queriesInputCombines) {
+      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
+        augmentationProperties.queriesInput,
+      );
+    } else {
+      augmentedConfig.queries = augmentationProperties.queriesInput;
+    }
+  }
+  if (augmentedConfig.queries?.length === 0) {
+    delete augmentedConfig.queries;
+  }
+
+  // Inject the packs from the input
+  if (augmentationProperties.packsInput) {
+    if (augmentationProperties.packsInputCombines) {
+      // At this point, we already know that this is a single-language analysis
+      if (Array.isArray(augmentedConfig.packs)) {
+        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
+          augmentationProperties.packsInput,
+        );
+      } else if (!augmentedConfig.packs) {
+        augmentedConfig.packs = augmentationProperties.packsInput;
+      } else {
+        // At this point, we know there is only one language.
+        // If there were more than one language, an error would already have been thrown.
+        const language = Object.keys(augmentedConfig.packs)[0];
+        augmentedConfig.packs[language] = augmentedConfig.packs[
+          language
+        ].concat(augmentationProperties.packsInput);
+      }
+    } else {
+      augmentedConfig.packs = augmentationProperties.packsInput;
+    }
+  }
+  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
+    delete augmentedConfig.packs;
+  }
+
+  augmentedConfig["query-filters"] = [
+    // Ordering matters. If the first filter is an inclusion, it implicitly
+    // excludes all queries that are not included. If it is an exclusion,
+    // it implicitly includes all queries that are not excluded. So user
+    // filters (if any) should always be first to preserve intent.
+    ...(augmentedConfig["query-filters"] || []),
+    ...augmentationProperties.extraQueryExclusions,
+  ];
+  if (augmentedConfig["query-filters"]?.length === 0) {
+    delete augmentedConfig["query-filters"];
+  }
+  return augmentedConfig;
 }

@@ -1194,7 +1194,7 @@ for (const { displayName, language, feature } of [
 
 interface OverlayDatabaseModeTestSetup {
   overlayDatabaseEnvVar: string | undefined;
-  isFeatureEnabled: boolean;
+  features: Feature[];
   isPullRequest: boolean;
   isDefaultBranch: boolean;
   repositoryOwner: string;
@@ -1206,7 +1206,7 @@ interface OverlayDatabaseModeTestSetup {
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   overlayDatabaseEnvVar: undefined,
-  isFeatureEnabled: false,
+  features: [],
   isPullRequest: false,
   isDefaultBranch: false,
   repositoryOwner: "github",
@@ -1247,9 +1247,7 @@ const getOverlayDatabaseModeMacro = test.macro({
         }
 
         // Mock feature flags
-        const features = createFeatures(
-          setup.isFeatureEnabled ? [Feature.OverlayAnalysis] : [],
-        );
+        const features = createFeatures(setup.features);
 
         // Mock isAnalyzingPullRequest function
         sinon
@@ -1347,7 +1345,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Ignore feature flag when analyzing non-default branch",
   {
-    isFeatureEnabled: true,
+    features: [Feature.OverlayAnalysis],
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
@@ -1359,7 +1357,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when feature enabled",
   {
-    isFeatureEnabled: true,
+    features: [Feature.OverlayAnalysis],
     isDefaultBranch: true,
   },
   {
@@ -1384,7 +1382,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled",
   {
-    isFeatureEnabled: true,
+    features: [Feature.OverlayAnalysis],
     isPullRequest: true,
   },
   {
@@ -1435,7 +1433,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay PR analysis by feature flag for dsp-testing",
   {
-    isFeatureEnabled: true,
+    features: [Feature.OverlayAnalysis],
     isPullRequest: true,
     repositoryOwner: "dsp-testing",
   },
@@ -1449,7 +1447,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay PR analysis by feature flag for other-org",
   {
-    isFeatureEnabled: true,
+    features: [Feature.OverlayAnalysis],
     isPullRequest: true,
     repositoryOwner: "other-org",
   },

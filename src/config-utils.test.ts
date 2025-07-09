@@ -818,13 +818,10 @@ const calculateAugmentationMacro = test.macro({
   ) => {
     const actualAugmentationProperties =
       await configUtils.calculateAugmentation(
-        getCachedCodeQL(),
-        createFeatures([]),
         rawPacksInput,
         rawQueriesInput,
         rawQualityQueriesInput,
         languages,
-        mockLogger,
       );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
   },
@@ -947,13 +944,10 @@ const calculateAugmentationErrorMacro = test.macro({
     await t.throwsAsync(
       () =>
         configUtils.calculateAugmentation(
-          getCachedCodeQL(),
-          createFeatures([]),
           rawPacksInput,
           rawQueriesInput,
           rawQualityQueriesInput,
           languages,
-          mockLogger,
         ),
       { message: expectedError },
     );

@@ -646,10 +646,24 @@ function parseQueriesFromInput(
   return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
 }
 
+const OVERLAY_ANALYSIS_FEATURES: Record<Language, Feature> = {
+  actions: Feature.OverlayAnalysisActions,
+  cpp: Feature.OverlayAnalysisCpp,
+  csharp: Feature.OverlayAnalysisCsharp,
+  go: Feature.OverlayAnalysisGo,
+  java: Feature.OverlayAnalysisJava,
+  javascript: Feature.OverlayAnalysisJavascript,
+  python: Feature.OverlayAnalysisPython,
+  ruby: Feature.OverlayAnalysisRuby,
+  rust: Feature.OverlayAnalysisRust,
+  swift: Feature.OverlayAnalysisSwift,
+};
+
 async function isOverlayAnalysisFeatureEnabled(
   repository: RepositoryNwo,
   features: FeatureEnablement,
   codeql: CodeQL,
+  languages: Language[],
 ): Promise<boolean> {
   // TODO: Remove the repository owner check once support for overlay analysis
   // stabilizes, and no more backward-incompatible changes are expected.
@@ -659,7 +673,14 @@ async function isOverlayAnalysisFeatureEnabled(
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
     return false;
   }
-  // TODO: Add per-language feature checks here
+  for (const language of languages) {
+    const feature = OVERLAY_ANALYSIS_FEATURES[language];
+    if (feature && (await features.getValue(feature, codeql))) {
+      continue;
+    }
+    // TODO: Add code-scanning feature checks here
+    return false;
+  }
   return true;
 }
 
@@ -713,7 +734,12 @@ export async function getOverlayDatabaseMode(
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
   } else if (
-    await isOverlayAnalysisFeatureEnabled(repository, features, codeql)
+    await isOverlayAnalysisFeatureEnabled(
+      repository,
+      features,
+      codeql,
+      languages,
+    )
   ) {
     if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;

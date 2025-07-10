@@ -1345,7 +1345,8 @@ test(
   getOverlayDatabaseModeMacro,
   "Ignore feature flag when analyzing non-default branch",
   {
-    features: [Feature.OverlayAnalysis],
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
@@ -1357,7 +1358,8 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when feature enabled",
   {
-    features: [Feature.OverlayAnalysis],
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isDefaultBranch: true,
   },
   {
@@ -1368,8 +1370,24 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
-  "No overlay-base database on default branch when feature disabled",
+  "No overlay-base database on default branch when overall feature disabled",
   {
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysisJavascript],
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when language-specific feature disabled",
+  {
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysis],
     isDefaultBranch: true,
   },
   {
@@ -1382,7 +1400,8 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled",
   {
-    features: [Feature.OverlayAnalysis],
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
   },
   {
@@ -1393,8 +1412,24 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
-  "No overlay analysis on PR when feature disabled",
+  "No overlay analysis on PR when overall feature disabled",
   {
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when language-specific feature disabled",
+  {
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysis],
     isPullRequest: true,
   },
   {
@@ -1433,7 +1468,8 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay PR analysis by feature flag for dsp-testing",
   {
-    features: [Feature.OverlayAnalysis],
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
     repositoryOwner: "dsp-testing",
   },
@@ -1447,7 +1483,8 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay PR analysis by feature flag for other-org",
   {
-    features: [Feature.OverlayAnalysis],
+    languages: [Language.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
     repositoryOwner: "other-org",
   },
@@ -1510,3 +1547,20 @@ test(
     useOverlayDatabaseCaching: false,
   },
 );
+
+// Exercise language-specific overlay analysis features code paths
+for (const language in Language) {
+  test(
+    getOverlayDatabaseModeMacro,
+    `Check default overlay analysis feature for ${language}`,
+    {
+      languages: [language as Language],
+      features: [Feature.OverlayAnalysis],
+      isPullRequest: true,
+    },
+    {
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
+    },
+  );
+}

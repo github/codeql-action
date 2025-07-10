@@ -660,11 +660,25 @@ const OVERLAY_ANALYSIS_FEATURES: Record<Language, Feature> = {
   swift: Feature.OverlayAnalysisSwift,
 };
 
+const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
+  actions: Feature.OverlayAnalysisCodeScanningActions,
+  cpp: Feature.OverlayAnalysisCodeScanningCpp,
+  csharp: Feature.OverlayAnalysisCodeScanningCsharp,
+  go: Feature.OverlayAnalysisCodeScanningGo,
+  java: Feature.OverlayAnalysisCodeScanningJava,
+  javascript: Feature.OverlayAnalysisCodeScanningJavascript,
+  python: Feature.OverlayAnalysisCodeScanningPython,
+  ruby: Feature.OverlayAnalysisCodeScanningRuby,
+  rust: Feature.OverlayAnalysisCodeScanningRust,
+  swift: Feature.OverlayAnalysisCodeScanningSwift,
+};
+
 async function isOverlayAnalysisFeatureEnabled(
   repository: RepositoryNwo,
   features: FeatureEnablement,
   codeql: CodeQL,
   languages: Language[],
+  codeScanningConfig: UserConfig,
 ): Promise<boolean> {
   // TODO: Remove the repository owner check once support for overlay analysis
   // stabilizes, and no more backward-incompatible changes are expected.
@@ -674,13 +688,33 @@ async function isOverlayAnalysisFeatureEnabled(
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
     return false;
   }
+  let enableForCodeScanningOnly = false;
   for (const language of languages) {
     const feature = OVERLAY_ANALYSIS_FEATURES[language];
     if (feature && (await features.getValue(feature, codeql))) {
       continue;
     }
-    // TODO: Add code-scanning feature checks here
+    const codeScanningFeature =
+      OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES[language];
+    if (
+      codeScanningFeature &&
+      (await features.getValue(codeScanningFeature, codeql))
+    ) {
+      enableForCodeScanningOnly = true;
+      continue;
+    }
     return false;
+  }
+  if (enableForCodeScanningOnly) {
+    // A code-scanning configuration runs only the (default) code-scanning suite
+    // if the default queries are not disabled, and no packs, queries, or
+    // query-filters are specified.
+    return (
+      codeScanningConfig["disable-default-queries"] !== true &&
+      codeScanningConfig.packs === undefined &&
+      codeScanningConfig.queries === undefined &&
+      codeScanningConfig["query-filters"] === undefined
+    );
   }
   return true;
 }
@@ -713,6 +747,7 @@ export async function getOverlayDatabaseMode(
   languages: Language[],
   sourceRoot: string,
   buildMode: BuildMode | undefined,
+  codeScanningConfig: UserConfig,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -740,6 +775,7 @@ export async function getOverlayDatabaseMode(
       features,
       codeql,
       languages,
+      codeScanningConfig,
     )
   ) {
     if (isAnalyzingPullRequest()) {
@@ -1015,6 +1051,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       config.languages,
       inputs.sourceRoot,
       config.buildMode,
+      generateCodeScanningConfig(userConfig, augmentationProperties),
       logger,
     );
   logger.info(

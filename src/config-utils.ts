@@ -646,6 +646,23 @@ function parseQueriesFromInput(
   return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
 }
 
+async function isOverlayAnalysisFeatureEnabled(
+  repository: RepositoryNwo,
+  features: FeatureEnablement,
+  codeql: CodeQL,
+): Promise<boolean> {
+  // TODO: Remove the repository owner check once support for overlay analysis
+  // stabilizes, and no more backward-incompatible changes are expected.
+  if (!["github", "dsp-testing"].includes(repository.owner)) {
+    return false;
+  }
+  if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
+    return false;
+  }
+  // TODO: Add per-language feature checks here
+  return true;
+}
+
 /**
  * Calculate and validate the overlay database mode and caching to use.
  *
@@ -696,10 +713,7 @@ export async function getOverlayDatabaseMode(
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
   } else if (
-    // TODO: Remove the repository owner check once support for overlay analysis
-    // stabilizes, and no more backward-incompatible changes are expected.
-    ["github", "dsp-testing"].includes(repository.owner) &&
-    (await features.getValue(Feature.OverlayAnalysis, codeql))
+    await isOverlayAnalysisFeatureEnabled(repository, features, codeql)
   ) {
     if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;

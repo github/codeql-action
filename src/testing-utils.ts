@@ -14,6 +14,7 @@ import * as defaults from "./defaults.json";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
+  featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
@@ -180,6 +181,21 @@ export function mockFeatureFlagApiEndpoint(
   responseStatusCode: number,
   response: { [flagName: string]: boolean },
 ) {
+  stubFeatureFlagApiEndpoint(() => ({
+    status: responseStatusCode,
+    messageIfError: "some error message",
+    data: response,
+  }));
+}
+
+/** Stub the HTTP request to the feature flags enablement API endpoint. */
+export function stubFeatureFlagApiEndpoint(
+  responseFunction: (params: any) => {
+    status: number;
+    messageIfError?: string;
+    data: { [flagName: string]: boolean };
+  },
+) {
   // Passing an auth token is required, so we just use a dummy value
   const client = github.getOctokit("123");
 
@@ -188,16 +204,23 @@ export function mockFeatureFlagApiEndpoint(
   const optInSpy = requestSpy.withArgs(
     "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
   );
-  if (responseStatusCode < 300) {
-    optInSpy.resolves({
-      status: responseStatusCode,
-      data: response,
-      headers: {},
-      url: "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
-    });
-  } else {
-    optInSpy.throws(new HTTPError("some error message", responseStatusCode));
-  }
+
+  optInSpy.callsFake((_route, params) => {
+    const response = responseFunction(params);
+    if (response.status < 300) {
+      return Promise.resolve({
+        status: response.status,
+        data: response.data,
+        headers: {},
+        url: "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
+      });
+    } else {
+      throw new HTTPError(
+        response.messageIfError || "default stub error message",
+        response.status,
+      );
+    }
+  });
 
   sinon.stub(apiClient, "getApiClient").value(() => client);
 }
@@ -261,6 +284,13 @@ export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
       return enabledFeatures.includes(feature);
     },
   };
+}
+
+export function initializeFeatures(initialValue: boolean) {
+  return Object.keys(featureConfig).reduce((features, key) => {
+    features[key] = initialValue;
+    return features;
+  }, {});
 }
 
 /**
@@ -335,6 +365,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       augmentationProperties: {
         packsInputCombines: false,
         queriesInputCombines: false,
+        extraQueryExclusions: [],
       },
       trapCaches: {},
       trapCacheDownloadTime: 0,

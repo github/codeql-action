@@ -150,14 +150,8 @@ test("Include no more than 25 features in each API request", async (t) => {
     // we ask for. Under the hood, the features library will request all features
     // from the API.
     const feature = Object.values(Feature)[0];
-    // TODO: change to `t.notThrowsAsync` once we implement request chunking.
-    await t.throwsAsync(
-      async () => features.getValue(feature, includeCodeQlIfRequired(feature)),
-      {
-        message:
-          "Encountered an error while trying to determine feature enablement: " +
-          "Error: Can request a maximum of 25 features.",
-      },
+    await t.notThrowsAsync(async () =>
+      features.getValue(feature, includeCodeQlIfRequired(feature)),
     );
   });
 });

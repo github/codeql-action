@@ -622,18 +622,29 @@ class GitHubFeatureFlags {
     try {
       const featuresToRequest = Object.entries(featureConfig)
         .filter(([, config]) => !config.legacyApi)
-        .map(([f]) => f)
-        .join(",");
+        .map(([f]) => f);
 
-      const response = await getApiClient().request(
-        "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
-        {
-          owner: this.repositoryNwo.owner,
-          repo: this.repositoryNwo.repo,
-          features: featuresToRequest,
-        },
-      );
-      const remoteFlags = response.data as GitHubFeatureFlagsApiResponse;
+      const FEATURES_PER_REQUEST = 25;
+      const featureChunks: string[][] = [];
+      while (featuresToRequest.length > 0) {
+        featureChunks.push(featuresToRequest.splice(0, FEATURES_PER_REQUEST));
+      }
+
+      let remoteFlags: GitHubFeatureFlagsApiResponse = {};
+
+      for (const chunk of featureChunks) {
+        const response = await getApiClient().request(
+          "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
+          {
+            owner: this.repositoryNwo.owner,
+            repo: this.repositoryNwo.repo,
+            features: chunk.join(","),
+          },
+        );
+        const chunkFlags = response.data as GitHubFeatureFlagsApiResponse;
+        remoteFlags = { ...remoteFlags, ...chunkFlags };
+      }
+
       this.logger.debug(
         "Loaded the following default values for the feature flags from the Code Scanning API:",
       );

@@ -14,6 +14,7 @@ import * as defaults from "./defaults.json";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
+  featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
@@ -261,6 +262,13 @@ export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
       return enabledFeatures.includes(feature);
     },
   };
+}
+
+export function initializeFeatures(initialValue: boolean) {
+  return Object.keys(featureConfig).reduce((features, key) => {
+    features[key] = initialValue;
+    return features;
+  }, {});
 }
 
 /**

@@ -15,6 +15,7 @@ import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   getRecordingLogger,
+  initializeFeatures,
   LoggedMessage,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
@@ -550,13 +551,6 @@ function assertAllFeaturesUndefinedInApi(
       ) !== undefined,
     );
   }
-}
-
-export function initializeFeatures(initialValue: boolean) {
-  return Object.keys(featureConfig).reduce((features, key) => {
-    features[key] = initialValue;
-    return features;
-  }, {});
 }
 
 function setUpFeatureFlagTests(

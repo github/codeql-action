@@ -30,6 +30,7 @@ import {
   getRequiredEnvParam,
   GitHubVariant,
   GitHubVersion,
+  parseGhesVersion,
   SarifFile,
   SarifRun,
 } from "./util";
@@ -132,7 +133,7 @@ export async function shouldShowCombineSarifFilesDeprecationWarning(
   // Do not show this warning on GHES versions before 3.14.0
   if (
     githubVersion.type === GitHubVariant.GHES &&
-    semver.lt(githubVersion.version, "3.14.0")
+    semver.lt(parseGhesVersion(githubVersion.version), "3.14.0")
   ) {
     return false;
   }
@@ -177,7 +178,7 @@ async function shouldDisableCombineSarifFiles(
 ) {
   if (githubVersion.type === GitHubVariant.GHES) {
     // Never block on GHES versions before 3.18.
-    if (semver.lt(githubVersion.version, "3.18.0-0")) {
+    if (semver.lt(parseGhesVersion(githubVersion.version), "3.18.0-0")) {
       return false;
     }
   } else {

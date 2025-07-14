@@ -1132,8 +1132,17 @@ export function checkActionVersion(
   }
 }
 
+/**
+ * This will parse a GitHub Enterprise Server version string into a SemVer object.
+ *
+ * GHES versions are usually in a semver-compatible format, so usually this will
+ * just call the SemVer constructor. However, for GHES pre-release versions,
+ * the version string is in the format "3.18.0.pre1", which is not a valid semver
+ * version since the pre-release part of the version should be separated by a
+ * hyphen. This function will replace the ".pre" part of the version with "-pre"
+ * to make it a valid semver version.
+ */
 export function parseGhesVersion(version: string): semver.SemVer {
-  // GHES pre-release versions are in the format "3.18.0.pre1", which is not a valid semver version.
   if (version.includes(".pre")) {
     version = version.replace(".pre", "-pre");
   }

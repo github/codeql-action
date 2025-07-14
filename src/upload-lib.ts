@@ -266,7 +266,9 @@ async function combineSarifFilesUsingCLI(
 
     const apiDetails = {
       auth: actionsUtil.getRequiredInput("token"),
-      externalRepoAuth: actionsUtil.getOptionalInput("external-repository-token"),
+      externalRepoAuth: actionsUtil.getOptionalInput(
+        "external-repository-token",
+      ),
       url: getRequiredEnvParam("GITHUB_SERVER_URL"),
       apiURL: getRequiredEnvParam("GITHUB_API_URL"),
     };

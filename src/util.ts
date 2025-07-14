@@ -1132,6 +1132,14 @@ export function checkActionVersion(
   }
 }
 
+export function parseGhesVersion(version: string): semver.SemVer {
+  // GHES pre-release versions are in the format "3.18.0.pre1", which is not a valid semver version.
+  if (version.includes(".pre")) {
+    version = version.replace(".pre", "-pre");
+  }
+  return new semver.SemVer(version);
+}
+
 /**
  * Supported build modes.
  *

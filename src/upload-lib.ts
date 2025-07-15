@@ -9,7 +9,6 @@ import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
 import * as actionsUtil from "./actions-util";
-import { getOptionalInput, getRequiredInput } from "./actions-util";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
@@ -266,8 +265,10 @@ async function combineSarifFilesUsingCLI(
     );
 
     const apiDetails = {
-      auth: getRequiredInput("token"),
-      externalRepoAuth: getOptionalInput("external-repository-token"),
+      auth: actionsUtil.getRequiredInput("token"),
+      externalRepoAuth: actionsUtil.getOptionalInput(
+        "external-repository-token",
+      ),
       url: getRequiredEnvParam("GITHUB_SERVER_URL"),
       apiURL: getRequiredEnvParam("GITHUB_API_URL"),
     };

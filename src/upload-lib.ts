@@ -6,7 +6,6 @@ import * as core from "@actions/core";
 import { OctokitResponse } from "@octokit/types";
 import fileUrl from "file-url";
 import * as jsonschema from "jsonschema";
-import * as semver from "semver";
 
 import * as actionsUtil from "./actions-util";
 import { getOptionalInput, getRequiredInput } from "./actions-util";
@@ -30,7 +29,7 @@ import {
   getRequiredEnvParam,
   GitHubVariant,
   GitHubVersion,
-  parseGhesVersion,
+  satisfiesGHESVersion,
   SarifFile,
   SarifRun,
 } from "./util";
@@ -133,7 +132,7 @@ export async function shouldShowCombineSarifFilesDeprecationWarning(
   // Do not show this warning on GHES versions before 3.14.0
   if (
     githubVersion.type === GitHubVariant.GHES &&
-    semver.lt(parseGhesVersion(githubVersion.version), "3.14.0")
+    satisfiesGHESVersion(githubVersion.version, "<3.14", true)
   ) {
     return false;
   }
@@ -178,7 +177,7 @@ async function shouldDisableCombineSarifFiles(
 ) {
   if (githubVersion.type === GitHubVariant.GHES) {
     // Never block on GHES versions before 3.18.
-    if (semver.lt(parseGhesVersion(githubVersion.version), "3.18.0-0")) {
+    if (satisfiesGHESVersion(githubVersion.version, "<3.18", true)) {
       return false;
     }
   } else {

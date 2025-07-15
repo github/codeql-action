@@ -548,6 +548,19 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
   );
 });
 
+test("throwIfCombineSarifFilesDisabled with an invalid GHES version", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([]),
+      {
+        type: GitHubVariant.GHES,
+        version: "foobar",
+      },
+    ),
+  );
+});
+
 test("throwIfCombineSarifFilesDisabled with only 1 run", async (t) => {
   await t.notThrowsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(

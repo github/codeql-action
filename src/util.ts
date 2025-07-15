@@ -1133,20 +1133,28 @@ export function checkActionVersion(
 }
 
 /**
- * This will parse a GitHub Enterprise Server version string into a SemVer object.
+ * This will check whether the given GitHub version satisfies the given range,
+ * taking into account that a range like >=3.18 will also match the GHES 3.18
+ * pre-release/RC versions.
  *
- * GHES versions are usually in a semver-compatible format, so usually this will
- * just call the SemVer constructor. However, for GHES pre-release versions,
- * the version string is in the format "3.18.0.pre1", which is not a valid semver
- * version since the pre-release part of the version should be separated by a
- * hyphen. This function will replace the ".pre" part of the version with "-pre"
- * to make it a valid semver version.
+ * When the given `githubVersion` is not a GHES version, or if the version
+ * is invalid, this will return `defaultIfInvalid`.
  */
-export function parseGhesVersion(version: string): semver.SemVer {
-  if (version.includes(".pre")) {
-    version = version.replace(".pre", "-pre");
+export function satisfiesGHESVersion(
+  ghesVersion: string,
+  range: string,
+  defaultIfInvalid: boolean,
+): boolean {
+  const semverVersion = semver.coerce(ghesVersion);
+  if (semverVersion === null) {
+    return defaultIfInvalid;
   }
-  return new semver.SemVer(version);
+
+  // We always drop the pre-release part of the version, since anything that
+  // applies to GHES 3.18.0 should also apply to GHES 3.18.0.pre1.
+  semverVersion.prerelease = [];
+
+  return semver.satisfies(semverVersion, range);
 }
 
 /**

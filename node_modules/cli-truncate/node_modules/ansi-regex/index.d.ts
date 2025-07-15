@@ -1,11 +1,11 @@
-export interface Options {
+export type Options = {
 	/**
 	Match only the first ANSI escape.
 
 	@default false
 	*/
 	readonly onlyFirst: boolean;
-}
+};
 
 /**
 Regular expression for matching ANSI escape codes.

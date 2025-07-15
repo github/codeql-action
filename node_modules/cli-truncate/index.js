@@ -6,29 +6,26 @@ function getIndexOfNearestSpace(string, wantedIndex, shouldSearchRight) {
 		return wantedIndex;
 	}
 
-	for (let index = 1; index <= 3; index++) {
-		if (shouldSearchRight) {
-			if (string.charAt(wantedIndex + index) === ' ') {
-				return wantedIndex + index;
-			}
-		} else if (string.charAt(wantedIndex - index) === ' ') {
-			return wantedIndex - index;
+	const direction = shouldSearchRight ? 1 : -1;
+
+	for (let index = 0; index <= 3; index++) {
+		const finalIndex = wantedIndex + (index * direction);
+		if (string.charAt(finalIndex) === ' ') {
+			return finalIndex;
 		}
 	}
 
 	return wantedIndex;
 }
 
-export default function cliTruncate(text, columns, options) {
-	options = {
-		position: 'end',
-		preferTruncationOnSpace: false,
-		truncationCharacter: '…',
-		...options,
-	};
+export default function cliTruncate(text, columns, options = {}) {
+	const {
+		position = 'end',
+		space = false,
+		preferTruncationOnSpace = false,
+	} = options;
 
-	const {position, space, preferTruncationOnSpace} = options;
-	let {truncationCharacter} = options;
+	let {truncationCharacter = '…'} = options;
 
 	if (typeof text !== 'string') {
 		throw new TypeError(`Expected \`input\` to be a string, got ${typeof text}`);

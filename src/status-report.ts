@@ -392,6 +392,13 @@ const INCOMPATIBLE_MSG =
 export async function sendStatusReport<S extends StatusReportBase>(
   statusReport: S,
 ): Promise<void> {
+  if (statusReport === undefined) {
+    core.warning(
+      `Not uploading a status report, because of an internal problem.`,
+    );
+    return;
+  }
+
   setJobStatusIfUnsuccessful(statusReport.status);
 
   const statusReportJSON = JSON.stringify(statusReport);

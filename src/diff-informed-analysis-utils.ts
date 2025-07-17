@@ -3,9 +3,11 @@ import * as path from "path";
 
 import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
+import { getGitHubVersion } from "./api-client";
 import type { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
+import { GitHubVariant, satisfiesGHESVersion } from "./util";
 
 /**
  * Check if the action should perform diff-informed analysis.
@@ -34,6 +36,14 @@ export async function getDiffInformedAnalysisBranches(
   logger: Logger,
 ): Promise<PullRequestBranches | undefined> {
   if (!(await features.getValue(Feature.DiffInformedQueries, codeql))) {
+    return undefined;
+  }
+
+  const gitHubVersion = await getGitHubVersion();
+  if (
+    gitHubVersion.type === GitHubVariant.GHES &&
+    satisfiesGHESVersion(gitHubVersion.version, "<3.19", true)
+  ) {
     return undefined;
   }
 

@@ -44,6 +44,7 @@ import { Language } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
+  OverlayBaseDatabaseDownloadStats,
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
@@ -107,6 +108,10 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   trap_cache_download_size_bytes: number;
   /** Time taken to download TRAP caches, in milliseconds. */
   trap_cache_download_duration_ms: number;
+  /** Size of the overlay-base database that we downloaded, in bytes. */
+  overlay_base_database_download_size_bytes?: number;
+  /** Time taken to download the overlay-base database, in milliseconds. */
+  overlay_base_database_download_duration_ms?: number;
   /** Stringified JSON array of registry configuration objects, from the 'registries' config field
   or workflow input. **/
   registries: string;
@@ -134,6 +139,7 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
   logger: Logger,
   error?: Error,
 ) {
@@ -237,6 +243,10 @@ async function sendCompletedStatusReport(
         await getTotalCacheSize(Object.values(config.trapCaches), logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+      overlay_base_database_download_size_bytes:
+        overlayBaseDatabaseStats?.databaseSizeBytes,
+      overlay_base_database_download_duration_ms:
+        overlayBaseDatabaseStats?.databaseDownloadDurationMs,
       query_filters: JSON.stringify(
         config.originalUserInput["query-filters"] ?? [],
       ),
@@ -400,6 +410,7 @@ async function run() {
     return;
   }
 
+  let overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined;
   try {
     if (
       config.augmentationProperties.overlayDatabaseMode ===
@@ -417,9 +428,12 @@ async function run() {
       // necessary preparations. So, in that mode, we would assume that
       // everything is in order and let the analysis fail if that turns out not
       // to be the case.
-      const overlayDatabaseDownloaded =
-        await downloadOverlayBaseDatabaseFromCache(codeql, config, logger);
-      if (!overlayDatabaseDownloaded) {
+      overlayBaseDatabaseStats = await downloadOverlayBaseDatabaseFromCache(
+        codeql,
+        config,
+        logger,
+      );
+      if (!overlayBaseDatabaseStats) {
         config.augmentationProperties.overlayDatabaseMode =
           OverlayDatabaseMode.None;
         logger.info(
@@ -729,6 +743,7 @@ async function run() {
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
+      overlayBaseDatabaseStats,
       logger,
       error,
     );
@@ -744,6 +759,7 @@ async function run() {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    overlayBaseDatabaseStats,
     logger,
   );
 }

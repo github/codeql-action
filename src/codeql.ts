@@ -218,6 +218,7 @@ export interface CodeQL {
 export interface VersionInfo {
   version: string;
   features?: { [name: string]: boolean };
+  overlayVersion?: number;
 }
 
 export interface ResolveLanguagesOutput {

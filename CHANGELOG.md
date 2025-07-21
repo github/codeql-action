@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.28.20 - 21 July 2025
+
+- Remove support for combining SARIF files from a single upload for GHES 3.18, see [the changelog post](https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-from-a-single-upload/). [#2959](https://github.com/github/codeql-action/pull/2959)
+
 ## 3.28.18 - 16 May 2025
 
 - Update default CodeQL bundle version to 2.21.3. [#2893](https://github.com/github/codeql-action/pull/2893)

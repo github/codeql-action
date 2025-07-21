@@ -8,7 +8,7 @@ import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger } from "./logging";
-import { isInTestMode, withTimeout } from "./util";
+import { isInTestMode, tryGetFolderBytes, withTimeout } from "./util";
 
 export enum OverlayDatabaseMode {
   Overlay = "overlay",
@@ -235,6 +235,11 @@ export async function uploadOverlayBaseDatabaseToCache(
   return true;
 }
 
+export interface OverlayBaseDatabaseDownloadStats {
+  databaseSizeBytes: number;
+  databaseDownloadDurationMs: number;
+}
+
 /**
  * Downloads the overlay-base database from the GitHub Actions cache. If conditions
  * for downloading are not met, the function does nothing and returns false.
@@ -242,34 +247,35 @@ export async function uploadOverlayBaseDatabaseToCache(
  * @param codeql The CodeQL instance
  * @param config The configuration object
  * @param logger The logger instance
- * @returns A promise that resolves to true if the download was performed and
- * successfully completed, or false otherwise
+ * @returns A promise that resolves to download statistics if an overlay-base
+ * database was successfully downloaded, or undefined if the download was
+ * either not performed or failed.
  */
 export async function downloadOverlayBaseDatabaseFromCache(
   codeql: CodeQL,
   config: Config,
   logger: Logger,
-): Promise<boolean> {
+): Promise<OverlayBaseDatabaseDownloadStats | undefined> {
   const overlayDatabaseMode = config.augmentationProperties.overlayDatabaseMode;
   if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
     logger.debug(
       `Overlay database mode is ${overlayDatabaseMode}. ` +
         "Skip downloading overlay-base database from cache.",
     );
-    return false;
+    return undefined;
   }
   if (!config.augmentationProperties.useOverlayDatabaseCaching) {
     logger.debug(
       "Overlay database caching is disabled. " +
         "Skip downloading overlay-base database from cache.",
     );
-    return false;
+    return undefined;
   }
   if (isInTestMode()) {
     logger.debug(
       "In test mode. Skip downloading overlay-base database from cache.",
     );
-    return false;
+    return undefined;
   }
 
   const dbLocation = config.dbLocation;
@@ -280,7 +286,9 @@ export async function downloadOverlayBaseDatabaseFromCache(
     `Looking in Actions cache for overlay-base database with restore key ${restoreKey}`,
   );
 
+  let databaseDownloadDurationMs = 0;
   try {
+    const databaseDownloadStart = performance.now();
     const foundKey = await withTimeout(
       MAX_CACHE_OPERATION_MS,
       actionsCache.restoreCache([dbLocation], restoreKey),
@@ -288,10 +296,13 @@ export async function downloadOverlayBaseDatabaseFromCache(
         logger.info("Timed out downloading overlay-base database from cache");
       },
     );
+    databaseDownloadDurationMs = Math.round(
+      performance.now() - databaseDownloadStart,
+    );
 
     if (foundKey === undefined) {
       logger.info("No overlay-base database found in Actions cache");
-      return false;
+      return undefined;
     }
 
     logger.info(
@@ -302,7 +313,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
       "Failed to download overlay-base database from cache: " +
         `${error instanceof Error ? error.message : String(error)}`,
     );
-    return false;
+    return undefined;
   }
 
   const databaseIsValid = checkOverlayBaseDatabase(
@@ -312,11 +323,26 @@ export async function downloadOverlayBaseDatabaseFromCache(
   );
   if (!databaseIsValid) {
     logger.warning("Downloaded overlay-base database failed validation");
-    return false;
+    return undefined;
+  }
+
+  const databaseSizeBytes = await tryGetFolderBytes(dbLocation, logger);
+  if (databaseSizeBytes === undefined) {
+    logger.info(
+      "Filesystem error while accessing downloaded overlay-base database",
+    );
+    // The problem that warrants reporting download failure is not that we are
+    // unable to determine the size of the database. Rather, it is that we
+    // encountered a filesystem error while accessing the database, which
+    // indicates that an overlay analysis will likely fail.
+    return undefined;
   }
 
   logger.info(`Successfully downloaded overlay-base database to ${dbLocation}`);
-  return true;
+  return {
+    databaseSizeBytes: Math.round(databaseSizeBytes),
+    databaseDownloadDurationMs,
+  };
 }
 
 async function generateCacheKey(

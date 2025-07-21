@@ -254,18 +254,21 @@ export function mockLanguagesInRepo(languages: string[]) {
 export const makeVersionInfo = (
   version: string,
   features?: { [name: string]: boolean },
+  overlayVersion?: number,
 ): codeql.VersionInfo => ({
   version,
   features,
+  overlayVersion,
 });
 
 export function mockCodeQLVersion(
   version: string,
   features?: { [name: string]: boolean },
+  overlayVersion?: number,
 ) {
   return codeql.createStubCodeQL({
     async getVersion() {
-      return makeVersionInfo(version, features);
+      return makeVersionInfo(version, features, overlayVersion);
     },
   });
 }

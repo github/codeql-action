@@ -1,44 +1,13 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as github from "@actions/github";
-
 import * as actionsUtil from "./actions-util";
+import type { PullRequestBranches } from "./actions-util";
+import { getGitHubVersion } from "./api-client";
 import type { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
-
-export interface PullRequestBranches {
-  base: string;
-  head: string;
-}
-
-function getPullRequestBranches(): PullRequestBranches | undefined {
-  const pullRequest = github.context.payload.pull_request;
-  if (pullRequest) {
-    return {
-      base: pullRequest.base.ref,
-      // We use the head label instead of the head ref here, because the head
-      // ref lacks owner information and by itself does not uniquely identify
-      // the head branch (which may be in a forked repository).
-      head: pullRequest.head.label,
-    };
-  }
-
-  // PR analysis under Default Setup does not have the pull_request context,
-  // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
-  const codeScanningRef = process.env.CODE_SCANNING_REF;
-  const codeScanningBaseBranch = process.env.CODE_SCANNING_BASE_BRANCH;
-  if (codeScanningRef && codeScanningBaseBranch) {
-    return {
-      base: codeScanningBaseBranch,
-      // PR analysis under Default Setup analyzes the PR head commit instead of
-      // the merge commit, so we can use the provided ref directly.
-      head: codeScanningRef,
-    };
-  }
-  return undefined;
-}
+import { GitHubVariant, satisfiesGHESVersion } from "./util";
 
 /**
  * Check if the action should perform diff-informed analysis.
@@ -70,7 +39,15 @@ export async function getDiffInformedAnalysisBranches(
     return undefined;
   }
 
-  const branches = getPullRequestBranches();
+  const gitHubVersion = await getGitHubVersion();
+  if (
+    gitHubVersion.type === GitHubVariant.GHES &&
+    satisfiesGHESVersion(gitHubVersion.version, "<3.19", true)
+  ) {
+    return undefined;
+  }
+
+  const branches = actionsUtil.getPullRequestBranches();
   if (!branches) {
     logger.info(
       "Not performing diff-informed analysis " +

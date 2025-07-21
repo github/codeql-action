@@ -13,7 +13,7 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
-import { type Config } from "./config-utils";
+import { generateCodeScanningConfig, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import {
@@ -35,7 +35,7 @@ import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, cloneObject, getErrorMessage } from "./util";
+import { BuildMode, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -87,7 +87,6 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
-    overlayDatabaseMode: OverlayDatabaseMode,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -564,7 +563,6 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
-      overlayDatabaseMode: OverlayDatabaseMode,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -576,7 +574,7 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--trace-process-name=${processName}`);
       }
 
-      const codeScanningConfigFile = await generateCodeScanningConfig(
+      const codeScanningConfigFile = await writeCodeScanningConfigFile(
         config,
         logger,
       );
@@ -602,6 +600,8 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
+      const overlayDatabaseMode =
+        config.augmentationProperties.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
           config,
@@ -1217,66 +1217,15 @@ async function runCli(
  * @param config The configuration to use.
  * @returns the path to the generated user configuration file.
  */
-async function generateCodeScanningConfig(
+async function writeCodeScanningConfigFile(
   config: Config,
   logger: Logger,
 ): Promise<string> {
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
-
-  // make a copy so we can modify it
-  const augmentedConfig = cloneObject(config.originalUserInput);
-
-  // Inject the queries from the input
-  if (config.augmentationProperties.queriesInput) {
-    if (config.augmentationProperties.queriesInputCombines) {
-      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        config.augmentationProperties.queriesInput,
-      );
-    } else {
-      augmentedConfig.queries = config.augmentationProperties.queriesInput;
-    }
-  }
-  if (augmentedConfig.queries?.length === 0) {
-    delete augmentedConfig.queries;
-  }
-
-  // Inject the packs from the input
-  if (config.augmentationProperties.packsInput) {
-    if (config.augmentationProperties.packsInputCombines) {
-      // At this point, we already know that this is a single-language analysis
-      if (Array.isArray(augmentedConfig.packs)) {
-        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
-          config.augmentationProperties.packsInput,
-        );
-      } else if (!augmentedConfig.packs) {
-        augmentedConfig.packs = config.augmentationProperties.packsInput;
-      } else {
-        // At this point, we know there is only one language.
-        // If there were more than one language, an error would already have been thrown.
-        const language = Object.keys(augmentedConfig.packs)[0];
-        augmentedConfig.packs[language] = augmentedConfig.packs[
-          language
-        ].concat(config.augmentationProperties.packsInput);
-      }
-    } else {
-      augmentedConfig.packs = config.augmentationProperties.packsInput;
-    }
-  }
-  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
-    delete augmentedConfig.packs;
-  }
-
-  augmentedConfig["query-filters"] = [
-    // Ordering matters. If the first filter is an inclusion, it implicitly
-    // excludes all queries that are not included. If it is an exclusion,
-    // it implicitly includes all queries that are not excluded. So user
-    // filters (if any) should always be first to preserve intent.
-    ...(augmentedConfig["query-filters"] || []),
-    ...(config.augmentationProperties.extraQueryExclusions || []),
-  ];
-  if (augmentedConfig["query-filters"]?.length === 0) {
-    delete augmentedConfig["query-filters"];
-  }
+  const augmentedConfig = generateCodeScanningConfig(
+    config.originalUserInput,
+    config.augmentationProperties,
+  );
 
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,

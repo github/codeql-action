@@ -896,6 +896,7 @@ export function shouldConsiderConfigurationError(
   const expectedConfigErrors = [
     "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
     "rejecting delivery as the repository has too many logical alerts",
+    "A delivery cannot contain multiple runs with the same category",
   ];
 
   return (

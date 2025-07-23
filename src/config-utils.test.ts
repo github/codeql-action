@@ -9,12 +9,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
-import {
-  CodeQL,
-  getCachedCodeQL,
-  PackDownloadOutput,
-  setCodeQL,
-} from "./codeql";
+import { CodeQL, getCachedCodeQL, setCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
@@ -130,11 +125,7 @@ test("load empty config", async (t) => {
     const logger = getRunnerLogger(true);
     const languages = "javascript,python";
 
-    const codeql = setCodeQL({
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
-    });
+    const codeql = setCodeQL({});
 
     const config = await configUtils.initConfig(
       createTestInitConfigInputs({
@@ -164,11 +155,7 @@ test("loading config saves config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
-    const codeql = setCodeQL({
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
-    });
+    const codeql = setCodeQL({});
 
     // Sanity check the saved config file does not already exist
     t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
@@ -285,11 +272,7 @@ test("load non-existent input", async (t) => {
 
 test("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const codeql = setCodeQL({
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
-    });
+    const codeql = setCodeQL({});
 
     // Just create a generic config object with non-default values for all fields
     const inputFileContents = `
@@ -374,11 +357,7 @@ test("Using config input and file together, config input should be used.", async
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
-    const codeql = setCodeQL({
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
-    });
+    const codeql = setCodeQL({});
 
     // Only JS, python packs will be ignored
     const languagesInput = "javascript";
@@ -400,11 +379,7 @@ test("Using config input and file together, config input should be used.", async
 
 test("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const codeql = setCodeQL({
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
-    });
+    const codeql = setCodeQL({});
 
     const inputFileContents = `
       name: my config
@@ -504,9 +479,6 @@ test("No detected languages", async (t) => {
     const codeql = setCodeQL({
       async resolveLanguages() {
         return {};
-      },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
       },
     });
 

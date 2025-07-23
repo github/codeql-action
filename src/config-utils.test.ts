@@ -131,16 +131,6 @@ test("load empty config", async (t) => {
     const languages = "javascript,python";
 
     const codeql = setCodeQL({
-      async resolveQueries() {
-        return {
-          byLanguage: {
-            javascript: { queries: ["query1.ql"] },
-            python: { queries: ["query2.ql"] },
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
-      },
       async packDownload(): Promise<PackDownloadOutput> {
         return { packs: [] };
       },
@@ -175,16 +165,6 @@ test("loading config saves config", async (t) => {
     const logger = getRunnerLogger(true);
 
     const codeql = setCodeQL({
-      async resolveQueries() {
-        return {
-          byLanguage: {
-            javascript: { queries: ["query1.ql"] },
-            python: { queries: ["query2.ql"] },
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
-      },
       async packDownload(): Promise<PackDownloadOutput> {
         return { packs: [] };
       },
@@ -306,18 +286,6 @@ test("load non-existent input", async (t) => {
 test("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = setCodeQL({
-      async resolveQueries() {
-        return {
-          byLanguage: {
-            javascript: {
-              "/foo/a.ql": {},
-              "/bar/b.ql": {},
-            },
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
-      },
       async packDownload(): Promise<PackDownloadOutput> {
         return { packs: [] };
       },
@@ -382,25 +350,6 @@ test("load non-empty input", async (t) => {
   });
 });
 
-/**
- * Returns the provided queries, just in the right format for a resolved query
- * This way we can test by seeing which returned items are in the final
- * configuration.
- */
-function queriesToResolvedQueryForm(queries: string[]) {
-  const dummyResolvedQueries = {};
-  for (const q of queries) {
-    dummyResolvedQueries[q] = {};
-  }
-  return {
-    byLanguage: {
-      javascript: dummyResolvedQueries,
-    },
-    noDeclaredLanguage: {},
-    multipleDeclaredLanguages: {},
-  };
-}
-
 test("Using config input and file together, config input should be used.", async (t) => {
   return await withTmpDir(async (tempDir) => {
     process.env["RUNNER_TEMP"] = tempDir;
@@ -425,18 +374,7 @@ test("Using config input and file together, config input should be used.", async
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
-    const resolveQueriesArgs: Array<{
-      queries: string[];
-      extraSearchPath: string | undefined;
-    }> = [];
     const codeql = setCodeQL({
-      async resolveQueries(
-        queries: string[],
-        extraSearchPath: string | undefined,
-      ) {
-        resolveQueriesArgs.push({ queries, extraSearchPath });
-        return queriesToResolvedQueryForm(queries);
-      },
       async packDownload(): Promise<PackDownloadOutput> {
         return { packs: [] };
       },
@@ -463,17 +401,6 @@ test("Using config input and file together, config input should be used.", async
 test("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = setCodeQL({
-      async resolveQueries() {
-        return {
-          byLanguage: {
-            javascript: {
-              "foo.ql": {},
-            },
-          },
-          noDeclaredLanguage: {},
-          multipleDeclaredLanguages: {},
-        };
-      },
       async packDownload(): Promise<PackDownloadOutput> {
         return { packs: [] };
       },

@@ -159,9 +159,8 @@ export async function throwIfCombineSarifFilesDisabled(
     return;
   }
 
-  // TODO: Update this changelog URL to the correct one when it's published.
   const deprecationMoreInformationMessage =
-    "For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-from-a-single-upload";
+    "For more information, see https://github.blog/changelog/2025-07-21-code-scanning-will-stop-combining-multiple-sarif-runs-uploaded-in-the-same-sarif-file/";
 
   throw new ConfigurationError(
     `The CodeQL Action does not support uploading multiple SARIF runs with the same category. Please update your workflow to upload a single run per category. ${deprecationMoreInformationMessage}`,
@@ -207,9 +206,6 @@ async function combineSarifFilesUsingCLI(
   logger: Logger,
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");
-  if (sarifFiles.length === 1) {
-    return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
-  }
 
   const sarifObjects = sarifFiles.map((sarifFile): SarifFile => {
     return JSON.parse(fs.readFileSync(sarifFile, "utf8")) as SarifFile;
@@ -729,6 +725,9 @@ export async function uploadSpecifiedFiles(
     const sarifPath = sarifPaths[0];
     sarif = readSarifFile(sarifPath);
     validateSarifFileSchema(sarif, sarifPath, logger);
+
+    // Validate that there are no runs for the same category
+    await throwIfCombineSarifFilesDisabled([sarif], features, gitHubVersion);
   }
 
   sarif = filterAlertsByDiffRange(logger, sarif);
@@ -897,6 +896,7 @@ export function shouldConsiderConfigurationError(
   const expectedConfigErrors = [
     "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
     "rejecting delivery as the repository has too many logical alerts",
+    "A delivery cannot contain multiple runs with the same category",
   ];
 
   return (

@@ -137,14 +137,6 @@ export interface CodeQL {
   ): Promise<ResolveBuildEnvironmentOutput>;
 
   /**
-   * Run 'codeql pack download'.
-   */
-  packDownload(
-    packs: string[],
-    qlconfigFile: string | undefined,
-  ): Promise<PackDownloadOutput>;
-
-  /**
    * Clean up all the databases within a database cluster.
    */
   databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
@@ -254,17 +246,6 @@ export interface ResolveBuildEnvironmentOutput {
       [key: string]: unknown;
     };
   };
-}
-
-export interface PackDownloadOutput {
-  packs: PackDownloadItem[];
-}
-
-interface PackDownloadItem {
-  name: string;
-  version: string;
-  packDir: string;
-  installResult: string;
 }
 
 /**
@@ -478,7 +459,6 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "resolveBuildEnvironment",
     ),
-    packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanupCluster: resolveFunction(
       partialCodeql,
       "databaseCleanupCluster",
@@ -887,59 +867,6 @@ export async function getCodeQLForCmd(
         databasePath,
       ];
       return await runCli(cmd, codeqlArgs);
-    },
-
-    /**
-     * Download specified packs into the package cache. If the specified
-     * package and version already exists (e.g., from a previous analysis run),
-     * then it is not downloaded again (unless the extra option `--force` is
-     * specified).
-     *
-     * If no version is specified, then the latest version is
-     * downloaded. The check to determine what the latest version is is done
-     * each time this package is requested.
-     *
-     * Optionally, a `qlconfigFile` is included. If used, then this file
-     * is used to determine which registry each pack is downloaded from.
-     */
-    async packDownload(
-      packs: string[],
-      qlconfigFile: string | undefined,
-    ): Promise<PackDownloadOutput> {
-      const qlconfigArg = qlconfigFile
-        ? [`--qlconfig-file=${qlconfigFile}`]
-        : ([] as string[]);
-
-      const codeqlArgs = [
-        "pack",
-        "download",
-        ...qlconfigArg,
-        "--format=json",
-        "--resolve-query-specs",
-        ...getExtraOptionsFromEnv(["pack", "download"]),
-        ...packs,
-      ];
-
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        const parsedOutput: PackDownloadOutput = JSON.parse(output);
-        if (
-          Array.isArray(parsedOutput.packs) &&
-          // TODO PackDownloadOutput will not include the version if it is not specified
-          // in the input. The version is always the latest version available.
-          // It should be added to the output, but this requires a CLI change
-          parsedOutput.packs.every((p) => p.name /* && p.version */)
-        ) {
-          return parsedOutput;
-        } else {
-          throw new Error("Unexpected output from pack download");
-        }
-      } catch (e) {
-        throw new Error(
-          `Attempted to download specified packs but got an error:\n${output}\n${e}`,
-        );
-      }
     },
     async databaseCleanupCluster(
       config: Config,

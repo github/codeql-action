@@ -9,7 +9,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
-import { PackDownloadOutput, createStubCodeQL } from "./codeql";
+import { createStubCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
@@ -143,9 +143,6 @@ test("load empty config", async (t) => {
           },
         };
       },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
     });
 
     const config = await configUtils.initConfig(
@@ -184,9 +181,6 @@ test("loading config saves config", async (t) => {
             python: [{ extractor_root: "" }],
           },
         };
-      },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
       },
     });
 
@@ -310,9 +304,6 @@ test("load non-empty input", async (t) => {
           },
         };
       },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
     });
 
     // Just create a generic config object with non-default values for all fields
@@ -407,9 +398,6 @@ test("Using config input and file together, config input should be used.", async
           },
         };
       },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
-      },
     });
 
     // Only JS, python packs will be ignored
@@ -439,9 +427,6 @@ test("API client used when reading remote config", async (t) => {
             javascript: [{ extractor_root: "" }],
           },
         };
-      },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
       },
     });
 
@@ -541,9 +526,6 @@ test("No detected languages", async (t) => {
     const codeql = createStubCodeQL({
       async resolveLanguages() {
         return {};
-      },
-      async packDownload(): Promise<PackDownloadOutput> {
-        return { packs: [] };
       },
     });
 

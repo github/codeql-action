@@ -206,9 +206,6 @@ async function combineSarifFilesUsingCLI(
   logger: Logger,
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");
-  if (sarifFiles.length === 1) {
-    return JSON.parse(fs.readFileSync(sarifFiles[0], "utf8")) as SarifFile;
-  }
 
   const sarifObjects = sarifFiles.map((sarifFile): SarifFile => {
     return JSON.parse(fs.readFileSync(sarifFile, "utf8")) as SarifFile;
@@ -728,6 +725,9 @@ export async function uploadSpecifiedFiles(
     const sarifPath = sarifPaths[0];
     sarif = readSarifFile(sarifPath);
     validateSarifFileSchema(sarif, sarifPath, logger);
+
+    // Validate that there are no runs for the same category
+    await throwIfCombineSarifFilesDisabled([sarif], features, gitHubVersion);
   }
 
   sarif = filterAlertsByDiffRange(logger, sarif);

@@ -129,13 +129,6 @@ export interface CodeQL {
    */
   betterResolveLanguages(): Promise<BetterResolveLanguagesOutput>;
   /**
-   * Run 'codeql resolve queries'.
-   */
-  resolveQueries(
-    queries: string[],
-    extraSearchPath: string | undefined,
-  ): Promise<ResolveQueriesOutput>;
-  /**
    * Run 'codeql resolve build-environment'
    */
   resolveBuildEnvironment(
@@ -252,20 +245,6 @@ export interface BetterResolveLanguagesOutput {
         extractor_options?: any;
       },
     ];
-  };
-}
-
-export interface ResolveQueriesOutput {
-  byLanguage: {
-    [language: string]: {
-      [queryPath: string]: object;
-    };
-  };
-  noDeclaredLanguage: {
-    [queryPath: string]: object;
-  };
-  multipleDeclaredLanguages: {
-    [queryPath: string]: object;
   };
 }
 
@@ -495,7 +474,6 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "betterResolveLanguages",
       async () => ({ aliases: {}, extractors: {} }),
     ),
-    resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     resolveBuildEnvironment: resolveFunction(
       partialCodeql,
       "resolveBuildEnvironment",
@@ -790,28 +768,6 @@ export async function getCodeQLForCmd(
         throw new Error(
           `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
         );
-      }
-    },
-    async resolveQueries(
-      queries: string[],
-      extraSearchPath: string | undefined,
-    ) {
-      const codeqlArgs = [
-        "resolve",
-        "queries",
-        ...queries,
-        "--format=bylanguage",
-        ...getExtraOptionsFromEnv(["resolve", "queries"]),
-      ];
-      if (extraSearchPath !== undefined) {
-        codeqlArgs.push("--additional-packs", extraSearchPath);
-      }
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        return JSON.parse(output) as ResolveQueriesOutput;
-      } catch (e) {
-        throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
       }
     },
     async resolveBuildEnvironment(

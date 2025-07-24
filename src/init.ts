@@ -5,7 +5,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 
 import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
-import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
+import { GitHubApiDetails } from "./api-client";
 import { CodeQL, PackInfo, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
@@ -14,7 +14,6 @@ import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
-import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
 export async function initCodeQL(
@@ -66,37 +65,6 @@ export async function initConfig(
   return await withGroupAsync("Load language configuration", async () => {
     return await configUtils.initConfig(inputs);
   });
-}
-
-export async function runInit(
-  codeql: CodeQL,
-  config: configUtils.Config,
-  sourceRoot: string,
-  processName: string | undefined,
-  registriesInput: string | undefined,
-  apiDetails: GitHubApiCombinedDetails,
-  logger: Logger,
-): Promise<TracerConfig | undefined> {
-  const { registriesAuthTokens, qlconfigFile } =
-    await configUtils.generateRegistries(
-      registriesInput,
-      config.tempDir,
-      logger,
-    );
-  const databaseInitEnvironment = {
-    GITHUB_TOKEN: apiDetails.auth,
-    CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-  };
-  await runDatabaseInitCluster(
-    databaseInitEnvironment,
-    codeql,
-    config,
-    sourceRoot,
-    processName,
-    qlconfigFile,
-    logger,
-  );
-  return await getCombinedTracerConfig(codeql, config);
 }
 
 export async function runDatabaseInitCluster(

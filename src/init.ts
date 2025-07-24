@@ -78,21 +78,40 @@ export async function runInit(
   apiDetails: GitHubApiCombinedDetails,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
-  fs.mkdirSync(config.dbLocation, { recursive: true });
-
   const { registriesAuthTokens, qlconfigFile } =
     await configUtils.generateRegistries(
       registriesInput,
       config.tempDir,
       logger,
     );
-  await configUtils.wrapEnvironment(
-    {
-      GITHUB_TOKEN: apiDetails.auth,
-      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-    },
+  const databaseInitEnvironment = {
+    GITHUB_TOKEN: apiDetails.auth,
+    CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+  };
+  await runDatabaseInitCluster(
+    databaseInitEnvironment,
+    codeql,
+    config,
+    sourceRoot,
+    processName,
+    qlconfigFile,
+    logger,
+  );
+  return await getCombinedTracerConfig(codeql, config);
+}
 
-    // Init a database cluster
+export async function runDatabaseInitCluster(
+  databaseInitEnvironment: Record<string, string | undefined>,
+  codeql: CodeQL,
+  config: configUtils.Config,
+  sourceRoot: string,
+  processName: string | undefined,
+  qlconfigFile: string | undefined,
+  logger: Logger,
+): Promise<void> {
+  fs.mkdirSync(config.dbLocation, { recursive: true });
+  await configUtils.wrapEnvironment(
+    databaseInitEnvironment,
     async () =>
       await codeql.databaseInitCluster(
         config,
@@ -102,7 +121,6 @@ export async function runInit(
         logger,
       ),
   );
-  return await getCombinedTracerConfig(codeql, config);
 }
 
 /**

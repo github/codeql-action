@@ -14,7 +14,7 @@ import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
@@ -146,16 +146,9 @@ export async function shouldShowCombineSarifFilesDeprecationWarning(
 
 export async function throwIfCombineSarifFilesDisabled(
   sarifObjects: util.SarifFile[],
-  features: FeatureEnablement,
   githubVersion: GitHubVersion,
 ) {
-  if (
-    !(await shouldDisableCombineSarifFiles(
-      sarifObjects,
-      features,
-      githubVersion,
-    ))
-  ) {
+  if (!(await shouldDisableCombineSarifFiles(sarifObjects, githubVersion))) {
     return;
   }
 
@@ -170,17 +163,11 @@ export async function throwIfCombineSarifFilesDisabled(
 // Checks whether combining SARIF files should be disabled.
 async function shouldDisableCombineSarifFiles(
   sarifObjects: util.SarifFile[],
-  features: FeatureEnablement,
   githubVersion: GitHubVersion,
 ) {
   if (githubVersion.type === GitHubVariant.GHES) {
     // Never block on GHES versions before 3.18.
     if (satisfiesGHESVersion(githubVersion.version, "<3.18", true)) {
-      return false;
-    }
-  } else {
-    // Never block when the feature flag is disabled.
-    if (!(await features.getValue(Feature.DisableCombineSarifFiles))) {
       return false;
     }
   }
@@ -219,11 +206,7 @@ async function combineSarifFilesUsingCLI(
     "For more information, see https://github.blog/changelog/2024-05-06-code-scanning-will-stop-combining-runs-from-a-single-upload";
 
   if (!areAllRunsProducedByCodeQL(sarifObjects)) {
-    await throwIfCombineSarifFilesDisabled(
-      sarifObjects,
-      features,
-      gitHubVersion,
-    );
+    await throwIfCombineSarifFilesDisabled(sarifObjects, gitHubVersion);
 
     logger.debug(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
@@ -290,11 +273,7 @@ async function combineSarifFilesUsingCLI(
       ToolsFeature.SarifMergeRunsFromEqualCategory,
     ))
   ) {
-    await throwIfCombineSarifFilesDisabled(
-      sarifObjects,
-      features,
-      gitHubVersion,
-    );
+    await throwIfCombineSarifFilesDisabled(sarifObjects, gitHubVersion);
 
     logger.warning(
       "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
@@ -727,7 +706,7 @@ export async function uploadSpecifiedFiles(
     validateSarifFileSchema(sarif, sarifPath, logger);
 
     // Validate that there are no runs for the same category
-    await throwIfCombineSarifFilesDisabled([sarif], features, gitHubVersion);
+    await throwIfCombineSarifFilesDisabled([sarif], gitHubVersion);
   }
 
   sarif = filterAlertsByDiffRange(logger, sarif);

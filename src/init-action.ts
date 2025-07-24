@@ -38,7 +38,7 @@ import {
   cleanupDatabaseClusterDirectory,
   initCodeQL,
   initConfig,
-  runInit,
+  runDatabaseInitCluster,
 } from "./init";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
@@ -59,6 +59,7 @@ import {
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
+import { getCombinedTracerConfig } from "./tracer-config";
 import {
   checkDiskUsage,
   checkForTimeout,
@@ -744,15 +745,28 @@ async function run() {
       }
     }
 
-    const tracerConfig = await runInit(
+    const { registriesAuthTokens, qlconfigFile } =
+      await configUtils.generateRegistries(
+        getOptionalInput("registries"),
+        config.tempDir,
+        logger,
+      );
+    const databaseInitEnvironment = {
+      GITHUB_TOKEN: apiDetails.auth,
+      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+    };
+
+    await runDatabaseInitCluster(
+      databaseInitEnvironment,
       codeql,
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      getOptionalInput("registries"),
-      apiDetails,
+      qlconfigFile,
       logger,
     );
+
+    const tracerConfig = await getCombinedTracerConfig(codeql, config);
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
         core.exportVariable(key, value);

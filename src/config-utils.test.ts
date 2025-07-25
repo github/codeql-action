@@ -20,7 +20,10 @@ import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import {
+  CODEQL_OVERLAY_MINIMUM_VERSION,
+  OverlayDatabaseMode,
+} from "./overlay-database-utils";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -1213,7 +1216,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   repositoryOwner: "github",
   buildMode: BuildMode.None,
   languages: [Language.javascript],
-  codeqlVersion: "2.21.0",
+  codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
   codeScanningConfig: {},
 };

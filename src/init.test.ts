@@ -1,9 +1,14 @@
 import * as fs from "fs";
 import path from "path";
 
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 
-import { cleanupDatabaseClusterDirectory } from "./init";
+import { ResolvePacksStep, setCodeQL } from "./codeql";
+import {
+  checkPacksForOverlayCompatibility,
+  cleanupDatabaseClusterDirectory,
+} from "./init";
+import { Language } from "./languages";
 import {
   LoggedMessage,
   createTestConfig,
@@ -106,3 +111,278 @@ for (const { runnerEnv, ErrorConstructor, message } of [
     });
   });
 }
+
+type PackInfo = {
+  kind: "query" | "library";
+  packinfoContents?: string;
+};
+
+const testCheckPacksForOverlayCompatibility = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    _title: string,
+    {
+      cliOverlayVersion,
+      languages,
+      packs,
+      expectedResult,
+    }: {
+      cliOverlayVersion: number | undefined;
+      languages: Language[];
+      packs: Record<string, PackInfo>;
+      expectedResult: boolean;
+    },
+  ) => {
+    await withTmpDir(async (tmpDir) => {
+      const byNameFound = {};
+      const byNameAndVersionFound = {};
+      const steps: ResolvePacksStep[] = [
+        {
+          type: "by-name",
+          scans: [
+            {
+              paths: [],
+              found: byNameFound,
+            },
+          ],
+        },
+        {
+          type: "by-name-and-version",
+          found: byNameAndVersionFound,
+        },
+      ];
+
+      for (const [packName, packInfo] of Object.entries(packs)) {
+        const packPath = path.join(tmpDir, packName);
+        fs.mkdirSync(packPath, { recursive: true });
+        if (packInfo.packinfoContents) {
+          fs.writeFileSync(
+            path.join(packPath, ".packinfo"),
+            packInfo.packinfoContents,
+          );
+        }
+        if (packName.startsWith("codeql/")) {
+          byNameFound[packName] = {
+            kind: packInfo.kind,
+            path: path.join(packPath, "qlpack.yml"),
+            version: "1.0.0",
+          };
+        } else {
+          byNameAndVersionFound[packName] = {
+            "1.0.0": {
+              kind: packInfo.kind,
+              path: path.join(packPath, "qlpack.yml"),
+            },
+          };
+        }
+      }
+
+      const codeql = setCodeQL({
+        getVersion: async () => ({
+          version: "2.22.2",
+          overlayVersion: cliOverlayVersion,
+        }),
+        resolvePacks: async () => ({
+          steps,
+        }),
+      });
+
+      const messages: LoggedMessage[] = [];
+      const result = await checkPacksForOverlayCompatibility(
+        codeql,
+        createTestConfig({ dbLocation: tmpDir, languages }),
+        getRecordingLogger(messages),
+      );
+      t.is(result, expectedResult);
+      t.deepEqual(
+        messages.length,
+        expectedResult ? 0 : 1,
+        "Expected log messages",
+      );
+    });
+  },
+  title: (_, title) => `checkPacksForOverlayCompatibility: ${title}`,
+});
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns false when CLI does not support overlay",
+  {
+    cliOverlayVersion: undefined,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+    },
+    expectedResult: false,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns true when there are no bundled query packs",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "custom/queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+    },
+    expectedResult: true,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns true when bundled query pack has expected overlay version",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+    },
+    expectedResult: true,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns false when bundled query pack has different overlay version",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":1}',
+      },
+    },
+    expectedResult: false,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns true when there are local library packs",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+      "custom/library": {
+        kind: "library",
+      },
+    },
+    expectedResult: true,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns true when local query pack has expected overlay version",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+      "custom/queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+    },
+    expectedResult: true,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns false when local query pack is missing .packinfo",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+      "custom/queries": {
+        kind: "query",
+        packinfoContents: undefined,
+      },
+    },
+    expectedResult: false,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns false when local query pack has different overlay version",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+      "custom/queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":1}',
+      },
+    },
+    expectedResult: false,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns false when local query pack is missing overlayVersion in .packinfo",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+      "custom/queries": {
+        kind: "query",
+        packinfoContents: '{"name":"some-pack"}',
+      },
+    },
+    expectedResult: false,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns false when .packinfo is not valid JSON",
+  {
+    cliOverlayVersion: 2,
+    languages: [Language.java],
+    packs: {
+      "codeql/java-queries": {
+        kind: "query",
+        packinfoContents: '{"overlayVersion":2}',
+      },
+      "custom/queries": {
+        kind: "query",
+        packinfoContents: "this_is_not_valid_json",
+      },
+    },
+    expectedResult: false,
+  },
+);

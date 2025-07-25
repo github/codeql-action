@@ -127,6 +127,12 @@ export interface CodeQL {
     queries: string[],
     extraSearchPath: string | undefined,
   ): Promise<ResolveQueriesOutput>;
+
+  /**
+   * Run 'codeql resolve packs'
+   */
+  resolvePacks(): Promise<ResolvePacksOutput>;
+
   /**
    * Run 'codeql resolve build-environment'
    */
@@ -218,6 +224,7 @@ export interface CodeQL {
 export interface VersionInfo {
   version: string;
   features?: { [name: string]: boolean };
+  overlayVersion?: number;
 }
 
 export interface ResolveLanguagesOutput {
@@ -258,6 +265,39 @@ export interface ResolveBuildEnvironmentOutput {
       [key: string]: unknown;
     };
   };
+}
+
+export interface PackInfo {
+  kind: string;
+  path: string;
+  version?: string; // Present only under ByNameScan
+}
+
+export interface ByNameScan {
+  paths: string[];
+  found: {
+    [packName: string]: PackInfo;
+  };
+}
+
+export interface StepByName {
+  type: "by-name";
+  scans: ByNameScan[];
+}
+
+export interface StepByNameAndVersion {
+  type: "by-name-and-version";
+  found: {
+    [packName: string]: {
+      [version: string]: PackInfo;
+    };
+  };
+}
+
+export type ResolvePacksStep = StepByName | StepByNameAndVersion;
+
+export interface ResolvePacksOutput {
+  steps: ResolvePacksStep[];
 }
 
 export interface PackDownloadOutput {
@@ -467,6 +507,7 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       async () => ({ aliases: {}, extractors: {} }),
     ),
     resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
+    resolvePacks: resolveFunction(partialCodeql, "resolvePacks"),
     resolveBuildEnvironment: resolveFunction(
       partialCodeql,
       "resolveBuildEnvironment",
@@ -783,6 +824,21 @@ export async function getCodeQLForCmd(
         return JSON.parse(output) as ResolveQueriesOutput;
       } catch (e) {
         throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
+      }
+    },
+    async resolvePacks(): Promise<ResolvePacksOutput> {
+      const codeqlArgs = [
+        "resolve",
+        "packs",
+        "--format=json",
+        ...getExtraOptionsFromEnv(["resolve", "packs"]),
+      ];
+      const output = await runCli(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output) as ResolvePacksOutput;
+      } catch (e) {
+        throw new Error(`Unexpected output from codeql resolve packs: ${e}`);
       }
     },
     async resolveBuildEnvironment(

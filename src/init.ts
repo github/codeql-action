@@ -5,8 +5,8 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 
 import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
-import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
-import { CodeQL, setupCodeQL } from "./codeql";
+import { GitHubApiDetails } from "./api-client";
+import { CodeQL, PackInfo, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { Language } from "./languages";
@@ -14,7 +14,6 @@ import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
-import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
 export async function initCodeQL(
@@ -68,30 +67,18 @@ export async function initConfig(
   });
 }
 
-export async function runInit(
+export async function runDatabaseInitCluster(
+  databaseInitEnvironment: Record<string, string | undefined>,
   codeql: CodeQL,
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  registriesInput: string | undefined,
-  apiDetails: GitHubApiCombinedDetails,
+  qlconfigFile: string | undefined,
   logger: Logger,
-): Promise<TracerConfig | undefined> {
+): Promise<void> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
-
-  const { registriesAuthTokens, qlconfigFile } =
-    await configUtils.generateRegistries(
-      registriesInput,
-      config.tempDir,
-      logger,
-    );
   await configUtils.wrapEnvironment(
-    {
-      GITHUB_TOKEN: apiDetails.auth,
-      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-    },
-
-    // Init a database cluster
+    databaseInitEnvironment,
     async () =>
       await codeql.databaseInitCluster(
         config,
@@ -101,7 +88,149 @@ export async function runInit(
         logger,
       ),
   );
-  return await getCombinedTracerConfig(codeql, config);
+}
+
+/**
+ * Check whether all query packs are compatible with the overlay analysis
+ * support in the CodeQL CLI. If the check fails, this function will log a
+ * warning and returns false.
+ *
+ * @param codeql A CodeQL instance.
+ * @param logger A logger.
+ * @returns `true` if all query packs are compatible with overlay analysis,
+ * `false` otherwise.
+ */
+export async function checkPacksForOverlayCompatibility(
+  codeql: CodeQL,
+  config: configUtils.Config,
+  logger: Logger,
+): Promise<boolean> {
+  const codeQlOverlayVersion = (await codeql.getVersion()).overlayVersion;
+  if (codeQlOverlayVersion === undefined) {
+    logger.warning("The CodeQL CLI does not support overlay analysis.");
+    return false;
+  }
+  const packs = await codeql.resolvePacks();
+
+  const languageQueryPackNames = new Set<string>();
+  for (const language of config.languages) {
+    languageQueryPackNames.add(`codeql/${language}-queries`);
+  }
+
+  for (const step of packs.steps) {
+    // The "by-name-and-version" step resolves only packs that are installed
+    // locally. In the context of the init action, those would be the packs
+    // specified by the workflow to use in the analysis, so we should check them
+    // all for overlay compatibility.
+    if (step.type === "by-name-and-version") {
+      for (const [packName, versionedPacks] of Object.entries(step.found)) {
+        for (const [version, versionedPack] of Object.entries(versionedPacks)) {
+          if (
+            !checkPackForOverlayCompatibility(
+              `${packName}@${version}`,
+              versionedPack,
+              codeQlOverlayVersion,
+              logger,
+            )
+          ) {
+            return false;
+          }
+        }
+      }
+    }
+    // The "by-name" step resolves packs in user-specified directives, as well
+    // as under the root and the parent of the CodeQL distribution. In the
+    // context of the init action, those would be the packs in the CodeQL
+    // bundle. We don't want to check every query pack in the bundle: for
+    // example, it is ok for the Swift query pack to not support overlay
+    // analysis if we are running Ruby analysis. At the same time, we do want to
+    // check that the bundled Ruby query pack supports overlay analysis. So here
+    // we check only those packs whose names match the languages being analyzed.
+    if (step.type === "by-name") {
+      for (const scan of step.scans) {
+        for (const [packName, packInfo] of Object.entries(scan.found)) {
+          if (languageQueryPackNames.has(packName)) {
+            if (
+              !checkPackForOverlayCompatibility(
+                `${packName}@${packInfo.version}`,
+                packInfo,
+                codeQlOverlayVersion,
+                logger,
+              )
+            ) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Check a single pack for its overlay compatibility. If the check fails, this
+ * function will log a warning and returns false.
+ *
+ * @param packReference The name and version of the pack, used for logging.
+ * @param packInfo Information about the pack, including its path and kind.
+ * @param codeQlOverlayVersion The overlay version of the CodeQL CLI.
+ * @param logger A logger.
+ * @returns `true` if the pack is compatible with overlay analysis, `false`
+ * otherwise.
+ */
+function checkPackForOverlayCompatibility(
+  packReference: string,
+  packInfo: PackInfo,
+  codeQlOverlayVersion: number,
+  logger: Logger,
+): boolean {
+  try {
+    if (packInfo.kind !== "query") {
+      return true;
+    }
+
+    const packInfoPath = path.join(path.dirname(packInfo.path), ".packinfo");
+    if (!fs.existsSync(packInfoPath)) {
+      logger.warning(
+        `The query pack ${packReference} at ${packInfo.path} ` +
+          "does not have a .packinfo file. This pack is too old to support " +
+          "overlay analysis.",
+      );
+      return false;
+    }
+
+    const packInfoFileContents = JSON.parse(
+      fs.readFileSync(packInfoPath, "utf8"),
+    );
+    const packOverlayVersion = packInfoFileContents.overlayVersion;
+    if (typeof packOverlayVersion !== "number") {
+      logger.warning(
+        `The query pack ${packReference} ` +
+          "is not compatible with overlay analysis.",
+      );
+      return false;
+    }
+
+    if (packOverlayVersion !== codeQlOverlayVersion) {
+      logger.warning(
+        `The query pack ${packReference} was compiled with ` +
+          `overlay version ${packOverlayVersion}, but the CodeQL CLI ` +
+          `supports only overlay version ${codeQlOverlayVersion}. The ` +
+          "query pack needs to be recompiled to support overlay analysis.",
+      );
+      return false;
+    }
+  } catch (e) {
+    logger.warning(
+      `Error while checking ${packReference} at ${packInfo.path} ` +
+        `for overlay compatibility: ${util.getErrorMessage(e)}`,
+    );
+    return false;
+  }
+
+  return true;
 }
 
 /**

@@ -238,6 +238,7 @@ export async function checkInstallPython311(
 export function cleanupDatabaseClusterDirectory(
   config: configUtils.Config,
   logger: Logger,
+  options: { disableExistingDirectoryWarning?: boolean } = {},
   // We can't stub the fs module in tests, so we allow the caller to override the rmSync function
   // for testing.
   rmSync = fs.rmSync,
@@ -247,9 +248,11 @@ export function cleanupDatabaseClusterDirectory(
     (fs.statSync(config.dbLocation).isFile() ||
       fs.readdirSync(config.dbLocation).length > 0)
   ) {
-    logger.warning(
-      `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,
-    );
+    if (!options.disableExistingDirectoryWarning) {
+      logger.warning(
+        `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,
+      );
+    }
     try {
       rmSync(config.dbLocation, {
         force: true,

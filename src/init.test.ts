@@ -92,6 +92,7 @@ for (const { runnerEnv, ErrorConstructor, message } of [
           cleanupDatabaseClusterDirectory(
             createTestConfig({ dbLocation }),
             getRecordingLogger(messages),
+            {},
             () => {
               throw new Error(rmSyncError);
             },
@@ -111,6 +112,33 @@ for (const { runnerEnv, ErrorConstructor, message } of [
     });
   });
 }
+
+test("cleanupDatabaseClusterDirectory can disable warning with options", async (t) => {
+  await withTmpDir(async (tmpDir: string) => {
+    const dbLocation = path.resolve(tmpDir, "dbs");
+    fs.mkdirSync(dbLocation, { recursive: true });
+
+    const fileToCleanUp = path.resolve(dbLocation, "something-to-cleanup.txt");
+    fs.writeFileSync(fileToCleanUp, "");
+
+    const messages: LoggedMessage[] = [];
+    cleanupDatabaseClusterDirectory(
+      createTestConfig({ dbLocation }),
+      getRecordingLogger(messages),
+      { disableExistingDirectoryWarning: true },
+    );
+
+    // Should only have the info message, not the warning
+    t.is(messages.length, 1);
+    t.is(messages[0].type, "info");
+    t.is(
+      messages[0].message,
+      `Cleaned up database cluster directory ${dbLocation}.`,
+    );
+
+    t.false(fs.existsSync(fileToCleanUp));
+  });
+});
 
 type PackInfo = {
   language: KnownLanguage;

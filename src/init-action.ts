@@ -785,7 +785,9 @@ async function run() {
       );
       config.augmentationProperties.overlayDatabaseMode =
         OverlayDatabaseMode.None;
-      cleanupDatabaseClusterDirectory(config, logger);
+      cleanupDatabaseClusterDirectory(config, logger, {
+        disableExistingDirectoryWarning: true,
+      });
       await runDatabaseInitCluster(
         databaseInitEnvironment,
         codeql,

@@ -300,9 +300,10 @@ const shortTime = 10;
 test("withTimeout on long task", async (t) => {
   let longTaskTimedOut = false;
   const longTask = new Promise((resolve) => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       resolve(42);
     }, longTime);
+    t.teardown(() => clearTimeout(timer));
   });
   const result = await util.withTimeout(shortTime, longTask, () => {
     longTaskTimedOut = true;

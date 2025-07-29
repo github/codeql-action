@@ -1,8 +1,7 @@
 export default function slash(path) {
-	const isExtendedLengthPath = /^\\\\\?\\/.test(path);
-	const hasNonAscii = /[^\u0000-\u0080]+/.test(path); // eslint-disable-line no-control-regex
+	const isExtendedLengthPath = path.startsWith('\\\\?\\');
 
-	if (isExtendedLengthPath || hasNonAscii) {
+	if (isExtendedLengthPath) {
 		return path;
 	}
 

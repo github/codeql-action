@@ -9,8 +9,6 @@ import os
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
     # The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-v2.16.6",
-    # The last CodeQL release in the 2.17 series.
     "stable-v2.17.6",
     # The last CodeQL release in the 2.18 series.
     "stable-v2.18.4",
@@ -18,6 +16,8 @@ defaultTestVersions = [
     "stable-v2.19.4",
     # The last CodeQL release in the 2.20 series.
     "stable-v2.20.7",
+    # The last CodeQL release in the 2.21 series.
+    "stable-v2.21.4",
     # The default version of CodeQL for Dotcom, as determined by feature flags.
     "default",
     # The version of CodeQL shipped with the Action in `defaults.json`. During the release process

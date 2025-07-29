@@ -1,6 +1,7 @@
 import net from 'node:net'
 import {
   HTTPParser,
+  RequestHeadersCallback,
   type RequestHeadersCompleteCallback,
   type ResponseHeadersCompleteCallback,
 } from '_http_common'
@@ -53,6 +54,7 @@ export class MockHttpSocket extends MockSocket {
   private onResponse: MockHttpSocketResponseCallback
   private responseListenersPromise?: Promise<void>
 
+  private requestRawHeadersBuffer: Array<string> = []
   private writeBuffer: Array<NormalizedSocketWriteArgs> = []
   private request?: Request
   private requestParser: HTTPParser<0>
@@ -113,6 +115,7 @@ export class MockHttpSocket extends MockSocket {
     // Request parser.
     this.requestParser = new HTTPParser()
     this.requestParser.initialize(HTTPParser.REQUEST, {})
+    this.requestParser[HTTPParser.kOnHeaders] = this.onRequestHeaders.bind(this)
     this.requestParser[HTTPParser.kOnHeadersComplete] =
       this.onRequestStart.bind(this)
     this.requestParser[HTTPParser.kOnBody] = this.onRequestBody.bind(this)
@@ -472,6 +475,17 @@ export class MockHttpSocket extends MockSocket {
     }
   }
 
+  /**
+   * This callback might be called when the request is "slow":
+   * - Request headers were fragmented across multiple TCP packages;
+   * - Request headers were too large to be processed in a single run
+   * (e.g. more than 30 request headers).
+   * @note This is called before request start.
+   */
+  private onRequestHeaders: RequestHeadersCallback = (rawHeaders) => {
+    this.requestRawHeadersBuffer.push(...rawHeaders)
+  }
+
   private onRequestStart: RequestHeadersCompleteCallback = (
     versionMajor,
     versionMinor,
@@ -485,9 +499,14 @@ export class MockHttpSocket extends MockSocket {
   ) => {
     this.shouldKeepAlive = shouldKeepAlive
 
-    const url = new URL(path, this.baseUrl)
+    const url = new URL(path || '', this.baseUrl)
     const method = this.connectionOptions.method?.toUpperCase() || 'GET'
-    const headers = FetchResponse.parseRawHeaders(rawHeaders)
+    const headers = FetchResponse.parseRawHeaders([
+      ...this.requestRawHeadersBuffer,
+      ...(rawHeaders || []),
+    ])
+    this.requestRawHeadersBuffer.length = 0
+
     const canHaveBody = method !== 'GET' && method !== 'HEAD'
 
     // Translate the basic authorization in the URL to the request header.

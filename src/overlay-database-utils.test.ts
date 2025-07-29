@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as actionsCache from "@actions/cache";
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -8,10 +9,17 @@ import * as actionsUtil from "./actions-util";
 import * as gitUtils from "./git-utils";
 import { getRunnerLogger } from "./logging";
 import {
+  downloadOverlayBaseDatabaseFromCache,
+  OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
 } from "./overlay-database-utils";
-import { createTestConfig, setupTests } from "./testing-utils";
+import {
+  createTestConfig,
+  mockCodeQLVersion,
+  setupTests,
+} from "./testing-utils";
+import * as utils from "./util";
 import { withTmpDir } from "./util";
 
 setupTests(test);
@@ -75,3 +83,177 @@ test("writeOverlayChangesFile generates correct changes file", async (t) => {
     );
   });
 });
+
+interface DownloadOverlayBaseDatabaseTestCase {
+  overlayDatabaseMode: OverlayDatabaseMode;
+  useOverlayDatabaseCaching: boolean;
+  isInTestMode: boolean;
+  restoreCacheResult: string | undefined | Error;
+  hasBaseDatabaseOidsFile: boolean;
+  tryGetFolderBytesSucceeds: boolean;
+  codeQLVersion: string;
+}
+
+const defaultDownloadTestCase: DownloadOverlayBaseDatabaseTestCase = {
+  overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+  useOverlayDatabaseCaching: true,
+  isInTestMode: false,
+  restoreCacheResult: "cache-key",
+  hasBaseDatabaseOidsFile: true,
+  tryGetFolderBytesSucceeds: true,
+  codeQLVersion: "2.20.5",
+};
+
+const testDownloadOverlayBaseDatabaseFromCache = test.macro({
+  exec: async (
+    t,
+    _title: string,
+    partialTestCase: Partial<DownloadOverlayBaseDatabaseTestCase>,
+    expectDownloadSuccess: boolean,
+  ) => {
+    await withTmpDir(async (tmpDir) => {
+      const dbLocation = path.join(tmpDir, "db");
+      await fs.promises.mkdir(dbLocation, { recursive: true });
+
+      const logger = getRunnerLogger(true);
+      const config = createTestConfig({ dbLocation });
+
+      const testCase = { ...defaultDownloadTestCase, ...partialTestCase };
+
+      config.augmentationProperties.overlayDatabaseMode =
+        testCase.overlayDatabaseMode;
+      config.augmentationProperties.useOverlayDatabaseCaching =
+        testCase.useOverlayDatabaseCaching;
+
+      if (testCase.hasBaseDatabaseOidsFile) {
+        const baseDatabaseOidsFile = path.join(
+          dbLocation,
+          "base-database-oids.json",
+        );
+        await fs.promises.writeFile(baseDatabaseOidsFile, JSON.stringify({}));
+      }
+
+      const stubs: sinon.SinonStub[] = [];
+
+      const isInTestModeStub = sinon
+        .stub(utils, "isInTestMode")
+        .returns(testCase.isInTestMode);
+      stubs.push(isInTestModeStub);
+
+      if (testCase.restoreCacheResult instanceof Error) {
+        const restoreCacheStub = sinon
+          .stub(actionsCache, "restoreCache")
+          .rejects(testCase.restoreCacheResult);
+        stubs.push(restoreCacheStub);
+      } else {
+        const restoreCacheStub = sinon
+          .stub(actionsCache, "restoreCache")
+          .resolves(testCase.restoreCacheResult);
+        stubs.push(restoreCacheStub);
+      }
+
+      const tryGetFolderBytesStub = sinon
+        .stub(utils, "tryGetFolderBytes")
+        .resolves(testCase.tryGetFolderBytesSucceeds ? 1024 * 1024 : undefined);
+      stubs.push(tryGetFolderBytesStub);
+
+      try {
+        const result = await downloadOverlayBaseDatabaseFromCache(
+          mockCodeQLVersion(testCase.codeQLVersion),
+          config,
+          logger,
+        );
+
+        if (expectDownloadSuccess) {
+          t.truthy(result);
+        } else {
+          t.is(result, undefined);
+        }
+      } finally {
+        for (const stub of stubs) {
+          stub.restore();
+        }
+      }
+    });
+  },
+  title: (_, title) => `downloadOverlayBaseDatabaseFromCache: ${title}`,
+});
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns stats when successful",
+  {},
+  true,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when mode is OverlayDatabaseMode.OverlayBase",
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when mode is OverlayDatabaseMode.None",
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when caching is disabled",
+  {
+    useOverlayDatabaseCaching: false,
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined in test mode",
+  {
+    isInTestMode: true,
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when cache miss",
+  {
+    restoreCacheResult: undefined,
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when download fails",
+  {
+    restoreCacheResult: new Error("Download failed"),
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when downloaded database is invalid",
+  {
+    hasBaseDatabaseOidsFile: false,
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when filesystem error occurs",
+  {
+    tryGetFolderBytesSucceeds: false,
+  },
+  false,
+);

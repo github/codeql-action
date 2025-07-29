@@ -232,29 +232,6 @@ export function normalizeClientRequestArgs(
   options.method = options.method || 'GET'
 
   /**
-   * Infer a fallback agent from the URL protocol.
-   * The interception is done on the "ClientRequest" level ("NodeClientRequest")
-   * and it may miss the correct agent. Always align the agent
-   * with the URL protocol, if not provided.
-   *
-   * @note Respect the "agent: false" value.
-   */
-  if (typeof options.agent === 'undefined') {
-    const agent =
-      options.protocol === 'https:'
-        ? new HttpsAgent({
-            // Any other value other than false is considered as true, so we don't add this property if undefined.
-            ...('rejectUnauthorized' in options && {
-              rejectUnauthorized: options.rejectUnauthorized,
-            }),
-          })
-        : new HttpAgent()
-
-    options.agent = agent
-    logger.info('resolved fallback agent:', agent)
-  }
-
-  /**
    * Ensure that the default Agent is always set.
    * This prevents the protocol mismatch for requests with { agent: false },
    * where the global Agent is inferred.

@@ -132,6 +132,18 @@ export interface QueriesStatusReport {
    */
   analysis_is_diff_informed?: boolean;
 
+  /**
+   * Whether the analysis runs in overlay mode (i.e., uses an overlay-base database).
+   * This is true if the AugmentationProperties.overlayDatabaseMode === Overlay.
+   */
+  analysis_is_overlay?: boolean;
+
+  /**
+   * Whether the analysis builds an overlay-base database.
+   * This is true if the AugmentationProperties.overlayDatabaseMode === OverlayBase.
+   */
+  analysis_builds_overlay_base_database?: boolean;
+
   /** Name of language that errored during analysis (or undefined if no language failed). */
   analyze_failure_language?: string;
   /** Reports on discrete events associated with this status report. */
@@ -617,12 +629,20 @@ export async function runQueries(
     queryFlags.push("--extension-packs=codeql-action/pr-diff-range");
     incrementalMode.push("diff-informed");
   }
+
+  statusReport.analysis_is_overlay =
+    config.augmentationProperties.overlayDatabaseMode ===
+    OverlayDatabaseMode.Overlay;
+  statusReport.analysis_builds_overlay_base_database =
+    config.augmentationProperties.overlayDatabaseMode ===
+    OverlayDatabaseMode.OverlayBase;
   if (
     config.augmentationProperties.overlayDatabaseMode ===
     OverlayDatabaseMode.Overlay
   ) {
     incrementalMode.push("overlay");
   }
+
   const sarifRunPropertyFlag =
     incrementalMode.length > 0
       ? `--sarif-run-property=incrementalMode=${incrementalMode.join(",")}`

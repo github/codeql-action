@@ -399,6 +399,18 @@ test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.14", async (t
   );
 });
 
+test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.16 pre", async (t) => {
+  t.true(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.16.0.pre1",
+      },
+    ),
+  );
+});
+
 test("shouldShowCombineSarifFilesDeprecationWarning with only 1 run", async (t) => {
   t.false(
     await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
@@ -454,6 +466,10 @@ test("throwIfCombineSarifFilesDisabled when on dotcom with feature flag", async 
         type: GitHubVariant.DOTCOM,
       },
     ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
   );
 });
 
@@ -518,6 +534,10 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.18 pre", async (t) => {
         version: "3.18.0.pre1",
       },
     ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
   );
 });
 
@@ -531,6 +551,10 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.18 alpha", async (t) => {
         version: "3.18.0-alpha.1",
       },
     ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
   );
 });
 
@@ -542,6 +566,23 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
       {
         type: GitHubVariant.GHES,
         version: "3.18.0",
+      },
+    ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with an invalid GHES version", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      createFeatures([]),
+      {
+        type: GitHubVariant.GHES,
+        version: "foobar",
       },
     ),
   );

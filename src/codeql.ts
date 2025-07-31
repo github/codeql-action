@@ -199,6 +199,10 @@ export interface CodeQL {
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
   /**
+   * Run 'codeql resolve queries --format=startingpacks'.
+   */
+  resolveQueriesStartingPacks(queries: string[]): Promise<string[]>;
+  /**
    * Run 'codeql github merge-results'.
    */
   mergeResults(
@@ -479,6 +483,10 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
     resolveExtractor: resolveFunction(partialCodeql, "resolveExtractor"),
+    resolveQueriesStartingPacks: resolveFunction(
+      partialCodeql,
+      "resolveQueriesStartingPacks",
+    ),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
 }
@@ -973,6 +981,24 @@ export async function getCodeQLForCmd(
         },
       ).exec();
       return JSON.parse(extractorPath) as string;
+    },
+    async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
+      const codeqlArgs = [
+        "resolve",
+        "queries",
+        "--format=startingpacks",
+        ...getExtraOptionsFromEnv(["resolve", "queries"]),
+        ...queries,
+      ];
+      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+
+      try {
+        return JSON.parse(output) as string[];
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve queries --format=startingpacks: ${e}`,
+        );
+      }
     },
     async mergeResults(
       sarifFiles: string[],

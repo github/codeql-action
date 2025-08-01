@@ -44,7 +44,6 @@ test("status report fields", async (t) => {
     for (const language of Object.values(Language)) {
       setCodeQL({
         databaseRunQueries: async () => {},
-        packDownload: async () => ({ packs: [] }),
         databaseInterpretResults: async (
           _db: string,
           _queriesRun: string[],

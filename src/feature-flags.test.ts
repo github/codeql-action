@@ -15,11 +15,13 @@ import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   getRecordingLogger,
+  initializeFeatures,
   LoggedMessage,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
   setupActionsVars,
   setupTests,
+  stubFeatureFlagApiEndpoint,
 } from "./testing-utils";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
@@ -128,6 +130,29 @@ test("Features use default value if they're not returned in API response", async
     }
 
     assertAllFeaturesUndefinedInApi(t, loggedMessages);
+  });
+});
+
+test("Include no more than 25 features in each API request", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
+
+    stubFeatureFlagApiEndpoint((request) => {
+      const requestedFeatures = (request.features as string).split(",");
+      return {
+        status: requestedFeatures.length <= 25 ? 200 : 400,
+        messageIfError: "Can request a maximum of 25 features.",
+        data: {},
+      };
+    });
+
+    // We only need to call getValue once, and it does not matter which feature
+    // we ask for. Under the hood, the features library will request all features
+    // from the API.
+    const feature = Object.values(Feature)[0];
+    await t.notThrowsAsync(async () =>
+      features.getValue(feature, includeCodeQlIfRequired(feature)),
+    );
   });
 });
 
@@ -550,13 +575,6 @@ function assertAllFeaturesUndefinedInApi(
       ) !== undefined,
     );
   }
-}
-
-export function initializeFeatures(initialValue: boolean) {
-  return Object.keys(featureConfig).reduce((features, key) => {
-    features[key] = initialValue;
-    return features;
-  }, {});
 }
 
 function setUpFeatureFlagTests(

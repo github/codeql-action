@@ -39,6 +39,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     };
     sinon.stub(configUtils, "getConfig").resolves({
       gitHubVersion,
+      augmentationProperties: {},
       languages: [],
       packs: [],
       trapCaches: {},
@@ -46,6 +47,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("token").returns("fake-token");
     requiredInputStub.withArgs("upload-database").returns("false");
+    requiredInputStub.withArgs("output").returns("out");
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("cleanup-level").returns("none");
     optionalInputStub.withArgs("expect-error").returns("false");

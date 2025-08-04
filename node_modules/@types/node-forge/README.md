@@ -8,7 +8,7 @@ This package contains type definitions for node-forge (https://github.com/digita
 Files were exported from https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node-forge.
 
 ### Additional Details
- * Last updated: Tue, 02 Jan 2024 22:35:21 GMT
+ * Last updated: Fri, 11 Jul 2025 22:02:30 GMT
  * Dependencies: [@types/node](https://npmjs.com/package/@types/node)
 
 # Credits

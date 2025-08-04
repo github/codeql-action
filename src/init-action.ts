@@ -3,7 +3,6 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
-import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
 import {
@@ -630,25 +629,20 @@ async function run() {
       core.exportVariable(bmnVar, value);
     }
 
-    // For rust, if running a version prior to public preview (2.22.1) set CODEQL_ENABLE_EXPERIMENTAL_FEATURES
+    // For rust, if `codeql` does not support it, we are in two possible situations:
+    // * either we run `codeql` prior to 2.19.3, which means no rust support is possible
+    // * or we run a version between 2.19.3 and 2.22.1 (excluded), when rust support was
+    //   experimental and required explicitly setting CODEQL_ENABLE_EXPERIMENTAL_FEATURES
+    // However, there is not need to let users know about the experimental feature flag at
+    // this point, if they want rust support they should chose a version which supports it
+    // publicly.
     if (
       config.languages.includes(Language.rust) &&
-      !(await codeql.resolveLanguages()).rust // means codeql already supports rust without any intervention
+      !(await codeql.resolveLanguages()).rust
     ) {
-      const minVer = "2.19.3";
-      const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
-      const actualVer = (await codeql.getVersion()).version;
-      if (semver.lt(actualVer, minVer)) {
-        throw new ConfigurationError(
-          `Experimental Rust analysis is supported by CodeQL CLI version ${minVer} or higher, but found version ${actualVer}`,
-        );
-      }
-      if (process.env[envVar] !== "true") {
-        throw new ConfigurationError(
-          `Experimental Rust analysis requires setting ${envVar}=true in the environment, or running version 2.22.1 or higher`,
-        );
-      }
-      logger.info("Experimental Rust analysis enabled");
+      throw new ConfigurationError(
+        "Rust analysis is supported from CodeQL version 2.22.1 or higher.",
+      );
     }
 
     // Restore dependency cache(s), if they exist.

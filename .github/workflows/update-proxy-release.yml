@@ -1,0 +1,101 @@
+name: Update dependency proxy release assets
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag of CodeQL Bundle release that contains the proxy binaries as release assets"
+        type: string
+        required: true
+
+jobs:
+  update:
+    name: Update code and create PR
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to push the updated files
+      pull-requests: write # needed to create the PR
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Check release tag format
+        id: checks
+        shell: bash
+        run: |
+          if ! [[ $RELEASE_TAG =~ ^codeql-bundle-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: expected a CodeQL bundle tag in the 'codeql-bundle-vM.N.P' format."
+            exit 1
+          fi
+
+          echo "target_branch=dependency-proxy/$RELEASE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Check that the release exists
+        shell: bash
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: |
+          (gh release view --repo "$GITHUB_REPOSITORY" --json "assets" "$RELEASE_TAG" && echo "Release found.") || exit 1
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # ensure we have all tags and can push commits
+          ref: main
+
+      - name: Update git config
+        shell: bash
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Update release tag and version
+        shell: bash
+        run: |
+          NOW=$(date +"%Y%m%d%H%M%S") # only used to make sure we don't fetch stale binaries from the toolcache
+          sed -i "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-v[0-9.]\+/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
+          sed -i "s/\"v2.0.[0-9]\+\"/\"v2.0.$NOW\"/g" ./src/start-proxy-action.ts
+
+      - name: Compile TypeScript and commit changes
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ steps.checks.outputs.target_branch }}
+        run: |
+          set -exu
+          git checkout -b "$TARGET_BRANCH"
+
+          npm run build
+          git add ./src/start-proxy-action.ts
+          git add ./lib
+          git commit -m "Update release used by \`start-proxy\` action"
+
+      - name: Push changes and open PR
+        shell: bash
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          TARGET_BRANCH: ${{ steps.checks.outputs.target_branch }}
+          PR_FLAG: ${{ (github.event_name == 'workflow_dispatch' && '--draft') || '--dry-run' }}
+        run: |
+          set -exu
+          pr_title="Update release used by \`start-proxy\` to \`$RELEASE_TAG\`"
+          pr_body=$(cat << EOF
+            This PR updates the \`start-proxy\` action to use the private registry proxy binaries that
+            are attached as release assets to the \`$RELEASE_TAG\` release.
+
+
+            Please do the following before merging:
+
+            - [ ] Verify that the changes to the code are correct.
+            - [ ] Mark the PR as ready for review to trigger the CI.
+          EOF
+          )
+
+          git push origin "$TARGET_BRANCH"
+          gh pr create \
+            --head "$TARGET_BRANCH" \
+            --base "main" \
+            --title "${pr_title}" \
+            --body "${pr_body}" \
+            $PR_FLAG

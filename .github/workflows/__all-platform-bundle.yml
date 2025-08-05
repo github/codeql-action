@@ -45,6 +45,11 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'true'
           setup-kotlin: 'true'
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.21.0'
+          cache: false
       - id: init
         uses: ./../action/init
         with:

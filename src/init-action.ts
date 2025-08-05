@@ -36,14 +36,17 @@ import { Feature, featureConfig, Features } from "./feature-flags";
 import {
   checkInstallPython311,
   cleanupDatabaseClusterDirectory,
-  getOverlayDatabaseMode,
   initCodeQL,
   initConfig,
   runInit,
 } from "./init";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import {
+  downloadOverlayBaseDatabaseFromCache,
+  OverlayBaseDatabaseDownloadStats,
+  OverlayDatabaseMode,
+} from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -105,6 +108,10 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   trap_cache_download_size_bytes: number;
   /** Time taken to download TRAP caches, in milliseconds. */
   trap_cache_download_duration_ms: number;
+  /** Size of the overlay-base database that we downloaded, in bytes. */
+  overlay_base_database_download_size_bytes?: number;
+  /** Time taken to download the overlay-base database, in milliseconds. */
+  overlay_base_database_download_duration_ms?: number;
   /** Stringified JSON array of registry configuration objects, from the 'registries' config field
   or workflow input. **/
   registries: string;
@@ -132,6 +139,7 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
   logger: Logger,
   error?: Error,
 ) {
@@ -238,6 +246,10 @@ async function sendCompletedStatusReport(
         ),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+      overlay_base_database_download_size_bytes:
+        overlayBaseDatabaseStats?.databaseSizeBytes,
+      overlay_base_database_download_duration_ms:
+        overlayBaseDatabaseStats?.databaseDownloadDurationMs,
       query_filters: JSON.stringify(
         config.originalUserInput["query-filters"] ?? [],
       ),
@@ -299,6 +311,14 @@ async function run() {
   core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
   const configFile = getOptionalInput("config-file");
+
+  // path.resolve() respects the intended semantics of source-root. If
+  // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
+  // source-root is absolute, it is used as given.
+  const sourceRoot = path.resolve(
+    getRequiredEnvParam("GITHUB_WORKSPACE"),
+    getOptionalInput("source-root") || "",
+  );
 
   try {
     const statusReportBase = await createStatusReportBase(
@@ -370,6 +390,7 @@ async function run() {
     config = await initConfig({
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
+      qualityQueriesInput: getOptionalInput("quality-queries"),
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       configFile,
@@ -390,6 +411,7 @@ async function run() {
       tempDir: getTemporaryDirectory(),
       codeql,
       workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+      sourceRoot,
       githubVersion: gitHubVersion,
       apiDetails,
       features,
@@ -416,21 +438,43 @@ async function run() {
     return;
   }
 
+  let overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined;
   try {
-    const sourceRoot = path.resolve(
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
-      getOptionalInput("source-root") || "",
-    );
+    if (
+      config.augmentationProperties.overlayDatabaseMode ===
+        OverlayDatabaseMode.Overlay &&
+      config.augmentationProperties.useOverlayDatabaseCaching
+    ) {
+      // OverlayDatabaseMode.Overlay comes in two flavors: with database
+      // caching, or without. The flavor with database caching is intended to be
+      // an "automatic control" mode, which is supposed to be fail-safe. If we
+      // cannot download an overlay-base database, we revert to
+      // OverlayDatabaseMode.None so that the workflow can continue to run.
+      //
+      // The flavor without database caching is intended to be a "manual
+      // control" mode, where the workflow is supposed to make all the
+      // necessary preparations. So, in that mode, we would assume that
+      // everything is in order and let the analysis fail if that turns out not
+      // to be the case.
+      overlayBaseDatabaseStats = await downloadOverlayBaseDatabaseFromCache(
+        codeql,
+        config,
+        logger,
+      );
+      if (!overlayBaseDatabaseStats) {
+        config.augmentationProperties.overlayDatabaseMode =
+          OverlayDatabaseMode.None;
+        logger.info(
+          "No overlay-base database found in cache, " +
+            `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
+        );
+      }
+    }
 
-    const overlayDatabaseMode = await getOverlayDatabaseMode(
-      (await codeql.getVersion()).version,
-      config,
-      sourceRoot,
-      logger,
-    );
-    logger.info(`Using overlay database mode: ${overlayDatabaseMode}`);
-
-    if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
+    if (
+      config.augmentationProperties.overlayDatabaseMode !==
+      OverlayDatabaseMode.Overlay
+    ) {
       cleanupDatabaseClusterDirectory(config, logger);
     }
 
@@ -615,6 +659,34 @@ async function run() {
       core.exportVariable(bmnVar, value);
     }
 
+    // For rust: set CODEQL_ENABLE_EXPERIMENTAL_FEATURES, unless codeql already supports rust without it
+    if (
+      config.languages.includes(KnownLanguage.rust) &&
+      !(await codeql.resolveLanguages()).rust
+    ) {
+      const feat = Feature.RustAnalysis;
+      const minVer = featureConfig[feat].minimumVersion as string;
+      const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
+      // if in default setup, it means the feature flag was on when rust was enabled
+      // if the feature flag gets turned off, let's not have rust analysis throwing a configuration error
+      // in that case rust analysis will be disabled only when default setup is refreshed
+      if (isDefaultSetup() || (await features.getValue(feat, codeql))) {
+        core.exportVariable(envVar, "true");
+      }
+      if (process.env[envVar] !== "true") {
+        throw new ConfigurationError(
+          `Experimental and not officially supported Rust analysis requires setting ${envVar}=true in the environment`,
+        );
+      }
+      const actualVer = (await codeql.getVersion()).version;
+      if (semver.lt(actualVer, minVer)) {
+        throw new ConfigurationError(
+          `Experimental rust analysis is supported by CodeQL CLI version ${minVer} or higher, but found version ${actualVer}`,
+        );
+      }
+      logger.info("Experimental rust analysis enabled");
+    }
+
     // Restore dependency cache(s), if they exist.
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
       await downloadDependencyCaches(config.languages, logger);
@@ -674,7 +746,6 @@ async function run() {
       "Runner.Worker.exe",
       getOptionalInput("registries"),
       apiDetails,
-      overlayDatabaseMode,
       logger,
     );
     if (tracerConfig !== undefined) {
@@ -700,6 +771,7 @@ async function run() {
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
+      overlayBaseDatabaseStats,
       logger,
       error,
     );
@@ -715,6 +787,7 @@ async function run() {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    overlayBaseDatabaseStats,
     logger,
   );
 }

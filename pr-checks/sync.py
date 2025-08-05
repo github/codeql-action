@@ -9,8 +9,6 @@ import os
 # The default set of CodeQL Bundle versions to use for the PR checks.
 defaultTestVersions = [
     # The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-    "stable-v2.16.6",
-    # The last CodeQL release in the 2.17 series.
     "stable-v2.17.6",
     # The last CodeQL release in the 2.18 series.
     "stable-v2.18.4",
@@ -18,6 +16,8 @@ defaultTestVersions = [
     "stable-v2.19.4",
     # The last CodeQL release in the 2.20 series.
     "stable-v2.20.7",
+    # The last CodeQL release in the 2.21 series.
+    "stable-v2.21.4",
     # The default version of CodeQL for Dotcom, as determined by feature flags.
     "default",
     # The version of CodeQL shipped with the Action in `defaults.json`. During the release process
@@ -107,6 +107,22 @@ for file in (this_dir / 'checks').glob('*.yml'):
             }
         },
     ]
+
+    installGo = False
+    if checkSpecification.get('installGo'):
+        installGo = True if checkSpecification['installGo'].lower() == "true" else False
+
+    if installGo:
+        steps.append({
+            'name': 'Install Go',
+            'uses': 'actions/setup-go@v5',
+            'with': {
+                'go-version': '>=1.21.0',
+                # to avoid potentially misleading autobuilder results where we expect it to download
+                # dependencies successfully, but they actually come from a warm cache
+                'cache': False
+            }
+        })
 
     # If container initialisation steps are present in the check specification,
     # make sure to execute them first.

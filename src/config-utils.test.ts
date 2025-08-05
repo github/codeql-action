@@ -6,6 +6,7 @@ import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import {
@@ -16,8 +17,10 @@ import {
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
+import * as gitUtils from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -25,6 +28,7 @@ import {
   createFeatures,
   getRecordingLogger,
   LoggedMessage,
+  mockCodeQLVersion,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -47,6 +51,7 @@ function createTestInitConfigInputs(
     {
       languagesInput: undefined,
       queriesInput: undefined,
+      qualityQueriesInput: undefined,
       packsInput: undefined,
       configFile: undefined,
       dbLocation: undefined,
@@ -61,6 +66,7 @@ function createTestInitConfigInputs(
       tempDir: "",
       codeql: {} as CodeQL,
       workspacePath: "",
+      sourceRoot: "",
       githubVersion,
       apiDetails: {
         auth: "token",
@@ -844,17 +850,16 @@ const calculateAugmentationMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
+    rawQualityQueriesInput: string | undefined,
     languages: Language[],
     expectedAugmentationProperties: configUtils.AugmentationProperties,
   ) => {
     const actualAugmentationProperties =
       await configUtils.calculateAugmentation(
-        getCachedCodeQL(),
-        createFeatures([]),
         rawPacksInput,
         rawQueriesInput,
+        rawQualityQueriesInput,
         languages,
-        mockLogger,
       );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
   },
@@ -866,14 +871,11 @@ test(
   "All empty",
   undefined,
   undefined,
+  undefined,
   [KnownLanguage.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+    ...configUtils.defaultAugmentationProperties,
+  },
 );
 
 test(
@@ -881,14 +883,12 @@ test(
   "With queries",
   undefined,
   " a, b , c, d",
+  undefined,
   [KnownLanguage.javascript],
   {
-    queriesInputCombines: false,
+    ...configUtils.defaultAugmentationProperties,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -896,14 +896,50 @@ test(
   "With queries combining",
   undefined,
   "   +   a, b , c, d ",
+  undefined,
   [KnownLanguage.javascript],
   {
+    ...configUtils.defaultAugmentationProperties,
     queriesInputCombines: true,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-    packsInputCombines: false,
-    packsInput: undefined,
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
+);
+
+test(
+  calculateAugmentationMacro,
+  "With quality queries",
+  undefined,
+  undefined,
+  " a, b , c, d",
+  [KnownLanguage.javascript],
+  {
+    ...configUtils.defaultAugmentationProperties,
+    qualityQueriesInput: [
+      { uses: "a" },
+      { uses: "b" },
+      { uses: "c" },
+      { uses: "d" },
+    ],
+  },
+);
+
+test(
+  calculateAugmentationMacro,
+  "With security and quality queries",
+  undefined,
+  " a, b , c, d",
+  "e, f , g,h",
+  [KnownLanguage.javascript],
+  {
+    ...configUtils.defaultAugmentationProperties,
+    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    qualityQueriesInput: [
+      { uses: "e" },
+      { uses: "f" },
+      { uses: "g" },
+      { uses: "h" },
+    ],
+  },
 );
 
 test(
@@ -911,14 +947,12 @@ test(
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
+  undefined,
   [KnownLanguage.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
-    packsInputCombines: false,
+    ...configUtils.defaultAugmentationProperties,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 test(
@@ -926,14 +960,13 @@ test(
   "With packs combining",
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
+  undefined,
   [KnownLanguage.javascript],
   {
-    queriesInputCombines: false,
-    queriesInput: undefined,
+    ...configUtils.defaultAugmentationProperties,
     packsInputCombines: true,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-    defaultQueryFilters: [],
-  } as configUtils.AugmentationProperties,
+  },
 );
 
 const calculateAugmentationErrorMacro = test.macro({
@@ -942,18 +975,17 @@ const calculateAugmentationErrorMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
+    rawQualityQueriesInput: string | undefined,
     languages: Language[],
     expectedError: RegExp | string,
   ) => {
     await t.throwsAsync(
       () =>
         configUtils.calculateAugmentation(
-          getCachedCodeQL(),
-          createFeatures([]),
           rawPacksInput,
           rawQueriesInput,
+          rawQualityQueriesInput,
           languages,
-          mockLogger,
         ),
       { message: expectedError },
     );
@@ -966,6 +998,7 @@ test(
   "Plus (+) with nothing else (queries)",
   undefined,
   "   +   ",
+  undefined,
   [KnownLanguage.javascript],
   /The workflow property "queries" is invalid/,
 );
@@ -974,6 +1007,7 @@ test(
   calculateAugmentationErrorMacro,
   "Plus (+) with nothing else (packs)",
   "   +   ",
+  undefined,
   undefined,
   [KnownLanguage.javascript],
   /The workflow property "packs" is invalid/,
@@ -984,6 +1018,7 @@ test(
   "Packs input with multiple languages",
   "   +  a/b, c/d ",
   undefined,
+  undefined,
   [KnownLanguage.javascript, KnownLanguage.java],
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
@@ -993,6 +1028,7 @@ test(
   "Packs input with no languages",
   "   +  a/b, c/d ",
   undefined,
+  undefined,
   [],
   /No languages specified/,
 );
@@ -1001,6 +1037,7 @@ test(
   calculateAugmentationErrorMacro,
   "Invalid packs",
   " a-pack-without-a-scope ",
+  undefined,
   undefined,
   [KnownLanguage.javascript],
   /"a-pack-without-a-scope" is not a valid pack/,
@@ -1195,4 +1232,643 @@ for (const { displayName, language, feature } of [
       },
     ]);
   });
+}
+
+interface OverlayDatabaseModeTestSetup {
+  overlayDatabaseEnvVar: string | undefined;
+  features: Feature[];
+  isPullRequest: boolean;
+  isDefaultBranch: boolean;
+  repositoryOwner: string;
+  buildMode: BuildMode | undefined;
+  languages: Language[];
+  codeqlVersion: string;
+  gitRoot: string | undefined;
+  codeScanningConfig: configUtils.UserConfig;
+}
+
+const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
+  overlayDatabaseEnvVar: undefined,
+  features: [],
+  isPullRequest: false,
+  isDefaultBranch: false,
+  repositoryOwner: "github",
+  buildMode: BuildMode.None,
+  languages: [KnownLanguage.javascript],
+  codeqlVersion: "2.21.0",
+  gitRoot: "/some/git/root",
+  codeScanningConfig: {},
+};
+
+const getOverlayDatabaseModeMacro = test.macro({
+  exec: async (
+    t: ExecutionContext,
+    _title: string,
+    setupOverrides: Partial<OverlayDatabaseModeTestSetup>,
+    expected: {
+      overlayDatabaseMode: OverlayDatabaseMode;
+      useOverlayDatabaseCaching: boolean;
+    },
+  ) => {
+    return await withTmpDir(async (tempDir) => {
+      const messages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(messages);
+
+      // Save the original environment
+      const originalEnv = { ...process.env };
+
+      try {
+        const setup = {
+          ...defaultOverlayDatabaseModeTestSetup,
+          ...setupOverrides,
+        };
+
+        // Set up environment variable if specified
+        delete process.env.CODEQL_OVERLAY_DATABASE_MODE;
+        if (setup.overlayDatabaseEnvVar !== undefined) {
+          process.env.CODEQL_OVERLAY_DATABASE_MODE =
+            setup.overlayDatabaseEnvVar;
+        }
+
+        // Mock feature flags
+        const features = createFeatures(setup.features);
+
+        // Mock isAnalyzingPullRequest function
+        sinon
+          .stub(actionsUtil, "isAnalyzingPullRequest")
+          .returns(setup.isPullRequest);
+
+        // Mock repository owner
+        const repository = {
+          owner: setup.repositoryOwner,
+          repo: "test-repo",
+        };
+
+        // Set up CodeQL mock
+        const codeql = mockCodeQLVersion(setup.codeqlVersion);
+
+        // Mock traced languages
+        sinon
+          .stub(codeql, "isTracedLanguage")
+          .callsFake(async (lang: Language) => {
+            return [KnownLanguage.java].includes(lang as KnownLanguage);
+          });
+
+        // Mock git root detection
+        if (setup.gitRoot !== undefined) {
+          sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
+        }
+
+        // Mock default branch detection
+        sinon
+          .stub(gitUtils, "isAnalyzingDefaultBranch")
+          .resolves(setup.isDefaultBranch);
+
+        const result = await configUtils.getOverlayDatabaseMode(
+          codeql,
+          repository,
+          features,
+          setup.languages,
+          tempDir, // sourceRoot
+          setup.buildMode,
+          setup.codeScanningConfig,
+          logger,
+        );
+
+        t.deepEqual(result, expected);
+      } finally {
+        // Restore the original environment
+        process.env = originalEnv;
+      }
+    });
+  },
+  title: (_, title) => `getOverlayDatabaseMode: ${title}`,
+});
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override - Overlay",
+  {
+    overlayDatabaseEnvVar: "overlay",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override - OverlayBase",
+  {
+    overlayDatabaseEnvVar: "overlay-base",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override - None",
+  {
+    overlayDatabaseEnvVar: "none",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Ignore invalid environment variable",
+  {
+    overlayDatabaseEnvVar: "invalid-mode",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Ignore feature flag when analyzing non-default branch",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch when feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch when feature enabled with custom analysis",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    codeScanningConfig: {
+      packs: ["some-custom-pack@1.0.0"],
+    } as configUtils.UserConfig,
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch when code-scanning feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      "disable-default-queries": true,
+    } as configUtils.UserConfig,
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when code-scanning feature enabled with packs",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      packs: ["some-custom-pack@1.0.0"],
+    } as configUtils.UserConfig,
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when code-scanning feature enabled with queries",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      queries: [{ uses: "some-query.ql" }],
+    } as configUtils.UserConfig,
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when code-scanning feature enabled with query-filters",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      "query-filters": [{ include: { "security-severity": "high" } }],
+    } as configUtils.UserConfig,
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when only language-specific feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysisJavascript],
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when only code-scanning feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysisCodeScanningJavascript],
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when language-specific feature disabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis],
+    isDefaultBranch: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR when feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR when feature enabled with custom analysis",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    codeScanningConfig: {
+      packs: ["some-custom-pack@1.0.0"],
+    } as configUtils.UserConfig,
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR when code-scanning feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      "disable-default-queries": true,
+    } as configUtils.UserConfig,
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when code-scanning feature enabled with packs",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      packs: ["some-custom-pack@1.0.0"],
+    } as configUtils.UserConfig,
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when code-scanning feature enabled with queries",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      queries: [{ uses: "some-query.ql" }],
+    } as configUtils.UserConfig,
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when code-scanning feature enabled with query-filters",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    codeScanningConfig: {
+      "query-filters": [{ include: { "security-severity": "high" } }],
+    } as configUtils.UserConfig,
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when only language-specific feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when only code-scanning feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysisCodeScanningJavascript],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when language-specific feature disabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay PR analysis by env for dsp-testing",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryOwner: "dsp-testing",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay PR analysis by env for other-org",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryOwner: "other-org",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay PR analysis by feature flag for dsp-testing",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryOwner: "dsp-testing",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay PR analysis by feature flag for other-org",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryOwner: "other-org",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to autobuild with traced language",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    buildMode: BuildMode.Autobuild,
+    languages: [KnownLanguage.java],
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to no build mode with traced language",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    buildMode: undefined,
+    languages: [KnownLanguage.java],
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to old CodeQL version",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    codeqlVersion: "2.14.0",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to missing git root",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitRoot: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+// Exercise language-specific overlay analysis features code paths
+for (const language in KnownLanguage) {
+  test(
+    getOverlayDatabaseModeMacro,
+    `Check default overlay analysis feature for ${language}`,
+    {
+      languages: [language],
+      features: [Feature.OverlayAnalysis],
+      isPullRequest: true,
+    },
+    {
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
+    },
+  );
 }

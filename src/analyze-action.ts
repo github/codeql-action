@@ -27,6 +27,10 @@ import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import {
+  OverlayDatabaseMode,
+  uploadOverlayBaseDatabaseToCache,
+} from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
@@ -297,8 +301,15 @@ async function run() {
       logger,
     );
 
+    // An overlay-base database should always use the 'overlay' cleanup level
+    // to preserve the cached intermediate results.
+    //
+    // Note that we may be overriding the 'cleanup-level' input parameter.
     const cleanupLevel =
-      actionsUtil.getOptionalInput("cleanup-level") || "brutal";
+      config.augmentationProperties.overlayDatabaseMode ===
+      OverlayDatabaseMode.OverlayBase
+        ? "overlay"
+        : actionsUtil.getOptionalInput("cleanup-level") || "brutal";
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
@@ -333,14 +344,30 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         features,
         logger,
+        uploadLib.CodeScanningTarget,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
+
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        const qualityUploadResult = await uploadLib.uploadFiles(
+          outputDir,
+          actionsUtil.getRequiredInput("checkout_path"),
+          actionsUtil.getOptionalInput("category"),
+          features,
+          logger,
+          uploadLib.CodeQualityTarget,
+        );
+        core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
+      }
     } else {
       logger.info("Not uploading results");
     }
 
     // Possibly upload the database bundles for remote queries
     await uploadDatabases(repositoryNwo, config, apiDetails, logger);
+
+    // Possibly upload the overlay-base database to actions cache
+    await uploadOverlayBaseDatabaseToCache(codeql, config, logger);
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();

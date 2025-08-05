@@ -1133,6 +1133,31 @@ export function checkActionVersion(
 }
 
 /**
+ * This will check whether the given GitHub version satisfies the given range,
+ * taking into account that a range like >=3.18 will also match the GHES 3.18
+ * pre-release/RC versions.
+ *
+ * When the given `githubVersion` is not a GHES version, or if the version
+ * is invalid, this will return `defaultIfInvalid`.
+ */
+export function satisfiesGHESVersion(
+  ghesVersion: string,
+  range: string,
+  defaultIfInvalid: boolean,
+): boolean {
+  const semverVersion = semver.coerce(ghesVersion);
+  if (semverVersion === null) {
+    return defaultIfInvalid;
+  }
+
+  // We always drop the pre-release part of the version, since anything that
+  // applies to GHES 3.18.0 should also apply to GHES 3.18.0.pre1.
+  semverVersion.prerelease = [];
+
+  return semver.satisfies(semverVersion, range);
+}
+
+/**
  * Supported build modes.
  *
  * These specify whether the CodeQL database should be created by tracing a build, and if so, how

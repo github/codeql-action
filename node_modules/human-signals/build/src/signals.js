@@ -8,7 +8,7 @@ import{getRealtimeSignals}from"./realtime.js";
 export const getSignals=()=>{
 const realtimeSignals=getRealtimeSignals();
 const signals=[...SIGNALS,...realtimeSignals].map(normalizeSignal);
-return signals;
+return signals
 };
 
 
@@ -30,5 +30,5 @@ signals:{[name]:constantSignal}
 }=constants;
 const supported=constantSignal!==undefined;
 const number=supported?constantSignal:defaultNumber;
-return{name,number,description,supported,action,forced,standard};
+return{name,number,description,supported,action,forced,standard}
 };

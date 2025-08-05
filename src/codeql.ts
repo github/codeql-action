@@ -13,7 +13,7 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
-import { type Config } from "./config-utils";
+import { generateCodeScanningConfig, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import {
@@ -35,7 +35,7 @@ import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, cloneObject, getErrorMessage } from "./util";
+import { BuildMode, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -95,7 +95,6 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
-    overlayDatabaseMode: OverlayDatabaseMode,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -165,9 +164,15 @@ export interface CodeQL {
     dbName: string,
   ): Promise<void>;
   /**
-   * Run 'codeql database run-queries'.
+   * Run 'codeql database run-queries'. If no `queries` are specified, then the CLI
+   * will automatically use the `config-queries.qls` (if it exists) or default queries
+   * for the language.
    */
-  databaseRunQueries(databasePath: string, flags: string[]): Promise<void>;
+  databaseRunQueries(
+    databasePath: string,
+    flags: string[],
+    queries?: string[],
+  ): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
    */
@@ -293,17 +298,17 @@ const CODEQL_MINIMUM_VERSION = "2.16.6";
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.16.6";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.17.6";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.12";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.13";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2025-04-03";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2025-06-19";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
@@ -580,7 +585,6 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
-      overlayDatabaseMode: OverlayDatabaseMode,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -592,7 +596,7 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--trace-process-name=${processName}`);
       }
 
-      const codeScanningConfigFile = await generateCodeScanningConfig(
+      const codeScanningConfigFile = await writeCodeScanningConfigFile(
         config,
         logger,
       );
@@ -618,6 +622,8 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
+      const overlayDatabaseMode =
+        config.augmentationProperties.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
           config,
@@ -828,6 +834,7 @@ export async function getCodeQLForCmd(
     async databaseRunQueries(
       databasePath: string,
       flags: string[],
+      queries: string[] = [],
     ): Promise<void> {
       const codeqlArgs = [
         "database",
@@ -837,6 +844,7 @@ export async function getCodeQLForCmd(
         "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
+        ...queries,
         ...getExtraOptionsFromEnv(["database", "run-queries"], {
           ignoringOptions: ["--expect-discarded-cache"],
         }),
@@ -1231,62 +1239,15 @@ async function runCli(
  * @param config The configuration to use.
  * @returns the path to the generated user configuration file.
  */
-async function generateCodeScanningConfig(
+async function writeCodeScanningConfigFile(
   config: Config,
   logger: Logger,
 ): Promise<string> {
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
-
-  // make a copy so we can modify it
-  const augmentedConfig = cloneObject(config.originalUserInput);
-
-  // Inject the queries from the input
-  if (config.augmentationProperties.queriesInput) {
-    if (config.augmentationProperties.queriesInputCombines) {
-      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        config.augmentationProperties.queriesInput,
-      );
-    } else {
-      augmentedConfig.queries = config.augmentationProperties.queriesInput;
-    }
-  }
-  if (augmentedConfig.queries?.length === 0) {
-    delete augmentedConfig.queries;
-  }
-
-  // Inject the packs from the input
-  if (config.augmentationProperties.packsInput) {
-    if (config.augmentationProperties.packsInputCombines) {
-      // At this point, we already know that this is a single-language analysis
-      if (Array.isArray(augmentedConfig.packs)) {
-        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
-          config.augmentationProperties.packsInput,
-        );
-      } else if (!augmentedConfig.packs) {
-        augmentedConfig.packs = config.augmentationProperties.packsInput;
-      } else {
-        // At this point, we know there is only one language.
-        // If there were more than one language, an error would already have been thrown.
-        const language = Object.keys(augmentedConfig.packs)[0];
-        augmentedConfig.packs[language] = augmentedConfig.packs[
-          language
-        ].concat(config.augmentationProperties.packsInput);
-      }
-    } else {
-      augmentedConfig.packs = config.augmentationProperties.packsInput;
-    }
-  }
-  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
-    delete augmentedConfig.packs;
-  }
-
-  augmentedConfig["query-filters"] = [
-    ...(config.augmentationProperties.defaultQueryFilters || []),
-    ...(augmentedConfig["query-filters"] || []),
-  ];
-  if (augmentedConfig["query-filters"]?.length === 0) {
-    delete augmentedConfig["query-filters"];
-  }
+  const augmentedConfig = generateCodeScanningConfig(
+    config.originalUserInput,
+    config.augmentationProperties,
+  );
 
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,
@@ -1369,22 +1330,4 @@ async function getJobRunUuidSarifOptions(codeql: CodeQL) {
     ))
     ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
     : [];
-}
-
-export async function getSupportedLanguageMap(
-  codeql: CodeQL,
-): Promise<Record<string, string>> {
-  const resolveResult = await codeql.betterResolveLanguages();
-  const supportedLanguages: Record<string, string> = {};
-  // Populate canonical language names
-  for (const extractor of Object.keys(resolveResult.extractors)) {
-    supportedLanguages[extractor] = extractor;
-  }
-  // Populate language aliases
-  if (resolveResult.aliases) {
-    for (const [alias, extractor] of Object.entries(resolveResult.aliases)) {
-      supportedLanguages[alias] = extractor;
-    }
-  }
-  return supportedLanguages;
 }

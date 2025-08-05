@@ -25,11 +25,36 @@ export class ClientRequestInterceptor extends Interceptor<HttpRequestEventMap> {
   }
 
   protected setup(): void {
-    const { get: originalGet, request: originalRequest } = http
+    const {
+      ClientRequest: OriginalClientRequest,
+      get: originalGet,
+      request: originalRequest,
+    } = http
     const { get: originalHttpsGet, request: originalHttpsRequest } = https
 
     const onRequest = this.onRequest.bind(this)
     const onResponse = this.onResponse.bind(this)
+
+    // Support requests performed via the `ClientRequest` constructor directly.
+    http.ClientRequest = new Proxy(http.ClientRequest, {
+      construct: (target, args: Parameters<typeof http.request>) => {
+        const [url, options, callback] = normalizeClientRequestArgs(
+          'http:',
+          args
+        )
+
+        // Create a mock agent instance appropriate for the request protocol.
+        const Agent = options.protocol === 'https:' ? MockHttpsAgent : MockAgent
+        const mockAgent = new Agent({
+          customAgent: options.agent,
+          onRequest,
+          onResponse,
+        })
+        options.agent = mockAgent
+
+        return Reflect.construct(target, [url, options, callback])
+      },
+    })
 
     http.request = new Proxy(http.request, {
       apply: (target, thisArg, args: Parameters<typeof http.request>) => {
@@ -112,6 +137,8 @@ export class ClientRequestInterceptor extends Interceptor<HttpRequestEventMap> {
     recordRawFetchHeaders()
 
     this.subscriptions.push(() => {
+      http.ClientRequest = OriginalClientRequest
+
       http.get = originalGet
       http.request = originalRequest
 

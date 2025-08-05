@@ -14,13 +14,16 @@ import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import { CliError } from "./cli-errors";
 import * as codeql from "./codeql";
-import { AugmentationProperties, Config } from "./config-utils";
+import {
+  AugmentationProperties,
+  Config,
+  defaultAugmentationProperties,
+} from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
 import { FeatureEnablement } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { ToolsSource } from "./setup-codeql";
 import {
   setupTests,
@@ -520,7 +523,6 @@ const injectedConfigMacro = test.macro({
         "",
         undefined,
         undefined,
-        OverlayDatabaseMode.None,
         getRunnerLogger(true),
       );
 
@@ -546,8 +548,7 @@ test(
   "basic",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
   },
   {},
   {},
@@ -557,8 +558,7 @@ test(
   "injected packs from input",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
   },
   {},
@@ -571,7 +571,7 @@ test(
   "injected packs from input with existing packs combines",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInputCombines: true,
     packsInput: ["xxx", "yyy"],
   },
@@ -593,8 +593,7 @@ test(
   "injected packs from input with existing packs overrides",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
   },
   {
@@ -614,8 +613,7 @@ test(
   "injected queries from input",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {},
@@ -635,8 +633,7 @@ test(
   "injected queries from input overrides",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -660,8 +657,8 @@ test(
   "injected queries from input combines",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
-    packsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -688,6 +685,7 @@ test(
   "injected queries from input combines 2",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -709,6 +707,7 @@ test(
   "injected queries and packs, but empty",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [],
@@ -732,7 +731,6 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
       "",
       undefined,
       "/path/to/qlconfig.yml",
-      OverlayDatabaseMode.None,
       getRunnerLogger(true),
     );
 
@@ -761,7 +759,6 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
       "",
       undefined,
       undefined, // undefined qlconfigFile
-      OverlayDatabaseMode.None,
       getRunnerLogger(true),
     );
 
@@ -1011,7 +1008,6 @@ test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OP
     "sourceRoot",
     undefined,
     undefined,
-    OverlayDatabaseMode.None,
     getRunnerLogger(false),
   );
 

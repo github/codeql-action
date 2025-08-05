@@ -5,7 +5,6 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { initializeFeatures } from "./feature-flags.test";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import {
@@ -14,6 +13,7 @@ import {
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
   getRecordingLogger,
+  initializeFeatures,
   mockBundleDownloadApi,
   setupActionsVars,
   setupTests,

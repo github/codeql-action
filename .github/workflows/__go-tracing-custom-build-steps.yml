@@ -28,10 +28,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.16.6
-          - os: macos-latest
-            version: stable-v2.16.6
-          - os: ubuntu-latest
             version: stable-v2.17.6
           - os: macos-latest
             version: stable-v2.17.6
@@ -47,6 +43,10 @@ jobs:
             version: stable-v2.20.7
           - os: macos-latest
             version: stable-v2.20.7
+          - os: ubuntu-latest
+            version: stable-v2.21.4
+          - os: macos-latest
+            version: stable-v2.21.4
           - os: ubuntu-latest
             version: default
           - os: macos-latest
@@ -75,11 +75,10 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - uses: actions/setup-go@v5
+      - name: Install Go
+        uses: actions/setup-go@v5
         with:
-          go-version: ~1.24.0
-      # to avoid potentially misleading autobuilder results where we expect it to download
-      # dependencies successfully, but they actually come from a warm cache
+          go-version: '>=1.21.0'
           cache: false
       - uses: ./../action/init
         with:

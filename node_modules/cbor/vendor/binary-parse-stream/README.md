@@ -13,8 +13,8 @@
 ## Usage
 
 ```js
-const BinaryParseStream = require('binary-parse-stream')
-const {One} = BinaryParseStream // -1
+const BinaryParseStream = require('binary-parse-stream');
+const {One} = BinaryParseStream; // -1
 ```
 
   BinaryParseStream is a TransformStream that consumes buffers and outputs objects on the other end.
@@ -31,16 +31,16 @@ const {One} = BinaryParseStream // -1
 ```js
 class SillyProtocolParseStream extends BinaryParseStream {
   constructor(options) {
-    super(options)
-    this.count = 0
+    super(options);
+    this.count = 0;
   }
 
   *_parse() {
-    const type = (yield 4).readUInt32BE(0, true)
-    const length = yield -1
-    const buf = yield length
-    this.count++
-    return {type, buf}
+    const type = (yield 4).readUInt32BE(0, true);
+    const length = yield -1;
+    const buf = yield length;
+    this.count++;
+    return {type, buf};
   }
 }
 ```

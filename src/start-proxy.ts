@@ -1,3 +1,5 @@
+import * as core from "@actions/core";
+
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ConfigurationError } from "./util";
@@ -64,6 +66,15 @@ const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string>> = {
   go: "goproxy_server",
 } as const;
 
+/**
+ * Checks that `value` is neither `undefined` nor `null`.
+ * @param value The value to test.
+ * @returns Narrows the type of `value` to exclude `undefined` and `null`.
+ */
+function isDefined<T>(value: T | null | undefined): value is T {
+  return value !== undefined && value !== null;
+}
+
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
@@ -100,9 +111,28 @@ export function getCredentials(
     throw new ConfigurationError("Invalid credentials format.");
   }
 
+  // Check that the parsed data is indeed an array.
+  if (!Array.isArray(parsed)) {
+    throw new ConfigurationError(
+      "Expected credentials data to be an array of configurations, but it is not.",
+    );
+  }
+
   const out: Credential[] = [];
   for (const e of parsed) {
-    if (e.url === undefined && e.host === undefined) {
+    if (e === null || typeof e !== "object") {
+      throw new ConfigurationError("Invalid credentials - must be an object");
+    }
+
+    // Mask credentials to reduce chance of accidental leakage in logs.
+    if (isDefined(e.password)) {
+      core.setSecret(e.password);
+    }
+    if (isDefined(e.token)) {
+      core.setSecret(e.token);
+    }
+
+    if (!isDefined(e.url) && !isDefined(e.host)) {
       // The proxy needs one of these to work. If both are defined, the url has the precedence.
       throw new ConfigurationError(
         "Invalid credentials - must specify host or url",

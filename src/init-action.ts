@@ -362,8 +362,16 @@ async function run() {
     }
     core.endGroup();
 
-    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
-    if (getOptionalInput("languages")?.includes(KnownLanguage.rust)) {
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust. We need to set this environment
+    // variable before initializing the config, otherwise Rust analysis will not be
+    // enabled.
+    if (
+      // Only enable Rust analysis if the user has explicitly requested it - don't
+      // enable it via language autodetection.
+      configUtils
+        .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
+        .includes(KnownLanguage.rust)
+    ) {
       const feat = Feature.RustAnalysis;
       const minVer = featureConfig[feat].minimumVersion as string;
       const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";

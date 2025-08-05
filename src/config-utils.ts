@@ -398,6 +398,15 @@ export async function getLanguages(
   return languages;
 }
 
+export function getRawLanguagesNoAutodetect(
+  languagesInput: string | undefined,
+): string[] {
+  return (languagesInput || "")
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => x.length > 0);
+}
+
 /**
  * Gets the set of languages in the current repository without checking to
  * see if these languages are actually supported by CodeQL.
@@ -416,12 +425,8 @@ export async function getRawLanguages(
   rawLanguages: string[];
   autodetected: boolean;
 }> {
-  // Obtain from action input 'languages' if set
-  const languagesFromInput = (languagesInput || "")
-    .split(",")
-    .map((x) => x.trim().toLowerCase())
-    .filter((x) => x.length > 0);
   // If the user has specified languages, use those.
+  const languagesFromInput = getRawLanguagesNoAutodetect(languagesInput);
   if (languagesFromInput.length) {
     return { rawLanguages: languagesFromInput, autodetected: false };
   }

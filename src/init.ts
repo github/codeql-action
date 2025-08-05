@@ -138,7 +138,7 @@ export function cleanupDatabaseClusterDirectory(
   if (
     fs.existsSync(config.dbLocation) &&
     (fs.statSync(config.dbLocation).isFile() ||
-      fs.readdirSync(config.dbLocation).length)
+      fs.readdirSync(config.dbLocation).length > 0)
   ) {
     logger.warning(
       `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,

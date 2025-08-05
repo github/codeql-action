@@ -363,7 +363,7 @@ async function run() {
     core.endGroup();
 
     // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
-    if (getOptionalInput("languages")?.includes(String(KnownLanguage.rust))) {
+    if (getOptionalInput("languages")?.includes(KnownLanguage.rust)) {
       const feat = Feature.RustAnalysis;
       const minVer = featureConfig[feat].minimumVersion as string;
       const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";

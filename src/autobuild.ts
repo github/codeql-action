@@ -72,7 +72,7 @@ export async function determineAutobuildLanguages(
    * version of the CodeQL Action.
    */
   const autobuildLanguagesWithoutGo = autobuildLanguages.filter(
-    (l) => l !== String(KnownLanguage.go),
+    (l) => l !== KnownLanguage.go,
   );
 
   const languages: Language[] = [];
@@ -156,7 +156,7 @@ export async function runAutobuild(
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
   const codeQL = await getCodeQL(config.codeQLCmd);
-  if (language === String(KnownLanguage.cpp)) {
+  if (language === KnownLanguage.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }
   if (config.buildMode) {
@@ -164,7 +164,7 @@ export async function runAutobuild(
   } else {
     await codeQL.runAutobuild(config, language);
   }
-  if (language === String(KnownLanguage.go)) {
+  if (language === KnownLanguage.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
   }
   logger.endGroup();

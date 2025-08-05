@@ -696,13 +696,15 @@ export async function runQueries(
         sarifFile,
         config.debugMode,
       );
+
+      let qualityAnalysisSummary: string | undefined = undefined;
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         logger.info(`Interpreting quality results for ${language}`);
         const qualitySarifFile = path.join(
           sarifFolder,
           `${language}.quality.sarif`,
         );
-        const qualityAnalysisSummary = await runInterpretResults(
+        qualityAnalysisSummary = await runInterpretResults(
           language,
           config.augmentationProperties.qualityQueriesInput.map((i) =>
             resolveQuerySuiteAlias(language, i.uses),
@@ -710,15 +712,16 @@ export async function runQueries(
           qualitySarifFile,
           config.debugMode,
         );
-
-        // TODO: move
-        logger.info(qualityAnalysisSummary);
       }
       const endTimeInterpretResults = new Date();
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
       logger.info(analysisSummary);
+
+      if (qualityAnalysisSummary) {
+        logger.info(qualityAnalysisSummary);
+      }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
         const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile);

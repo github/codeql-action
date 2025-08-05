@@ -179,12 +179,12 @@ export async function runExtraction(
 
     if (await shouldExtractLanguage(codeql, config, language)) {
       logger.startGroup(`Extracting ${language}`);
-      if (language === String(KnownLanguage.python)) {
+      if (language === KnownLanguage.python) {
         await setupPythonExtractor(logger);
       }
       if (config.buildMode) {
         if (
-          language === String(KnownLanguage.cpp) &&
+          language === KnownLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
           await setupCppAutobuild(codeql, logger);
@@ -195,7 +195,7 @@ export async function runExtraction(
         // a stable path that caches can be restored into and that we can cache at the
         // end of the workflow (i.e. that does not get removed when the scratch directory is).
         if (
-          language === String(KnownLanguage.java) &&
+          language === KnownLanguage.java &&
           config.buildMode === BuildMode.None
         ) {
           process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =

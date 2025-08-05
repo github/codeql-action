@@ -427,7 +427,7 @@ export async function getRawLanguages(
 }> {
   // If the user has specified languages, use those.
   const languagesFromInput = getRawLanguagesNoAutodetect(languagesInput);
-  if (languagesFromInput.length) {
+  if (languagesFromInput.length > 0) {
     return { rawLanguages: languagesFromInput, autodetected: false };
   }
   // Otherwise, autodetect languages in the repository.

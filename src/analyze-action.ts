@@ -301,15 +301,23 @@ async function run() {
       logger,
     );
 
+    if (actionsUtil.getOptionalInput("cleanup-level") !== "") {
+      logger.info(
+        "The 'cleanup-level' input is ignored since the CodeQL Action no longer writes intermediate results to the database. This input can safely be removed from your workflow.",
+      );
+    }
+
     // An overlay-base database should always use the 'overlay' cleanup level
     // to preserve the cached intermediate results.
     //
-    // Note that we may be overriding the 'cleanup-level' input parameter.
+    // Otherwise, use cleanup level 'none'. We are already discarding
+    // intermediate results during evaluation with '--expect-discarded-cache',
+    // so there is nothing to clean up.
     const cleanupLevel =
       config.augmentationProperties.overlayDatabaseMode ===
       OverlayDatabaseMode.OverlayBase
         ? "overlay"
-        : actionsUtil.getOptionalInput("cleanup-level") || "brutal";
+        : "none";
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(

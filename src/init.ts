@@ -113,12 +113,7 @@ export async function checkPacksForOverlayCompatibility(
   }
 
   for (const language of config.languages) {
-    const suitePath = path.join(
-      config.dbLocation,
-      language,
-      "temp",
-      "config-queries.qls",
-    );
+    const suitePath = util.getGeneratedSuitePath(config, language);
     const packDirs = await codeql.resolveQueriesStartingPacks([suitePath]);
     if (
       packDirs.some(

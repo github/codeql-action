@@ -99,10 +99,7 @@ async function sendStatusReport(
         ...report,
         trap_cache_upload_duration_ms: Math.round(trapCacheUploadTime || 0),
         trap_cache_upload_size_bytes: Math.round(
-          await getTotalCacheSize(
-            Object.values(config.trapCaches).filter((x) => x !== undefined),
-            logger,
-          ),
+          await getTotalCacheSize(Object.values(config.trapCaches), logger),
         ),
       };
       await statusReport.sendStatusReport(trapCacheUploadStatusReport);

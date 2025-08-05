@@ -146,7 +146,7 @@ export interface Config {
    * Partial map from languages to locations of TRAP caches for that language.
    * If a key is omitted, then TRAP caching should not be used for that language.
    */
-  trapCaches: Partial<Record<Language, string>>;
+  trapCaches: { [language: Language]: string };
 
   /**
    * Time taken to download TRAP caches. Used for status reporting.
@@ -537,10 +537,10 @@ async function downloadCacheWithTime(
   languages: Language[],
   logger: Logger,
 ): Promise<{
-  trapCaches: Partial<Record<Language, string>>;
+  trapCaches: { [language: string]: string };
   trapCacheDownloadTime: number;
 }> {
-  let trapCaches = {};
+  let trapCaches: { [language: string]: string } = {};
   let trapCacheDownloadTime = 0;
   if (trapCachingEnabled) {
     const start = performance.now();

@@ -35,8 +35,8 @@ const LANGUAGE_ALIASES: { [lang: string]: KnownLanguage } = {
 /**
  * Parse the start-proxy language input into its canonical CodeQL language name.
  *
- * Exported for testing, do not use this outside of the start-proxy Action
- * (see the `LANGUAGE_ALIASES` docstring for more info).
+ * Exported for testing. Do not use this outside of the start-proxy Action
+ * to avoid complicating the process of adding new CodeQL languages.
  */
 export function parseLanguage(language: string): KnownLanguage | undefined {
   // Normalize to lower case
@@ -47,8 +47,7 @@ export function parseLanguage(language: string): KnownLanguage | undefined {
     return language as KnownLanguage;
   }
 
-  // Check language aliases, but return the original language name,
-  // the alias will be resolved later.
+  // Check language aliases
   if (language in LANGUAGE_ALIASES) {
     return LANGUAGE_ALIASES[language];
   }

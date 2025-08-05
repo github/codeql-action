@@ -8,6 +8,7 @@ import * as io from "@actions/io";
 import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import type { Config } from "./config-utils";
+import { Logger } from "./logging";
 import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
@@ -408,4 +409,45 @@ export function getPullRequestBranches(): PullRequestBranches | undefined {
  */
 export function isAnalyzingPullRequest(): boolean {
   return getPullRequestBranches() !== undefined;
+}
+
+// A mapping from old categories to new ones.
+const qualityCategoryMapping: Record<string, string> = {
+  "c#": "csharp",
+  cpp: "c-cpp",
+  c: "c-cpp",
+  "c++": "c-cpp",
+  java: "java-kotlin",
+  javascript: "javascript-typescript",
+  typescript: "javascript-typescript",
+  kotlin: "java-kotlin",
+};
+
+/** Adjusts the category string for a Code Quality SARIF file if an "old"
+ * category identifier is used by Default Setup.
+ */
+export function fixCodeQualityCategory(
+  logger: Logger,
+  category?: string,
+): string | undefined {
+  // The `category` should always be set by Default Setup. We perform this check
+  // to avoid potential issues if Code Quality supports Advanced Setup in the future
+  // and before this workaround is removed.
+  if (
+    category !== undefined &&
+    isDefaultSetup() &&
+    category.startsWith("/language:")
+  ) {
+    const language = category.substring("/language:".length);
+    const mappedLanguage = qualityCategoryMapping[language];
+    if (mappedLanguage) {
+      const newCategory = `/language:${mappedLanguage}`;
+      logger.info(
+        `Adjusted category for Code Quality from '${category}' to '${newCategory}'.`,
+      );
+      return newCategory;
+    }
+  }
+
+  return category;
 }

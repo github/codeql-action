@@ -7,6 +7,7 @@ import del from "del";
 import * as yaml from "js-yaml";
 
 import {
+  fixCodeQualityCategory,
   getRequiredInput,
   getTemporaryDirectory,
   PullRequestBranches,
@@ -701,7 +702,10 @@ export async function runQueries(
       let qualityAnalysisSummary: string | undefined = undefined;
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         logger.info(`Interpreting quality results for ${language}`);
-        const qualityCategory = automationDetailsId;
+        const qualityCategory = fixCodeQualityCategory(
+          logger,
+          automationDetailsId,
+        );
         const qualitySarifFile = path.join(
           sarifFolder,
           `${language}.quality.sarif`,

@@ -240,10 +240,7 @@ async function sendCompletedStatusReport(
       packs: JSON.stringify(packs),
       trap_cache_languages: Object.keys(config.trapCaches).join(","),
       trap_cache_download_size_bytes: Math.round(
-        await getTotalCacheSize(
-          Object.values(config.trapCaches).filter((x) => x !== undefined),
-          logger,
-        ),
+        await getTotalCacheSize(Object.values(config.trapCaches), logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
       overlay_base_database_download_size_bytes:

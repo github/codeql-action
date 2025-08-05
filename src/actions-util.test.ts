@@ -1,9 +1,14 @@
 import * as github from "@actions/github";
 import test from "ava";
 
-import { getPullRequestBranches, isAnalyzingPullRequest } from "./actions-util";
+import {
+  fixCodeQualityCategory,
+  getPullRequestBranches,
+  isAnalyzingPullRequest,
+} from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
+import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import { initializeEnvironment } from "./util";
 
@@ -192,4 +197,43 @@ test("getPullRequestBranches() returns undefined when no PR context", (t) => {
 test("initializeEnvironment", (t) => {
   initializeEnvironment("1.2.3");
   t.deepEqual(process.env[EnvVar.VERSION], "1.2.3");
+});
+
+test("fixCodeQualityCategory", (t) => {
+  const logger = getRunnerLogger(true);
+  process.env["GITHUB_EVENT_NAME"] = "dynamic";
+
+  // Categories that should get adjusted.
+  t.is(fixCodeQualityCategory(logger, "/language:c#"), "/language:csharp");
+  t.is(fixCodeQualityCategory(logger, "/language:cpp"), "/language:c-cpp");
+  t.is(fixCodeQualityCategory(logger, "/language:c"), "/language:c-cpp");
+  t.is(
+    fixCodeQualityCategory(logger, "/language:java"),
+    "/language:java-kotlin",
+  );
+  t.is(
+    fixCodeQualityCategory(logger, "/language:javascript"),
+    "/language:javascript-typescript",
+  );
+  t.is(
+    fixCodeQualityCategory(logger, "/language:typescript"),
+    "/language:javascript-typescript",
+  );
+  t.is(
+    fixCodeQualityCategory(logger, "/language:kotlin"),
+    "/language:java-kotlin",
+  );
+
+  // Categories that should not get adjusted.
+  t.is(fixCodeQualityCategory(logger, "/language:csharp"), "/language:csharp");
+  t.is(fixCodeQualityCategory(logger, "/language:go"), "/language:go");
+  t.is(
+    fixCodeQualityCategory(logger, "/language:actions"),
+    "/language:actions",
+  );
+
+  // Other cases.
+  t.is(fixCodeQualityCategory(logger, undefined), undefined);
+  t.is(fixCodeQualityCategory(logger, "random string"), "random string");
+  t.is(fixCodeQualityCategory(logger, "kotlin"), "kotlin");
 });

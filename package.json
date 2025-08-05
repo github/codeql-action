@@ -67,7 +67,7 @@
     "@types/follow-redirects": "^1.14.4",
     "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "20.9.0",
+    "@types/node": "20.19.9",
     "@types/semver": "^7.7.0",
     "@types/sinon": "^17.0.4",
     "@typescript-eslint/eslint-plugin": "^8.39.0",

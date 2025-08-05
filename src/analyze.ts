@@ -695,11 +695,13 @@ export async function runQueries(
         undefined,
         sarifFile,
         config.debugMode,
+        automationDetailsId,
       );
 
       let qualityAnalysisSummary: string | undefined = undefined;
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         logger.info(`Interpreting quality results for ${language}`);
+        const qualityCategory = automationDetailsId;
         const qualitySarifFile = path.join(
           sarifFolder,
           `${language}.quality.sarif`,
@@ -711,6 +713,7 @@ export async function runQueries(
           ),
           qualitySarifFile,
           config.debugMode,
+          qualityCategory,
         );
       }
       const endTimeInterpretResults = new Date();
@@ -759,6 +762,7 @@ export async function runQueries(
     queries: string[] | undefined,
     sarifFile: string,
     enableDebugLogging: boolean,
+    category: string | undefined,
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     return await codeql.databaseInterpretResults(
@@ -769,7 +773,7 @@ export async function runQueries(
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
       sarifRunPropertyFlag,
-      automationDetailsId,
+      category,
       config,
       features,
     );

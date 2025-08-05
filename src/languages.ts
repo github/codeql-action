@@ -1,11 +1,12 @@
-/**
- * A CodeQL language.
- *
- * To facilitate adding new languages, this is a typedef rather than an
- * exhaustive list of languages supported by CodeQL.
- */
+/** A language supported by CodeQL. */
 export type Language = string;
 
+/**
+ * A language supported by CodeQL that is treated specially by the Action.
+ *
+ * This is not an exhaustive list of languages supported by CodeQL and new
+ * languages do not need to be added here.
+ */
 export enum KnownLanguage {
   csharp = "csharp",
   cpp = "cpp",

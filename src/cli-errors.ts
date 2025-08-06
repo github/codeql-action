@@ -133,6 +133,7 @@ export enum CliConfigErrorCategory {
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  NotFoundInRegistry = "NotFoundInRegistry",
   OutOfMemoryOrDisk = "OutOfMemoryOrDisk",
   PackCannotBeFound = "PackCannotBeFound",
   PackMissingAuth = "PackMissingAuth",
@@ -278,6 +279,11 @@ export const cliErrorsConfig: Record<
       new RegExp(
         "does not support the .* build mode. Please try using one of the following build modes instead",
       ),
+    ],
+  },
+  [CliConfigErrorCategory.NotFoundInRegistry]: {
+    cliErrorMessageCandidates: [
+      new RegExp("'.*' not found in the registry '.*'"),
     ],
   },
 };

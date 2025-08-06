@@ -633,7 +633,7 @@ async function run() {
     // * either we run `codeql` prior to 2.19.3, which means no rust support is possible
     // * or we run a version between 2.19.3 and 2.22.1 (excluded), when rust support was
     //   experimental and required explicitly setting CODEQL_ENABLE_EXPERIMENTAL_FEATURES
-    // However, there is not need to let users know about the experimental feature flag at
+    // However, there is no need to let users know about the experimental feature flag at
     // this point, if they want rust support they should chose a version which supports it
     // publicly.
     if (

@@ -4,6 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+- The `cleanup-level` input to the `analyze` Action is now deprecated. The CodeQL Action has not written intermediate results to the database since version 2.2.5, so this option now has little to no practical use. [#2998](https://github.com/github/codeql-action/pull/2998)
 - Update default CodeQL bundle version to 2.22.3. [#3000](https://github.com/github/codeql-action/pull/3000)
 
 ## 3.29.5 - 29 Jul 2025

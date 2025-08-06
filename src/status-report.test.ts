@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { EnvVar } from "./environment";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
   ActionName,
@@ -47,7 +47,7 @@ test("createStatusReportBase", async (t) => {
       new Date("May 19, 2023 05:19:00"),
       createTestConfig({
         buildMode: BuildMode.None,
-        languages: [Language.java, Language.swift],
+        languages: [KnownLanguage.java, KnownLanguage.swift],
       }),
       { numAvailableBytes: 100, numTotalBytes: 500 },
       getRunnerLogger(false),

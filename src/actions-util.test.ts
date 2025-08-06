@@ -229,7 +229,10 @@ test("fixCodeQualityCategory", (t) => {
       );
 
       // Categories that should not get adjusted.
-      t.is(fixCodeQualityCategory(logger, "/language:csharp"), "/language:csharp");
+      t.is(
+        fixCodeQualityCategory(logger, "/language:csharp"),
+        "/language:csharp",
+      );
       t.is(fixCodeQualityCategory(logger, "/language:go"), "/language:go");
       t.is(
         fixCodeQualityCategory(logger, "/language:actions"),
@@ -240,5 +243,6 @@ test("fixCodeQualityCategory", (t) => {
       t.is(fixCodeQualityCategory(logger, undefined), undefined);
       t.is(fixCodeQualityCategory(logger, "random string"), "random string");
       t.is(fixCodeQualityCategory(logger, "kotlin"), "kotlin");
-  });
+    },
+  );
 });

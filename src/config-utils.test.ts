@@ -18,7 +18,7 @@ import {
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { parseRepositoryNwo } from "./repository";
@@ -128,6 +128,14 @@ test("load empty config", async (t) => {
     const languages = "javascript,python";
 
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -172,6 +180,14 @@ test("loading config saves config", async (t) => {
     const logger = getRunnerLogger(true);
 
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -303,6 +319,13 @@ test("load non-existent input", async (t) => {
 test("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -336,7 +359,7 @@ test("load non-empty input", async (t) => {
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
-      languages: [Language.javascript],
+      languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
       originalUserInput: {
         name: "my config",
@@ -427,6 +450,14 @@ test("Using config input and file together, config input should be used.", async
       extraSearchPath: string | undefined;
     }> = [];
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries(
         queries: string[],
         extraSearchPath: string | undefined,
@@ -460,6 +491,13 @@ test("Using config input and file together, config input should be used.", async
 test("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = setCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+          },
+        };
+      },
       async resolveQueries() {
         return {
           byLanguage: {
@@ -668,7 +706,7 @@ const invalidPackNameMacro = test.macro({
     parsePacksErrorMacro.exec(
       t,
       name,
-      [Language.cpp],
+      [KnownLanguage.cpp],
       new RegExp(`^"${name}" is not a valid pack$`),
     ),
   title: (_providedTitle: string | undefined, arg: string | undefined) =>
@@ -676,23 +714,23 @@ const invalidPackNameMacro = test.macro({
 });
 
 test("no packs", parsePacksMacro, "", [], undefined);
-test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [Language.cpp], {
-  [Language.cpp]: ["a/b", "c/d@1.2.3"],
+test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [KnownLanguage.cpp], {
+  [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
 });
 test(
   "two packs with spaces",
   parsePacksMacro,
   " a/b , c/d@1.2.3 ",
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: ["a/b", "c/d@1.2.3"],
+    [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
   },
 );
 test(
   "two packs with language",
   parsePacksErrorMacro,
   "a/b,c/d@1.2.3",
-  [Language.cpp, Language.java],
+  [KnownLanguage.cpp, KnownLanguage.java],
   new RegExp(
     "Cannot specify a 'packs' input in a multi-language analysis. " +
       "Use a codeql-config.yml file instead and specify packs by language.",
@@ -720,9 +758,9 @@ test(
     // (globbing is not done)
     "c/d@1.2.3:+*)_(",
   ].join(","),
-  [Language.cpp],
+  [KnownLanguage.cpp],
   {
-    [Language.cpp]: [
+    [KnownLanguage.cpp]: [
       "c/d@1.0",
       "c/d@~1.0.0",
       "c/d@~1.0.0:a/b",
@@ -834,7 +872,7 @@ test(
   undefined,
   undefined,
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
   },
@@ -846,7 +884,7 @@ test(
   undefined,
   " a, b , c, d",
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
@@ -859,7 +897,7 @@ test(
   undefined,
   "   +   a, b , c, d ",
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -873,7 +911,7 @@ test(
   undefined,
   undefined,
   " a, b , c, d",
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
     qualityQueriesInput: [
@@ -891,7 +929,7 @@ test(
   undefined,
   " a, b , c, d",
   "e, f , g,h",
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
@@ -910,7 +948,7 @@ test(
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
@@ -923,7 +961,7 @@ test(
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
     packsInputCombines: true,
@@ -961,7 +999,7 @@ test(
   undefined,
   "   +   ",
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   /The workflow property "queries" is invalid/,
 );
 
@@ -971,7 +1009,7 @@ test(
   "   +   ",
   undefined,
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   /The workflow property "packs" is invalid/,
 );
 
@@ -981,7 +1019,7 @@ test(
   "   +  a/b, c/d ",
   undefined,
   undefined,
-  [Language.javascript, Language.java],
+  [KnownLanguage.javascript, KnownLanguage.java],
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
 
@@ -1001,7 +1039,7 @@ test(
   " a-pack-without-a-scope ",
   undefined,
   undefined,
-  [Language.javascript],
+  [KnownLanguage.javascript],
   /"a-pack-without-a-scope" is not a valid pack/,
 );
 
@@ -1043,7 +1081,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 [
   {
     name: "languages from input",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "jAvAscript, \n jaVa",
     languagesInRepository: ["SwiFt", "other"],
     expectedLanguages: ["javascript", "java"],
@@ -1051,7 +1088,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "languages from github api",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "",
     languagesInRepository: ["  jAvAscript\n \t", " jaVa", "SwiFt", "other"],
     expectedLanguages: ["javascript", "java"],
@@ -1059,7 +1095,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "aliases from input",
-    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
     languagesInput: "  typEscript\n \t, C#, c , KoTlin",
     languagesInRepository: ["SwiFt", "other"],
     expectedLanguages: ["javascript", "csharp", "cpp", "java"],
@@ -1067,7 +1102,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "duplicate languages from input",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "jAvAscript, \n jaVa, kotlin, typescript",
     languagesInRepository: ["SwiFt", "other"],
     expectedLanguages: ["javascript", "java"],
@@ -1075,7 +1109,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "aliases from github api",
-    codeqlResolvedLanguages: ["javascript", "csharp", "cpp", "java", "python"],
     languagesInput: "",
     languagesInRepository: ["  typEscript\n \t", " C#", "c", "other"],
     expectedLanguages: ["javascript", "csharp", "cpp"],
@@ -1083,7 +1116,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "no languages",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "",
     languagesInRepository: [],
     expectedApiCall: true,
@@ -1091,7 +1123,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   },
   {
     name: "unrecognized languages from input",
-    codeqlResolvedLanguages: ["javascript", "java", "python"],
     languagesInput: "a, b, c, javascript",
     languagesInRepository: [],
     expectedApiCall: false,
@@ -1100,15 +1131,26 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 ].forEach((args) => {
   test(`getLanguages: ${args.name}`, async (t) => {
     const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
-    const languages = args.codeqlResolvedLanguages.reduce(
-      (acc, lang) => ({
-        ...acc,
-        [lang]: true,
-      }),
-      {},
-    );
+    const stubExtractorEntry = {
+      extractor_root: "",
+    };
     const codeQL = setCodeQL({
-      resolveLanguages: () => Promise.resolve(languages),
+      betterResolveLanguages: () =>
+        Promise.resolve({
+          aliases: {
+            "c#": KnownLanguage.csharp,
+            c: KnownLanguage.cpp,
+            kotlin: KnownLanguage.java,
+            typescript: KnownLanguage.javascript,
+          },
+          extractors: {
+            cpp: [stubExtractorEntry],
+            csharp: [stubExtractorEntry],
+            java: [stubExtractorEntry],
+            javascript: [stubExtractorEntry],
+            python: [stubExtractorEntry],
+          },
+        }),
     });
 
     if (args.expectedLanguages) {
@@ -1141,12 +1183,12 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 for (const { displayName, language, feature } of [
   {
     displayName: "Java",
-    language: Language.java,
+    language: KnownLanguage.java,
     feature: Feature.DisableJavaBuildlessEnabled,
   },
   {
     displayName: "C#",
-    language: Language.csharp,
+    language: KnownLanguage.csharp,
     feature: Feature.DisableCsharpBuildless,
   },
 ]) {
@@ -1166,7 +1208,7 @@ for (const { displayName, language, feature } of [
     const messages: LoggedMessage[] = [];
     const buildMode = await configUtils.parseBuildModeInput(
       "none",
-      [Language.python],
+      [KnownLanguage.python],
       createFeatures([feature]),
       getRecordingLogger(messages),
     );
@@ -1212,7 +1254,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   isDefaultBranch: false,
   repositoryOwner: "github",
   buildMode: BuildMode.None,
-  languages: [Language.javascript],
+  languages: [KnownLanguage.javascript],
   codeqlVersion: "2.21.0",
   gitRoot: "/some/git/root",
   codeScanningConfig: {},
@@ -1264,6 +1306,13 @@ const getOverlayDatabaseModeMacro = test.macro({
 
         // Set up CodeQL mock
         const codeql = mockCodeQLVersion(setup.codeqlVersion);
+
+        // Mock traced languages
+        sinon
+          .stub(codeql, "isTracedLanguage")
+          .callsFake(async (lang: Language) => {
+            return [KnownLanguage.java].includes(lang as KnownLanguage);
+          });
 
         // Mock git root detection
         if (setup.gitRoot !== undefined) {
@@ -1348,7 +1397,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Ignore feature flag when analyzing non-default branch",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
   },
   {
@@ -1361,7 +1410,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isDefaultBranch: true,
   },
@@ -1375,7 +1424,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when feature enabled with custom analysis",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
@@ -1392,7 +1441,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when code-scanning feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1409,7 +1458,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1429,7 +1478,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with packs",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1449,7 +1498,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with queries",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1469,7 +1518,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with query-filters",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1489,7 +1538,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when only language-specific feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysisJavascript],
     isDefaultBranch: true,
   },
@@ -1503,7 +1552,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when only code-scanning feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysisCodeScanningJavascript],
     isDefaultBranch: true,
   },
@@ -1517,7 +1566,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when language-specific feature disabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis],
     isDefaultBranch: true,
   },
@@ -1531,7 +1580,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
   },
@@ -1545,7 +1594,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
@@ -1562,7 +1611,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when code-scanning feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1579,7 +1628,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1599,7 +1648,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with packs",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1619,7 +1668,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with queries",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1639,7 +1688,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with query-filters",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
@@ -1659,7 +1708,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when only language-specific feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
   },
@@ -1673,7 +1722,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when only code-scanning feature enabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysisCodeScanningJavascript],
     isPullRequest: true,
   },
@@ -1687,7 +1736,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when language-specific feature disabled",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis],
     isPullRequest: true,
   },
@@ -1727,7 +1776,7 @@ test(
   getOverlayDatabaseModeMacro,
   "Overlay PR analysis by feature flag for dsp-testing",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
     repositoryOwner: "dsp-testing",
@@ -1742,7 +1791,7 @@ test(
   getOverlayDatabaseModeMacro,
   "No overlay PR analysis by feature flag for other-org",
   {
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
     repositoryOwner: "other-org",
@@ -1759,7 +1808,7 @@ test(
   {
     overlayDatabaseEnvVar: "overlay",
     buildMode: BuildMode.Autobuild,
-    languages: [Language.java],
+    languages: [KnownLanguage.java],
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
@@ -1773,7 +1822,7 @@ test(
   {
     overlayDatabaseEnvVar: "overlay",
     buildMode: undefined,
-    languages: [Language.java],
+    languages: [KnownLanguage.java],
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
@@ -1808,12 +1857,12 @@ test(
 );
 
 // Exercise language-specific overlay analysis features code paths
-for (const language in Language) {
+for (const language in KnownLanguage) {
   test(
     getOverlayDatabaseModeMacro,
     `Check default overlay analysis feature for ${language}`,
     {
-      languages: [language as Language],
+      languages: [language],
       features: [Feature.OverlayAnalysis],
       isPullRequest: true,
     },

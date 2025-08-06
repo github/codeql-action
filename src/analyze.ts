@@ -23,7 +23,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
-import { isScannedLanguage, Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { getRepositoryNwoFromEnv } from "./repository";
@@ -177,14 +177,14 @@ export async function runExtraction(
       continue;
     }
 
-    if (shouldExtractLanguage(config, language)) {
+    if (await shouldExtractLanguage(codeql, config, language)) {
       logger.startGroup(`Extracting ${language}`);
-      if (language === Language.python) {
+      if (language === KnownLanguage.python) {
         await setupPythonExtractor(logger);
       }
       if (config.buildMode) {
         if (
-          language === Language.cpp &&
+          language === KnownLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
           await setupCppAutobuild(codeql, logger);
@@ -194,7 +194,10 @@ export async function runExtraction(
         // database scratch directory by default. For dependency caching purposes, we want
         // a stable path that caches can be restored into and that we can cache at the
         // end of the workflow (i.e. that does not get removed when the scratch directory is).
-        if (language === Language.java && config.buildMode === BuildMode.None) {
+        if (
+          language === KnownLanguage.java &&
+          config.buildMode === BuildMode.None
+        ) {
           process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
             getJavaTempDependencyDir();
         }
@@ -208,15 +211,16 @@ export async function runExtraction(
   }
 }
 
-function shouldExtractLanguage(
+async function shouldExtractLanguage(
+  codeql: CodeQL,
   config: configUtils.Config,
   language: Language,
-): boolean {
+): Promise<boolean> {
   return (
     config.buildMode === BuildMode.None ||
     (config.buildMode === BuildMode.Autobuild &&
       process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") ||
-    (!config.buildMode && isScannedLanguage(language))
+    (!config.buildMode && (await codeql.isScannedLanguage(language)))
   );
 }
 
@@ -850,7 +854,7 @@ export async function warnIfGoInstalledAfterInit(
 
       addDiagnostic(
         config,
-        Language.go,
+        KnownLanguage.go,
         makeDiagnostic(
           "go/workflow/go-installed-after-codeql-init",
           "Go was installed after the `codeql-action/init` Action was run",

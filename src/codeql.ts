@@ -80,6 +80,14 @@ export interface CodeQL {
    */
   supportsFeature(feature: ToolsFeature): Promise<boolean>;
   /**
+   * Returns whether the provided language is traced.
+   */
+  isTracedLanguage(language: Language): Promise<boolean>;
+  /**
+   * Returns whether the provided language is scanned.
+   */
+  isScannedLanguage(language: Language): Promise<boolean>;
+  /**
    * Run 'codeql database init --db-cluster'.
    */
   databaseInitCluster(
@@ -449,6 +457,8 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
         !!partialCodeql.getVersion &&
         isSupportedToolsFeature(await partialCodeql.getVersion(), feature),
     ),
+    isTracedLanguage: resolveFunction(partialCodeql, "isTracedLanguage"),
+    isScannedLanguage: resolveFunction(partialCodeql, "isScannedLanguage"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
@@ -557,6 +567,18 @@ export async function getCodeQLForCmd(
     },
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);
+    },
+    async isTracedLanguage(language: Language) {
+      const extractorPath = await this.resolveExtractor(language);
+      const tracingConfigPath = path.join(
+        extractorPath,
+        "tools",
+        "tracing-config.lua",
+      );
+      return fs.existsSync(tracingConfigPath);
+    },
+    async isScannedLanguage(language: Language) {
+      return !(await this.isTracedLanguage(language));
     },
     async databaseInitCluster(
       config: Config,

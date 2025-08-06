@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 
-import { parseLanguage, Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ConfigurationError } from "./util";
 
@@ -13,7 +13,49 @@ export type Credential = {
   token?: string;
 };
 
-const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
+/*
+ * Language aliases supported by the start-proxy Action.
+ *
+ * In general, the CodeQL CLI is the source of truth for language aliases, and to
+ * allow us to more easily support new languages, we want to avoid hardcoding these
+ * aliases in the Action itself.  However this is difficult to do in the start-proxy
+ * Action since this Action does not use CodeQL, so we're accepting some hardcoding
+ * for this Action.
+ */
+const LANGUAGE_ALIASES: { [lang: string]: KnownLanguage } = {
+  c: KnownLanguage.cpp,
+  "c++": KnownLanguage.cpp,
+  "c#": KnownLanguage.csharp,
+  kotlin: KnownLanguage.java,
+  typescript: KnownLanguage.javascript,
+  "javascript-typescript": KnownLanguage.javascript,
+  "java-kotlin": KnownLanguage.java,
+};
+
+/**
+ * Parse the start-proxy language input into its canonical CodeQL language name.
+ *
+ * Exported for testing. Do not use this outside of the start-proxy Action
+ * to avoid complicating the process of adding new CodeQL languages.
+ */
+export function parseLanguage(language: string): KnownLanguage | undefined {
+  // Normalize to lower case
+  language = language.trim().toLowerCase();
+
+  // See if it's an exact match
+  if (language in KnownLanguage) {
+    return language as KnownLanguage;
+  }
+
+  // Check language aliases
+  if (language in LANGUAGE_ALIASES) {
+    return LANGUAGE_ALIASES[language];
+  }
+
+  return undefined;
+}
+
+const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string>> = {
   java: "maven_repository",
   csharp: "nuget_feed",
   javascript: "npm_registry",
@@ -21,10 +63,6 @@ const LANGUAGE_TO_REGISTRY_TYPE: Record<Language, string> = {
   ruby: "rubygems_server",
   rust: "cargo_registry",
   go: "goproxy_server",
-  // We do not have an established proxy type for these languages, thus leaving empty.
-  actions: "",
-  cpp: "",
-  swift: "",
 } as const;
 
 /**

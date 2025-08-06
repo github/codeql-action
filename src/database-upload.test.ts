@@ -11,7 +11,7 @@ import { setCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import * as gitUtils from "./git-utils";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
   createTestConfig,
@@ -42,7 +42,7 @@ const testApiDetails: GitHubApiDetails = {
 
 function getTestConfig(tmpDir: string): Config {
   return createTestConfig({
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     dbLocation: tmpDir,
   });
 }

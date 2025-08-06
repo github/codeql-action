@@ -7,13 +7,13 @@ import * as configUtils from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
-import { isTracedLanguage, Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
-import { BuildMode } from "./util";
+import { asyncFilter, BuildMode } from "./util";
 
 export async function determineAutobuildLanguages(
-  _codeql: CodeQL,
+  codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
 ): Promise<Language[] | undefined> {
@@ -32,11 +32,12 @@ export async function determineAutobuildLanguages(
   // We want pick the dominant language in the repo from the ones we're able to build
   // The languages are sorted in order specified by user or by lines of code if we got
   // them from the GitHub API, so try to build the first language on the list.
-  const autobuildLanguages = config.languages.filter((l) =>
-    isTracedLanguage(l),
+  const autobuildLanguages = await asyncFilter(
+    config.languages,
+    async (language) => await codeql.isTracedLanguage(language),
   );
 
-  if (!autobuildLanguages) {
+  if (autobuildLanguages.length === 0) {
     logger.info(
       "None of the languages in this project require extra build steps",
     );
@@ -71,7 +72,7 @@ export async function determineAutobuildLanguages(
    * version of the CodeQL Action.
    */
   const autobuildLanguagesWithoutGo = autobuildLanguages.filter(
-    (l) => l !== Language.go,
+    (l) => l !== KnownLanguage.go,
   );
 
   const languages: Language[] = [];
@@ -83,7 +84,7 @@ export async function determineAutobuildLanguages(
   // If Go is requested, run the Go autobuilder last to ensure it doesn't
   // interfere with the other autobuilder.
   if (autobuildLanguages.length !== autobuildLanguagesWithoutGo.length) {
-    languages.push(Language.go);
+    languages.push(KnownLanguage.go);
   }
 
   logger.debug(`Will autobuild ${languages.join(" and ")}.`);
@@ -155,7 +156,7 @@ export async function runAutobuild(
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
   const codeQL = await getCodeQL(config.codeQLCmd);
-  if (language === Language.cpp) {
+  if (language === KnownLanguage.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }
   if (config.buildMode) {
@@ -163,7 +164,7 @@ export async function runAutobuild(
   } else {
     await codeQL.runAutobuild(config, language);
   }
-  if (language === Language.go) {
+  if (language === KnownLanguage.go) {
     core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
   }
   logger.endGroup();

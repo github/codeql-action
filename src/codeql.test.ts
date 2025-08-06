@@ -22,7 +22,7 @@ import {
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
 import { FeatureEnablement } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -50,7 +50,7 @@ test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 
   stubConfig = createTestConfig({
-    languages: [Language.cpp],
+    languages: [KnownLanguage.cpp],
   });
 });
 
@@ -112,6 +112,16 @@ function mockApiDetails(apiDetails: GitHubApiDetails) {
     .returns(apiDetails.auth);
   process.env["GITHUB_SERVER_URL"] = apiDetails.url;
   process.env["GITHUB_API_URL"] = apiDetails.apiURL || "";
+}
+
+async function stubCodeql(): Promise<codeql.CodeQL> {
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  sinon
+    .stub(codeqlObject, "isTracedLanguage")
+    .withArgs(KnownLanguage.cpp)
+    .resolves(true);
+  return codeqlObject;
 }
 
 test("downloads and caches explicitly requested bundles that aren't in the toolcache", async (t) => {
@@ -499,8 +509,7 @@ const injectedConfigMacro = test.macro({
   ) => {
     await util.withTmpDir(async (tempDir) => {
       const runnerConstructorStub = stubToolRunnerConstructor();
-      const codeqlObject = await codeql.getCodeQLForTesting();
-      sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("1.0.0"));
+      const codeqlObject = await stubCodeql();
 
       const thisStubConfig: Config = {
         ...stubConfig,
@@ -716,9 +725,7 @@ test(
 test("passes a code scanning config AND qlconfig to the CLI", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
-
+    const codeqlObject = await stubCodeql();
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
       "",
@@ -745,8 +752,7 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
 test("does not pass a qlconfig to the CLI when it is undefined", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+    const codeqlObject = await stubCodeql();
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -851,8 +857,7 @@ test("runTool summarizes several fatal errors", async (t) => {
     `Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...\n` +
     `${heapError}\n${datasetImportError}.`;
   stubToolRunnerConstructor(32, cliStderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 
@@ -899,7 +904,7 @@ test("runTool summarizes autobuilder errors", async (t) => {
   sinon.stub(io, "which").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
+    async () => await codeqlObject.runAutobuild(stubConfig, KnownLanguage.java),
     {
       instanceOf: util.ConfigurationError,
       message:
@@ -919,14 +924,13 @@ test("runTool truncates long autobuilder errors", async (t) => {
     (_, i) => `[2019-09-18 12:00:00] [autobuild] [ERROR] line${i + 1}`,
   ).join("\n");
   stubToolRunnerConstructor(1, stderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
+    async () => await codeqlObject.runAutobuild(stubConfig, KnownLanguage.java),
     {
       instanceOf: util.ConfigurationError,
       message:
@@ -968,8 +972,7 @@ test("runTool recognizes fatal internal errors", async (t) => {
 test("runTool outputs last line of stderr if fatal error could not be found", async (t) => {
   const cliStderr = "line1\nline2\nline3\nline4\nline5";
   stubToolRunnerConstructor(32, cliStderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 
@@ -993,8 +996,7 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
 
 test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OPTIONS", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 

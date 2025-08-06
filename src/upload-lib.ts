@@ -189,7 +189,6 @@ async function shouldDisableCombineSarifFiles(
 export async function initCodeQLForUpload(
   gitHubVersion: GitHubVersion,
   features: FeatureEnablement,
-  tempDir: string,
   logger: Logger,
 ): Promise<CodeQL> {
   logger.info(
@@ -210,7 +209,7 @@ export async function initCodeQLForUpload(
   const initCodeQLResult = await initCodeQL(
     undefined, // There is no tools input on the upload action
     apiDetails,
-    tempDir,
+    actionsUtil.getTemporaryDirectory(),
     gitHubVersion.type,
     codeQLDefaultVersionInfo,
     features,
@@ -225,9 +224,9 @@ export async function initCodeQLForUpload(
 // CodeQL. Otherwise, it will fall back to combining the files in the action.
 // Returns the contents of the combined sarif file.
 async function combineSarifFilesUsingCLI(
+  codeQL: CodeQL,
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");
@@ -266,24 +265,6 @@ async function combineSarifFilesUsingCLI(
     return combineSarifFiles(sarifFiles, logger);
   }
 
-  // Initialize CodeQL, either by using the config file from the 'init' step,
-  // or by initializing it here.
-  let codeQL: CodeQL;
-  let tempDir: string = actionsUtil.getTemporaryDirectory();
-
-  const config = await getConfig(tempDir, logger);
-  if (config !== undefined) {
-    codeQL = await getCodeQL(config.codeQLCmd);
-    tempDir = config.tempDir;
-  } else {
-    codeQL = await initCodeQLForUpload(
-      gitHubVersion,
-      features,
-      tempDir,
-      logger,
-    );
-  }
-
   if (
     !(await codeQL.supportsFeature(
       ToolsFeature.SarifMergeRunsFromEqualCategory,
@@ -310,6 +291,7 @@ async function combineSarifFilesUsingCLI(
     return combineSarifFiles(sarifFiles, logger);
   }
 
+  const tempDir = actionsUtil.getTemporaryDirectory();
   const baseTempDir = path.resolve(tempDir, "combined-sarif");
   fs.mkdirSync(baseTempDir, { recursive: true });
   const outputDirectory = fs.mkdtempSync(path.resolve(baseTempDir, "output-"));
@@ -676,6 +658,7 @@ export async function uploadFiles(
   );
 
   return uploadSpecifiedFiles(
+    undefined,
     sarifPaths,
     checkoutPath,
     category,
@@ -689,6 +672,7 @@ export async function uploadFiles(
  * Uploads the given array of SARIF files.
  */
 export async function uploadSpecifiedFiles(
+  codeQL: CodeQL | undefined,
   sarifPaths: string[],
   checkoutPath: string,
   category: string | undefined,
@@ -710,10 +694,23 @@ export async function uploadSpecifiedFiles(
       validateSarifFileSchema(parsedSarif, sarifPath, logger);
     }
 
+    // Initialize CodeQL, either by using the config file from the 'init' step,
+    // or by initializing it here if we don't already have an instance.
+    if (codeQL === undefined) {
+      const tempDir: string = actionsUtil.getTemporaryDirectory();
+
+      const config = await getConfig(tempDir, logger);
+      if (config !== undefined) {
+        codeQL = await getCodeQL(config.codeQLCmd);
+      } else {
+        codeQL = await initCodeQLForUpload(gitHubVersion, features, logger);
+      }
+    }
+
     sarif = await combineSarifFilesUsingCLI(
+      codeQL,
       sarifPaths,
       gitHubVersion,
-      features,
       logger,
     );
   } else {

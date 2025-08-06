@@ -5,6 +5,7 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
+import { CodeQL } from "./codeql";
 import { Features } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -114,7 +115,19 @@ async function run() {
     const securitySarifFiles = await findSecuritySarifFiles(sarifPath);
     const qualitySarifFiles = await findQualitySarifFiles(sarifPath);
 
+    // If we have more than one SARIF file for a given service, then we need to combine
+    // them using the CLI. To avoid initialising the CLI twice in one run, we do it here.
+    let codeql: CodeQL | undefined;
+    if (securitySarifFiles.length > 1 || qualitySarifFiles.length > 1) {
+      codeql = await upload_lib.initCodeQLForUpload(
+        gitHubVersion,
+        features,
+        logger,
+      );
+    }
+
     const uploadResult = await upload_lib.uploadSpecifiedFiles(
+      codeql,
       securitySarifFiles,
       checkoutPath,
       category,
@@ -129,6 +142,7 @@ async function run() {
     // have a directory for the results here.
     if (qualitySarifFiles.length !== 0) {
       await upload_lib.uploadSpecifiedFiles(
+        codeql,
         qualitySarifFiles,
         checkoutPath,
         actionsUtil.fixCodeQualityCategory(logger, category),

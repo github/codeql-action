@@ -344,6 +344,7 @@ async function run() {
     const uploadInput = actionsUtil.getOptionalInput("upload");
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
       uploadResult = await uploadLib.uploadFiles(
+        codeql,
         outputDir,
         actionsUtil.getRequiredInput("checkout_path"),
         actionsUtil.getOptionalInput("category"),
@@ -355,6 +356,7 @@ async function run() {
 
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         const qualityUploadResult = await uploadLib.uploadFiles(
+          codeql,
           outputDir,
           actionsUtil.getRequiredInput("checkout_path"),
           actionsUtil.fixCodeQualityCategory(

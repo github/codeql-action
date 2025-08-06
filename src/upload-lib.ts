@@ -645,6 +645,7 @@ export const CodeQualityTarget: UploadTarget = {
  * to.
  */
 export async function uploadFiles(
+  codeQL: CodeQL,
   inputSarifPath: string,
   checkoutPath: string,
   category: string | undefined,
@@ -658,7 +659,7 @@ export async function uploadFiles(
   );
 
   return uploadSpecifiedFiles(
-    undefined,
+    codeQL,
     sarifPaths,
     checkoutPath,
     category,

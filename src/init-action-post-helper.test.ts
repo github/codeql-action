@@ -407,6 +407,7 @@ async function testFailedSarifUpload(
     }
     t.true(
       uploadFiles.calledOnceWith(
+        sinon.match.any,
         sinon.match.string,
         sinon.match.string,
         category,

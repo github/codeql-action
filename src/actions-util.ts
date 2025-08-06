@@ -411,7 +411,10 @@ export function isAnalyzingPullRequest(): boolean {
   return getPullRequestBranches() !== undefined;
 }
 
-// A mapping from old categories to new ones.
+/**
+ * A workaround for code quality to map category names from old default setup workflows
+ * to ones that the code quality service expects.
+ */
 const qualityCategoryMapping: Record<string, string> = {
   "c#": "csharp",
   cpp: "c-cpp",

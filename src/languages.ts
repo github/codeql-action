@@ -1,4 +1,4 @@
-/** A language supported by CodeQL. */
+/** A language to analyze with CodeQL. */
 export type Language = string;
 
 /**

@@ -541,7 +541,7 @@ export function validateSarifFileSchema(
     );
   }
 
-  if (errors.length) {
+  if (errors.length > 0) {
     // Output the more verbose error messages in groups as these may be very large.
     for (const error of errors) {
       logger.startGroup(`Error details: ${error.stack}`);

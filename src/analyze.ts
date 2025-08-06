@@ -699,7 +699,7 @@ export async function runQueries(
         automationDetailsId,
       );
 
-      let qualityAnalysisSummary: string | undefined = undefined;
+      let qualityAnalysisSummary: string | undefined;
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         logger.info(`Interpreting quality results for ${language}`);
         const qualityCategory = fixCodeQualityCategory(

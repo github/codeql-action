@@ -9,12 +9,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
-import {
-  CodeQL,
-  getCachedCodeQL,
-  PackDownloadOutput,
-  setCodeQL,
-} from "./codeql";
+import { PackDownloadOutput, createStubCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
@@ -64,7 +59,15 @@ function createTestInitConfigInputs(
       debugDatabaseName: "",
       repository: { owner: "github", repo: "example" },
       tempDir: "",
-      codeql: {} as CodeQL,
+      codeql: createStubCodeQL({
+        async betterResolveLanguages() {
+          return {
+            extractors: {
+              javascript: [{ extractor_root: "" }],
+            },
+          };
+        },
+      }),
       workspacePath: "",
       sourceRoot: "",
       githubVersion,
@@ -127,7 +130,7 @@ test("load empty config", async (t) => {
     const logger = getRunnerLogger(true);
     const languages = "javascript,python";
 
-    const codeql = setCodeQL({
+    const codeql = createStubCodeQL({
       async betterResolveLanguages() {
         return {
           extractors: {
@@ -179,7 +182,7 @@ test("loading config saves config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
-    const codeql = setCodeQL({
+    const codeql = createStubCodeQL({
       async betterResolveLanguages() {
         return {
           extractors: {
@@ -240,7 +243,6 @@ test("load input outside of workspace", async (t) => {
         createTestInitConfigInputs({
           configFile: "../input",
           tempDir,
-          codeql: getCachedCodeQL(),
           workspacePath: tempDir,
         }),
       );
@@ -268,7 +270,6 @@ test("load non-local input with invalid repo syntax", async (t) => {
         createTestInitConfigInputs({
           configFile,
           tempDir,
-          codeql: getCachedCodeQL(),
           workspacePath: tempDir,
         }),
       );
@@ -298,7 +299,6 @@ test("load non-existent input", async (t) => {
           languagesInput,
           configFile,
           tempDir,
-          codeql: getCachedCodeQL(),
           workspacePath: tempDir,
         }),
       );
@@ -318,7 +318,7 @@ test("load non-existent input", async (t) => {
 
 test("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const codeql = setCodeQL({
+    const codeql = createStubCodeQL({
       async betterResolveLanguages() {
         return {
           extractors: {
@@ -449,7 +449,7 @@ test("Using config input and file together, config input should be used.", async
       queries: string[];
       extraSearchPath: string | undefined;
     }> = [];
-    const codeql = setCodeQL({
+    const codeql = createStubCodeQL({
       async betterResolveLanguages() {
         return {
           extractors: {
@@ -490,7 +490,7 @@ test("Using config input and file together, config input should be used.", async
 
 test("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const codeql = setCodeQL({
+    const codeql = createStubCodeQL({
       async betterResolveLanguages() {
         return {
           extractors: {
@@ -561,7 +561,6 @@ test("Remote config handles the case where a directory is provided", async (t) =
         createTestInitConfigInputs({
           configFile: repoReference,
           tempDir,
-          codeql: getCachedCodeQL(),
           workspacePath: tempDir,
         }),
       );
@@ -590,7 +589,6 @@ test("Invalid format of remote config handled correctly", async (t) => {
         createTestInitConfigInputs({
           configFile: repoReference,
           tempDir,
-          codeql: getCachedCodeQL(),
           workspacePath: tempDir,
         }),
       );
@@ -609,7 +607,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
 test("No detected languages", async (t) => {
   return await withTmpDir(async (tempDir) => {
     mockListLanguages([]);
-    const codeql = setCodeQL({
+    const codeql = createStubCodeQL({
       async resolveLanguages() {
         return {};
       },
@@ -645,7 +643,6 @@ test("Unknown languages", async (t) => {
         createTestInitConfigInputs({
           languagesInput,
           tempDir,
-          codeql: getCachedCodeQL(),
           workspacePath: tempDir,
         }),
       );
@@ -1134,7 +1131,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     const stubExtractorEntry = {
       extractor_root: "",
     };
-    const codeQL = setCodeQL({
+    const codeQL = createStubCodeQL({
       betterResolveLanguages: () =>
         Promise.resolve({
           aliases: {

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fix an issue where the Action would autodetect unsupported languages such as HTML. [#3015](https://github.com/github/codeql-action/pull/3015)
 
 ## 3.29.6 - 07 Aug 2025
 

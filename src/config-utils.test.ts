@@ -1159,6 +1159,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
         codeQL,
         args.languagesInput,
         mockRepositoryNwo,
+        ".",
         mockLogger,
       );
 
@@ -1171,6 +1172,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
             codeQL,
             args.languagesInput,
             mockRepositoryNwo,
+            ".",
             mockLogger,
           ),
         { message: args.expectedError },

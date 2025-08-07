@@ -49,7 +49,6 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     requiredInputStub.withArgs("upload-database").returns("false");
     requiredInputStub.withArgs("output").returns("out");
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
-    optionalInputStub.withArgs("cleanup-level").returns("none");
     optionalInputStub.withArgs("expect-error").returns("false");
     sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);
     setupActionsVars(tmpDir, tmpDir);

@@ -612,7 +612,6 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
-  cleanupLevel: string,
   diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
@@ -623,7 +622,11 @@ export async function runQueries(
   const queryFlags = [memoryFlag, threadsFlag];
   const incrementalMode: string[] = [];
 
-  if (cleanupLevel !== "overlay") {
+  // Preserve cached intermediate results for overlay-base databases.
+  if (
+    config.augmentationProperties.overlayDatabaseMode !==
+    OverlayDatabaseMode.OverlayBase
+  ) {
     queryFlags.push("--expect-discarded-cache");
   }
 
@@ -872,20 +875,6 @@ export async function warnIfGoInstalledAfterInit(
       );
     }
   }
-}
-
-export async function runCleanup(
-  config: configUtils.Config,
-  cleanupLevel: string,
-  logger: Logger,
-): Promise<void> {
-  logger.startGroup("Cleaning up databases");
-  for (const language of config.languages) {
-    const codeql = await getCodeQL(config.codeQLCmd);
-    const databasePath = util.getCodeQLDatabasePath(config, language);
-    await codeql.databaseCleanup(databasePath, cleanupLevel);
-  }
-  logger.endGroup();
 }
 
 export const exportedForTesting = {

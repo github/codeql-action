@@ -156,6 +156,10 @@ export interface CodeQL {
    */
   databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
   /**
+   * Clean up all the databases within a database cluster.
+   */
+  databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
+  /**
    * Run 'codeql database bundle'.
    */
   databaseBundle(
@@ -483,6 +487,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseCleanupCluster: resolveFunction(
+      partialCodeql,
+      "databaseCleanupCluster",
+    ),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
     databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
     databaseInterpretResults: resolveFunction(
@@ -996,6 +1004,15 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "cleanup"]),
       ];
       await runCli(cmd, codeqlArgs);
+    },
+    async databaseCleanupCluster(
+      config: Config,
+      cleanupLevel: string,
+    ): Promise<void> {
+      for (const language of config.languages) {
+        const databasePath = util.getCodeQLDatabasePath(config, language);
+        await codeql.databaseCleanup(databasePath, cleanupLevel);
+      }
     },
     async databaseBundle(
       databasePath: string,

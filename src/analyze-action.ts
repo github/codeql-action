@@ -308,6 +308,7 @@ async function run() {
         threads,
         diffRangePackDir,
         actionsUtil.getOptionalInput("category"),
+        codeql,
         config,
         logger,
         features,

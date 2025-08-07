@@ -9,7 +9,7 @@ import del from "del";
 
 import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
-import { getCodeQL } from "./codeql";
+import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
@@ -134,6 +134,7 @@ function tryPrepareSarifDebugArtifact(
  * @return The path to the database bundle, or undefined if an error occurs.
  */
 async function tryBundleDatabase(
+  codeql: CodeQL,
   config: Config,
   language: Language,
   logger: Logger,
@@ -141,7 +142,7 @@ async function tryBundleDatabase(
   try {
     if (dbIsFinalized(config, language, logger)) {
       try {
-        return await createDatabaseBundleCli(config, language);
+        return await createDatabaseBundleCli(codeql, config, language);
       } catch (e) {
         logger.warning(
           `Failed to bundle database for ${language} using the CLI. ` +
@@ -166,6 +167,7 @@ async function tryBundleDatabase(
  * Logs and suppresses any errors that occur.
  */
 export async function tryUploadAllAvailableDebugArtifacts(
+  codeql: CodeQL,
   config: Config,
   logger: Logger,
   codeQlVersion: string | undefined,
@@ -207,6 +209,7 @@ export async function tryUploadAllAvailableDebugArtifacts(
         // Add database bundle
         logger.info("Preparing database bundle debug artifact...");
         const databaseBundle = await tryBundleDatabase(
+          codeql,
           config,
           language,
           logger,
@@ -369,13 +372,14 @@ async function createPartialDatabaseBundle(
  * Runs `codeql database bundle` command and returns the path.
  */
 async function createDatabaseBundleCli(
+  codeql: CodeQL,
   config: Config,
   language: Language,
 ): Promise<string> {
   const databaseBundlePath = await bundleDb(
     config,
     language,
-    await getCodeQL(config.codeQLCmd),
+    codeql,
     `${config.debugDatabaseName}-${language}`,
   );
   return databaseBundlePath;

@@ -8,9 +8,9 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
 import {
-  setCodeQL,
   getTrapCachingExtractorConfigArgs,
   getTrapCachingExtractorConfigArgsForLang,
+  createStubCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
@@ -34,7 +34,7 @@ import * as util from "./util";
 
 setupTests(test);
 
-const stubCodeql = setCodeQL({
+const stubCodeql = createStubCodeQL({
   async getVersion() {
     return makeVersionInfo("2.10.3");
   },

@@ -71,8 +71,10 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     // wait for the action promise to complete before starting verification.
     await analyzeAction.runPromise;
 
+    t.assert(runFinalizeStub.calledOnce);
     t.deepEqual(runFinalizeStub.firstCall.args[1], "--threads=-1");
     t.deepEqual(runFinalizeStub.firstCall.args[2], "--ram=3012");
+    t.assert(runQueriesStub.calledOnce);
     t.deepEqual(runQueriesStub.firstCall.args[3], "--threads=-1");
     t.deepEqual(runQueriesStub.firstCall.args[1], "--ram=3012");
   });

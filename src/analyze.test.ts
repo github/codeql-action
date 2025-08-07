@@ -11,7 +11,7 @@ import {
   defaultSuites,
   resolveQuerySuiteAlias,
 } from "./analyze";
-import { setCodeQL } from "./codeql";
+import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
@@ -42,7 +42,7 @@ test("status report fields", async (t) => {
     sinon.stub(uploadLib, "validateSarifFileSchema");
 
     for (const language of Object.values(KnownLanguage)) {
-      setCodeQL({
+      const codeql = createStubCodeQL({
         databaseRunQueries: async () => {},
         packDownload: async () => ({ packs: [] }),
         databaseInterpretResults: async (
@@ -108,6 +108,7 @@ test("status report fields", async (t) => {
         threadsFlag,
         undefined,
         undefined,
+        codeql,
         config,
         getRunnerLogger(true),
         createFeatures([Feature.QaTelemetryEnabled]),

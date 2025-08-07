@@ -77,7 +77,7 @@ jobs:
             git add --all
             git commit -m "Rebuild"
             git push origin "HEAD:$BRANCH"
-            echo "::set-output name=changes::true"
+            echo "changes=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Notify about rebuild

@@ -10,8 +10,7 @@ import * as jsonschema from "jsonschema";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
-import { CodeQL, getCodeQL } from "./codeql";
-import { getConfig } from "./config-utils";
+import { CodeQL } from "./codeql";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
@@ -182,14 +181,51 @@ async function shouldDisableCombineSarifFiles(
   return true;
 }
 
+/**
+ * Minimally initialises CodeQL if needed to combine SARIF files and CodeQL
+ * wasn't already initialised before.
+ */
+export async function initCodeQLForUpload(
+  gitHubVersion: GitHubVersion,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<CodeQL> {
+  logger.info(
+    "Initializing CodeQL since the 'init' Action was not called before this step.",
+  );
+
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    externalRepoAuth: actionsUtil.getOptionalInput("external-repository-token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+  };
+
+  const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
+    gitHubVersion.type,
+  );
+
+  const initCodeQLResult = await initCodeQL(
+    undefined, // There is no tools input on the upload action
+    apiDetails,
+    actionsUtil.getTemporaryDirectory(),
+    gitHubVersion.type,
+    codeQLDefaultVersionInfo,
+    features,
+    logger,
+  );
+
+  return initCodeQLResult.codeql;
+}
+
 // Takes a list of paths to sarif files and combines them together using the
 // CLI `github merge-results` command when all SARIF files are produced by
 // CodeQL. Otherwise, it will fall back to combining the files in the action.
 // Returns the contents of the combined sarif file.
 async function combineSarifFilesUsingCLI(
+  codeQL: CodeQL,
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");
@@ -228,46 +264,6 @@ async function combineSarifFilesUsingCLI(
     return combineSarifFiles(sarifFiles, logger);
   }
 
-  // Initialize CodeQL, either by using the config file from the 'init' step,
-  // or by initializing it here.
-  let codeQL: CodeQL;
-  let tempDir: string = actionsUtil.getTemporaryDirectory();
-
-  const config = await getConfig(tempDir, logger);
-  if (config !== undefined) {
-    codeQL = await getCodeQL(config.codeQLCmd);
-    tempDir = config.tempDir;
-  } else {
-    logger.info(
-      "Initializing CodeQL since the 'init' Action was not called before this step.",
-    );
-
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      externalRepoAuth: actionsUtil.getOptionalInput(
-        "external-repository-token",
-      ),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-    };
-
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
-
-    const initCodeQLResult = await initCodeQL(
-      undefined, // There is no tools input on the upload action
-      apiDetails,
-      tempDir,
-      gitHubVersion.type,
-      codeQLDefaultVersionInfo,
-      features,
-      logger,
-    );
-
-    codeQL = initCodeQLResult.codeql;
-  }
-
   if (
     !(await codeQL.supportsFeature(
       ToolsFeature.SarifMergeRunsFromEqualCategory,
@@ -294,6 +290,7 @@ async function combineSarifFilesUsingCLI(
     return combineSarifFiles(sarifFiles, logger);
   }
 
+  const tempDir = actionsUtil.getTemporaryDirectory();
   const baseTempDir = path.resolve(tempDir, "combined-sarif");
   fs.mkdirSync(baseTempDir, { recursive: true });
   const outputDirectory = fs.mkdtempSync(path.resolve(baseTempDir, "output-"));
@@ -647,6 +644,7 @@ export const CodeQualityTarget: UploadTarget = {
  * to.
  */
 export async function uploadFiles(
+  codeQL: CodeQL,
   inputSarifPath: string,
   checkoutPath: string,
   category: string | undefined,
@@ -660,6 +658,7 @@ export async function uploadFiles(
   );
 
   return uploadSpecifiedFiles(
+    codeQL,
     sarifPaths,
     checkoutPath,
     category,
@@ -673,10 +672,11 @@ export async function uploadFiles(
  * Uploads the given array of SARIF files.
  */
 export async function uploadSpecifiedFiles(
+  codeQL: CodeQL | undefined,
   sarifPaths: string[],
   checkoutPath: string,
   category: string | undefined,
-  features: FeatureEnablement,
+  _features: FeatureEnablement,
   logger: Logger,
   uploadTarget: UploadTarget = CodeScanningTarget,
 ): Promise<UploadResult> {
@@ -694,10 +694,17 @@ export async function uploadSpecifiedFiles(
       validateSarifFileSchema(parsedSarif, sarifPath, logger);
     }
 
+    // CodeQL should always be initialised at this point if we have multiple sarif files.
+    if (codeQL === undefined) {
+      throw new Error(
+        `Unexpectedly, CodeQL has not been initialised for the upload of multiple files.`,
+      );
+    }
+
     sarif = await combineSarifFilesUsingCLI(
+      codeQL,
       sarifPaths,
       gitHubVersion,
-      features,
       logger,
     );
   } else {

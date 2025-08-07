@@ -9,7 +9,7 @@ jobs:
   rebuild:
     name: Rebuild Action
     runs-on: ubuntu-latest
-    if: github.event.label.name == 'Rebuild'
+    if: github.event.label.name == 'Rebuild' || github.event_name == 'workflow_dispatch'
 
     permissions:
       contents: write # needed to push rebuilt commit
@@ -18,9 +18,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.ref || github.event.ref }}
 
       - name: Remove label
+        if: github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -30,7 +31,7 @@ jobs:
 
       - name: Merge in changes from base branch
         env:
-          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref || 'main' }}
         run: |
           git fetch origin "$BASE_BRANCH"
 
@@ -64,8 +65,9 @@ jobs:
           python3 sync.py
 
       - name: Check for changes and push
+        id: push
         env:
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          BRANCH: ${{ github.event.pull_request.head.ref || github.event.ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -75,8 +77,16 @@ jobs:
             git add --all
             git commit -m "Rebuild"
             git push origin "HEAD:$BRANCH"
-            echo "Pushed a commit to rebuild the Action." \
-              "Please mark the PR as ready for review to trigger PR checks." |
-              gh pr comment --body-file - --repo github/codeql-action "$PR_NUMBER"
-            gh pr ready --undo --repo github/codeql-action "$PR_NUMBER"
+            echo "::set-output name=changes::true"
           fi
+
+      - name: Notify about rebuild
+        if: github.event_name == 'pull_request' && steps.push.outputs.changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Pushed a commit to rebuild the Action." \
+            "Please mark the PR as ready for review to trigger PR checks." |
+            gh pr comment --body-file - --repo github/codeql-action "$PR_NUMBER"
+          gh pr ready --undo --repo github/codeql-action "$PR_NUMBER"

@@ -171,7 +171,7 @@ export const cliErrorsConfig: Record<
   },
   [CliConfigErrorCategory.GradleBuildFailed]: {
     cliErrorMessageCandidates: [
-      new RegExp("[autobuild] FAILURE: Build failed with an exception."),
+      new RegExp("\\[autobuild\\] FAILURE: Build failed with an exception."),
     ],
   },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action

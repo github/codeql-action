@@ -249,7 +249,8 @@ async function run() {
 
     if (actionsUtil.getOptionalInput("cleanup-level") !== "") {
       logger.info(
-        "The 'cleanup-level' input is ignored since the CodeQL Action no longer writes intermediate results to the database. This input can safely be removed from your workflow.",
+        "The 'cleanup-level' input is ignored since the CodeQL Action now automatically " +
+          "manages database cleanup. This input can safely be removed from your workflow.",
       );
     }
 
@@ -337,7 +338,10 @@ async function run() {
         const qualityUploadResult = await uploadLib.uploadFiles(
           outputDir,
           actionsUtil.getRequiredInput("checkout_path"),
-          actionsUtil.getOptionalInput("category"),
+          actionsUtil.fixCodeQualityCategory(
+            logger,
+            actionsUtil.getOptionalInput("category"),
+          ),
           features,
           logger,
           uploadLib.CodeQualityTarget,

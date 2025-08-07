@@ -281,7 +281,6 @@ interface PackDownloadItem {
 
 /**
  * Stores the CodeQL object, and is populated by `setupCodeQL` or `getCodeQL`.
- * Can be overridden in tests using `setCodeQL`.
  */
 let cachedCodeQL: CodeQL | undefined = undefined;
 
@@ -420,6 +419,17 @@ export async function getCodeQL(cmd: string): Promise<CodeQL> {
   return cachedCodeQL;
 }
 
+/**
+ * Overrides the CodeQL object. Only for use in tests that cannot override
+ * CodeQL via dependency injection.
+ *
+ * Accepts a partial object. Any undefined methods will be implemented
+ * to immediately throw an exception indicating which method is missing.
+ */
+export function setCodeQL(codeql: Partial<CodeQL>): void {
+  cachedCodeQL = createStubCodeQL(codeql);
+}
+
 function resolveFunction<T>(
   partialCodeql: Partial<CodeQL>,
   methodName: string,
@@ -438,13 +448,13 @@ function resolveFunction<T>(
 }
 
 /**
- * Set the functionality for CodeQL methods. Only for use in tests.
+ * Creates a stub CodeQL object. Only for use in tests.
  *
- * Accepts a partial object and any undefined methods will be implemented
+ * Accepts a partial object. Any undefined methods will be implemented
  * to immediately throw an exception indicating which method is missing.
  */
-export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
-  cachedCodeQL = {
+export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
+  return {
     getPath: resolveFunction(partialCodeql, "getPath", () => "/tmp/dummy-path"),
     getVersion: resolveFunction(partialCodeql, "getVersion", async () => ({
       version: "1.0.0",
@@ -504,21 +514,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     resolveExtractor: resolveFunction(partialCodeql, "resolveExtractor"),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
-  return cachedCodeQL;
-}
-
-/**
- * Get the cached CodeQL object. Should only be used from tests.
- *
- * TODO: Work out a good way for tests to get this from the test context
- * instead of having to have this method.
- */
-export function getCachedCodeQL(): CodeQL {
-  if (cachedCodeQL === undefined) {
-    // Should never happen as setCodeQL is called by testing-utils.setupTests
-    throw new Error("cachedCodeQL undefined");
-  }
-  return cachedCodeQL;
 }
 
 /**

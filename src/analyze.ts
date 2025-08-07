@@ -7,6 +7,7 @@ import del from "del";
 import * as yaml from "js-yaml";
 
 import {
+  fixCodeQualityCategory,
   getRequiredInput,
   getTemporaryDirectory,
   PullRequestBranches,
@@ -698,30 +699,39 @@ export async function runQueries(
         undefined,
         sarifFile,
         config.debugMode,
+        automationDetailsId,
       );
+
+      let qualityAnalysisSummary: string | undefined;
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         logger.info(`Interpreting quality results for ${language}`);
+        const qualityCategory = fixCodeQualityCategory(
+          logger,
+          automationDetailsId,
+        );
         const qualitySarifFile = path.join(
           sarifFolder,
           `${language}.quality.sarif`,
         );
-        const qualityAnalysisSummary = await runInterpretResults(
+        qualityAnalysisSummary = await runInterpretResults(
           language,
           config.augmentationProperties.qualityQueriesInput.map((i) =>
             resolveQuerySuiteAlias(language, i.uses),
           ),
           qualitySarifFile,
           config.debugMode,
+          qualityCategory,
         );
-
-        // TODO: move
-        logger.info(qualityAnalysisSummary);
       }
       const endTimeInterpretResults = new Date();
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
       logger.info(analysisSummary);
+
+      if (qualityAnalysisSummary) {
+        logger.info(qualityAnalysisSummary);
+      }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
         const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile);
@@ -759,6 +769,7 @@ export async function runQueries(
     queries: string[] | undefined,
     sarifFile: string,
     enableDebugLogging: boolean,
+    category: string | undefined,
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     return await codeql.databaseInterpretResults(
@@ -769,7 +780,7 @@ export async function runQueries(
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
       sarifRunPropertyFlag,
-      automationDetailsId,
+      category,
       config,
       features,
     );

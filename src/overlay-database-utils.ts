@@ -7,7 +7,7 @@ import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
-import { Logger } from "./logging";
+import { Logger, withGroupAsync } from "./logging";
 import { isInTestMode, tryGetFolderBytes, withTimeout } from "./util";
 
 export enum OverlayDatabaseMode {
@@ -205,6 +205,11 @@ export async function uploadOverlayBaseDatabaseToCache(
   if (!databaseIsValid) {
     return false;
   }
+
+  // Clean up the database using the overlay cleanup level.
+  await withGroupAsync("Cleaning up databases", async () => {
+    await codeql.databaseCleanupCluster(config, "overlay");
+  });
 
   const dbLocation = config.dbLocation;
   const codeQlVersion = (await codeql.getVersion()).version;

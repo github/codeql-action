@@ -152,9 +152,9 @@ export interface CodeQL {
   ): Promise<PackDownloadOutput>;
 
   /**
-   * Run 'codeql database cleanup'.
+   * Clean up all the databases within a database cluster.
    */
-  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
+  databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
   /**
    * Run 'codeql database bundle'.
    */
@@ -482,7 +482,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "resolveBuildEnvironment",
     ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
-    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseCleanupCluster: resolveFunction(
+      partialCodeql,
+      "databaseCleanupCluster",
+    ),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
     databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
     databaseInterpretResults: resolveFunction(
@@ -978,8 +981,8 @@ export async function getCodeQLForCmd(
         );
       }
     },
-    async databaseCleanup(
-      databasePath: string,
+    async databaseCleanupCluster(
+      config: Config,
       cleanupLevel: string,
     ): Promise<void> {
       const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
@@ -988,14 +991,17 @@ export async function getCodeQLForCmd(
       ))
         ? "--cache-cleanup"
         : "--mode";
-      const codeqlArgs = [
-        "database",
-        "cleanup",
-        databasePath,
-        `${cacheCleanupFlag}=${cleanupLevel}`,
-        ...getExtraOptionsFromEnv(["database", "cleanup"]),
-      ];
-      await runCli(cmd, codeqlArgs);
+      for (const language of config.languages) {
+        const databasePath = util.getCodeQLDatabasePath(config, language);
+        const codeqlArgs = [
+          "database",
+          "cleanup",
+          databasePath,
+          `${cacheCleanupFlag}=${cleanupLevel}`,
+          ...getExtraOptionsFromEnv(["database", "cleanup"]),
+        ];
+        await runCli(cmd, codeqlArgs);
+      }
     },
     async databaseBundle(
       databasePath: string,

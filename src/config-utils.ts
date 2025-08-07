@@ -321,23 +321,58 @@ export async function getSupportedLanguageMap(
   return supportedLanguages;
 }
 
+const baseWorkflowsPath = ".github/workflows";
+
+/**
+ * Determines if there exists a `.github/workflows` directory with at least
+ * one file in it, which we use as an indicator that there are Actions
+ * workflows in the workspace. This doesn't perfectly detect whether there
+ * are actually workflows, but should be a good approximation.
+ *
+ * Alternatively, we could check specifically for yaml files, or call the
+ * API to check if it knows about workflows.
+ *
+ * @returns True if the non-empty directory exists, false if not.
+ */
+export function hasActionsWorkflows(sourceRoot: string): boolean {
+  const workflowsPath = path.resolve(sourceRoot, baseWorkflowsPath);
+  const stats = fs.lstatSync(workflowsPath);
+  return (
+    stats !== undefined &&
+    stats.isDirectory() &&
+    fs.readdirSync(workflowsPath).length > 0
+  );
+}
+
 /**
  * Gets the set of languages in the current repository.
  */
 export async function getRawLanguagesInRepo(
   repository: RepositoryNwo,
+  sourceRoot: string,
   logger: Logger,
 ): Promise<string[]> {
-  logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
+  logger.debug(
+    `Automatically detecting languages (${repository.owner}/${repository.repo})`,
+  );
   const response = await api.getApiClient().rest.repos.listLanguages({
     owner: repository.owner,
     repo: repository.repo,
   });
 
   logger.debug(`Languages API response: ${JSON.stringify(response)}`);
-  return Object.keys(response.data as Record<string, number>).map((language) =>
-    language.trim().toLowerCase(),
+  const result = Object.keys(response.data as Record<string, number>).map(
+    (language) => language.trim().toLowerCase(),
   );
+
+  if (hasActionsWorkflows(sourceRoot)) {
+    logger.debug(`Found a .github/workflows directory`);
+    result.push("actions");
+  }
+
+  logger.debug(`Raw languages in repository: ${result.join(", ")}`);
+
+  return result;
 }
 
 /**
@@ -354,12 +389,14 @@ export async function getLanguages(
   codeql: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
+  sourceRoot: string,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
   const { rawLanguages, autodetected } = await getRawLanguages(
     languagesInput,
     repository,
+    sourceRoot,
     logger,
   );
 
@@ -420,6 +457,7 @@ export function getRawLanguagesNoAutodetect(
 export async function getRawLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
+  sourceRoot: string,
   logger: Logger,
 ): Promise<{
   rawLanguages: string[];
@@ -432,7 +470,7 @@ export async function getRawLanguages(
   }
   // Otherwise, autodetect languages in the repository.
   return {
-    rawLanguages: await getRawLanguagesInRepo(repository, logger),
+    rawLanguages: await getRawLanguagesInRepo(repository, sourceRoot, logger),
     autodetected: true,
   };
 }
@@ -481,6 +519,7 @@ export async function getDefaultConfig({
   repository,
   tempDir,
   codeql,
+  sourceRoot,
   githubVersion,
   features,
   logger,
@@ -489,6 +528,7 @@ export async function getDefaultConfig({
     codeql,
     languagesInput,
     repository,
+    sourceRoot,
     logger,
   );
 

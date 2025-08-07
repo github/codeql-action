@@ -10,8 +10,7 @@ import * as jsonschema from "jsonschema";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
-import { CodeQL, getCodeQL } from "./codeql";
-import { getConfig } from "./config-utils";
+import { CodeQL } from "./codeql";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
@@ -677,7 +676,7 @@ export async function uploadSpecifiedFiles(
   sarifPaths: string[],
   checkoutPath: string,
   category: string | undefined,
-  features: FeatureEnablement,
+  _features: FeatureEnablement,
   logger: Logger,
   uploadTarget: UploadTarget = CodeScanningTarget,
 ): Promise<UploadResult> {
@@ -695,17 +694,11 @@ export async function uploadSpecifiedFiles(
       validateSarifFileSchema(parsedSarif, sarifPath, logger);
     }
 
-    // Initialize CodeQL, either by using the config file from the 'init' step,
-    // or by initializing it here if we don't already have an instance.
+    // CodeQL should always be initialised at this point if we have multiple sarif files.
     if (codeQL === undefined) {
-      const tempDir: string = actionsUtil.getTemporaryDirectory();
-
-      const config = await getConfig(tempDir, logger);
-      if (config !== undefined) {
-        codeQL = await getCodeQL(config.codeQLCmd);
-      } else {
-        codeQL = await initCodeQLForUpload(gitHubVersion, features, logger);
-      }
+      throw new Error(
+        `Unexpectedly, CodeQL has not been initialised for the upload of multiple files.`,
+      );
     }
 
     sarif = await combineSarifFilesUsingCLI(

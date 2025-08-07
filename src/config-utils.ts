@@ -352,7 +352,9 @@ export async function getRawLanguagesInRepo(
   sourceRoot: string,
   logger: Logger,
 ): Promise<string[]> {
-  logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
+  logger.debug(
+    `Automatically detecting languages (${repository.owner}/${repository.repo})`,
+  );
   const response = await api.getApiClient().rest.repos.listLanguages({
     owner: repository.owner,
     repo: repository.repo,

@@ -152,10 +152,6 @@ export interface CodeQL {
   ): Promise<PackDownloadOutput>;
 
   /**
-   * Run 'codeql database cleanup'.
-   */
-  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
-  /**
    * Clean up all the databases within a database cluster.
    */
   databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
@@ -486,7 +482,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "resolveBuildEnvironment",
     ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
-    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
     databaseCleanupCluster: resolveFunction(
       partialCodeql,
       "databaseCleanupCluster",
@@ -986,8 +981,8 @@ export async function getCodeQLForCmd(
         );
       }
     },
-    async databaseCleanup(
-      databasePath: string,
+    async databaseCleanupCluster(
+      config: Config,
       cleanupLevel: string,
     ): Promise<void> {
       const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
@@ -996,22 +991,16 @@ export async function getCodeQLForCmd(
       ))
         ? "--cache-cleanup"
         : "--mode";
-      const codeqlArgs = [
-        "database",
-        "cleanup",
-        databasePath,
-        `${cacheCleanupFlag}=${cleanupLevel}`,
-        ...getExtraOptionsFromEnv(["database", "cleanup"]),
-      ];
-      await runCli(cmd, codeqlArgs);
-    },
-    async databaseCleanupCluster(
-      config: Config,
-      cleanupLevel: string,
-    ): Promise<void> {
       for (const language of config.languages) {
         const databasePath = util.getCodeQLDatabasePath(config, language);
-        await codeql.databaseCleanup(databasePath, cleanupLevel);
+        const codeqlArgs = [
+          "database",
+          "cleanup",
+          databasePath,
+          `${cacheCleanupFlag}=${cleanupLevel}`,
+          ...getExtraOptionsFromEnv(["database", "cleanup"]),
+        ];
+        await runCli(cmd, codeqlArgs);
       }
     },
     async databaseBundle(

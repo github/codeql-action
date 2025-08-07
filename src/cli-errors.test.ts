@@ -1,4 +1,5 @@
 import test from "ava";
+import * as sinon from "sinon";
 
 import { CommandInvocationError } from "./actions-util";
 import {
@@ -11,19 +12,8 @@ import { ConfigurationError } from "./util";
 
 setupTests(test);
 
-// Helper function to create CommandInvocationError for testing
-function createCommandInvocationError(
-  cmd: string,
-  args: string[],
-  exitCode: number | undefined,
-  stderr: string,
-  stdout: string = "",
-): CommandInvocationError {
-  return new CommandInvocationError(cmd, args, exitCode, stderr, stdout);
-}
-
 test("CliError constructor with fatal errors", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "finalize"],
     32,
@@ -50,7 +40,7 @@ test("CliError constructor with fatal errors", (t) => {
 });
 
 test("CliError constructor with single fatal error", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -65,7 +55,7 @@ test("CliError constructor with single fatal error", (t) => {
 });
 
 test("CliError constructor with autobuild errors", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -88,7 +78,7 @@ test("CliError constructor with truncated autobuild errors", (t) => {
     { length: 12 },
     (_, i) => `[autobuild] [ERROR] Error ${i + 1}`,
   ).join("\n");
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -106,7 +96,7 @@ test("CliError constructor with truncated autobuild errors", (t) => {
 });
 
 test("CliError constructor with generic error", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["version"],
     1,
@@ -129,28 +119,22 @@ test("CliError constructor with generic error", (t) => {
 });
 
 test("CliError constructor with empty stderr", (t) => {
-  const commandError = createCommandInvocationError(
-    "codeql",
-    ["version"],
-    1,
-    "",
-  );
+  const commandError = new CommandInvocationError("codeql", ["version"], 1, "");
 
   const cliError = new CliError(commandError);
 
   t.true(cliError.message.includes("last log line was: n/a"));
 });
 
-test("wrapCliConfigurationError - unsupported platform", (t) => {
-  const originalPlatform = process.platform;
-  const originalArch = process.arch;
-
-  try {
-    // Mock unsupported platform/arch
-    Object.defineProperty(process, "platform", { value: "unsupported" });
-    Object.defineProperty(process, "arch", { value: "unsupported" });
-
-    const commandError = createCommandInvocationError(
+for (const [platform, arch] of [
+  ["weird_plat", "x64"],
+  ["linux", "arm64"],
+  ["win32", "arm64"],
+]) {
+  test(`wrapCliConfigurationError - ${platform}/${arch} unsupported`, (t) => {
+    sinon.stub(process, "platform").value(platform);
+    sinon.stub(process, "arch").value(arch);
+    const commandError = new CommandInvocationError(
       "codeql",
       ["version"],
       1,
@@ -166,16 +150,12 @@ test("wrapCliConfigurationError - unsupported platform", (t) => {
         "CodeQL CLI does not support the platform/architecture combination",
       ),
     );
-    t.true(wrappedError.message.includes("unsupported/unsupported"));
-  } finally {
-    // Restore original values
-    Object.defineProperty(process, "platform", { value: originalPlatform });
-    Object.defineProperty(process, "arch", { value: originalArch });
-  }
-});
+    t.true(wrappedError.message.includes(`${platform}/${arch}`));
+  });
+}
 
 test("wrapCliConfigurationError - supported platform", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["version"],
     1,
@@ -190,7 +170,7 @@ test("wrapCliConfigurationError - supported platform", (t) => {
 });
 
 test("wrapCliConfigurationError - autobuild error", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -209,7 +189,7 @@ test("wrapCliConfigurationError - autobuild error", (t) => {
 });
 
 test("wrapCliConfigurationError - init called twice", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -228,7 +208,7 @@ test("wrapCliConfigurationError - init called twice", (t) => {
 });
 
 test("wrapCliConfigurationError - no source code seen by exit code", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "finalize"],
     32,
@@ -242,7 +222,7 @@ test("wrapCliConfigurationError - no source code seen by exit code", (t) => {
 });
 
 test("wrapCliConfigurationError - no source code seen by message", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "finalize"],
     1,
@@ -256,7 +236,7 @@ test("wrapCliConfigurationError - no source code seen by message", (t) => {
 });
 
 test("wrapCliConfigurationError - out of memory error with additional message", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "analyze"],
     1,
@@ -275,7 +255,7 @@ test("wrapCliConfigurationError - out of memory error with additional message", 
 });
 
 test("wrapCliConfigurationError - gradle build failed", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -289,7 +269,7 @@ test("wrapCliConfigurationError - gradle build failed", (t) => {
 });
 
 test("wrapCliConfigurationError - maven build failed", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -303,7 +283,7 @@ test("wrapCliConfigurationError - maven build failed", (t) => {
 });
 
 test("wrapCliConfigurationError - swift build failed", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -317,7 +297,7 @@ test("wrapCliConfigurationError - swift build failed", (t) => {
 });
 
 test("wrapCliConfigurationError - pack cannot be found", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["pack", "install"],
     1,
@@ -331,7 +311,7 @@ test("wrapCliConfigurationError - pack cannot be found", (t) => {
 });
 
 test("wrapCliConfigurationError - pack missing auth", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["pack", "download"],
     1,
@@ -345,7 +325,7 @@ test("wrapCliConfigurationError - pack missing auth", (t) => {
 });
 
 test("wrapCliConfigurationError - invalid config file", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["database", "create"],
     1,
@@ -359,7 +339,7 @@ test("wrapCliConfigurationError - invalid config file", (t) => {
 });
 
 test("wrapCliConfigurationError - incompatible CLI version", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["version"],
     1,
@@ -373,7 +353,7 @@ test("wrapCliConfigurationError - incompatible CLI version", (t) => {
 });
 
 test("wrapCliConfigurationError - unknown error remains unchanged", (t) => {
-  const commandError = createCommandInvocationError(
+  const commandError = new CommandInvocationError(
     "codeql",
     ["version"],
     1,
@@ -404,13 +384,13 @@ test("all CLI config error categories have valid configurations", (t) => {
       case CliConfigErrorCategory.NoSourceCodeSeen:
         // This category matches by exit code
         testError = new CliError(
-          createCommandInvocationError("codeql", [], 32, "some error"),
+          new CommandInvocationError("codeql", [], 32, "some error"),
         );
         break;
       default:
         // For other categories, we'll test with a generic message that should not match
         testError = new CliError(
-          createCommandInvocationError("codeql", [], 1, "generic error"),
+          new CommandInvocationError("codeql", [], 1, "generic error"),
         );
         break;
     }

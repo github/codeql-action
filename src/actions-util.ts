@@ -264,7 +264,7 @@ export class CommandInvocationError extends Error {
     public args: string[],
     public exitCode: number | undefined,
     public stderr: string,
-    public stdout: string,
+    public stdout: string = "",
   ) {
     const prettyCommand = prettyPrintInvocation(cmd, args);
     const lastLine = ensureEndsInPeriod(

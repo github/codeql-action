@@ -331,16 +331,21 @@ async function run() {
     core.setOutput("db-locations", dbLocations);
     core.setOutput("sarif-output", path.resolve(outputDir));
     const uploadInput = actionsUtil.getOptionalInput("upload");
+    const uploadQualityOnly = actionsUtil.getOptionalInput(
+      "upload-quality-only",
+    );
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
-      uploadResult = await uploadLib.uploadFiles(
-        outputDir,
-        actionsUtil.getRequiredInput("checkout_path"),
-        actionsUtil.getOptionalInput("category"),
-        features,
-        logger,
-        uploadLib.CodeScanningTarget,
-      );
-      core.setOutput("sarif-id", uploadResult.sarifID);
+      if (uploadQualityOnly !== "true") {
+        uploadResult = await uploadLib.uploadFiles(
+          outputDir,
+          actionsUtil.getRequiredInput("checkout_path"),
+          actionsUtil.getOptionalInput("category"),
+          features,
+          logger,
+          uploadLib.CodeScanningTarget,
+        );
+        core.setOutput("sarif-id", uploadResult.sarifID);
+      }
 
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         const qualityUploadResult = await uploadLib.uploadFiles(

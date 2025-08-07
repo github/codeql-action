@@ -18,6 +18,11 @@ inputs:
     required: false
     # If changing this, make sure to update workflow.ts accordingly.
     default: "always"
+  upload-quality-only:
+    description: >-
+      This is not recommended for external users since it complicates debugging. Upload the SARIF file to Code Quality only.
+      Defaults to 'false' which uploads the generated SARIFs to both Code Scanning and Code Quality.
+      'true' only uploads the SARIF file to Code Quality.
   cleanup-level:
     description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --cache-cleanup flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
     required: false

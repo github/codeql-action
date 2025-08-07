@@ -36,15 +36,18 @@ jobs:
           git fetch origin "$BASE_BRANCH"
 
           # Allow merge conflicts in `lib`, since rebuilding should resolve them.
-          git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected"
+          git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected, continuing..."
 
           # Check for merge conflicts outside of `lib`. Disable git diff's trailing whitespace check
           # since `node_modules/@types/semver/README.md` fails it.
           if git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/'; then
-            echo "Merge conflicts detected outside of lib/ directory. Please resolve them manually."
+            echo "Merge conflicts were detected outside of the lib directory. Please resolve them manually."
             git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/' || true
             exit 1
           fi
+
+          echo "No merge conflicts found outside the lib directory. We should be able to resolve all of" \
+            "these by rebuilding the Action."
 
       - name: Compile TypeScript
         run: |
@@ -70,18 +73,24 @@ jobs:
           BRANCH: ${{ github.event.pull_request.head.ref || github.event.ref }}
         run: |
           if [ ! -z "$(git status --porcelain)" ]; then
+            echo "Changes detected, pushing them to branch $BRANCH"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git config --global user.name "github-actions[bot]"
             git add --all
             # If the merge originally had conflicts, finish the merge.
             # Otherwise, just commit the changes.
             if git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
+              echo "In progress merge detected, finishing it up."
               git merge --continue
             else
+              echo "No in-progress merge detected, committing changes."
               git commit -m "Rebuild"
             fi
+            echo "Pushing changes to branch $BRANCH"
             git push origin "HEAD:$BRANCH"
             echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes detected, nothing to commit."
           fi
 
       - name: Notify about rebuild

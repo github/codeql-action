@@ -155,7 +155,7 @@ export function tryGetTagNameFromUrl(
   logger: Logger,
 ): string | undefined {
   const matches = [...url.matchAll(/\/(codeql-bundle-[^/]*)\//g)];
-  if (!matches.length) {
+  if (matches.length === 0) {
     logger.debug(`Could not determine tag name for URL ${url}.`);
     return undefined;
   }

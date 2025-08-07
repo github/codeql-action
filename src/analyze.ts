@@ -7,6 +7,7 @@ import del from "del";
 import * as yaml from "js-yaml";
 
 import {
+  fixCodeQualityCategory,
   getRequiredInput,
   getTemporaryDirectory,
   PullRequestBranches,
@@ -23,7 +24,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
-import { isScannedLanguage, Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { getRepositoryNwoFromEnv } from "./repository";
@@ -177,14 +178,14 @@ export async function runExtraction(
       continue;
     }
 
-    if (shouldExtractLanguage(config, language)) {
+    if (await shouldExtractLanguage(codeql, config, language)) {
       logger.startGroup(`Extracting ${language}`);
-      if (language === Language.python) {
+      if (language === KnownLanguage.python) {
         await setupPythonExtractor(logger);
       }
       if (config.buildMode) {
         if (
-          language === Language.cpp &&
+          language === KnownLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
           await setupCppAutobuild(codeql, logger);
@@ -194,7 +195,10 @@ export async function runExtraction(
         // database scratch directory by default. For dependency caching purposes, we want
         // a stable path that caches can be restored into and that we can cache at the
         // end of the workflow (i.e. that does not get removed when the scratch directory is).
-        if (language === Language.java && config.buildMode === BuildMode.None) {
+        if (
+          language === KnownLanguage.java &&
+          config.buildMode === BuildMode.None
+        ) {
           process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
             getJavaTempDependencyDir();
         }
@@ -208,15 +212,16 @@ export async function runExtraction(
   }
 }
 
-function shouldExtractLanguage(
+async function shouldExtractLanguage(
+  codeql: CodeQL,
   config: configUtils.Config,
   language: Language,
-): boolean {
+): Promise<boolean> {
   return (
     config.buildMode === BuildMode.None ||
     (config.buildMode === BuildMode.Autobuild &&
       process.env[EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY] !== "true") ||
-    (!config.buildMode && isScannedLanguage(language))
+    (!config.buildMode && (await codeql.isScannedLanguage(language)))
   );
 }
 
@@ -608,7 +613,6 @@ export async function runQueries(
   memoryFlag: string,
   addSnippetsFlag: string,
   threadsFlag: string,
-  cleanupLevel: string,
   diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
   config: configUtils.Config,
@@ -619,7 +623,11 @@ export async function runQueries(
   const queryFlags = [memoryFlag, threadsFlag];
   const incrementalMode: string[] = [];
 
-  if (cleanupLevel !== "overlay") {
+  // Preserve cached intermediate results for overlay-base databases.
+  if (
+    config.augmentationProperties.overlayDatabaseMode !==
+    OverlayDatabaseMode.OverlayBase
+  ) {
     queryFlags.push("--expect-discarded-cache");
   }
 
@@ -691,30 +699,39 @@ export async function runQueries(
         undefined,
         sarifFile,
         config.debugMode,
+        automationDetailsId,
       );
+
+      let qualityAnalysisSummary: string | undefined;
       if (config.augmentationProperties.qualityQueriesInput !== undefined) {
         logger.info(`Interpreting quality results for ${language}`);
+        const qualityCategory = fixCodeQualityCategory(
+          logger,
+          automationDetailsId,
+        );
         const qualitySarifFile = path.join(
           sarifFolder,
           `${language}.quality.sarif`,
         );
-        const qualityAnalysisSummary = await runInterpretResults(
+        qualityAnalysisSummary = await runInterpretResults(
           language,
           config.augmentationProperties.qualityQueriesInput.map((i) =>
             resolveQuerySuiteAlias(language, i.uses),
           ),
           qualitySarifFile,
           config.debugMode,
+          qualityCategory,
         );
-
-        // TODO: move
-        logger.info(qualityAnalysisSummary);
       }
       const endTimeInterpretResults = new Date();
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
       logger.info(analysisSummary);
+
+      if (qualityAnalysisSummary) {
+        logger.info(qualityAnalysisSummary);
+      }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
         const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile);
@@ -752,6 +769,7 @@ export async function runQueries(
     queries: string[] | undefined,
     sarifFile: string,
     enableDebugLogging: boolean,
+    category: string | undefined,
   ): Promise<string> {
     const databasePath = util.getCodeQLDatabasePath(config, language);
     return await codeql.databaseInterpretResults(
@@ -762,7 +780,7 @@ export async function runQueries(
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
       sarifRunPropertyFlag,
-      automationDetailsId,
+      category,
       config,
       features,
     );
@@ -850,7 +868,7 @@ export async function warnIfGoInstalledAfterInit(
 
       addDiagnostic(
         config,
-        Language.go,
+        KnownLanguage.go,
         makeDiagnostic(
           "go/workflow/go-installed-after-codeql-init",
           "Go was installed after the `codeql-action/init` Action was run",
@@ -868,20 +886,6 @@ export async function warnIfGoInstalledAfterInit(
       );
     }
   }
-}
-
-export async function runCleanup(
-  config: configUtils.Config,
-  cleanupLevel: string,
-  logger: Logger,
-): Promise<void> {
-  logger.startGroup("Cleaning up databases");
-  for (const language of config.languages) {
-    const codeql = await getCodeQL(config.codeQLCmd);
-    const databasePath = util.getCodeQLDatabasePath(config, language);
-    await codeql.databaseCleanup(databasePath, cleanupLevel);
-  }
-  logger.endGroup();
 }
 
 export const exportedForTesting = {

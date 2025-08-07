@@ -80,6 +80,14 @@ export interface CodeQL {
    */
   supportsFeature(feature: ToolsFeature): Promise<boolean>;
   /**
+   * Returns whether the provided language is traced.
+   */
+  isTracedLanguage(language: Language): Promise<boolean>;
+  /**
+   * Returns whether the provided language is scanned.
+   */
+  isScannedLanguage(language: Language): Promise<boolean>;
+  /**
    * Run 'codeql database init --db-cluster'.
    */
   databaseInitCluster(
@@ -144,9 +152,9 @@ export interface CodeQL {
   ): Promise<PackDownloadOutput>;
 
   /**
-   * Run 'codeql database cleanup'.
+   * Clean up all the databases within a database cluster.
    */
-  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
+  databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
   /**
    * Run 'codeql database bundle'.
    */
@@ -449,6 +457,8 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
         !!partialCodeql.getVersion &&
         isSupportedToolsFeature(await partialCodeql.getVersion(), feature),
     ),
+    isTracedLanguage: resolveFunction(partialCodeql, "isTracedLanguage"),
+    isScannedLanguage: resolveFunction(partialCodeql, "isScannedLanguage"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
@@ -472,7 +482,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "resolveBuildEnvironment",
     ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
-    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseCleanupCluster: resolveFunction(
+      partialCodeql,
+      "databaseCleanupCluster",
+    ),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
     databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
     databaseInterpretResults: resolveFunction(
@@ -557,6 +570,18 @@ export async function getCodeQLForCmd(
     },
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);
+    },
+    async isTracedLanguage(language: Language) {
+      const extractorPath = await this.resolveExtractor(language);
+      const tracingConfigPath = path.join(
+        extractorPath,
+        "tools",
+        "tracing-config.lua",
+      );
+      return fs.existsSync(tracingConfigPath);
+    },
+    async isScannedLanguage(language: Language) {
+      return !(await this.isTracedLanguage(language));
     },
     async databaseInitCluster(
       config: Config,
@@ -956,8 +981,8 @@ export async function getCodeQLForCmd(
         );
       }
     },
-    async databaseCleanup(
-      databasePath: string,
+    async databaseCleanupCluster(
+      config: Config,
       cleanupLevel: string,
     ): Promise<void> {
       const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
@@ -966,14 +991,17 @@ export async function getCodeQLForCmd(
       ))
         ? "--cache-cleanup"
         : "--mode";
-      const codeqlArgs = [
-        "database",
-        "cleanup",
-        databasePath,
-        `${cacheCleanupFlag}=${cleanupLevel}`,
-        ...getExtraOptionsFromEnv(["database", "cleanup"]),
-      ];
-      await runCli(cmd, codeqlArgs);
+      for (const language of config.languages) {
+        const databasePath = util.getCodeQLDatabasePath(config, language);
+        const codeqlArgs = [
+          "database",
+          "cleanup",
+          databasePath,
+          `${cacheCleanupFlag}=${cleanupLevel}`,
+          ...getExtraOptionsFromEnv(["database", "cleanup"]),
+        ];
+        await runCli(cmd, codeqlArgs);
+      }
     },
     async databaseBundle(
       databasePath: string,

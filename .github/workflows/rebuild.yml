@@ -73,7 +73,13 @@ jobs:
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git config --global user.name "github-actions[bot]"
             git add --all
-            git commit -m "Rebuild"
+            # If the merge originally had conflicts, finish the merge.
+            # Otherwise, just commit the changes.
+            if git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
+              git merge --continue
+            else
+              git commit -m "Rebuild"
+            fi
             git push origin "HEAD:$BRANCH"
             echo "changes=true" >> $GITHUB_OUTPUT
           fi

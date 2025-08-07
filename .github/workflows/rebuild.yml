@@ -68,8 +68,6 @@ jobs:
         id: push
         env:
           BRANCH: ${{ github.event.pull_request.head.ref || github.event.ref }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           if [ ! -z "$(git status --porcelain)" ]; then
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"

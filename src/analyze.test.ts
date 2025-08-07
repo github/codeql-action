@@ -106,7 +106,6 @@ test("status report fields", async (t) => {
         memoryFlag,
         addSnippetsFlag,
         threadsFlag,
-        "brutal",
         undefined,
         undefined,
         config,

@@ -18,6 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref || github.event.ref }}
 
       - name: Remove label
@@ -29,25 +30,36 @@ jobs:
           gh pr edit --repo github/codeql-action "$PR_NUMBER" \
             --remove-label "Rebuild"
 
+      - name: Configure git
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
       - name: Merge in changes from base branch
+        id: merge
         env:
           BASE_BRANCH: ${{ github.event.pull_request.base.ref || 'main' }}
         run: |
           git fetch origin "$BASE_BRANCH"
 
           # Allow merge conflicts in `lib`, since rebuilding should resolve them.
-          git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected, continuing..."
+          git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected, continuing."
+          MERGE_RESULT=$?
 
-          # Check for merge conflicts outside of `lib`. Disable git diff's trailing whitespace check
-          # since `node_modules/@types/semver/README.md` fails it.
-          if git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/'; then
-            echo "Merge conflicts were detected outside of the lib directory. Please resolve them manually."
-            git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/' || true
-            exit 1
+          if [ "$MERGE_RESULT" -ne 0 ]; then
+            echo "merge-in-progress=true" >> $GITHUB_OUTPUT
+
+            # Check for merge conflicts outside of `lib`. Disable git diff's trailing whitespace check
+            # since `node_modules/@types/semver/README.md` fails it.
+            if git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/'; then
+              echo "Merge conflicts were detected outside of the lib directory. Please resolve them manually."
+              git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/' || true
+              exit 1
+            fi
+
+            echo "No merge conflicts found outside the lib directory. We should be able to resolve all of" \
+              "these by rebuilding the Action."
           fi
-
-          echo "No merge conflicts found outside the lib directory. We should be able to resolve all of" \
-            "these by rebuilding the Action."
 
       - name: Compile TypeScript
         run: |
@@ -67,13 +79,20 @@ jobs:
           pip install ruamel.yaml==0.17.31
           python3 sync.py
 
-      - name: Check for changes and push
+      - name: "Merge in progress: Finish merge and push"
+        if: steps.merge.outputs.merge-in-progress == 'true'
+        run: |
+          echo "Finishing merge and pushing changes."
+          git add --all
+          git commit --no-edit
+          git push
+
+      - name: "No merge in progress: Check for changes and push"
+        if: steps.merge.outputs.merge-in-progress != 'true'
         id: push
         run: |
           if [ ! -z "$(git status --porcelain)" ]; then
             echo "Changes detected, committing and pushing."
-            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git config --global user.name "github-actions[bot]"
             git add --all
             # If the merge originally had conflicts, finish the merge.
             # Otherwise, just commit the changes.
@@ -92,7 +111,12 @@ jobs:
           fi
 
       - name: Notify about rebuild
-        if: github.event_name == 'pull_request' && steps.push.outputs.changes == 'true'
+        if: >-
+          github.event_name == 'pull_request' &&
+            (
+              steps.merge.outputs.merge-in-progress == 'true' ||
+              steps.push.outputs.changes == 'true'
+            )
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

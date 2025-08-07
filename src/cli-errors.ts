@@ -6,6 +6,13 @@ import {
 import { DocUrl } from "./doc-url";
 import { ConfigurationError } from "./util";
 
+const SUPPORTED_PLATFORMS = [
+  ["linux", "x64"],
+  ["win32", "x64"],
+  ["darwin", "x64"],
+  ["darwin", "arm64"],
+];
+
 /**
  * An error from a CodeQL CLI invocation, with associated exit code, stderr, etc.
  */
@@ -318,31 +325,24 @@ function getCliConfigCategoryIfExists(
 
 /**
  * Check if we are running on an unsupported platform/architecture combination.
- * If so, return a ConfigurationError with a message that explains that, mentioning
- * the underlying `cliError`. Otherwise, reutrn `undefined`.
  */
-function getUnsupportedPlatformError(
-  cliError: CliError,
-): ConfigurationError | undefined {
-  if (
-    ![
-      ["linux", "x64"],
-      ["win32", "x64"],
-      ["darwin", "x64"],
-      ["darwin", "arm64"],
-    ].some(
-      ([platform, arch]) =>
-        platform === process.platform && arch === process.arch,
-    )
-  ) {
-    return new ConfigurationError(
-      "The CodeQL CLI does not support the platform/architecture combination of " +
-        `${process.platform}/${process.arch} ` +
-        "(see https://codeql.github.com/docs/codeql-overview/system-requirements). " +
-        `The underlying error was: ${cliError.message}`,
-    );
-  }
-  return undefined;
+function isUnsupportedPlatform(): boolean {
+  return !SUPPORTED_PLATFORMS.some(
+    ([platform, arch]) =>
+      platform === process.platform && arch === process.arch,
+  );
+}
+
+/**
+ * Transform a CLI error into a ConfigurationError for an unsupported platform.
+ */
+function getUnsupportedPlatformError(cliError: CliError): ConfigurationError {
+  return new ConfigurationError(
+    "The CodeQL CLI does not support the platform/architecture combination of " +
+      `${process.platform}/${process.arch} ` +
+      `(see ${DocUrl.SYSTEM_REQUIREMENTS}). ` +
+      `The underlying error was: ${cliError.message}`,
+  );
 }
 
 /**
@@ -351,9 +351,8 @@ function getUnsupportedPlatformError(
  * simply returns the original error.
  */
 export function wrapCliConfigurationError(cliError: CliError): Error {
-  const unsupportedPlatformError = getUnsupportedPlatformError(cliError);
-  if (unsupportedPlatformError !== undefined) {
-    return unsupportedPlatformError;
+  if (isUnsupportedPlatform()) {
+    return getUnsupportedPlatformError(cliError);
   }
 
   const cliConfigErrorCategory = getCliConfigCategoryIfExists(cliError);

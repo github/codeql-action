@@ -294,7 +294,7 @@ export const cliErrorsConfig: Record<
  * the error messages in the config record, or the exit codes match, return the error category;
  * if not, return undefined.
  */
-export function getCliConfigCategoryIfExists(
+function getCliConfigCategoryIfExists(
   cliError: CliError,
 ): CliConfigErrorCategory | undefined {
   for (const [category, configuration] of Object.entries(cliErrorsConfig)) {
@@ -317,11 +317,45 @@ export function getCliConfigCategoryIfExists(
 }
 
 /**
- * Changes an error received from the CLI to a ConfigurationError with optionally an extra
- * error message appended, if it exists in a known set of configuration errors. Otherwise,
+ * Check if we are running on an unsupported platform/architecture combination.
+ * If so, return a ConfigurationError with a message that explains that, mentioning
+ * the underlying `cliError`. Otherwise, reutrn `undefined`.
+ */
+function getUnsupportedPlatformError(
+  cliError: CliError,
+): ConfigurationError | undefined {
+  if (
+    ![
+      ["linux", "x64"],
+      ["win32", "x64"],
+      ["darwin", "x64"],
+      ["darwin", "arm64"],
+    ].some(
+      ([platform, arch]) =>
+        platform === process.platform && arch === process.arch,
+    )
+  ) {
+    return new ConfigurationError(
+      "The CodeQL CLI does not support the platform/architecture combination of " +
+        `${process.platform}/${process.arch} ` +
+        "(see https://codeql.github.com/docs/codeql-overview/system-requirements). " +
+        `The underlying error was: ${cliError.message}`,
+    );
+  }
+  return undefined;
+}
+
+/**
+ * Changes an error received from the CLI to a ConfigurationError with the message
+ * optionally being transformed, if it is a known configuration error. Otherwise,
  * simply returns the original error.
  */
 export function wrapCliConfigurationError(cliError: CliError): Error {
+  const unsupportedPlatformError = getUnsupportedPlatformError(cliError);
+  if (unsupportedPlatformError !== undefined) {
+    return unsupportedPlatformError;
+  }
+
   const cliConfigErrorCategory = getCliConfigCategoryIfExists(cliError);
   if (cliConfigErrorCategory === undefined) {
     return cliError;

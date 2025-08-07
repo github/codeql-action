@@ -69,11 +69,9 @@ jobs:
 
       - name: Check for changes and push
         id: push
-        env:
-          BRANCH: ${{ github.event.pull_request.head.ref || github.event.ref }}
         run: |
           if [ ! -z "$(git status --porcelain)" ]; then
-            echo "Changes detected, pushing them to branch $BRANCH"
+            echo "Changes detected, committing and pushing."
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git config --global user.name "github-actions[bot]"
             git add --all
@@ -86,8 +84,8 @@ jobs:
               echo "No in-progress merge detected, committing changes."
               git commit -m "Rebuild"
             fi
-            echo "Pushing changes to branch $BRANCH"
-            git push origin "HEAD:$BRANCH"
+            echo "Pushing changes"
+            git push
             echo "changes=true" >> $GITHUB_OUTPUT
           else
             echo "No changes detected, nothing to commit."

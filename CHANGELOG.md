@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 3.29.6 - 07 Aug 2025
 
 - The `cleanup-level` input to the `analyze` Action is now deprecated. The CodeQL Action has written a limited amount of intermediate results to the database since version 2.2.5, and now automatically manages cleanup. [#2999](https://github.com/github/codeql-action/pull/2999)

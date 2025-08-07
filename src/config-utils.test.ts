@@ -63,6 +63,7 @@ function createTestInitConfigInputs(
         async betterResolveLanguages() {
           return {
             extractors: {
+              html: [{ extractor_root: "" }],
               javascript: [{ extractor_root: "" }],
             },
           };
@@ -1124,6 +1125,20 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     languagesInRepository: [],
     expectedApiCall: false,
     expectedError: configUtils.getUnknownLanguagesError(["a", "b"]),
+  },
+  {
+    name: "extractors that aren't languages aren't included (specified)",
+    languagesInput: "html",
+    languagesInRepository: [],
+    expectedApiCall: false,
+    expectedError: configUtils.getUnknownLanguagesError(["html"]),
+  },
+  {
+    name: "extractors that aren't languages aren't included (autodetected)",
+    languagesInput: "",
+    languagesInRepository: ["html", "javascript"],
+    expectedApiCall: true,
+    expectedLanguages: ["javascript"],
   },
 ].forEach((args) => {
   test(`getLanguages: ${args.name}`, async (t) => {

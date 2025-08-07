@@ -7,7 +7,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
-import { setCodeQL } from "./codeql";
+import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import * as gitUtils from "./git-utils";
@@ -70,7 +70,7 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
 }
 
 function getCodeQL() {
-  return setCodeQL({
+  return createStubCodeQL({
     async databaseBundle(_: string, outputFilePath: string) {
       fs.writeFileSync(outputFilePath, "");
     },

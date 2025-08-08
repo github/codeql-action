@@ -80,6 +80,14 @@ export interface CodeQL {
    */
   supportsFeature(feature: ToolsFeature): Promise<boolean>;
   /**
+   * Returns whether the provided language is traced.
+   */
+  isTracedLanguage(language: Language): Promise<boolean>;
+  /**
+   * Returns whether the provided language is scanned.
+   */
+  isScannedLanguage(language: Language): Promise<boolean>;
+  /**
    * Run 'codeql database init --db-cluster'.
    */
   databaseInitCluster(
@@ -144,9 +152,9 @@ export interface CodeQL {
   ): Promise<PackDownloadOutput>;
 
   /**
-   * Run 'codeql database cleanup'.
+   * Clean up all the databases within a database cluster.
    */
-  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
+  databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
   /**
    * Run 'codeql database bundle'.
    */
@@ -273,7 +281,6 @@ interface PackDownloadItem {
 
 /**
  * Stores the CodeQL object, and is populated by `setupCodeQL` or `getCodeQL`.
- * Can be overridden in tests using `setCodeQL`.
  */
 let cachedCodeQL: CodeQL | undefined = undefined;
 
@@ -412,6 +419,17 @@ export async function getCodeQL(cmd: string): Promise<CodeQL> {
   return cachedCodeQL;
 }
 
+/**
+ * Overrides the CodeQL object. Only for use in tests that cannot override
+ * CodeQL via dependency injection.
+ *
+ * Accepts a partial object. Any undefined methods will be implemented
+ * to immediately throw an exception indicating which method is missing.
+ */
+export function setCodeQL(codeql: Partial<CodeQL>): void {
+  cachedCodeQL = createStubCodeQL(codeql);
+}
+
 function resolveFunction<T>(
   partialCodeql: Partial<CodeQL>,
   methodName: string,
@@ -430,13 +448,13 @@ function resolveFunction<T>(
 }
 
 /**
- * Set the functionality for CodeQL methods. Only for use in tests.
+ * Creates a stub CodeQL object. Only for use in tests.
  *
- * Accepts a partial object and any undefined methods will be implemented
+ * Accepts a partial object. Any undefined methods will be implemented
  * to immediately throw an exception indicating which method is missing.
  */
-export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
-  cachedCodeQL = {
+export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
+  return {
     getPath: resolveFunction(partialCodeql, "getPath", () => "/tmp/dummy-path"),
     getVersion: resolveFunction(partialCodeql, "getVersion", async () => ({
       version: "1.0.0",
@@ -449,6 +467,8 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
         !!partialCodeql.getVersion &&
         isSupportedToolsFeature(await partialCodeql.getVersion(), feature),
     ),
+    isTracedLanguage: resolveFunction(partialCodeql, "isTracedLanguage"),
+    isScannedLanguage: resolveFunction(partialCodeql, "isScannedLanguage"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
@@ -472,7 +492,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "resolveBuildEnvironment",
     ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
-    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseCleanupCluster: resolveFunction(
+      partialCodeql,
+      "databaseCleanupCluster",
+    ),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
     databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
     databaseInterpretResults: resolveFunction(
@@ -491,21 +514,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     resolveExtractor: resolveFunction(partialCodeql, "resolveExtractor"),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
-  return cachedCodeQL;
-}
-
-/**
- * Get the cached CodeQL object. Should only be used from tests.
- *
- * TODO: Work out a good way for tests to get this from the test context
- * instead of having to have this method.
- */
-export function getCachedCodeQL(): CodeQL {
-  if (cachedCodeQL === undefined) {
-    // Should never happen as setCodeQL is called by testing-utils.setupTests
-    throw new Error("cachedCodeQL undefined");
-  }
-  return cachedCodeQL;
 }
 
 /**
@@ -557,6 +565,18 @@ export async function getCodeQLForCmd(
     },
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);
+    },
+    async isTracedLanguage(language: Language) {
+      const extractorPath = await this.resolveExtractor(language);
+      const tracingConfigPath = path.join(
+        extractorPath,
+        "tools",
+        "tracing-config.lua",
+      );
+      return fs.existsSync(tracingConfigPath);
+    },
+    async isScannedLanguage(language: Language) {
+      return !(await this.isTracedLanguage(language));
     },
     async databaseInitCluster(
       config: Config,
@@ -956,8 +976,8 @@ export async function getCodeQLForCmd(
         );
       }
     },
-    async databaseCleanup(
-      databasePath: string,
+    async databaseCleanupCluster(
+      config: Config,
       cleanupLevel: string,
     ): Promise<void> {
       const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
@@ -966,14 +986,17 @@ export async function getCodeQLForCmd(
       ))
         ? "--cache-cleanup"
         : "--mode";
-      const codeqlArgs = [
-        "database",
-        "cleanup",
-        databasePath,
-        `${cacheCleanupFlag}=${cleanupLevel}`,
-        ...getExtraOptionsFromEnv(["database", "cleanup"]),
-      ];
-      await runCli(cmd, codeqlArgs);
+      for (const language of config.languages) {
+        const databasePath = util.getCodeQLDatabasePath(config, language);
+        const codeqlArgs = [
+          "database",
+          "cleanup",
+          databasePath,
+          `${cacheCleanupFlag}=${cleanupLevel}`,
+          ...getExtraOptionsFromEnv(["database", "cleanup"]),
+        ];
+        await runCli(cmd, codeqlArgs);
+      }
     },
     async databaseBundle(
       databasePath: string,

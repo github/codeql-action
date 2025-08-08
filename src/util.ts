@@ -644,11 +644,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(String(EnvVar.FEATURE_MULTI_LANGUAGE), "false");
-  core.exportVariable(String(EnvVar.FEATURE_SANDWICH), "false");
-  core.exportVariable(String(EnvVar.FEATURE_SARIF_COMBINE), "true");
-  core.exportVariable(String(EnvVar.FEATURE_WILL_UPLOAD), "true");
-  core.exportVariable(String(EnvVar.VERSION), version);
+  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
+  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  core.exportVariable(EnvVar.VERSION, version);
 }
 
 /**
@@ -1249,4 +1249,20 @@ export async function isBinaryAccessible(
     logger.debug(`Could not find ${binary}: ${e}`);
     return false;
   }
+}
+
+export async function asyncFilter<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<T[]> {
+  const results = await Promise.all(array.map(predicate));
+  return array.filter((_, index) => results[index]);
+}
+
+export async function asyncSome<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<boolean> {
+  const results = await Promise.all(array.map(predicate));
+  return results.some((result) => result);
 }

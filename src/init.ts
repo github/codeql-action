@@ -9,7 +9,7 @@ import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
@@ -113,7 +113,7 @@ export async function checkInstallPython311(
   codeql: CodeQL,
 ) {
   if (
-    languages.includes(Language.python) &&
+    languages.includes(KnownLanguage.python) &&
     process.platform === "win32" &&
     !(await codeql.getVersion()).features?.supportsPython312
   ) {
@@ -138,7 +138,7 @@ export function cleanupDatabaseClusterDirectory(
   if (
     fs.existsSync(config.dbLocation) &&
     (fs.statSync(config.dbLocation).isFile() ||
-      fs.readdirSync(config.dbLocation).length)
+      fs.readdirSync(config.dbLocation).length > 0)
   ) {
     logger.warning(
       `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,

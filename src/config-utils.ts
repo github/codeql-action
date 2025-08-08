@@ -12,7 +12,7 @@ import { type CodeQL } from "./codeql";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
-import { isTracedLanguage, Language, parseLanguage } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import {
   CODEQL_OVERLAY_MINIMUM_VERSION,
@@ -146,7 +146,7 @@ export interface Config {
    * Partial map from languages to locations of TRAP caches for that language.
    * If a key is omitted, then TRAP caching should not be used for that language.
    */
-  trapCaches: Partial<Record<Language, string>>;
+  trapCaches: { [language: Language]: string };
 
   /**
    * Time taken to download TRAP caches. Used for status reporting.
@@ -303,34 +303,82 @@ export function getUnknownLanguagesError(languages: string[]): string {
   return `Did not recognize the following languages: ${languages.join(", ")}`;
 }
 
+export async function getSupportedLanguageMap(
+  codeql: CodeQL,
+): Promise<Record<string, string>> {
+  const resolveResult = await codeql.betterResolveLanguages();
+  const supportedLanguages: Record<string, string> = {};
+  // Populate canonical language names
+  for (const extractor of Object.keys(resolveResult.extractors)) {
+    // Require the language to be a known language.
+    // This is a temporary workaround since we have extractors that are not
+    // supported languages, such as `csv`, `html`, `properties`, `xml`, and
+    // `yaml`. We should replace this with a more robust solution in the future.
+    if (KnownLanguage[extractor] !== undefined) {
+      supportedLanguages[extractor] = extractor;
+    }
+  }
+  // Populate language aliases
+  if (resolveResult.aliases) {
+    for (const [alias, extractor] of Object.entries(resolveResult.aliases)) {
+      supportedLanguages[alias] = extractor;
+    }
+  }
+  return supportedLanguages;
+}
+
+const baseWorkflowsPath = ".github/workflows";
+
 /**
- * Gets the set of languages in the current repository that are
- * scannable by CodeQL.
+ * Determines if there exists a `.github/workflows` directory with at least
+ * one file in it, which we use as an indicator that there are Actions
+ * workflows in the workspace. This doesn't perfectly detect whether there
+ * are actually workflows, but should be a good approximation.
+ *
+ * Alternatively, we could check specifically for yaml files, or call the
+ * API to check if it knows about workflows.
+ *
+ * @returns True if the non-empty directory exists, false if not.
  */
-export async function getLanguagesInRepo(
+export function hasActionsWorkflows(sourceRoot: string): boolean {
+  const workflowsPath = path.resolve(sourceRoot, baseWorkflowsPath);
+  const stats = fs.lstatSync(workflowsPath);
+  return (
+    stats !== undefined &&
+    stats.isDirectory() &&
+    fs.readdirSync(workflowsPath).length > 0
+  );
+}
+
+/**
+ * Gets the set of languages in the current repository.
+ */
+export async function getRawLanguagesInRepo(
   repository: RepositoryNwo,
+  sourceRoot: string,
   logger: Logger,
-): Promise<Language[]> {
-  logger.debug(`GitHub repo ${repository.owner} ${repository.repo}`);
+): Promise<string[]> {
+  logger.debug(
+    `Automatically detecting languages (${repository.owner}/${repository.repo})`,
+  );
   const response = await api.getApiClient().rest.repos.listLanguages({
     owner: repository.owner,
     repo: repository.repo,
   });
 
   logger.debug(`Languages API response: ${JSON.stringify(response)}`);
+  const result = Object.keys(response.data as Record<string, number>).map(
+    (language) => language.trim().toLowerCase(),
+  );
 
-  // The GitHub API is going to return languages in order of popularity,
-  // When we pick a language to autobuild we want to pick the most popular traced language
-  // Since sets in javascript maintain insertion order, using a set here and then splatting it
-  // into an array gives us an array of languages ordered by popularity
-  const languages: Set<Language> = new Set();
-  for (const lang of Object.keys(response.data as Record<string, number>)) {
-    const parsedLang = parseLanguage(lang);
-    if (parsedLang !== undefined) {
-      languages.add(parsedLang);
-    }
+  if (hasActionsWorkflows(sourceRoot)) {
+    logger.debug(`Found a .github/workflows directory`);
+    result.push("actions");
   }
-  return [...languages];
+
+  logger.debug(`Raw languages in repository: ${result.join(", ")}`);
+
+  return result;
 }
 
 /**
@@ -344,35 +392,38 @@ export async function getLanguagesInRepo(
  * then throw an error.
  */
 export async function getLanguages(
-  codeQL: CodeQL,
+  codeql: CodeQL,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
+  sourceRoot: string,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
   const { rawLanguages, autodetected } = await getRawLanguages(
     languagesInput,
     repository,
+    sourceRoot,
     logger,
   );
 
-  let languages = rawLanguages;
-  if (autodetected) {
-    const supportedLanguages = Object.keys(await codeQL.resolveLanguages());
+  const languageMap = await getSupportedLanguageMap(codeql);
+  const languagesSet = new Set<Language>();
+  const unknownLanguages: string[] = [];
 
-    languages = languages
-      .map(parseLanguage)
-      .filter((value) => value && supportedLanguages.includes(value))
-      .map((value) => value as Language);
-
-    logger.info(`Automatically detected languages: ${languages.join(", ")}`);
-  } else {
-    const aliases = (await codeQL.betterResolveLanguages()).aliases;
-    if (aliases) {
-      languages = languages.map((lang) => aliases[lang] || lang);
+  // Make sure they are supported
+  for (const language of rawLanguages) {
+    const extractorName = languageMap[language];
+    if (extractorName === undefined) {
+      unknownLanguages.push(language);
+    } else {
+      languagesSet.add(extractorName);
     }
+  }
 
-    logger.info(`Languages from configuration: ${languages.join(", ")}`);
+  const languages = Array.from(languagesSet);
+
+  if (!autodetected && unknownLanguages.length > 0) {
+    throw new ConfigurationError(getUnknownLanguagesError(unknownLanguages));
   }
 
   // If the languages parameter was not given and no languages were
@@ -381,25 +432,22 @@ export async function getLanguages(
     throw new ConfigurationError(getNoLanguagesError());
   }
 
-  // Make sure they are supported
-  const parsedLanguages: Language[] = [];
-  const unknownLanguages: string[] = [];
-  for (const language of languages) {
-    const parsedLanguage = parseLanguage(language) as Language;
-    if (parsedLanguage === undefined) {
-      unknownLanguages.push(language);
-    } else if (!parsedLanguages.includes(parsedLanguage)) {
-      parsedLanguages.push(parsedLanguage);
-    }
+  if (autodetected) {
+    logger.info(`Autodetected languages: ${languages.join(", ")}`);
+  } else {
+    logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
-  // Any unknown languages here would have come directly from the input
-  // since we filter unknown languages coming from the GitHub API.
-  if (unknownLanguages.length > 0) {
-    throw new ConfigurationError(getUnknownLanguagesError(unknownLanguages));
-  }
+  return languages;
+}
 
-  return parsedLanguages;
+export function getRawLanguagesNoAutodetect(
+  languagesInput: string | undefined,
+): string[] {
+  return (languagesInput || "")
+    .split(",")
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => x.length > 0);
 }
 
 /**
@@ -415,23 +463,22 @@ export async function getLanguages(
 export async function getRawLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
+  sourceRoot: string,
   logger: Logger,
-) {
-  // Obtain from action input 'languages' if set
-  let rawLanguages = (languagesInput || "")
-    .split(",")
-    .map((x) => x.trim().toLowerCase())
-    .filter((x) => x.length > 0);
-  let autodetected: boolean;
-  if (rawLanguages.length) {
-    autodetected = false;
-  } else {
-    autodetected = true;
-
-    // Obtain all languages in the repo that can be analysed
-    rawLanguages = (await getLanguagesInRepo(repository, logger)) as string[];
+): Promise<{
+  rawLanguages: string[];
+  autodetected: boolean;
+}> {
+  // If the user has specified languages, use those.
+  const languagesFromInput = getRawLanguagesNoAutodetect(languagesInput);
+  if (languagesFromInput.length > 0) {
+    return { rawLanguages: languagesFromInput, autodetected: false };
   }
-  return { rawLanguages, autodetected };
+  // Otherwise, autodetect languages in the repository.
+  return {
+    rawLanguages: await getRawLanguagesInRepo(repository, sourceRoot, logger),
+    autodetected: true,
+  };
 }
 
 /** Inputs required to initialize a configuration. */
@@ -478,6 +525,7 @@ export async function getDefaultConfig({
   repository,
   tempDir,
   codeql,
+  sourceRoot,
   githubVersion,
   features,
   logger,
@@ -486,6 +534,7 @@ export async function getDefaultConfig({
     codeql,
     languagesInput,
     repository,
+    sourceRoot,
     logger,
   );
 
@@ -534,10 +583,10 @@ async function downloadCacheWithTime(
   languages: Language[],
   logger: Logger,
 ): Promise<{
-  trapCaches: Partial<Record<Language, string>>;
+  trapCaches: { [language: string]: string };
   trapCacheDownloadTime: number;
 }> {
-  let trapCaches = {};
+  let trapCaches: { [language: string]: string } = {};
   let trapCacheDownloadTime = 0;
   if (trapCachingEnabled) {
     const start = performance.now();
@@ -804,7 +853,14 @@ export async function getOverlayDatabaseMode(
     return nonOverlayAnalysis;
   }
 
-  if (buildMode !== BuildMode.None && languages.some(isTracedLanguage)) {
+  if (
+    buildMode !== BuildMode.None &&
+    (
+      await Promise.all(
+        languages.map(async (l) => await codeql.isTracedLanguage(l)),
+      )
+    ).some(Boolean)
+  ) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `build-mode is set to "${buildMode}" instead of "none". ` +
@@ -1331,7 +1387,7 @@ export async function parseBuildModeInput(
   }
 
   if (
-    languages.includes(Language.csharp) &&
+    languages.includes(KnownLanguage.csharp) &&
     (await features.getValue(Feature.DisableCsharpBuildless))
   ) {
     logger.warning(
@@ -1341,7 +1397,7 @@ export async function parseBuildModeInput(
   }
 
   if (
-    languages.includes(Language.java) &&
+    languages.includes(KnownLanguage.java) &&
     (await features.getValue(Feature.DisableJavaBuildlessEnabled))
   ) {
     logger.warning(

@@ -50,8 +50,8 @@ export async function downloadTrapCaches(
   codeql: CodeQL,
   languages: Language[],
   logger: Logger,
-): Promise<Partial<Record<Language, string>>> {
-  const result: Partial<Record<Language, string>> = {};
+): Promise<{ [language: string]: string }> {
+  const result: { [language: string]: string } = {};
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
     codeql,
     languages,

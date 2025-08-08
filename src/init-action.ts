@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
+import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
 import {
@@ -357,6 +358,31 @@ async function run() {
     }
     core.endGroup();
 
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if between 2.19.3 and 2.22.1 (excluded)
+    // We need to set this environment variable before initializing the config, otherwise Rust
+    // analysis will not be enabled.
+    // Initially this was driven by a feature flag which has been rolled out already.
+    if (
+      // Only enable the experimental features env variable for Rust analysis if the user has explicitly
+      // requested rust - don't enable it via language autodetection.
+      configUtils
+        .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
+        .includes(KnownLanguage.rust)
+    ) {
+      const experimental = "2.19.3";
+      const publicPreview = "2.22.1";
+      const actualVer = (await codeql.getVersion()).version;
+      if (semver.lt(actualVer, experimental)) {
+        throw new ConfigurationError(
+          `Rust analysis is supported by CodeQL CLI version ${experimental} or higher, but found version ${actualVer}`,
+        );
+      }
+      if (semver.lt(actualVer, publicPreview)) {
+        core.exportVariable(EnvVar.EXPERIMENTAL_FEATURES, "true");
+        logger.info("Experimental rust analysis enabled");
+      }
+    }
+
     config = await initConfig({
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
@@ -627,23 +653,6 @@ async function run() {
         (await features.getValue(Feature.CppBuildModeNone, codeql));
       logger.info(`Setting C++ build-mode: none to ${value}`);
       core.exportVariable(bmnVar, value);
-    }
-
-    // For rust, if `codeql` does not support it, we are in two possible situations:
-    // * either we run `codeql` prior to 2.19.3, which means no rust support is possible
-    // * or we run a version between 2.19.3 and 2.22.1 (excluded), when rust support was
-    //   experimental and required explicitly setting CODEQL_ENABLE_EXPERIMENTAL_FEATURES,
-    //   and that env variable is not set
-    // However, there is no need to let users know about the experimental feature flag at
-    // this point, if they want rust support they should chose a version which supports it
-    // publicly.
-    if (
-      config.languages.includes(KnownLanguage.rust) &&
-      !(await codeql.resolveLanguages()).rust
-    ) {
-      throw new ConfigurationError(
-        "Rust analysis is supported from CodeQL version 2.22.1 or higher.",
-      );
     }
 
     // Restore dependency cache(s), if they exist.

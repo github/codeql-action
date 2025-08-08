@@ -144,6 +144,7 @@ type PackInfo = {
   language: KnownLanguage;
   packinfoContents: string | undefined;
   sourceOnlyPack?: boolean;
+  qlpackFileName?: string;
 };
 
 const testCheckPacksForOverlayCompatibility = test.macro({
@@ -174,8 +175,9 @@ const testCheckPacksForOverlayCompatibility = test.macro({
             packInfo.packinfoContents,
           );
         }
+        const qlpackFileName = packInfo.qlpackFileName || "qlpack.yml";
         fs.writeFileSync(
-          path.join(packPath, "qlpack.yml"),
+          path.join(packPath, qlpackFileName),
           packInfo.sourceOnlyPack
             ? `name: ${packName}\nversion: 1.0.0\n`
             : `name: ${packName}\nversion: 1.0.0\nbuildMetadata:\n sha: 123abc\n`,
@@ -421,5 +423,22 @@ test(
       },
     },
     expectedResult: false,
+  },
+);
+
+test(
+  testCheckPacksForOverlayCompatibility,
+  "returns true when query pack uses codeql-pack.yml filename",
+  {
+    cliOverlayVersion: 2,
+    languages: [KnownLanguage.java],
+    packs: {
+      "codeql/java-queries": {
+        language: KnownLanguage.java,
+        packinfoContents: '{"overlayVersion":2}',
+        qlpackFileName: "codeql-pack.yml",
+      },
+    },
+    expectedResult: true,
   },
 );

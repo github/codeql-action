@@ -153,7 +153,10 @@ function checkPackForOverlayCompatibility(
   logger: Logger,
 ): boolean {
   try {
-    const qlpackPath = path.join(packDir, "qlpack.yml");
+    let qlpackPath = path.join(packDir, "qlpack.yml");
+    if (!fs.existsSync(qlpackPath)) {
+      qlpackPath = path.join(packDir, "codeql-pack.yml");
+    }
     const qlpackContents = yaml.load(
       fs.readFileSync(qlpackPath, "utf8"),
     ) as QlPack;

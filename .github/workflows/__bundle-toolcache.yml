@@ -3,7 +3,7 @@
 #     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
 # to regenerate this file.
 
-name: PR Check - Zstandard bundle
+name: 'PR Check - Bundle: Caching checks'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -22,7 +22,7 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
-  zstd-bundle:
+  bundle-toolcache:
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
             version: linked
           - os: windows-latest
             version: linked
-    name: Zstandard bundle
+    name: 'Bundle: Caching checks'
     permissions:
       contents: read
       security-events: read
@@ -56,9 +56,19 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             const codeqlPath = path.join(process.env['RUNNER_TOOL_CACHE'], 'CodeQL');
-            if (codeqlPath !== undefined) {
-              fs.rmdirSync(codeqlPath, { recursive: true });
+            fs.rmdirSync(codeqlPath, { recursive: true });
+      - name: Install @actions/tool-cache
+        run: npm install @actions/tool-cache
+      - name: Check toolcache does not contain CodeQL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            if (allCodeqlVersions.length !== 0) {
+              throw new Error(`CodeQL should not be found in the toolcache, but found ${allCodeqlVersions}`);
             }
+            console.log('No versions of CodeQL found in the toolcache');
       - id: init
         uses: ./../action/init
         with:
@@ -68,45 +78,18 @@ jobs:
         with:
           output: ${{ runner.temp }}/results
           upload-database: false
-      - name: Upload SARIF
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.os }}-zstd-bundle.sarif
-          path: ${{ runner.temp }}/results/javascript.sarif
-          retention-days: 7
-      - name: Check diagnostic with expected tools URL appears in SARIF
+      - name: Check CodeQL is installed within the toolcache
         uses: actions/github-script@v7
-        env:
-          SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
         with:
           script: |
-            const fs = require('fs');
-
-            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
-            const run = sarif.runs[0];
-
-            const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
-            const downloadTelemetryNotifications = toolExecutionNotifications.filter(n =>
-              n.descriptor.id === 'codeql-action/bundle-download-telemetry'
-            );
-            if (downloadTelemetryNotifications.length !== 1) {
-              core.setFailed(
-                'Expected exactly one reporting descriptor in the ' +
-                  `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
-                  `${downloadTelemetryNotifications.length}. All notification reporting descriptors: ` +
-                  `${JSON.stringify(toolExecutionNotifications)}.`
-              );
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            console.log(`Found CodeQL versions: ${allCodeqlVersions}`);
+            if (allCodeqlVersions.length === 0) {
+              throw new Error('CodeQL not found in toolcache');
             }
-
-            const toolsUrl = downloadTelemetryNotifications[0].properties.attributes.toolsUrl;
-            console.log(`Found tools URL: ${toolsUrl}`);
-
-            const expectedExtension = process.env['RUNNER_OS'] === 'Windows' ? '.tar.gz' : '.tar.zst';
-
-            if (!toolsUrl.endsWith(expectedExtension)) {
-              core.setFailed(
-                `Expected the tools URL to be a ${expectedExtension} file, but found ${toolsUrl}.`
-              );
+            if (allCodeqlVersions.length > 1) {
+              throw new Error('Multiple CodeQL versions found in toolcache');
             }
     env:
       CODEQL_ACTION_TEST_MODE: true

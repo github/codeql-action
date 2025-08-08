@@ -1,13 +1,11 @@
 name: "Zstandard bundle"
-description: "Tests the feature flag that downloads a Zstandard-compressed CodeQL Bundle by default"
+description: "Test downloading a Zstandard-compressed CodeQL bundle"
 versions:
   - linked
 operatingSystems:
   - macos
   - ubuntu
   - windows
-env:
-  CODEQL_ACTION_ZSTD_BUNDLE: true
 steps:
   - name: Remove CodeQL from toolcache
     uses: actions/github-script@v7

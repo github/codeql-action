@@ -8,8 +8,9 @@ export type Language = string;
  * languages do not need to be added here.
  */
 export enum KnownLanguage {
-  csharp = "csharp",
+  actions = "actions",
   cpp = "cpp",
+  csharp = "csharp",
   go = "go",
   java = "java",
   javascript = "javascript",

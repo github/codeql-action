@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
-import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
@@ -14,10 +13,8 @@ import * as defaults from "./defaults.json";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
-  Feature,
-  FeatureEnablement,
 } from "./feature-flags";
-import { formatDuration, Logger } from "./logging";
+import { Logger } from "./logging";
 import * as tar from "./tar";
 import {
   downloadAndExtract,
@@ -26,7 +23,7 @@ import {
   writeToolcacheMarkerFile,
 } from "./tools-download";
 import * as util from "./util";
-import { cleanUpGlob, isGoodVersion } from "./util";
+import { isGoodVersion } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -546,7 +543,6 @@ export const downloadCodeQL = async function (
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
@@ -580,14 +576,11 @@ export const downloadCodeQL = async function (
     maybeCliVersion,
     logger,
   );
-  const extractToToolcache =
-    !!toolcacheInfo && !!(await features.getValue(Feature.ExtractToToolcache));
 
-  const extractedBundlePath = extractToToolcache
-    ? toolcacheInfo.path
-    : getTempExtractionDir(tempDir);
+  const extractedBundlePath =
+    toolcacheInfo?.path ?? getTempExtractionDir(tempDir);
 
-  let statusReport = await downloadAndExtract(
+  const statusReport = await downloadAndExtract(
     codeqlURL,
     compressionMethod,
     extractedBundlePath,
@@ -609,42 +602,10 @@ export const downloadCodeQL = async function (
     };
   }
 
-  let codeqlFolder = extractedBundlePath;
-
-  if (extractToToolcache) {
-    writeToolcacheMarkerFile(toolcacheInfo.path, logger);
-  } else {
-    logger.debug("Caching CodeQL bundle.");
-    const toolcacheStart = performance.now();
-    codeqlFolder = await toolcache.cacheDir(
-      extractedBundlePath,
-      "CodeQL",
-      toolcacheInfo.version,
-    );
-
-    const cacheDurationMs = performance.now() - toolcacheStart;
-    logger.info(
-      `Added CodeQL bundle to the tool cache (${formatDuration(
-        cacheDurationMs,
-      )}).`,
-    );
-    statusReport = {
-      ...statusReport,
-      cacheDurationMs,
-    };
-
-    // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
-    if (codeqlFolder !== extractedBundlePath) {
-      await cleanUpGlob(
-        extractedBundlePath,
-        "CodeQL bundle from temporary directory",
-        logger,
-      );
-    }
-  }
+  writeToolcacheMarkerFile(toolcacheInfo.path, logger);
 
   return {
-    codeqlFolder,
+    codeqlFolder: extractedBundlePath,
     statusReport,
     toolsVersion: maybeCliVersion ?? toolcacheInfo.version,
   };
@@ -726,7 +687,6 @@ export async function setupCodeQLBundle(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  features: FeatureEnablement,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
 ) {
@@ -776,7 +736,6 @@ export async function setupCodeQLBundle(
         apiDetails,
         zstdAvailability.version,
         tempDir,
-        features,
         logger,
       );
       toolsVersion = result.toolsVersion;

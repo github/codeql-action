@@ -310,7 +310,13 @@ export async function getSupportedLanguageMap(
   const supportedLanguages: Record<string, string> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
-    supportedLanguages[extractor] = extractor;
+    // Require the language to be a known language.
+    // This is a temporary workaround since we have extractors that are not
+    // supported languages, such as `csv`, `html`, `properties`, `xml`, and
+    // `yaml`. We should replace this with a more robust solution in the future.
+    if (KnownLanguage[extractor] !== undefined) {
+      supportedLanguages[extractor] = extractor;
+    }
   }
   // Populate language aliases
   if (resolveResult.aliases) {

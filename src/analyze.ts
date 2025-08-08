@@ -14,7 +14,7 @@ import {
 } from "./actions-util";
 import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
-import { CodeQL, getCodeQL } from "./codeql";
+import { type CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { getJavaTempDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
@@ -615,6 +615,7 @@ export async function runQueries(
   threadsFlag: string,
   diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
+  codeql: CodeQL,
   config: configUtils.Config,
   logger: Logger,
   features: FeatureEnablement,
@@ -655,8 +656,6 @@ export async function runQueries(
     incrementalMode.length > 0
       ? `--sarif-run-property=incrementalMode=${incrementalMode.join(",")}`
       : undefined;
-
-  const codeql = await getCodeQL(config.codeQLCmd);
 
   for (const language of config.languages) {
     try {

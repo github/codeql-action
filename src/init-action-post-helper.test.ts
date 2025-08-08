@@ -41,6 +41,7 @@ test("post: init action with debug mode off", async (t) => {
     await initActionPostHelper.run(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
+      codeql.createStubCodeQL({}),
       createTestConfig({ debugMode: false }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
@@ -63,6 +64,7 @@ test("post: init action with debug mode on", async (t) => {
     await initActionPostHelper.run(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
+      codeql.createStubCodeQL({}),
       createTestConfig({ debugMode: true }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),

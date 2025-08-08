@@ -51,7 +51,6 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
-  ExtractToToolcache = "extract_to_toolcache",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -151,11 +150,6 @@ export const featureConfig: Record<
     defaultValue: true,
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
-    minimumVersion: undefined,
-  },
-  [Feature.ExtractToToolcache]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_EXTRACT_TOOLCACHE",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

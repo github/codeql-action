@@ -1,5 +1,5 @@
-name: "Zstandard bundle"
-description: "Test downloading a Zstandard-compressed CodeQL bundle"
+name: "Bundle: Zstandard checks"
+description: "A Zstandard CodeQL bundle should be extracted on supported operating systems"
 versions:
   - linked
 operatingSystems:

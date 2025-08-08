@@ -12,6 +12,7 @@ import {
   printDebugLogs,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
+import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import { Features } from "./feature-flags";
@@ -61,9 +62,12 @@ async function runWrapper() {
         "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
       );
     } else {
+      const codeql = await getCodeQL(config.codeQLCmd);
+
       uploadFailedSarifResult = await initActionPostHelper.run(
         debugArtifacts.tryUploadAllAvailableDebugArtifacts,
         printDebugLogs,
+        codeql,
         config,
         repositoryNwo,
         features,

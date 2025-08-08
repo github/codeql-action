@@ -7,11 +7,11 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
-import { setCodeQL } from "./codeql";
+import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import * as gitUtils from "./git-utils";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
   createTestConfig,
@@ -42,7 +42,7 @@ const testApiDetails: GitHubApiDetails = {
 
 function getTestConfig(tmpDir: string): Config {
   return createTestConfig({
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     dbLocation: tmpDir,
   });
 }
@@ -69,6 +69,17 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
   return databaseUploadSpy;
 }
 
+function getCodeQL() {
+  return createStubCodeQL({
+    async databaseBundle(_: string, outputFilePath: string) {
+      fs.writeFileSync(outputFilePath, "");
+    },
+    async databaseCleanupCluster() {
+      // Do nothing, as we are not testing cleanup here.
+    },
+  });
+}
+
 test("Abort database upload if 'upload-database' input set to false", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
@@ -81,6 +92,7 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
     const loggedMessages = [];
     await uploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
       getRecordingLogger(loggedMessages),
@@ -111,6 +123,7 @@ test("Abort database upload if running against GHES", async (t) => {
     const loggedMessages = [];
     await uploadDatabases(
       testRepoName,
+      getCodeQL(),
       config,
       testApiDetails,
       getRecordingLogger(loggedMessages),
@@ -138,6 +151,7 @@ test("Abort database upload if not analyzing default branch", async (t) => {
     const loggedMessages = [];
     await uploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
       getRecordingLogger(loggedMessages),
@@ -163,15 +177,10 @@ test("Don't crash if uploading a database fails", async (t) => {
 
     await mockHttpRequests(500);
 
-    setCodeQL({
-      async databaseBundle(_: string, outputFilePath: string) {
-        fs.writeFileSync(outputFilePath, "");
-      },
-    });
-
     const loggedMessages = [] as LoggedMessage[];
     await uploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
       getRecordingLogger(loggedMessages),
@@ -199,15 +208,10 @@ test("Successfully uploading a database to github.com", async (t) => {
 
     await mockHttpRequests(201);
 
-    setCodeQL({
-      async databaseBundle(_: string, outputFilePath: string) {
-        fs.writeFileSync(outputFilePath, "");
-      },
-    });
-
     const loggedMessages = [] as LoggedMessage[];
     await uploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
       getRecordingLogger(loggedMessages),
@@ -233,15 +237,10 @@ test("Successfully uploading a database to GHEC-DR", async (t) => {
 
     const databaseUploadSpy = await mockHttpRequests(201);
 
-    setCodeQL({
-      async databaseBundle(_: string, outputFilePath: string) {
-        fs.writeFileSync(outputFilePath, "");
-      },
-    });
-
     const loggedMessages = [] as LoggedMessage[];
     await uploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       {
         auth: "1234",

@@ -11,9 +11,9 @@ import {
   defaultSuites,
   resolveQuerySuiteAlias,
 } from "./analyze";
-import { setCodeQL } from "./codeql";
+import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
   setupTests,
@@ -41,8 +41,8 @@ test("status report fields", async (t) => {
     const threadsFlag = "";
     sinon.stub(uploadLib, "validateSarifFileSchema");
 
-    for (const language of Object.values(Language)) {
-      setCodeQL({
+    for (const language of Object.values(KnownLanguage)) {
+      const codeql = createStubCodeQL({
         databaseRunQueries: async () => {},
         packDownload: async () => ({ packs: [] }),
         databaseInterpretResults: async (
@@ -106,9 +106,9 @@ test("status report fields", async (t) => {
         memoryFlag,
         addSnippetsFlag,
         threadsFlag,
-        "brutal",
         undefined,
         undefined,
+        codeql,
         config,
         getRunnerLogger(true),
         createFeatures([Feature.QaTelemetryEnabled]),
@@ -331,13 +331,13 @@ test("getDiffRanges: malformed thunk header", async (t) => {
 test("resolveQuerySuiteAlias", (t) => {
   // default query suite names should resolve to something language-specific ending in `.qls`.
   for (const suite of defaultSuites) {
-    const resolved = resolveQuerySuiteAlias(Language.go, suite);
+    const resolved = resolveQuerySuiteAlias(KnownLanguage.go, suite);
     t.assert(
       resolved.endsWith(".qls"),
       "Resolved default suite doesn't end in .qls",
     );
     t.assert(
-      resolved.indexOf(Language.go) >= 0,
+      resolved.indexOf(KnownLanguage.go) >= 0,
       "Resolved default suite doesn't contain language name",
     );
   }
@@ -346,6 +346,6 @@ test("resolveQuerySuiteAlias", (t) => {
   const names = ["foo", "bar", "codeql/go-queries@1.0"];
 
   for (const name of names) {
-    t.deepEqual(resolveQuerySuiteAlias(Language.go, name), name);
+    t.deepEqual(resolveQuerySuiteAlias(KnownLanguage.go, name), name);
   }
 });

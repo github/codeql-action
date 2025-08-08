@@ -112,7 +112,7 @@ async function run() {
         await upload_lib.uploadSpecifiedFiles(
           qualitySarifFiles,
           checkoutPath,
-          category,
+          actionsUtil.fixCodeQualityCategory(logger, category),
           features,
           logger,
           upload_lib.CodeQualityTarget,

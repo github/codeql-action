@@ -5,7 +5,7 @@ import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
 import { getApiClient } from "./api-client";
-import { getCodeQL } from "./codeql";
+import { CodeQL, getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -160,11 +160,13 @@ export async function tryUploadSarifIfRunFailed(
 
 export async function run(
   uploadAllAvailableDebugArtifacts: (
+    codeql: CodeQL,
     config: Config,
     logger: Logger,
     codeQlVersion: string,
   ) => Promise<void>,
   printDebugLogs: (config: Config) => Promise<void>,
+  codeql: CodeQL,
   config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
@@ -212,9 +214,13 @@ export async function run(
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
-    const codeql = await getCodeQL(config.codeQLCmd);
     const version = await codeql.getVersion();
-    await uploadAllAvailableDebugArtifacts(config, logger, version.version);
+    await uploadAllAvailableDebugArtifacts(
+      codeql,
+      config,
+      logger,
+      version.version,
+    );
     await printDebugLogs(config);
   }
 

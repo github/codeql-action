@@ -263,7 +263,7 @@ export function mockCodeQLVersion(
   version: string,
   features?: { [name: string]: boolean },
 ) {
-  return codeql.setCodeQL({
+  return codeql.createStubCodeQL({
     async getVersion() {
       return makeVersionInfo(version, features);
     },

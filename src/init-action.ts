@@ -36,14 +36,17 @@ import { Feature, featureConfig, Features } from "./feature-flags";
 import {
   checkInstallPython311,
   cleanupDatabaseClusterDirectory,
-  getOverlayDatabaseMode,
   initCodeQL,
   initConfig,
   runInit,
 } from "./init";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import {
+  downloadOverlayBaseDatabaseFromCache,
+  OverlayBaseDatabaseDownloadStats,
+  OverlayDatabaseMode,
+} from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -60,7 +63,6 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
-  checkSipEnablement,
   codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -106,6 +108,10 @@ interface InitWithConfigStatusReport extends InitStatusReport {
   trap_cache_download_size_bytes: number;
   /** Time taken to download TRAP caches, in milliseconds. */
   trap_cache_download_duration_ms: number;
+  /** Size of the overlay-base database that we downloaded, in bytes. */
+  overlay_base_database_download_size_bytes?: number;
+  /** Time taken to download the overlay-base database, in milliseconds. */
+  overlay_base_database_download_duration_ms?: number;
   /** Stringified JSON array of registry configuration objects, from the 'registries' config field
   or workflow input. **/
   registries: string;
@@ -133,6 +139,7 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
   logger: Logger,
   error?: Error,
 ) {
@@ -236,6 +243,10 @@ async function sendCompletedStatusReport(
         await getTotalCacheSize(Object.values(config.trapCaches), logger),
       ),
       trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+      overlay_base_database_download_size_bytes:
+        overlayBaseDatabaseStats?.databaseSizeBytes,
+      overlay_base_database_download_duration_ms:
+        overlayBaseDatabaseStats?.databaseDownloadDurationMs,
       query_filters: JSON.stringify(
         config.originalUserInput["query-filters"] ?? [],
       ),
@@ -298,6 +309,14 @@ async function run() {
 
   const configFile = getOptionalInput("config-file");
 
+  // path.resolve() respects the intended semantics of source-root. If
+  // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
+  // source-root is absolute, it is used as given.
+  const sourceRoot = path.resolve(
+    getRequiredEnvParam("GITHUB_WORKSPACE"),
+    getOptionalInput("source-root") || "",
+  );
+
   try {
     const statusReportBase = await createStatusReportBase(
       ActionName.Init,
@@ -320,7 +339,6 @@ async function run() {
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
-      features,
       logger,
     );
     codeql = initCodeQLResult.codeql;
@@ -340,39 +358,69 @@ async function run() {
     }
     core.endGroup();
 
-    config = await initConfig(
-      {
-        languagesInput: getOptionalInput("languages"),
-        queriesInput: getOptionalInput("queries"),
-        packsInput: getOptionalInput("packs"),
-        buildModeInput: getOptionalInput("build-mode"),
-        configFile,
-        dbLocation: getOptionalInput("db-location"),
-        configInput: getOptionalInput("config"),
-        trapCachingEnabled: getTrapCachingEnabled(),
-        dependencyCachingEnabled: getDependencyCachingEnabled(),
-        // Debug mode is enabled if:
-        // - The `init` Action is passed `debug: true`.
-        // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
-        //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-        debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
-        debugArtifactName:
-          getOptionalInput("debug-artifact-name") ||
-          DEFAULT_DEBUG_ARTIFACT_NAME,
-        debugDatabaseName:
-          getOptionalInput("debug-database-name") ||
-          DEFAULT_DEBUG_DATABASE_NAME,
-        repository: repositoryNwo,
-        tempDir: getTemporaryDirectory(),
-        codeql,
-        workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
-        githubVersion: gitHubVersion,
-        apiDetails,
-        features,
-        logger,
-      },
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust. We need to set this environment
+    // variable before initializing the config, otherwise Rust analysis will not be
+    // enabled.
+    if (
+      // Only enable Rust analysis if the user has explicitly requested it - don't
+      // enable it via language autodetection.
+      configUtils
+        .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
+        .includes(KnownLanguage.rust)
+    ) {
+      const feat = Feature.RustAnalysis;
+      const minVer = featureConfig[feat].minimumVersion as string;
+      const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
+      // if in default setup, it means the feature flag was on when rust was enabled
+      // if the feature flag gets turned off, let's not have rust analysis throwing a configuration error
+      // in that case rust analysis will be disabled only when default setup is refreshed
+      if (isDefaultSetup() || (await features.getValue(feat, codeql))) {
+        core.exportVariable(envVar, "true");
+      }
+      if (process.env[envVar] !== "true") {
+        throw new ConfigurationError(
+          `Experimental and not officially supported Rust analysis requires setting ${envVar}=true in the environment`,
+        );
+      }
+      const actualVer = (await codeql.getVersion()).version;
+      if (semver.lt(actualVer, minVer)) {
+        throw new ConfigurationError(
+          `Experimental rust analysis is supported by CodeQL CLI version ${minVer} or higher, but found version ${actualVer}`,
+        );
+      }
+      logger.info("Experimental rust analysis enabled");
+    }
+
+    config = await initConfig({
+      languagesInput: getOptionalInput("languages"),
+      queriesInput: getOptionalInput("queries"),
+      qualityQueriesInput: getOptionalInput("quality-queries"),
+      packsInput: getOptionalInput("packs"),
+      buildModeInput: getOptionalInput("build-mode"),
+      configFile,
+      dbLocation: getOptionalInput("db-location"),
+      configInput: getOptionalInput("config"),
+      trapCachingEnabled: getTrapCachingEnabled(),
+      dependencyCachingEnabled: getDependencyCachingEnabled(),
+      // Debug mode is enabled if:
+      // - The `init` Action is passed `debug: true`.
+      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+      debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+      debugArtifactName:
+        getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName:
+        getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
+      repository: repositoryNwo,
+      tempDir: getTemporaryDirectory(),
       codeql,
-    );
+      workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+      sourceRoot,
+      githubVersion: gitHubVersion,
+      apiDetails,
+      features,
+      logger,
+    });
 
     await checkInstallPython311(config.languages, codeql);
   } catch (unwrappedError) {
@@ -394,21 +442,43 @@ async function run() {
     return;
   }
 
+  let overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined;
   try {
-    const sourceRoot = path.resolve(
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
-      getOptionalInput("source-root") || "",
-    );
+    if (
+      config.augmentationProperties.overlayDatabaseMode ===
+        OverlayDatabaseMode.Overlay &&
+      config.augmentationProperties.useOverlayDatabaseCaching
+    ) {
+      // OverlayDatabaseMode.Overlay comes in two flavors: with database
+      // caching, or without. The flavor with database caching is intended to be
+      // an "automatic control" mode, which is supposed to be fail-safe. If we
+      // cannot download an overlay-base database, we revert to
+      // OverlayDatabaseMode.None so that the workflow can continue to run.
+      //
+      // The flavor without database caching is intended to be a "manual
+      // control" mode, where the workflow is supposed to make all the
+      // necessary preparations. So, in that mode, we would assume that
+      // everything is in order and let the analysis fail if that turns out not
+      // to be the case.
+      overlayBaseDatabaseStats = await downloadOverlayBaseDatabaseFromCache(
+        codeql,
+        config,
+        logger,
+      );
+      if (!overlayBaseDatabaseStats) {
+        config.augmentationProperties.overlayDatabaseMode =
+          OverlayDatabaseMode.None;
+        logger.info(
+          "No overlay-base database found in cache, " +
+            `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
+        );
+      }
+    }
 
-    const overlayDatabaseMode = await getOverlayDatabaseMode(
-      (await codeql.getVersion()).version,
-      config,
-      sourceRoot,
-      logger,
-    );
-    logger.info(`Using overlay database mode: ${overlayDatabaseMode}`);
-
-    if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
+    if (
+      config.augmentationProperties.overlayDatabaseMode !==
+      OverlayDatabaseMode.Overlay
+    ) {
       cleanupDatabaseClusterDirectory(config, logger);
     }
 
@@ -448,7 +518,7 @@ async function run() {
     }
 
     if (
-      config.languages.includes(Language.swift) &&
+      config.languages.includes(KnownLanguage.swift) &&
       process.platform === "linux"
     ) {
       logger.warning(
@@ -457,7 +527,7 @@ async function run() {
     }
 
     if (
-      config.languages.includes(Language.go) &&
+      config.languages.includes(KnownLanguage.go) &&
       process.platform === "linux"
     ) {
       try {
@@ -515,7 +585,7 @@ async function run() {
         if (e instanceof FileCmdNotFoundError) {
           addDiagnostic(
             config,
-            Language.go,
+            KnownLanguage.go,
             makeDiagnostic(
               "go/workflow/file-program-unavailable",
               "The `file` program is required on Linux, but does not appear to be installed",
@@ -547,7 +617,8 @@ async function run() {
     );
     core.exportVariable(
       "CODEQL_THREADS",
-      getThreadsFlagValue(getOptionalInput("threads"), logger).toString(),
+      process.env["CODEQL_THREADS"] ||
+        getThreadsFlagValue(getOptionalInput("threads"), logger).toString(),
     );
 
     // Disable Kotlin extractor if feature flag set
@@ -564,7 +635,7 @@ async function run() {
       core.exportVariable(kotlinLimitVar, "2.1.20");
     }
 
-    if (config.languages.includes(Language.cpp)) {
+    if (config.languages.includes(KnownLanguage.cpp)) {
       const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
       if (process.env[envVar]) {
         logger.info(
@@ -583,7 +654,7 @@ async function run() {
     }
 
     // Set CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE
-    if (config.languages.includes(Language.cpp)) {
+    if (config.languages.includes(KnownLanguage.cpp)) {
       const bmnVar = "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE";
       const value =
         process.env[bmnVar] ||
@@ -592,8 +663,11 @@ async function run() {
       core.exportVariable(bmnVar, value);
     }
 
-    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for rust
-    if (config.languages.includes(Language.rust)) {
+    // For rust: set CODEQL_ENABLE_EXPERIMENTAL_FEATURES, unless codeql already supports rust without it
+    if (
+      config.languages.includes(KnownLanguage.rust) &&
+      !(await codeql.resolveLanguages()).rust
+    ) {
       const feat = Feature.RustAnalysis;
       const minVer = featureConfig[feat].minimumVersion as string;
       const envVar = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES";
@@ -622,32 +696,11 @@ async function run() {
       await downloadDependencyCaches(config.languages, logger);
     }
 
-    // For CLI versions <2.15.1, build tracing caused errors in macOS ARM machines with
-    // System Integrity Protection (SIP) disabled.
-    if (
-      !(await codeQlVersionAtLeast(codeql, "2.15.1")) &&
-      process.platform === "darwin" &&
-      (process.arch === "arm" || process.arch === "arm64") &&
-      !(await checkSipEnablement(logger))
-    ) {
-      logger.warning(
-        "CodeQL versions 2.15.0 and lower are not supported on macOS ARM machines with System Integrity Protection (SIP) disabled.",
-      );
-    }
-
-    // From 2.16.0 the default for the python extractor is to not perform any
-    // dependency extraction. For versions before that, you needed to set this flag to
-    // enable this behavior.
-
+    // Suppress warnings about disabled Python library extraction.
     if (await codeQlVersionAtLeast(codeql, "2.17.1")) {
       // disabled by default, no warning
-    } else if (await codeQlVersionAtLeast(codeql, "2.16.0")) {
-      // disabled by default, prints warning if environment variable is not set
-      core.exportVariable(
-        "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
-        "true",
-      );
     } else {
+      // disabled by default, prints warning if environment variable is not set
       core.exportVariable(
         "CODEQL_EXTRACTOR_PYTHON_DISABLE_LIBRARY_EXTRACTION",
         "true",
@@ -697,7 +750,6 @@ async function run() {
       "Runner.Worker.exe",
       getOptionalInput("registries"),
       apiDetails,
-      overlayDatabaseMode,
       logger,
     );
     if (tracerConfig !== undefined) {
@@ -723,6 +775,7 @@ async function run() {
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
+      overlayBaseDatabaseStats,
       logger,
       error,
     );
@@ -738,6 +791,7 @@ async function run() {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    overlayBaseDatabaseStats,
     logger,
   );
 }

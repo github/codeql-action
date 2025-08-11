@@ -9,7 +9,6 @@ import {
   CodeQLAnalysisError,
   dbIsFinalized,
   QueriesStatusReport,
-  runCleanup,
   runFinalize,
   runQueries,
   setupDiffInformedQueryRun,
@@ -25,8 +24,9 @@ import { uploadDependencyCaches } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Features } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import { uploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
@@ -118,8 +118,11 @@ function hasBadExpectErrorInput(): boolean {
  * indicating whether Go extraction has extracted at least one file.
  */
 function doesGoExtractionOutputExist(config: Config): boolean {
-  const golangDbDirectory = util.getCodeQLDatabasePath(config, Language.go);
-  const trapDirectory = path.join(golangDbDirectory, "trap", Language.go);
+  const golangDbDirectory = util.getCodeQLDatabasePath(
+    config,
+    KnownLanguage.go,
+  );
+  const trapDirectory = path.join(golangDbDirectory, "trap", KnownLanguage.go);
   return (
     fs.existsSync(trapDirectory) &&
     fs
@@ -151,7 +154,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * whether any extraction output already exists for Go.
  */
 async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
-  if (!config.languages.includes(Language.go)) {
+  if (!config.languages.includes(KnownLanguage.go)) {
     return;
   }
   if (config.buildMode) {
@@ -164,7 +167,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     logger.debug("Won't run Go autobuild since it has already been run.");
     return;
   }
-  if (dbIsFinalized(config, Language.go, logger)) {
+  if (dbIsFinalized(config, KnownLanguage.go, logger)) {
     logger.debug(
       "Won't run Go autobuild since there is already a finalized database for Go.",
     );
@@ -187,7 +190,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   logger.debug(
     "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
   );
-  await runAutobuild(config, Language.go, logger);
+  await runAutobuild(config, KnownLanguage.go, logger);
 }
 
 async function run() {
@@ -235,15 +238,23 @@ async function run() {
       );
     }
 
-    // Unset the CODEQL_PROXY_* environment variables, as they are not needed
-    // and can cause issues with older CodeQL CLIs.
-    // Check for CODEQL_PROXY_HOST: and if it is empty but set, unset it.
-    if (process.env.CODEQL_PROXY_HOST === "" && !(await util.codeQlVersionAtLeast(codeql, "2.20.7"))) {
-        delete process.env.CODEQL_PROXY_HOST;
-        delete process.env.CODEQL_PROXY_PORT;
-        delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
+    // Unset the CODEQL_PROXY_* environment variables when using older CodeQL
+    // CLIs, as they are not needed and can cause issues.
+    if (
+      process.env.CODEQL_PROXY_HOST === "" &&
+      !(await util.codeQlVersionAtLeast(codeql, "2.20.7"))
+    ) {
+      delete process.env.CODEQL_PROXY_HOST;
+      delete process.env.CODEQL_PROXY_PORT;
+      delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
     }
 
+    if (actionsUtil.getOptionalInput("cleanup-level") !== "") {
+      logger.info(
+        "The 'cleanup-level' input is ignored since the CodeQL Action now automatically " +
+          "manages database cleanup. This input can safely be removed from your workflow.",
+      );
+    }
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
@@ -292,26 +303,19 @@ async function run() {
       logger,
     );
 
-    const cleanupLevel =
-      actionsUtil.getOptionalInput("cleanup-level") || "brutal";
-
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
       runStats = await runQueries(
         outputDir,
         memory,
         util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
-        cleanupLevel,
         diffRangePackDir,
         actionsUtil.getOptionalInput("category"),
+        codeql,
         config,
         logger,
         features,
       );
-    }
-
-    if (cleanupLevel !== "none") {
-      await runCleanup(config, cleanupLevel, logger);
     }
 
     const dbLocations: { [lang: string]: string } = {};
@@ -328,14 +332,35 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         features,
         logger,
+        uploadLib.CodeScanningTarget,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
+
+      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+        const qualityUploadResult = await uploadLib.uploadFiles(
+          outputDir,
+          actionsUtil.getRequiredInput("checkout_path"),
+          actionsUtil.fixCodeQualityCategory(
+            logger,
+            actionsUtil.getOptionalInput("category"),
+          ),
+          features,
+          logger,
+          uploadLib.CodeQualityTarget,
+        );
+        core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
+      }
     } else {
       logger.info("Not uploading results");
     }
 
-    // Possibly upload the database bundles for remote queries
-    await uploadDatabases(repositoryNwo, config, apiDetails, logger);
+    // Possibly upload the overlay-base database to actions cache.
+    // If databases are to be uploaded, they will first be cleaned up at the overlay level.
+    await uploadOverlayBaseDatabaseToCache(codeql, config, logger);
+
+    // Possibly upload the database bundles for remote queries.
+    // If databases are to be uploaded, they will first be cleaned up at the clear level.
+    await uploadDatabases(repositoryNwo, codeql, config, apiDetails, logger);
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();

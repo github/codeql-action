@@ -1,0 +1,63 @@
+name: "Quality queries input"
+description: "Tests that queries specified in the quality-queries input are used."
+versions: ["linked", "nightly-latest"]
+env:
+  CHECK_SCRIPT: |
+    const fs = require('fs');
+
+    const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+    const expectPresent = JSON.parse(process.env['EXPECT_PRESENT']);
+    const run = sarif.runs[0];
+    const extensions = run.tool.extensions;
+
+    if (extensions === undefined) {
+      core.setFailed('`extensions` property not found in the SARIF run property bag.');
+    }
+
+    // ID of a query we want to check the presence for
+    const targetId = 'js/regex/always-matches';
+    const found = extensions.find(extension => extension.rules && extension.rules.find(rule => rule.id === targetId));
+
+    if (found && expectPresent) {
+      console.log(`Found rule with id '${targetId}'.`);
+    } else if (!found && !expectPresent) {
+      console.log(`Rule with id '${targetId}' was not found.`);
+    } else {
+      core.setFailed(`${ found ? "Found" : "Didn't find" } rule ${targetId}`);
+    }
+steps:
+  - uses: ./../action/init
+    with:
+      languages: javascript
+      quality-queries: code-quality
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+      upload-database: false
+  - name: Upload security SARIF
+    uses: actions/upload-artifact@v4
+    with:
+      name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      path: "${{ runner.temp }}/results/javascript.sarif"
+      retention-days: 7
+  - name: Upload quality SARIF
+    uses: actions/upload-artifact@v4
+    with:
+      name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.quality.sarif.json
+      path: "${{ runner.temp }}/results/javascript.quality.sarif"
+      retention-days: 7
+  - name: Check quality query does not appear in security SARIF
+    uses: actions/github-script@v7
+    env:
+      SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
+      EXPECT_PRESENT: "false"
+    with:
+      script: ${{ env.CHECK_SCRIPT }}
+  - name: Check quality query appears in quality SARIF
+    uses: actions/github-script@v7
+    env:
+      SARIF_PATH: "${{ runner.temp }}/results/javascript.quality.sarif"
+      EXPECT_PRESENT: "true"
+    with:
+      script: ${{ env.CHECK_SCRIPT }}

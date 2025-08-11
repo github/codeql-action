@@ -19,9 +19,10 @@ inputs:
     # If changing this, make sure to update workflow.ts accordingly.
     default: "always"
   cleanup-level:
-    description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --cache-cleanup flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
+    description: >-
+      DEPRECATED. This option is ignored since, for performance reasons, the CodeQL Action automatically
+      manages cleanup of intermediate results.
     required: false
-    default: "brutal"
   ram:
     description: >-
       The amount of memory in MB that can be used by CodeQL for database finalization and query execution.

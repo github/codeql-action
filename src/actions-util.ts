@@ -3,10 +3,12 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as github from "@actions/github";
 import * as io from "@actions/io";
 import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import type { Config } from "./config-utils";
+import { Logger } from "./logging";
 import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
@@ -263,7 +265,7 @@ export class CommandInvocationError extends Error {
     public args: string[],
     public exitCode: number | undefined,
     public stderr: string,
-    public stdout: string,
+    public stdout: string = "",
   ) {
     const prettyCommand = prettyPrintInvocation(cmd, args);
     const lastLine = ensureEndsInPeriod(
@@ -363,3 +365,92 @@ export const restoreInputs = function () {
     }
   }
 };
+
+export interface PullRequestBranches {
+  base: string;
+  head: string;
+}
+
+/**
+ * Returns the base and head branches of the pull request being analyzed.
+ *
+ * @returns the base and head branches of the pull request, or undefined if
+ * we are not analyzing a pull request.
+ */
+export function getPullRequestBranches(): PullRequestBranches | undefined {
+  const pullRequest = github.context.payload.pull_request;
+  if (pullRequest) {
+    return {
+      base: pullRequest.base.ref,
+      // We use the head label instead of the head ref here, because the head
+      // ref lacks owner information and by itself does not uniquely identify
+      // the head branch (which may be in a forked repository).
+      head: pullRequest.head.label,
+    };
+  }
+
+  // PR analysis under Default Setup does not have the pull_request context,
+  // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
+  const codeScanningRef = process.env.CODE_SCANNING_REF;
+  const codeScanningBaseBranch = process.env.CODE_SCANNING_BASE_BRANCH;
+  if (codeScanningRef && codeScanningBaseBranch) {
+    return {
+      base: codeScanningBaseBranch,
+      // PR analysis under Default Setup analyzes the PR head commit instead of
+      // the merge commit, so we can use the provided ref directly.
+      head: codeScanningRef,
+    };
+  }
+  return undefined;
+}
+
+/**
+ * Returns whether we are analyzing a pull request.
+ */
+export function isAnalyzingPullRequest(): boolean {
+  return getPullRequestBranches() !== undefined;
+}
+
+/**
+ * A workaround for code quality to map category names from old default setup workflows
+ * to ones that the code quality service expects.
+ */
+const qualityCategoryMapping: Record<string, string> = {
+  "c#": "csharp",
+  cpp: "c-cpp",
+  c: "c-cpp",
+  "c++": "c-cpp",
+  java: "java-kotlin",
+  javascript: "javascript-typescript",
+  typescript: "javascript-typescript",
+  kotlin: "java-kotlin",
+};
+
+/** Adjusts the category string for a Code Quality SARIF file if an "old"
+ * category identifier is used by Default Setup.
+ */
+export function fixCodeQualityCategory(
+  logger: Logger,
+  category?: string,
+): string | undefined {
+  // The `category` should always be set by Default Setup. We perform this check
+  // to avoid potential issues if Code Quality supports Advanced Setup in the future
+  // and before this workaround is removed.
+  if (
+    category !== undefined &&
+    isDefaultSetup() &&
+    category.startsWith("/language:")
+  ) {
+    const language = category.substring("/language:".length);
+    const mappedLanguage = qualityCategoryMapping[language];
+    if (mappedLanguage) {
+      const newCategory = `/language:${mappedLanguage}`;
+      logger.info(
+        `Adjusted category for Code Quality from '${category}' to '${newCategory}'.`,
+      );
+      return newCategory;
+    }
+  }
+
+  return category;
+}

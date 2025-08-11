@@ -39,6 +39,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     };
     sinon.stub(configUtils, "getConfig").resolves({
       gitHubVersion,
+      augmentationProperties: {},
       languages: [],
       packs: [],
       trapCaches: {},
@@ -46,8 +47,8 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("token").returns("fake-token");
     requiredInputStub.withArgs("upload-database").returns("false");
+    requiredInputStub.withArgs("output").returns("out");
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
-    optionalInputStub.withArgs("cleanup-level").returns("none");
     optionalInputStub.withArgs("expect-error").returns("false");
     sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);
     setupActionsVars(tmpDir, tmpDir);
@@ -70,8 +71,10 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     // wait for the action promise to complete before starting verification.
     await analyzeAction.runPromise;
 
+    t.assert(runFinalizeStub.calledOnce);
     t.deepEqual(runFinalizeStub.firstCall.args[1], "--threads=-1");
     t.deepEqual(runFinalizeStub.firstCall.args[2], "--ram=4992");
+    t.assert(runQueriesStub.calledOnce);
     t.deepEqual(runQueriesStub.firstCall.args[3], "--threads=-1");
     t.deepEqual(runQueriesStub.firstCall.args[1], "--ram=4992");
   });

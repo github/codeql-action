@@ -55,7 +55,7 @@ For compiled languages:
 
 - `manual` build mode will typically produce the most precise results, but it is more difficult to set up and will cause the analysis to take slightly more time to run.
 - `autobuild` build mode is simpler to set up, but will only work for projects with generic build steps that can be guessed by the heuristics of the autobuild scripts. If `autobuild` fails, then you must switch to `manual` or `none`. If `autobuild` succeeds, then the results and run time will be the same as `manual` mode.
-- `none` build mode is also simpler to set up and is slightly faster to run, but there is a possibility that some alerts will be missed. This may happen if your repository does any code generation during compilation or if there are any dependencies downloaded from registries that the workflow does not have access to. `none` is not yet supported by C/C++, Swift, Go, or Kotlin.
+- `none` build mode is also simpler to set up and is slightly faster to run, but there is a possibility that some alerts will be missed. This may happen if your repository does any code generation during compilation or if there are any dependencies downloaded from registries that the workflow does not have access to. `none` is not yet supported by Swift, Go, or Kotlin. It is in public preview for C/C++.
 
 
 ## Supported versions of the CodeQL Action
@@ -70,10 +70,11 @@ We typically release new minor versions of the CodeQL Action and Bundle when a n
 
 | Minimum CodeQL Action | Minimum CodeQL Bundle Version | GitHub Environment | Notes |
 |-----------------------|-------------------------------|--------------------|-------|
-| `v3.26.6`  | `2.18.4` | Enterprise Server 3.15 | |
-| `v3.25.11` | `2.17.6` | Enterprise Server 3.14 | |
-| `v3.24.11` | `2.16.6` | Enterprise Server 3.13 | |
-| `v3.22.12` | `2.15.5` | Enterprise Server 3.12 | |
+| `v3.28.21`  | `2.21.3` | Enterprise Server 3.18 | |
+| `v3.28.12`  | `2.20.7` | Enterprise Server 3.17 | |
+| `v3.28.6`  | `2.20.3` | Enterprise Server 3.16 | |
+| `v3.28.6`  | `2.20.3` | Enterprise Server 3.15 | |
+| `v3.28.6` | `2.20.3` | Enterprise Server 3.14 | |
 
 See the full list of GHES release and deprecation dates at [GitHub Enterprise Server releases](https://docs.github.com/en/enterprise-server/admin/all-releases#releases-of-github-enterprise-server).
 

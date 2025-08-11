@@ -4,8 +4,8 @@
 
 ## Install
 
-```
-$ npm install ansi-regex
+```sh
+npm install ansi-regex
 ```
 
 ## Usage
@@ -58,15 +58,3 @@ On the historical side, those ECMA standards were established in the early 90's 
 
 - [Sindre Sorhus](https://github.com/sindresorhus)
 - [Josh Junon](https://github.com/qix-)
-
----
-
-<div align="center">
-	<b>
-		<a href="https://tidelift.com/subscription/pkg/npm-ansi-regex?utm_source=npm-ansi-regex&utm_medium=referral&utm_campaign=readme">Get professional support for this package with a Tidelift subscription</a>
-	</b>
-	<br>
-	<sub>
-		Tidelift helps make open source sustainable for maintainers while giving companies<br>assurances about security, maintenance, and licensing for their dependencies.
-	</sub>
-</div>

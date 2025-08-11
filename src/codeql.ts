@@ -13,7 +13,7 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
-import { type Config } from "./config-utils";
+import { generateCodeScanningConfig, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import {
@@ -35,7 +35,7 @@ import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, cloneObject, getErrorMessage } from "./util";
+import { BuildMode, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -80,6 +80,14 @@ export interface CodeQL {
    */
   supportsFeature(feature: ToolsFeature): Promise<boolean>;
   /**
+   * Returns whether the provided language is traced.
+   */
+  isTracedLanguage(language: Language): Promise<boolean>;
+  /**
+   * Returns whether the provided language is scanned.
+   */
+  isScannedLanguage(language: Language): Promise<boolean>;
+  /**
    * Run 'codeql database init --db-cluster'.
    */
   databaseInitCluster(
@@ -87,7 +95,6 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
-    overlayDatabaseMode: OverlayDatabaseMode,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -145,9 +152,9 @@ export interface CodeQL {
   ): Promise<PackDownloadOutput>;
 
   /**
-   * Run 'codeql database cleanup'.
+   * Clean up all the databases within a database cluster.
    */
-  databaseCleanup(databasePath: string, cleanupLevel: string): Promise<void>;
+  databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
   /**
    * Run 'codeql database bundle'.
    */
@@ -157,9 +164,15 @@ export interface CodeQL {
     dbName: string,
   ): Promise<void>;
   /**
-   * Run 'codeql database run-queries'.
+   * Run 'codeql database run-queries'. If no `queries` are specified, then the CLI
+   * will automatically use the `config-queries.qls` (if it exists) or default queries
+   * for the language.
    */
-  databaseRunQueries(databasePath: string, flags: string[]): Promise<void>;
+  databaseRunQueries(
+    databasePath: string,
+    flags: string[],
+    queries?: string[],
+  ): Promise<void>;
   /**
    * Run 'codeql database interpret-results'.
    */
@@ -268,7 +281,6 @@ interface PackDownloadItem {
 
 /**
  * Stores the CodeQL object, and is populated by `setupCodeQL` or `getCodeQL`.
- * Can be overridden in tests using `setCodeQL`.
  */
 let cachedCodeQL: CodeQL | undefined = undefined;
 
@@ -280,22 +292,22 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.15.5";
+const CODEQL_MINIMUM_VERSION = "2.16.6";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.15.5";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.17.6";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.11";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.13";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2024-12-19";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2025-06-19";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
@@ -333,7 +345,6 @@ export async function setupCodeQL(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   logger: Logger,
-  features: FeatureEnablement,
   checkVersion: boolean,
 ): Promise<{
   codeql: CodeQL;
@@ -354,7 +365,6 @@ export async function setupCodeQL(
       apiDetails,
       tempDir,
       variant,
-      features,
       defaultCliVersion,
       logger,
     );
@@ -407,6 +417,17 @@ export async function getCodeQL(cmd: string): Promise<CodeQL> {
   return cachedCodeQL;
 }
 
+/**
+ * Overrides the CodeQL object. Only for use in tests that cannot override
+ * CodeQL via dependency injection.
+ *
+ * Accepts a partial object. Any undefined methods will be implemented
+ * to immediately throw an exception indicating which method is missing.
+ */
+export function setCodeQL(codeql: Partial<CodeQL>): void {
+  cachedCodeQL = createStubCodeQL(codeql);
+}
+
 function resolveFunction<T>(
   partialCodeql: Partial<CodeQL>,
   methodName: string,
@@ -425,13 +446,13 @@ function resolveFunction<T>(
 }
 
 /**
- * Set the functionality for CodeQL methods. Only for use in tests.
+ * Creates a stub CodeQL object. Only for use in tests.
  *
- * Accepts a partial object and any undefined methods will be implemented
+ * Accepts a partial object. Any undefined methods will be implemented
  * to immediately throw an exception indicating which method is missing.
  */
-export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
-  cachedCodeQL = {
+export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
+  return {
     getPath: resolveFunction(partialCodeql, "getPath", () => "/tmp/dummy-path"),
     getVersion: resolveFunction(partialCodeql, "getVersion", async () => ({
       version: "1.0.0",
@@ -444,6 +465,8 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
         !!partialCodeql.getVersion &&
         isSupportedToolsFeature(await partialCodeql.getVersion(), feature),
     ),
+    isTracedLanguage: resolveFunction(partialCodeql, "isTracedLanguage"),
+    isScannedLanguage: resolveFunction(partialCodeql, "isScannedLanguage"),
     databaseInitCluster: resolveFunction(partialCodeql, "databaseInitCluster"),
     runAutobuild: resolveFunction(partialCodeql, "runAutobuild"),
     extractScannedLanguage: resolveFunction(
@@ -467,7 +490,10 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "resolveBuildEnvironment",
     ),
     packDownload: resolveFunction(partialCodeql, "packDownload"),
-    databaseCleanup: resolveFunction(partialCodeql, "databaseCleanup"),
+    databaseCleanupCluster: resolveFunction(
+      partialCodeql,
+      "databaseCleanupCluster",
+    ),
     databaseBundle: resolveFunction(partialCodeql, "databaseBundle"),
     databaseRunQueries: resolveFunction(partialCodeql, "databaseRunQueries"),
     databaseInterpretResults: resolveFunction(
@@ -486,21 +512,6 @@ export function setCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     resolveExtractor: resolveFunction(partialCodeql, "resolveExtractor"),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
-  return cachedCodeQL;
-}
-
-/**
- * Get the cached CodeQL object. Should only be used from tests.
- *
- * TODO: Work out a good way for tests to get this from the test context
- * instead of having to have this method.
- */
-export function getCachedCodeQL(): CodeQL {
-  if (cachedCodeQL === undefined) {
-    // Should never happen as setCodeQL is called by testing-utils.setupTests
-    throw new Error("cachedCodeQL undefined");
-  }
-  return cachedCodeQL;
 }
 
 /**
@@ -553,12 +564,23 @@ export async function getCodeQLForCmd(
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);
     },
+    async isTracedLanguage(language: Language) {
+      const extractorPath = await this.resolveExtractor(language);
+      const tracingConfigPath = path.join(
+        extractorPath,
+        "tools",
+        "tracing-config.lua",
+      );
+      return fs.existsSync(tracingConfigPath);
+    },
+    async isScannedLanguage(language: Language) {
+      return !(await this.isTracedLanguage(language));
+    },
     async databaseInitCluster(
       config: Config,
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
-      overlayDatabaseMode: OverlayDatabaseMode,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -570,21 +592,7 @@ export async function getCodeQLForCmd(
         extraArgs.push(`--trace-process-name=${processName}`);
       }
 
-      if (config.languages.indexOf(Language.actions) >= 0) {
-        // We originally added an embedded version of the Actions extractor to the CodeQL Action
-        // itself in order to deploy the extractor between CodeQL releases. When we did add the
-        // extractor to the CLI, though, its autobuild script was missing the execute bit.
-        // 2.20.6 is the first CLI release with the fully-functional extractor in the CLI. For older
-        // versions, we'll keep using the embedded extractor. We can remove the embedded extractor
-        // once 2.20.6 is deployed in the runner images.
-        if (!(await util.codeQlVersionAtLeast(codeql, "2.20.6"))) {
-          extraArgs.push("--search-path");
-          const extractorPath = path.resolve(__dirname, "../actions-extractor");
-          extraArgs.push(extractorPath);
-        }
-      }
-
-      const codeScanningConfigFile = await generateCodeScanningConfig(
+      const codeScanningConfigFile = await writeCodeScanningConfigFile(
         config,
         logger,
       );
@@ -596,10 +604,7 @@ export async function getCodeQLForCmd(
         extraArgs.push("--external-repository-token-stdin");
       }
 
-      if (
-        config.buildMode !== undefined &&
-        (await this.supportsFeature(ToolsFeature.BuildModeOption))
-      ) {
+      if (config.buildMode !== undefined) {
         extraArgs.push(`--build-mode=${config.buildMode}`);
       }
       if (qlconfigFile !== undefined) {
@@ -613,6 +618,8 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
+      const overlayDatabaseMode =
+        config.augmentationProperties.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
           config,
@@ -823,6 +830,7 @@ export async function getCodeQLForCmd(
     async databaseRunQueries(
       databasePath: string,
       flags: string[],
+      queries: string[] = [],
     ): Promise<void> {
       const codeqlArgs = [
         "database",
@@ -832,6 +840,7 @@ export async function getCodeQLForCmd(
         "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
+        ...queries,
         ...getExtraOptionsFromEnv(["database", "run-queries"], {
           ignoringOptions: ["--expect-discarded-cache"],
         }),
@@ -965,8 +974,8 @@ export async function getCodeQLForCmd(
         );
       }
     },
-    async databaseCleanup(
-      databasePath: string,
+    async databaseCleanupCluster(
+      config: Config,
       cleanupLevel: string,
     ): Promise<void> {
       const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
@@ -975,14 +984,17 @@ export async function getCodeQLForCmd(
       ))
         ? "--cache-cleanup"
         : "--mode";
-      const codeqlArgs = [
-        "database",
-        "cleanup",
-        databasePath,
-        `${cacheCleanupFlag}=${cleanupLevel}`,
-        ...getExtraOptionsFromEnv(["database", "cleanup"]),
-      ];
-      await runCli(cmd, codeqlArgs);
+      for (const language of config.languages) {
+        const databasePath = util.getCodeQLDatabasePath(config, language);
+        const codeqlArgs = [
+          "database",
+          "cleanup",
+          databasePath,
+          `${cacheCleanupFlag}=${cleanupLevel}`,
+          ...getExtraOptionsFromEnv(["database", "cleanup"]),
+        ];
+        await runCli(cmd, codeqlArgs);
+      }
     },
     async databaseBundle(
       databasePath: string,
@@ -1226,62 +1238,15 @@ async function runCli(
  * @param config The configuration to use.
  * @returns the path to the generated user configuration file.
  */
-async function generateCodeScanningConfig(
+async function writeCodeScanningConfigFile(
   config: Config,
   logger: Logger,
 ): Promise<string> {
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
-
-  // make a copy so we can modify it
-  const augmentedConfig = cloneObject(config.originalUserInput);
-
-  // Inject the queries from the input
-  if (config.augmentationProperties.queriesInput) {
-    if (config.augmentationProperties.queriesInputCombines) {
-      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        config.augmentationProperties.queriesInput,
-      );
-    } else {
-      augmentedConfig.queries = config.augmentationProperties.queriesInput;
-    }
-  }
-  if (augmentedConfig.queries?.length === 0) {
-    delete augmentedConfig.queries;
-  }
-
-  // Inject the packs from the input
-  if (config.augmentationProperties.packsInput) {
-    if (config.augmentationProperties.packsInputCombines) {
-      // At this point, we already know that this is a single-language analysis
-      if (Array.isArray(augmentedConfig.packs)) {
-        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
-          config.augmentationProperties.packsInput,
-        );
-      } else if (!augmentedConfig.packs) {
-        augmentedConfig.packs = config.augmentationProperties.packsInput;
-      } else {
-        // At this point, we know there is only one language.
-        // If there were more than one language, an error would already have been thrown.
-        const language = Object.keys(augmentedConfig.packs)[0];
-        augmentedConfig.packs[language] = augmentedConfig.packs[
-          language
-        ].concat(config.augmentationProperties.packsInput);
-      }
-    } else {
-      augmentedConfig.packs = config.augmentationProperties.packsInput;
-    }
-  }
-  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
-    delete augmentedConfig.packs;
-  }
-
-  augmentedConfig["query-filters"] = [
-    ...(config.augmentationProperties.defaultQueryFilters || []),
-    ...(augmentedConfig["query-filters"] || []),
-  ];
-  if (augmentedConfig["query-filters"]?.length === 0) {
-    delete augmentedConfig["query-filters"];
-  }
+  const augmentedConfig = generateCodeScanningConfig(
+    config.originalUserInput,
+    config.augmentationProperties,
+  );
 
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,

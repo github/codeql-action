@@ -514,6 +514,18 @@ export function getCodeQLDatabasePath(config: Config, language: Language) {
 }
 
 /**
+ * Get the path where the generated query suite for the given language lives.
+ */
+export function getGeneratedSuitePath(config: Config, language: Language) {
+  return path.resolve(
+    config.dbLocation,
+    language,
+    "temp",
+    "config-queries.qls",
+  );
+}
+
+/**
  * Parses user input of a github.com or GHES URL to a canonical form.
  * Removes any API prefix or suffix if one is present.
  */

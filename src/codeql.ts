@@ -129,27 +129,12 @@ export interface CodeQL {
    */
   betterResolveLanguages(): Promise<BetterResolveLanguagesOutput>;
   /**
-   * Run 'codeql resolve queries'.
-   */
-  resolveQueries(
-    queries: string[],
-    extraSearchPath: string | undefined,
-  ): Promise<ResolveQueriesOutput>;
-  /**
    * Run 'codeql resolve build-environment'
    */
   resolveBuildEnvironment(
     workingDir: string | undefined,
     language: string,
   ): Promise<ResolveBuildEnvironmentOutput>;
-
-  /**
-   * Run 'codeql pack download'.
-   */
-  packDownload(
-    packs: string[],
-    qlconfigFile: string | undefined,
-  ): Promise<PackDownloadOutput>;
 
   /**
    * Clean up all the databases within a database cluster.
@@ -214,6 +199,10 @@ export interface CodeQL {
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
   /**
+   * Run 'codeql resolve queries --format=startingpacks'.
+   */
+  resolveQueriesStartingPacks(queries: string[]): Promise<string[]>;
+  /**
    * Run 'codeql github merge-results'.
    */
   mergeResults(
@@ -226,6 +215,15 @@ export interface CodeQL {
 export interface VersionInfo {
   version: string;
   features?: { [name: string]: boolean };
+  /**
+   * The overlay version helps deal with backward incompatible changes for
+   * overlay analysis. When a precompiled query pack reports the same overlay
+   * version as the CodeQL CLI, we can use the CodeQL CLI to perform overlay
+   * analysis with that pack. Otherwise, if the overlay versions are different,
+   * or if either the pack or the CLI does not report an overlay version,
+   * we need to revert to non-overlay analysis.
+   */
+  overlayVersion?: number;
 }
 
 export interface ResolveLanguagesOutput {
@@ -246,37 +244,12 @@ export interface BetterResolveLanguagesOutput {
   };
 }
 
-export interface ResolveQueriesOutput {
-  byLanguage: {
-    [language: string]: {
-      [queryPath: string]: object;
-    };
-  };
-  noDeclaredLanguage: {
-    [queryPath: string]: object;
-  };
-  multipleDeclaredLanguages: {
-    [queryPath: string]: object;
-  };
-}
-
 export interface ResolveBuildEnvironmentOutput {
   configuration?: {
     [language: string]: {
       [key: string]: unknown;
     };
   };
-}
-
-export interface PackDownloadOutput {
-  packs: PackDownloadItem[];
-}
-
-interface PackDownloadItem {
-  name: string;
-  version: string;
-  packDir: string;
-  installResult: string;
 }
 
 /**
@@ -484,12 +457,10 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "betterResolveLanguages",
       async () => ({ aliases: {}, extractors: {} }),
     ),
-    resolveQueries: resolveFunction(partialCodeql, "resolveQueries"),
     resolveBuildEnvironment: resolveFunction(
       partialCodeql,
       "resolveBuildEnvironment",
     ),
-    packDownload: resolveFunction(partialCodeql, "packDownload"),
     databaseCleanupCluster: resolveFunction(
       partialCodeql,
       "databaseCleanupCluster",
@@ -510,6 +481,10 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     ),
     diagnosticsExport: resolveFunction(partialCodeql, "diagnosticsExport"),
     resolveExtractor: resolveFunction(partialCodeql, "resolveExtractor"),
+    resolveQueriesStartingPacks: resolveFunction(
+      partialCodeql,
+      "resolveQueriesStartingPacks",
+    ),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
 }
@@ -781,28 +756,6 @@ export async function getCodeQLForCmd(
         );
       }
     },
-    async resolveQueries(
-      queries: string[],
-      extraSearchPath: string | undefined,
-    ) {
-      const codeqlArgs = [
-        "resolve",
-        "queries",
-        ...queries,
-        "--format=bylanguage",
-        ...getExtraOptionsFromEnv(["resolve", "queries"]),
-      ];
-      if (extraSearchPath !== undefined) {
-        codeqlArgs.push("--additional-packs", extraSearchPath);
-      }
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        return JSON.parse(output) as ResolveQueriesOutput;
-      } catch (e) {
-        throw new Error(`Unexpected output from codeql resolve queries: ${e}`);
-      }
-    },
     async resolveBuildEnvironment(
       workingDir: string | undefined,
       language: string,
@@ -921,59 +874,6 @@ export async function getCodeQLForCmd(
       ];
       return await runCli(cmd, codeqlArgs);
     },
-
-    /**
-     * Download specified packs into the package cache. If the specified
-     * package and version already exists (e.g., from a previous analysis run),
-     * then it is not downloaded again (unless the extra option `--force` is
-     * specified).
-     *
-     * If no version is specified, then the latest version is
-     * downloaded. The check to determine what the latest version is is done
-     * each time this package is requested.
-     *
-     * Optionally, a `qlconfigFile` is included. If used, then this file
-     * is used to determine which registry each pack is downloaded from.
-     */
-    async packDownload(
-      packs: string[],
-      qlconfigFile: string | undefined,
-    ): Promise<PackDownloadOutput> {
-      const qlconfigArg = qlconfigFile
-        ? [`--qlconfig-file=${qlconfigFile}`]
-        : ([] as string[]);
-
-      const codeqlArgs = [
-        "pack",
-        "download",
-        ...qlconfigArg,
-        "--format=json",
-        "--resolve-query-specs",
-        ...getExtraOptionsFromEnv(["pack", "download"]),
-        ...packs,
-      ];
-
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        const parsedOutput: PackDownloadOutput = JSON.parse(output);
-        if (
-          Array.isArray(parsedOutput.packs) &&
-          // TODO PackDownloadOutput will not include the version if it is not specified
-          // in the input. The version is always the latest version available.
-          // It should be added to the output, but this requires a CLI change
-          parsedOutput.packs.every((p) => p.name /* && p.version */)
-        ) {
-          return parsedOutput;
-        } else {
-          throw new Error("Unexpected output from pack download");
-        }
-      } catch (e) {
-        throw new Error(
-          `Attempted to download specified packs but got an error:\n${output}\n${e}`,
-        );
-      }
-    },
     async databaseCleanupCluster(
       config: Config,
       cleanupLevel: string,
@@ -1079,6 +979,24 @@ export async function getCodeQLForCmd(
         },
       ).exec();
       return JSON.parse(extractorPath) as string;
+    },
+    async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
+      const codeqlArgs = [
+        "resolve",
+        "queries",
+        "--format=startingpacks",
+        ...getExtraOptionsFromEnv(["resolve", "queries"]),
+        ...queries,
+      ];
+      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+
+      try {
+        return JSON.parse(output) as string[];
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve queries --format=startingpacks: ${e}`,
+        );
+      }
     },
     async mergeResults(
       sarifFiles: string[],

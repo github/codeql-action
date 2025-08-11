@@ -3,9 +3,10 @@ import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
+import * as yaml from "js-yaml";
 
 import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
-import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
+import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { CodeQLDefaultVersionInfo } from "./feature-flags";
@@ -14,7 +15,6 @@ import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
-import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
 export async function initCodeQL(
@@ -66,30 +66,18 @@ export async function initConfig(
   });
 }
 
-export async function runInit(
+export async function runDatabaseInitCluster(
+  databaseInitEnvironment: Record<string, string | undefined>,
   codeql: CodeQL,
   config: configUtils.Config,
   sourceRoot: string,
   processName: string | undefined,
-  registriesInput: string | undefined,
-  apiDetails: GitHubApiCombinedDetails,
+  qlconfigFile: string | undefined,
   logger: Logger,
-): Promise<TracerConfig | undefined> {
+): Promise<void> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
-
-  const { registriesAuthTokens, qlconfigFile } =
-    await configUtils.generateRegistries(
-      registriesInput,
-      config.tempDir,
-      logger,
-    );
   await configUtils.wrapEnvironment(
-    {
-      GITHUB_TOKEN: apiDetails.auth,
-      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
-    },
-
-    // Init a database cluster
+    databaseInitEnvironment,
     async () =>
       await codeql.databaseInitCluster(
         config,
@@ -99,7 +87,124 @@ export async function runInit(
         logger,
       ),
   );
-  return await getCombinedTracerConfig(codeql, config);
+}
+
+/**
+ * Check whether all query packs are compatible with the overlay analysis
+ * support in the CodeQL CLI. If the check fails, this function will log a
+ * warning and returns false.
+ *
+ * @param codeql A CodeQL instance.
+ * @param logger A logger.
+ * @returns `true` if all query packs are compatible with overlay analysis,
+ * `false` otherwise.
+ */
+export async function checkPacksForOverlayCompatibility(
+  codeql: CodeQL,
+  config: configUtils.Config,
+  logger: Logger,
+): Promise<boolean> {
+  const codeQlOverlayVersion = (await codeql.getVersion()).overlayVersion;
+  if (codeQlOverlayVersion === undefined) {
+    logger.warning("The CodeQL CLI does not support overlay analysis.");
+    return false;
+  }
+
+  for (const language of config.languages) {
+    const suitePath = util.getGeneratedSuitePath(config, language);
+    const packDirs = await codeql.resolveQueriesStartingPacks([suitePath]);
+    if (
+      packDirs.some(
+        (packDir) =>
+          !checkPackForOverlayCompatibility(
+            packDir,
+            codeQlOverlayVersion,
+            logger,
+          ),
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/** Interface for `qlpack.yml` file contents. */
+interface QlPack {
+  buildMetadata?: string;
+}
+
+/**
+ * Check a single pack for its overlay compatibility. If the check fails, this
+ * function will log a warning and returns false.
+ *
+ * @param packDir Path to the directory containing the pack.
+ * @param codeQlOverlayVersion The overlay version of the CodeQL CLI.
+ * @param logger A logger.
+ * @returns `true` if the pack is compatible with overlay analysis, `false`
+ * otherwise.
+ */
+function checkPackForOverlayCompatibility(
+  packDir: string,
+  codeQlOverlayVersion: number,
+  logger: Logger,
+): boolean {
+  try {
+    let qlpackPath = path.join(packDir, "qlpack.yml");
+    if (!fs.existsSync(qlpackPath)) {
+      qlpackPath = path.join(packDir, "codeql-pack.yml");
+    }
+    const qlpackContents = yaml.load(
+      fs.readFileSync(qlpackPath, "utf8"),
+    ) as QlPack;
+    if (!qlpackContents.buildMetadata) {
+      // This is a source-only pack, and overlay compatibility checks apply only
+      // to precompiled packs.
+      return true;
+    }
+
+    const packInfoPath = path.join(packDir, ".packinfo");
+    if (!fs.existsSync(packInfoPath)) {
+      logger.warning(
+        `The query pack at ${packDir} does not have a .packinfo file, ` +
+          "so it cannot support overlay analysis. Recompiling the query pack " +
+          "with the latest CodeQL CLI should solve this problem.",
+      );
+      return false;
+    }
+
+    const packInfoFileContents = JSON.parse(
+      fs.readFileSync(packInfoPath, "utf8"),
+    );
+    const packOverlayVersion = packInfoFileContents.overlayVersion;
+    if (typeof packOverlayVersion !== "number") {
+      logger.warning(
+        `The .packinfo file for the query pack at ${packDir} ` +
+          "does not have the overlayVersion field, which indicates that " +
+          "the pack is not compatible with overlay analysis.",
+      );
+      return false;
+    }
+
+    if (packOverlayVersion !== codeQlOverlayVersion) {
+      logger.warning(
+        `The query pack at ${packDir} was compiled with ` +
+          `overlay version ${packOverlayVersion}, but the CodeQL CLI ` +
+          `supports overlay version ${codeQlOverlayVersion}. The ` +
+          "query pack needs to be recompiled to support overlay analysis.",
+      );
+      return false;
+    }
+  } catch (e) {
+    logger.warning(
+      `Error while checking pack at ${packDir} ` +
+        `for overlay compatibility: ${util.getErrorMessage(e)}`,
+    );
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -129,6 +234,7 @@ export async function checkInstallPython311(
 export function cleanupDatabaseClusterDirectory(
   config: configUtils.Config,
   logger: Logger,
+  options: { disableExistingDirectoryWarning?: boolean } = {},
   // We can't stub the fs module in tests, so we allow the caller to override the rmSync function
   // for testing.
   rmSync = fs.rmSync,
@@ -138,9 +244,11 @@ export function cleanupDatabaseClusterDirectory(
     (fs.statSync(config.dbLocation).isFile() ||
       fs.readdirSync(config.dbLocation).length > 0)
   ) {
-    logger.warning(
-      `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,
-    );
+    if (!options.disableExistingDirectoryWarning) {
+      logger.warning(
+        `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,
+      );
+    }
     try {
       rmSync(config.dbLocation, {
         force: true,

@@ -184,7 +184,6 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
       SAMPLE_DOTCOM_API_DETAILS,
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
-      expectedFeatureEnablement,
       SAMPLE_DEFAULT_CLI_VERSION,
       logger,
     );
@@ -235,7 +234,6 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
       SAMPLE_DOTCOM_API_DETAILS,
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
-      expectedFeatureEnablement,
       SAMPLE_DEFAULT_CLI_VERSION,
       logger,
     );

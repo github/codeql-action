@@ -3,24 +3,17 @@ import * as path from "path";
 
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
-import * as semver from "semver";
 
 import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
 import { GitHubApiCombinedDetails, GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
-import { getGitRoot } from "./git-utils";
-import { Language, isScannedLanguage } from "./languages";
-import { Logger } from "./logging";
-import {
-  CODEQL_OVERLAY_MINIMUM_VERSION,
-  OverlayDatabaseMode,
-} from "./overlay-database-utils";
+import { CodeQLDefaultVersionInfo } from "./feature-flags";
+import { KnownLanguage, Language } from "./languages";
+import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
-import { ToolsFeature } from "./tools-features";
 import { TracerConfig, getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
 
@@ -30,7 +23,6 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeql: CodeQL;
@@ -53,7 +45,6 @@ export async function initCodeQL(
     variant,
     defaultCliVersion,
     logger,
-    features,
     true,
   );
   await codeql.printVersion();
@@ -69,61 +60,10 @@ export async function initCodeQL(
 
 export async function initConfig(
   inputs: configUtils.InitConfigInputs,
-  codeql: CodeQL,
 ): Promise<configUtils.Config> {
-  const logger = inputs.logger;
-  logger.startGroup("Load language configuration");
-  const config = await configUtils.initConfig(inputs);
-  if (
-    !(await codeql.supportsFeature(
-      ToolsFeature.InformsAboutUnsupportedPathFilters,
-    ))
-  ) {
-    printPathFiltersWarning(config, logger);
-  }
-  logger.endGroup();
-  return config;
-}
-
-export async function getOverlayDatabaseMode(
-  codeqlVersion: string,
-  config: configUtils.Config,
-  sourceRoot: string,
-  logger: Logger,
-): Promise<OverlayDatabaseMode> {
-  const overlayDatabaseMode = process.env.CODEQL_OVERLAY_DATABASE_MODE;
-
-  if (
-    overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
-    overlayDatabaseMode === OverlayDatabaseMode.OverlayBase
-  ) {
-    if (config.buildMode !== util.BuildMode.None) {
-      logger.warning(
-        `Cannot build an ${overlayDatabaseMode} database because ` +
-          `build-mode is set to "${config.buildMode}" instead of "none". ` +
-          "Falling back to creating a normal full database instead.",
-      );
-      return OverlayDatabaseMode.None;
-    }
-    if (semver.lt(codeqlVersion, CODEQL_OVERLAY_MINIMUM_VERSION)) {
-      logger.warning(
-        `Cannot build an ${overlayDatabaseMode} database because ` +
-          `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
-          "Falling back to creating a normal full database instead.",
-      );
-      return OverlayDatabaseMode.None;
-    }
-    if ((await getGitRoot(sourceRoot)) === undefined) {
-      logger.warning(
-        `Cannot build an ${overlayDatabaseMode} database because ` +
-          `the source root "${sourceRoot}" is not inside a git repository. ` +
-          "Falling back to creating a normal full database instead.",
-      );
-      return OverlayDatabaseMode.None;
-    }
-    return overlayDatabaseMode as OverlayDatabaseMode;
-  }
-  return OverlayDatabaseMode.None;
+  return await withGroupAsync("Load language configuration", async () => {
+    return await configUtils.initConfig(inputs);
+  });
 }
 
 export async function runInit(
@@ -133,7 +73,6 @@ export async function runInit(
   processName: string | undefined,
   registriesInput: string | undefined,
   apiDetails: GitHubApiCombinedDetails,
-  overlayDatabaseMode: OverlayDatabaseMode,
   logger: Logger,
 ): Promise<TracerConfig | undefined> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
@@ -157,28 +96,10 @@ export async function runInit(
         sourceRoot,
         processName,
         qlconfigFile,
-        overlayDatabaseMode,
         logger,
       ),
   );
   return await getCombinedTracerConfig(codeql, config);
-}
-
-export function printPathFiltersWarning(
-  config: configUtils.Config,
-  logger: Logger,
-) {
-  // Index include/exclude/filters only work in javascript/python/ruby.
-  // If any other languages are detected/configured then show a warning.
-  if (
-    (config.originalUserInput.paths?.length ||
-      config.originalUserInput["paths-ignore"]?.length) &&
-    !config.languages.every(isScannedLanguage)
-  ) {
-    logger.warning(
-      'The "paths"/"paths-ignore" fields of the config only have effect for JavaScript, Python, and Ruby',
-    );
-  }
 }
 
 /**
@@ -190,7 +111,7 @@ export async function checkInstallPython311(
   codeql: CodeQL,
 ) {
   if (
-    languages.includes(Language.python) &&
+    languages.includes(KnownLanguage.python) &&
     process.platform === "win32" &&
     !(await codeql.getVersion()).features?.supportsPython312
   ) {
@@ -215,7 +136,7 @@ export function cleanupDatabaseClusterDirectory(
   if (
     fs.existsSync(config.dbLocation) &&
     (fs.statSync(config.dbLocation).isFile() ||
-      fs.readdirSync(config.dbLocation).length)
+      fs.readdirSync(config.dbLocation).length > 0)
   ) {
     logger.warning(
       `The database cluster directory ${config.dbLocation} must be empty. Attempting to clean it up.`,

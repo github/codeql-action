@@ -227,8 +227,10 @@ openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in private-key.pem -out 
 ### Converting `OpenSSH` to `PKCS#8`
 
 ```
-cp private-key.pem private-key-pkcs8.key && ssh-keygen -m PKCS8  -N "" -f private-key-pkcs8.key
+cp private-key.pem private-key-pkcs8.key && ssh-keygen -p -m PKCS8  -N "" -f private-key-pkcs8.key
 ```
+
+This command forces a format change by asking `ssh-keygen` to set no password and then output in a different format.
 
 I'm looking for help to create a minimal `OpenSSH` to `PKCS` convert library that I can recommend people to use before passing the private key to `githubAppJwt`. Please create an issue if you'd like to help.
 

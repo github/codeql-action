@@ -7,16 +7,32 @@ import { createRequestId } from '../../createRequestId'
 const kEmitter = Symbol('kEmitter')
 const kBoundListener = Symbol('kBoundListener')
 
-interface WebSocketClientEventMap {
+export interface WebSocketClientEventMap {
   message: MessageEvent<WebSocketData>
   close: CloseEvent
 }
 
-export interface WebSocketClientConnectionProtocol {
-  id: string
-  url: URL
-  send(data: WebSocketData): void
-  close(code?: number, reason?: string): void
+export abstract class WebSocketClientConnectionProtocol {
+  abstract id: string
+  abstract url: URL
+  public abstract send(data: WebSocketData): void
+  public abstract close(code?: number, reason?: string): void
+
+  public abstract addEventListener<
+    EventType extends keyof WebSocketClientEventMap
+  >(
+    type: EventType,
+    listener: WebSocketEventListener<WebSocketClientEventMap[EventType]>,
+    options?: AddEventListenerOptions | boolean
+  ): void
+
+  public abstract removeEventListener<
+    EventType extends keyof WebSocketClientEventMap
+  >(
+    event: EventType,
+    listener: WebSocketEventListener<WebSocketClientEventMap[EventType]>,
+    options?: EventListenerOptions | boolean
+  ): void
 }
 
 /**

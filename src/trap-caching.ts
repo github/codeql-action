@@ -5,8 +5,8 @@ import * as actionsCache from "@actions/cache";
 
 import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
-import { CodeQL } from "./codeql";
-import type { Config } from "./config-utils";
+import { type CodeQL } from "./codeql";
+import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
@@ -50,8 +50,8 @@ export async function downloadTrapCaches(
   codeql: CodeQL,
   languages: Language[],
   logger: Logger,
-): Promise<Partial<Record<Language, string>>> {
-  const result: Partial<Record<Language, string>> = {};
+): Promise<{ [language: string]: string }> {
+  const result: { [language: string]: string } = {};
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
     codeql,
     languages,

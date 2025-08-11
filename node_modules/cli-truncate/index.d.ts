@@ -1,4 +1,4 @@
-export interface Options {
+export type Options = {
 	/**
 	The position to truncate the string.
 
@@ -70,12 +70,12 @@ export interface Options {
 	//=> 'unico'
 	*/
 	readonly truncationCharacter?: string;
-}
+};
 
 /**
 Truncate a string to a specific width in the terminal.
 
-@param text - Text to truncate.
+@param text - The text to truncate.
 @param columns - The number of columns to occupy in the terminal.
 
 @example
@@ -105,7 +105,7 @@ cliTruncate('안녕하세요', 3);
 
 // Truncate the paragraph to the terminal width
 const paragraph = 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa.';
-cliTruncate(paragraph, process.stdout.columns));
+cliTruncate(paragraph, process.stdout.columns);
 //=> 'Lorem ipsum dolor sit amet, consectetuer adipiscing…'
 ```
 */

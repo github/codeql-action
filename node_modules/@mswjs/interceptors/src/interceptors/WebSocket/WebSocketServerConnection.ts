@@ -17,11 +17,33 @@ const kEmitter = Symbol('kEmitter')
 const kBoundListener = Symbol('kBoundListener')
 const kSend = Symbol('kSend')
 
-interface WebSocketServerEventMap {
+export interface WebSocketServerEventMap {
   open: Event
   message: MessageEvent<WebSocketData>
   error: Event
   close: CloseEvent
+}
+
+export abstract class WebSocketServerConnectionProtocol {
+  public abstract connect(): void
+  public abstract send(data: WebSocketData): void
+  public abstract close(): void
+
+  public abstract addEventListener<
+    EventType extends keyof WebSocketServerEventMap
+  >(
+    event: EventType,
+    listener: WebSocketEventListener<WebSocketServerEventMap[EventType]>,
+    options?: AddEventListenerOptions | boolean
+  ): void
+
+  public abstract removeEventListener<
+    EventType extends keyof WebSocketServerEventMap
+  >(
+    event: EventType,
+    listener: WebSocketEventListener<WebSocketServerEventMap[EventType]>,
+    options?: EventListenerOptions | boolean
+  ): void
 }
 
 /**
@@ -29,7 +51,9 @@ interface WebSocketServerEventMap {
  * WebSocket server connection. It's idle by default but you can
  * establish it by calling `server.connect()`.
  */
-export class WebSocketServerConnection {
+export class WebSocketServerConnection
+  implements WebSocketServerConnectionProtocol
+{
   /**
    * A WebSocket instance connected to the original server.
    */

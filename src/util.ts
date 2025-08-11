@@ -644,11 +644,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(String(EnvVar.FEATURE_MULTI_LANGUAGE), "false");
-  core.exportVariable(String(EnvVar.FEATURE_SANDWICH), "false");
-  core.exportVariable(String(EnvVar.FEATURE_SARIF_COMBINE), "true");
-  core.exportVariable(String(EnvVar.FEATURE_WILL_UPLOAD), "true");
-  core.exportVariable(String(EnvVar.VERSION), version);
+  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
+  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  core.exportVariable(EnvVar.VERSION, version);
 }
 
 /**
@@ -750,8 +750,8 @@ export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
 }
 
-/*
- * Returns whether we are in test mode.
+/**
+ * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
  *
  * In test mode, we don't upload SARIF results or status reports to the GitHub API.
  */
@@ -759,7 +759,20 @@ export function isInTestMode(): boolean {
   return process.env[EnvVar.TEST_MODE] === "true";
 }
 
-/*
+/**
+ * Get the testing environment.
+ *
+ * This is set if the CodeQL Action is running in a non-production environment.
+ */
+export function getTestingEnvironment(): string | undefined {
+  const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
+  if (testingEnvironment === "") {
+    return undefined;
+  }
+  return testingEnvironment;
+}
+
+/**
  * Returns whether the path in the argument represents an existing directory.
  */
 export function doesDirectoryExist(dirPath: string): boolean {
@@ -1120,6 +1133,31 @@ export function checkActionVersion(
 }
 
 /**
+ * This will check whether the given GitHub version satisfies the given range,
+ * taking into account that a range like >=3.18 will also match the GHES 3.18
+ * pre-release/RC versions.
+ *
+ * When the given `githubVersion` is not a GHES version, or if the version
+ * is invalid, this will return `defaultIfInvalid`.
+ */
+export function satisfiesGHESVersion(
+  ghesVersion: string,
+  range: string,
+  defaultIfInvalid: boolean,
+): boolean {
+  const semverVersion = semver.coerce(ghesVersion);
+  if (semverVersion === null) {
+    return defaultIfInvalid;
+  }
+
+  // We always drop the pre-release part of the version, since anything that
+  // applies to GHES 3.18.0 should also apply to GHES 3.18.0.pre1.
+  semverVersion.prerelease = [];
+
+  return semver.satisfies(semverVersion, range);
+}
+
+/**
  * Supported build modes.
  *
  * These specify whether the CodeQL database should be created by tracing a build, and if so, how
@@ -1211,4 +1249,20 @@ export async function isBinaryAccessible(
     logger.debug(`Could not find ${binary}: ${e}`);
     return false;
   }
+}
+
+export async function asyncFilter<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<T[]> {
+  const results = await Promise.all(array.map(predicate));
+  return array.filter((_, index) => results[index]);
+}
+
+export async function asyncSome<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<boolean> {
+  const results = await Promise.all(array.map(predicate));
+  return results.some((result) => result);
 }

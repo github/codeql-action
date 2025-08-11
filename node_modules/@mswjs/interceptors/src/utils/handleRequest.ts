@@ -7,10 +7,12 @@ import { kResponsePromise, RequestController } from '../RequestController'
 import {
   createServerErrorResponse,
   isResponseError,
+  isResponseLike,
   ResponseError,
 } from './responseUtils'
 import { InterceptorError } from '../InterceptorError'
 import { isNodeLikeError } from './isNodeLikeError'
+import { isObject } from './isObject'
 
 interface HandleRequestOptions {
   requestId: string
@@ -43,19 +45,37 @@ interface HandleRequestOptions {
 export async function handleRequest(
   options: HandleRequestOptions
 ): Promise<boolean> {
-  const handleResponse = async (response: Response | Error) => {
+  const handleResponse = async (
+    response: Response | Error | Record<string, any>
+  ) => {
     if (response instanceof Error) {
       options.onError(response)
+      return true
     }
 
     // Handle "Response.error()" instances.
-    else if (isResponseError(response)) {
+    if (isResponseError(response)) {
       options.onRequestError(response)
-    } else {
-      await options.onResponse(response)
+      return true
     }
 
-    return true
+    /**
+     * Handle normal responses or response-like objects.
+     * @note This must come before the arbitrary object check
+     * since Response instances are, in fact, objects.
+     */
+    if (isResponseLike(response)) {
+      await options.onResponse(response)
+      return true
+    }
+
+    // Handle arbitrary objects provided to `.errorWith(reason)`.
+    if (isObject(response)) {
+      options.onError(response)
+      return true
+    }
+
+    return false
   }
 
   const handleResponseError = async (error: unknown): Promise<boolean> => {
@@ -116,7 +136,7 @@ export async function handleRequest(
     // for that event are finished (e.g. async listeners awaited).
     // By the end of this promise, the developer cannot affect the
     // request anymore.
-    const requestListtenersPromise = emitAsync(options.emitter, 'request', {
+    const requestListenersPromise = emitAsync(options.emitter, 'request', {
       requestId: options.requestId,
       request: options.request,
       controller: options.controller,
@@ -125,14 +145,13 @@ export async function handleRequest(
     await Promise.race([
       // Short-circuit the request handling promise if the request gets aborted.
       requestAbortPromise,
-      requestListtenersPromise,
+      requestListenersPromise,
       options.controller[kResponsePromise],
     ])
 
     // The response promise will settle immediately once
     // the developer calls either "respondWith" or "errorWith".
-    const mockedResponse = await options.controller[kResponsePromise]
-    return mockedResponse
+    return await options.controller[kResponsePromise]
   })
 
   // Handle the request being aborted while waiting for the request listeners.
@@ -212,6 +231,5 @@ export async function handleRequest(
   }
 
   // In all other cases, consider the request unhandled.
-  // The interceptor must perform it as-is.
   return false
 }

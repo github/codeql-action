@@ -4,11 +4,8 @@ description: "Checks that we emit a diagnostic if the `file` program is not inst
 operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
 versions: ["default"]
+installGo: "true"
 steps:
-  - uses: actions/setup-go@v5
-    with:
-      # We need a Go version that ships with statically linked binaries on Linux
-      go-version: ">=1.21.0"
   - name: Remove `file` program
     run: |
       echo $(which file)

@@ -65,6 +65,21 @@ export interface CallSite {
 	Returns `true` if this is a constructor call.
 	*/
 	isConstructor(): boolean;
+
+	/**
+	Returns `true` if this call is asynchronous (i.e. `await`, `Promise.all()`, or `Promise.any()`).
+	*/
+	isAsync(): boolean;
+
+	/**
+	Returns `true` if this is an asynchronous call to `Promise.all()`.
+	*/
+	isPromiseAll(): boolean;
+
+	/**
+	Returns the index of the promise element that was followed in `Promise.all()` or `Promise.any()` for async stack traces, or `null` if the `CallSite` is not an asynchronous `Promise.all()` or `Promise.any()` call.
+	*/
+	getPromiseIndex(): number | null;
 }
 
 /**

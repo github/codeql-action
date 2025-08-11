@@ -83,6 +83,9 @@ inputs:
   queries:
     description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
     required: false
+  quality-queries:
+    description: '[Internal] Comma-separated list of code quality queries to run.'
+    required: false
   packs:
     description: >-
       Comma-separated list of packs to run. Reference a pack in the format `scope/name[@version]`. If `version` is not

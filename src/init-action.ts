@@ -358,10 +358,10 @@ async function run() {
     }
     core.endGroup();
 
-    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if between 2.19.3 and 2.22.1 (excluded)
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if between 2.19.3 (included) and 2.22.1 (excluded)
     // We need to set this environment variable before initializing the config, otherwise Rust
-    // analysis will not be enabled.
-    // Initially this was driven by a feature flag which has been rolled out already.
+    // analysis will not be enabled (experimental language packs are only active with that environment
+    // variable set to `true`).
     if (
       // Only enable the experimental features env variable for Rust analysis if the user has explicitly
       // requested rust - don't enable it via language autodetection.

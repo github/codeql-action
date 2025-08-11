@@ -58,8 +58,7 @@ jobs:
         id: proxy
         uses: ./../action/start-proxy
         with:
-          registry_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json"
-            }]'
+          registry_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json" }]'
 
       - name: Print proxy outputs
         run: |
@@ -68,8 +67,8 @@ jobs:
           echo "${{ steps.proxy.outputs.proxy_urls }}"
 
       - name: Fail if proxy outputs are not set
-        if: (!steps.proxy.outputs.proxy_host) || (!steps.proxy.outputs.proxy_port)
-          || (!steps.proxy.outputs.proxy_ca_certificate) || (!steps.proxy.outputs.proxy_urls)
+        if: (!steps.proxy.outputs.proxy_host) || (!steps.proxy.outputs.proxy_port) ||
+          (!steps.proxy.outputs.proxy_ca_certificate) || (!steps.proxy.outputs.proxy_urls)
         run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

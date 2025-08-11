@@ -1,14 +1,17 @@
 name: "Rust analysis"
 description: "Tests creation of a Rust database"
-versions: ["linked", "default", "nightly-latest"]
+versions:
+  - stable-v2.19.3  # experimental rust support introduced, requires action to set `CODEQL_ENABLE_EXPERIMENTAL_FEATURES`
+  - stable-v2.22.1  # first public preview version
+  - linked
+  - default
+  - nightly-latest
 operatingSystems: ["ubuntu"]
 steps:
   - uses: ./../action/init
     with:
       languages: rust
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    env:
-      CODEQL_ACTION_RUST_ANALYSIS: true
   - uses: ./../action/analyze
     id: analysis
     with:

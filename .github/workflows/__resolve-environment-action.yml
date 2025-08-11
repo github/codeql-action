@@ -83,8 +83,7 @@ jobs:
           language: javascript-typescript
 
       - name: Fail if JavaScript/TypeScript configuration present
-        if:
-          fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
+        if: fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
         run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

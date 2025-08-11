@@ -56,6 +56,7 @@ def writeHeader(checkStream):
 yaml = ruamel.yaml.YAML()
 yaml.Representer = NonAliasingRTRepresenter
 yaml.indent(mapping=2, sequence=4, offset=2)
+yaml.width = 120
 
 this_dir = pathlib.Path(__file__).resolve().parent
 

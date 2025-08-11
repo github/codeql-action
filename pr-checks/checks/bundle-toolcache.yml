@@ -1,13 +1,11 @@
-name: "Extract directly to toolcache"
-description: "Extract the CodeQL bundle directly into the toolcache"
+name: "Bundle: Caching checks"
+description: "The CodeQL bundle should be cached within the toolcache"
 versions:
   - linked
 operatingSystems:
   - macos
   - ubuntu
   - windows
-env:
-  CODEQL_ACTION_EXTRACT_TOOLCACHE: true
 steps:
   - name: Remove CodeQL from toolcache
     uses: actions/github-script@v7

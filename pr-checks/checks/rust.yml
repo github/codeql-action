@@ -1,8 +1,10 @@
 name: "Rust analysis"
 description: "Tests creation of a Rust database"
 versions:
-  - stable-v2.19.3  # experimental rust support introduced, requires action to set `CODEQL_ENABLE_EXPERIMENTAL_FEATURES`
-  - stable-v2.22.1  # first public preview version
+  # experimental rust support introduced, requires action to set `CODEQL_ENABLE_EXPERIMENTAL_FEATURES`
+  - stable-v2.19.3
+  # first public preview version
+  - stable-v2.22.1
   - linked
   - default
   - nightly-latest

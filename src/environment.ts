@@ -114,4 +114,9 @@ export enum EnvVar {
    * Useful for testing purposes where multiple caches may be stored in the same repository.
    */
   DEPENDENCY_CACHING_PREFIX = "CODEQL_ACTION_DEPENDENCY_CACHE_PREFIX",
+
+  /**
+   * Whether to enable experimental extractors for CodeQL.
+   */
+  EXPERIMENTAL_FEATURES = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES",
 }

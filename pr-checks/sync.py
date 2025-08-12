@@ -38,7 +38,7 @@ def is_os_and_version_excluded(os, version, exclude_params):
 # `.github/workflows/pr-checks.yml` too.
 header = """# Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+#     pr-checks/sync.sh
 # to regenerate this file.
 
 """

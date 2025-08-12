@@ -20,8 +20,10 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
-  workflow_call: {}
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
 jobs:
   build-mode-manual:
     strategy:

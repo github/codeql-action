@@ -1,6 +1,11 @@
 name: "Go: tracing with autobuilder step"
 description: "Checks that Go tracing works when using an autobuilder step"
 collection: go
+inputs:
+  go-version:
+    type: string
+    description: "The version of Go to install"
+    required: true
 operatingSystems: ["ubuntu", "macos"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"

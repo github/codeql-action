@@ -20,8 +20,18 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
-  workflow_call: {}
+  workflow_dispatch:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: true
+  workflow_call:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: true
 jobs:
   go-indirect-tracing-workaround-no-file-program:
     strategy:
@@ -49,7 +59,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.21.0'
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
       - name: Remove `file` program
         run: |

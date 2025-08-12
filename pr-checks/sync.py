@@ -114,11 +114,16 @@ for file in (this_dir / 'checks').glob('*.yml'):
         installGo = True if checkSpecification['installGo'].lower() == "true" else False
 
     if installGo:
+        goVersionExpr = '>=1.21.0'
+
+        if 'inputs' in checkSpecification and 'go-version' in checkSpecification['inputs']:
+            goVersionExpr = '${{ inputs.go-version || \'>=1.21.0\' }}'
+
         steps.append({
             'name': 'Install Go',
             'uses': 'actions/setup-go@v5',
             'with': {
-                'go-version': '>=1.21.0',
+                'go-version': goVersionExpr,
                 # to avoid potentially misleading autobuilder results where we expect it to download
                 # dependencies successfully, but they actually come from a warm cache
                 'cache': False
@@ -169,6 +174,10 @@ for file in (this_dir / 'checks').glob('*.yml'):
             'checkName': checkName
         })
 
+    workflowInputs = {}
+    if 'inputs' in checkSpecification:
+        workflowInputs = checkSpecification['inputs']
+
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
     with open(raw_file, 'w') as output_stream:
         writeHeader(output_stream)
@@ -186,8 +195,12 @@ for file in (this_dir / 'checks').glob('*.yml'):
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]
                 },
                 'schedule': [{'cron': SingleQuotedScalarString('0 5 * * *')}],
-                'workflow_dispatch': {},
-                'workflow_call': {}
+                'workflow_dispatch': {
+                    'inputs': workflowInputs
+                },
+                'workflow_call': {
+                    'inputs': workflowInputs
+                }
             },
             'jobs': {
                 checkName: checkJob
@@ -203,10 +216,20 @@ for file in (this_dir / 'checks').glob('*.yml'):
 # write workflow files for collections
 for collection_name in collections:
     jobs = {}
+    combinedInputs = {}
 
     for check in collections[collection_name]:
         checkName = check['checkName']
         checkSpecification = check['specification']
+        checkInputs = {}
+        checkWith = {}
+
+        if 'inputs' in checkSpecification:
+            combinedInputs |= checkSpecification['inputs']
+
+            for inputName in checkSpecification['inputs'].keys():
+                checkWith[inputName] = "${{ inputs." + inputName + " }}"
+
         jobs[checkName] = {
             'name': checkSpecification['name'],
             'permissions': {
@@ -214,6 +237,7 @@ for collection_name in collections:
                 'security-events': 'read'
             },
             'uses': "./.github/workflows/" + f"__{checkName}.yml",
+            'with': checkWith
         }
 
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml.raw"
@@ -231,7 +255,9 @@ for collection_name in collections:
                         f'.github/workflows/__{collection_name}.yml'
                     ]
                 },
-                'workflow_dispatch': {},
+                'workflow_dispatch': {
+                    'inputs': combinedInputs
+                },
             },
             'jobs': jobs
         }, output_stream)

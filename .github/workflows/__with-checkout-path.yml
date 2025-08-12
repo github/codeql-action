@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -63,7 +63,7 @@ jobs:
           rm -rf ./* .github .git
   # Check out the actions repo again, but at a different location.
   # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
           path: x/y/z/some-path

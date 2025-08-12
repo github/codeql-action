@@ -60,6 +60,7 @@ yaml.indent(mapping=2, sequence=4, offset=2)
 this_dir = pathlib.Path(__file__).resolve().parent
 
 allJobs = {}
+collections = {}
 for file in (this_dir / 'checks').glob('*.yml'):
     with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
@@ -160,6 +161,14 @@ for file in (this_dir / 'checks').glob('*.yml'):
         checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
     checkName = file.stem
 
+    # If this check belongs to a named collection, record it.
+    if 'collection' in checkSpecification:
+        collection_name = checkSpecification['collection']
+        collections.setdefault(collection_name, []).append({
+            'specification': checkSpecification,
+            'checkName': checkName
+        })
+
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
     with open(raw_file, 'w') as output_stream:
         writeHeader(output_stream)
@@ -187,6 +196,48 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
     with open(raw_file, 'r') as input_stream:
         with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
+            content = input_stream.read()
+            output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
+    os.remove(raw_file)
+
+# write workflow files for collections
+for collection_name in collections:
+    jobs = {}
+
+    for check in collections[collection_name]:
+        checkName = check['checkName']
+        checkSpecification = check['specification']
+        jobs[checkName] = {
+            'name': checkSpecification['name'],
+            'permissions': {
+                'contents': 'read',
+                'security-events': 'read'
+            },
+            'uses': "./.github/workflows/" + f"__{checkName}.yml",
+        }
+
+    raw_file = this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml.raw"
+    with open(raw_file, 'w') as output_stream:
+        writeHeader(output_stream)
+        yaml.dump({
+            'name': f"Manual Check - {collection_name}",
+            'env': {
+                'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}',
+                'GO111MODULE': 'auto'
+            },
+            'on': {
+                'push': {
+                    'paths': [
+                        f'.github/workflows/__{collection_name}.yml'
+                    ]
+                },
+                'workflow_dispatch': {},
+            },
+            'jobs': jobs
+        }, output_stream)
+
+    with open(raw_file, 'r') as input_stream:
+        with open(this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml", 'w') as output_stream:
             content = input_stream.read()
             output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
     os.remove(raw_file)

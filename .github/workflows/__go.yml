@@ -1,0 +1,57 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: Manual Check - go
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    paths:
+      - .github/workflows/__go.yml
+  workflow_dispatch: {}
+jobs:
+  go-custom-queries:
+    name: 'Go: Custom queries'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-custom-queries.yml
+  go-tracing-legacy-workflow:
+    name: 'Go: tracing with legacy workflow'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-legacy-workflow.yml
+  go-indirect-tracing-workaround:
+    name: 'Go: workaround for indirect tracing'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround.yml
+  go-tracing-custom-build-steps:
+    name: 'Go: tracing with custom build steps'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-custom-build-steps.yml
+  go-tracing-autobuilder:
+    name: 'Go: tracing with autobuilder step'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-autobuilder.yml
+  go-indirect-tracing-workaround-diagnostic:
+    name: 'Go: diagnostic when Go is changed after init step'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround-diagnostic.yml
+  go-indirect-tracing-workaround-no-file-program:
+    name: 'Go: diagnostic when `file` is not installed'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround-no-file-program.yml

@@ -1,5 +1,6 @@
 name: "Go: workaround for indirect tracing"
 description: "Checks that our workaround for indirect tracing for Go 1.21+ on Linux works"
+collection: go
 # only Linux is affected
 operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing

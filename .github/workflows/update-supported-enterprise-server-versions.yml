@@ -21,9 +21,9 @@ jobs:
         with:
           python-version: "3.13"
       - name: Checkout CodeQL Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Checkout Enterprise Releases
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: github/enterprise-releases
           token: ${{ secrets.ENTERPRISE_RELEASE_TOKEN }}

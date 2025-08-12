@@ -380,7 +380,7 @@ async function run() {
       }
       if (semver.lt(actualVer, publicPreview)) {
         core.exportVariable(EnvVar.EXPERIMENTAL_FEATURES, "true");
-        logger.info("Experimental rust analysis enabled");
+        logger.info("Experimental Rust analysis enabled");
       }
     }
 

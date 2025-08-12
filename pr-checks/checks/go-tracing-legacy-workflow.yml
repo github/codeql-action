@@ -1,5 +1,6 @@
 name: "Go: tracing with legacy workflow"
 description: "Checks that we run the autobuilder in legacy workflows with neither an autobuild step nor manual build steps"
+collection: go
 operatingSystems: ["ubuntu", "macos"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"

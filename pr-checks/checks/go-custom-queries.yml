@@ -1,5 +1,6 @@
 name: "Go: Custom queries"
 description: "Checks that Go works in conjunction with a config file specifying custom queries"
+collection: go
 operatingSystems:
   - ubuntu
 versions:

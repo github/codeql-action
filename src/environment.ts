@@ -118,5 +118,5 @@ export enum EnvVar {
   /**
    * Whether to enable experimental extractors for CodeQL.
    */
-  EXPERIMENTAL_FEATURES = "CODEQL_ACTION_EXPERIMENTAL_FEATURES",
+  EXPERIMENTAL_FEATURES = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES",
 }

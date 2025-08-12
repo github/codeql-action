@@ -92,7 +92,7 @@ for file in (this_dir / 'checks').glob('*.yml'):
     steps = [
         {
             'name': 'Check out repository',
-            'uses': 'actions/checkout@v4'
+            'uses': 'actions/checkout@v5'
         },
         {
             'name': 'Prepare test',

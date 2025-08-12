@@ -19,7 +19,7 @@ permissions:
   security-events: write # needed to upload the SARIF file
 
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v5
   - uses: ./init
     with:
       languages: javascript

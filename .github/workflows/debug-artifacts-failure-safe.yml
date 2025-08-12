@@ -39,7 +39,7 @@ jobs:
       - name: Dump GitHub event
         run: cat "${GITHUB_EVENT_PATH}"
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
       - name: Check expected artifacts exist
         shell: bash
         run: |

@@ -51,7 +51,6 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
-  ExtractToToolcache = "extract_to_toolcache",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -75,7 +74,6 @@ export enum Feature {
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
 }
 
 export const featureConfig: Record<
@@ -119,11 +117,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE",
     minimumVersion: undefined,
   },
-  [Feature.ZstdBundleStreamingExtraction]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ZSTD_BUNDLE_STREAMING_EXTRACTION",
-    minimumVersion: undefined,
-  },
   [Feature.CppDependencyInstallation]: {
     defaultValue: false,
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
@@ -156,11 +149,6 @@ export const featureConfig: Record<
     defaultValue: true,
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
-    minimumVersion: undefined,
-  },
-  [Feature.ExtractToToolcache]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_EXTRACT_TOOLCACHE",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

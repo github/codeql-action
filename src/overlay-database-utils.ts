@@ -16,7 +16,7 @@ export enum OverlayDatabaseMode {
   None = "none",
 }
 
-export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.20.5";
+export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.3";
 
 /**
  * Writes a JSON file containing Git OIDs for all tracked files (represented

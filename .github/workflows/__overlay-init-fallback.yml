@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: PR Check - Config input
+name: PR Check - Overlay database init fallback
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -22,14 +22,16 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
-  config-input:
+  overlay-init-fallback:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             version: linked
-    name: Config input
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Overlay database init fallback
     permissions:
       contents: read
       security-events: read
@@ -45,33 +47,23 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Copy queries into workspace
-        run: |
-          cp -a ../action/queries .
-
       - uses: ./../action/init
         with:
+          languages: actions # Any language without overlay support will do
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-          languages: javascript
-          build-mode: none
-          config: |
-            disable-default-queries: true
-            queries:
-              - name: Run custom query
-                uses: ./queries/default-setup-environment-variables.ql
-            paths-ignore:
-              - tests
-              - lib
-
+        env:
+          CODEQL_OVERLAY_DATABASE_MODE: overlay-base
       - uses: ./../action/analyze
+        id: analysis
         with:
-          output: ${{ runner.temp }}/results
-
-      - name: Check SARIF
-        uses: ./../action/.github/actions/check-sarif
-        with:
-          sarif-file: ${{ runner.temp }}/results/javascript.sarif
-          queries-run: javascript/codeql-action/default-setup-env-vars
-          queries-not-run: javascript/codeql-action/default-setup-context-properties
+          upload-database: false
+      - name: Check database
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases/actions"
+          if ! grep -q 'overlayBaseDatabase: false' codeql-database.yml ; then
+            echo "This test needs to be updated to use a non-overlay language."
+            exit 1
+          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

@@ -35,10 +35,11 @@ import { EnvVar } from "./environment";
 import { Feature, featureConfig, Features } from "./feature-flags";
 import {
   checkInstallPython311,
+  checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
   initCodeQL,
   initConfig,
-  runInit,
+  runDatabaseInitCluster,
 } from "./init";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
@@ -59,6 +60,7 @@ import {
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
+import { getCombinedTracerConfig } from "./tracer-config";
 import {
   checkDiskUsage,
   checkForTimeout,
@@ -339,7 +341,6 @@ async function run() {
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
-      features,
       logger,
     );
     codeql = initCodeQLResult.codeql;
@@ -744,15 +745,60 @@ async function run() {
       }
     }
 
-    const tracerConfig = await runInit(
+    const { registriesAuthTokens, qlconfigFile } =
+      await configUtils.generateRegistries(
+        getOptionalInput("registries"),
+        config.tempDir,
+        logger,
+      );
+    const databaseInitEnvironment = {
+      GITHUB_TOKEN: apiDetails.auth,
+      CODEQL_REGISTRIES_AUTH: registriesAuthTokens,
+    };
+
+    await runDatabaseInitCluster(
+      databaseInitEnvironment,
       codeql,
       config,
       sourceRoot,
       "Runner.Worker.exe",
-      getOptionalInput("registries"),
-      apiDetails,
+      qlconfigFile,
       logger,
     );
+
+    // To check custom query packs for compatibility with overlay analysis, we
+    // need to first initialize the database cluster, which downloads the
+    // user-specified custom query packs. But we also want to check custom query
+    // pack compatibility first, because database cluster initialization depends
+    // on the overlay database mode. The solution is to initialize the database
+    // cluster first, check custom query pack compatibility, and if we need to
+    // revert to `OverlayDatabaseMode.None`, re-initialize the database cluster
+    // with the new overlay database mode.
+    if (
+      config.augmentationProperties.overlayDatabaseMode !==
+        OverlayDatabaseMode.None &&
+      !(await checkPacksForOverlayCompatibility(codeql, config, logger))
+    ) {
+      logger.info(
+        "Reverting overlay database mode to None due to incompatible packs.",
+      );
+      config.augmentationProperties.overlayDatabaseMode =
+        OverlayDatabaseMode.None;
+      cleanupDatabaseClusterDirectory(config, logger, {
+        disableExistingDirectoryWarning: true,
+      });
+      await runDatabaseInitCluster(
+        databaseInitEnvironment,
+        codeql,
+        config,
+        sourceRoot,
+        "Runner.Worker.exe",
+        qlconfigFile,
+        logger,
+      );
+    }
+
+    const tracerConfig = await getCombinedTracerConfig(codeql, config);
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
         core.exportVariable(key, value);

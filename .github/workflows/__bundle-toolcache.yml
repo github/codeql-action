@@ -1,9 +1,9 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+#     pr-checks/sync.sh
 # to regenerate this file.
 
-name: PR Check - Extract directly to toolcache
+name: 'PR Check - Bundle: Caching checks'
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -22,7 +22,7 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 jobs:
-  extract-direct-to-toolcache:
+  bundle-toolcache:
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,7 @@ jobs:
             version: linked
           - os: windows-latest
             version: linked
-    name: Extract directly to toolcache
+    name: 'Bundle: Caching checks'
     permissions:
       contents: read
       security-events: read
@@ -92,5 +92,4 @@ jobs:
               throw new Error('Multiple CodeQL versions found in toolcache');
             }
     env:
-      CODEQL_ACTION_EXTRACT_TOOLCACHE: true
       CODEQL_ACTION_TEST_MODE: true

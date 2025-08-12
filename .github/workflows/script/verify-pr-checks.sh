@@ -12,7 +12,7 @@ fi
 rm -rf .github/workflows/__*
 
 # Generate the PR checks
-cd pr-checks && python3 sync.py
+pr-checks/sync.sh
 
 # Check that repo is still clean
 if [ ! -z "$(git status --porcelain)" ]; then

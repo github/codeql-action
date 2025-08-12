@@ -1,6 +1,11 @@
 name: "Go: tracing with custom build steps"
 description: "Checks that Go tracing traces the build when using custom build steps"
 collection: go
+inputs:
+  go-version:
+    type: string
+    description: "The version of Go to install"
+    required: true
 operatingSystems: ["ubuntu", "macos"]
 installGo: "true"
 steps:

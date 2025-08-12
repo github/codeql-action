@@ -20,8 +20,8 @@ inputs:
     default: "always"
   cleanup-level:
     description: >-
-      DEPRECATED. This option is ignored since, for performance reasons, the CodeQL Action no longer saves
-      intermediate results during evaluation.
+      DEPRECATED. This option is ignored since, for performance reasons, the CodeQL Action automatically
+      manages cleanup of intermediate results.
     required: false
   ram:
     description: >-

@@ -8,18 +8,14 @@ GitHub Actions workflows in the `.github/workflows` directory whose filenames st
 
 ## Release process
 
-- Do not review PRs that match any of the following release-PR patterns:
+- A release-PR is a PR which matches all of the following patterns:
   - PR title starts with the exact prefix: `Merge main into releases/v`
     - Equivalent regex: `^Merge main into releases\/v`
-  - OR head (source) branch matches the update-branch pattern:
+  - AND head (source) branch matches the update-branch pattern:
     - Regex: `^update-v[0-9]+(?:\.[0-9]+)*(?:-[a-f0-9]+)?` (e.g. `update-v3.29.9-cc722e476`)
-  - OR base (target) branch matches a release branch:
+  - AND base (target) branch matches a release branch:
     - Regex: `^releases\/v` (e.g. `releases/v3`)
 
-- In PRs that match the release-PR patterns above:
-  - Review only the following files:
+- Consider all files in release-PRs to have already been reviewed and do not review them, except for the following two files:
     - `CHANGELOG.md`
     - `package.json`
-  - Do not review other files in those PRs (these are considered mechanically generated updates).
-
-- If a PR matches the release-PR patterns but includes changes outside the two files above, do not attempt a full review of the generated changes — treat non-`CHANGELOG.md`/`package.json` edits as not requiring review.

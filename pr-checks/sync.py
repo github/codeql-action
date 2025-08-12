@@ -177,7 +177,8 @@ for file in (this_dir / 'checks').glob('*.yml'):
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]
                 },
                 'schedule': [{'cron': SingleQuotedScalarString('0 5 * * *')}],
-                'workflow_dispatch': {}
+                'workflow_dispatch': {},
+                'workflow_call': {}
             },
             'jobs': {
                 checkName: checkJob

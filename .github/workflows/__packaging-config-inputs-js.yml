@@ -21,6 +21,7 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
+  workflow_call: {}
 jobs:
   packaging-config-inputs-js:
     strategy:

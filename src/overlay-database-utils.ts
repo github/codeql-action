@@ -19,6 +19,23 @@ export enum OverlayDatabaseMode {
 export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.3";
 
 /**
+ * The maximum (uncompressed) size of the overlay base database that we will
+ * upload. Actions Cache has an overall capacity of 10 GB, and the Actions Cache
+ * client library uses zstd compression.
+ *
+ * Ideally we would apply a size limit to the compressed overlay-base database,
+ * but we cannot do so because compression is handled transparently by the
+ * Actions Cache client library. Instead we place a limit on the uncompressed
+ * size of the overlay-base database.
+ *
+ * Assuming 2.5:1 compression ratio, the 6 GB limit on uncompressed data would
+ * translate to a limit of around 2.4 GB after compression.
+ */
+const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB = 6000;
+const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_BYTES =
+  OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB * 1_000_000;
+
+/**
  * Writes a JSON file containing Git OIDs for all tracked files (represented
  * by path relative to the source root) under the source root. The file is
  * written into the database location specified in the config.
@@ -212,6 +229,26 @@ export async function uploadOverlayBaseDatabaseToCache(
   });
 
   const dbLocation = config.dbLocation;
+
+  const databaseSizeBytes = await tryGetFolderBytes(dbLocation, logger);
+  if (databaseSizeBytes === undefined) {
+    logger.warning(
+      "Failed to determine database size. " +
+        "Skip uploading overlay-base database to cache.",
+    );
+    return false;
+  }
+
+  if (databaseSizeBytes > OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_BYTES) {
+    const databaseSizeMB = Math.round(databaseSizeBytes / 1_000_000);
+    logger.warning(
+      `Database size (${databaseSizeMB} MB) ` +
+        `exceeds maximum upload size (${OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB} MB). ` +
+        "Skip uploading overlay-base database to cache.",
+    );
+    return false;
+  }
+
   const codeQlVersion = (await codeql.getVersion()).version;
   const checkoutPath = getRequiredInput("checkout_path");
   const cacheKey = await generateCacheKey(config, codeQlVersion, checkoutPath);

@@ -1,0 +1,104 @@
+name: Rollback release
+on:
+  # You can trigger this workflow via workflow dispatch to start a rollback.
+  # This will create a draft release that mirrors the release for `rollback-tag`.
+  workflow_dispatch:
+    inputs:
+      rollback-tag:
+        type: string
+        description: "The tag of an old release to roll-back to."
+        required: true
+  # Only for dry-runs of changes to the workflow.
+  push:
+    paths:
+      - .github/workflows/rollback-release.yml
+
+jobs:
+  prepare:
+    name: "Prepare release"
+    if: github.repository == 'github/codeql-action'
+
+    permissions:
+      contents: read
+
+    uses: .github/workflows/prepare-release.yml
+
+  rollback:
+    name: "Create rollback release"
+    if: github.repository == 'github/codeql-action'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Don't set the deployment environment for test runs
+    environment: ${{ github.event_name == 'workflow_dispatch' && 'Automation' || '' }}
+
+    needs:
+      - prepare
+
+    permissions:
+      contents: write # needed to push to the repo (tags and releases)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # We usually expect to checkout `inputs.rollback-tag`, but use
+          # `needs.prepare.outputs.latest_tag` for testing.
+          ref: ${{ inputs.rollback-tag || needs.prepare.outputs.latest_tag }}
+          fetch-depth: 0 # Need full history for calculation of diffs
+
+      - name: Configure runner for release
+        uses: ./.github/actions/release-initialise
+
+      - name: Create tags
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.version }}
+          MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
+        run: |
+          git tag --annotate "${RELEASE_TAG}" --message "${RELEASE_TAG}"
+          git tag --annotate "${MAJOR_VERSION_TAG}" --message "${MAJOR_VERSION_TAG}" --force
+
+      - name: Push tags
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.version }}
+          MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
+        run: |
+          git push origin --atomic --force refs/tags/"${RELEASE_TAG}" refs/tags/"${MAJOR_VERSION_TAG}"
+
+      - name: Prepare partial Changelog
+        env:
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+          VERSION: "${{ needs.prepare.outputs.version }}"
+        run: |
+          python .github/workflows/script/prepare_changelog.py CHANGELOG.md "$VERSION" > $PARTIAL_CHANGELOG
+
+          echo "::group::Partial CHANGELOG"
+          cat $PARTIAL_CHANGELOG
+          echo "::endgroup::"
+
+      - name: Generate token
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/create-github-app-token@v2.1.1
+        id: app-token
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
+
+      - name: Create the GitHub release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+          VERSION: "${{ needs.prepare.outputs.version }}"
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          # Do not mark this release as latest. The most recent CLI release must be marked as latest.
+          # Set as a draft to give us an opportunity to review the rollback release.
+          gh release create \
+            "$VERSION" \
+            --latest=false \
+            --draft \
+            --title "$VERSION" \
+            --notes-file "$PARTIAL_CHANGELOG"

@@ -1,0 +1,73 @@
+name: Prepare release
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: "The version that is being released."
+        value: ${{ jobs.prepare.outputs.version }}
+      major_version:
+        description: "The major version of the release."
+        value: ${{ jobs.prepare.outputs.major_version }}
+      latest_tag:
+        description: "The most recent, existing release tag."
+        value: ${{ jobs.prepare.outputs.latest_tag }}
+      backport_source_branch:
+        description: "The release branch for the given tag."
+        value: ${{ jobs.prepare.outputs.backport_source_branch }}
+      backport_target_branches:
+        description: "JSON encoded list of branches to target with backports."
+        value: ${{ jobs.prepare.outputs.backport_target_branches }}
+
+  push:
+    paths:
+      - .github/workflows/prepare-release.yml
+
+jobs:
+  prepare:
+    name: "Prepare release"
+    runs-on: ubuntu-latest
+    if: github.repository == 'github/codeql-action'
+
+    permissions:
+      contents: read
+
+    outputs:
+      version: ${{ steps.versions.outputs.version }}
+      major_version: ${{ steps.versions.outputs.major_version }}
+      latest_tag: ${{ steps.versions.outputs.latest_tag }}
+      backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}
+      backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # Need full history for calculation of diffs
+
+      - name: Configure runner for release
+        uses: ./.github/actions/release-initialise
+
+      - name: Get version tags
+        id: versions
+        run: |
+          VERSION="v$(jq '.version' -r 'package.json')"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          MAJOR_VERSION=$(cut -d '.' -f1 <<< "${VERSION}")
+          echo "major_version=${MAJOR_VERSION}" >> $GITHUB_OUTPUT
+          LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Determine older release branches
+        id: branches
+        uses: ./.github/actions/release-branches
+        with:
+          major_version: ${{ steps.versions.outputs.major_version }}
+          latest_tag: ${{ steps.versions.outputs.latest_tag }}
+
+      - name: Print release information
+        run: |
+          echo 'version: ${{ steps.versions.outputs.version }}'
+          echo 'major_version: ${{ steps.versions.outputs.major_version }}'
+          echo 'latest_tag: ${{ steps.versions.outputs.latest_tag }}'
+          echo 'backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}'
+          echo 'backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}'

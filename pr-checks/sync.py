@@ -119,16 +119,19 @@ for file in (this_dir / 'checks').glob('*.yml'):
         installGo = True if checkSpecification['installGo'].lower() == "true" else False
 
     if installGo:
-        goVersionExpr = '>=1.21.0'
-
-        if 'inputs' in checkSpecification and 'go-version' in checkSpecification['inputs']:
-            goVersionExpr = '${{ inputs.go-version || \'>=1.21.0\' }}'
+        baseGoVersionExpr = '>=1.21.0'
+        workflowInputs['go-version'] = {
+            'type': 'string',
+            'description': 'The version of Go to install',
+            'required': False,
+            'default': baseGoVersionExpr,
+        }
 
         steps.append({
             'name': 'Install Go',
             'uses': 'actions/setup-go@v5',
             'with': {
-                'go-version': goVersionExpr,
+                'go-version': '${{ inputs.go-version || \'' + baseGoVersionExpr + '\' }}',
                 # to avoid potentially misleading autobuilder results where we expect it to download
                 # dependencies successfully, but they actually come from a warm cache
                 'cache': False
@@ -176,7 +179,8 @@ for file in (this_dir / 'checks').glob('*.yml'):
         collection_name = checkSpecification['collection']
         collections.setdefault(collection_name, []).append({
             'specification': checkSpecification,
-            'checkName': checkName
+            'checkName': checkName,
+            'inputs': workflowInputs
         })
 
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
@@ -222,14 +226,13 @@ for collection_name in collections:
     for check in collections[collection_name]:
         checkName = check['checkName']
         checkSpecification = check['specification']
-        checkInputs = {}
+        checkInputs = check['inputs']
         checkWith = {}
 
-        if 'inputs' in checkSpecification:
-            combinedInputs |= checkSpecification['inputs']
+        combinedInputs |= checkInputs
 
-            for inputName in checkSpecification['inputs'].keys():
-                checkWith[inputName] = "${{ inputs." + inputName + " }}"
+        for inputName in checkInputs.keys():
+            checkWith[inputName] = "${{ inputs." + inputName + " }}"
 
         jobs[checkName] = {
             'name': checkSpecification['name'],

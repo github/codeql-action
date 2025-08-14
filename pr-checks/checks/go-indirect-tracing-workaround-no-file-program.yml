@@ -6,11 +6,6 @@ operatingSystems: ["ubuntu"]
 versions: ["default"]
 installGo: "true"
 collection: go
-inputs:
-  go-version:
-    type: string
-    description: "The version of Go to install"
-    required: true
 steps:
   - name: Remove `file` program
     run: |

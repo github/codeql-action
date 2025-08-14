@@ -5,6 +5,7 @@ operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
 versions: ["default"]
 installGo: "true"
+collection: go
 steps:
   - uses: ./../action/init
     with:

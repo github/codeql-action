@@ -60,10 +60,16 @@ yaml.indent(mapping=2, sequence=4, offset=2)
 this_dir = pathlib.Path(__file__).resolve().parent
 
 allJobs = {}
-for file in (this_dir / 'checks').glob('*.yml'):
+collections = {}
+for file in sorted((this_dir / 'checks').glob('*.yml')):
     with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
     matrix = []
+
+    workflowInputs = {}
+    if 'inputs' in checkSpecification:
+        workflowInputs = checkSpecification['inputs']
+
     excludedOsesAndVersions = checkSpecification.get('excludeOsAndVersionCombination', [])
     for version in checkSpecification.get('versions', defaultTestVersions):
         if version == "latest":
@@ -113,11 +119,19 @@ for file in (this_dir / 'checks').glob('*.yml'):
         installGo = True if checkSpecification['installGo'].lower() == "true" else False
 
     if installGo:
+        baseGoVersionExpr = '>=1.21.0'
+        workflowInputs['go-version'] = {
+            'type': 'string',
+            'description': 'The version of Go to install',
+            'required': False,
+            'default': baseGoVersionExpr,
+        }
+
         steps.append({
             'name': 'Install Go',
             'uses': 'actions/setup-go@v5',
             'with': {
-                'go-version': '>=1.21.0',
+                'go-version': '${{ inputs.go-version || \'' + baseGoVersionExpr + '\' }}',
                 # to avoid potentially misleading autobuilder results where we expect it to download
                 # dependencies successfully, but they actually come from a warm cache
                 'cache': False
@@ -160,6 +174,15 @@ for file in (this_dir / 'checks').glob('*.yml'):
         checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
     checkName = file.stem
 
+    # If this check belongs to a named collection, record it.
+    if 'collection' in checkSpecification:
+        collection_name = checkSpecification['collection']
+        collections.setdefault(collection_name, []).append({
+            'specification': checkSpecification,
+            'checkName': checkName,
+            'inputs': workflowInputs
+        })
+
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
     with open(raw_file, 'w') as output_stream:
         writeHeader(output_stream)
@@ -177,7 +200,12 @@ for file in (this_dir / 'checks').glob('*.yml'):
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]
                 },
                 'schedule': [{'cron': SingleQuotedScalarString('0 5 * * *')}],
-                'workflow_dispatch': {}
+                'workflow_dispatch': {
+                    'inputs': workflowInputs
+                },
+                'workflow_call': {
+                    'inputs': workflowInputs
+                }
             },
             'jobs': {
                 checkName: checkJob
@@ -186,6 +214,60 @@ for file in (this_dir / 'checks').glob('*.yml'):
 
     with open(raw_file, 'r') as input_stream:
         with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
+            content = input_stream.read()
+            output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
+    os.remove(raw_file)
+
+# write workflow files for collections
+for collection_name in collections:
+    jobs = {}
+    combinedInputs = {}
+
+    for check in collections[collection_name]:
+        checkName = check['checkName']
+        checkSpecification = check['specification']
+        checkInputs = check['inputs']
+        checkWith = {}
+
+        combinedInputs |= checkInputs
+
+        for inputName in checkInputs.keys():
+            checkWith[inputName] = "${{ inputs." + inputName + " }}"
+
+        jobs[checkName] = {
+            'name': checkSpecification['name'],
+            'permissions': {
+                'contents': 'read',
+                'security-events': 'read'
+            },
+            'uses': "./.github/workflows/" + f"__{checkName}.yml",
+            'with': checkWith
+        }
+
+    raw_file = this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml.raw"
+    with open(raw_file, 'w') as output_stream:
+        writeHeader(output_stream)
+        yaml.dump({
+            'name': f"Manual Check - {collection_name}",
+            'env': {
+                'GITHUB_TOKEN': '${{ secrets.GITHUB_TOKEN }}',
+                'GO111MODULE': 'auto'
+            },
+            'on': {
+                'push': {
+                    'paths': [
+                        f'.github/workflows/__{collection_name}.yml'
+                    ]
+                },
+                'workflow_dispatch': {
+                    'inputs': combinedInputs
+                },
+            },
+            'jobs': jobs
+        }, output_stream)
+
+    with open(raw_file, 'r') as input_stream:
+        with open(this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml", 'w') as output_stream:
             content = input_stream.read()
             output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
     os.remove(raw_file)

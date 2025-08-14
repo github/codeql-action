@@ -14,46 +14,11 @@ on:
 jobs:
 
   prepare:
-    runs-on: ubuntu-latest
-    if: github.repository == 'github/codeql-action'
-    outputs:
-      version: ${{ steps.versions.outputs.version }}
-      major_version: ${{ steps.versions.outputs.major_version }}
-      latest_tag: ${{ steps.versions.outputs.latest_tag }}
-      backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}
-      backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}
+    name: "Prepare release"
     permissions:
       contents: read
-    steps:
-    - uses: actions/checkout@v5
-      with:
-        fetch-depth: 0  # Need full history for calculation of diffs
-    - uses: ./.github/actions/release-initialise
 
-    - name: Get version tags
-      id: versions
-      run: |
-        VERSION="v$(jq '.version' -r 'package.json')"
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
-        MAJOR_VERSION=$(cut -d '.' -f1 <<< "${VERSION}")
-        echo "major_version=${MAJOR_VERSION}" >> $GITHUB_OUTPUT
-        LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-        echo "latest_tag=${LATEST_TAG}" >> $GITHUB_OUTPUT
-
-    - id: branches
-      name: Determine older release branches
-      uses: ./.github/actions/release-branches
-      with:
-        major_version: ${{ steps.versions.outputs.major_version }}
-        latest_tag: ${{ steps.versions.outputs.latest_tag }}
-
-    - name: debug logging
-      run: |
-        echo 'version: ${{ steps.versions.outputs.version }}'
-        echo 'major_version: ${{ steps.versions.outputs.major_version }}'
-        echo 'latest_tag: ${{ steps.versions.outputs.latest_tag }}'
-        echo 'backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}'
-        echo 'backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}'
+    uses: .github/workflows/prepare-release.yml
 
   update:
     timeout-minutes: 45

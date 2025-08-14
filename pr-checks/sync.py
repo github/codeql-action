@@ -65,6 +65,11 @@ for file in (this_dir / 'checks').glob('*.yml'):
     with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
     matrix = []
+
+    workflowInputs = {}
+    if 'inputs' in checkSpecification:
+        workflowInputs = checkSpecification['inputs']
+
     excludedOsesAndVersions = checkSpecification.get('excludeOsAndVersionCombination', [])
     for version in checkSpecification.get('versions', defaultTestVersions):
         if version == "latest":
@@ -173,10 +178,6 @@ for file in (this_dir / 'checks').glob('*.yml'):
             'specification': checkSpecification,
             'checkName': checkName
         })
-
-    workflowInputs = {}
-    if 'inputs' in checkSpecification:
-        workflowInputs = checkSpecification['inputs']
 
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
     with open(raw_file, 'w') as output_stream:

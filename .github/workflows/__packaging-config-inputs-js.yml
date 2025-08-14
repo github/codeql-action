@@ -21,9 +21,19 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
-    inputs: {}
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
   workflow_call:
-    inputs: {}
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
 jobs:
   packaging-config-inputs-js:
     strategy:
@@ -67,7 +77,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '>=1.21.0'
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
       - uses: ./../action/init
         with:

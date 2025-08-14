@@ -61,7 +61,7 @@ this_dir = pathlib.Path(__file__).resolve().parent
 
 allJobs = {}
 collections = {}
-for file in (this_dir / 'checks').glob('*.yml'):
+for file in sorted((this_dir / 'checks').glob('*.yml')):
     with open(file, 'r') as checkStream:
         checkSpecification = yaml.load(checkStream)
     matrix = []

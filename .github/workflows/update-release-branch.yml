@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: read
 
-    uses: .github/workflows/prepare-release.yml
+    uses: ./.github/workflows/prepare-release.yml
 
   update:
     timeout-minutes: 45

@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
 
-    uses: .github/workflows/prepare-release.yml
+    uses: ./.github/workflows/prepare-release.yml
 
   rollback:
     name: "Create rollback release"

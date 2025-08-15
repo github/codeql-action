@@ -2,6 +2,7 @@ name: "Autobuild direct tracing"
 description: "An end-to-end integration test of a Java repository built using 'build-mode: autobuild', with direct tracing enabled"
 operatingSystems: ["ubuntu", "windows"]
 versions: ["linked", "nightly-latest"]
+installJava: "true"
 env:
   CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING: true
 steps:
@@ -19,7 +20,7 @@ steps:
       db-location: "${{ runner.temp }}/customDbLocation"
       languages: java
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-    
+
   - name: Check that indirect tracing is disabled
     shell: bash
     run: |

@@ -16,10 +16,33 @@ inputs:
   token:
     description: "The token to use"
     required: true
+  dry-run:
+    description: "Set to true to skip creating the PR. The branch will still be pushed."
+    default: "false"
 runs:
   using: composite
   steps:
     - name: Create mergeback branch
+      shell: bash
+      env:
+        VERSION: "${{ inputs.version }}"
+        NEW_BRANCH: "${{ inputs.branch }}"
+      run: |
+        set -exu
+
+        # Update the version number ready for the next release
+        npm version patch --no-git-tag-version
+
+        # Update the changelog, adding a new version heading directly above the most recent existing one
+        awk '!f && /##/{print "'"## [UNRELEASED]\n\nNo user facing changes.\n"'"; f=1}1' CHANGELOG.md > temp && mv temp CHANGELOG.md
+        git add .
+        git commit -m "Update changelog and version after ${VERSION}"
+
+        git push origin "${NEW_BRANCH}"
+
+    - name: Create PR
+      shell: bash
+      if: inputs.dry-run != 'true'
       env:
         VERSION: "${{ inputs.version }}"
         BASE_BRANCH: "${{ inputs.base }}"
@@ -41,16 +64,6 @@ runs:
                 selected rather than "Squash and merge" or "Rebase and merge".
         EOF
         )
-
-        # Update the version number ready for the next release
-        npm version patch --no-git-tag-version
-
-        # Update the changelog, adding a new version heading directly above the most recent existing one
-        awk '!f && /##/{print "'"## [UNRELEASED]\n\nNo user facing changes.\n"'"; f=1}1' CHANGELOG.md > temp && mv temp CHANGELOG.md
-        git add .
-        git commit -m "Update changelog and version after ${VERSION}"
-
-        git push origin "${NEW_BRANCH}"
 
         # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft
         # so that a maintainer can take the PR out of draft, thereby triggering the PR checks.

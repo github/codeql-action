@@ -20,7 +20,20 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
+  workflow_call:
+    inputs:
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 jobs:
   autobuild-direct-tracing-with-working-dir:
     strategy:
@@ -51,6 +64,11 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
       - name: Test setup
         shell: bash
         run: |

@@ -919,7 +919,7 @@ function handleProcessingResultForUnsuccessfulExecution(
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     response.data.errors[0].toString().startsWith("unsuccessful execution")
   ) {
-    logger.debug(
+    logger.info(
       "Successfully uploaded a SARIF file for the unsuccessful execution. Received expected " +
         '"unsuccessful execution" processing error, and no other errors.',
     );

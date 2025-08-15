@@ -138,6 +138,28 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         })
 
+    installJava = False
+    if checkSpecification.get('installJava'):
+        installJava = True if checkSpecification['installJava'].lower() == "true" else False
+
+    if installJava:
+        baseJavaVersionExpr = '17'
+        workflowInputs['java-version'] = {
+            'type': 'string',
+            'description': 'The version of Java to install',
+            'required': False,
+            'default': baseJavaVersionExpr,
+        }
+
+        steps.append({
+            'name': 'Install Java',
+            'uses': 'actions/setup-java@v4',
+            'with': {
+                'java-version': '${{ inputs.java-version || \'' + baseJavaVersionExpr + '\' }}',
+                'distribution': 'temurin'
+            }
+        })
+
     # If container initialisation steps are present in the check specification,
     # make sure to execute them first.
     if 'container' in checkSpecification and 'container-init-steps' in checkSpecification:

@@ -114,9 +114,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         },
     ]
 
-    installGo = False
-    if checkSpecification.get('installGo'):
-        installGo = True if checkSpecification['installGo'].lower() == "true" else False
+    installGo = checkSpecification.get('installGo', '').lower() == 'true'
 
     if installGo:
         baseGoVersionExpr = '>=1.21.0'
@@ -135,6 +133,26 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 # to avoid potentially misleading autobuilder results where we expect it to download
                 # dependencies successfully, but they actually come from a warm cache
                 'cache': False
+            }
+        })
+
+    installJava = checkSpecification.get('installJava', '').lower() == 'true'
+
+    if installJava:
+        baseJavaVersionExpr = '17'
+        workflowInputs['java-version'] = {
+            'type': 'string',
+            'description': 'The version of Java to install',
+            'required': False,
+            'default': baseJavaVersionExpr,
+        }
+
+        steps.append({
+            'name': 'Install Java',
+            'uses': 'actions/setup-java@v4',
+            'with': {
+                'java-version': '${{ inputs.java-version || \'' + baseJavaVersionExpr + '\' }}',
+                'distribution': 'temurin'
             }
         })
 

@@ -63,6 +63,9 @@ jobs:
         run: |
           set -x
 
+          # Checkout the base branch, since we may be testing on a different branch
+          git checkout "$BASE_BRANCH"
+
           # Generate a new branch name for the mergeback PR
           short_sha="${GITHUB_SHA:0:8}"
           NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"

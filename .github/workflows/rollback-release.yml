@@ -48,6 +48,11 @@ jobs:
       - name: Configure runner for release
         uses: ./.github/actions/release-initialise
 
+      - name: Create tag for testing
+        if: github.event_name != 'workflow_dispatch'
+        shell: bash
+        run: git tag v0.0.0
+
       # We start by preparing the mergeback branch, mainly so that we have the updated changelog
       # readily available for the partial changelog that's needed for the release.
       - name: Prepare mergeback branch
@@ -69,7 +74,9 @@ jobs:
       - name: Prepare rollback changelog
         env:
           NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
-          ROLLBACK_TAG: ${{ inputs.rollback-tag || needs.prepare.outputs.latest_tag }}
+          # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
+          # but use `v0.0.0` for testing.
+          ROLLBACK_TAG: ${{ inputs.rollback-tag || 'v0.0.0' }}
           LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
           VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
@@ -83,8 +90,8 @@ jobs:
         shell: bash
         env:
           # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
-          # but use `needs.prepare.outputs.latest_tag` for testing.
-          ROLLBACK_TAG: ${{ inputs.rollback-tag || needs.prepare.outputs.latest_tag }}
+          # but use `v0.0.0` for testing.
+          ROLLBACK_TAG: ${{ inputs.rollback-tag || 'v0.0.0' }}
           RELEASE_TAG: ${{ needs.prepare.outputs.version }}
           MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
         run: |

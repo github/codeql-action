@@ -114,9 +114,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         },
     ]
 
-    installGo = False
-    if checkSpecification.get('installGo'):
-        installGo = True if checkSpecification['installGo'].lower() == "true" else False
+    installGo = checkSpecification.get('installGo', '').lower() == 'true'
 
     if installGo:
         baseGoVersionExpr = '>=1.21.0'
@@ -138,9 +136,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         })
 
-    installJava = False
-    if checkSpecification.get('installJava'):
-        installJava = True if checkSpecification['installJava'].lower() == "true" else False
+    installJava = checkSpecification.get('installJava', '').lower() == 'true'
 
     if installJava:
         baseJavaVersionExpr = '17'

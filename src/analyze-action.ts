@@ -249,7 +249,7 @@ async function run() {
       delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
     }
 
-    if (actionsUtil.getOptionalInput("cleanup-level") !== "") {
+    if (actionsUtil.getOptionalInput("cleanup-level")) {
       logger.info(
         "The 'cleanup-level' input is ignored since the CodeQL Action now automatically " +
           "manages database cleanup. This input can safely be removed from your workflow.",

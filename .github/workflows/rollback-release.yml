@@ -43,20 +43,52 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
-          # but use `needs.prepare.outputs.latest_tag` for testing.
-          ref: ${{ inputs.rollback-tag || needs.prepare.outputs.latest_tag }}
           fetch-depth: 0 # Need full history for calculation of diffs
 
       - name: Configure runner for release
         uses: ./.github/actions/release-initialise
 
+      # We start by preparing the mergeback branch, mainly so that we have the updated changelog
+      # readily available for the partial changelog that's needed for the release.
+      - name: Prepare mergeback branch
+        id: mergeback-branch
+        env:
+          BASE_BRANCH: "main"
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -x
+
+          # Generate a new branch name for the mergeback PR
+          short_sha="${GITHUB_SHA:0:8}"
+          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
+          echo "new-branch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
+
+          # Create the mergeback branch
+          git checkout -b "${NEW_BRANCH}"
+
+      - name: Prepare rollback changelog
+        env:
+          NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
+          ROLLBACK_TAG: ${{ inputs.rollback-tag || needs.prepare.outputs.latest_tag }}
+          LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
+          VERSION: "${{ needs.prepare.outputs.version }}"
+        run: |
+          python .github/workflows/script/rollback_changelog.py "${ROLLBACK_TAG:1}" "${LATEST_TAG:1}" "$VERSION" > $NEW_CHANGELOG
+
+          echo "::group::New CHANGELOG"
+          cat $NEW_CHANGELOG
+          echo "::endgroup::"
+
       - name: Create tags
         shell: bash
         env:
+          # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
+          # but use `needs.prepare.outputs.latest_tag` for testing.
+          ROLLBACK_TAG: ${{ inputs.rollback-tag || needs.prepare.outputs.latest_tag }}
           RELEASE_TAG: ${{ needs.prepare.outputs.version }}
           MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
         run: |
+          git checkout "refs/tags/${ROLLBACK_TAG}"
           git tag --annotate "${RELEASE_TAG}" --message "${RELEASE_TAG}"
           git tag --annotate "${MAJOR_VERSION_TAG}" --message "${MAJOR_VERSION_TAG}" --force
 
@@ -71,10 +103,11 @@ jobs:
 
       - name: Prepare partial Changelog
         env:
+          NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
           VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/prepare_changelog.py CHANGELOG.md "$VERSION" > $PARTIAL_CHANGELOG
+          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG "$VERSION" > $PARTIAL_CHANGELOG
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG
@@ -88,7 +121,7 @@ jobs:
           app-id: ${{ vars.AUTOMATION_APP_ID }}
           private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
 
-      - name: Create the GitHub release
+      - name: Create the rollback release
         if: github.event_name == 'workflow_dispatch'
         env:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
@@ -103,3 +136,16 @@ jobs:
             --draft \
             --title "$VERSION" \
             --notes-file "$PARTIAL_CHANGELOG"
+
+      - name: Create mergeback branch and PR
+        uses: ./.github/actions/prepare-mergeback-branch
+        with:
+          base: "main"
+          head: ""
+          branch: "${{ steps.mergeback-branch.outputs.new-branch }}"
+          version: "${{ needs.prepare.outputs.version }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          # Setting this to `true` for non-workflow_dispatch events will
+          # still push the `branch`, but won't create a corresponding PR
+          dry-run: "${{ github.event_name != 'workflow_dispatch' }}"
+

@@ -12,6 +12,7 @@ on:
   push:
     paths:
       - .github/workflows/rollback-release.yml
+      - .github/actions/prepare-mergeback-branch/**
 
 jobs:
   prepare:

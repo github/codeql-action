@@ -58,7 +58,7 @@ jobs:
       - name: Prepare mergeback branch
         id: mergeback-branch
         env:
-          BASE_BRANCH: "main"
+          BASE_BRANCH: ${{ (github.event_name == 'workflow_dispatch' && 'main') || github.ref_name }}
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -x

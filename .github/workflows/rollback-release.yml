@@ -42,8 +42,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          # We usually expect to checkout `inputs.rollback-tag`, but use
-          # `needs.prepare.outputs.latest_tag` for testing.
+          # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
+          # but use `needs.prepare.outputs.latest_tag` for testing.
           ref: ${{ inputs.rollback-tag || needs.prepare.outputs.latest_tag }}
           fetch-depth: 0 # Need full history for calculation of diffs
 

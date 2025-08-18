@@ -20,7 +20,10 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
 jobs:
   submit-sarif-failure:
     strategy:
@@ -42,7 +45,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -50,7 +53,7 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./init
         with:
           languages: javascript

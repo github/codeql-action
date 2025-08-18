@@ -20,7 +20,10 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
 jobs:
   bundle-zstd:
     strategy:
@@ -41,7 +44,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

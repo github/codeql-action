@@ -40,7 +40,7 @@ jobs:
         uses: actions/setup-node@v4
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0  # ensure we have all tags and can push commits
           ref: main

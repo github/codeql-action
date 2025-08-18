@@ -44,7 +44,6 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   CleanupTrapCaches = "cleanup_trap_caches",
-  CppBuildModeNone = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
@@ -74,7 +73,6 @@ export enum Feature {
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  RustAnalysis = "rust_analysis",
 }
 
 export const featureConfig: Record<
@@ -111,11 +109,6 @@ export const featureConfig: Record<
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
-    minimumVersion: undefined,
-  },
-  [Feature.CppBuildModeNone]: {
-    defaultValue: false,
-    envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
@@ -262,11 +255,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_STANDARD_LIBRARY_EXTRACTION",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
-  },
-  [Feature.RustAnalysis]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_RUST_ANALYSIS",
-    minimumVersion: "2.19.3",
   },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,

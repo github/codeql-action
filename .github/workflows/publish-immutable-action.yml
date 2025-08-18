@@ -28,7 +28,7 @@ jobs:
           fi
       - name: Checking out
         if: steps.check.outputs.is-action-release == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Publish
         if: steps.check.outputs.is-action-release == 'true'
         id: publish

@@ -1,0 +1,77 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: Manual Check - go
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    paths:
+      - .github/workflows/__go.yml
+  workflow_dispatch:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+jobs:
+  go-custom-queries:
+    name: 'Go: Custom queries'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-custom-queries.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-indirect-tracing-workaround-diagnostic:
+    name: 'Go: diagnostic when Go is changed after init step'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround-diagnostic.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-indirect-tracing-workaround-no-file-program:
+    name: 'Go: diagnostic when `file` is not installed'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround-no-file-program.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-indirect-tracing-workaround:
+    name: 'Go: workaround for indirect tracing'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-tracing-autobuilder:
+    name: 'Go: tracing with autobuilder step'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-autobuilder.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-tracing-custom-build-steps:
+    name: 'Go: tracing with custom build steps'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-custom-build-steps.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-tracing-legacy-workflow:
+    name: 'Go: tracing with legacy workflow'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-legacy-workflow.yml
+    with:
+      go-version: ${{ inputs.go-version }}

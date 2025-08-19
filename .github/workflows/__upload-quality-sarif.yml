@@ -44,7 +44,7 @@ jobs:
             version: default
           - os: macos-latest
             version: default
-          - os: windows-latest
+          - os: windows-2025
             version: default
     name: 'Upload-sarif: code quality endpoint'
     permissions:

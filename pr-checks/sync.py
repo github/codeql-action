@@ -75,7 +75,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         if version == "latest":
             raise ValueError('Did not recognize "version: latest". Did you mean "version: linked"?')
 
-        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
+        runnerImages = ["ubuntu-latest", "macos-latest", "windows-2025"]
         operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu", "macos", "windows"])
 
         for operatingSystem in operatingSystems:

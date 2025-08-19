@@ -44,7 +44,7 @@ jobs:
             version: linked
           - os: macos-latest
             version: linked
-          - os: windows-latest
+          - os: windows-2025
             version: linked
     name: Use a custom `checkout_path`
     permissions:

@@ -44,19 +44,19 @@ jobs:
             version: linked
           - os: macos-latest
             version: linked
-          - os: windows-latest
+          - os: windows-2025
             version: linked
           - os: ubuntu-latest
             version: default
           - os: macos-latest
             version: default
-          - os: windows-latest
+          - os: windows-2025
             version: default
           - os: ubuntu-latest
             version: nightly-latest
           - os: macos-latest
             version: nightly-latest
-          - os: windows-latest
+          - os: windows-2025
             version: nightly-latest
     name: 'Packaging: Config and input'
     permissions:

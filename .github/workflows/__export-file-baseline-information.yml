@@ -44,7 +44,7 @@ jobs:
             version: nightly-latest
           - os: macos-latest
             version: nightly-latest
-          - os: windows-latest
+          - os: windows-2025
             version: nightly-latest
     name: Export file baseline information
     permissions:

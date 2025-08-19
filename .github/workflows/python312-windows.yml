@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-    runs-on: windows-latest
+    runs-on: windows-2025
 
     steps:
     - uses: actions/setup-python@v5

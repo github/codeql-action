@@ -42,11 +42,11 @@ jobs:
         include:
           - os: ubuntu-latest
             version: linked
-          - os: windows-latest
+          - os: windows-2025
             version: linked
           - os: ubuntu-latest
             version: nightly-latest
-          - os: windows-latest
+          - os: windows-2025
             version: nightly-latest
     name: Autobuild direct tracing (custom working directory)
     permissions:

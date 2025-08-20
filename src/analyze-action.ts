@@ -225,7 +225,7 @@ async function run() {
 
     config = await getConfig(actionsUtil.getTemporaryDirectory(), logger);
     if (config === undefined) {
-      throw new Error(
+      throw new util.ConfigurationError(
         "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }

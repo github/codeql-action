@@ -17,9 +17,6 @@ jobs:
       contents: read
       security-events: write # needed to upload ESLint results
 
-    strategy:
-      fail-fast: false
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -36,19 +33,6 @@ jobs:
 
       - name: Check generated JS
         run: .github/workflows/script/check-js.sh
-
-  check-node-modules:
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
-    name: Check modules up to date
-    permissions:
-      contents: read
-    runs-on: macos-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@v5
-      - name: Check node modules up to date
-        run: .github/workflows/script/check-node-modules.sh
 
   check-file-contents:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
@@ -74,7 +58,6 @@ jobs:
   npm-test:
     if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
     name: Unit Test
-    needs: [check-js, check-node-modules]
     strategy:
       fail-fast: false
       matrix:

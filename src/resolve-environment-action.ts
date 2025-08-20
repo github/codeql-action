@@ -22,6 +22,7 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
+  ConfigurationError,
   getErrorMessage,
   wrapError,
 } from "./util";
@@ -53,7 +54,7 @@ async function run() {
 
     config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
-      throw new Error(
+      throw new ConfigurationError(
         "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }

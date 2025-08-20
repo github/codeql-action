@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
     labels:
-      - Update dependencies
+      - Rebuild
     # Ignore incompatible dependency updates
     ignore:
       # There is a type incompatibility issue between v0.0.9 and our other dependencies.

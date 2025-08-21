@@ -1468,3 +1468,12 @@ export function generateCodeScanningConfig(
   }
   return augmentedConfig;
 }
+
+/**
+ * Returns `true` if Code Quality analysis is enabled, or `false` if not.
+ */
+export function isCodeQualityEnabled(config: Config): config is Config & {
+  augmentationProperties: { qualityQueriesInput: string };
+} {
+  return config.augmentationProperties.qualityQueriesInput !== undefined;
+}

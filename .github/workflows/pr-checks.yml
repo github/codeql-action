@@ -52,7 +52,7 @@ jobs:
         run: npm test
 
       - name: Lint
-        id: lint
+        if: matrix.os != 'windows-latest'
         run: npm run lint-ci
 
       - name: Upload sarif

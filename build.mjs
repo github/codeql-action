@@ -1,9 +1,10 @@
 import { rm } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import path, { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as esbuild from "esbuild";
 import { globSync } from "glob";
+import { copy } from "esbuild-plugin-copy";
 import { typecheckPlugin } from "@jgoz/esbuild-plugin-typecheck";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,13 +26,20 @@ const onEndPlugin = {
   },
 };
 
+const copyDefaults = copy({
+  assets: {
+    from: ["src/defaults.json"],
+    to: ["defaults.json"],
+  },
+});
+
 const context = await esbuild.context({
   entryPoints: globSync(["src/*-action.ts", "src/*-action-post.ts"]),
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,
   platform: "node",
-  plugins: [typecheckPlugin(), onEndPlugin],
+  plugins: [typecheckPlugin(), copyDefaults, onEndPlugin],
 });
 
 await context.rebuild();

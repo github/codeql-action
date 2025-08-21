@@ -37,10 +37,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Use the system Bash shell to ensure we can run commands like `npm install`
+          # Use the system Bash shell to ensure we can run commands like `npm ci`
           # that are not available in the default shell on Windows.
           npm config set script-shell bash
-          npm install
+          npm ci
 
       - name: Verify compiled JS up to date
         run: .github/workflows/script/check-js.sh

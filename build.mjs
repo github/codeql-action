@@ -1,5 +1,5 @@
 import { rm } from "node:fs/promises";
-import path, { dirname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as esbuild from "esbuild";

@@ -662,7 +662,7 @@ export async function runQueries(
       const sarifFile = path.join(sarifFolder, `${language}.sarif`);
 
       const queries: string[] = [];
-      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+      if (configUtils.isCodeQualityEnabled(config)) {
         queries.push(util.getGeneratedSuitePath(config, language));
         for (const qualityQuery of config.augmentationProperties
           .qualityQueriesInput) {
@@ -695,7 +695,7 @@ export async function runQueries(
       );
 
       let qualityAnalysisSummary: string | undefined;
-      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+      if (configUtils.isCodeQualityEnabled(config)) {
         logger.info(`Interpreting quality results for ${language}`);
         const qualityCategory = fixCodeQualityCategory(
           logger,

@@ -1,5 +1,5 @@
-# Ignore for example failing-tests.json from AVA
-node_modules/.cache/
+# Dependency directories
+node_modules/
 # Build output for tests
 lib-test/
 # Java build files

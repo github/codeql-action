@@ -5,7 +5,7 @@
   "description": "CodeQL action",
   "scripts": {
     "build": "node build.mjs",
-    "test": "ava src/**.test.ts --serial --verbose",
+    "test": "tsc --project tsconfig.test.json && ava src/**.test.ts --serial --verbose",
     "test-debug": "ava src/**.test.ts --serial --verbose --timeout=20m",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 .",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
@@ -15,7 +15,7 @@
   "ava": {
     "typescript": {
       "rewritePaths": {
-        "src/": "lib/"
+        "src/": "lib-test/"
       },
       "compile": false
     }

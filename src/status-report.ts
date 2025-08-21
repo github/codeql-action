@@ -11,8 +11,9 @@ import {
   getRequiredInput,
   isSelfHostedRunner,
 } from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { type Config } from "./config-utils";
+import { isCodeQualityEnabled, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
@@ -91,6 +92,8 @@ export interface StatusReportBase {
   action_version: string;
   /** The name of the Actions event that triggered the workflow. */
   actions_event_name?: string;
+  /** Comma-separated list of the kinds of analyses we are performing. */
+  analyses?: string;
   /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
   /** Build mode, if specified. */
@@ -287,12 +290,26 @@ export async function createStatusReportBase(
     const isSteadyStateDefaultSetupRun =
       process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";
 
+    // We leave `analyses` empty if we don't have a `config`, so that we don't
+    // accidentally report only `code-scanning` when we can't tell whether `code-quality`
+    // is enabled or not.
+    const analyses: AnalysisKind[] = [];
+
+    if (config !== undefined) {
+      analyses.push(AnalysisKind.CodeScanning);
+
+      if (isCodeQualityEnabled(config)) {
+        analyses.push(AnalysisKind.CodeQuality);
+      }
+    }
+
     const statusReport: StatusReportBase = {
       action_name: actionName,
       action_oid: "unknown", // TODO decide if it's possible to fill this in
       action_ref: actionRef,
       action_started_at: actionStartedAt.toISOString(),
       action_version: getActionVersion(),
+      analyses: analyses.join(","),
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,

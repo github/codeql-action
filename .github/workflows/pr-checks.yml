@@ -24,17 +24,23 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
       - name: Install dependencies
         run: |
           # Use the system Bash shell to ensure we can run commands like `npm install`
           # that are not available in the default shell on Windows.
           npm config set script-shell bash
           npm install
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.11
 
       - name: Verify compiled JS up to date
         run: .github/workflows/script/check-js.sh

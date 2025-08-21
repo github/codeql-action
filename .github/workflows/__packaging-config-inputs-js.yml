@@ -73,7 +73,7 @@ jobs:
           node-version: 20.x
           cache: npm
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

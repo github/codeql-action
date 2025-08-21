@@ -123,7 +123,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             },
             {
                 'name': 'Install dependencies',
-                'run': 'npm install',
+                'run': 'npm ci',
             },
         ])
 

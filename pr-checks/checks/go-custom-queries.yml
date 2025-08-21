@@ -6,7 +6,7 @@ operatingSystems:
 versions:
   - linked
   - nightly-latest
-installGo: "true"
+installGo: true
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:

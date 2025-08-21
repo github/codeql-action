@@ -1,7 +1,7 @@
 name: "Upload-sarif: 'ref' and 'sha' from inputs"
 description: "Checks that specifying 'ref' and 'sha' as inputs works"
 versions: ["default"]
-installGo: "true"
+installGo: true
 steps:
   - uses: ./../action/init
     with:

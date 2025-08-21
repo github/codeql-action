@@ -29,6 +29,7 @@ export default [
       "lib/**/*",
       "src/testdata/**/*",
       "tests/**/*",
+      "build.mjs",
       "eslint.config.mjs",
       ".github/**/*",
     ],

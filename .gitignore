@@ -1,5 +1,7 @@
 # Ignore for example failing-tests.json from AVA
 node_modules/.cache/
+# Build output for tests
+lib-test/
 # Java build files
 .gradle/
 *.class

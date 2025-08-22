@@ -1,7 +1,7 @@
 # Dependency directories
 node_modules/
 # Build output for tests
-lib-test/
+build/
 # Java build files
 .gradle/
 *.class

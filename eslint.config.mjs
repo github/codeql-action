@@ -26,8 +26,8 @@ export default [
   {
     ignores: [
       "**/webpack.config.js",
+      "build/**/*",
       "lib/**/*",
-      "lib-test/**/*",
       "src/testdata/**/*",
       "tests/**/*",
       "build.mjs",

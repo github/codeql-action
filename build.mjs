@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
 import { globSync } from "glob";
 import { copy } from "esbuild-plugin-copy";
-import { typecheckPlugin } from "@jgoz/esbuild-plugin-typecheck";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -39,7 +38,7 @@ const context = await esbuild.context({
   format: "cjs",
   outdir: OUT_DIR,
   platform: "node",
-  plugins: [typecheckPlugin(), copyDefaults, onEndPlugin],
+  plugins: [copyDefaults, onEndPlugin],
 });
 
 await context.rebuild();

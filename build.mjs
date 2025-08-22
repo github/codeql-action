@@ -1,20 +1,55 @@
-import { rm } from "node:fs/promises";
+import { copyFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as esbuild from "esbuild";
 import { globSync } from "glob";
-import { copy } from "esbuild-plugin-copy";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const OUT_DIR = "lib";
+const SRC_DIR = join(__dirname, "src");
+const OUT_DIR = join(__dirname, "lib");
 
-await rm(join(__dirname, OUT_DIR), { recursive: true, force: true });
+/**
+ * Clean the output directory before building.
+ * 
+ * @type {esbuild.Plugin}
+ */
+const cleanPlugin = {
+  name: "clean",
+  setup(build) {
+    build.onStart(async () => {
+      await rm(OUT_DIR, { recursive: true, force: true });
+    });
+  },
+};
 
-// This will just log when a build ends
-/** @type {esbuild.Plugin} */
+/**
+ * Copy defaults.json to the output directory since other projects depend on it.
+ * 
+ * @type {esbuild.Plugin}
+ */
+const copyDefaultsPlugin = {
+  name: "copy-defaults",
+  setup(build) {
+    build.onEnd(async () => {
+      await rm(join(OUT_DIR, "defaults.json"), {
+        force: true,
+      });
+      await copyFile(
+        join(SRC_DIR, "defaults.json"),
+        join(OUT_DIR, "defaults.json"),
+      );
+    });
+  },
+}
+
+/**
+ * Log when the build ends.
+ *
+ * @type {esbuild.Plugin}
+ */
 const onEndPlugin = {
   name: "on-end",
   setup(build) {
@@ -25,20 +60,13 @@ const onEndPlugin = {
   },
 };
 
-const copyDefaults = copy({
-  assets: {
-    from: ["src/defaults.json"],
-    to: ["defaults.json"],
-  },
-});
-
 const context = await esbuild.context({
-  entryPoints: globSync(["src/*-action.ts", "src/*-action-post.ts"]),
+  entryPoints: globSync([`${SRC_DIR}/*-action.ts`, `${SRC_DIR}/*-action-post.ts`]),
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,
   platform: "node",
-  plugins: [copyDefaults, onEndPlugin],
+  plugins: [cleanPlugin, copyDefaultsPlugin, onEndPlugin],
 });
 
 await context.rebuild();

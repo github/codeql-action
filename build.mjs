@@ -43,7 +43,7 @@ const copyDefaultsPlugin = {
       );
     });
   },
-}
+};
 
 /**
  * Log when the build ends.

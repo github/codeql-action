@@ -3,9 +3,10 @@
     /* Basic Options */
     "lib": ["ES2021"],
     "target": "ES2021",
-    "module": "commonjs",                     /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'. */
-    "noEmit": true,                           /* Do not emit outputs. */
-    "sourceMap": true,                        /* Generates corresponding '.map' file. */
+    "module": "commonjs",
+    "outDir": "./build",
+    "rootDir": "./src",
+    "sourceMap": true,
 
     /* Strict Type-Checking Options */
     "strict": true,                           /* Enable all strict type-checking options. */

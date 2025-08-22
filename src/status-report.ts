@@ -93,7 +93,7 @@ export interface StatusReportBase {
   /** The name of the Actions event that triggered the workflow. */
   actions_event_name?: string;
   /** Comma-separated list of the kinds of analyses we are performing. */
-  analyses?: string;
+  analysis_kinds?: string;
   /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
   /** Build mode, if specified. */
@@ -293,13 +293,13 @@ export async function createStatusReportBase(
     // We leave `analyses` empty if we don't have a `config`, so that we don't
     // accidentally report only `code-scanning` when we can't tell whether `code-quality`
     // is enabled or not.
-    const analyses: AnalysisKind[] = [];
+    const analysisKinds: AnalysisKind[] = [];
 
     if (config !== undefined) {
-      analyses.push(AnalysisKind.CodeScanning);
+      analysisKinds.push(AnalysisKind.CodeScanning);
 
       if (isCodeQualityEnabled(config)) {
-        analyses.push(AnalysisKind.CodeQuality);
+        analysisKinds.push(AnalysisKind.CodeQuality);
       }
     }
 
@@ -309,7 +309,7 @@ export async function createStatusReportBase(
       action_ref: actionRef,
       action_started_at: actionStartedAt.toISOString(),
       action_version: getActionVersion(),
-      analyses: analyses.join(","),
+      analysis_kinds: analysisKinds.join(","),
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,

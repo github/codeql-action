@@ -25,6 +25,7 @@ import {
   GitHubVersion,
   HTTPError,
 } from "./util";
+import { AnalysisKind } from "./analyses";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
   auth: "token",
@@ -353,6 +354,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
   return Object.assign(
     {},
     {
+      analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
       buildMode: undefined,
       originalUserInput: {},

@@ -61,7 +61,8 @@ const onEndPlugin = {
 };
 
 const context = await esbuild.context({
-  entryPoints: globSync([`${SRC_DIR}/*-action.ts`, `${SRC_DIR}/*-action-post.ts`]),
+  // Include upload-lib.ts as an entry point for use in testing environments.
+  entryPoints: globSync([`${SRC_DIR}/*-action.ts`, `${SRC_DIR}/*-action-post.ts`, "src/upload-lib.ts"]),
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,

@@ -1495,5 +1495,5 @@ export function generateCodeScanningConfig(
 export function isCodeQualityEnabled(config: Config): config is Config & {
   augmentationProperties: { qualityQueriesInput: string };
 } {
-  return config.augmentationProperties.qualityQueriesInput !== undefined;
+  return config.analysisKinds.includes(AnalysisKind.CodeQuality);
 }

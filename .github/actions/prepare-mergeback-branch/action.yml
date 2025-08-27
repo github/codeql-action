@@ -30,6 +30,9 @@ runs:
       run: |
         set -exu
 
+        # Ensure we are on the new branch
+        git checkout "${NEW_BRANCH}"
+
         # Update the version number ready for the next release
         npm version patch --no-git-tag-version
 

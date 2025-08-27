@@ -539,6 +539,16 @@ export async function getDefaultConfig({
 }: InitConfigInputs): Promise<Config> {
   const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
 
+  // For backwards compatibility, add Code Quality to the enabled analysis kinds
+  // if an input to `quality-queries` was specified. We should remove this once
+  // `quality-queries` is no longer used.
+  if (
+    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
+    qualityQueriesInput !== undefined
+  ) {
+    analysisKinds.push(AnalysisKind.CodeQuality);
+  }
+
   const languages = await getLanguages(
     codeql,
     languagesInput,

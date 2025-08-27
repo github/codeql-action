@@ -147,6 +147,15 @@ jobs:
             --title "$VERSION" \
             --notes-file "$PARTIAL_CHANGELOG"
 
+      - name: Update changelog
+        shell: bash
+        env:
+          NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
+          NEW_BRANCH: "${{ steps.mergeback-branch.outputs.new-branch }}"
+        run: |
+          git checkout "${NEW_BRANCH}"
+          mv ${NEW_CHANGELOG} CHANGELOG.md
+
       - name: Create mergeback branch and PR
         uses: ./.github/actions/prepare-mergeback-branch
         with:

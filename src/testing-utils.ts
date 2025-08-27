@@ -6,6 +6,7 @@ import { TestFn } from "ava";
 import nock from "nock";
 import * as sinon from "sinon";
 
+import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import * as codeql from "./codeql";
@@ -25,7 +26,6 @@ import {
   GitHubVersion,
   HTTPError,
 } from "./util";
-import { AnalysisKind } from "./analyses";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
   auth: "token",

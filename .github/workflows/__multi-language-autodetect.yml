@@ -10,9 +10,6 @@ env:
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 on:
   push:
-    branches:
-      - main
-      - releases/v*
   pull_request:
     types:
       - opened

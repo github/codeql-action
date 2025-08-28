@@ -12,6 +12,7 @@ import {
   getTemporaryDirectory,
   PullRequestBranches,
 } from "./actions-util";
+import * as analyses from "./analyses";
 import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -679,9 +680,8 @@ export async function runQueries(
         configUtils.isCodeScanningEnabled(config)
       ) {
         queries.push(util.getGeneratedSuitePath(config, language));
-        for (const qualityQuery of config.augmentationProperties
-          .qualityQueriesInput) {
-          queries.push(resolveQuerySuiteAlias(language, qualityQuery.uses));
+        for (const qualityQuery of analyses.codeQualityQueries) {
+          queries.push(resolveQuerySuiteAlias(language, qualityQuery));
         }
       }
 
@@ -747,8 +747,8 @@ export async function runQueries(
         );
         qualityAnalysisSummary = await runInterpretResults(
           language,
-          config.augmentationProperties.qualityQueriesInput.map((i) =>
-            resolveQuerySuiteAlias(language, i.uses),
+          analyses.codeQualityQueries.map((i) =>
+            resolveQuerySuiteAlias(language, i),
           ),
           qualitySarifFile,
           config.debugMode,

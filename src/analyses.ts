@@ -78,3 +78,6 @@ export const CodeQuality: AnalysisConfig = {
   sarifPredicate: (name) => name.endsWith(".quality.sarif"),
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
+
+/** The queries to use for Code Quality analyses. */
+export const codeQualityQueries: string[] = ["code-quality"];

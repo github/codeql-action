@@ -760,6 +760,8 @@ export async function runQueries(
       }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
+        // Note: QA adds the `code-quality` query suite to the `queries` input,
+        // so this is fine since there is no `.quality.sarif`.
         const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile);
 
         const perQueryAlertCountEventReport: EventReport = {

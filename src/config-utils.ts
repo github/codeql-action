@@ -305,6 +305,7 @@ export function getUnknownLanguagesError(languages: string[]): string {
 export async function getSupportedLanguageMap(
   codeql: CodeQL,
   features: FeatureEnablement,
+  logger: Logger,
 ): Promise<Record<string, string>> {
   const resolveSupportedLanguagesUsingCli = await features.getValue(
     Feature.ResolveSupportedLanguagesUsingCli,
@@ -313,6 +314,11 @@ export async function getSupportedLanguageMap(
   const resolveResult = await codeql.betterResolveLanguages({
     filterToLanguagesWithQueries: resolveSupportedLanguagesUsingCli,
   });
+  if (resolveSupportedLanguagesUsingCli) {
+    logger.debug(
+      `The CodeQL CLI supports the following languages: ${Object.keys(resolveResult.extractors).join(", ")}`,
+    );
+  }
   const supportedLanguages: Record<string, string> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
@@ -415,7 +421,7 @@ export async function getLanguages(
     logger,
   );
 
-  const languageMap = await getSupportedLanguageMap(codeql, features);
+  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 

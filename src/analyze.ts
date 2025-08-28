@@ -659,7 +659,11 @@ export async function runQueries(
 
   for (const language of config.languages) {
     try {
-      const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+      // If Code Scanning is enabled, then the main SARIF file is always the Code Scanning one.
+      // Otherwise, only Code Quality is enabled, and the main SARIF file is the Code Quality one.
+      const sarifFile = configUtils.isCodeScanningEnabled(config)
+        ? path.join(sarifFolder, `${language}.sarif`)
+        : path.join(sarifFolder, `${language}.quality.sarif`);
 
       // This should be empty to run only the query suite that was generated when
       // the database was initialised.
@@ -695,18 +699,43 @@ export async function runQueries(
       statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
         new Date().getTime() - startTimeRunQueries;
 
-      logger.startGroup(`Interpreting results for ${language}`);
       const startTimeInterpretResults = new Date();
-      const analysisSummary = await runInterpretResults(
-        language,
-        undefined,
-        sarifFile,
-        config.debugMode,
-        automationDetailsId,
-      );
 
+      // If only one analysis kind is enabled, then the database is initialised for the
+      // respective set of queries. Therefore, running `interpret-results` produces the
+      // SARIF file we want for the one enabled analysis kind.
+      let analysisSummary: string | undefined;
+      if (
+        configUtils.isCodeScanningEnabled(config) ||
+        configUtils.isCodeQualityEnabled(config)
+      ) {
+        logger.startGroup(`Interpreting results for ${language}`);
+
+        // If this is a Code Quality analysis, correct the category to one
+        // accepted by the Code Quality backend.
+        let category = automationDetailsId;
+        if (configUtils.isCodeQualityEnabled(config)) {
+          category = fixCodeQualityCategory(logger, automationDetailsId);
+        }
+
+        analysisSummary = await runInterpretResults(
+          language,
+          undefined,
+          sarifFile,
+          config.debugMode,
+          category,
+        );
+      }
+
+      // This case is only needed if Code Quality is enabled in addition to Code Scanning.
+      // In this case, we will have run queries for both analysis kinds. The previous call to
+      // `interpret-results` will have produced a SARIF file for Code Scanning and we now
+      // need to produce an additional SARIF file for Code Quality.
       let qualityAnalysisSummary: string | undefined;
-      if (configUtils.isCodeQualityEnabled(config)) {
+      if (
+        configUtils.isCodeQualityEnabled(config) &&
+        configUtils.isCodeScanningEnabled(config)
+      ) {
         logger.info(`Interpreting quality results for ${language}`);
         const qualityCategory = fixCodeQualityCategory(
           logger,
@@ -730,8 +759,10 @@ export async function runQueries(
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
-      logger.info(analysisSummary);
 
+      if (analysisSummary) {
+        logger.info(analysisSummary);
+      }
       if (qualityAnalysisSummary) {
         logger.info(qualityAnalysisSummary);
       }

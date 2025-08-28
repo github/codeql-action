@@ -621,7 +621,7 @@ export async function uploadFiles(
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
-  uploadTarget: analyses.UploadTarget,
+  uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
   const sarifPaths = getSarifFilePaths(
     inputSarifPath,
@@ -647,7 +647,7 @@ export async function uploadSpecifiedFiles(
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
-  uploadTarget: analyses.UploadTarget = analyses.CodeScanningTarget,
+  uploadTarget: analyses.AnalysisConfig = analyses.CodeScanning,
 ): Promise<UploadResult> {
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
   logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
@@ -913,7 +913,7 @@ function handleProcessingResultForUnsuccessfulExecution(
 
 export function validateUniqueCategory(
   sarif: SarifFile,
-  sentinelPrefix: string = analyses.CodeScanningTarget.sentinelPrefix,
+  sentinelPrefix: string = analyses.CodeScanning.sentinelPrefix,
 ): void {
   // duplicate categories are allowed in the same sarif file
   // but not across multiple sarif files

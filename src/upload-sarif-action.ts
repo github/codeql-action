@@ -96,7 +96,7 @@ async function run() {
       category,
       features,
       logger,
-      analyses.CodeScanningTarget,
+      analyses.CodeScanning,
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -106,7 +106,7 @@ async function run() {
     if (fs.lstatSync(sarifPath).isDirectory()) {
       const qualitySarifFiles = upload_lib.findSarifFilesInDir(
         sarifPath,
-        analyses.CodeQualityTarget.sarifPredicate,
+        analyses.CodeQuality.sarifPredicate,
       );
 
       if (qualitySarifFiles.length !== 0) {
@@ -116,7 +116,7 @@ async function run() {
           actionsUtil.fixCodeQualityCategory(logger, category),
           features,
           logger,
-          analyses.CodeQualityTarget,
+          analyses.CodeQuality,
         );
       }
     }

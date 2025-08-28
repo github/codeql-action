@@ -95,7 +95,7 @@ jobs:
           cache: false
       - name: Use Xcode 16
         shell: bash
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
         run: sudo xcode-select -s "/Applications/Xcode_16.app"
 
       - uses: ./../action/init

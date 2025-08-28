@@ -661,8 +661,19 @@ export async function runQueries(
     try {
       const sarifFile = path.join(sarifFolder, `${language}.sarif`);
 
+      // This should be empty to run only the query suite that was generated when
+      // the database was initialised.
       const queries: string[] = [];
-      if (configUtils.isCodeQualityEnabled(config)) {
+
+      // If both Code Scanning and Code Quality analyses are enabled, the database
+      // is initialised for Code Scanning. To avoid duplicate work, we want to run
+      // queries for both analyses at the same time. To do this, we invoke `run-queries`
+      // once with the generated query suite for Code Scanning + the fixed
+      // query suite for Code Quality.
+      if (
+        configUtils.isCodeQualityEnabled(config) &&
+        configUtils.isCodeScanningEnabled(config)
+      ) {
         queries.push(util.getGeneratedSuitePath(config, language));
         for (const qualityQuery of config.augmentationProperties
           .qualityQueriesInput) {

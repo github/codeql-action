@@ -6,14 +6,15 @@ installGo: "true"
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
+  - name: Use Xcode 16
+    shell: bash
+    if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+    run: sudo xcode-select -s "/Applications/Xcode_16.app"
   - uses: ./../action/init
     id: init
     with:
       languages: swift
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-  - uses: ./../action/.github/actions/setup-swift
-    with:
-      codeql-path: ${{steps.init.outputs.codeql-path}}
   - name: Check working directory
     shell: bash
     run: pwd

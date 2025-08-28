@@ -6,6 +6,10 @@ installGo: "true"
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
+  - name: Use Xcode 16
+    shell: bash
+    if: runner.os == 'macOS'
+    run: sudo xcode-select -s "/Applications/Xcode_16.app"
   - uses: ./../action/init
     id: init
     with:

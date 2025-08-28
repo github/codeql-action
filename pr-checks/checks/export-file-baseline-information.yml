@@ -5,6 +5,10 @@ installGo: "true"
 env:
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
 steps:
+  - name: Use Xcode 16
+    shell: bash
+    if: runner.os == 'macOS'
+    run: sudo xcode-select -s "/Applications/Xcode_16.app"
   - uses: ./../action/init
     id: init
     with:

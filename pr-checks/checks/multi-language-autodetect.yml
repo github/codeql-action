@@ -3,6 +3,11 @@ description: "An end-to-end integration test of a multi-language repository usin
 operatingSystems: ["macos", "ubuntu"]
 installGo: "true"
 steps:
+  - name: Use Xcode 16
+    shell: bash
+    if: runner.os == 'macOS'
+    run: sudo xcode-select -s "/Applications/Xcode_16.app"
+
   - uses: ./../action/init
     id: init
     with:

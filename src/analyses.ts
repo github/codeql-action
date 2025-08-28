@@ -47,14 +47,22 @@ export enum SARIF_UPLOAD_ENDPOINT {
 
 // Represents configurations for different analysis kinds.
 export interface AnalysisConfig {
+  /** The analysis kind the configuration is for. */
+  kind: AnalysisKind;
+  /** A display friendly name for logs. */
   name: string;
+  /** The API endpoint to upload SARIF files to. */
   target: SARIF_UPLOAD_ENDPOINT;
+  /** A predicate on filenames to decide whether a SARIF file
+   * belongs to this kind of analysis. */
   sarifPredicate: (name: string) => boolean;
+  /** A prefix for environment variables used to track the uniqueness of SARIF uploads. */
   sentinelPrefix: string;
 }
 
 // Represents the Code Scanning analysis configuration.
 export const CodeScanning: AnalysisConfig = {
+  kind: AnalysisKind.CodeScanning,
   name: "code scanning",
   target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING,
   sarifPredicate: (name) =>
@@ -64,6 +72,7 @@ export const CodeScanning: AnalysisConfig = {
 
 // Represents the Code Quality analysis configuration.
 export const CodeQuality: AnalysisConfig = {
+  kind: AnalysisKind.CodeQuality,
   name: "code quality",
   target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY,
   sarifPredicate: (name) => name.endsWith(".quality.sarif"),

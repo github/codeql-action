@@ -333,7 +333,7 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         features,
         logger,
-        analyses.CodeScanningTarget,
+        analyses.CodeScanning,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -347,7 +347,7 @@ async function run() {
           ),
           features,
           logger,
-          analyses.CodeQualityTarget,
+          analyses.CodeQuality,
         );
         core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
       }

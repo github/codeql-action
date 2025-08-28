@@ -48,25 +48,25 @@ export enum SARIF_UPLOAD_ENDPOINT {
   CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
 }
 
-// Represents configurations for different services that we can upload SARIF to.
-export interface UploadTarget {
+// Represents configurations for different analysis kinds.
+export interface AnalysisConfig {
   name: string;
   target: SARIF_UPLOAD_ENDPOINT;
   sarifPredicate: (name: string) => boolean;
   sentinelPrefix: string;
 }
 
-// Represents the Code Scanning upload target.
-export const CodeScanningTarget: UploadTarget = {
+// Represents the Code Scanning analysis configuration.
+export const CodeScanning: AnalysisConfig = {
   name: "code scanning",
   target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING,
   sarifPredicate: (name) =>
-    name.endsWith(".sarif") && !CodeQualityTarget.sarifPredicate(name),
+    name.endsWith(".sarif") && !CodeQuality.sarifPredicate(name),
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };
 
-// Represents the Code Quality upload target.
-export const CodeQualityTarget: UploadTarget = {
+// Represents the Code Quality analysis configuration.
+export const CodeQuality: AnalysisConfig = {
   name: "code quality",
   target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY,
   sarifPredicate: (name) => name.endsWith(".quality.sarif"),

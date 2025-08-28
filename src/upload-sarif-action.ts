@@ -4,6 +4,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getActionVersion, getTemporaryDirectory } from "./actions-util";
+import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { Features } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
@@ -95,7 +96,7 @@ async function run() {
       category,
       features,
       logger,
-      upload_lib.CodeScanningTarget,
+      analyses.CodeScanningTarget,
     );
     core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -105,7 +106,7 @@ async function run() {
     if (fs.lstatSync(sarifPath).isDirectory()) {
       const qualitySarifFiles = upload_lib.findSarifFilesInDir(
         sarifPath,
-        upload_lib.CodeQualityTarget.sarifPredicate,
+        analyses.CodeQualityTarget.sarifPredicate,
       );
 
       if (qualitySarifFiles.length !== 0) {
@@ -115,7 +116,7 @@ async function run() {
           actionsUtil.fixCodeQualityCategory(logger, category),
           features,
           logger,
-          upload_lib.CodeQualityTarget,
+          analyses.CodeQualityTarget,
         );
       }
     }

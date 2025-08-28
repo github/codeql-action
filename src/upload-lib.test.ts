@@ -3,6 +3,7 @@ import * as path from "path";
 
 import test from "ava";
 
+import { CodeQualityTarget, CodeScanningTarget } from "./analyses";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -128,7 +129,7 @@ test("finding SARIF files", async (t) => {
 
     const sarifFiles = uploadLib.findSarifFilesInDir(
       tmpDir,
-      uploadLib.CodeScanningTarget.sarifPredicate,
+      CodeScanningTarget.sarifPredicate,
     );
 
     t.deepEqual(sarifFiles, [
@@ -140,7 +141,7 @@ test("finding SARIF files", async (t) => {
 
     const qualitySarifFiles = uploadLib.findSarifFilesInDir(
       tmpDir,
-      uploadLib.CodeQualityTarget.sarifPredicate,
+      CodeQualityTarget.sarifPredicate,
     );
 
     t.deepEqual(qualitySarifFiles, [
@@ -335,7 +336,7 @@ test("validateUniqueCategory with different prefixes", (t) => {
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(
       createMockSarif(),
-      uploadLib.CodeQualityTarget.sentinelPrefix,
+      CodeQualityTarget.sentinelPrefix,
     ),
   );
 });

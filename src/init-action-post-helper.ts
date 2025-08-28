@@ -4,6 +4,7 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
+import { CodeScanningTarget } from "./analyses";
 import { getApiClient } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
@@ -104,7 +105,7 @@ async function maybeUploadFailedSarif(
     category,
     features,
     logger,
-    uploadLib.CodeScanningTarget,
+    CodeScanningTarget,
   );
   await uploadLib.waitForProcessing(
     repositoryNwo,

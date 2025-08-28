@@ -5,6 +5,7 @@ import { performance } from "perf_hooks";
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
+import * as analyses from "./analyses";
 import {
   CodeQLAnalysisError,
   dbIsFinalized,
@@ -332,7 +333,7 @@ async function run() {
         actionsUtil.getOptionalInput("category"),
         features,
         logger,
-        uploadLib.CodeScanningTarget,
+        analyses.CodeScanningTarget,
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
 
@@ -346,7 +347,7 @@ async function run() {
           ),
           features,
           logger,
-          uploadLib.CodeQualityTarget,
+          analyses.CodeQualityTarget,
         );
         core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
       }

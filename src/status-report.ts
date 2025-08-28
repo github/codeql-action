@@ -11,9 +11,8 @@ import {
   getRequiredInput,
   isSelfHostedRunner,
 } from "./actions-util";
-import { AnalysisKind } from "./analyses";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { isCodeQualityEnabled, type Config } from "./config-utils";
+import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
@@ -290,26 +289,13 @@ export async function createStatusReportBase(
     const isSteadyStateDefaultSetupRun =
       process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";
 
-    // We leave `analyses` empty if we don't have a `config`, so that we don't
-    // accidentally report only `code-scanning` when we can't tell whether `code-quality`
-    // is enabled or not.
-    const analysisKinds: AnalysisKind[] = [];
-
-    if (config !== undefined) {
-      analysisKinds.push(AnalysisKind.CodeScanning);
-
-      if (isCodeQualityEnabled(config)) {
-        analysisKinds.push(AnalysisKind.CodeQuality);
-      }
-    }
-
     const statusReport: StatusReportBase = {
       action_name: actionName,
       action_oid: "unknown", // TODO decide if it's possible to fill this in
       action_ref: actionRef,
       action_started_at: actionStartedAt.toISOString(),
       action_version: getActionVersion(),
-      analysis_kinds: analysisKinds.join(","),
+      analysis_kinds: config?.analysisKinds.join(","),
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,

@@ -6,6 +6,7 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import { isAnalyzingPullRequest } from "./actions-util";
+import { AnalysisKind, parseAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
@@ -93,6 +94,10 @@ interface IncludeQueryFilter {
  * Format of the parsed config file.
  */
 export interface Config {
+  /**
+   * Set of analysis kinds that are enabled.
+   */
+  analysisKinds: AnalysisKind[];
   /**
    * Set of languages to run analysis for.
    */
@@ -483,6 +488,7 @@ export async function getRawLanguages(
 
 /** Inputs required to initialize a configuration. */
 export interface InitConfigInputs {
+  analysisKindsInput: string;
   languagesInput: string | undefined;
   queriesInput: string | undefined;
   qualityQueriesInput: string | undefined;
@@ -511,6 +517,7 @@ export interface InitConfigInputs {
  * Get the default config, populated without user configuration file.
  */
 export async function getDefaultConfig({
+  analysisKindsInput,
   languagesInput,
   queriesInput,
   qualityQueriesInput,
@@ -530,6 +537,18 @@ export async function getDefaultConfig({
   features,
   logger,
 }: InitConfigInputs): Promise<Config> {
+  const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
+
+  // For backwards compatibility, add Code Quality to the enabled analysis kinds
+  // if an input to `quality-queries` was specified. We should remove this once
+  // `quality-queries` is no longer used.
+  if (
+    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
+    qualityQueriesInput !== undefined
+  ) {
+    analysisKinds.push(AnalysisKind.CodeQuality);
+  }
+
   const languages = await getLanguages(
     codeql,
     languagesInput,
@@ -560,6 +579,7 @@ export async function getDefaultConfig({
   );
 
   return {
+    analysisKinds,
     languages,
     buildMode,
     originalUserInput: {},
@@ -1475,5 +1495,5 @@ export function generateCodeScanningConfig(
 export function isCodeQualityEnabled(config: Config): config is Config & {
   augmentationProperties: { qualityQueriesInput: string };
 } {
-  return config.augmentationProperties.qualityQueriesInput !== undefined;
+  return config.analysisKinds.includes(AnalysisKind.CodeQuality);
 }

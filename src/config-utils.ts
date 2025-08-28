@@ -1510,6 +1510,13 @@ export function appendExtraQueryExclusions(
 }
 
 /**
+ * Returns `true` if Code Scanning analysis is enabled, or `false` if not.
+ */
+export function isCodeScanningEnabled(config: Config): boolean {
+  return config.analysisKinds.includes(AnalysisKind.CodeScanning);
+}
+
+/**
  * Returns `true` if Code Quality analysis is enabled, or `false` if not.
  */
 export function isCodeQualityEnabled(config: Config): boolean {

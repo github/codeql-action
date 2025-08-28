@@ -73,6 +73,7 @@ export enum Feature {
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
 }
 
 export const featureConfig: Record<
@@ -144,6 +145,12 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
     minimumVersion: undefined,
+  },
+  [Feature.ResolveSupportedLanguagesUsingCli]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   },
   [Feature.OverlayAnalysis]: {
     defaultValue: false,

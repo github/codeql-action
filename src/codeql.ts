@@ -127,7 +127,9 @@ export interface CodeQL {
   /**
    * Run 'codeql resolve languages' with '--format=betterjson'.
    */
-  betterResolveLanguages(): Promise<BetterResolveLanguagesOutput>;
+  betterResolveLanguages(options?: {
+    filterToLanguagesWithQueries: boolean;
+  }): Promise<BetterResolveLanguagesOutput>;
   /**
    * Run 'codeql resolve build-environment'
    */
@@ -737,13 +739,22 @@ export async function getCodeQLForCmd(
         );
       }
     },
-    async betterResolveLanguages() {
+    async betterResolveLanguages(
+      {
+        filterToLanguagesWithQueries,
+      }: {
+        filterToLanguagesWithQueries: boolean;
+      } = { filterToLanguagesWithQueries: false },
+    ) {
       const codeqlArgs = [
         "resolve",
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
         "--extractor-include-aliases",
+        ...(filterToLanguagesWithQueries
+          ? ["--filter-to-languages-with-queries"]
+          : []),
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
       ];
       const output = await runCli(cmd, codeqlArgs);

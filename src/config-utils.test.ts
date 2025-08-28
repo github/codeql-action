@@ -977,6 +977,13 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedApiCall: true,
   },
   {
+    name: "unsupported languages from github api",
+    languagesInput: "",
+    languagesInRepository: ["html"],
+    expectedApiCall: true,
+    expectedError: configUtils.getNoLanguagesError(),
+  },
+  {
     name: "no languages",
     languagesInput: "",
     languagesInRepository: [],
@@ -1005,57 +1012,71 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedLanguages: ["javascript"],
   },
 ].forEach((args) => {
-  test(`getLanguages: ${args.name}`, async (t) => {
-    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
-    const stubExtractorEntry = {
-      extractor_root: "",
-    };
-    const codeQL = createStubCodeQL({
-      betterResolveLanguages: () =>
-        Promise.resolve({
-          aliases: {
-            "c#": KnownLanguage.csharp,
-            c: KnownLanguage.cpp,
-            kotlin: KnownLanguage.java,
-            typescript: KnownLanguage.javascript,
-          },
-          extractors: {
-            cpp: [stubExtractorEntry],
-            csharp: [stubExtractorEntry],
-            java: [stubExtractorEntry],
-            javascript: [stubExtractorEntry],
-            python: [stubExtractorEntry],
-          },
-        }),
+  for (const resolveSupportedLanguagesUsingCli of [true, false]) {
+    test(`getLanguages${resolveSupportedLanguagesUsingCli ? " (supported languages via CLI)" : ""}: ${args.name}`, async (t) => {
+      const features = createFeatures(
+        resolveSupportedLanguagesUsingCli
+          ? [Feature.ResolveSupportedLanguagesUsingCli]
+          : [],
+      );
+      const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
+      const stubExtractorEntry = {
+        extractor_root: "",
+      };
+      const codeQL = createStubCodeQL({
+        betterResolveLanguages: (options) =>
+          Promise.resolve({
+            aliases: {
+              "c#": KnownLanguage.csharp,
+              c: KnownLanguage.cpp,
+              kotlin: KnownLanguage.java,
+              typescript: KnownLanguage.javascript,
+            },
+            extractors: {
+              cpp: [stubExtractorEntry],
+              csharp: [stubExtractorEntry],
+              java: [stubExtractorEntry],
+              javascript: [stubExtractorEntry],
+              python: [stubExtractorEntry],
+              ...(options?.filterToLanguagesWithQueries
+                ? {}
+                : {
+                    html: [stubExtractorEntry],
+                  }),
+            },
+          }),
+      });
+
+      if (args.expectedLanguages) {
+        // happy path
+        const actualLanguages = await configUtils.getLanguages(
+          codeQL,
+          args.languagesInput,
+          mockRepositoryNwo,
+          ".",
+          features,
+          mockLogger,
+        );
+
+        t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
+      } else {
+        // there is an error
+        await t.throwsAsync(
+          async () =>
+            await configUtils.getLanguages(
+              codeQL,
+              args.languagesInput,
+              mockRepositoryNwo,
+              ".",
+              features,
+              mockLogger,
+            ),
+          { message: args.expectedError },
+        );
+      }
+      t.deepEqual(mockRequest.called, args.expectedApiCall);
     });
-
-    if (args.expectedLanguages) {
-      // happy path
-      const actualLanguages = await configUtils.getLanguages(
-        codeQL,
-        args.languagesInput,
-        mockRepositoryNwo,
-        ".",
-        mockLogger,
-      );
-
-      t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
-    } else {
-      // there is an error
-      await t.throwsAsync(
-        async () =>
-          await configUtils.getLanguages(
-            codeQL,
-            args.languagesInput,
-            mockRepositoryNwo,
-            ".",
-            mockLogger,
-          ),
-        { message: args.expectedError },
-      );
-    }
-    t.deepEqual(mockRequest.called, args.expectedApiCall);
-  });
+  }
 });
 
 for (const { displayName, language, feature } of [

@@ -9,89 +9,58 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-js:
-    name: Check JS
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      security-events: write # needed to upload ESLint results
-
-    strategy:
-      fail-fast: false
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Lint
-        id: lint
-        run: npm run-script lint-ci
-
-      - name: Upload sarif
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: eslint.sarif
-          category: eslint
-
-      - name: Check generated JS
-        run: .github/workflows/script/check-js.sh
-
-  check-node-modules:
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
-    name: Check modules up to date
-    permissions:
-      contents: read
-    runs-on: macos-latest
-    timeout-minutes: 45
-
-    steps:
-      - uses: actions/checkout@v5
-      - name: Check node modules up to date
-        run: .github/workflows/script/check-node-modules.sh
-
-  check-file-contents:
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
-    name: Check file contents
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.11
-
-      # Ensure the generated PR check workflows are up to date.
-      - name: Verify PR checks up to date
-        run: .github/workflows/script/verify-pr-checks.sh
-
-  npm-test:
-    if: github.event_name != 'push' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/releases/v')
-    name: Unit Test
-    needs: [check-js, check-node-modules]
+  unit-tests:
+    name: Unit Tests
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     permissions:
       contents: read
+      security-events: write # needed to upload ESLint results
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v5
-      - name: npm test
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
         run: |
-          # Run any commands referenced in package.json using Bash, otherwise
-          # we won't be able to find them on Windows.
+          # Use the system Bash shell to ensure we can run commands like `npm ci`
+          # that are not available in the default shell on Windows.
           npm config set script-shell bash
-          npm test
+          npm ci
+
+      - name: Verify compiled JS up to date
+        run: .github/workflows/script/check-js.sh
+
+      - name: Verify PR checks up to date
+        run: .github/workflows/script/verify-pr-checks.sh
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Lint
+        if: matrix.os != 'windows-latest'
+        run: npm run lint-ci
+
+      - name: Upload sarif
+        uses: github/codeql-action/upload-sarif@v3
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          sarif_file: eslint.sarif
+          category: eslint
 
   check-node-version:
     if: github.event.pull_request

@@ -1,7 +1,7 @@
 name: "Upload-sarif: code quality endpoint"
 description: "Checks that uploading SARIFs to the code quality endpoint works"
 versions: ["default"]
-installGo: "true"
+installGo: true
 steps:
   - uses: ./../action/init
     with:

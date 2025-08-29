@@ -1,7 +1,7 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection for macOS"
 operatingSystems: ["macos", "ubuntu"]
-installGo: "true"
+installGo: true
 steps:
   - name: Use Xcode 16
     shell: bash

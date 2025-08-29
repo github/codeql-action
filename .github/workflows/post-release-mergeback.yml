@@ -3,7 +3,7 @@
 #    tag
 # 2. Updates the `vN` tag to refer to this merge commit.
 # 3. Iff vN == vLatest, merges any changes from the release back into the main branch.
-#    Typically, this is two commits – one to update the version number and one to update dependencies.
+#    Typically, this is two commits – one to update the version number and one to rebuild.
 name: Tag release and merge back
 
 on:
@@ -138,8 +138,8 @@ jobs:
 
             Please do the following:
 
-            - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.
-            - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.
+            - [ ] Remove and re-add the "Rebuild" label to the PR to trigger just this workflow.
+            - [ ] Wait for the "Rebuild" workflow to push a commit updating the distribution files.
             - [ ] Mark the PR as ready for review to trigger the full set of PR checks.
             - [ ] Approve and merge the PR. When merging the PR, make sure "Create a merge commit" is
                   selected rather than "Squash and merge" or "Rebase and merge".
@@ -162,7 +162,7 @@ jobs:
             --head "${NEW_BRANCH}" \
             --base "${BASE_BRANCH}" \
             --title "${pr_title}" \
-            --label "Update dependencies" \
+            --label "Rebuild" \
             --body "${pr_body}" \
             --assignee "${GITHUB_ACTOR}" \
             --draft

@@ -85,7 +85,10 @@ jobs:
           LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
           VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/rollback_changelog.py "${ROLLBACK_TAG:1}" "${LATEST_TAG:1}" "$VERSION" > $NEW_CHANGELOG
+          python .github/workflows/script/rollback_changelog.py \
+            --target-version "${ROLLBACK_TAG:1}" \
+            --rollback-version "${LATEST_TAG:1}" \
+            --new-version "$VERSION" > $NEW_CHANGELOG
 
           echo "::group::New CHANGELOG"
           cat $NEW_CHANGELOG

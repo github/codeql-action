@@ -5,6 +5,7 @@
     "**/.DS_Store": true,
 
     // transpiled JavaScript
+    "build": true,
     "lib": true,
   },
   // Installing a new Node package often triggers VS Code's git limit warnings as there is typically

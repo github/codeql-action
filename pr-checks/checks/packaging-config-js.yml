@@ -1,7 +1,8 @@
 name: "Packaging: Config file"
 description: "Checks that specifying packages using only a config file works"
 versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
-installGo: "true"
+installGo: true
+installNode: true
 steps:
   - uses: ./../action/init
     with:

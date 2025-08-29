@@ -25,11 +25,9 @@ This project also includes configuration to run tests from VSCode (with support 
 
 You may want to run `tsc --watch` from the command line or inside of vscode in order to ensure build artifacts are up to date as you are working.
 
-### Checking in compiled artifacts and `node_modules`
+### Checking in compiled artifacts
 
-Because CodeQL Action users consume the code directly from this repository, and there can be no build step during a GitHub Actions run, this repository contains all compiled artifacts and node modules. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` directory. For all day-to-day development purposes, this folder can be ignored.
-
-Only run `npm install` if you are explicitly changing the set of dependencies in `package.json`. The `node_modules` directory should be up to date when you check out, but if for some reason, there is an inconsistency use `npm ci && npm run removeNPMAbsolutePaths` to ensure the directory is in a state consistent with the `package-lock.json`. Note that due to a macOS-specific dependency, this command should be run on a macOS machine. There is a PR check to ensure the consistency of the `node_modules` directory.
+Because CodeQL Action users consume the code directly from this repository, and there can be no build step during a GitHub Actions run, this repository contains all compiled artifacts. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` directory. For all day-to-day development purposes, this folder can be ignored.
 
 ### Running the action
 
@@ -41,10 +39,10 @@ As well as the unit tests (see _Common tasks_ above), there are integration test
 
 ## Submitting a pull request
 
-1. [Fork][fork] and clone the repository
-2. Create a new branch: `git checkout -b my-branch-name`
-3. Make your change, add tests, and make sure the tests still pass
-4. Push to your fork and [submit a pull request][pr]
+1. [Fork][fork] and clone the repository.
+2. Create a new branch: `git checkout -b my-branch-name`.
+3. Make your change, add tests, and make sure the tests still pass. Ensure that you have run `npm run build` and committed any changes to the compiled artifacts.
+4. Push to your fork and [submit a pull request][pr].
 5. Pat yourself on the back and wait for your pull request to be reviewed and merged.
 
 If you're a GitHub staff member, you can merge your own PR once it's approved; for external contributors, GitHub staff will merge your PR once it's approved.

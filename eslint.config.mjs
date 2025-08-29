@@ -76,7 +76,7 @@ export default [
 
         typescript: {},
       },
-      "import/ignore": ["sinon", "uuid", "@octokit/plugin-retry"],
+      "import/ignore": ["sinon", "uuid", "@octokit/plugin-retry", "get-folder-size"],
     },
 
     rules: {

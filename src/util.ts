@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { promisify } from "util";
 
 import * as core from "@actions/core";
 import * as exec from "@actions/exec/lib/exec";
@@ -831,7 +830,8 @@ export async function tryGetFolderBytes(
   quiet: boolean = false,
 ): Promise<number | undefined> {
   try {
-    return await promisify<string, number>(getFolderSize)(cacheDir);
+    // tolerate some errors since we're only estimating the size
+    return await getFolderSize.loose(cacheDir);
   } catch (e) {
     if (!quiet || logger.isDebug()) {
       logger.warning(

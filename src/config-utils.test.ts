@@ -763,7 +763,6 @@ const calculateAugmentationMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
-    rawQualityQueriesInput: string | undefined,
     languages: Language[],
     expectedAugmentationProperties: configUtils.AugmentationProperties,
   ) => {
@@ -771,7 +770,6 @@ const calculateAugmentationMacro = test.macro({
       await configUtils.calculateAugmentation(
         rawPacksInput,
         rawQueriesInput,
-        rawQualityQueriesInput,
         languages,
       );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
@@ -782,7 +780,6 @@ const calculateAugmentationMacro = test.macro({
 test(
   calculateAugmentationMacro,
   "All empty",
-  undefined,
   undefined,
   undefined,
   [KnownLanguage.javascript],
@@ -796,7 +793,6 @@ test(
   "With queries",
   undefined,
   " a, b , c, d",
-  undefined,
   [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
@@ -809,7 +805,6 @@ test(
   "With queries combining",
   undefined,
   "   +   a, b , c, d ",
-  undefined,
   [KnownLanguage.javascript],
   {
     ...configUtils.defaultAugmentationProperties,
@@ -820,46 +815,8 @@ test(
 
 test(
   calculateAugmentationMacro,
-  "With quality queries",
-  undefined,
-  undefined,
-  " a, b , c, d",
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    qualityQueriesInput: [
-      { uses: "a" },
-      { uses: "b" },
-      { uses: "c" },
-      { uses: "d" },
-    ],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With security and quality queries",
-  undefined,
-  " a, b , c, d",
-  "e, f , g,h",
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-    qualityQueriesInput: [
-      { uses: "e" },
-      { uses: "f" },
-      { uses: "g" },
-      { uses: "h" },
-    ],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
-  undefined,
   undefined,
   [KnownLanguage.javascript],
   {
@@ -872,7 +829,6 @@ test(
   calculateAugmentationMacro,
   "With packs combining",
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
-  undefined,
   undefined,
   [KnownLanguage.javascript],
   {
@@ -888,7 +844,6 @@ const calculateAugmentationErrorMacro = test.macro({
     _title: string,
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
-    rawQualityQueriesInput: string | undefined,
     languages: Language[],
     expectedError: RegExp | string,
   ) => {
@@ -897,7 +852,6 @@ const calculateAugmentationErrorMacro = test.macro({
         configUtils.calculateAugmentation(
           rawPacksInput,
           rawQueriesInput,
-          rawQualityQueriesInput,
           languages,
         ),
       { message: expectedError },
@@ -911,7 +865,6 @@ test(
   "Plus (+) with nothing else (queries)",
   undefined,
   "   +   ",
-  undefined,
   [KnownLanguage.javascript],
   /The workflow property "queries" is invalid/,
 );
@@ -920,7 +873,6 @@ test(
   calculateAugmentationErrorMacro,
   "Plus (+) with nothing else (packs)",
   "   +   ",
-  undefined,
   undefined,
   [KnownLanguage.javascript],
   /The workflow property "packs" is invalid/,
@@ -931,7 +883,6 @@ test(
   "Packs input with multiple languages",
   "   +  a/b, c/d ",
   undefined,
-  undefined,
   [KnownLanguage.javascript, KnownLanguage.java],
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
@@ -941,7 +892,6 @@ test(
   "Packs input with no languages",
   "   +  a/b, c/d ",
   undefined,
-  undefined,
   [],
   /No languages specified/,
 );
@@ -950,7 +900,6 @@ test(
   calculateAugmentationErrorMacro,
   "Invalid packs",
   " a-pack-without-a-scope ",
-  undefined,
   undefined,
   [KnownLanguage.javascript],
   /"a-pack-without-a-scope" is not a valid pack/,

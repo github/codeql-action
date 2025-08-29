@@ -29,7 +29,7 @@ steps:
   - uses: ./../action/init
     with:
       languages: javascript
-      quality-queries: code-quality
+      analysis-kinds: code-scanning,code-quality
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
     with:

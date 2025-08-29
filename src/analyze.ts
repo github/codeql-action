@@ -12,6 +12,7 @@ import {
   getTemporaryDirectory,
   PullRequestBranches,
 } from "./actions-util";
+import * as analyses from "./analyses";
 import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -659,14 +660,28 @@ export async function runQueries(
 
   for (const language of config.languages) {
     try {
-      const sarifFile = path.join(sarifFolder, `${language}.sarif`);
+      // If Code Scanning is enabled, then the main SARIF file is always the Code Scanning one.
+      // Otherwise, only Code Quality is enabled, and the main SARIF file is the Code Quality one.
+      const sarifFile = configUtils.isCodeScanningEnabled(config)
+        ? path.join(sarifFolder, `${language}.sarif`)
+        : path.join(sarifFolder, `${language}.quality.sarif`);
 
+      // This should be empty to run only the query suite that was generated when
+      // the database was initialised.
       const queries: string[] = [];
-      if (configUtils.isCodeQualityEnabled(config)) {
+
+      // If both Code Scanning and Code Quality analyses are enabled, the database
+      // is initialised for Code Scanning. To avoid duplicate work, we want to run
+      // queries for both analyses at the same time. To do this, we invoke `run-queries`
+      // once with the generated query suite for Code Scanning + the fixed
+      // query suite for Code Quality.
+      if (
+        configUtils.isCodeQualityEnabled(config) &&
+        configUtils.isCodeScanningEnabled(config)
+      ) {
         queries.push(util.getGeneratedSuitePath(config, language));
-        for (const qualityQuery of config.augmentationProperties
-          .qualityQueriesInput) {
-          queries.push(resolveQuerySuiteAlias(language, qualityQuery.uses));
+        for (const qualityQuery of analyses.codeQualityQueries) {
+          queries.push(resolveQuerySuiteAlias(language, qualityQuery));
         }
       }
 
@@ -684,18 +699,43 @@ export async function runQueries(
       statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
         new Date().getTime() - startTimeRunQueries;
 
-      logger.startGroup(`Interpreting results for ${language}`);
       const startTimeInterpretResults = new Date();
-      const analysisSummary = await runInterpretResults(
-        language,
-        undefined,
-        sarifFile,
-        config.debugMode,
-        automationDetailsId,
-      );
 
+      // If only one analysis kind is enabled, then the database is initialised for the
+      // respective set of queries. Therefore, running `interpret-results` produces the
+      // SARIF file we want for the one enabled analysis kind.
+      let analysisSummary: string | undefined;
+      if (
+        configUtils.isCodeScanningEnabled(config) ||
+        configUtils.isCodeQualityEnabled(config)
+      ) {
+        logger.startGroup(`Interpreting results for ${language}`);
+
+        // If this is a Code Quality analysis, correct the category to one
+        // accepted by the Code Quality backend.
+        let category = automationDetailsId;
+        if (configUtils.isCodeQualityEnabled(config)) {
+          category = fixCodeQualityCategory(logger, automationDetailsId);
+        }
+
+        analysisSummary = await runInterpretResults(
+          language,
+          undefined,
+          sarifFile,
+          config.debugMode,
+          category,
+        );
+      }
+
+      // This case is only needed if Code Quality is enabled in addition to Code Scanning.
+      // In this case, we will have run queries for both analysis kinds. The previous call to
+      // `interpret-results` will have produced a SARIF file for Code Scanning and we now
+      // need to produce an additional SARIF file for Code Quality.
       let qualityAnalysisSummary: string | undefined;
-      if (configUtils.isCodeQualityEnabled(config)) {
+      if (
+        configUtils.isCodeQualityEnabled(config) &&
+        configUtils.isCodeScanningEnabled(config)
+      ) {
         logger.info(`Interpreting quality results for ${language}`);
         const qualityCategory = fixCodeQualityCategory(
           logger,
@@ -707,8 +747,8 @@ export async function runQueries(
         );
         qualityAnalysisSummary = await runInterpretResults(
           language,
-          config.augmentationProperties.qualityQueriesInput.map((i) =>
-            resolveQuerySuiteAlias(language, i.uses),
+          analyses.codeQualityQueries.map((i) =>
+            resolveQuerySuiteAlias(language, i),
           ),
           qualitySarifFile,
           config.debugMode,
@@ -719,13 +759,17 @@ export async function runQueries(
       statusReport[`interpret_results_${language}_duration_ms`] =
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
-      logger.info(analysisSummary);
 
+      if (analysisSummary) {
+        logger.info(analysisSummary);
+      }
       if (qualityAnalysisSummary) {
         logger.info(qualityAnalysisSummary);
       }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
+        // Note: QA adds the `code-quality` query suite to the `queries` input,
+        // so this is fine since there is no `.quality.sarif`.
         const perQueryAlertCounts = getPerQueryAlertCounts(sarifFile);
 
         const perQueryAlertCountEventReport: EventReport = {

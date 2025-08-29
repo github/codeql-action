@@ -143,7 +143,10 @@ jobs:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
           VERSION: "${{ needs.prepare.outputs.version }}"
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RELEASE_URL: "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.version }}"
         run: |
+          set -exu
+
           # Do not mark this release as latest. The most recent bundle release must be marked as latest.
           # Set as a draft to give us an opportunity to review the rollback release.
           gh release create \
@@ -152,6 +155,8 @@ jobs:
             --draft \
             --title "$VERSION" \
             --notes-file "$PARTIAL_CHANGELOG"
+
+          echo "Created draft rollback release at $RELEASE_URL" >> $GITHUB_STEP_SUMMARY
 
       - name: Update changelog
         shell: bash

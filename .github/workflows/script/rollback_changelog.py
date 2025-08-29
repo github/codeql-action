@@ -1,6 +1,6 @@
 import datetime
 import os
-import sys
+import argparse
 
 EMPTY_CHANGELOG = """# CodeQL Action Changelog
 
@@ -52,11 +52,11 @@ def update_changelog(target_version, rollback_version, new_version):
 # - rollback_version: the version that we are rolling back, typically the one that followed `target_version`
 # - new_version: the new version that we are releasing `target_version` as, typically the one that follows `rollback_version`
 #
-# Example: python3 .github/workflows/script/rollback_changelog.py "1.2.3" "1.2.4" "1.2.5"
-if len(sys.argv) < 4:
-  raise Exception('Expecting argument: target_version rollback_version new_version')
+# Example: python3 .github/workflows/script/rollback_changelog.py --target-version "1.2.3" --rollback-version "1.2.4" --new-version "1.2.5"
+parser = argparse.ArgumentParser(description="Update CHANGELOG.md for a rollback release.")
+parser.add_argument("--target-version", "-t", required=True, help="Version to re-release as new_version.")
+parser.add_argument("--rollback-version", "-r", required=True, help="Version being rolled back.")
+parser.add_argument("--new-version", "-n", required=True, help="New version to publish for target_version.")
+args = parser.parse_args()
 
-target_version = sys.argv[1]
-rollback_version = sys.argv[2]
-new_version = sys.argv[3]
-update_changelog(target_version, rollback_version, new_version)
+update_changelog(args.target_version, args.rollback_version, args.new_version)

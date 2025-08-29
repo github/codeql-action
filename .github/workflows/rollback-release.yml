@@ -31,6 +31,8 @@ jobs:
     timeout-minutes: 45
 
     # Don't set the deployment environment for test runs
+    # The Actions token does not have permissions to push changes to workflow files.
+    # Since workflow files may change as part of a backport PR, we use the "Automation" environment for real runs to authenticate as a GitHub App and push these changes.
     environment: ${{ github.event_name == 'workflow_dispatch' && 'Automation' || '' }}
 
     needs:
@@ -103,6 +105,7 @@ jobs:
           git tag --annotate "${MAJOR_VERSION_TAG}" --message "${MAJOR_VERSION_TAG}" --force
 
       - name: Push tags
+        # skip when testing
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
@@ -138,7 +141,7 @@ jobs:
           VERSION: "${{ needs.prepare.outputs.version }}"
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          # Do not mark this release as latest. The most recent CLI release must be marked as latest.
+          # Do not mark this release as latest. The most recent bundle release must be marked as latest.
           # Set as a draft to give us an opportunity to review the rollback release.
           gh release create \
             "$VERSION" \

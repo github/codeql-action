@@ -18,7 +18,7 @@ import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
+import { Config, getConfig, isCodeQualityEnabled } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { uploadDependencyCaches } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
@@ -336,7 +336,7 @@ async function run() {
       );
       core.setOutput("sarif-id", uploadResult.sarifID);
 
-      if (config.augmentationProperties.qualityQueriesInput !== undefined) {
+      if (isCodeQualityEnabled(config)) {
         const qualityUploadResult = await uploadLib.uploadFiles(
           outputDir,
           actionsUtil.getRequiredInput("checkout_path"),

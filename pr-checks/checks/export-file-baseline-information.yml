@@ -1,7 +1,7 @@
 name: "Export file baseline information"
 description: "Tests that file baseline information is exported when the feature is enabled"
 versions: ["nightly-latest"]
-installGo: "true"
+installGo: true
 env:
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
 steps:

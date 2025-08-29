@@ -44,6 +44,13 @@ header = """# Warning: This file is generated automatically, and should not be m
 """
 
 
+def is_truthy(value):
+    if isinstance(value, str):
+        return value.lower() == 'true'
+    return bool(value)
+
+
+
 class NonAliasingRTRepresenter(ruamel.yaml.representer.RoundTripRepresenter):
     def ignore_aliases(self, data):
         return True
@@ -100,21 +107,40 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             'name': 'Check out repository',
             'uses': 'actions/checkout@v5'
         },
-        {
-            'name': 'Prepare test',
-            'id': 'prepare-test',
-            'uses': './.github/actions/prepare-test',
-            'with': {
-                'version': '${{ matrix.version }}',
-                'use-all-platform-bundle': useAllPlatformBundle,
-                # If the action is being run from a container, then do not setup kotlin.
-                # This is because the kotlin binaries cannot be downloaded from the container.
-                'setup-kotlin': str(not 'container' in checkSpecification).lower(),
-            }
-        },
     ]
 
-    installGo = checkSpecification.get('installGo', '').lower() == 'true'
+    installNode = is_truthy(checkSpecification.get('installNode', ''))
+
+    if installNode:
+        steps.extend([
+            {
+                'name': 'Install Node.js',
+                'uses': 'actions/setup-node@v4',
+                'with': {
+                    'node-version': '20.x',
+                    'cache': 'npm',
+                },
+            },
+            {
+                'name': 'Install dependencies',
+                'run': 'npm ci',
+            },
+        ])
+
+    steps.append({
+        'name': 'Prepare test',
+        'id': 'prepare-test',
+        'uses': './.github/actions/prepare-test',
+        'with': {
+            'version': '${{ matrix.version }}',
+            'use-all-platform-bundle': useAllPlatformBundle,
+            # If the action is being run from a container, then do not setup kotlin.
+            # This is because the kotlin binaries cannot be downloaded from the container.
+            'setup-kotlin': str(not 'container' in checkSpecification).lower(),
+        }
+    })
+
+    installGo = is_truthy(checkSpecification.get('installGo', ''))
 
     if installGo:
         baseGoVersionExpr = '>=1.21.0'
@@ -136,7 +162,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         })
 
-    installJava = checkSpecification.get('installJava', '').lower() == 'true'
+    installJava = is_truthy(checkSpecification.get('installJava', ''))
 
     if installJava:
         baseJavaVersionExpr = '17'

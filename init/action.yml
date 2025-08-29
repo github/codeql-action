@@ -42,6 +42,19 @@ inputs:
                      your workflow between the `init` and `analyze` steps. Available for all
                      compiled languages.
     required: false
+  analysis-kinds:
+    description: >-
+      [Internal] A comma-separated list of analysis kinds to enable. This input is intended for
+      internal-use only at this time and the behaviour is subject to changes. Some features may
+      not be available depending on which analysis kinds are enabled.
+
+      Available options are:
+
+      - `code-scanning`: The default, security-focused analysis.
+      - `code-quality`: Analysis focused on code quality. This must be enabled in conjunction
+                        with `code-scanning`.
+    default: 'code-scanning'
+    required: true
   token:
     description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
     default: ${{ github.token }}

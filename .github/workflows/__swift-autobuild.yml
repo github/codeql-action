@@ -54,9 +54,6 @@ jobs:
           languages: swift
           build-mode: autobuild
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: ./../action/.github/actions/setup-swift
-        with:
-          codeql-path: ${{steps.init.outputs.codeql-path}}
       - name: Check working directory
         shell: bash
         run: pwd

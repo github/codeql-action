@@ -6,7 +6,7 @@ import * as core from "@actions/core";
 import * as exec from "@actions/exec/lib/exec";
 import * as io from "@actions/io";
 import checkDiskSpace from "check-disk-space";
-import del from "del";
+import * as del from "del";
 import getFolderSize from "get-folder-size";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
@@ -167,7 +167,7 @@ export async function withTmpDir<T>(
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
   const result = await body(tmpDir);
-  await del(tmpDir, { force: true });
+  await del.deleteAsync(tmpDir, { force: true });
   return result;
 }
 
@@ -731,7 +731,7 @@ export async function bundleDb(
   // from somewhere else or someone trying to make the action upload a
   // non-database file.
   if (fs.existsSync(databaseBundlePath)) {
-    await del(databaseBundlePath, { force: true });
+    await del.deleteAsync(databaseBundlePath, { force: true });
   }
   await codeql.databaseBundle(databasePath, databaseBundlePath, dbName);
   return databaseBundlePath;
@@ -1234,7 +1234,7 @@ export async function checkSipEnablement(
 export async function cleanUpGlob(glob: string, name: string, logger: Logger) {
   logger.debug(`Cleaning up ${name}.`);
   try {
-    const deletedPaths = await del(glob, { force: true });
+    const deletedPaths = await del.deleteAsync(glob, { force: true });
     if (deletedPaths.length === 0) {
       logger.warning(
         `Failed to clean up ${name}: no files found matching ${glob}.`,

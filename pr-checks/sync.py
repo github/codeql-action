@@ -175,7 +175,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
 
         steps.append({
             'name': 'Install Java',
-            'uses': 'actions/setup-java@v4',
+            'uses': 'actions/setup-java@v5',
             'with': {
                 'java-version': '${{ inputs.java-version || \'' + baseJavaVersionExpr + '\' }}',
                 'distribution': 'temurin'

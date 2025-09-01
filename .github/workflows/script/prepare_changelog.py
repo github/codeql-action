@@ -12,7 +12,7 @@ def extract_changelog_snippet(changelog_file, version_tag):
     output = EMPTY_CHANGELOG
 
   else:
-    with open('CHANGELOG.md', 'r') as f:
+    with open(changelog_file, 'r') as f:
       lines = f.readlines()
 
       # Include everything up to, but excluding the second heading

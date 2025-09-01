@@ -3,7 +3,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as io from "@actions/io";
-import del from "del";
+import * as del from "del";
 import * as yaml from "js-yaml";
 
 import {
@@ -812,7 +812,7 @@ export async function runFinalize(
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   try {
-    await del(outputDir, { force: true });
+    await del.deleteAsync(outputDir, { force: true });
   } catch (error: any) {
     if (error?.code !== "ENOENT") {
       throw error;

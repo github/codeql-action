@@ -124,48 +124,15 @@ jobs:
           cat $PARTIAL_CHANGELOG
           echo "::endgroup::"
 
-      - name: Create mergeback branch
+      - name: Create mergeback branch and PR
         if: ${{ steps.check.outputs.exists != 'true' && endsWith(github.ref_name, steps.getVersion.outputs.latest_release_branch) }}
-        env:
-          VERSION: "${{ steps.getVersion.outputs.version }}"
-          NEW_BRANCH: "${{ steps.getVersion.outputs.newBranch }}"
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        run: |
-          set -exu
-          pr_title="Mergeback ${VERSION} ${HEAD_BRANCH} into ${BASE_BRANCH}"
-          pr_body=$(cat << EOF
-            This PR bumps the version number and updates the changelog after the ${VERSION} release.
-
-            Please do the following:
-
-            - [ ] Remove and re-add the "Rebuild" label to the PR to trigger just this workflow.
-            - [ ] Wait for the "Rebuild" workflow to push a commit updating the distribution files.
-            - [ ] Mark the PR as ready for review to trigger the full set of PR checks.
-            - [ ] Approve and merge the PR. When merging the PR, make sure "Create a merge commit" is
-                  selected rather than "Squash and merge" or "Rebase and merge".
-          EOF
-          )
-
-          # Update the version number ready for the next release
-          npm version patch --no-git-tag-version
-
-          # Update the changelog, adding a new version heading directly above the most recent existing one
-          awk '!f && /##/{print "'"## [UNRELEASED]\n\nNo user facing changes.\n"'"; f=1}1' CHANGELOG.md > temp && mv temp CHANGELOG.md
-          git add .
-          git commit -m "Update changelog and version after ${VERSION}"
-
-          git push origin "${NEW_BRANCH}"
-
-          # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft
-          # so that a maintainer can take the PR out of draft, thereby triggering the PR checks.
-          gh pr create \
-            --head "${NEW_BRANCH}" \
-            --base "${BASE_BRANCH}" \
-            --title "${pr_title}" \
-            --label "Rebuild" \
-            --body "${pr_body}" \
-            --assignee "${GITHUB_ACTOR}" \
-            --draft
+        uses: ./.github/actions/prepare-mergeback-branch
+        with:
+          base: "${{ env.BASE_BRANCH }}"
+          head: "${{ env.HEAD_BRANCH }}"
+          branch: "${{ steps.getVersion.outputs.newBranch }}"
+          version: "${{ steps.getVersion.outputs.version }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Generate token
         uses: actions/create-github-app-token@v2.1.1

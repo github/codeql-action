@@ -5,7 +5,7 @@ import * as artifact from "@actions/artifact";
 import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
 import archiver from "archiver";
-import del from "del";
+import * as del from "del";
 
 import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
@@ -345,7 +345,7 @@ async function createPartialDatabaseBundle(
   );
   // See `bundleDb` for explanation behind deleting existing db bundle.
   if (fs.existsSync(databaseBundlePath)) {
-    await del(databaseBundlePath, { force: true });
+    await del.deleteAsync(databaseBundlePath, { force: true });
   }
   const output = fs.createWriteStream(databaseBundlePath);
   const zip = archiver("zip");

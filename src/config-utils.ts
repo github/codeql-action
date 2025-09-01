@@ -1110,6 +1110,13 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   // Store the `UserConfig` (if any) in the `Config`.
   config.originalUserInput = userConfig;
 
+  // Compute the full Code Scanning configuration that combines the configuration from the
+  // configuration file / `config` input with other inputs, such as `queries`.
+  const codeScanningConfig = generateCodeScanningConfig(
+    userConfig,
+    config.augmentationProperties,
+  );
+
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
@@ -1122,7 +1129,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       config.languages,
       inputs.sourceRoot,
       config.buildMode,
-      generateCodeScanningConfig(userConfig, config.augmentationProperties),
+      codeScanningConfig,
       logger,
     );
   logger.info(

@@ -40,6 +40,7 @@ jobs:
 
     permissions:
       contents: write # needed to push to the repo (tags and releases)
+      pull-requests: write # needed to create the mergeback PR
 
     steps:
       - name: Checkout repository

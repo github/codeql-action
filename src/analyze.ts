@@ -608,6 +608,16 @@ export function resolveQuerySuiteAlias(
   return maybeSuite;
 }
 
+/**
+ * Adds the appropriate file extension for the given analysis configuration to the given base filename.
+ */
+export function addSarifExtension(
+  analysis: analyses.AnalysisConfig,
+  base: string,
+): string {
+  return `${base}.${analysis.sarifExtension}`;
+}
+
 // Runs queries and creates sarif files in the given folder
 export async function runQueries(
   sarifFolder: string,
@@ -658,13 +668,16 @@ export async function runQueries(
       ? `--sarif-run-property=incrementalMode=${incrementalMode.join(",")}`
       : undefined;
 
+  const dbAnalysisConfig = configUtils.getDbAnalysisConfig(config);
+
   for (const language of config.languages) {
     try {
       // If Code Scanning is enabled, then the main SARIF file is always the Code Scanning one.
       // Otherwise, only Code Quality is enabled, and the main SARIF file is the Code Quality one.
-      const sarifFile = configUtils.isCodeScanningEnabled(config)
-        ? path.join(sarifFolder, `${language}.sarif`)
-        : path.join(sarifFolder, `${language}.quality.sarif`);
+      const sarifFile = path.join(
+        sarifFolder,
+        addSarifExtension(dbAnalysisConfig, language),
+      );
 
       // This should be empty to run only the query suite that was generated when
       // the database was initialised.
@@ -709,7 +722,9 @@ export async function runQueries(
         configUtils.isCodeScanningEnabled(config) ||
         configUtils.isCodeQualityEnabled(config)
       ) {
-        logger.startGroup(`Interpreting results for ${language}`);
+        logger.startGroup(
+          `Interpreting ${dbAnalysisConfig.name} results for ${language}`,
+        );
 
         // If this is a Code Quality analysis, correct the category to one
         // accepted by the Code Quality backend.
@@ -736,14 +751,16 @@ export async function runQueries(
         configUtils.isCodeQualityEnabled(config) &&
         configUtils.isCodeScanningEnabled(config)
       ) {
-        logger.info(`Interpreting quality results for ${language}`);
+        logger.info(
+          `Interpreting ${analyses.CodeQuality.name} results for ${language}`,
+        );
         const qualityCategory = fixCodeQualityCategory(
           logger,
           automationDetailsId,
         );
         const qualitySarifFile = path.join(
           sarifFolder,
-          `${language}.quality.sarif`,
+          addSarifExtension(analyses.CodeQuality, language),
         );
         qualityAnalysisSummary = await runInterpretResults(
           language,

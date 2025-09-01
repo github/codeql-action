@@ -719,7 +719,7 @@ export async function runQueries(
       // SARIF file we want for the one enabled analysis kind.
       let analysisSummary: string | undefined;
       if (
-        configUtils.isCodeScanningEnabled(config) ||
+        configUtils.isCodeScanningEnabled(config) !==
         configUtils.isCodeQualityEnabled(config)
       ) {
         logger.startGroup(

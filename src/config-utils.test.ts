@@ -197,18 +197,36 @@ test("load code quality config", async (t) => {
       }),
     );
 
-    t.deepEqual(
-      config,
-      await configUtils.getDefaultConfig(
-        createTestInitConfigInputs({
-          analysisKindsInput: "code-quality",
-          languagesInput: languages,
-          tempDir,
-          codeql,
-          logger,
-        }),
-      ),
-    );
+    const userConfig: configUtils.UserConfig = {
+      "disable-default-queries": true,
+      queries: [{ uses: "code-quality" }],
+      "query-filters": [],
+    };
+
+    // And the config we expect it to result in
+    const expectedConfig: configUtils.Config = {
+      analysisKinds: [AnalysisKind.CodeQuality],
+      languages: [KnownLanguage.actions],
+      buildMode: undefined,
+      // This gets set because we only have `AnalysisKind.CodeQuality`
+      originalUserInput: userConfig,
+      computedConfig: userConfig,
+      tempDir,
+      codeQLCmd: codeql.getPath(),
+      gitHubVersion: githubVersion,
+      dbLocation: path.resolve(tempDir, "codeql_databases"),
+      debugMode: false,
+      debugArtifactName: "",
+      debugDatabaseName: "",
+      trapCaches: {},
+      trapCacheDownloadTime: 0,
+      dependencyCachingEnabled: CachingKind.None,
+      extraQueryExclusions: [],
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
+    };
+
+    t.deepEqual(config, expectedConfig);
   });
 });
 

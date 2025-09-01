@@ -10,6 +10,7 @@ import {
   AnalysisConfig,
   AnalysisKind,
   CodeQuality,
+  codeQualityQueries,
   CodeScanning,
   parseAnalysisKinds,
 } from "./analyses";
@@ -34,6 +35,7 @@ import {
   BuildMode,
   codeQlVersionAtLeast,
   cloneObject,
+  isDefined,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -1070,6 +1072,19 @@ function userConfigFromActionPath(tempDir: string): string {
 }
 
 /**
+ * Checks whether the given `UserConfig` contains any query customisations.
+ *
+ * @returns Returns `true` if the `UserConfig` customises which queries are run.
+ */
+function hasQueryCustomisation(userConfig: UserConfig): boolean {
+  return (
+    isDefined(userConfig["disable-default-queries"]) ||
+    isDefined(userConfig.queries) ||
+    isDefined(userConfig["query-filters"])
+  );
+}
+
+/**
  * Load and return the config.
  *
  * This will parse the config from the user input if present, or generate
@@ -1116,6 +1131,31 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     userConfig,
     config.augmentationProperties,
   );
+
+  // If Code Scanning analysis is disabled, then we initialise the database for Code Quality.
+  // That entails disabling the default queries and only running quality queries.
+  if (!isCodeScanningEnabled(config)) {
+    // Warn if any query customisations are present in the computed configuration.
+    if (hasQueryCustomisation(codeScanningConfig)) {
+      logger.warning(
+        "Query customizations will be ignored, because only `code-quality` analysis is enabled.",
+      );
+    }
+
+    const queries = codeQualityQueries.map((v) => ({ uses: v }));
+
+    // Set the query customisation options for Code Quality only analysis.
+    config.originalUserInput["disable-default-queries"] = true;
+    config.originalUserInput.queries = queries;
+    config.originalUserInput["query-filters"] = [];
+    config.augmentationProperties.extraQueryExclusions = [];
+    config.augmentationProperties.queriesInput = undefined;
+
+    // Update the computed configuration for the call to `getOverlayDatabaseMode`.
+    codeScanningConfig["disable-default-queries"] = true;
+    codeScanningConfig.queries = queries;
+    codeScanningConfig["query-filters"] = [];
+  }
 
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation

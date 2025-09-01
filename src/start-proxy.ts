@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
-import { ConfigurationError } from "./util";
+import { ConfigurationError, isDefined } from "./util";
 
 export type Credential = {
   type: string;
@@ -64,15 +64,6 @@ const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string>> = {
   rust: "cargo_registry",
   go: "goproxy_server",
 } as const;
-
-/**
- * Checks that `value` is neither `undefined` nor `null`.
- * @param value The value to test.
- * @returns Narrows the type of `value` to exclude `undefined` and `null`.
- */
-function isDefined<T>(value: T | null | undefined): value is T {
-  return value !== undefined && value !== null;
-}
 
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.

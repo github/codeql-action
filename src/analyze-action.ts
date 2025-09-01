@@ -19,7 +19,12 @@ import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
-import { Config, getConfig, isCodeQualityEnabled } from "./config-utils";
+import {
+  Config,
+  getConfig,
+  isCodeQualityEnabled,
+  isCodeScanningEnabled,
+} from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import { uploadDependencyCaches } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
@@ -327,15 +332,17 @@ async function run() {
     core.setOutput("sarif-output", path.resolve(outputDir));
     const uploadInput = actionsUtil.getOptionalInput("upload");
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
-      uploadResult = await uploadLib.uploadFiles(
-        outputDir,
-        actionsUtil.getRequiredInput("checkout_path"),
-        actionsUtil.getOptionalInput("category"),
-        features,
-        logger,
-        analyses.CodeScanning,
-      );
-      core.setOutput("sarif-id", uploadResult.sarifID);
+      if (isCodeScanningEnabled(config)) {
+        uploadResult = await uploadLib.uploadFiles(
+          outputDir,
+          actionsUtil.getRequiredInput("checkout_path"),
+          actionsUtil.getOptionalInput("category"),
+          features,
+          logger,
+          analyses.CodeScanning,
+        );
+        core.setOutput("sarif-id", uploadResult.sarifID);
+      }
 
       if (isCodeQualityEnabled(config)) {
         const qualityUploadResult = await uploadLib.uploadFiles(

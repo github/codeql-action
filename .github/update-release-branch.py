@@ -97,8 +97,8 @@ def open_pr(
   body.append(' - [ ] Ensure the docs team is aware of any documentation changes that need to be released.')
 
   if not is_primary_release:
-    body.append(' - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.')
-    body.append(' - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.')
+    body.append(' - [ ] Remove and re-add the "Rebuild" label to the PR to trigger just this workflow.')
+    body.append(' - [ ] Wait for the "Rebuild" workflow to push a commit updating the distribution files.')
 
   body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
   body.append(' - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.')
@@ -108,7 +108,7 @@ def open_pr(
     body.append(' - [ ] Merge all backport PRs to older release branches, that will automatically be created once this PR is merged.')
 
   title = f'Merge {source_branch} into {target_branch}'
-  labels = ['Update dependencies'] if not is_primary_release else []
+  labels = ['Rebuild'] if not is_primary_release else []
 
   # Create the pull request
   # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
@@ -389,7 +389,7 @@ def main():
 
     # Migrate the package version number from a vLatest version number to a vOlder version number
     print(f'Setting version number to {version} in package.json')
-    replace_version_package_json(get_current_version(), version) # We rely on the `Update dependencies` workflow to update package-lock.json
+    replace_version_package_json(get_current_version(), version) # We rely on the `Rebuild` workflow to update package-lock.json
     run_git('add', 'package.json')
 
     # Migrate the changelog notes from vLatest version numbers to vOlder version numbers

@@ -1,19 +1,19 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection for macOS"
 operatingSystems: ["macos", "ubuntu"]
-installGo: "true"
+installGo: true
 steps:
+  - name: Use Xcode 16
+    shell: bash
+    if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+    run: sudo xcode-select -s "/Applications/Xcode_16.app"
+
   - uses: ./../action/init
     id: init
     with:
       db-location: "${{ runner.temp }}/customDbLocation"
       languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-
-  - uses: ./../action/.github/actions/setup-swift
-    if: runner.os == 'macOS'
-    with:
-      codeql-path: ${{ steps.init.outputs.codeql-path }}
 
   - name: Build code
     shell: bash

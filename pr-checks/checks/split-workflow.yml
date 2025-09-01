@@ -2,7 +2,7 @@ name: "Split workflow"
 description: "Tests a split-up workflow in which we first build a database and later analyze it"
 operatingSystems: ["ubuntu", "macos"]
 versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
-installGo: "true"
+installGo: true
 steps:
   - uses: ./../action/init
     with:

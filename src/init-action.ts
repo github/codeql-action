@@ -385,6 +385,7 @@ async function run() {
     }
 
     config = await initConfig({
+      analysisKindsInput: getRequiredInput("analysis-kinds"),
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
       qualityQueriesInput: getOptionalInput("quality-queries"),

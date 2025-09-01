@@ -26,9 +26,11 @@ export default [
   {
     ignores: [
       "**/webpack.config.js",
+      "build/**/*",
       "lib/**/*",
       "src/testdata/**/*",
       "tests/**/*",
+      "build.mjs",
       "eslint.config.mjs",
       ".github/**/*",
     ],

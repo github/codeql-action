@@ -1,0 +1,182 @@
+name: Rollback release
+on:
+  # You can trigger this workflow via workflow dispatch to start a rollback.
+  # This will create a draft release that mirrors the release for `rollback-tag`.
+  workflow_dispatch:
+    inputs:
+      rollback-tag:
+        type: string
+        description: "The tag of an old release to roll-back to."
+        required: true
+  # Only for dry-runs of changes to the workflow.
+  push:
+    paths:
+      - .github/workflows/rollback-release.yml
+      - .github/actions/prepare-mergeback-branch/**
+
+jobs:
+  prepare:
+    name: "Prepare release"
+    if: github.repository == 'github/codeql-action'
+
+    permissions:
+      contents: read
+
+    uses: ./.github/workflows/prepare-release.yml
+
+  rollback:
+    name: "Create rollback release"
+    if: github.repository == 'github/codeql-action'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Don't set the deployment environment for test runs
+    # The Actions token does not have permissions to push changes to workflow files.
+    # Since workflow files may change as part of a backport PR, we use the "Automation" environment for real runs to authenticate as a GitHub App and push these changes.
+    environment: ${{ github.event_name == 'workflow_dispatch' && 'Automation' || '' }}
+
+    needs:
+      - prepare
+
+    permissions:
+      contents: write # needed to push to the repo (tags and releases)
+      pull-requests: write # needed to create the mergeback PR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # Need full history for calculation of diffs
+
+      - name: Configure runner for release
+        uses: ./.github/actions/release-initialise
+
+      - name: Create tag for testing
+        if: github.event_name != 'workflow_dispatch'
+        shell: bash
+        run: git tag v0.0.0
+
+      # We start by preparing the mergeback branch, mainly so that we have the updated changelog
+      # readily available for the partial changelog that's needed for the release.
+      - name: Prepare mergeback branch
+        id: mergeback-branch
+        env:
+          BASE_BRANCH: ${{ (github.event_name == 'workflow_dispatch' && 'main') || github.ref_name }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -x
+
+          # Checkout the base branch, since we may be testing on a different branch
+          git checkout "$BASE_BRANCH"
+
+          # Generate a new branch name for the mergeback PR
+          short_sha="${GITHUB_SHA:0:8}"
+          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
+          echo "new-branch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
+
+          # Create the mergeback branch
+          git checkout -b "${NEW_BRANCH}"
+
+      - name: Prepare rollback changelog
+        env:
+          NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
+          # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
+          # but use `v0.0.0` for testing.
+          ROLLBACK_TAG: ${{ inputs.rollback-tag || 'v0.0.0' }}
+          LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
+          VERSION: "${{ needs.prepare.outputs.version }}"
+        run: |
+          python .github/workflows/script/rollback_changelog.py \
+            --target-version "${ROLLBACK_TAG:1}" \
+            --rollback-version "${LATEST_TAG:1}" \
+            --new-version "$VERSION" > $NEW_CHANGELOG
+
+          echo "::group::New CHANGELOG"
+          cat $NEW_CHANGELOG
+          echo "::endgroup::"
+
+      - name: Create tags
+        shell: bash
+        env:
+          # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
+          # but use `v0.0.0` for testing.
+          ROLLBACK_TAG: ${{ inputs.rollback-tag || 'v0.0.0' }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.version }}
+          MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
+        run: |
+          git checkout "refs/tags/${ROLLBACK_TAG}"
+          git tag --annotate "${RELEASE_TAG}" --message "${RELEASE_TAG}"
+          git tag --annotate "${MAJOR_VERSION_TAG}" --message "${MAJOR_VERSION_TAG}" --force
+
+      - name: Push tags
+        # skip when testing
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.version }}
+          MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
+        run: |
+          git push origin --atomic --force refs/tags/"${RELEASE_TAG}" refs/tags/"${MAJOR_VERSION_TAG}"
+
+      - name: Prepare partial Changelog
+        env:
+          NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+          VERSION: "${{ needs.prepare.outputs.version }}"
+        run: |
+          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG "$VERSION" > $PARTIAL_CHANGELOG
+
+          echo "::group::Partial CHANGELOG"
+          cat $PARTIAL_CHANGELOG
+          echo "::endgroup::"
+
+      - name: Generate token
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/create-github-app-token@v2.1.1
+        id: app-token
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
+
+      - name: Create the rollback release
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
+          VERSION: "${{ needs.prepare.outputs.version }}"
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RELEASE_URL: "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ needs.prepare.outputs.version }}"
+        run: |
+          set -exu
+
+          # Do not mark this release as latest. The most recent bundle release must be marked as latest.
+          # Set as a draft to give us an opportunity to review the rollback release.
+          gh release create \
+            "$VERSION" \
+            --latest=false \
+            --draft \
+            --title "$VERSION" \
+            --notes-file "$PARTIAL_CHANGELOG"
+
+          echo "Created draft rollback release at $RELEASE_URL" >> $GITHUB_STEP_SUMMARY
+
+      - name: Update changelog
+        shell: bash
+        env:
+          NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
+          NEW_BRANCH: "${{ steps.mergeback-branch.outputs.new-branch }}"
+        run: |
+          git checkout "${NEW_BRANCH}"
+          mv ${NEW_CHANGELOG} CHANGELOG.md
+
+      - name: Create mergeback branch and PR
+        uses: ./.github/actions/prepare-mergeback-branch
+        with:
+          base: "main"
+          head: ""
+          branch: "${{ steps.mergeback-branch.outputs.new-branch }}"
+          version: "${{ needs.prepare.outputs.version }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          # Setting this to `true` for non-workflow_dispatch events will
+          # still push the `branch`, but won't create a corresponding PR
+          dry-run: "${{ github.event_name != 'workflow_dispatch' }}"
+

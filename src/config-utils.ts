@@ -1103,8 +1103,11 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     );
   }
 
+  // Construct a `Config` from the inputs to the action.
+  // This does not consider the `UserConfig` (if any).
   const config = await getDefaultConfig(inputs);
-  const augmentationProperties = config.augmentationProperties;
+
+  // Store the `UserConfig` (if any) in the `Config`.
   config.originalUserInput = userConfig;
 
   // The choice of overlay database mode depends on the selection of languages
@@ -1119,15 +1122,16 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       config.languages,
       inputs.sourceRoot,
       config.buildMode,
-      generateCodeScanningConfig(userConfig, augmentationProperties),
+      generateCodeScanningConfig(userConfig, config.augmentationProperties),
       logger,
     );
   logger.info(
     `Using overlay database mode: ${overlayDatabaseMode} ` +
       `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
-  augmentationProperties.overlayDatabaseMode = overlayDatabaseMode;
-  augmentationProperties.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+  config.augmentationProperties.overlayDatabaseMode = overlayDatabaseMode;
+  config.augmentationProperties.useOverlayDatabaseCaching =
+    useOverlayDatabaseCaching;
 
   if (
     overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
@@ -1137,7 +1141,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       logger,
     ))
   ) {
-    augmentationProperties.extraQueryExclusions.push({
+    config.augmentationProperties.extraQueryExclusions.push({
       exclude: { tags: "exclude-from-incremental" },
     });
   }
@@ -1424,7 +1428,8 @@ export function generateCodeScanningConfig(
   originalUserInput: UserConfig,
   augmentationProperties: AugmentationProperties,
 ): UserConfig {
-  // make a copy so we can modify it
+  // Make a copy of the `UserConfig` so we can modify it without mutating
+  // the original input.
   const augmentedConfig = cloneObject(originalUserInput);
 
   // Inject the queries from the input

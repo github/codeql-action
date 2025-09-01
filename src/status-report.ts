@@ -91,6 +91,8 @@ export interface StatusReportBase {
   action_version: string;
   /** The name of the Actions event that triggered the workflow. */
   actions_event_name?: string;
+  /** Comma-separated list of the kinds of analyses we are performing. */
+  analysis_kinds?: string;
   /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
   /** Build mode, if specified. */
@@ -293,6 +295,7 @@ export async function createStatusReportBase(
       action_ref: actionRef,
       action_started_at: actionStartedAt.toISOString(),
       action_version: getActionVersion(),
+      analysis_kinds: config?.analysisKinds.join(","),
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,

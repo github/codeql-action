@@ -7,6 +7,7 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
@@ -47,6 +48,7 @@ function createTestInitConfigInputs(
   return Object.assign(
     {},
     {
+      analysisKindsInput: "code-scanning",
       languagesInput: undefined,
       queriesInput: undefined,
       qualityQueriesInput: undefined,
@@ -322,6 +324,7 @@ test("load non-empty input", async (t) => {
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
+      analysisKinds: [AnalysisKind.CodeScanning],
       languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
       originalUserInput: {

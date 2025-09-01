@@ -1,7 +1,8 @@
 name: "Packaging: Config and input"
 description: "Checks that specifying packages using a combination of a config file and input to the Action works"
 versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
-installGo: "true"
+installGo: true
+installNode: true
 steps:
   - uses: ./../action/init
     with:

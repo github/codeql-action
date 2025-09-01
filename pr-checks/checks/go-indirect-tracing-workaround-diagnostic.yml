@@ -4,7 +4,7 @@ description: "Checks that we emit a diagnostic if Go is changed after the init s
 operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
 versions: ["default"]
-installGo: "true"
+installGo: true
 collection: go
 steps:
   - uses: ./../action/init

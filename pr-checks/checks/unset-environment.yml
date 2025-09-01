@@ -5,7 +5,7 @@ operatingSystems:
 versions:
   - linked
   - nightly-latest
-installGo: "true"
+installGo: true
 steps:
   - uses: ./../action/init
     id: init

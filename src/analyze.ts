@@ -615,7 +615,7 @@ export function addSarifExtension(
   analysis: analyses.AnalysisConfig,
   base: string,
 ): string {
-  return `${base}.${analysis.sarifExtension}`;
+  return `${base}${analysis.sarifExtension}`;
 }
 
 // Runs queries and creates sarif files in the given folder

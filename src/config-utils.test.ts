@@ -171,6 +171,47 @@ test("load empty config", async (t) => {
   });
 });
 
+test("load code quality config", async (t) => {
+  return await withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+    const languages = "actions";
+
+    const codeql = createStubCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            actions: [{ extractor_root: "" }],
+          },
+        };
+      },
+    });
+
+    const config = await configUtils.initConfig(
+      createTestInitConfigInputs({
+        analysisKindsInput: "code-quality",
+        languagesInput: languages,
+        repository: { owner: "github", repo: "example" },
+        tempDir,
+        codeql,
+        logger,
+      }),
+    );
+
+    t.deepEqual(
+      config,
+      await configUtils.getDefaultConfig(
+        createTestInitConfigInputs({
+          analysisKindsInput: "code-quality",
+          languagesInput: languages,
+          tempDir,
+          codeql,
+          logger,
+        }),
+      ),
+    );
+  });
+});
+
 test("loading config saves config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);

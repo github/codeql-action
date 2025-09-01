@@ -6,7 +6,13 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import { isAnalyzingPullRequest } from "./actions-util";
-import { AnalysisKind, parseAnalysisKinds } from "./analyses";
+import {
+  AnalysisConfig,
+  AnalysisKind,
+  CodeQuality,
+  CodeScanning,
+  parseAnalysisKinds,
+} from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
@@ -1521,4 +1527,29 @@ export function isCodeScanningEnabled(config: Config): boolean {
  */
 export function isCodeQualityEnabled(config: Config): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeQuality);
+}
+
+/**
+ * Returns the analysis kind for which the database is initialised. This is
+ * always `AnalysisKind.CodeScanning` unless `AnalysisKind.CodeScanning` is not enabled.
+ *
+ * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
+ * otherwise `AnalysisKind.CodeQuality`.
+ */
+export function getDbAnalysisKind(config: Config): AnalysisKind {
+  return isCodeScanningEnabled(config)
+    ? AnalysisKind.CodeScanning
+    : AnalysisKind.CodeQuality;
+}
+
+/**
+ * Returns the analysis configuration for which the database is initialised. This is
+ * always `CodeScanning` unless `CodeScanning` is not enabled.
+ *
+ * @returns Returns `CodeScanning` if `AnalysisKind.CodeScanning` is enabled; otherwise `CodeQuality`.
+ */
+export function getDbAnalysisConfig(config: Config): AnalysisConfig {
+  return getDbAnalysisKind(config) === AnalysisKind.CodeScanning
+    ? CodeScanning
+    : CodeQuality;
 }

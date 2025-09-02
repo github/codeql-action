@@ -144,12 +144,6 @@ export interface Config {
    * Specifies the name of the database in the debugging artifact.
    */
   debugDatabaseName: string;
-
-  /**
-   * Describes how to augment the user configuration with inputs from the action.
-   */
-  augmentationProperties: AugmentationProperties;
-
   /**
    * The configuration we computed by combining `originalUserInput` with `augmentationProperties`,
    * as well as adjustments made to it based on unsupported or required options.
@@ -536,7 +530,9 @@ export async function getDefaultConfig({
   githubVersion,
   features,
   logger,
-}: InitConfigInputs): Promise<Config> {
+}: InitConfigInputs): Promise<
+  Config & { augmentationProperties: AugmentationProperties }
+> {
   const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
 
   // For backwards compatibility, add Code Quality to the enabled analysis kinds
@@ -1104,14 +1100,14 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     );
   }
 
-  const config = await getDefaultConfig(inputs);
+  const { augmentationProperties, ...config } = await getDefaultConfig(inputs);
   config.originalUserInput = userConfig;
 
   // Compute the full Code Scanning configuration that combines the configuration from the
   // configuration file / `config` input with other inputs, such as `queries`.
   config.computedConfig = generateCodeScanningConfig(
     userConfig,
-    config.augmentationProperties,
+    augmentationProperties,
   );
 
   // The choice of overlay database mode depends on the selection of languages

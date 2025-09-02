@@ -157,8 +157,8 @@ test("load empty config", async (t) => {
       }),
     );
 
-    t.deepEqual(
-      config,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { augmentationProperties, ...expectedConfig } =
       await configUtils.getDefaultConfig(
         createTestInitConfigInputs({
           languagesInput: languages,
@@ -166,8 +166,9 @@ test("load empty config", async (t) => {
           codeql,
           logger,
         }),
-      ),
-    );
+      );
+
+    t.deepEqual(config, expectedConfig);
   });
 });
 
@@ -344,7 +345,6 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      augmentationProperties: configUtils.defaultAugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,

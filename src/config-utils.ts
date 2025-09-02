@@ -145,7 +145,16 @@ export interface Config {
    */
   debugDatabaseName: string;
 
+  /**
+   * Describes how to augment the user configuration with inputs from the action.
+   */
   augmentationProperties: AugmentationProperties;
+
+  /**
+   * The configuration we computed by combining `originalUserInput` with `augmentationProperties`,
+   * as well as adjustments made to it based on unsupported or required options.
+   */
+  computedConfig: UserConfig;
 
   /**
    * Partial map from languages to locations of TRAP caches for that language.
@@ -576,6 +585,7 @@ export async function getDefaultConfig({
     languages,
     buildMode,
     originalUserInput: {},
+    computedConfig: {},
     tempDir,
     codeQLCmd: codeql.getPath(),
     gitHubVersion: githubVersion,
@@ -1101,6 +1111,13 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   const augmentationProperties = config.augmentationProperties;
   config.originalUserInput = userConfig;
 
+  // Compute the full Code Scanning configuration that combines the configuration from the
+  // configuration file / `config` input with other inputs, such as `queries`.
+  config.computedConfig = generateCodeScanningConfig(
+    userConfig,
+    config.augmentationProperties,
+  );
+
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
@@ -1113,7 +1130,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       config.languages,
       inputs.sourceRoot,
       config.buildMode,
-      generateCodeScanningConfig(userConfig, augmentationProperties),
+      config.computedConfig,
       logger,
     );
   logger.info(

@@ -36,6 +36,9 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Update bundle
         uses: ./.github/actions/update-bundle
 

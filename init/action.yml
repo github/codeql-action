@@ -97,7 +97,7 @@ inputs:
     description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
     required: false
   quality-queries:
-    description: '[Internal] Comma-separated list of code quality queries to run.'
+    description: '[Internal] DEPRECATED. Comma-separated list of code quality queries to run.'
     required: false
   packs:
     description: >-

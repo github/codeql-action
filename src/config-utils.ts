@@ -184,11 +184,6 @@ export interface AugmentationProperties {
   queriesInput?: Array<{ uses: string }>;
 
   /**
-   * The quality queries input from the `with` block of the action declaration.
-   */
-  qualityQueriesInput?: Array<{ uses: string }>;
-
-  /**
    * Whether or not the packs input combines with the packs in the config.
    */
   packsInputCombines: boolean;
@@ -230,7 +225,6 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
-  qualityQueriesInput: undefined,
   extraQueryExclusions: [],
   overlayDatabaseMode: OverlayDatabaseMode.None,
   useOverlayDatabaseCaching: false,
@@ -567,7 +561,6 @@ export async function getDefaultConfig({
   const augmentationProperties = await calculateAugmentation(
     packsInput,
     queriesInput,
-    qualityQueriesInput,
     languages,
   );
 
@@ -661,7 +654,6 @@ async function loadUserConfig(
 export async function calculateAugmentation(
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
-  rawQualityQueriesInput: string | undefined,
   languages: Language[],
 ): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
@@ -676,17 +668,11 @@ export async function calculateAugmentation(
     queriesInputCombines,
   );
 
-  const qualityQueriesInput = parseQueriesFromInput(
-    rawQualityQueriesInput,
-    false,
-  );
-
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
-    qualityQueriesInput,
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
@@ -1492,8 +1478,6 @@ export function generateCodeScanningConfig(
 /**
  * Returns `true` if Code Quality analysis is enabled, or `false` if not.
  */
-export function isCodeQualityEnabled(config: Config): config is Config & {
-  augmentationProperties: { qualityQueriesInput: string };
-} {
+export function isCodeQualityEnabled(config: Config): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeQuality);
 }

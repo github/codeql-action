@@ -503,11 +503,10 @@ const injectedConfigMacro = test.macro({
         ...stubConfig,
         ...configOverride,
         tempDir,
-        augmentationProperties,
       };
       thisStubConfig.computedConfig = generateCodeScanningConfig(
         thisStubConfig.originalUserInput,
-        thisStubConfig.augmentationProperties,
+        augmentationProperties,
       );
 
       await codeqlObject.databaseInitCluster(

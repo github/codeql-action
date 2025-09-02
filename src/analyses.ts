@@ -38,3 +38,6 @@ export async function parseAnalysisKinds(
     new Set(components.map((component) => component as AnalysisKind)),
   );
 }
+
+/** The queries to use for Code Quality analyses. */
+export const codeQualityQueries: string[] = ["code-quality"];

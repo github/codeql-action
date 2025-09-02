@@ -8,7 +8,7 @@ No user facing changes.
 
 ## 3.30.0 - 01 Sep 2025
 
-No user facing changes.
+- Reduce the size of the CodeQL Action, speeding up workflows by approximately 4 seconds. [#3054](https://github.com/github/codeql-action/pull/3054)
 
 ## 3.29.11 - 21 Aug 2025
 

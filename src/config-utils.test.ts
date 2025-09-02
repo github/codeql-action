@@ -197,20 +197,18 @@ test("load code quality config", async (t) => {
       }),
     );
 
-    const userConfig: configUtils.UserConfig = {
-      "disable-default-queries": true,
-      queries: [{ uses: "code-quality" }],
-      "query-filters": [],
-    };
-
     // And the config we expect it to result in
     const expectedConfig: configUtils.Config = {
       analysisKinds: [AnalysisKind.CodeQuality],
       languages: [KnownLanguage.actions],
       buildMode: undefined,
+      originalUserInput: {},
       // This gets set because we only have `AnalysisKind.CodeQuality`
-      originalUserInput: userConfig,
-      computedConfig: userConfig,
+      computedConfig: {
+        "disable-default-queries": true,
+        queries: [{ uses: "code-quality" }],
+        "query-filters": [],
+      },
       tempDir,
       codeQLCmd: codeql.getPath(),
       gitHubVersion: githubVersion,

@@ -1145,11 +1145,6 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     const queries = codeQualityQueries.map((v) => ({ uses: v }));
 
     // Set the query customisation options for Code Quality only analysis.
-    config.originalUserInput["disable-default-queries"] = true;
-    config.originalUserInput.queries = queries;
-    config.originalUserInput["query-filters"] = [];
-
-    // Update the computed configuration for the call to `getOverlayDatabaseMode`.
     config.computedConfig["disable-default-queries"] = true;
     config.computedConfig.queries = queries;
     config.computedConfig["query-filters"] = [];

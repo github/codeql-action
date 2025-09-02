@@ -1131,9 +1131,10 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
 
   const config = await initActionState(inputs, userConfig);
 
-  // If Code Scanning analysis is disabled, then we initialise the database for Code Quality.
-  // That entails disabling the default queries and only running quality queries.
-  if (!isCodeScanningEnabled(config)) {
+  // If Code Quality analysis is the only enabled analysis kind, then we will initialise
+  // the database for Code Quality. That entails disabling the default queries and only
+  // running quality queries. We do not currently support query customisations in that case.
+  if (config.analysisKinds.length === 1 && isCodeQualityEnabled(config)) {
     // Warn if any query customisations are present in the computed configuration.
     if (hasQueryCustomisation(config.computedConfig)) {
       logger.warning(

@@ -75,7 +75,6 @@ import {
   ConfigurationError,
   wrapError,
   checkActionVersion,
-  cloneObject,
   getErrorMessage,
 } from "./util";
 import { validateWorkflow } from "./workflow";
@@ -206,28 +205,10 @@ async function sendCompletedStatusReport(
     }
 
     let packs: Record<string, string[]> = {};
-    if (
-      (config.augmentationProperties.packsInputCombines ||
-        !config.augmentationProperties.packsInput) &&
-      config.originalUserInput.packs
-    ) {
-      // Make a copy, because we might modify `packs`.
-      const copyPacksFromOriginalUserInput = cloneObject(
-        config.originalUserInput.packs,
-      );
-      // If it is an array, then assume there is only a single language being analyzed.
-      if (Array.isArray(copyPacksFromOriginalUserInput)) {
-        packs[config.languages[0]] = copyPacksFromOriginalUserInput;
-      } else {
-        packs = copyPacksFromOriginalUserInput;
-      }
-    }
-
-    if (config.augmentationProperties.packsInput) {
-      packs[config.languages[0]] ??= [];
-      packs[config.languages[0]].push(
-        ...config.augmentationProperties.packsInput,
-      );
+    if (Array.isArray(config.computedConfig.packs)) {
+      packs[config.languages[0]] = config.computedConfig.packs;
+    } else if (config.computedConfig.packs !== undefined) {
+      packs = config.computedConfig.packs;
     }
 
     // Append fields that are dependent on `config`

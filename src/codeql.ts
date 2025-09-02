@@ -13,7 +13,7 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
-import { generateCodeScanningConfig, type Config } from "./config-utils";
+import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import {
@@ -1161,19 +1161,15 @@ async function writeCodeScanningConfigFile(
   logger: Logger,
 ): Promise<string> {
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
-  const augmentedConfig = generateCodeScanningConfig(
-    config.originalUserInput,
-    config.augmentationProperties,
-  );
 
   logger.info(
     `Writing augmented user configuration file to ${codeScanningConfigFile}`,
   );
   logger.startGroup("Augmented user configuration file contents");
-  logger.info(yaml.dump(augmentedConfig));
+  logger.info(yaml.dump(config.computedConfig));
   logger.endGroup();
 
-  fs.writeFileSync(codeScanningConfigFile, yaml.dump(augmentedConfig));
+  fs.writeFileSync(codeScanningConfigFile, yaml.dump(config.computedConfig));
   return codeScanningConfigFile;
 }
 

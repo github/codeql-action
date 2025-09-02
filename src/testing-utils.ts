@@ -360,6 +360,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       languages: [],
       buildMode: undefined,
       originalUserInput: {},
+      computedConfig: {},
       tempDir: "",
       codeQLCmd: "",
       gitHubVersion: {

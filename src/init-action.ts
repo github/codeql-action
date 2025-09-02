@@ -449,9 +449,8 @@ async function run() {
   let overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined;
   try {
     if (
-      config.augmentationProperties.overlayDatabaseMode ===
-        OverlayDatabaseMode.Overlay &&
-      config.augmentationProperties.useOverlayDatabaseCaching
+      config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
+      config.useOverlayDatabaseCaching
     ) {
       // OverlayDatabaseMode.Overlay comes in two flavors: with database
       // caching, or without. The flavor with database caching is intended to be
@@ -470,8 +469,7 @@ async function run() {
         logger,
       );
       if (!overlayBaseDatabaseStats) {
-        config.augmentationProperties.overlayDatabaseMode =
-          OverlayDatabaseMode.None;
+        config.overlayDatabaseMode = OverlayDatabaseMode.None;
         logger.info(
           "No overlay-base database found in cache, " +
             `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
@@ -479,10 +477,7 @@ async function run() {
       }
     }
 
-    if (
-      config.augmentationProperties.overlayDatabaseMode !==
-      OverlayDatabaseMode.Overlay
-    ) {
+    if (config.overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
       cleanupDatabaseClusterDirectory(config, logger);
     }
 
@@ -739,15 +734,13 @@ async function run() {
     // revert to `OverlayDatabaseMode.None`, re-initialize the database cluster
     // with the new overlay database mode.
     if (
-      config.augmentationProperties.overlayDatabaseMode !==
-        OverlayDatabaseMode.None &&
+      config.overlayDatabaseMode !== OverlayDatabaseMode.None &&
       !(await checkPacksForOverlayCompatibility(codeql, config, logger))
     ) {
       logger.info(
         "Reverting overlay database mode to None due to incompatible packs.",
       );
-      config.augmentationProperties.overlayDatabaseMode =
-        OverlayDatabaseMode.None;
+      config.overlayDatabaseMode = OverlayDatabaseMode.None;
       cleanupDatabaseClusterDirectory(config, logger, {
         disableExistingDirectoryWarning: true,
       });

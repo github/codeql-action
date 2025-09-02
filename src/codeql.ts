@@ -593,8 +593,7 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
-      const overlayDatabaseMode =
-        config.augmentationProperties.overlayDatabaseMode;
+      const overlayDatabaseMode = config.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
           config,

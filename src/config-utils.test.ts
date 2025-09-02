@@ -348,6 +348,8 @@ test("load non-empty input", async (t) => {
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
     };
 
     const languagesInput = "javascript";

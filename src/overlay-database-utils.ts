@@ -192,7 +192,7 @@ export async function uploadOverlayBaseDatabaseToCache(
   config: Config,
   logger: Logger,
 ): Promise<boolean> {
-  const overlayDatabaseMode = config.augmentationProperties.overlayDatabaseMode;
+  const overlayDatabaseMode = config.overlayDatabaseMode;
   if (overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase) {
     logger.debug(
       `Overlay database mode is ${overlayDatabaseMode}. ` +
@@ -200,7 +200,7 @@ export async function uploadOverlayBaseDatabaseToCache(
     );
     return false;
   }
-  if (!config.augmentationProperties.useOverlayDatabaseCaching) {
+  if (!config.useOverlayDatabaseCaching) {
     logger.debug(
       "Overlay database caching is disabled. " +
         "Skip uploading overlay-base database to cache.",
@@ -298,7 +298,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
   config: Config,
   logger: Logger,
 ): Promise<OverlayBaseDatabaseDownloadStats | undefined> {
-  const overlayDatabaseMode = config.augmentationProperties.overlayDatabaseMode;
+  const overlayDatabaseMode = config.overlayDatabaseMode;
   if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
     logger.debug(
       `Overlay database mode is ${overlayDatabaseMode}. ` +
@@ -306,7 +306,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
     );
     return undefined;
   }
-  if (!config.augmentationProperties.useOverlayDatabaseCaching) {
+  if (!config.useOverlayDatabaseCaching) {
     logger.debug(
       "Overlay database caching is disabled. " +
         "Skip downloading overlay-base database from cache.",

@@ -647,7 +647,7 @@ export async function uploadSpecifiedFiles(
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
-  uploadTarget: analyses.AnalysisConfig = analyses.CodeScanning,
+  uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
   logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
@@ -913,7 +913,7 @@ function handleProcessingResultForUnsuccessfulExecution(
 
 export function validateUniqueCategory(
   sarif: SarifFile,
-  sentinelPrefix: string = analyses.CodeScanning.sentinelPrefix,
+  sentinelPrefix: string,
 ): void {
   // duplicate categories are allowed in the same sarif file
   // but not across multiple sarif files

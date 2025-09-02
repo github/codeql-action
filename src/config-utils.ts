@@ -169,6 +169,23 @@ export interface Config {
 
   /** A value indicating how dependency caching should be used. */
   dependencyCachingEnabled: CachingKind;
+
+  /**
+   * The overlay database mode to use.
+   */
+  overlayDatabaseMode: OverlayDatabaseMode;
+
+  /**
+   * Whether to use caching for overlay databases. If it is true, the action
+   * will upload the created overlay-base database to the actions cache, and
+   * download an overlay-base database from the actions cache before it creates
+   * a new overlay database. If it is false, the action assumes that the
+   * workflow will be responsible for managing database storage and retrieval.
+   *
+   * This property has no effect unless `overlayDatabaseMode` is `Overlay` or
+   * `OverlayBase`.
+   */
+  useOverlayDatabaseCaching: boolean;
 }
 
 /**
@@ -206,23 +223,6 @@ export interface AugmentationProperties {
    * Extra query exclusions to append to the config.
    */
   extraQueryExclusions: ExcludeQueryFilter[];
-
-  /**
-   * The overlay database mode to use.
-   */
-  overlayDatabaseMode: OverlayDatabaseMode;
-
-  /**
-   * Whether to use caching for overlay databases. If it is true, the action
-   * will upload the created overlay-base database to the actions cache, and
-   * download an overlay-base database from the actions cache before it creates
-   * a new overlay database. If it is false, the action assumes that the
-   * workflow will be responsible for managing database storage and retrieval.
-   *
-   * This property has no effect unless `overlayDatabaseMode` is `Overlay` or
-   * `OverlayBase`.
-   */
-  useOverlayDatabaseCaching: boolean;
 }
 
 /**
@@ -235,8 +235,6 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInput: undefined,
   queriesInput: undefined,
   extraQueryExclusions: [],
-  overlayDatabaseMode: OverlayDatabaseMode.None,
-  useOverlayDatabaseCaching: false,
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -597,6 +595,8 @@ export async function getDefaultConfig({
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
   };
 }
 
@@ -684,8 +684,6 @@ export async function calculateAugmentation(
     queriesInput,
     queriesInputCombines,
     extraQueryExclusions: [],
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
   };
 }
 
@@ -1108,7 +1106,6 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   }
 
   const config = await getDefaultConfig(inputs);
-  const augmentationProperties = config.augmentationProperties;
   config.originalUserInput = userConfig;
 
   // Compute the full Code Scanning configuration that combines the configuration from the
@@ -1137,8 +1134,8 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     `Using overlay database mode: ${overlayDatabaseMode} ` +
       `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
-  augmentationProperties.overlayDatabaseMode = overlayDatabaseMode;
-  augmentationProperties.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+  config.overlayDatabaseMode = overlayDatabaseMode;
+  config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
 
   if (
     overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
@@ -1148,7 +1145,10 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       logger,
     ))
   ) {
-    augmentationProperties.extraQueryExclusions.push({
+    if (config.computedConfig["query-filters"] === undefined) {
+      config.computedConfig["query-filters"] = [];
+    }
+    config.computedConfig["query-filters"].push({
       exclude: { tags: "exclude-from-incremental" },
     });
   }

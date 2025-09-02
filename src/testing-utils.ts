@@ -9,6 +9,7 @@ import * as sinon from "sinon";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
+import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
@@ -19,6 +20,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -371,11 +373,13 @@ export function createTestConfig(overrides: Partial<Config>): Config {
         packsInputCombines: false,
         queriesInputCombines: false,
         extraQueryExclusions: [],
+        overlayDatabaseMode: OverlayDatabaseMode.None,
+        useOverlayDatabaseCaching: false,
       },
       trapCaches: {},
       trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: false,
-    },
+      dependencyCachingEnabled: CachingKind.None,
+    } as Config,
     overrides,
   );
 }

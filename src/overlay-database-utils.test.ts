@@ -120,10 +120,8 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
 
       const testCase = { ...defaultDownloadTestCase, ...partialTestCase };
 
-      config.augmentationProperties.overlayDatabaseMode =
-        testCase.overlayDatabaseMode;
-      config.augmentationProperties.useOverlayDatabaseCaching =
-        testCase.useOverlayDatabaseCaching;
+      config.overlayDatabaseMode = testCase.overlayDatabaseMode;
+      config.useOverlayDatabaseCaching = testCase.useOverlayDatabaseCaching;
 
       if (testCase.hasBaseDatabaseOidsFile) {
         const baseDatabaseOidsFile = path.join(

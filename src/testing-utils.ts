@@ -11,7 +11,7 @@ import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
-import { Config } from "./config-utils";
+import { AugmentationProperties, Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import {
   CodeQLDefaultVersionInfo,
@@ -360,6 +360,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       languages: [],
       buildMode: undefined,
       originalUserInput: {},
+      computedConfig: {},
       tempDir: "",
       codeQLCmd: "",
       gitHubVersion: {
@@ -372,13 +373,13 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       augmentationProperties: {
         packsInputCombines: false,
         queriesInputCombines: false,
-        extraQueryExclusions: [],
-        overlayDatabaseMode: OverlayDatabaseMode.None,
-        useOverlayDatabaseCaching: false,
-      },
+      } satisfies AugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,
+      extraQueryExclusions: [],
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
     } satisfies Config,
     overrides,
   );

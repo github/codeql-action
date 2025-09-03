@@ -626,10 +626,7 @@ export async function runQueries(
   const incrementalMode: string[] = [];
 
   // Preserve cached intermediate results for overlay-base databases.
-  if (
-    config.augmentationProperties.overlayDatabaseMode !==
-    OverlayDatabaseMode.OverlayBase
-  ) {
+  if (config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase) {
     queryFlags.push("--expect-discarded-cache");
   }
 
@@ -641,15 +638,10 @@ export async function runQueries(
   }
 
   statusReport.analysis_is_overlay =
-    config.augmentationProperties.overlayDatabaseMode ===
-    OverlayDatabaseMode.Overlay;
+    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay;
   statusReport.analysis_builds_overlay_base_database =
-    config.augmentationProperties.overlayDatabaseMode ===
-    OverlayDatabaseMode.OverlayBase;
-  if (
-    config.augmentationProperties.overlayDatabaseMode ===
-    OverlayDatabaseMode.Overlay
-  ) {
+    config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase;
+  if (config.overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
     incrementalMode.push("overlay");
   }
 

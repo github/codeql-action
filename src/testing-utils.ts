@@ -373,11 +373,11 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       augmentationProperties: {
         packsInputCombines: false,
         queriesInputCombines: false,
-        extraQueryExclusions: [],
       } satisfies AugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,
+      extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
     } satisfies Config,

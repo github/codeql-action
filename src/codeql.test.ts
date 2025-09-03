@@ -18,6 +18,7 @@ import {
   AugmentationProperties,
   Config,
   defaultAugmentationProperties,
+  generateCodeScanningConfig,
 } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
@@ -504,6 +505,10 @@ const injectedConfigMacro = test.macro({
         tempDir,
         augmentationProperties,
       };
+      thisStubConfig.computedConfig = generateCodeScanningConfig(
+        thisStubConfig.originalUserInput,
+        thisStubConfig.augmentationProperties,
+      );
 
       await codeqlObject.databaseInitCluster(
         thisStubConfig,

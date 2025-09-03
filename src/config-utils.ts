@@ -171,6 +171,11 @@ export interface Config {
   dependencyCachingEnabled: CachingKind;
 
   /**
+   * Extra query exclusions to append to the config.
+   */
+  extraQueryExclusions: ExcludeQueryFilter[];
+
+  /**
    * The overlay database mode to use.
    */
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -218,11 +223,6 @@ export interface AugmentationProperties {
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
-
-  /**
-   * Extra query exclusions to append to the config.
-   */
-  extraQueryExclusions: ExcludeQueryFilter[];
 }
 
 /**
@@ -234,7 +234,6 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
-  extraQueryExclusions: [],
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -595,6 +594,7 @@ export async function getDefaultConfig({
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
+    extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
   };
@@ -683,7 +683,6 @@ export async function calculateAugmentation(
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
-    extraQueryExclusions: [],
   };
 }
 
@@ -1145,10 +1144,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       logger,
     ))
   ) {
-    if (config.computedConfig["query-filters"] === undefined) {
-      config.computedConfig["query-filters"] = [];
-    }
-    config.computedConfig["query-filters"].push({
+    config.extraQueryExclusions.push({
       exclude: { tags: "exclude-from-incremental" },
     });
   }
@@ -1478,17 +1474,41 @@ export function generateCodeScanningConfig(
     delete augmentedConfig.packs;
   }
 
+  return augmentedConfig;
+}
+
+/**
+ * Appends `extraQueryExclusions` to `cliConfig`'s `query-filters`.
+ *
+ * @param extraQueryExclusions The extra query exclusions to append to the `query-filters`.
+ * @param cliConfig The CodeQL CLI configuration to extend.
+ * @returns Returns `cliConfig` if there are no extra query exclusions
+ *          or a copy of `cliConfig` where the extra query exclusions
+ *          have been appended to `query-filters`.
+ */
+export function appendExtraQueryExclusions(
+  extraQueryExclusions: ExcludeQueryFilter[],
+  cliConfig: UserConfig,
+): UserConfig {
+  if (extraQueryExclusions.length === 0) {
+    return cliConfig;
+  }
+
+  // make a copy so we can modify it
+  const augmentedConfig = cloneObject(cliConfig);
+
   augmentedConfig["query-filters"] = [
     // Ordering matters. If the first filter is an inclusion, it implicitly
     // excludes all queries that are not included. If it is an exclusion,
     // it implicitly includes all queries that are not excluded. So user
     // filters (if any) should always be first to preserve intent.
     ...(augmentedConfig["query-filters"] || []),
-    ...augmentationProperties.extraQueryExclusions,
+    ...extraQueryExclusions,
   ];
   if (augmentedConfig["query-filters"]?.length === 0) {
     delete augmentedConfig["query-filters"];
   }
+
   return augmentedConfig;
 }
 

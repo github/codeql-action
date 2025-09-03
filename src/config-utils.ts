@@ -1489,13 +1489,14 @@ export function generateCodeScanningConfig(
 export function appendExtraQueryExclusions(
   extraQueryExclusions: ExcludeQueryFilter[],
   cliConfig: UserConfig,
-): UserConfig {
-  if (extraQueryExclusions.length === 0) {
-    return cliConfig;
-  }
-
-  // make a copy so we can modify it
+): Readonly<UserConfig> {
+  // make a copy so we can modify it and so that modifications to the input
+  // object do not affect the result that is marked as `Readonly`.
   const augmentedConfig = cloneObject(cliConfig);
+
+  if (extraQueryExclusions.length === 0) {
+    return augmentedConfig;
+  }
 
   augmentedConfig["query-filters"] = [
     // Ordering matters. If the first filter is an inclusion, it implicitly

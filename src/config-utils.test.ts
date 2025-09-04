@@ -157,7 +157,7 @@ test("load empty config", async (t) => {
       }),
     );
 
-    const expectedConfig = await configUtils.getDefaultConfig(
+    const expectedConfig = await configUtils.initActionState(
       createTestInitConfigInputs({
         languagesInput: languages,
         tempDir,

@@ -703,44 +703,36 @@ export async function runQueries(
       statusReport[`analyze_builtin_queries_${language}_duration_ms`] =
         new Date().getTime() - startTimeRunQueries;
 
-      const startTimeInterpretResults = new Date();
+      // There is always at least one analysis kind enabled. Running `interpret-results`
+      // produces the SARIF file for the analysis kind that the database was initialised with.
+      logger.startGroup(
+        `Interpreting ${dbAnalysisConfig.name} results for ${language}`,
+      );
 
-      // If only one analysis kind is enabled, then the database is initialised for the
-      // respective set of queries. Therefore, running `interpret-results` produces the
-      // SARIF file we want for the one enabled analysis kind.
-      let analysisSummary: string | undefined;
-      if (
-        configUtils.isCodeScanningEnabled(config) ||
-        configUtils.isCodeQualityEnabled(config)
-      ) {
-        logger.startGroup(
-          `Interpreting ${dbAnalysisConfig.name} results for ${language}`,
-        );
-
-        // If this is a Code Quality analysis, correct the category to one
-        // accepted by the Code Quality backend.
-        let category = automationDetailsId;
-        if (configUtils.isCodeQualityEnabled(config)) {
-          category = fixCodeQualityCategory(logger, automationDetailsId);
-        }
-
-        analysisSummary = await runInterpretResults(
-          language,
-          undefined,
-          sarifFile,
-          config.debugMode,
-          category,
-        );
+      // If this is a Code Quality analysis, correct the category to one
+      // accepted by the Code Quality backend.
+      let category = automationDetailsId;
+      if (dbAnalysisConfig.kind === analyses.AnalysisKind.CodeQuality) {
+        category = fixCodeQualityCategory(logger, automationDetailsId);
       }
 
-      // This case is only needed if Code Quality is enabled in addition to Code Scanning.
+      const startTimeInterpretResults = new Date();
+      const analysisSummary = await runInterpretResults(
+        language,
+        undefined,
+        sarifFile,
+        config.debugMode,
+        category,
+      );
+
+      // This case is only needed if Code Quality is not the sole analysis kind.
       // In this case, we will have run queries for both analysis kinds. The previous call to
       // `interpret-results` will have produced a SARIF file for Code Scanning and we now
       // need to produce an additional SARIF file for Code Quality.
       let qualityAnalysisSummary: string | undefined;
       if (
-        configUtils.isCodeQualityEnabled(config) &&
-        configUtils.isCodeScanningEnabled(config)
+        config.analysisKinds.length > 1 &&
+        configUtils.isCodeQualityEnabled(config)
       ) {
         logger.info(
           `Interpreting ${analyses.CodeQuality.name} results for ${language}`,
@@ -768,9 +760,7 @@ export async function runQueries(
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
 
-      if (analysisSummary) {
-        logger.info(analysisSummary);
-      }
+      logger.info(analysisSummary);
       if (qualityAnalysisSummary) {
         logger.info(qualityAnalysisSummary);
       }

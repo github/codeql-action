@@ -51,7 +51,8 @@ import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
-  StatusReportBase,
+  InitStatusReport,
+  InitWithConfigStatusReport,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
@@ -78,48 +79,6 @@ import {
   getErrorMessage,
 } from "./util";
 import { validateWorkflow } from "./workflow";
-/** Fields of the init status report that can be sent before `config` is populated. */
-interface InitStatusReport extends StatusReportBase {
-  /** Value given by the user as the "tools" input. */
-  tools_input: string;
-  /** Version of the bundle used. */
-  tools_resolved_version: string;
-  /** Where the bundle originated from. */
-  tools_source: ToolsSource;
-  /** Comma-separated list of languages specified explicitly in the workflow file. */
-  workflow_languages: string;
-}
-
-/** Fields of the init status report that are populated using values from `config`. */
-interface InitWithConfigStatusReport extends InitStatusReport {
-  /** Comma-separated list of languages where the default queries are disabled. */
-  disable_default_queries: string;
-  /** Comma-separated list of paths, from the 'paths' config field. */
-  paths: string;
-  /** Comma-separated list of paths, from the 'paths-ignore' config field. */
-  paths_ignore: string;
-  /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
-  queries: string;
-  /** Stringified JSON object of packs, from the 'packs' config field or workflow input. */
-  packs: string;
-  /** Comma-separated list of languages for which we are using TRAP caching. */
-  trap_cache_languages: string;
-  /** Size of TRAP caches that we downloaded, in bytes. */
-  trap_cache_download_size_bytes: number;
-  /** Time taken to download TRAP caches, in milliseconds. */
-  trap_cache_download_duration_ms: number;
-  /** Size of the overlay-base database that we downloaded, in bytes. */
-  overlay_base_database_download_size_bytes?: number;
-  /** Time taken to download the overlay-base database, in milliseconds. */
-  overlay_base_database_download_duration_ms?: number;
-  /** Stringified JSON array of registry configuration objects, from the 'registries' config field
-  or workflow input. **/
-  registries: string;
-  /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
-  query_filters: string;
-  /** Path to the specified code scanning config file, from the 'config-file' config field. */
-  config_file: string;
-}
 
 /** Fields of the init status report populated when the tools source is `download`. */
 interface InitToolsDownloadFields {

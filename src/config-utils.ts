@@ -508,9 +508,10 @@ export interface InitConfigInputs {
 }
 
 /**
- * Get the default config, populated without user configuration file.
+ * Initialise the CodeQL Action state, which includes the base configuration for the Action
+ * and computes the configuration for the CodeQL CLI.
  */
-export async function getDefaultConfig(
+export async function initActionState(
   {
     analysisKindsInput,
     languagesInput,
@@ -1107,7 +1108,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     );
   }
 
-  const config = await getDefaultConfig(inputs, userConfig);
+  const config = await initActionState(inputs, userConfig);
 
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation

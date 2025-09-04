@@ -664,13 +664,6 @@ export async function runQueries(
 
   for (const language of config.languages) {
     try {
-      // If Code Scanning is enabled, then the main SARIF file is always the Code Scanning one.
-      // Otherwise, only Code Quality is enabled, and the main SARIF file is the Code Quality one.
-      const sarifFile = path.join(
-        sarifFolder,
-        addSarifExtension(dbAnalysisConfig, language),
-      );
-
       // This should be empty to run only the query suite that was generated when
       // the database was initialised.
       const queries: string[] = [];
@@ -705,28 +698,17 @@ export async function runQueries(
 
       // There is always at least one analysis kind enabled. Running `interpret-results`
       // produces the SARIF file for the analysis kind that the database was initialised with.
-      logger.startGroup(
-        `Interpreting ${dbAnalysisConfig.name} results for ${language}`,
-      );
-
-      // If this is a Code Quality analysis, correct the category to one
-      // accepted by the Code Quality backend.
-      let category = automationDetailsId;
-      if (dbAnalysisConfig.kind === analyses.AnalysisKind.CodeQuality) {
-        category = fixCodeQualityCategory(logger, automationDetailsId);
-      }
-
       const startTimeInterpretResults = new Date();
-      const analysisSummary = await runInterpretResults(
-        language,
-        undefined,
-        sarifFile,
-        config.debugMode,
-        category,
-      );
+      const { summary: analysisSummary, sarifFile } =
+        await runInterpretResultsFor(
+          dbAnalysisConfig,
+          language,
+          undefined,
+          config.debugMode,
+        );
 
       // This case is only needed if Code Quality is not the sole analysis kind.
-      // In this case, we will have run queries for both analysis kinds. The previous call to
+      // In this case, we will have run queries for all analysis kinds. The previous call to
       // `interpret-results` will have produced a SARIF file for Code Scanning and we now
       // need to produce an additional SARIF file for Code Quality.
       let qualityAnalysisSummary: string | undefined;
@@ -734,26 +716,15 @@ export async function runQueries(
         config.analysisKinds.length > 1 &&
         configUtils.isCodeQualityEnabled(config)
       ) {
-        logger.info(
-          `Interpreting ${analyses.CodeQuality.name} results for ${language}`,
-        );
-        const qualityCategory = fixCodeQualityCategory(
-          logger,
-          automationDetailsId,
-        );
-        const qualitySarifFile = path.join(
-          sarifFolder,
-          addSarifExtension(analyses.CodeQuality, language),
-        );
-        qualityAnalysisSummary = await runInterpretResults(
+        const qualityResult = await runInterpretResultsFor(
+          analyses.CodeQuality,
           language,
           analyses.codeQualityQueries.map((i) =>
             resolveQuerySuiteAlias(language, i),
           ),
-          qualitySarifFile,
           config.debugMode,
-          qualityCategory,
         );
+        qualityAnalysisSummary = qualityResult.summary;
       }
       const endTimeInterpretResults = new Date();
       statusReport[`interpret_results_${language}_duration_ms`] =
@@ -797,6 +768,37 @@ export async function runQueries(
   }
 
   return statusReport;
+
+  async function runInterpretResultsFor(
+    analysis: analyses.AnalysisConfig,
+    language: Language,
+    queries: string[] | undefined,
+    enableDebugLogging: boolean,
+  ): Promise<{ summary: string; sarifFile: string }> {
+    logger.info(`Interpreting ${analysis.name} results for ${language}`);
+
+    // If this is a Code Quality analysis, correct the category to one
+    // accepted by the Code Quality backend.
+    let category = automationDetailsId;
+    if (dbAnalysisConfig.kind === analyses.AnalysisKind.CodeQuality) {
+      category = fixCodeQualityCategory(logger, automationDetailsId);
+    }
+
+    const sarifFile = path.join(
+      sarifFolder,
+      addSarifExtension(analysis, language),
+    );
+
+    const summary = await runInterpretResults(
+      language,
+      queries,
+      sarifFile,
+      enableDebugLogging,
+      category,
+    );
+
+    return { summary, sarifFile };
+  }
 
   async function runInterpretResults(
     language: Language,

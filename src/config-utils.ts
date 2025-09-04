@@ -144,12 +144,6 @@ export interface Config {
    * Specifies the name of the database in the debugging artifact.
    */
   debugDatabaseName: string;
-
-  /**
-   * Describes how to augment the user configuration with inputs from the action.
-   */
-  augmentationProperties: AugmentationProperties;
-
   /**
    * The configuration we computed by combining `originalUserInput` with `augmentationProperties`,
    * as well as adjustments made to it based on unsupported or required options.
@@ -514,29 +508,33 @@ export interface InitConfigInputs {
 }
 
 /**
- * Get the default config, populated without user configuration file.
+ * Initialise the CodeQL Action state, which includes the base configuration for the Action
+ * and computes the configuration for the CodeQL CLI.
  */
-export async function getDefaultConfig({
-  analysisKindsInput,
-  languagesInput,
-  queriesInput,
-  qualityQueriesInput,
-  packsInput,
-  buildModeInput,
-  dbLocation,
-  trapCachingEnabled,
-  dependencyCachingEnabled,
-  debugMode,
-  debugArtifactName,
-  debugDatabaseName,
-  repository,
-  tempDir,
-  codeql,
-  sourceRoot,
-  githubVersion,
-  features,
-  logger,
-}: InitConfigInputs): Promise<Config> {
+export async function initActionState(
+  {
+    analysisKindsInput,
+    languagesInput,
+    queriesInput,
+    qualityQueriesInput,
+    packsInput,
+    buildModeInput,
+    dbLocation,
+    trapCachingEnabled,
+    dependencyCachingEnabled,
+    debugMode,
+    debugArtifactName,
+    debugDatabaseName,
+    repository,
+    tempDir,
+    codeql,
+    sourceRoot,
+    githubVersion,
+    features,
+    logger,
+  }: InitConfigInputs,
+  userConfig: UserConfig,
+): Promise<Config> {
   const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
 
   // For backwards compatibility, add Code Quality to the enabled analysis kinds
@@ -577,12 +575,19 @@ export async function getDefaultConfig({
     logger,
   );
 
+  // Compute the full Code Scanning configuration that combines the configuration from the
+  // configuration file / `config` input with other inputs, such as `queries`.
+  const computedConfig = generateCodeScanningConfig(
+    userConfig,
+    augmentationProperties,
+  );
+
   return {
     analysisKinds,
     languages,
     buildMode,
-    originalUserInput: {},
-    computedConfig: {},
+    originalUserInput: userConfig,
+    computedConfig,
     tempDir,
     codeQLCmd: codeql.getPath(),
     gitHubVersion: githubVersion,
@@ -590,7 +595,6 @@ export async function getDefaultConfig({
     debugMode,
     debugArtifactName,
     debugDatabaseName,
-    augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
@@ -1104,15 +1108,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     );
   }
 
-  const config = await getDefaultConfig(inputs);
-  config.originalUserInput = userConfig;
-
-  // Compute the full Code Scanning configuration that combines the configuration from the
-  // configuration file / `config` input with other inputs, such as `queries`.
-  config.computedConfig = generateCodeScanningConfig(
-    userConfig,
-    config.augmentationProperties,
-  );
+  const config = await initActionState(inputs, userConfig);
 
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation

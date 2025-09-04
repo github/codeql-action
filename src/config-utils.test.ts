@@ -157,17 +157,17 @@ test("load empty config", async (t) => {
       }),
     );
 
-    t.deepEqual(
-      config,
-      await configUtils.getDefaultConfig(
-        createTestInitConfigInputs({
-          languagesInput: languages,
-          tempDir,
-          codeql,
-          logger,
-        }),
-      ),
+    const expectedConfig = await configUtils.initActionState(
+      createTestInitConfigInputs({
+        languagesInput: languages,
+        tempDir,
+        codeql,
+        logger,
+      }),
+      {},
     );
+
+    t.deepEqual(config, expectedConfig);
   });
 });
 
@@ -344,7 +344,6 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      augmentationProperties: configUtils.defaultAugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,

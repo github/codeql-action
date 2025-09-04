@@ -11,7 +11,7 @@ import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
-import { AugmentationProperties, Config } from "./config-utils";
+import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import {
   CodeQLDefaultVersionInfo,
@@ -370,10 +370,6 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       debugMode: false,
       debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-      augmentationProperties: {
-        packsInputCombines: false,
-        queriesInputCombines: false,
-      } satisfies AugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,

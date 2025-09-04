@@ -12,11 +12,12 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { type Config } from "./config-utils";
+import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
+import { OverlayBaseDatabaseDownloadStats } from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -503,4 +504,77 @@ export interface InitWithConfigStatusReport extends InitStatusReport {
   query_filters: string;
   /** Path to the specified code scanning config file, from the 'config-file' config field. */
   config_file: string;
+}
+
+/**
+ * Composes a `InitWithConfigStatusReport` from the given values.
+ *
+ * @param config The CodeQL Action configuration whose values should be added to the base status report.
+ * @param initStatusReport The base status report.
+ * @param configFile Optionally, the filename of the configuration file that was read.
+ * @param totalCacheSize The computed total TRAP cache size.
+ * @param overlayBaseDatabaseStats Statistics about the overlay database, if any.
+ * @returns
+ */
+export async function createInitWithConfigStatusReport(
+  config: Config,
+  initStatusReport: InitStatusReport,
+  configFile: string | undefined,
+  totalCacheSize: number,
+  overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
+): Promise<InitWithConfigStatusReport> {
+  const languages = config.languages.join(",");
+  const paths = (config.originalUserInput.paths || []).join(",");
+  const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
+    ",",
+  );
+  const disableDefaultQueries = config.originalUserInput[
+    "disable-default-queries"
+  ]
+    ? languages
+    : "";
+
+  const queries: string[] = [];
+  let queriesInput = getOptionalInput("queries")?.trim();
+  if (queriesInput === undefined || queriesInput.startsWith("+")) {
+    queries.push(
+      ...(config.originalUserInput.queries || []).map((q) => q.uses),
+    );
+  }
+  if (queriesInput !== undefined) {
+    queriesInput = queriesInput.startsWith("+")
+      ? queriesInput.slice(1)
+      : queriesInput;
+    queries.push(...queriesInput.split(","));
+  }
+
+  let packs: Record<string, string[]> = {};
+  if (Array.isArray(config.computedConfig.packs)) {
+    packs[config.languages[0]] = config.computedConfig.packs;
+  } else if (config.computedConfig.packs !== undefined) {
+    packs = config.computedConfig.packs;
+  }
+
+  return {
+    ...initStatusReport,
+    config_file: configFile ?? "",
+    disable_default_queries: disableDefaultQueries,
+    paths,
+    paths_ignore: pathsIgnore,
+    queries: queries.join(","),
+    packs: JSON.stringify(packs),
+    trap_cache_languages: Object.keys(config.trapCaches).join(","),
+    trap_cache_download_size_bytes: totalCacheSize,
+    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+    overlay_base_database_download_size_bytes:
+      overlayBaseDatabaseStats?.databaseSizeBytes,
+    overlay_base_database_download_duration_ms:
+      overlayBaseDatabaseStats?.databaseDownloadDurationMs,
+    query_filters: JSON.stringify(
+      config.originalUserInput["query-filters"] ?? [],
+    ),
+    registries: JSON.stringify(
+      parseRegistriesWithoutCredentials(getOptionalInput("registries")) ?? [],
+    ),
+  };
 }

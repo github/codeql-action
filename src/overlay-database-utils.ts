@@ -1,9 +1,11 @@
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
 
 import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
+import { getAutomationID } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
@@ -322,7 +324,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
 
   const dbLocation = config.dbLocation;
   const codeQlVersion = (await codeql.getVersion()).version;
-  const restoreKey = getCacheRestoreKey(config, codeQlVersion);
+  const restoreKey = await getCacheRestoreKey(config, codeQlVersion);
 
   logger.info(
     `Looking in Actions cache for overlay-base database with restore key ${restoreKey}`,
@@ -393,10 +395,14 @@ async function generateCacheKey(
   checkoutPath: string,
 ): Promise<string> {
   const sha = await getCommitOid(checkoutPath);
-  return `${getCacheRestoreKey(config, codeQlVersion)}${sha}`;
+  const restoreKey = await getCacheRestoreKey(config, codeQlVersion);
+  return `${restoreKey}${sha}`;
 }
 
-function getCacheRestoreKey(config: Config, codeQlVersion: string): string {
+async function getCacheRestoreKey(
+  config: Config,
+  codeQlVersion: string,
+): Promise<string> {
   // The restore key (prefix) specifies which cached overlay-base databases are
   // compatible with the current analysis: the cached database must have the
   // same cache version and the same CodeQL bundle version.
@@ -407,5 +413,43 @@ function getCacheRestoreKey(config: Config, codeQlVersion: string): string {
   // default branch and used in PR analysis, it is exceedingly unlikely that
   // the commit SHA will ever be the same, so we can just leave it out.
   const languages = [...config.languages].sort().join("_");
-  return `${CACHE_PREFIX}-${CACHE_VERSION}-${languages}-${codeQlVersion}-`;
+
+  const cacheKeyComponents = {
+    automationID: await getAutomationID(),
+    // Add more components here as needed in the future
+  };
+  const componentsHash = createCacheKeyHash(cacheKeyComponents);
+
+  // For a cached overlay-base database to be considered compatible for overlay
+  // analysis, all components in the cache restore key must match:
+  //
+  // CACHE_PREFIX: distinguishes overlay-base databases from other cache objects
+  // CACHE_VERSION: cache format version
+  // componentsHash: hash of additional components (see above for details)
+  // languages: the languages included in the overlay-base database
+  // codeQlVersion: CodeQL bundle version
+  //
+  // Technically we can also include languages and codeQlVersion in the
+  // componentsHash, but including them explicitly in the cache key makes it
+  // easier to debug and understand the cache key structure.
+  return `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-${languages}-${codeQlVersion}-`;
+}
+
+/**
+ * Creates a SHA-256 hash of the cache key components to ensure uniqueness
+ * while keeping the cache key length manageable.
+ *
+ * @param components Object containing all components that should influence cache key uniqueness
+ * @returns A short SHA-256 hash (first 16 characters) of the components
+ */
+function createCacheKeyHash(components: Record<string, any>): string {
+  const componentsJson = JSON.stringify(
+    components,
+    Object.keys(components).sort(),
+  );
+  return crypto
+    .createHash("sha256")
+    .update(componentsJson)
+    .digest("hex")
+    .substring(0, 16);
 }

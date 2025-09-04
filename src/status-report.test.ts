@@ -2,13 +2,18 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
+import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
+  createInitWithConfigStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  InitStatusReport,
+  InitWithConfigStatusReport,
 } from "./status-report";
 import {
   setupTests,
@@ -243,3 +248,103 @@ test("getActionStatus handling correctly various types of errors", (t) => {
     "We still recognise a wrapped ConfigurationError as a user error",
   );
 });
+
+const testCreateInitWithConfigStatusReport = test.macro({
+  exec: async (
+    t,
+    _title: string,
+    config: Config,
+    expectedReportProperties: Partial<InitWithConfigStatusReport>,
+  ) => {
+    await withTmpDir(async (tmpDir: string) => {
+      setupEnvironmentAndStub(tmpDir);
+
+      const statusReportBase = await createStatusReportBase(
+        ActionName.Init,
+        "failure",
+        new Date("May 19, 2023 05:19:00"),
+        config,
+        { numAvailableBytes: 100, numTotalBytes: 500 },
+        getRunnerLogger(false),
+        "failure cause",
+        "exception stack trace",
+      );
+
+      if (t.truthy(statusReportBase)) {
+        const initStatusReport: InitStatusReport = {
+          ...statusReportBase,
+          tools_input: "",
+          tools_resolved_version: "foo",
+          tools_source: ToolsSource.Unknown,
+          workflow_languages: "actions",
+        };
+
+        const initWithConfigStatusReport =
+          await createInitWithConfigStatusReport(
+            config,
+            initStatusReport,
+            undefined,
+            1024,
+            undefined,
+          );
+
+        if (t.truthy(initWithConfigStatusReport)) {
+          t.like(initWithConfigStatusReport, expectedReportProperties);
+        }
+      }
+    });
+  },
+  title: (_, title) => `createInitWithConfigStatusReport: ${title}`,
+});
+
+test(
+  testCreateInitWithConfigStatusReport,
+  "returns a value",
+  createTestConfig({
+    buildMode: BuildMode.None,
+    languages: [KnownLanguage.java, KnownLanguage.swift],
+  }),
+  {
+    trap_cache_download_size_bytes: 1024,
+    registries: "[]",
+    query_filters: "[]",
+    packs: "{}",
+  },
+);
+
+test(
+  testCreateInitWithConfigStatusReport,
+  "includes packs for a single language",
+  createTestConfig({
+    buildMode: BuildMode.None,
+    languages: [KnownLanguage.java],
+    computedConfig: {
+      packs: ["foo", "bar"],
+    },
+  }),
+  {
+    registries: "[]",
+    query_filters: "[]",
+    packs: JSON.stringify({ java: ["foo", "bar"] }),
+  },
+);
+
+test(
+  testCreateInitWithConfigStatusReport,
+  "includes packs for multiple languages",
+  createTestConfig({
+    buildMode: BuildMode.None,
+    languages: [KnownLanguage.java, KnownLanguage.swift],
+    computedConfig: {
+      packs: { java: ["java-foo", "java-bar"], swift: ["swift-bar"] },
+    },
+  }),
+  {
+    registries: "[]",
+    query_filters: "[]",
+    packs: JSON.stringify({
+      java: ["java-foo", "java-bar"],
+      swift: ["swift-bar"],
+    }),
+  },
+);

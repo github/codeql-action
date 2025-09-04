@@ -62,7 +62,7 @@ const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string[]>> = {
   python: ["python_index"],
   ruby: ["rubygems_server"],
   rust: ["cargo_registry"],
-  go: ["goproxy_server"],
+  go: ["goproxy_server", "git_source"],
 } as const;
 
 /**

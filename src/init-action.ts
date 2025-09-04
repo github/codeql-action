@@ -53,6 +53,7 @@ import {
   ActionName,
   InitStatusReport,
   InitWithConfigStatusReport,
+  createInitWithConfigStatusReport,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
@@ -138,65 +139,17 @@ async function sendCompletedStatusReport(
   }
 
   if (config !== undefined) {
-    const languages = config.languages.join(",");
-    const paths = (config.originalUserInput.paths || []).join(",");
-    const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
-      ",",
-    );
-    const disableDefaultQueries = config.originalUserInput[
-      "disable-default-queries"
-    ]
-      ? languages
-      : "";
-
-    const queries: string[] = [];
-    let queriesInput = getOptionalInput("queries")?.trim();
-    if (queriesInput === undefined || queriesInput.startsWith("+")) {
-      queries.push(
-        ...(config.originalUserInput.queries || []).map((q) => q.uses),
-      );
-    }
-    if (queriesInput !== undefined) {
-      queriesInput = queriesInput.startsWith("+")
-        ? queriesInput.slice(1)
-        : queriesInput;
-      queries.push(...queriesInput.split(","));
-    }
-
-    let packs: Record<string, string[]> = {};
-    if (Array.isArray(config.computedConfig.packs)) {
-      packs[config.languages[0]] = config.computedConfig.packs;
-    } else if (config.computedConfig.packs !== undefined) {
-      packs = config.computedConfig.packs;
-    }
-
     // Append fields that are dependent on `config`
-    const initWithConfigStatusReport: InitWithConfigStatusReport = {
-      ...initStatusReport,
-      config_file: configFile ?? "",
-      disable_default_queries: disableDefaultQueries,
-      paths,
-      paths_ignore: pathsIgnore,
-      queries: queries.join(","),
-      packs: JSON.stringify(packs),
-      trap_cache_languages: Object.keys(config.trapCaches).join(","),
-      trap_cache_download_size_bytes: Math.round(
-        await getTotalCacheSize(Object.values(config.trapCaches), logger),
-      ),
-      trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
-      overlay_base_database_download_size_bytes:
-        overlayBaseDatabaseStats?.databaseSizeBytes,
-      overlay_base_database_download_duration_ms:
-        overlayBaseDatabaseStats?.databaseDownloadDurationMs,
-      query_filters: JSON.stringify(
-        config.originalUserInput["query-filters"] ?? [],
-      ),
-      registries: JSON.stringify(
-        configUtils.parseRegistriesWithoutCredentials(
-          getOptionalInput("registries"),
-        ) ?? [],
-      ),
-    };
+    const initWithConfigStatusReport: InitWithConfigStatusReport =
+      await createInitWithConfigStatusReport(
+        config,
+        initStatusReport,
+        configFile,
+        Math.round(
+          await getTotalCacheSize(Object.values(config.trapCaches), logger),
+        ),
+        overlayBaseDatabaseStats,
+      );
     await sendStatusReport({
       ...initWithConfigStatusReport,
       ...initToolsDownloadFields,

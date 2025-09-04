@@ -157,17 +157,15 @@ test("load empty config", async (t) => {
       }),
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { augmentationProperties, ...expectedConfig } =
-      await configUtils.getDefaultConfig(
-        createTestInitConfigInputs({
-          languagesInput: languages,
-          tempDir,
-          codeql,
-          logger,
-        }),
-        {},
-      );
+    const expectedConfig = await configUtils.getDefaultConfig(
+      createTestInitConfigInputs({
+        languagesInput: languages,
+        tempDir,
+        codeql,
+        logger,
+      }),
+      {},
+    );
 
     t.deepEqual(config, expectedConfig);
   });

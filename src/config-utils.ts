@@ -510,29 +510,30 @@ export interface InitConfigInputs {
 /**
  * Get the default config, populated without user configuration file.
  */
-export async function getDefaultConfig({
-  analysisKindsInput,
-  languagesInput,
-  queriesInput,
-  qualityQueriesInput,
-  packsInput,
-  buildModeInput,
-  dbLocation,
-  trapCachingEnabled,
-  dependencyCachingEnabled,
-  debugMode,
-  debugArtifactName,
-  debugDatabaseName,
-  repository,
-  tempDir,
-  codeql,
-  sourceRoot,
-  githubVersion,
-  features,
-  logger,
-}: InitConfigInputs): Promise<
-  Config & { augmentationProperties: AugmentationProperties }
-> {
+export async function getDefaultConfig(
+  {
+    analysisKindsInput,
+    languagesInput,
+    queriesInput,
+    qualityQueriesInput,
+    packsInput,
+    buildModeInput,
+    dbLocation,
+    trapCachingEnabled,
+    dependencyCachingEnabled,
+    debugMode,
+    debugArtifactName,
+    debugDatabaseName,
+    repository,
+    tempDir,
+    codeql,
+    sourceRoot,
+    githubVersion,
+    features,
+    logger,
+  }: InitConfigInputs,
+  userConfig: UserConfig,
+): Promise<Config & { augmentationProperties: AugmentationProperties }> {
   const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
 
   // For backwards compatibility, add Code Quality to the enabled analysis kinds
@@ -577,7 +578,7 @@ export async function getDefaultConfig({
     analysisKinds,
     languages,
     buildMode,
-    originalUserInput: {},
+    originalUserInput: userConfig,
     computedConfig: {},
     tempDir,
     codeQLCmd: codeql.getPath(),
@@ -1100,8 +1101,10 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     );
   }
 
-  const { augmentationProperties, ...config } = await getDefaultConfig(inputs);
-  config.originalUserInput = userConfig;
+  const { augmentationProperties, ...config } = await getDefaultConfig(
+    inputs,
+    userConfig,
+  );
 
   // Compute the full Code Scanning configuration that combines the configuration from the
   // configuration file / `config` input with other inputs, such as `queries`.

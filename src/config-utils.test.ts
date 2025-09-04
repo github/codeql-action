@@ -166,6 +166,7 @@ test("load empty config", async (t) => {
           codeql,
           logger,
         }),
+        {},
       );
 
     t.deepEqual(config, expectedConfig);

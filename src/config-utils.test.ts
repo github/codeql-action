@@ -157,17 +157,17 @@ test("load empty config", async (t) => {
       }),
     );
 
-    t.deepEqual(
-      config,
-      await configUtils.getDefaultConfig(
-        createTestInitConfigInputs({
-          languagesInput: languages,
-          tempDir,
-          codeql,
-          logger,
-        }),
-      ),
+    const expectedConfig = await configUtils.initActionState(
+      createTestInitConfigInputs({
+        languagesInput: languages,
+        tempDir,
+        codeql,
+        logger,
+      }),
+      {},
     );
+
+    t.deepEqual(config, expectedConfig);
   });
 });
 
@@ -322,18 +322,21 @@ test("load non-empty input", async (t) => {
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
+    const userConfig: configUtils.UserConfig = {
+      name: "my config",
+      "disable-default-queries": true,
+      queries: [{ uses: "./foo" }],
+      "paths-ignore": ["a", "b"],
+      paths: ["c/d"],
+    };
+
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
-      originalUserInput: {
-        name: "my config",
-        "disable-default-queries": true,
-        queries: [{ uses: "./foo" }],
-        "paths-ignore": ["a", "b"],
-        paths: ["c/d"],
-      },
+      originalUserInput: userConfig,
+      computedConfig: userConfig,
       tempDir,
       codeQLCmd: codeql.getPath(),
       gitHubVersion: githubVersion,
@@ -341,10 +344,12 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      augmentationProperties: configUtils.defaultAugmentationProperties,
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,
+      extraQueryExclusions: [],
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
     };
 
     const languagesInput = "javascript";

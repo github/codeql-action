@@ -144,8 +144,11 @@ export interface Config {
    * Specifies the name of the database in the debugging artifact.
    */
   debugDatabaseName: string;
-
-  augmentationProperties: AugmentationProperties;
+  /**
+   * The configuration we computed by combining `originalUserInput` with `augmentationProperties`,
+   * as well as adjustments made to it based on unsupported or required options.
+   */
+  computedConfig: UserConfig;
 
   /**
    * Partial map from languages to locations of TRAP caches for that language.
@@ -160,6 +163,28 @@ export interface Config {
 
   /** A value indicating how dependency caching should be used. */
   dependencyCachingEnabled: CachingKind;
+
+  /**
+   * Extra query exclusions to append to the config.
+   */
+  extraQueryExclusions: ExcludeQueryFilter[];
+
+  /**
+   * The overlay database mode to use.
+   */
+  overlayDatabaseMode: OverlayDatabaseMode;
+
+  /**
+   * Whether to use caching for overlay databases. If it is true, the action
+   * will upload the created overlay-base database to the actions cache, and
+   * download an overlay-base database from the actions cache before it creates
+   * a new overlay database. If it is false, the action assumes that the
+   * workflow will be responsible for managing database storage and retrieval.
+   *
+   * This property has no effect unless `overlayDatabaseMode` is `Overlay` or
+   * `OverlayBase`.
+   */
+  useOverlayDatabaseCaching: boolean;
 }
 
 /**
@@ -192,28 +217,6 @@ export interface AugmentationProperties {
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
-
-  /**
-   * Extra query exclusions to append to the config.
-   */
-  extraQueryExclusions: ExcludeQueryFilter[];
-
-  /**
-   * The overlay database mode to use.
-   */
-  overlayDatabaseMode: OverlayDatabaseMode;
-
-  /**
-   * Whether to use caching for overlay databases. If it is true, the action
-   * will upload the created overlay-base database to the actions cache, and
-   * download an overlay-base database from the actions cache before it creates
-   * a new overlay database. If it is false, the action assumes that the
-   * workflow will be responsible for managing database storage and retrieval.
-   *
-   * This property has no effect unless `overlayDatabaseMode` is `Overlay` or
-   * `OverlayBase`.
-   */
-  useOverlayDatabaseCaching: boolean;
 }
 
 /**
@@ -225,9 +228,6 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
-  extraQueryExclusions: [],
-  overlayDatabaseMode: OverlayDatabaseMode.None,
-  useOverlayDatabaseCaching: false,
 };
 export type Packs = Partial<Record<Language, string[]>>;
 
@@ -508,29 +508,33 @@ export interface InitConfigInputs {
 }
 
 /**
- * Get the default config, populated without user configuration file.
+ * Initialise the CodeQL Action state, which includes the base configuration for the Action
+ * and computes the configuration for the CodeQL CLI.
  */
-export async function getDefaultConfig({
-  analysisKindsInput,
-  languagesInput,
-  queriesInput,
-  qualityQueriesInput,
-  packsInput,
-  buildModeInput,
-  dbLocation,
-  trapCachingEnabled,
-  dependencyCachingEnabled,
-  debugMode,
-  debugArtifactName,
-  debugDatabaseName,
-  repository,
-  tempDir,
-  codeql,
-  sourceRoot,
-  githubVersion,
-  features,
-  logger,
-}: InitConfigInputs): Promise<Config> {
+export async function initActionState(
+  {
+    analysisKindsInput,
+    languagesInput,
+    queriesInput,
+    qualityQueriesInput,
+    packsInput,
+    buildModeInput,
+    dbLocation,
+    trapCachingEnabled,
+    dependencyCachingEnabled,
+    debugMode,
+    debugArtifactName,
+    debugDatabaseName,
+    repository,
+    tempDir,
+    codeql,
+    sourceRoot,
+    githubVersion,
+    features,
+    logger,
+  }: InitConfigInputs,
+  userConfig: UserConfig,
+): Promise<Config> {
   const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
 
   // For backwards compatibility, add Code Quality to the enabled analysis kinds
@@ -571,11 +575,19 @@ export async function getDefaultConfig({
     logger,
   );
 
+  // Compute the full Code Scanning configuration that combines the configuration from the
+  // configuration file / `config` input with other inputs, such as `queries`.
+  const computedConfig = generateCodeScanningConfig(
+    userConfig,
+    augmentationProperties,
+  );
+
   return {
     analysisKinds,
     languages,
     buildMode,
-    originalUserInput: {},
+    originalUserInput: userConfig,
+    computedConfig,
     tempDir,
     codeQLCmd: codeql.getPath(),
     gitHubVersion: githubVersion,
@@ -583,10 +595,12 @@ export async function getDefaultConfig({
     debugMode,
     debugArtifactName,
     debugDatabaseName,
-    augmentationProperties,
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
+    extraQueryExclusions: [],
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
   };
 }
 
@@ -673,9 +687,6 @@ export async function calculateAugmentation(
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
-    extraQueryExclusions: [],
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
   };
 }
 
@@ -1097,9 +1108,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     );
   }
 
-  const config = await getDefaultConfig(inputs);
-  const augmentationProperties = config.augmentationProperties;
-  config.originalUserInput = userConfig;
+  const config = await initActionState(inputs, userConfig);
 
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
@@ -1113,15 +1122,15 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       config.languages,
       inputs.sourceRoot,
       config.buildMode,
-      generateCodeScanningConfig(userConfig, augmentationProperties),
+      config.computedConfig,
       logger,
     );
   logger.info(
     `Using overlay database mode: ${overlayDatabaseMode} ` +
       `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
-  augmentationProperties.overlayDatabaseMode = overlayDatabaseMode;
-  augmentationProperties.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+  config.overlayDatabaseMode = overlayDatabaseMode;
+  config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
 
   if (
     overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
@@ -1131,7 +1140,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       logger,
     ))
   ) {
-    augmentationProperties.extraQueryExclusions.push({
+    config.extraQueryExclusions.push({
       exclude: { tags: "exclude-from-incremental" },
     });
   }
@@ -1461,17 +1470,42 @@ export function generateCodeScanningConfig(
     delete augmentedConfig.packs;
   }
 
+  return augmentedConfig;
+}
+
+/**
+ * Appends `extraQueryExclusions` to `cliConfig`'s `query-filters`.
+ *
+ * @param extraQueryExclusions The extra query exclusions to append to the `query-filters`.
+ * @param cliConfig The CodeQL CLI configuration to extend.
+ * @returns Returns `cliConfig` if there are no extra query exclusions
+ *          or a copy of `cliConfig` where the extra query exclusions
+ *          have been appended to `query-filters`.
+ */
+export function appendExtraQueryExclusions(
+  extraQueryExclusions: ExcludeQueryFilter[],
+  cliConfig: UserConfig,
+): Readonly<UserConfig> {
+  // make a copy so we can modify it and so that modifications to the input
+  // object do not affect the result that is marked as `Readonly`.
+  const augmentedConfig = cloneObject(cliConfig);
+
+  if (extraQueryExclusions.length === 0) {
+    return augmentedConfig;
+  }
+
   augmentedConfig["query-filters"] = [
     // Ordering matters. If the first filter is an inclusion, it implicitly
     // excludes all queries that are not included. If it is an exclusion,
     // it implicitly includes all queries that are not excluded. So user
     // filters (if any) should always be first to preserve intent.
     ...(augmentedConfig["query-filters"] || []),
-    ...augmentationProperties.extraQueryExclusions,
+    ...extraQueryExclusions,
   ];
   if (augmentedConfig["query-filters"]?.length === 0) {
     delete augmentedConfig["query-filters"];
   }
+
   return augmentedConfig;
 }
 

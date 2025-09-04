@@ -360,6 +360,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       languages: [],
       buildMode: undefined,
       originalUserInput: {},
+      computedConfig: {},
       tempDir: "",
       codeQLCmd: "",
       gitHubVersion: {
@@ -369,16 +370,12 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       debugMode: false,
       debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-      augmentationProperties: {
-        packsInputCombines: false,
-        queriesInputCombines: false,
-        extraQueryExclusions: [],
-        overlayDatabaseMode: OverlayDatabaseMode.None,
-        useOverlayDatabaseCaching: false,
-      },
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,
+      extraQueryExclusions: [],
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
     } satisfies Config,
     overrides,
   );

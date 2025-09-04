@@ -11,6 +11,14 @@ setupTests(test);
 const toEncodedJSON = (data: any) =>
   Buffer.from(JSON.stringify(data)).toString("base64");
 
+const mixedCredentials = [
+  { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
+  { type: "maven_repository", host: "maven.pkg.github.com", token: "def" },
+  { type: "nuget_feed", host: "nuget.pkg.github.com", token: "ghi" },
+  { type: "goproxy_server", host: "goproxy.example.com", token: "jkl" },
+  { type: "git_source", host: "github.com/github", token: "mno" },
+];
+
 test("getCredentials prefers registriesCredentials over registrySecrets", async (t) => {
   const registryCredentials = Buffer.from(
     JSON.stringify([
@@ -94,13 +102,6 @@ test("getCredentials throws error when credential missing host and url", async (
 });
 
 test("getCredentials filters by language when specified", async (t) => {
-  const mixedCredentials = [
-    { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
-    { type: "maven_repository", host: "maven.pkg.github.com", token: "def" },
-    { type: "nuget_feed", host: "nuget.pkg.github.com", token: "ghi" },
-    { type: "goproxy_server", host: "goproxy.example.com", token: "jkl" },
-  ];
-
   const credentials = startProxyExports.getCredentials(
     getRunnerLogger(true),
     undefined,
@@ -111,13 +112,21 @@ test("getCredentials filters by language when specified", async (t) => {
   t.is(credentials[0].type, "maven_repository");
 });
 
+test("getCredentials returns all for a language when specified", async (t) => {
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(mixedCredentials),
+    "go",
+  );
+  t.is(credentials.length, 2);
+
+  const credentialsTypes = credentials.map((c) => c.type);
+  t.assert(credentialsTypes.includes("goproxy_server"));
+  t.assert(credentialsTypes.includes("git_source"));
+});
+
 test("getCredentials returns all credentials when no language specified", async (t) => {
-  const mixedCredentials = [
-    { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
-    { type: "maven_repository", host: "maven.pkg.github.com", token: "def" },
-    { type: "nuget_feed", host: "nuget.pkg.github.com", token: "ghi" },
-    { type: "goproxy_server", host: "goproxy.example.com", token: "jkl" },
-  ];
   const credentialsInput = toEncodedJSON(mixedCredentials);
 
   const credentials = startProxyExports.getCredentials(

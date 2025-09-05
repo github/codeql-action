@@ -9,6 +9,7 @@ import * as sinon from "sinon";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
+import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
@@ -19,6 +20,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -358,6 +360,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       languages: [],
       buildMode: undefined,
       originalUserInput: {},
+      computedConfig: {},
       tempDir: "",
       codeQLCmd: "",
       gitHubVersion: {
@@ -367,15 +370,13 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       debugMode: false,
       debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-      augmentationProperties: {
-        packsInputCombines: false,
-        queriesInputCombines: false,
-        extraQueryExclusions: [],
-      },
       trapCaches: {},
       trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: false,
-    },
+      dependencyCachingEnabled: CachingKind.None,
+      extraQueryExclusions: [],
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
+    } satisfies Config,
     overrides,
   );
 }

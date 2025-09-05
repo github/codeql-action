@@ -3,7 +3,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as io from "@actions/io";
-import del from "del";
+import * as del from "del";
 import * as yaml from "js-yaml";
 
 import {
@@ -12,6 +12,7 @@ import {
   getTemporaryDirectory,
   PullRequestBranches,
 } from "./actions-util";
+import * as analyses from "./analyses";
 import { getApiClient } from "./api-client";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -625,10 +626,7 @@ export async function runQueries(
   const incrementalMode: string[] = [];
 
   // Preserve cached intermediate results for overlay-base databases.
-  if (
-    config.augmentationProperties.overlayDatabaseMode !==
-    OverlayDatabaseMode.OverlayBase
-  ) {
+  if (config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase) {
     queryFlags.push("--expect-discarded-cache");
   }
 
@@ -640,15 +638,10 @@ export async function runQueries(
   }
 
   statusReport.analysis_is_overlay =
-    config.augmentationProperties.overlayDatabaseMode ===
-    OverlayDatabaseMode.Overlay;
+    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay;
   statusReport.analysis_builds_overlay_base_database =
-    config.augmentationProperties.overlayDatabaseMode ===
-    OverlayDatabaseMode.OverlayBase;
-  if (
-    config.augmentationProperties.overlayDatabaseMode ===
-    OverlayDatabaseMode.Overlay
-  ) {
+    config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase;
+  if (config.overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
     incrementalMode.push("overlay");
   }
 
@@ -664,9 +657,8 @@ export async function runQueries(
       const queries: string[] = [];
       if (configUtils.isCodeQualityEnabled(config)) {
         queries.push(util.getGeneratedSuitePath(config, language));
-        for (const qualityQuery of config.augmentationProperties
-          .qualityQueriesInput) {
-          queries.push(resolveQuerySuiteAlias(language, qualityQuery.uses));
+        for (const qualityQuery of analyses.codeQualityQueries) {
+          queries.push(resolveQuerySuiteAlias(language, qualityQuery));
         }
       }
 
@@ -707,8 +699,8 @@ export async function runQueries(
         );
         qualityAnalysisSummary = await runInterpretResults(
           language,
-          config.augmentationProperties.qualityQueriesInput.map((i) =>
-            resolveQuerySuiteAlias(language, i.uses),
+          analyses.codeQualityQueries.map((i) =>
+            resolveQuerySuiteAlias(language, i),
           ),
           qualitySarifFile,
           config.debugMode,
@@ -812,7 +804,7 @@ export async function runFinalize(
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   try {
-    await del(outputDir, { force: true });
+    await del.deleteAsync(outputDir, { force: true });
   } catch (error: any) {
     if (error?.code !== "ENOENT") {
       throw error;

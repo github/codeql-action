@@ -13,7 +13,7 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
-import { generateCodeScanningConfig, type Config } from "./config-utils";
+import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import {
@@ -593,8 +593,7 @@ export async function getCodeQLForCmd(
         ? "--force-overwrite"
         : "--overwrite";
 
-      const overlayDatabaseMode =
-        config.augmentationProperties.overlayDatabaseMode;
+      const overlayDatabaseMode = config.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
           config,
@@ -1150,20 +1149,26 @@ async function runCli(
 }
 
 /**
- * Generates a code scanning configuration that is to be used for a scan.
+ * Writes the code scanning configuration that is to be used by the CLI.
  *
  * @param codeql The CodeQL object to use.
- * @param config The configuration to use.
- * @returns the path to the generated user configuration file.
+ * @param config The CodeQL Action state to use.
+ * @returns The path to the generated user configuration file.
  */
 async function writeCodeScanningConfigFile(
   config: Config,
   logger: Logger,
 ): Promise<string> {
   const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
-  const augmentedConfig = generateCodeScanningConfig(
-    config.originalUserInput,
-    config.augmentationProperties,
+
+  // Apply the `extraQueryExclusions` from the CodeQL Action state to the CLI configuration.
+  // We do this here at the latest possible point before passing the CLI configuration on to
+  // the CLI so that the `extraQueryExclusions` appear after all user-configured `query-filters`.
+  // See the comment in `applyExtraQueryExclusions` for more information, as well as
+  // https://github.com/github/codeql-action/pull/2938
+  const augmentedConfig = appendExtraQueryExclusions(
+    config.extraQueryExclusions,
+    config.computedConfig,
   );
 
   logger.info(

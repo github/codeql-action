@@ -1137,8 +1137,8 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   if (config.analysisKinds.length === 1 && isCodeQualityEnabled(config)) {
     // Warn if any query customisations are present in the computed configuration.
     if (hasQueryCustomisation(config.computedConfig)) {
-      logger.warning(
-        "Query customizations will be ignored, because only `code-quality` analysis is enabled.",
+      throw new ConfigurationError(
+        "Query customizations are unsupported, because only `code-quality` analysis is enabled.",
       );
     }
 

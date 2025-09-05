@@ -1564,26 +1564,26 @@ export function isCodeQualityEnabled(config: Config): boolean {
 }
 
 /**
- * Returns the analysis kind for which the database is initialised. This is
+ * Returns the primary analysis kind that the Action is initialised with. This is
  * always `AnalysisKind.CodeScanning` unless `AnalysisKind.CodeScanning` is not enabled.
  *
  * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
  * otherwise `AnalysisKind.CodeQuality`.
  */
-export function getDbAnalysisKind(config: Config): AnalysisKind {
+export function getPrimaryAnalysisKind(config: Config): AnalysisKind {
   return isCodeScanningEnabled(config)
     ? AnalysisKind.CodeScanning
     : AnalysisKind.CodeQuality;
 }
 
 /**
- * Returns the analysis configuration for which the database is initialised. This is
+ * Returns the primary analysis configuration that the Action is initialised with. This is
  * always `CodeScanning` unless `CodeScanning` is not enabled.
  *
  * @returns Returns `CodeScanning` if `AnalysisKind.CodeScanning` is enabled; otherwise `CodeQuality`.
  */
-export function getDbAnalysisConfig(config: Config): AnalysisConfig {
-  return getDbAnalysisKind(config) === AnalysisKind.CodeScanning
+export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
+  return getPrimaryAnalysisKind(config) === AnalysisKind.CodeScanning
     ? CodeScanning
     : CodeQuality;
 }

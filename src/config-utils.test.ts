@@ -1755,3 +1755,9 @@ for (const language in KnownLanguage) {
     },
   );
 }
+
+test("hasActionsWorkflows doesn't throw if workflows folder doesn't exist", async (t) => {
+  return withTmpDir(async (tmpDir) => {
+    t.notThrows(() => configUtils.hasActionsWorkflows(tmpDir));
+  });
+});

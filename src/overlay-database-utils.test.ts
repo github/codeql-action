@@ -6,6 +6,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import * as apiClient from "./api-client";
 import * as gitUtils from "./git-utils";
 import { getRunnerLogger } from "./logging";
 import {
@@ -132,6 +133,11 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
       }
 
       const stubs: sinon.SinonStub[] = [];
+
+      const getAutomationIDStub = sinon
+        .stub(apiClient, "getAutomationID")
+        .resolves("test-automation-id/");
+      stubs.push(getAutomationIDStub);
 
       const isInTestModeStub = sinon
         .stub(utils, "isInTestMode")

@@ -443,10 +443,15 @@ async function getCacheRestoreKey(
  * @returns A short SHA-256 hash (first 16 characters) of the components
  */
 function createCacheKeyHash(components: Record<string, any>): string {
-  const componentsJson = JSON.stringify(
-    components,
-    Object.keys(components).sort(),
-  );
+  // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+  //
+  // "Properties are visited using the same algorithm as Object.keys(), which
+  // has a well-defined order and is stable across implementations. For example,
+  // JSON.stringify on the same object will always produce the same string, and
+  // JSON.parse(JSON.stringify(obj)) would produce an object with the same key
+  // ordering as the original (assuming the object is completely
+  // JSON-serializable)."
+  const componentsJson = JSON.stringify(components);
   return crypto
     .createHash("sha256")
     .update(componentsJson)

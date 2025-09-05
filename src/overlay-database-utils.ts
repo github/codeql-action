@@ -253,15 +253,19 @@ export async function uploadOverlayBaseDatabaseToCache(
 
   const codeQlVersion = (await codeql.getVersion()).version;
   const checkoutPath = getRequiredInput("checkout_path");
-  const cacheKey = await generateCacheKey(config, codeQlVersion, checkoutPath);
+  const cacheSaveKey = await getCacheSaveKey(
+    config,
+    codeQlVersion,
+    checkoutPath,
+  );
   logger.info(
-    `Uploading overlay-base database to Actions cache with key ${cacheKey}`,
+    `Uploading overlay-base database to Actions cache with key ${cacheSaveKey}`,
   );
 
   try {
     const cacheId = await withTimeout(
       MAX_CACHE_OPERATION_MS,
-      actionsCache.saveCache([dbLocation], cacheKey),
+      actionsCache.saveCache([dbLocation], cacheSaveKey),
       () => {},
     );
     if (cacheId === undefined) {
@@ -324,10 +328,14 @@ export async function downloadOverlayBaseDatabaseFromCache(
 
   const dbLocation = config.dbLocation;
   const codeQlVersion = (await codeql.getVersion()).version;
-  const restoreKey = await getCacheRestoreKey(config, codeQlVersion);
+  const cacheRestoreKeyPrefix = await getCacheRestoreKeyPrefix(
+    config,
+    codeQlVersion,
+  );
 
   logger.info(
-    `Looking in Actions cache for overlay-base database with restore key ${restoreKey}`,
+    "Looking in Actions cache for overlay-base database with " +
+      `restore key ${cacheRestoreKeyPrefix}`,
   );
 
   let databaseDownloadDurationMs = 0;
@@ -335,7 +343,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
     const databaseDownloadStart = performance.now();
     const foundKey = await withTimeout(
       MAX_CACHE_OPERATION_MS,
-      actionsCache.restoreCache([dbLocation], restoreKey),
+      actionsCache.restoreCache([dbLocation], cacheRestoreKeyPrefix),
       () => {
         logger.info("Timed out downloading overlay-base database from cache");
       },
@@ -389,29 +397,44 @@ export async function downloadOverlayBaseDatabaseFromCache(
   };
 }
 
-async function generateCacheKey(
+/**
+ * Computes the cache key for saving the overlay-base database to the GitHub
+ * Actions cache.
+ *
+ * The key consists of the restore key prefix (which does not include the
+ * commit SHA) and the commit SHA of the current checkout.
+ */
+async function getCacheSaveKey(
   config: Config,
   codeQlVersion: string,
   checkoutPath: string,
 ): Promise<string> {
   const sha = await getCommitOid(checkoutPath);
-  const restoreKey = await getCacheRestoreKey(config, codeQlVersion);
-  return `${restoreKey}${sha}`;
+  const restoreKeyPrefix = await getCacheRestoreKeyPrefix(
+    config,
+    codeQlVersion,
+  );
+  return `${restoreKeyPrefix}${sha}`;
 }
 
-async function getCacheRestoreKey(
+/**
+ * Computes the cache key prefix for restoring the overlay-base database from
+ * the GitHub Actions cache.
+ *
+ * Actions cache supports using multiple restore keys to indicate preference,
+ * and this function could in principle take advantage of that feature by
+ * returning a list of restore key prefixes. However, since overlay-base
+ * databases are built from the default branch and used in PR analysis, it is
+ * exceedingly unlikely that the commit SHA will ever be the same.
+ *
+ * Therefore, this function returns only a single restore key prefix, which does
+ * not include the commit SHA. This allows us to restore the most recent
+ * compatible overlay-base database.
+ */
+async function getCacheRestoreKeyPrefix(
   config: Config,
   codeQlVersion: string,
 ): Promise<string> {
-  // The restore key (prefix) specifies which cached overlay-base databases are
-  // compatible with the current analysis: the cached database must have the
-  // same cache version and the same CodeQL bundle version.
-  //
-  // Actions cache supports using multiple restore keys to indicate preference.
-  // Technically we prefer a cached overlay-base database with the same SHA as
-  // we are analyzing. However, since overlay-base databases are built from the
-  // default branch and used in PR analysis, it is exceedingly unlikely that
-  // the commit SHA will ever be the same, so we can just leave it out.
   const languages = [...config.languages].sort().join("_");
 
   const cacheKeyComponents = {

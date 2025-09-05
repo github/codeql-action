@@ -5,11 +5,13 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { CodeQuality, CodeScanning } from "./analyses";
 import {
   exportedForTesting,
   runQueries,
   defaultSuites,
   resolveQuerySuiteAlias,
+  addSarifExtension,
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
@@ -346,5 +348,15 @@ test("resolveQuerySuiteAlias", (t) => {
 
   for (const name of names) {
     t.deepEqual(resolveQuerySuiteAlias(KnownLanguage.go, name), name);
+  }
+});
+
+test("addSarifExtension", (t) => {
+  for (const language of Object.values(KnownLanguage)) {
+    t.deepEqual(addSarifExtension(CodeScanning, language), `${language}.sarif`);
+    t.deepEqual(
+      addSarifExtension(CodeQuality, language),
+      `${language}.quality.sarif`,
+    );
   }
 });

@@ -660,7 +660,7 @@ export async function runQueries(
       ? `--sarif-run-property=incrementalMode=${incrementalMode.join(",")}`
       : undefined;
 
-  const dbAnalysisConfig = configUtils.getDbAnalysisConfig(config);
+  const dbAnalysisConfig = configUtils.getPrimaryAnalysisConfig(config);
 
   for (const language of config.languages) {
     try {

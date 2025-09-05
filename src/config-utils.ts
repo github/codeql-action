@@ -341,7 +341,7 @@ const baseWorkflowsPath = ".github/workflows";
  */
 export function hasActionsWorkflows(sourceRoot: string): boolean {
   const workflowsPath = path.resolve(sourceRoot, baseWorkflowsPath);
-  const stats = fs.lstatSync(workflowsPath);
+  const stats = fs.lstatSync(workflowsPath, { throwIfNoEntry: false });
   return (
     stats !== undefined &&
     stats.isDirectory() &&

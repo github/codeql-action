@@ -32,16 +32,58 @@ jobs:
         include:
           - os: ubuntu-latest
             version: linked
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-scanning,code-quality
           - os: macos-latest
             version: linked
+            analysis-kinds: code-scanning
+          - os: macos-latest
+            version: linked
+            analysis-kinds: code-quality
+          - os: macos-latest
+            version: linked
+            analysis-kinds: code-scanning,code-quality
           - os: windows-latest
             version: linked
+            analysis-kinds: code-scanning
+          - os: windows-latest
+            version: linked
+            analysis-kinds: code-quality
+          - os: windows-latest
+            version: linked
+            analysis-kinds: code-scanning,code-quality
           - os: ubuntu-latest
             version: nightly-latest
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-scanning,code-quality
           - os: macos-latest
             version: nightly-latest
+            analysis-kinds: code-scanning
+          - os: macos-latest
+            version: nightly-latest
+            analysis-kinds: code-quality
+          - os: macos-latest
+            version: nightly-latest
+            analysis-kinds: code-scanning,code-quality
           - os: windows-latest
             version: nightly-latest
+            analysis-kinds: code-scanning
+          - os: windows-latest
+            version: nightly-latest
+            analysis-kinds: code-quality
+          - os: windows-latest
+            version: nightly-latest
+            analysis-kinds: code-scanning,code-quality
     name: Quality queries input
     permissions:
       contents: read
@@ -61,25 +103,28 @@ jobs:
       - uses: ./../action/init
         with:
           languages: javascript
-          analysis-kinds: code-scanning,code-quality
+          analysis-kinds: ${{ matrix.analysis-kinds }}
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/analyze
         with:
           output: ${{ runner.temp }}/results
           upload-database: false
       - name: Upload security SARIF
+        if: contains(matrix.analysis-kinds, 'code-scanning')
         uses: actions/upload-artifact@v4
         with:
           name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
           path: ${{ runner.temp }}/results/javascript.sarif
           retention-days: 7
       - name: Upload quality SARIF
+        if: contains(matrix.analysis-kinds, 'code-quality')
         uses: actions/upload-artifact@v4
         with:
           name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.quality.sarif.json
           path: ${{ runner.temp }}/results/javascript.quality.sarif
           retention-days: 7
       - name: Check quality query does not appear in security SARIF
+        if: contains(matrix.analysis-kinds, 'code-scanning')
         uses: actions/github-script@v7
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
@@ -87,6 +132,7 @@ jobs:
         with:
           script: ${{ env.CHECK_SCRIPT }}
       - name: Check quality query appears in quality SARIF
+        if: contains(matrix.analysis-kinds, 'code-quality')
         uses: actions/github-script@v7
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.quality.sarif

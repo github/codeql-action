@@ -40,14 +40,16 @@ steps:
     if: contains(matrix.analysis-kinds, 'code-scanning')
     uses: actions/upload-artifact@v4
     with:
-      name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      name: |
+        quality-queries-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.sarif.json
       path: "${{ runner.temp }}/results/javascript.sarif"
       retention-days: 7
   - name: Upload quality SARIF
     if: contains(matrix.analysis-kinds, 'code-quality')
     uses: actions/upload-artifact@v4
     with:
-      name: quality-queries-${{ matrix.os }}-${{ matrix.version }}.quality.sarif.json
+      name: |
+        quality-queries-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.quality.sarif.json
       path: "${{ runner.temp }}/results/javascript.quality.sarif"
       retention-days: 7
   - name: Check quality query does not appear in security SARIF

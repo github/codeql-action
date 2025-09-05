@@ -55,14 +55,14 @@ export function parseLanguage(language: string): KnownLanguage | undefined {
   return undefined;
 }
 
-const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string>> = {
-  java: "maven_repository",
-  csharp: "nuget_feed",
-  javascript: "npm_registry",
-  python: "python_index",
-  ruby: "rubygems_server",
-  rust: "cargo_registry",
-  go: "goproxy_server",
+const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string[]>> = {
+  java: ["maven_repository"],
+  csharp: ["nuget_feed"],
+  javascript: ["npm_registry"],
+  python: ["python_index"],
+  ruby: ["rubygems_server"],
+  rust: ["cargo_registry"],
+  go: ["goproxy_server", "git_source"],
 } as const;
 
 /**
@@ -140,7 +140,10 @@ export function getCredentials(
 
     // Filter credentials based on language if specified. `type` is the registry type.
     // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
-    if (registryTypeForLanguage && e.type !== registryTypeForLanguage) {
+    if (
+      registryTypeForLanguage &&
+      !registryTypeForLanguage.some((t) => t === e.type)
+    ) {
       continue;
     }
 

@@ -73,7 +73,7 @@ jobs:
           languages: cpp,csharp,java,javascript,python
           config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
             github.sha }}
-          quality-queries: code-quality
+          analysis-kinds: code-scanning,code-quality
       - name: Build code
         shell: bash
         run: ./build.sh

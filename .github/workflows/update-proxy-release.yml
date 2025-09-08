@@ -37,7 +37,7 @@ jobs:
           (gh release view --repo "$GITHUB_REPOSITORY" --json "assets" "$RELEASE_TAG" && echo "Release found.") || exit 1
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
 
       - name: Checkout repository
         uses: actions/checkout@v5

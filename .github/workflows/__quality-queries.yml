@@ -127,7 +127,7 @@ jobs:
           retention-days: 7
       - name: Check quality query does not appear in security SARIF
         if: contains(matrix.analysis-kinds, 'code-scanning')
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
           EXPECT_PRESENT: 'false'
@@ -135,7 +135,7 @@ jobs:
           script: ${{ env.CHECK_SCRIPT }}
       - name: Check quality query appears in quality SARIF
         if: contains(matrix.analysis-kinds, 'code-quality')
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.quality.sarif
           EXPECT_PRESENT: 'true'

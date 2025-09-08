@@ -1278,3 +1278,12 @@ export async function asyncSome<T>(
   const results = await Promise.all(array.map(predicate));
   return results.some((result) => result);
 }
+
+/**
+ * Checks that `value` is neither `undefined` nor `null`.
+ * @param value The value to test.
+ * @returns Narrows the type of `value` to exclude `undefined` and `null`.
+ */
+export function isDefined<T>(value: T | null | undefined): value is T {
+  return value !== undefined && value !== null;
+}

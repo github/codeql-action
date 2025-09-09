@@ -15,6 +15,10 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   query-filters:
     name: Query Filters Tests

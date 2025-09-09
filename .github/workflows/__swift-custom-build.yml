@@ -34,6 +34,9 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
 jobs:
   swift-custom-build:
     strategy:
@@ -68,7 +71,6 @@ jobs:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
       - name: Use Xcode 16
-        shell: bash
         if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
         run: sudo xcode-select -s "/Applications/Xcode_16.app"
       - uses: ./../action/init
@@ -77,17 +79,14 @@ jobs:
           languages: swift
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Check working directory
-        shell: bash
         run: pwd
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
         with:
           upload-database: false
       - name: Check database
-        shell: bash
         run: |
           SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
           if [[ ! -d "$SWIFT_DB" ]]; then

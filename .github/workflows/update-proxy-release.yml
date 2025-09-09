@@ -7,6 +7,10 @@ on:
         type: string
         required: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   update:
     name: Update code and create PR
@@ -20,7 +24,6 @@ jobs:
     steps:
       - name: Check release tag format
         id: checks
-        shell: bash
         run: |
           if ! [[ $RELEASE_TAG =~ ^codeql-bundle-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "Invalid release tag: expected a CodeQL bundle tag in the 'codeql-bundle-vM.N.P' format."
@@ -30,7 +33,6 @@ jobs:
           echo "target_branch=dependency-proxy/$RELEASE_TAG" >> $GITHUB_OUTPUT
 
       - name: Check that the release exists
-        shell: bash
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
@@ -46,20 +48,17 @@ jobs:
           ref: main
 
       - name: Update git config
-        shell: bash
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
       - name: Update release tag and version
-        shell: bash
         run: |
           NOW=$(date +"%Y%m%d%H%M%S") # only used to make sure we don't fetch stale binaries from the toolcache
           sed -i "s|https://github.com/github/codeql-action/releases/download/codeql-bundle-v[0-9.]\+/|https://github.com/github/codeql-action/releases/download/$RELEASE_TAG/|g" ./src/start-proxy-action.ts
           sed -i "s/\"v2.0.[0-9]\+\"/\"v2.0.$NOW\"/g" ./src/start-proxy-action.ts
 
       - name: Compile TypeScript and commit changes
-        shell: bash
         env:
           TARGET_BRANCH: ${{ steps.checks.outputs.target_branch }}
         run: |
@@ -72,7 +71,6 @@ jobs:
           git commit -m "Update release used by \`start-proxy\` action"
 
       - name: Push changes and open PR
-        shell: bash
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           TARGET_BRANCH: ${{ steps.checks.outputs.target_branch }}

@@ -6,7 +6,6 @@ env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
   - name: Test setup
-    shell: bash
     run: |
       cp -a ../action/tests/cpp-autobuild autobuild-dir
   - uses: ./../action/init
@@ -18,7 +17,6 @@ steps:
       working-directory: autobuild-dir
     env:
       CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
-  - shell: bash
     run: |
       if ! ls /usr/bin/errno; then
         echo "As expected, CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES is a no-op on macOS"

@@ -11,6 +11,10 @@ on:
     branches:
       - releases/*
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
 
   prepare:

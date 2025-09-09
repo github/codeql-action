@@ -5,6 +5,10 @@ on:
     types: [labeled]
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   rebuild:
     name: Rebuild Action

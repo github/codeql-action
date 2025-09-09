@@ -11,7 +11,6 @@ steps:
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
-    shell: bash
     run: ./build.sh
   - uses: ./../action/analyze
     with:
@@ -26,7 +25,6 @@ steps:
       queries-not-run: foo,bar
 
   - name: Assert Results
-    shell: bash
     run: |
       cd "$RUNNER_TEMP/results"
       # We should have 4 hits from these rules

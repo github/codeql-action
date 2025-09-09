@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   cpp-deptrace-disabled:
     strategy:
@@ -53,7 +56,6 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Test setup
-        shell: bash
         run: |
           cp -a ../action/tests/cpp-autobuild autobuild-dir
       - uses: ./../action/init
@@ -65,7 +67,6 @@ jobs:
           working-directory: autobuild-dir
         env:
           CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: false
-      - shell: bash
         run: |
           if ls /usr/bin/errno; then
             echo "C/C++ autobuild installed errno, but it should not have since auto-install dependencies is disabled."

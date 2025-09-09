@@ -34,6 +34,9 @@ on:
         description: The version of Java to install
         required: false
         default: '17'
+defaults:
+  run:
+    shell: bash
 jobs:
   autobuild-direct-tracing-with-working-dir:
     strategy:
@@ -70,7 +73,6 @@ jobs:
           java-version: ${{ inputs.java-version || '17' }}
           distribution: temurin
       - name: Test setup
-        shell: bash
         run: |
           # Make sure that Gradle build succeeds in autobuild-dir ...
           cp -a ../action/tests/java-repo autobuild-dir
@@ -82,7 +84,6 @@ jobs:
           languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Check that indirect tracing is disabled
-        shell: bash
         run: |
           if [[ ! -z "${CODEQL_RUNNER}" ]]; then
             echo "Expected indirect tracing to be disabled, but the" \

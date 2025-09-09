@@ -22,6 +22,10 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   code-scanning-config-tests:
     continue-on-error: true

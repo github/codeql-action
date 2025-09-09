@@ -6,7 +6,14 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import { isAnalyzingPullRequest } from "./actions-util";
-import { AnalysisKind, parseAnalysisKinds } from "./analyses";
+import {
+  AnalysisConfig,
+  AnalysisKind,
+  CodeQuality,
+  codeQualityQueries,
+  CodeScanning,
+  parseAnalysisKinds,
+} from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
@@ -28,6 +35,7 @@ import {
   BuildMode,
   codeQlVersionAtLeast,
   cloneObject,
+  isDefined,
 } from "./util";
 
 // Property names from the user-supplied config file.
@@ -341,7 +349,7 @@ const baseWorkflowsPath = ".github/workflows";
  */
 export function hasActionsWorkflows(sourceRoot: string): boolean {
   const workflowsPath = path.resolve(sourceRoot, baseWorkflowsPath);
-  const stats = fs.lstatSync(workflowsPath);
+  const stats = fs.lstatSync(workflowsPath, { throwIfNoEntry: false });
   return (
     stats !== undefined &&
     stats.isDirectory() &&
@@ -1075,6 +1083,19 @@ function userConfigFromActionPath(tempDir: string): string {
 }
 
 /**
+ * Checks whether the given `UserConfig` contains any query customisations.
+ *
+ * @returns Returns `true` if the `UserConfig` customises which queries are run.
+ */
+function hasQueryCustomisation(userConfig: UserConfig): boolean {
+  return (
+    isDefined(userConfig["disable-default-queries"]) ||
+    isDefined(userConfig.queries) ||
+    isDefined(userConfig["query-filters"])
+  );
+}
+
+/**
  * Load and return the config.
  *
  * This will parse the config from the user input if present, or generate
@@ -1109,6 +1130,25 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   }
 
   const config = await initActionState(inputs, userConfig);
+
+  // If Code Quality analysis is the only enabled analysis kind, then we will initialise
+  // the database for Code Quality. That entails disabling the default queries and only
+  // running quality queries. We do not currently support query customisations in that case.
+  if (config.analysisKinds.length === 1 && isCodeQualityEnabled(config)) {
+    // Warn if any query customisations are present in the computed configuration.
+    if (hasQueryCustomisation(config.computedConfig)) {
+      throw new ConfigurationError(
+        "Query customizations are unsupported, because only `code-quality` analysis is enabled.",
+      );
+    }
+
+    const queries = codeQualityQueries.map((v) => ({ uses: v }));
+
+    // Set the query customisation options for Code Quality only analysis.
+    config.computedConfig["disable-default-queries"] = true;
+    config.computedConfig.queries = queries;
+    config.computedConfig["query-filters"] = [];
+  }
 
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
@@ -1510,8 +1550,40 @@ export function appendExtraQueryExclusions(
 }
 
 /**
+ * Returns `true` if Code Scanning analysis is enabled, or `false` if not.
+ */
+export function isCodeScanningEnabled(config: Config): boolean {
+  return config.analysisKinds.includes(AnalysisKind.CodeScanning);
+}
+
+/**
  * Returns `true` if Code Quality analysis is enabled, or `false` if not.
  */
 export function isCodeQualityEnabled(config: Config): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeQuality);
+}
+
+/**
+ * Returns the primary analysis kind that the Action is initialised with. This is
+ * always `AnalysisKind.CodeScanning` unless `AnalysisKind.CodeScanning` is not enabled.
+ *
+ * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
+ * otherwise `AnalysisKind.CodeQuality`.
+ */
+export function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+  return isCodeScanningEnabled(config)
+    ? AnalysisKind.CodeScanning
+    : AnalysisKind.CodeQuality;
+}
+
+/**
+ * Returns the primary analysis configuration that the Action is initialised with. This is
+ * always `CodeScanning` unless `CodeScanning` is not enabled.
+ *
+ * @returns Returns `CodeScanning` if `AnalysisKind.CodeScanning` is enabled; otherwise `CodeQuality`.
+ */
+export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
+  return getPrimaryAnalysisKind(config) === AnalysisKind.CodeScanning
+    ? CodeScanning
+    : CodeQuality;
 }

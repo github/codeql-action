@@ -171,6 +171,63 @@ test("load empty config", async (t) => {
   });
 });
 
+test("load code quality config", async (t) => {
+  return await withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+    const languages = "actions";
+
+    const codeql = createStubCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            actions: [{ extractor_root: "" }],
+          },
+        };
+      },
+    });
+
+    const config = await configUtils.initConfig(
+      createTestInitConfigInputs({
+        analysisKindsInput: "code-quality",
+        languagesInput: languages,
+        repository: { owner: "github", repo: "example" },
+        tempDir,
+        codeql,
+        logger,
+      }),
+    );
+
+    // And the config we expect it to result in
+    const expectedConfig: configUtils.Config = {
+      analysisKinds: [AnalysisKind.CodeQuality],
+      languages: [KnownLanguage.actions],
+      buildMode: undefined,
+      originalUserInput: {},
+      // This gets set because we only have `AnalysisKind.CodeQuality`
+      computedConfig: {
+        "disable-default-queries": true,
+        queries: [{ uses: "code-quality" }],
+        "query-filters": [],
+      },
+      tempDir,
+      codeQLCmd: codeql.getPath(),
+      gitHubVersion: githubVersion,
+      dbLocation: path.resolve(tempDir, "codeql_databases"),
+      debugMode: false,
+      debugArtifactName: "",
+      debugDatabaseName: "",
+      trapCaches: {},
+      trapCacheDownloadTime: 0,
+      dependencyCachingEnabled: CachingKind.None,
+      extraQueryExclusions: [],
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
+    };
+
+    t.deepEqual(config, expectedConfig);
+  });
+});
+
 test("loading config saves config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
@@ -1755,3 +1812,9 @@ for (const language in KnownLanguage) {
     },
   );
 }
+
+test("hasActionsWorkflows doesn't throw if workflows folder doesn't exist", async (t) => {
+  return withTmpDir(async (tmpDir) => {
+    t.notThrows(() => configUtils.hasActionsWorkflows(tmpDir));
+  });
+});

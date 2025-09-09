@@ -34,6 +34,9 @@ on:
         description: The version of Java to install
         required: false
         default: '17'
+defaults:
+  run:
+    shell: bash
 jobs:
   autobuild-direct-tracing:
     strategy:
@@ -70,7 +73,6 @@ jobs:
           java-version: ${{ inputs.java-version || '17' }}
           distribution: temurin
       - name: Set up Java test repo configuration
-        shell: bash
         run: |
           mv * .github ../action/tests/multi-language-repo/
           mv ../action/tests/multi-language-repo/.github/workflows .github
@@ -85,7 +87,6 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
       - name: Check that indirect tracing is disabled
-        shell: bash
         run: |
           if [[ ! -z "${CODEQL_RUNNER}" ]]; then
             echo "Expected indirect tracing to be disabled, but the" \

@@ -34,6 +34,9 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
 jobs:
   go-tracing-legacy-workflow:
     strategy:
@@ -98,7 +101,6 @@ jobs:
           languages: go
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/analyze
-      - shell: bash
         run: |
           cd "$RUNNER_TEMP/codeql_databases"
           if [[ ! -d go ]]; then

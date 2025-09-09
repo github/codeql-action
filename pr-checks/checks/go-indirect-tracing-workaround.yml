@@ -12,10 +12,8 @@ steps:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
-    shell: bash
     run: go build main.go
   - uses: ./../action/analyze
-  - shell: bash
     run: |
       if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then
         echo "Expected the workaround for indirect tracing of static binaries to trigger, but the" \

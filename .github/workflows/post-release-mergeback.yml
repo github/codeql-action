@@ -18,6 +18,10 @@ on:
     branches:
       - releases/v*
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   merge-back:
     runs-on: ubuntu-latest

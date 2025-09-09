@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   autobuild-action:
     strategy:
@@ -67,7 +70,6 @@ jobs:
           CORECLR_PROFILER_PATH_64: ''
       - uses: ./../action/analyze
       - name: Check database
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/codeql_databases"
           if [[ ! -d csharp ]]; then

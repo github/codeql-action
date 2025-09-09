@@ -5,7 +5,6 @@ operatingSystems: ["ubuntu"]
 installGo: true
 steps:
   - name: Fetch a CodeQL bundle
-    shell: bash
     env:
       CODEQL_URL: ${{ steps.prepare-test.outputs.tools-url }}
     run: |
@@ -17,6 +16,5 @@ steps:
       languages: cpp,csharp,go,java,javascript,python,ruby
       tools: ./codeql-bundle-linux64.tar.zst
   - name: Build code
-    shell: bash
     run: ./build.sh
   - uses: ./../action/analyze

@@ -11,7 +11,6 @@ steps:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
-  - shell: bash
     run: |
       cd "$RUNNER_TEMP/codeql_databases"
       if [[ ! -d go ]]; then

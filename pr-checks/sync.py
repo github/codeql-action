@@ -263,6 +263,11 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                     'inputs': workflowInputs
                 }
             },
+            'defaults': {
+                'run': {
+                    'shell': 'bash',
+                },
+            },
             'jobs': {
                 checkName: checkJob
             }

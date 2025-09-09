@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   overlay-init-fallback:
     strategy:
@@ -61,7 +64,6 @@ jobs:
         with:
           upload-database: false
       - name: Check database
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/codeql_databases/actions"
           if ! grep -q 'overlayBaseDatabase: false' codeql-database.yml ; then

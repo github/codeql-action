@@ -12,7 +12,6 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/autobuild
   - uses: ./../action/analyze
-  - shell: bash
     run: |
       if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
         echo "Expected the Go autobuilder to be run, but the" \

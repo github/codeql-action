@@ -748,8 +748,10 @@ async function maybeUploadSpecifiedFiles(
 
     logger.debug(`Validating that each SARIF run has a unique category`);
     validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
+    logger.debug(`Serializing SARIF for upload`);
+    const sarifPayload = JSON.stringify(sarif);
     if (dumpDir) {
-      dumpSarifFile(sarif, dumpDir, logger, uploadTarget);
+      dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
     }
     if (!upload) {
       logger.info(
@@ -757,8 +759,6 @@ async function maybeUploadSpecifiedFiles(
       );
       return undefined;
     }
-    logger.debug(`Serializing SARIF for upload`);
-    const sarifPayload = JSON.stringify(sarif);
     logger.debug(`Compressing serialized SARIF`);
     const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
     const checkoutURI = url.pathToFileURL(checkoutPath).href;
@@ -810,7 +810,7 @@ async function maybeUploadSpecifiedFiles(
  * Dumps the given processed SARIF file contents to `outputDir`.
  */
 function dumpSarifFile(
-  sarif: SarifFile,
+  sarifPayload: string,
   outputDir: string,
   logger: Logger,
   uploadTarget: analyses.AnalysisConfig,
@@ -827,7 +827,7 @@ function dumpSarifFile(
     `upload${uploadTarget.sarifExtension}`,
   );
   logger.info(`Dumping processed SARIF file to ${outputFile}`);
-  fs.writeFileSync(outputFile, JSON.stringify(sarif, null, 2));
+  fs.writeFileSync(outputFile, sarifPayload);
 }
 
 const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;

@@ -145,8 +145,7 @@ def get_truncated_commit_message(commit):
   message = commit.commit.message.split('\n')[0]
   if len(message) > 60:
     return f'{message[:57]}...'
-  else:
-    return message
+  return message
 
 # Converts a commit into the PR that introduced it to the source branch.
 # Returns the PR object, or None if no PR could be found.
@@ -158,8 +157,7 @@ def get_pr_for_commit(commit):
     prs = list(prs)
     sorted_prs = sorted(prs, key=lambda pr: int(pr.number))
     return sorted_prs[0]
-  else:
-    return None
+  return None
 
 # Get the person who merged the pull request.
 # For most cases this will be the same as the author, but for PRs opened

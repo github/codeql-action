@@ -102,6 +102,18 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         if checkSpecification.get('useAllPlatformBundle'):
             useAllPlatformBundle = checkSpecification['useAllPlatformBundle']
 
+
+    if 'analysisKinds' in checkSpecification:
+        newMatrix = []
+        for matrixInclude in matrix:
+            for analysisKind in checkSpecification.get('analysisKinds'):
+                newMatrix.append(
+                    matrixInclude |
+                    { 'analysis-kinds': analysisKind }
+                )
+        matrix = newMatrix
+
+    # Construct the workflow steps needed for this check.
     steps = [
         {
             'name': 'Check out repository',

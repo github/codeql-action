@@ -6,6 +6,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 No user facing changes.
 
+## 3.30.2 - 09 Sep 2025
+
+- Fixed a bug which could cause language autodetection to fail. [#3084](https://github.com/github/codeql-action/pull/3084)
+- Experimental: The `quality-queries` input that was added in `3.29.2` as part of an internal experiment is now deprecated and will be removed in an upcoming version of the CodeQL Action. It has been superseded by a new `analysis-kinds` input, which is part of the same internal experiment. Do not use this in production as it is subject to change at any time. [#3064](https://github.com/github/codeql-action/pull/3064)
+
 ## 3.30.1 - 05 Sep 2025
 
 - Update default CodeQL bundle version to 2.23.0. [#3077](https://github.com/github/codeql-action/pull/3077)

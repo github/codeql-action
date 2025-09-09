@@ -4,12 +4,12 @@ import type { VersionInfo } from "./codeql";
 
 export enum ToolsFeature {
   AnalysisSummaryV2IsDefault = "analysisSummaryV2Default",
+  BuiltinExtractorsSpecifyDefaultQueries = "builtinExtractorsSpecifyDefaultQueries",
   DatabaseInterpretResultsSupportsSarifRunProperty = "databaseInterpretResultsSupportsSarifRunProperty",
   ForceOverwrite = "forceOverwrite",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
-  SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
   PythonDefaultIsToNotExtractStdlib = "pythonDefaultIsToNotExtractStdlib",
-  BuiltinExtractorsSpecifyDefaultQueries = "builtinExtractorsSpecifyDefaultQueries",
+  SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
 }
 
 /**

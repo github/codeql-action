@@ -6,6 +6,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 No user facing changes.
 
+## 3.30.3 - 10 Sep 2025
+
+No user facing changes.
+
 ## 3.30.2 - 09 Sep 2025
 
 - Fixed a bug which could cause language autodetection to fail. [#3084](https://github.com/github/codeql-action/pull/3084)

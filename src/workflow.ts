@@ -168,10 +168,7 @@ export async function getWorkflowErrors(
   for (const job of Object.values(doc?.jobs || {})) {
     if (Array.isArray(job.steps)) {
       for (const step of job.steps) {
-        if (
-          step.uses !== undefined &&
-          step.uses.startsWith("github/codeql-action/")
-        ) {
+        if (step.uses?.startsWith("github/codeql-action/")) {
           const parts = step.uses.split("@");
           if (parts.length >= 2) {
             codeqlStepRefs.push(parts[parts.length - 1]);

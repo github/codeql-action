@@ -22,18 +22,23 @@ export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.3";
 
 /**
  * The maximum (uncompressed) size of the overlay base database that we will
- * upload. Actions Cache has an overall capacity of 10 GB, and the Actions Cache
- * client library uses zstd compression.
+ * upload. By default, the Actions Cache has an overall capacity of 10 GB, and
+ * the Actions Cache client library uses zstd compression.
  *
  * Ideally we would apply a size limit to the compressed overlay-base database,
  * but we cannot do so because compression is handled transparently by the
  * Actions Cache client library. Instead we place a limit on the uncompressed
  * size of the overlay-base database.
  *
- * Assuming 2.5:1 compression ratio, the 6 GB limit on uncompressed data would
- * translate to a limit of around 2.4 GB after compression.
+ * Assuming 2.5:1 compression ratio, the 15 GB limit on uncompressed data would
+ * translate to a limit of around 6 GB after compression. This is a high limit
+ * compared to the default 10GB Actions Cache capacity, but enforcement of Actions
+ * Cache quotas is not immediate.
+ *
+ * TODO: revisit this limit before removing the restriction for overlay analysis
+ * to the `github` and `dsp-testing` orgs.
  */
-const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB = 6000;
+const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB = 15000;
 const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_BYTES =
   OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB * 1_000_000;
 

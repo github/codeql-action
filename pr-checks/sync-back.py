@@ -7,13 +7,13 @@ This script scans the generated workflow files (.github/workflows/__*.yml) to fi
 all external action versions used, then updates:
 1. Hardcoded action versions in pr-checks/sync.py
 2. Action version references in template files in pr-checks/checks/
-3. Action version references in regular workflow files
 
 The script automatically detects all actions used in generated workflows and
 preserves version comments (e.g., # v1.2.3) when syncing versions.
 
 This ensures that when Dependabot updates action versions in generated workflows,
-those changes are properly synced back to the source templates.
+those changes are properly synced back to the source templates. Regular workflow
+files are updated directly by Dependabot and don't need sync-back.
 """
 
 import os
@@ -132,45 +132,6 @@ def update_template_files(checks_dir: str, action_versions: Dict[str, str]) -> L
     return modified_files
 
 
-def update_regular_workflows(workflow_dir: str, action_versions: Dict[str, str]) -> List[str]:
-    """
-    Update action versions in regular (non-generated) workflow files
-    
-    Args:
-        workflow_dir: Path to .github/workflows directory
-        action_versions: Dictionary of action names to versions (may include comments)
-        
-    Returns:
-        List of files that were modified
-    """
-    modified_files = []
-    
-    # Get all workflow files that are NOT generated (don't start with __)
-    all_files = glob.glob(os.path.join(workflow_dir, "*.yml"))
-    regular_files = [f for f in all_files if not os.path.basename(f).startswith("__")]
-    
-    for file_path in regular_files:
-        with open(file_path, 'r') as f:
-            content = f.read()
-            
-        original_content = content
-        
-        # Update action versions
-        for action_name, version_with_comment in action_versions.items():
-            # Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
-            pattern = rf"(uses:\s+{re.escape(action_name)})@([^@\n]+)"
-            replacement = rf"\1@{version_with_comment}"
-            content = re.sub(pattern, replacement, content)
-            
-        if content != original_content:
-            with open(file_path, 'w') as f:
-                f.write(content)
-            modified_files.append(file_path)
-            print(f"Updated {file_path}")
-            
-    return modified_files
-
-
 def main():
     parser = argparse.ArgumentParser(description="Sync action versions from generated workflows back to templates")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be changed without making changes")
@@ -213,10 +174,6 @@ def main():
     # Update template files 
     template_modified = update_template_files(str(checks_dir), action_versions)
     modified_files.extend(template_modified)
-    
-    # Update regular workflow files
-    workflow_modified = update_regular_workflows(str(workflow_dir), action_versions)
-    modified_files.extend(workflow_modified)
     
     if modified_files:
         print(f"\nSync completed. Modified {len(modified_files)} files:")

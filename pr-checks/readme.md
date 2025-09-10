@@ -36,7 +36,8 @@ python3 pr-checks/sync-back.py
 The sync-back script automatically updates:
 - Hardcoded action versions in `pr-checks/sync.py`
 - Action version references in template files in `pr-checks/checks/`
-- Action version references in regular workflow files
+
+Regular workflow files are updated directly by Dependabot and don't need sync-back.
 
 This ensures that the `verify-pr-checks.sh` test always passes after Dependabot PRs.
 

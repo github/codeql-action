@@ -780,7 +780,7 @@ export async function runQueries(
     // If this is a Code Quality analysis, correct the category to one
     // accepted by the Code Quality backend.
     let category = automationDetailsId;
-    if (dbAnalysisConfig.kind === analyses.AnalysisKind.CodeQuality) {
+    if (analysis.kind === analyses.AnalysisKind.CodeQuality) {
       category = fixCodeQualityCategory(logger, automationDetailsId);
     }
 

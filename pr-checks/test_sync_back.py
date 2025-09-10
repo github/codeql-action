@@ -5,18 +5,10 @@ Tests for the sync_back.py script
 
 import os
 import shutil
-import sys
 import tempfile
 import unittest
 
-# Add the current directory to sys.path and import the sync_back module
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-# Import the sync-back module
-import importlib.util
-spec = importlib.util.spec_from_file_location("sync_back", os.path.join(os.path.dirname(__file__), "sync_back.py"))
-sync_back = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(sync_back)
+import sync_back
 
 
 class TestSyncBack(unittest.TestCase):

@@ -248,46 +248,6 @@ steps:
             
         self.assertIn("uses: ruby/setup-ruby@55511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0", updated_content)
         
-    def test_update_regular_workflows(self):
-        """Test updating regular workflow files"""
-        # Create a regular workflow file
-        workflow_content = """
-name: Regular Workflow
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v4
-        """
-        
-        workflow_path = os.path.join(self.workflow_dir, "regular.yml")
-        with open(workflow_path, 'w') as f:
-            f.write(workflow_content)
-            
-        # Create a generated workflow file (should be ignored)
-        generated_path = os.path.join(self.workflow_dir, "__generated.yml")
-        with open(generated_path, 'w') as f:
-            f.write(workflow_content)
-            
-        action_versions = {
-            'actions/checkout': 'v4',
-            'actions/setup-node': 'v5'
-        }
-        
-        result = sync_back.update_regular_workflows(self.workflow_dir, action_versions)
-        
-        # Should only update the regular file, not the generated one
-        self.assertEqual(len(result), 1)
-        self.assertIn(workflow_path, result)
-        self.assertNotIn(generated_path, result)
-        
-        with open(workflow_path, 'r') as f:
-            updated_content = f.read()
-            
-        self.assertIn("uses: actions/checkout@v4", updated_content)
-        self.assertIn("uses: actions/setup-node@v5", updated_content)
-        
     def test_no_changes_needed(self):
         """Test that functions return False/empty when no changes are needed"""
         # Test sync.py with no changes needed

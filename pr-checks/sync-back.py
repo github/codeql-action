@@ -4,10 +4,13 @@ Sync-back script to automatically update action versions in source templates
 from the generated workflow files after Dependabot updates.
 
 This script scans the generated workflow files (.github/workflows/__*.yml) to find
-the latest action versions used, then updates:
+all external action versions used, then updates:
 1. Hardcoded action versions in pr-checks/sync.py
 2. Action version references in template files in pr-checks/checks/
 3. Action version references in regular workflow files
+
+The script automatically detects all actions used in generated workflows and
+preserves version comments (e.g., # v1.2.3) when syncing versions.
 
 This ensures that when Dependabot updates action versions in generated workflows,
 those changes are properly synced back to the source templates.
@@ -30,31 +33,25 @@ def scan_generated_workflows(workflow_dir: str) -> Dict[str, str]:
         workflow_dir: Path to .github/workflows directory
         
     Returns:
-        Dictionary mapping action names to their latest versions
+        Dictionary mapping action names to their latest versions (including comments)
     """
     action_versions = {}
     generated_files = glob.glob(os.path.join(workflow_dir, "__*.yml"))
-    
-    # Actions we care about syncing
-    target_actions = {
-        'actions/setup-go',
-        'actions/setup-node', 
-        'actions/setup-python',
-        'actions/github-script'
-    }
     
     for file_path in generated_files:
         with open(file_path, 'r') as f:
             content = f.read()
             
-        # Find all action uses in the file
-        pattern = r'uses:\s+(actions/[^@\s]+)@([^@\s]+)'
+        # Find all action uses in the file, including potential comments
+        # This pattern captures: action_name@version_with_possible_comment
+        pattern = r'uses:\s+([^/\s]+/[^@\s]+)@([^@\n]+)'
         matches = re.findall(pattern, content)
         
-        for action_name, version in matches:
-            if action_name in target_actions:
+        for action_name, version_with_comment in matches:
+            # Only track non-local actions (those with / but not starting with ./)
+            if '/' in action_name and not action_name.startswith('./'):
                 # Take the latest version seen (they should all be the same after Dependabot)
-                action_versions[action_name] = version
+                action_versions[action_name] = version_with_comment.rstrip()
                 
     return action_versions
 
@@ -65,7 +62,7 @@ def update_sync_py(sync_py_path: str, action_versions: Dict[str, str]) -> bool:
     
     Args:
         sync_py_path: Path to sync.py file
-        action_versions: Dictionary of action names to versions
+        action_versions: Dictionary of action names to versions (may include comments)
         
     Returns:
         True if file was modified, False otherwise
@@ -80,9 +77,12 @@ def update_sync_py(sync_py_path: str, action_versions: Dict[str, str]) -> bool:
     original_content = content
     
     # Update hardcoded action versions 
-    for action_name, version in action_versions.items():
+    for action_name, version_with_comment in action_versions.items():
+        # Extract just the version part (before any comment) for sync.py
+        version = version_with_comment.split('#')[0].strip() if '#' in version_with_comment else version_with_comment.strip()
+        
         # Look for patterns like 'uses': 'actions/setup-node@v4'
-        pattern = rf"('uses':\s*')(actions/{action_name.split('/')[-1]})@([^']+)(')"
+        pattern = rf"('uses':\s*')(actions/{re.escape(action_name.split('/')[-1])})@([^']+)(')"
         replacement = rf"\1\2@{version}\4"
         content = re.sub(pattern, replacement, content)
         
@@ -102,7 +102,7 @@ def update_template_files(checks_dir: str, action_versions: Dict[str, str]) -> L
     
     Args:
         checks_dir: Path to pr-checks/checks directory
-        action_versions: Dictionary of action names to versions
+        action_versions: Dictionary of action names to versions (may include comments)
         
     Returns:
         List of files that were modified
@@ -117,10 +117,10 @@ def update_template_files(checks_dir: str, action_versions: Dict[str, str]) -> L
         original_content = content
         
         # Update action versions
-        for action_name, version in action_versions.items():
-            # Look for patterns like 'uses: actions/setup-node@v4'
-            pattern = rf"(uses:\s+{re.escape(action_name)})@([^@\s]+)"
-            replacement = rf"\1@{version}"
+        for action_name, version_with_comment in action_versions.items():
+            # Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
+            pattern = rf"(uses:\s+{re.escape(action_name)})@([^@\n]+)"
+            replacement = rf"\1@{version_with_comment}"
             content = re.sub(pattern, replacement, content)
             
         if content != original_content:
@@ -138,7 +138,7 @@ def update_regular_workflows(workflow_dir: str, action_versions: Dict[str, str])
     
     Args:
         workflow_dir: Path to .github/workflows directory
-        action_versions: Dictionary of action names to versions
+        action_versions: Dictionary of action names to versions (may include comments)
         
     Returns:
         List of files that were modified
@@ -156,10 +156,10 @@ def update_regular_workflows(workflow_dir: str, action_versions: Dict[str, str])
         original_content = content
         
         # Update action versions
-        for action_name, version in action_versions.items():
-            # Look for patterns like 'uses: actions/setup-node@v4'
-            pattern = rf"(uses:\s+{re.escape(action_name)})@([^@\s]+)"
-            replacement = rf"\1@{version}"
+        for action_name, version_with_comment in action_versions.items():
+            # Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
+            pattern = rf"(uses:\s+{re.escape(action_name)})@([^@\n]+)"
+            replacement = rf"\1@{version_with_comment}"
             content = re.sub(pattern, replacement, content)
             
         if content != original_content:

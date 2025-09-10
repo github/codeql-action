@@ -298,7 +298,7 @@ test("loading config with version mismatch throws", async (t) => {
     // Stub `getActionVersion` to return some nonsense.
     const getActionVersionStub = sinon
       .stub(actionsUtil, "getActionVersion")
-      .resolves("does-not-exist");
+      .returns("does-not-exist");
 
     await configUtils.initConfig(
       createTestInitConfigInputs({

@@ -27,10 +27,10 @@ To sync action versions from generated workflows back to source templates:
 
 ```bash
 # Dry run to see what would be changed
-python3 pr-checks/sync-back.py --dry-run --verbose
+python3 pr-checks/sync_back.py --dry-run --verbose
 
 # Actually apply the changes
-python3 pr-checks/sync-back.py
+python3 pr-checks/sync_back.py
 ```
 
 The sync-back script automatically updates:

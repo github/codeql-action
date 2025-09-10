@@ -22,7 +22,7 @@ import glob
 import argparse
 import sys
 from pathlib import Path
-from typing import Dict, Set, List, Tuple
+from typing import Dict, List
 
 
 def scan_generated_workflows(workflow_dir: str) -> Dict[str, str]:

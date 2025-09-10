@@ -82,8 +82,8 @@ def update_sync_py(sync_py_path: str, action_versions: Dict[str, str]) -> bool:
         version = version_with_comment.split('#')[0].strip() if '#' in version_with_comment else version_with_comment.strip()
         
         # Look for patterns like 'uses': 'actions/setup-node@v4'
-        pattern = rf"('uses':\s*')(actions/{re.escape(action_name.split('/')[-1])})@([^']+)(')"
-        replacement = rf"\1\2@{version}\4"
+        pattern = rf"('uses':\s*'){re.escape(action_name)}@(?:[^']+)(')"
+        replacement = rf"\1{action_name}@{version}\2"
         content = re.sub(pattern, replacement, content)
         
     if content != original_content:
@@ -119,7 +119,7 @@ def update_template_files(checks_dir: str, action_versions: Dict[str, str]) -> L
         # Update action versions
         for action_name, version_with_comment in action_versions.items():
             # Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
-            pattern = rf"(uses:\s+{re.escape(action_name)})@([^@\n]+)"
+            pattern = rf"(uses:\s+{re.escape(action_name)})@(?:[^@\n]+)"
             replacement = rf"\1@{version_with_comment}"
             content = re.sub(pattern, replacement, content)
             

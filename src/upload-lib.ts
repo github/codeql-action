@@ -761,7 +761,7 @@ function dumpSarifFile(
     fs.mkdirSync(outputDir, { recursive: true });
   } else if (!fs.lstatSync(outputDir).isDirectory()) {
     throw new ConfigurationError(
-      `The path specified by the CODEQL_ACTION_SARIF_DUMP_DIR environment variable exists and is not a directory: ${outputDir}`,
+      `The path specified by the ${EnvVar.SARIF_DUMP_DIR} environment variable exists and is not a directory: ${outputDir}`,
     );
   }
   const outputFile = path.resolve(

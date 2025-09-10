@@ -8,7 +8,7 @@ operatingSystems:
   - windows
 steps:
   - name: Remove CodeQL from toolcache
-    uses: actions/github-script@v7
+    uses: actions/github-script@v8
     with:
       script: |
         const fs = require('fs');
@@ -18,7 +18,7 @@ steps:
   - name: Install @actions/tool-cache
     run: npm install @actions/tool-cache
   - name: Check toolcache does not contain CodeQL
-    uses: actions/github-script@v7
+    uses: actions/github-script@v8
     with:
       script: |
         const toolcache = require('@actions/tool-cache');
@@ -37,7 +37,7 @@ steps:
       output: ${{ runner.temp }}/results
       upload-database: false
   - name: Check CodeQL is installed within the toolcache
-    uses: actions/github-script@v7
+    uses: actions/github-script@v8
     with:
       script: |
         const toolcache = require('@actions/tool-cache');

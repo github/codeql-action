@@ -51,6 +51,10 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Run pr-checks tests
+        working-directory: pr-checks
+        run: python -m unittest discover
+
       - name: Lint
         if: matrix.os != 'windows-latest'
         run: npm run lint-ci

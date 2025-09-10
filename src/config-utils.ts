@@ -5,7 +5,7 @@ import { performance } from "perf_hooks";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
 
-import { isAnalyzingPullRequest } from "./actions-util";
+import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
 import {
   AnalysisConfig,
   AnalysisKind,
@@ -102,6 +102,10 @@ interface IncludeQueryFilter {
  * Format of the parsed config file.
  */
 export interface Config {
+  /**
+   * The version of the CodeQL Action that the configuration is for.
+   */
+  version: string;
   /**
    * Set of analysis kinds that are enabled.
    */
@@ -591,6 +595,7 @@ export async function initActionState(
   );
 
   return {
+    version: getActionVersion(),
     analysisKinds,
     languages,
     buildMode,
@@ -1308,7 +1313,21 @@ export async function getConfig(
   const configString = fs.readFileSync(configFile, "utf8");
   logger.debug("Loaded config:");
   logger.debug(configString);
-  return JSON.parse(configString) as Config;
+
+  const config = JSON.parse(configString) as Partial<Config>;
+
+  if (config.version === undefined) {
+    throw new ConfigurationError(
+      `Loaded configuration file, but it does not contain the expected 'version' field.`,
+    );
+  }
+  if (config.version !== getActionVersion()) {
+    throw new ConfigurationError(
+      `Loaded a configuration file for version '${config.version}', but running version '${getActionVersion()}'`,
+    );
+  }
+
+  return config as Config;
 }
 
 /**

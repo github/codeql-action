@@ -1,4 +1,4 @@
-<!-- For GitHub staff: Remember that this a public repository. -->
+<!-- For GitHub staff: Remember that this is a public repository. -->
 
 ### Risk assessment
 

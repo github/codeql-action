@@ -789,7 +789,6 @@ export async function getCodeQLForCmd(
         "run-queries",
         ...flags,
         databasePath,
-        "--intra-layer-parallelism",
         "--min-disk-free=1024", // Try to leave at least 1GB free
         "-v",
         ...queries,

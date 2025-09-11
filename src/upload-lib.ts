@@ -696,6 +696,12 @@ export async function uploadSpecifiedFiles(
   validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
   logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
+
+  const dumpDir = process.env[EnvVar.SARIF_DUMP_DIR];
+  if (dumpDir) {
+    dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
+  }
+
   logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = url.pathToFileURL(checkoutPath).href;
@@ -740,6 +746,30 @@ export async function uploadSpecifiedFiles(
     },
     sarifID,
   };
+}
+
+/**
+ * Dumps the given processed SARIF file contents to `outputDir`.
+ */
+function dumpSarifFile(
+  sarifPayload: string,
+  outputDir: string,
+  logger: Logger,
+  uploadTarget: analyses.AnalysisConfig,
+) {
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  } else if (!fs.lstatSync(outputDir).isDirectory()) {
+    throw new ConfigurationError(
+      `The path specified by the ${EnvVar.SARIF_DUMP_DIR} environment variable exists and is not a directory: ${outputDir}`,
+    );
+  }
+  const outputFile = path.resolve(
+    outputDir,
+    `upload${uploadTarget.sarifExtension}`,
+  );
+  logger.info(`Dumping processed SARIF file to ${outputFile}`);
+  fs.writeFileSync(outputFile, sarifPayload);
 }
 
 const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;

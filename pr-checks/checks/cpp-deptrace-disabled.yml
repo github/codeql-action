@@ -17,7 +17,7 @@ steps:
       working-directory: autobuild-dir
     env:
       CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: false
-    run: |
+  - run: |
       if ls /usr/bin/errno; then
         echo "C/C++ autobuild installed errno, but it should not have since auto-install dependencies is disabled."
         exit 1

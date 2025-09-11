@@ -119,4 +119,10 @@ export enum EnvVar {
    * Whether to enable experimental extractors for CodeQL.
    */
   EXPERIMENTAL_FEATURES = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES",
+
+  /**
+   * Whether and where to dump the processed SARIF file that would be uploaded, regardless of
+   * whether the upload is disabled. This is intended for testing and debugging purposes.
+   */
+  SARIF_DUMP_DIR = "CODEQL_ACTION_SARIF_DUMP_DIR",
 }

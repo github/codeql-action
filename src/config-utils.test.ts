@@ -229,7 +229,7 @@ test("load code quality config", async (t) => {
   });
 });
 
-test("loading config saves config", async (t) => {
+test("loading a saved config produces the same config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
@@ -259,6 +259,7 @@ test("loading config saves config", async (t) => {
         logger,
       }),
     );
+    await configUtils.saveConfig(config1, logger);
 
     // The saved config file should now exist
     t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
@@ -300,7 +301,7 @@ test("loading config with version mismatch throws", async (t) => {
       .stub(actionsUtil, "getActionVersion")
       .returns("does-not-exist");
 
-    await configUtils.initConfig(
+    const config = await configUtils.initConfig(
       createTestInitConfigInputs({
         languagesInput: "javascript,python",
         tempDir,
@@ -309,6 +310,8 @@ test("loading config with version mismatch throws", async (t) => {
         logger,
       }),
     );
+    // initConfig does not save the config, so we do it here.
+    await configUtils.saveConfig(config, logger);
 
     // Restore `getActionVersion`.
     getActionVersionStub.restore();

@@ -1189,9 +1189,6 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       exclude: { tags: "exclude-from-incremental" },
     });
   }
-
-  // Save the config so we can easily access it again in the future
-  await saveConfig(config, logger);
   return config;
 }
 

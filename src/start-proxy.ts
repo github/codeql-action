@@ -4,6 +4,11 @@ import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import { ConfigurationError, isDefined } from "./util";
 
+export const UPDATEJOB_PROXY = "update-job-proxy";
+export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
+export const UPDATEJOB_PROXY_URL_PREFIX =
+  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
+
 export type Credential = {
   type: string;
   host?: string;

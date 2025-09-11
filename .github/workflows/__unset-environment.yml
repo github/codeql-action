@@ -81,7 +81,7 @@ jobs:
         id: analysis
         with:
           upload-database: false
-        run: |
+      - run: |
           CPP_DB="${{ fromJson(steps.analysis.outputs.db-locations).cpp }}"
           if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "${RUNNER_TEMP}/customDbLocation/cpp" ]]; then
             echo "::error::Did not create a database for CPP, or created it in the wrong location." \

@@ -73,7 +73,7 @@ jobs:
       - name: Build code
         run: go build main.go
       - uses: ./../action/analyze
-        run: |
+      - run: |
           if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then
             echo "Expected the workaround for indirect tracing of static binaries to trigger, but the" \
               "CODEQL_ACTION_GO_BINARY environment variable is not set."

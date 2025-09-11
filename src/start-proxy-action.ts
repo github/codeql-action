@@ -7,13 +7,15 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getActionsLogger, Logger } from "./logging";
-import { Credential, getCredentials } from "./start-proxy";
+import {
+  Credential,
+  getCredentials,
+  UPDATEJOB_PROXY,
+  UPDATEJOB_PROXY_URL_PREFIX,
+  UPDATEJOB_PROXY_VERSION,
+} from "./start-proxy";
 import * as util from "./util";
 
-const UPDATEJOB_PROXY = "update-job-proxy";
-const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
-const UPDATEJOB_PROXY_URL_PREFIX =
-  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 

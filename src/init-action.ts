@@ -681,10 +681,10 @@ async function run() {
     logUnwrittenDiagnostics();
   }
 
-  // We may have updated the config returned from `initConfig`, e.g. to revert
-  // to `OverlayDatabaseMode.None` if we failed to download an overlay-base
-  // database. So we save the config again, to ensure that the `analyze` step
-  // reads the correct config.
+  // We save the config here instead of at the end of `initConfig` because we
+  // may have updated the config returned from `initConfig`, e.g. to revert to
+  // `OverlayDatabaseMode.None` if we failed to download an overlay-base
+  // database.
   await configUtils.saveConfig(config, logger);
   await sendCompletedStatusReport(
     startedAt,

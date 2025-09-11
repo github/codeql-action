@@ -1189,9 +1189,6 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       exclude: { tags: "exclude-from-incremental" },
     });
   }
-
-  // Save the config so we can easily access it again in the future
-  await saveConfig(config, logger);
   return config;
 }
 
@@ -1289,7 +1286,7 @@ export function getPathToParsedConfigFile(tempDir: string): string {
 /**
  * Store the given config to the path returned from getPathToParsedConfigFile.
  */
-async function saveConfig(config: Config, logger: Logger) {
+export async function saveConfig(config: Config, logger: Logger) {
   const configString = JSON.stringify(config);
   const configFile = getPathToParsedConfigFile(config.tempDir);
   fs.mkdirSync(path.dirname(configFile), { recursive: true });

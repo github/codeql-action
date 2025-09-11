@@ -1289,7 +1289,7 @@ export function getPathToParsedConfigFile(tempDir: string): string {
 /**
  * Store the given config to the path returned from getPathToParsedConfigFile.
  */
-async function saveConfig(config: Config, logger: Logger) {
+export async function saveConfig(config: Config, logger: Logger) {
   const configString = JSON.stringify(config);
   const configFile = getPathToParsedConfigFile(config.tempDir);
   fs.mkdirSync(path.dirname(configFile), { recursive: true });

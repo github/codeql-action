@@ -6,6 +6,7 @@ import { TestFn } from "ava";
 import nock from "nock";
 import * as sinon from "sinon";
 
+import { getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -356,6 +357,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
   return Object.assign(
     {},
     {
+      version: getActionVersion(),
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
       buildMode: undefined,

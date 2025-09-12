@@ -50,6 +50,7 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  JavaMinimizeDependencyJars = "java_minimize_dependency_jars",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -268,6 +269,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
     minimumVersion: undefined,
+  },
+  [Feature.JavaMinimizeDependencyJars]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
+    minimumVersion: "2.23.0",
   },
 };
 

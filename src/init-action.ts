@@ -78,6 +78,7 @@ import {
   wrapError,
   checkActionVersion,
   getErrorMessage,
+  BuildMode,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -546,8 +547,16 @@ async function run() {
     }
 
     // Restore dependency cache(s), if they exist.
+    const minimizeJavaJars = await features.getValue(
+      Feature.JavaMinimizeDependencyJars,
+      codeql,
+    );
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
-      await downloadDependencyCaches(config.languages, logger);
+      await downloadDependencyCaches(
+        config.languages,
+        logger,
+        minimizeJavaJars,
+      );
     }
 
     // Suppress warnings about disabled Python library extraction.
@@ -595,6 +604,24 @@ async function run() {
         // so we need to suppress the new default CLI behavior.
         core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
       }
+    }
+
+    // If the feature flag to minimize Java dependency jars is enabled, and we are doing a Java
+    // `build-mode: none` analysis (i.e. the flag is relevant), then set the environment variable
+    // that enables the corresponding option in the Java extractor.
+    if (process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]) {
+      logger.debug(
+        `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
+      );
+    } else if (
+      minimizeJavaJars &&
+      config.buildMode === BuildMode.None &&
+      config.languages.includes(KnownLanguage.java)
+    ) {
+      core.exportVariable(
+        EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS,
+        "true",
+      );
     }
 
     const { registriesAuthTokens, qlconfigFile } =

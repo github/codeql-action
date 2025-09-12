@@ -99,7 +99,8 @@ jobs:
         tools: ${{ matrix.tools }}
     # confirm steps.init.outputs.codeql-path points to the codeql binary
     - name: Print CodeQL Version
-      run: "$CODEQL" version --format=json
+      run: >
+        "$CODEQL" version --format=json
       env:
         CODEQL: ${{steps.init.outputs.codeql-path}}
     - name: Perform CodeQL Analysis

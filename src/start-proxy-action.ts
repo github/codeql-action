@@ -7,13 +7,14 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getActionsLogger, Logger } from "./logging";
-import { Credential, getCredentials } from "./start-proxy";
+import {
+  Credential,
+  getCredentials,
+  getDownloadUrl,
+  UPDATEJOB_PROXY,
+} from "./start-proxy";
 import * as util from "./util";
 
-const UPDATEJOB_PROXY = "update-job-proxy";
-const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
-const UPDATEJOB_PROXY_URL_PREFIX =
-  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 const KEY_SIZE = 2048;
 const KEY_EXPIRY_YEARS = 2;
 
@@ -119,7 +120,7 @@ async function runWrapper() {
   };
 
   // Start the Proxy
-  const proxyBin = await getProxyBinaryPath();
+  const proxyBin = await getProxyBinaryPath(logger);
   await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
 }
 
@@ -184,26 +185,19 @@ async function startProxy(
   }
 }
 
-async function getProxyBinaryPath(): Promise<string> {
+async function getProxyBinaryPath(logger: Logger): Promise<string> {
   const proxyFileName =
     process.platform === "win32" ? `${UPDATEJOB_PROXY}.exe` : UPDATEJOB_PROXY;
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "darwin"
-        ? "osx64"
-        : "linux64";
-  const proxyPackage = `${UPDATEJOB_PROXY}-${platform}.tar.gz`;
-  const proxyURL = `${UPDATEJOB_PROXY_URL_PREFIX}${proxyPackage}`;
+  const proxyInfo = await getDownloadUrl(logger);
 
-  let proxyBin = toolcache.find(proxyFileName, UPDATEJOB_PROXY_VERSION);
+  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
   if (!proxyBin) {
-    const temp = await toolcache.downloadTool(proxyURL);
+    const temp = await toolcache.downloadTool(proxyInfo.url);
     const extracted = await toolcache.extractTar(temp);
     proxyBin = await toolcache.cacheDir(
       extracted,
       proxyFileName,
-      UPDATEJOB_PROXY_VERSION,
+      proxyInfo.version,
     );
   }
   proxyBin = path.join(proxyBin, proxyFileName);

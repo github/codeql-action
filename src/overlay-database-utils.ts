@@ -1,9 +1,11 @@
+import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
 
 import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
+import { getAutomationID } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
@@ -20,18 +22,23 @@ export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.3";
 
 /**
  * The maximum (uncompressed) size of the overlay base database that we will
- * upload. Actions Cache has an overall capacity of 10 GB, and the Actions Cache
- * client library uses zstd compression.
+ * upload. By default, the Actions Cache has an overall capacity of 10 GB, and
+ * the Actions Cache client library uses zstd compression.
  *
  * Ideally we would apply a size limit to the compressed overlay-base database,
  * but we cannot do so because compression is handled transparently by the
  * Actions Cache client library. Instead we place a limit on the uncompressed
  * size of the overlay-base database.
  *
- * Assuming 2.5:1 compression ratio, the 6 GB limit on uncompressed data would
- * translate to a limit of around 2.4 GB after compression.
+ * Assuming 2.5:1 compression ratio, the 15 GB limit on uncompressed data would
+ * translate to a limit of around 6 GB after compression. This is a high limit
+ * compared to the default 10GB Actions Cache capacity, but enforcement of Actions
+ * Cache quotas is not immediate.
+ *
+ * TODO: revisit this limit before removing the restriction for overlay analysis
+ * to the `github` and `dsp-testing` orgs.
  */
-const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB = 6000;
+const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB = 15000;
 const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_BYTES =
   OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB * 1_000_000;
 
@@ -251,15 +258,19 @@ export async function uploadOverlayBaseDatabaseToCache(
 
   const codeQlVersion = (await codeql.getVersion()).version;
   const checkoutPath = getRequiredInput("checkout_path");
-  const cacheKey = await generateCacheKey(config, codeQlVersion, checkoutPath);
+  const cacheSaveKey = await getCacheSaveKey(
+    config,
+    codeQlVersion,
+    checkoutPath,
+  );
   logger.info(
-    `Uploading overlay-base database to Actions cache with key ${cacheKey}`,
+    `Uploading overlay-base database to Actions cache with key ${cacheSaveKey}`,
   );
 
   try {
     const cacheId = await withTimeout(
       MAX_CACHE_OPERATION_MS,
-      actionsCache.saveCache([dbLocation], cacheKey),
+      actionsCache.saveCache([dbLocation], cacheSaveKey),
       () => {},
     );
     if (cacheId === undefined) {
@@ -322,10 +333,14 @@ export async function downloadOverlayBaseDatabaseFromCache(
 
   const dbLocation = config.dbLocation;
   const codeQlVersion = (await codeql.getVersion()).version;
-  const restoreKey = getCacheRestoreKey(config, codeQlVersion);
+  const cacheRestoreKeyPrefix = await getCacheRestoreKeyPrefix(
+    config,
+    codeQlVersion,
+  );
 
   logger.info(
-    `Looking in Actions cache for overlay-base database with restore key ${restoreKey}`,
+    "Looking in Actions cache for overlay-base database with " +
+      `restore key ${cacheRestoreKeyPrefix}`,
   );
 
   let databaseDownloadDurationMs = 0;
@@ -333,7 +348,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
     const databaseDownloadStart = performance.now();
     const foundKey = await withTimeout(
       MAX_CACHE_OPERATION_MS,
-      actionsCache.restoreCache([dbLocation], restoreKey),
+      actionsCache.restoreCache([dbLocation], cacheRestoreKeyPrefix),
       () => {
         logger.info("Timed out downloading overlay-base database from cache");
       },
@@ -387,25 +402,87 @@ export async function downloadOverlayBaseDatabaseFromCache(
   };
 }
 
-async function generateCacheKey(
+/**
+ * Computes the cache key for saving the overlay-base database to the GitHub
+ * Actions cache.
+ *
+ * The key consists of the restore key prefix (which does not include the
+ * commit SHA) and the commit SHA of the current checkout.
+ */
+async function getCacheSaveKey(
   config: Config,
   codeQlVersion: string,
   checkoutPath: string,
 ): Promise<string> {
   const sha = await getCommitOid(checkoutPath);
-  return `${getCacheRestoreKey(config, codeQlVersion)}${sha}`;
+  const restoreKeyPrefix = await getCacheRestoreKeyPrefix(
+    config,
+    codeQlVersion,
+  );
+  return `${restoreKeyPrefix}${sha}`;
 }
 
-function getCacheRestoreKey(config: Config, codeQlVersion: string): string {
-  // The restore key (prefix) specifies which cached overlay-base databases are
-  // compatible with the current analysis: the cached database must have the
-  // same cache version and the same CodeQL bundle version.
-  //
-  // Actions cache supports using multiple restore keys to indicate preference.
-  // Technically we prefer a cached overlay-base database with the same SHA as
-  // we are analyzing. However, since overlay-base databases are built from the
-  // default branch and used in PR analysis, it is exceedingly unlikely that
-  // the commit SHA will ever be the same, so we can just leave it out.
+/**
+ * Computes the cache key prefix for restoring the overlay-base database from
+ * the GitHub Actions cache.
+ *
+ * Actions cache supports using multiple restore keys to indicate preference,
+ * and this function could in principle take advantage of that feature by
+ * returning a list of restore key prefixes. However, since overlay-base
+ * databases are built from the default branch and used in PR analysis, it is
+ * exceedingly unlikely that the commit SHA will ever be the same.
+ *
+ * Therefore, this function returns only a single restore key prefix, which does
+ * not include the commit SHA. This allows us to restore the most recent
+ * compatible overlay-base database.
+ */
+async function getCacheRestoreKeyPrefix(
+  config: Config,
+  codeQlVersion: string,
+): Promise<string> {
   const languages = [...config.languages].sort().join("_");
-  return `${CACHE_PREFIX}-${CACHE_VERSION}-${languages}-${codeQlVersion}-`;
+
+  const cacheKeyComponents = {
+    automationID: await getAutomationID(),
+    // Add more components here as needed in the future
+  };
+  const componentsHash = createCacheKeyHash(cacheKeyComponents);
+
+  // For a cached overlay-base database to be considered compatible for overlay
+  // analysis, all components in the cache restore key must match:
+  //
+  // CACHE_PREFIX: distinguishes overlay-base databases from other cache objects
+  // CACHE_VERSION: cache format version
+  // componentsHash: hash of additional components (see above for details)
+  // languages: the languages included in the overlay-base database
+  // codeQlVersion: CodeQL bundle version
+  //
+  // Technically we can also include languages and codeQlVersion in the
+  // componentsHash, but including them explicitly in the cache key makes it
+  // easier to debug and understand the cache key structure.
+  return `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-${languages}-${codeQlVersion}-`;
+}
+
+/**
+ * Creates a SHA-256 hash of the cache key components to ensure uniqueness
+ * while keeping the cache key length manageable.
+ *
+ * @param components Object containing all components that should influence cache key uniqueness
+ * @returns A short SHA-256 hash (first 16 characters) of the components
+ */
+function createCacheKeyHash(components: Record<string, any>): string {
+  // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+  //
+  // "Properties are visited using the same algorithm as Object.keys(), which
+  // has a well-defined order and is stable across implementations. For example,
+  // JSON.stringify on the same object will always produce the same string, and
+  // JSON.parse(JSON.stringify(obj)) would produce an object with the same key
+  // ordering as the original (assuming the object is completely
+  // JSON-serializable)."
+  const componentsJson = JSON.stringify(components);
+  return crypto
+    .createHash("sha256")
+    .update(componentsJson)
+    .digest("hex")
+    .substring(0, 16);
 }

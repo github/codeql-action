@@ -655,6 +655,65 @@ test("getWorkflowErrors() should not report a warning if there is a workflow_cal
   t.deepEqual(...errorCodes(errors, []));
 });
 
+test("getWorkflowErrors() should report a warning if different versions of the CodeQL Action are used", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+      name: "CodeQL"
+      on:
+        push:
+          branches: [main]
+      jobs:
+        analyze:
+          steps:
+            - uses: github/codeql-action/init@v2
+            - uses: github/codeql-action/analyze@v3
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(
+    ...errorCodes(errors, [WorkflowErrors.InconsistentActionVersion]),
+  );
+});
+
+test("getWorkflowErrors() should not report a warning if the same versions of the CodeQL Action are used", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+      name: "CodeQL"
+      on:
+        push:
+          branches: [main]
+      jobs:
+        analyze:
+          steps:
+            - uses: github/codeql-action/init@v3
+            - uses: github/codeql-action/analyze@v3
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
+});
+
+test("getWorkflowErrors() should not report a warning involving versions of other actions", async (t) => {
+  const errors = await getWorkflowErrors(
+    yaml.load(`
+      name: "CodeQL"
+      on:
+        push:
+          branches: [main]
+      jobs:
+        analyze:
+          steps:
+            - uses: actions/checkout@v5
+            - uses: github/codeql-action/init@v3
+    `) as Workflow,
+    await getCodeQLForTesting(),
+  );
+
+  t.deepEqual(...errorCodes(errors, []));
+});
+
 test("getCategoryInputOrThrow returns category for simple workflow with category", (t) => {
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   t.is(

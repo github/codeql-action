@@ -1,5 +1,8 @@
 import test from "ava";
+import sinon from "sinon";
 
+import * as apiClient from "./api-client";
+import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import * as startProxyExports from "./start-proxy";
@@ -196,4 +199,69 @@ test("parseLanguage", async (t) => {
   t.deepEqual(parseLanguage("foo"), undefined);
   t.deepEqual(parseLanguage(" "), undefined);
   t.deepEqual(parseLanguage(""), undefined);
+});
+
+function mockGetReleaseByTag(assets?: Array<{ name: string; url?: string }>) {
+  const mockClient = sinon.stub(apiClient, "getApiClient");
+  const getReleaseByTag =
+    assets === undefined
+      ? sinon.stub().rejects()
+      : sinon.stub().resolves({
+          status: 200,
+          data: { assets },
+          headers: {},
+          url: "GET /repos/:owner/:repo/releases/tags/:tag",
+        });
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  mockClient.returns({
+    rest: {
+      repos: {
+        getReleaseByTag,
+      },
+    },
+  } as any);
+  return mockClient;
+}
+
+test("getDownloadUrl returns fallback when `getLinkedRelease` rejects", async (t) => {
+  mockGetReleaseByTag();
+
+  const info = await startProxyExports.getDownloadUrl(getRunnerLogger(true));
+
+  t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+  t.is(
+    info.url,
+    startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+  );
+});
+
+test("getDownloadUrl returns fallback when there's no matching release asset", async (t) => {
+  const testAssets = [[], [{ name: "foo" }]];
+
+  for (const assets of testAssets) {
+    const stub = mockGetReleaseByTag(assets);
+    const info = await startProxyExports.getDownloadUrl(getRunnerLogger(true));
+
+    t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+    t.is(
+      info.url,
+      startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+    );
+
+    stub.restore();
+  }
+});
+
+test("getDownloadUrl returns matching release asset", async (t) => {
+  const assets = [
+    { name: "foo", url: "other-url" },
+    { name: startProxyExports.getProxyPackage(), url: "url-we-want" },
+  ];
+  mockGetReleaseByTag(assets);
+
+  const info = await startProxyExports.getDownloadUrl(getRunnerLogger(true));
+
+  t.is(info.version, defaults.cliVersion);
+  t.is(info.url, "url-we-want");
 });

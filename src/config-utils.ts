@@ -316,16 +316,31 @@ export function getUnknownLanguagesError(languages: string[]): string {
 
 export async function getSupportedLanguageMap(
   codeql: CodeQL,
+  features: FeatureEnablement,
+  logger: Logger,
 ): Promise<Record<string, string>> {
-  const resolveResult = await codeql.betterResolveLanguages();
+  const resolveSupportedLanguagesUsingCli = await features.getValue(
+    Feature.ResolveSupportedLanguagesUsingCli,
+    codeql,
+  );
+  const resolveResult = await codeql.betterResolveLanguages({
+    filterToLanguagesWithQueries: resolveSupportedLanguagesUsingCli,
+  });
+  if (resolveSupportedLanguagesUsingCli) {
+    logger.debug(
+      `The CodeQL CLI supports the following languages: ${Object.keys(resolveResult.extractors).join(", ")}`,
+    );
+  }
   const supportedLanguages: Record<string, string> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
-    // Require the language to be a known language.
-    // This is a temporary workaround since we have extractors that are not
-    // supported languages, such as `csv`, `html`, `properties`, `xml`, and
-    // `yaml`. We should replace this with a more robust solution in the future.
-    if (KnownLanguage[extractor] !== undefined) {
+    // If the CLI supports resolving languages with default queries, use these
+    // as the set of supported languages. Otherwise, require the language to be
+    // a known language.
+    if (
+      resolveSupportedLanguagesUsingCli ||
+      KnownLanguage[extractor] !== undefined
+    ) {
       supportedLanguages[extractor] = extractor;
     }
   }
@@ -407,6 +422,7 @@ export async function getLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
@@ -417,7 +433,7 @@ export async function getLanguages(
     logger,
   );
 
-  const languageMap = await getSupportedLanguageMap(codeql);
+  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -564,6 +580,7 @@ export async function initActionState(
     languagesInput,
     repository,
     sourceRoot,
+    features,
     logger,
   );
 

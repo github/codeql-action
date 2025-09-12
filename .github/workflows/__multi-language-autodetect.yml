@@ -164,4 +164,5 @@ jobs:
             exit 1
           fi
     env:
+      CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
       CODEQL_ACTION_TEST_MODE: true

@@ -5,7 +5,7 @@ import { performance } from "perf_hooks";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
 
-import { isAnalyzingPullRequest } from "./actions-util";
+import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
 import {
   AnalysisConfig,
   AnalysisKind,
@@ -102,6 +102,10 @@ interface IncludeQueryFilter {
  * Format of the parsed config file.
  */
 export interface Config {
+  /**
+   * The version of the CodeQL Action that the configuration is for.
+   */
+  version: string;
   /**
    * Set of analysis kinds that are enabled.
    */
@@ -312,16 +316,31 @@ export function getUnknownLanguagesError(languages: string[]): string {
 
 export async function getSupportedLanguageMap(
   codeql: CodeQL,
+  features: FeatureEnablement,
+  logger: Logger,
 ): Promise<Record<string, string>> {
-  const resolveResult = await codeql.betterResolveLanguages();
+  const resolveSupportedLanguagesUsingCli = await features.getValue(
+    Feature.ResolveSupportedLanguagesUsingCli,
+    codeql,
+  );
+  const resolveResult = await codeql.betterResolveLanguages({
+    filterToLanguagesWithQueries: resolveSupportedLanguagesUsingCli,
+  });
+  if (resolveSupportedLanguagesUsingCli) {
+    logger.debug(
+      `The CodeQL CLI supports the following languages: ${Object.keys(resolveResult.extractors).join(", ")}`,
+    );
+  }
   const supportedLanguages: Record<string, string> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
-    // Require the language to be a known language.
-    // This is a temporary workaround since we have extractors that are not
-    // supported languages, such as `csv`, `html`, `properties`, `xml`, and
-    // `yaml`. We should replace this with a more robust solution in the future.
-    if (KnownLanguage[extractor] !== undefined) {
+    // If the CLI supports resolving languages with default queries, use these
+    // as the set of supported languages. Otherwise, require the language to be
+    // a known language.
+    if (
+      resolveSupportedLanguagesUsingCli ||
+      KnownLanguage[extractor] !== undefined
+    ) {
       supportedLanguages[extractor] = extractor;
     }
   }
@@ -403,6 +422,7 @@ export async function getLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
@@ -413,7 +433,7 @@ export async function getLanguages(
     logger,
   );
 
-  const languageMap = await getSupportedLanguageMap(codeql);
+  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -560,6 +580,7 @@ export async function initActionState(
     languagesInput,
     repository,
     sourceRoot,
+    features,
     logger,
   );
 
@@ -591,6 +612,7 @@ export async function initActionState(
   );
 
   return {
+    version: getActionVersion(),
     analysisKinds,
     languages,
     buildMode,
@@ -1184,9 +1206,6 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       exclude: { tags: "exclude-from-incremental" },
     });
   }
-
-  // Save the config so we can easily access it again in the future
-  await saveConfig(config, logger);
   return config;
 }
 
@@ -1284,7 +1303,7 @@ export function getPathToParsedConfigFile(tempDir: string): string {
 /**
  * Store the given config to the path returned from getPathToParsedConfigFile.
  */
-async function saveConfig(config: Config, logger: Logger) {
+export async function saveConfig(config: Config, logger: Logger) {
   const configString = JSON.stringify(config);
   const configFile = getPathToParsedConfigFile(config.tempDir);
   fs.mkdirSync(path.dirname(configFile), { recursive: true });
@@ -1308,7 +1327,21 @@ export async function getConfig(
   const configString = fs.readFileSync(configFile, "utf8");
   logger.debug("Loaded config:");
   logger.debug(configString);
-  return JSON.parse(configString) as Config;
+
+  const config = JSON.parse(configString) as Partial<Config>;
+
+  if (config.version === undefined) {
+    throw new ConfigurationError(
+      `Loaded configuration file, but it does not contain the expected 'version' field.`,
+    );
+  }
+  if (config.version !== getActionVersion()) {
+    throw new ConfigurationError(
+      `Loaded a configuration file for version '${config.version}', but running version '${getActionVersion()}'`,
+    );
+  }
+
+  return config as Config;
 }
 
 /**

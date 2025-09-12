@@ -72,6 +72,7 @@ function toCodedErrors(errors: {
 export const WorkflowErrors = toCodedErrors({
   MissingPushHook: `Please specify an on.push hook to analyze and see code scanning alerts from the default branch on the Security tab.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
+  InconsistentActionVersion: `Not all workflow steps that use \`github/codeql-action\` actions use the same version. Please ensure that all such steps use the same version to avoid compatibility issues.`,
 });
 
 /**
@@ -159,6 +160,29 @@ export async function getWorkflowErrors(
         }
       }
     }
+  }
+
+  // Check that all `github/codeql-action` steps use the same ref, i.e. the same version.
+  // Mixing different versions of the actions can lead to unpredictable behaviour.
+  const codeqlStepRefs: string[] = [];
+  for (const job of Object.values(doc?.jobs || {})) {
+    if (Array.isArray(job.steps)) {
+      for (const step of job.steps) {
+        if (step.uses?.startsWith("github/codeql-action/")) {
+          const parts = step.uses.split("@");
+          if (parts.length >= 2) {
+            codeqlStepRefs.push(parts[parts.length - 1]);
+          }
+        }
+      }
+    }
+  }
+
+  if (
+    codeqlStepRefs.length > 0 &&
+    !codeqlStepRefs.every((ref) => ref === codeqlStepRefs[0])
+  ) {
+    errors.push(WorkflowErrors.InconsistentActionVersion);
   }
 
   // If there is no push trigger, we will not be able to analyze the default branch.

@@ -199,6 +199,7 @@ test("load code quality config", async (t) => {
 
     // And the config we expect it to result in
     const expectedConfig: configUtils.Config = {
+      version: actionsUtil.getActionVersion(),
       analysisKinds: [AnalysisKind.CodeQuality],
       languages: [KnownLanguage.actions],
       buildMode: undefined,
@@ -228,7 +229,7 @@ test("load code quality config", async (t) => {
   });
 });
 
-test("loading config saves config", async (t) => {
+test("loading a saved config produces the same config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
@@ -258,6 +259,7 @@ test("loading config saves config", async (t) => {
         logger,
       }),
     );
+    await configUtils.saveConfig(config1, logger);
 
     // The saved config file should now exist
     t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
@@ -270,6 +272,57 @@ test("loading config saves config", async (t) => {
       const expectedConfig = JSON.parse(JSON.stringify(config1));
       t.deepEqual(expectedConfig, config2);
     }
+  });
+});
+
+test("loading config with version mismatch throws", async (t) => {
+  return await withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+
+    const codeql = createStubCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
+    });
+
+    // Sanity check the saved config file does not already exist
+    t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
+
+    // Sanity check that getConfig returns undefined before we have called initConfig
+    t.deepEqual(await configUtils.getConfig(tempDir, logger), undefined);
+
+    // Stub `getActionVersion` to return some nonsense.
+    const getActionVersionStub = sinon
+      .stub(actionsUtil, "getActionVersion")
+      .returns("does-not-exist");
+
+    const config = await configUtils.initConfig(
+      createTestInitConfigInputs({
+        languagesInput: "javascript,python",
+        tempDir,
+        codeql,
+        workspacePath: tempDir,
+        logger,
+      }),
+    );
+    // initConfig does not save the config, so we do it here.
+    await configUtils.saveConfig(config, logger);
+
+    // Restore `getActionVersion`.
+    getActionVersionStub.restore();
+
+    // The saved config file should now exist
+    t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
+
+    // Trying to read the configuration should now throw an error.
+    await t.throwsAsync(configUtils.getConfig(tempDir, logger), {
+      instanceOf: ConfigurationError,
+    });
   });
 });
 
@@ -389,6 +442,7 @@ test("load non-empty input", async (t) => {
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
+      version: actionsUtil.getActionVersion(),
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
@@ -1039,6 +1093,13 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedApiCall: true,
   },
   {
+    name: "unsupported languages from github api",
+    languagesInput: "",
+    languagesInRepository: ["html"],
+    expectedApiCall: true,
+    expectedError: configUtils.getNoLanguagesError(),
+  },
+  {
     name: "no languages",
     languagesInput: "",
     languagesInRepository: [],
@@ -1067,57 +1128,71 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedLanguages: ["javascript"],
   },
 ].forEach((args) => {
-  test(`getLanguages: ${args.name}`, async (t) => {
-    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
-    const stubExtractorEntry = {
-      extractor_root: "",
-    };
-    const codeQL = createStubCodeQL({
-      betterResolveLanguages: () =>
-        Promise.resolve({
-          aliases: {
-            "c#": KnownLanguage.csharp,
-            c: KnownLanguage.cpp,
-            kotlin: KnownLanguage.java,
-            typescript: KnownLanguage.javascript,
-          },
-          extractors: {
-            cpp: [stubExtractorEntry],
-            csharp: [stubExtractorEntry],
-            java: [stubExtractorEntry],
-            javascript: [stubExtractorEntry],
-            python: [stubExtractorEntry],
-          },
-        }),
+  for (const resolveSupportedLanguagesUsingCli of [true, false]) {
+    test(`getLanguages${resolveSupportedLanguagesUsingCli ? " (supported languages via CLI)" : ""}: ${args.name}`, async (t) => {
+      const features = createFeatures(
+        resolveSupportedLanguagesUsingCli
+          ? [Feature.ResolveSupportedLanguagesUsingCli]
+          : [],
+      );
+      const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
+      const stubExtractorEntry = {
+        extractor_root: "",
+      };
+      const codeQL = createStubCodeQL({
+        betterResolveLanguages: (options) =>
+          Promise.resolve({
+            aliases: {
+              "c#": KnownLanguage.csharp,
+              c: KnownLanguage.cpp,
+              kotlin: KnownLanguage.java,
+              typescript: KnownLanguage.javascript,
+            },
+            extractors: {
+              cpp: [stubExtractorEntry],
+              csharp: [stubExtractorEntry],
+              java: [stubExtractorEntry],
+              javascript: [stubExtractorEntry],
+              python: [stubExtractorEntry],
+              ...(options?.filterToLanguagesWithQueries
+                ? {}
+                : {
+                    html: [stubExtractorEntry],
+                  }),
+            },
+          }),
+      });
+
+      if (args.expectedLanguages) {
+        // happy path
+        const actualLanguages = await configUtils.getLanguages(
+          codeQL,
+          args.languagesInput,
+          mockRepositoryNwo,
+          ".",
+          features,
+          mockLogger,
+        );
+
+        t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
+      } else {
+        // there is an error
+        await t.throwsAsync(
+          async () =>
+            await configUtils.getLanguages(
+              codeQL,
+              args.languagesInput,
+              mockRepositoryNwo,
+              ".",
+              features,
+              mockLogger,
+            ),
+          { message: args.expectedError },
+        );
+      }
+      t.deepEqual(mockRequest.called, args.expectedApiCall);
     });
-
-    if (args.expectedLanguages) {
-      // happy path
-      const actualLanguages = await configUtils.getLanguages(
-        codeQL,
-        args.languagesInput,
-        mockRepositoryNwo,
-        ".",
-        mockLogger,
-      );
-
-      t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
-    } else {
-      // there is an error
-      await t.throwsAsync(
-        async () =>
-          await configUtils.getLanguages(
-            codeQL,
-            args.languagesInput,
-            mockRepositoryNwo,
-            ".",
-            mockLogger,
-          ),
-        { message: args.expectedError },
-      );
-    }
-    t.deepEqual(mockRequest.called, args.expectedApiCall);
-  });
+  }
 });
 
 for (const { displayName, language, feature } of [

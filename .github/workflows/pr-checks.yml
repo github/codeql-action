@@ -8,6 +8,10 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   unit-tests:
     name: Unit Tests
@@ -22,6 +26,10 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      - name: Prepare git (Windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v5
       
       - name: Set up Node.js

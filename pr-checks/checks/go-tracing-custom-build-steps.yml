@@ -9,11 +9,9 @@ steps:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
-    shell: bash
     run: go build main.go
   - uses: ./../action/analyze
-  - shell: bash
-    run: |
+  - run: |
       # Once we start running Bash 4.2 in all environments, we can replace the
       # `! -z` flag with the more elegant `-v` which confirms that the variable
       # is actually unset and not potentially set to a blank value.

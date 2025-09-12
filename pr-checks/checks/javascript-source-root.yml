@@ -4,7 +4,6 @@ versions: ["linked", "default", "nightly-latest"] # This feature is not compatib
 operatingSystems: ["ubuntu"]
 steps:
   - name: Move codeql-action
-    shell: bash
     run: |
       mkdir ../new-source-root
       mv * ../new-source-root
@@ -17,7 +16,6 @@ steps:
     with:
       skip-queries: true
   - name: Assert database exists
-    shell: bash
     run: |
       cd "$RUNNER_TEMP/codeql_databases"
       if [[ ! -d javascript ]]; then

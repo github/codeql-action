@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   javascript-source-root:
     strategy:
@@ -53,7 +56,6 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Move codeql-action
-        shell: bash
         run: |
           mkdir ../new-source-root
           mv * ../new-source-root
@@ -66,7 +68,6 @@ jobs:
         with:
           skip-queries: true
       - name: Assert database exists
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/codeql_databases"
           if [[ ! -d javascript ]]; then

@@ -9,7 +9,6 @@ steps:
       ram: 230
       threads: 1
   - name: Assert Results
-    shell: bash
     run: |
       if [ "${CODEQL_RAM}" != "230" ]; then
         echo "CODEQL_RAM is '${CODEQL_RAM}' instead of 230"

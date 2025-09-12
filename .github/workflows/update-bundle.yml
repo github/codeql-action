@@ -13,6 +13,10 @@ on:
     # to filter pre-release attribute.
     types: [published]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   update-bundle:
     if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')

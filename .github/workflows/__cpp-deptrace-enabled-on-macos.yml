@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   cpp-deptrace-enabled-on-macos:
     strategy:
@@ -51,7 +54,6 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Test setup
-        shell: bash
         run: |
           cp -a ../action/tests/cpp-autobuild autobuild-dir
       - uses: ./../action/init
@@ -63,8 +65,7 @@ jobs:
           working-directory: autobuild-dir
         env:
           CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
-      - shell: bash
-        run: |
+      - run: |
           if ! ls /usr/bin/errno; then
             echo "As expected, CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES is a no-op on macOS"
           else

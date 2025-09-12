@@ -10,7 +10,6 @@ steps:
       config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
       analysis-kinds: code-scanning,code-quality
   - name: Build code
-    shell: bash
     run: ./build.sh
   # Generate some SARIF we can upload with the upload-sarif step
   - uses: ./../action/analyze

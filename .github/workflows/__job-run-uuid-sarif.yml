@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   job-run-uuid-sarif:
     strategy:
@@ -63,7 +66,6 @@ jobs:
           path: ${{ runner.temp }}/results/javascript.sarif
           retention-days: 7
       - name: Check results
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/results"
           actual=$(jq -r '.runs[0].properties.jobRunUuid' javascript.sarif)

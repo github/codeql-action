@@ -5,7 +5,6 @@ installGo: true
 steps:
   # This ensures we don't accidentally use the original checkout for any part of the test.
   - name: Delete original checkout
-    shell: bash
     run: |
       # delete the original checkout so we don't accidentally use it.
       # Actions does not support deleting the current working directory, so we
@@ -26,7 +25,6 @@ steps:
       source-root: x/y/z/some-path/tests/multi-language-repo
 
   - name: Build code
-    shell: bash
     working-directory: x/y/z/some-path/tests/multi-language-repo
     run: |
       ./build.sh
@@ -38,7 +36,6 @@ steps:
       sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
 
   - name: Verify SARIF after upload
-    shell: bash
     run: |
       EXPECTED_COMMIT_OID="474bbf07f9247ffe1856c6a0f94aeeb10e7afee6"
       EXPECTED_REF="v1.1.0"

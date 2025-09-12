@@ -22,6 +22,10 @@ on:
     paths:
       - .github/workflows/prepare-release.yml
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   prepare:
     name: "Prepare release"

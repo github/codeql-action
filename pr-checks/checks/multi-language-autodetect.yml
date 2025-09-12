@@ -6,7 +6,6 @@ env:
 installGo: true
 steps:
   - name: Use Xcode 16
-    shell: bash
     if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
     run: sudo xcode-select -s "/Applications/Xcode_16.app"
 
@@ -18,7 +17,6 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
   - name: Build code
-    shell: bash
     run: ./build.sh
 
   - uses: ./../action/analyze
@@ -27,7 +25,6 @@ steps:
       upload-database: false
 
   - name: Check language autodetect for all languages excluding Swift
-    shell: bash
     run: |
       CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
       if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
@@ -67,7 +64,6 @@ steps:
 
   - name: Check language autodetect for Swift on macOS
     if: runner.os == 'macOS'
-    shell: bash
     run: |
       SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
       if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then

@@ -8,6 +8,7 @@ import { OctokitResponse } from "@octokit/types";
 import * as jsonschema from "jsonschema";
 
 import * as actionsUtil from "./actions-util";
+import * as analyses from "./analyses";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
@@ -345,19 +346,13 @@ function getAutomationID(
   return api.computeAutomationID(analysis_key, environment);
 }
 
-// Enumerates API endpoints that accept SARIF files.
-export enum SARIF_UPLOAD_ENDPOINT {
-  CODE_SCANNING = "PUT /repos/:owner/:repo/code-scanning/analysis",
-  CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
-}
-
 // Upload the given payload.
 // If the request fails then this will retry a small number of times.
 async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
-  target: SARIF_UPLOAD_ENDPOINT,
+  target: analyses.SARIF_UPLOAD_ENDPOINT,
 ): Promise<string> {
   logger.info("Uploading results");
 
@@ -616,31 +611,6 @@ export function buildPayload(
   return payloadObj;
 }
 
-// Represents configurations for different services that we can upload SARIF to.
-export interface UploadTarget {
-  name: string;
-  target: SARIF_UPLOAD_ENDPOINT;
-  sarifPredicate: (name: string) => boolean;
-  sentinelPrefix: string;
-}
-
-// Represents the Code Scanning upload target.
-export const CodeScanningTarget: UploadTarget = {
-  name: "code scanning",
-  target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING,
-  sarifPredicate: (name) =>
-    name.endsWith(".sarif") && !CodeQualityTarget.sarifPredicate(name),
-  sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
-};
-
-// Represents the Code Quality upload target.
-export const CodeQualityTarget: UploadTarget = {
-  name: "code quality",
-  target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY,
-  sarifPredicate: (name) => name.endsWith(".quality.sarif"),
-  sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
-};
-
 /**
  * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
  * to.
@@ -651,7 +621,7 @@ export async function uploadFiles(
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
-  uploadTarget: UploadTarget,
+  uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
   const sarifPaths = getSarifFilePaths(
     inputSarifPath,
@@ -677,7 +647,7 @@ export async function uploadSpecifiedFiles(
   category: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
-  uploadTarget: UploadTarget = CodeScanningTarget,
+  uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
   logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
@@ -726,6 +696,12 @@ export async function uploadSpecifiedFiles(
   validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
   logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
+
+  const dumpDir = process.env[EnvVar.SARIF_DUMP_DIR];
+  if (dumpDir) {
+    dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
+  }
+
   logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = url.pathToFileURL(checkoutPath).href;
@@ -770,6 +746,30 @@ export async function uploadSpecifiedFiles(
     },
     sarifID,
   };
+}
+
+/**
+ * Dumps the given processed SARIF file contents to `outputDir`.
+ */
+function dumpSarifFile(
+  sarifPayload: string,
+  outputDir: string,
+  logger: Logger,
+  uploadTarget: analyses.AnalysisConfig,
+) {
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  } else if (!fs.lstatSync(outputDir).isDirectory()) {
+    throw new ConfigurationError(
+      `The path specified by the ${EnvVar.SARIF_DUMP_DIR} environment variable exists and is not a directory: ${outputDir}`,
+    );
+  }
+  const outputFile = path.resolve(
+    outputDir,
+    `upload${uploadTarget.sarifExtension}`,
+  );
+  logger.info(`Dumping processed SARIF file to ${outputFile}`);
+  fs.writeFileSync(outputFile, sarifPayload);
 }
 
 const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;
@@ -943,7 +943,7 @@ function handleProcessingResultForUnsuccessfulExecution(
 
 export function validateUniqueCategory(
   sarif: SarifFile,
-  sentinelPrefix: string = CodeScanningTarget.sentinelPrefix,
+  sentinelPrefix: string,
 ): void {
   // duplicate categories are allowed in the same sarif file
   // but not across multiple sarif files

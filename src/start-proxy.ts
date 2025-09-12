@@ -1,8 +1,15 @@
 import * as core from "@actions/core";
 
+import { getApiClient } from "./api-client";
+import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
-import { ConfigurationError } from "./util";
+import { ConfigurationError, getErrorMessage, isDefined } from "./util";
+
+export const UPDATEJOB_PROXY = "update-job-proxy";
+export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
+export const UPDATEJOB_PROXY_URL_PREFIX =
+  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 
 export type Credential = {
   type: string;
@@ -64,15 +71,6 @@ const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string[]>> = {
   rust: ["cargo_registry"],
   go: ["goproxy_server", "git_source"],
 } as const;
-
-/**
- * Checks that `value` is neither `undefined` nor `null`.
- * @param value The value to test.
- * @returns Narrows the type of `value` to exclude `undefined` and `null`.
- */
-function isDefined<T>(value: T | null | undefined): value is T {
-  return value !== undefined && value !== null;
-}
 
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
@@ -174,4 +172,88 @@ export function getCredentials(
     });
   }
   return out;
+}
+
+/**
+ * Gets the name of the proxy release asset for the current platform.
+ */
+export function getProxyPackage(): string {
+  const platform =
+    process.platform === "win32"
+      ? "win64"
+      : process.platform === "darwin"
+        ? "osx64"
+        : "linux64";
+  return `${UPDATEJOB_PROXY}-${platform}.tar.gz`;
+}
+
+/**
+ * Gets the fallback URL for downloading the proxy release asset.
+ *
+ * @param proxyPackage The asset name.
+ * @returns The full URL to download the specified asset from the fallback release.
+ */
+export function getFallbackUrl(proxyPackage: string): string {
+  return `${UPDATEJOB_PROXY_URL_PREFIX}${proxyPackage}`;
+}
+
+/**
+ * Uses the GitHub API to obtain information about the CodeQL CLI bundle release
+ * that is pointed at by `defaults.json`.
+ *
+ * @returns The response from the GitHub API.
+ */
+export async function getLinkedRelease() {
+  return getApiClient().rest.repos.getReleaseByTag({
+    owner: "github",
+    repo: "codeql-action",
+    tag: defaults.bundleVersion,
+  });
+}
+
+/**
+ * Determines the URL of the proxy release asset that we should download if its not
+ * already in the toolcache, and its version.
+ *
+ * @param logger The logger to use.
+ * @returns Returns the download URL and version of the proxy package we plan to use.
+ */
+export async function getDownloadUrl(
+  logger: Logger,
+): Promise<{ url: string; version: string }> {
+  const proxyPackage = getProxyPackage();
+
+  try {
+    // Try to retrieve information about the CLI bundle release pointed at by `defaults.json`.
+    const cliRelease = await getLinkedRelease();
+
+    // Search the release's assets to find the one we are looking for.
+    for (const asset of cliRelease.data.assets) {
+      if (asset.name === proxyPackage) {
+        logger.info(
+          `Found '${proxyPackage}' in release '${defaults.bundleVersion}' at '${asset.url}'`,
+        );
+        return {
+          url: asset.url,
+          // The `update-job-proxy` doesn't have a version as such. Since we now bundle it
+          // with CodeQL CLI bundle releases, we use the corresponding CLI version to
+          // differentiate between (potentially) different versions of `update-job-proxy`.
+          version: defaults.cliVersion,
+        };
+      }
+    }
+  } catch (ex) {
+    logger.warning(
+      `Failed to retrieve information about the linked release: ${getErrorMessage(ex)}`,
+    );
+  }
+
+  // Fallback to the hard-coded URL.
+  logger.info(
+    `Did not find '${proxyPackage}' in the linked release, falling back to hard-coded version.`,
+  );
+  return {
+    url: getFallbackUrl(proxyPackage),
+    version: UPDATEJOB_PROXY_VERSION,
+  };
 }

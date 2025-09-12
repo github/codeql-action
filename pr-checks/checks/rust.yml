@@ -19,7 +19,6 @@ steps:
     with:
       upload-database: false
   - name: Check database
-    shell: bash
     run: |
       RUST_DB="${{ fromJson(steps.analysis.outputs.db-locations).rust }}"
       if [[ ! -d "$RUST_DB" ]]; then

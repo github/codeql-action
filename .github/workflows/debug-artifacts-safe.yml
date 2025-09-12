@@ -16,6 +16,11 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   upload-artifacts:
     strategy:
@@ -54,7 +59,6 @@ jobs:
           # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
           languages: cpp,csharp,go,java,javascript,python,ruby
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
@@ -69,7 +73,6 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v5
       - name: Check expected artifacts exist
-        shell: bash
         run: |
           VERSIONS="stable-v2.20.3 default linked nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"

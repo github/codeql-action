@@ -240,7 +240,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         })
 
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
-    with open(raw_file, 'w') as output_stream:
+    with open(raw_file, 'w', newline='\n') as output_stream:
         writeHeader(output_stream)
         yaml.dump({
             'name': f"PR Check - {checkSpecification['name']}",
@@ -263,13 +263,18 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                     'inputs': workflowInputs
                 }
             },
+            'defaults': {
+                'run': {
+                    'shell': 'bash',
+                },
+            },
             'jobs': {
                 checkName: checkJob
             }
         }, output_stream)
 
     with open(raw_file, 'r') as input_stream:
-        with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
+        with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w', newline='\n') as output_stream:
             content = input_stream.read()
             output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
     os.remove(raw_file)
@@ -323,7 +328,7 @@ for collection_name in collections:
         }, output_stream)
 
     with open(raw_file, 'r') as input_stream:
-        with open(this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml", 'w') as output_stream:
+        with open(this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml", 'w', newline='\n') as output_stream:
             content = input_stream.read()
             output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
     os.remove(raw_file)

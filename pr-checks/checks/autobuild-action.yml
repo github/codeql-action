@@ -17,7 +17,6 @@ steps:
       CORECLR_PROFILER_PATH_64: ""
   - uses: ./../action/analyze
   - name: Check database
-    shell: bash
     run: |
       cd "$RUNNER_TEMP/codeql_databases"
       if [[ ! -d csharp ]]; then

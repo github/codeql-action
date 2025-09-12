@@ -34,6 +34,9 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
 jobs:
   split-workflow:
     strategy:
@@ -80,7 +83,6 @@ jobs:
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         with:
@@ -89,7 +91,6 @@ jobs:
           upload-database: false
 
       - name: Assert No Results
-        shell: bash
         run: |
           if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
             echo "Expected results directory to be empty after skipping query execution!"
@@ -100,7 +101,6 @@ jobs:
           output: ${{ runner.temp }}/results
           upload-database: false
       - name: Assert Results
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/results"
           # We should have 4 hits from these rules

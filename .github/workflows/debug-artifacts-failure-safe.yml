@@ -17,6 +17,11 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   upload-artifacts:
     strategy:
@@ -55,7 +60,6 @@ jobs:
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
@@ -75,7 +79,6 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v5
       - name: Check expected artifacts exist
-        shell: bash
         run: |
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do

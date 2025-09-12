@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   swift-autobuild:
     strategy:
@@ -55,7 +58,6 @@ jobs:
           build-mode: autobuild
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Check working directory
-        shell: bash
         run: pwd
       - uses: ./../action/autobuild
         timeout-minutes: 30
@@ -64,7 +66,6 @@ jobs:
         with:
           upload-database: false
       - name: Check database
-        shell: bash
         run: |
           SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
           if [[ ! -d "$SWIFT_DB" ]]; then

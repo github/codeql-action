@@ -9,13 +9,10 @@ steps:
     with:
       ruby-version: 2.6
   - name: Install Code Scanning integration
-    shell: bash
     run: bundle add code-scanning-rubocop --version 0.3.0 --skip-install
   - name: Install dependencies
-    shell: bash
     run: bundle install
   - name: RuboCop run
-    shell: bash
     run: |
       bash -c "
         bundle exec rubocop --require code_scanning --format CodeScanning::SarifFormatter -o rubocop.sarif

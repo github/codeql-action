@@ -4,7 +4,6 @@ versions: ["linked"]
 operatingSystems: ["ubuntu"]
 steps:
   - name: Test setup
-    shell: bash
     run: |
       # Make sure that Gradle build succeeds in autobuild-dir ...
       cp -a ../action/tests/java-repo autobuild-dir
@@ -19,7 +18,6 @@ steps:
       working-directory: autobuild-dir
   - uses: ./../action/analyze
   - name: Check database
-    shell: bash
     run: |
       cd "$RUNNER_TEMP/codeql_databases"
       if [[ ! -d java ]]; then

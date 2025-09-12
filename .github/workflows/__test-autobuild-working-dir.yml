@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   test-autobuild-working-dir:
     strategy:
@@ -49,7 +52,6 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Test setup
-        shell: bash
         run: |
           # Make sure that Gradle build succeeds in autobuild-dir ...
           cp -a ../action/tests/java-repo autobuild-dir
@@ -64,7 +66,6 @@ jobs:
           working-directory: autobuild-dir
       - uses: ./../action/analyze
       - name: Check database
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/codeql_databases"
           if [[ ! -d java ]]; then

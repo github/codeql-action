@@ -24,6 +24,9 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   init-with-registries:
     strategy:
@@ -78,7 +81,6 @@ jobs:
               token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Verify packages installed
-        shell: bash
         run: |
           PRIVATE_PACK="$HOME/.codeql/packages/codeql-testing/private-pack"
           CODEQL_PACK1="$HOME/.codeql/packages/codeql-testing/codeql-pack1"
@@ -100,7 +102,6 @@ jobs:
           fi
 
       - name: Verify qlconfig.yml file was created
-        shell: bash
         run: |
           QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
           echo "Expected qlconfig.yml file to be created at $QLCONFIG_PATH"
@@ -115,7 +116,6 @@ jobs:
       - name: Verify contents of qlconfig.yml
     # yq is not available on windows
         if: runner.os != 'Windows'
-        shell: bash
         run: |
           QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
           cat $QLCONFIG_PATH | yq -e '.registries[] | select(.url == "https://ghcr.io/v2/") | select(.packages == "*/*")'

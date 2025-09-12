@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   publish:
     runs-on: ubuntu-latest

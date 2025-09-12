@@ -750,9 +750,11 @@ async function maybeUploadSpecifiedFiles(
     validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
     logger.debug(`Serializing SARIF for upload`);
     const sarifPayload = JSON.stringify(sarif);
+
     if (dumpDir) {
       dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
     }
+
     if (!upload) {
       logger.info(
         `Skipping upload of ${uploadTarget.name} results because upload kind is "${uploadKind}"`,
@@ -819,7 +821,7 @@ function dumpSarifFile(
     fs.mkdirSync(outputDir, { recursive: true });
   } else if (!fs.lstatSync(outputDir).isDirectory()) {
     throw new ConfigurationError(
-      `The path specified by the CODEQL_ACTION_SARIF_DUMP_DIR environment variable exists and is not a directory: ${outputDir}`,
+      `The path specified by the ${EnvVar.SARIF_DUMP_DIR} environment variable exists and is not a directory: ${outputDir}`,
     );
   }
   const outputFile = path.resolve(

@@ -224,7 +224,7 @@ function mockGetReleaseByTag(assets?: Array<{ name: string; url?: string }>) {
   return mockClient;
 }
 
-test("getDownloadUrl returns fallback when `getCurrentRelease` rejects", async (t) => {
+test("getDownloadUrl returns fallback when `getLinkedRelease` rejects", async (t) => {
   mockGetReleaseByTag();
 
   const info = await startProxyExports.getDownloadUrl(getRunnerLogger(true));

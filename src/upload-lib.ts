@@ -623,18 +623,44 @@ export async function uploadFiles(
   logger: Logger,
   uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
+  return maybeUploadFiles(
+    inputSarifPath,
+    checkoutPath,
+    category,
+    features,
+    logger,
+    uploadTarget,
+    "always",
+  ) as Promise<UploadResult>;
+}
+
+/**
+ * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
+ * to. It will only upload if `uploadKind === "always"`, and return `undefined` otherwise. However
+ * if `CODEQL_ACTION_SARIF_DUMP_DIR` is set, it will unconditionally process the input sarif files.
+ */
+export async function maybeUploadFiles(
+  inputSarifPath: string,
+  checkoutPath: string,
+  category: string | undefined,
+  features: FeatureEnablement,
+  logger: Logger,
+  uploadTarget: analyses.AnalysisConfig,
+  uploadKind: actionsUtil.UploadKind,
+): Promise<UploadResult | undefined> {
   const sarifPaths = getSarifFilePaths(
     inputSarifPath,
     uploadTarget.sarifPredicate,
   );
 
-  return uploadSpecifiedFiles(
+  return maybeUploadSpecifiedFiles(
     sarifPaths,
     checkoutPath,
     category,
     features,
     logger,
     uploadTarget,
+    uploadKind,
   );
 }
 
@@ -649,103 +675,137 @@ export async function uploadSpecifiedFiles(
   logger: Logger,
   uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
-  logger.startGroup(`Uploading ${uploadTarget.name} results`);
-  logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
+  return maybeUploadSpecifiedFiles(
+    sarifPaths,
+    checkoutPath,
+    category,
+    features,
+    logger,
+    uploadTarget,
+    "always",
+  ) as Promise<UploadResult>;
+}
 
-  const gitHubVersion = await getGitHubVersion();
+async function maybeUploadSpecifiedFiles(
+  sarifPaths: string[],
+  checkoutPath: string,
+  category: string | undefined,
+  features: FeatureEnablement,
+  logger: Logger,
+  uploadTarget: analyses.AnalysisConfig,
+  uploadKind: actionsUtil.UploadKind,
+): Promise<UploadResult | undefined> {
+  const dumpDir = process.env[EnvVar.SARIF_DUMP_DIR];
+  const upload = uploadKind === "always";
+  if (!upload && !dumpDir) {
+    logger.info(`Skipping upload of ${uploadTarget.name} results`);
+    return undefined;
+  }
 
-  let sarif: SarifFile;
+  logger.startGroup(`Processing ${uploadTarget.name} results`);
+  try {
+    logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
 
-  if (sarifPaths.length > 1) {
-    // Validate that the files we were asked to upload are all valid SARIF files
-    for (const sarifPath of sarifPaths) {
-      const parsedSarif = readSarifFile(sarifPath);
-      validateSarifFileSchema(parsedSarif, sarifPath, logger);
+    const gitHubVersion = await getGitHubVersion();
+
+    let sarif: SarifFile;
+
+    if (sarifPaths.length > 1) {
+      // Validate that the files we were asked to upload are all valid SARIF files
+      for (const sarifPath of sarifPaths) {
+        const parsedSarif = readSarifFile(sarifPath);
+        validateSarifFileSchema(parsedSarif, sarifPath, logger);
+      }
+
+      sarif = await combineSarifFilesUsingCLI(
+        sarifPaths,
+        gitHubVersion,
+        features,
+        logger,
+      );
+    } else {
+      const sarifPath = sarifPaths[0];
+      sarif = readSarifFile(sarifPath);
+      validateSarifFileSchema(sarif, sarifPath, logger);
+
+      // Validate that there are no runs for the same category
+      await throwIfCombineSarifFilesDisabled([sarif], gitHubVersion);
     }
 
-    sarif = await combineSarifFilesUsingCLI(
-      sarifPaths,
-      gitHubVersion,
-      features,
-      logger,
+    sarif = filterAlertsByDiffRange(logger, sarif);
+    sarif = await fingerprints.addFingerprints(sarif, checkoutPath, logger);
+
+    const analysisKey = await api.getAnalysisKey();
+    const environment = actionsUtil.getRequiredInput("matrix");
+    sarif = populateRunAutomationDetails(
+      sarif,
+      category,
+      analysisKey,
+      environment,
     );
-  } else {
-    const sarifPath = sarifPaths[0];
-    sarif = readSarifFile(sarifPath);
-    validateSarifFileSchema(sarif, sarifPath, logger);
 
-    // Validate that there are no runs for the same category
-    await throwIfCombineSarifFilesDisabled([sarif], gitHubVersion);
+    const toolNames = util.getToolNames(sarif);
+
+    logger.debug(`Validating that each SARIF run has a unique category`);
+    validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
+    logger.debug(`Serializing SARIF for upload`);
+    const sarifPayload = JSON.stringify(sarif);
+
+    if (dumpDir) {
+      dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
+    }
+
+    if (!upload) {
+      logger.info(
+        `Skipping upload of ${uploadTarget.name} results because upload kind is "${uploadKind}"`,
+      );
+      return undefined;
+    }
+    logger.debug(`Compressing serialized SARIF`);
+    const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
+    const checkoutURI = url.pathToFileURL(checkoutPath).href;
+
+    const payload = buildPayload(
+      await gitUtils.getCommitOid(checkoutPath),
+      await gitUtils.getRef(),
+      analysisKey,
+      util.getRequiredEnvParam("GITHUB_WORKFLOW"),
+      zippedSarif,
+      actionsUtil.getWorkflowRunID(),
+      actionsUtil.getWorkflowRunAttempt(),
+      checkoutURI,
+      environment,
+      toolNames,
+      await gitUtils.determineBaseBranchHeadCommitOid(),
+    );
+
+    // Log some useful debug info about the info
+    const rawUploadSizeBytes = sarifPayload.length;
+    logger.debug(`Raw upload size: ${rawUploadSizeBytes} bytes`);
+    const zippedUploadSizeBytes = zippedSarif.length;
+    logger.debug(`Base64 zipped upload size: ${zippedUploadSizeBytes} bytes`);
+    const numResultInSarif = countResultsInSarif(sarifPayload);
+    logger.debug(`Number of results in upload: ${numResultInSarif}`);
+
+    // Make the upload
+    const sarifID = await uploadPayload(
+      payload,
+      getRepositoryNwo(),
+      logger,
+      uploadTarget.target,
+    );
+
+    return {
+      statusReport: {
+        raw_upload_size_bytes: rawUploadSizeBytes,
+        zipped_upload_size_bytes: zippedUploadSizeBytes,
+        num_results_in_sarif: numResultInSarif,
+      },
+      sarifID,
+    };
+  } finally {
+    logger.endGroup();
   }
-
-  sarif = filterAlertsByDiffRange(logger, sarif);
-  sarif = await fingerprints.addFingerprints(sarif, checkoutPath, logger);
-
-  const analysisKey = await api.getAnalysisKey();
-  const environment = actionsUtil.getRequiredInput("matrix");
-  sarif = populateRunAutomationDetails(
-    sarif,
-    category,
-    analysisKey,
-    environment,
-  );
-
-  const toolNames = util.getToolNames(sarif);
-
-  logger.debug(`Validating that each SARIF run has a unique category`);
-  validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
-  logger.debug(`Serializing SARIF for upload`);
-  const sarifPayload = JSON.stringify(sarif);
-
-  const dumpDir = process.env[EnvVar.SARIF_DUMP_DIR];
-  if (dumpDir) {
-    dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
-  }
-
-  logger.debug(`Compressing serialized SARIF`);
-  const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
-  const checkoutURI = url.pathToFileURL(checkoutPath).href;
-
-  const payload = buildPayload(
-    await gitUtils.getCommitOid(checkoutPath),
-    await gitUtils.getRef(),
-    analysisKey,
-    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    zippedSarif,
-    actionsUtil.getWorkflowRunID(),
-    actionsUtil.getWorkflowRunAttempt(),
-    checkoutURI,
-    environment,
-    toolNames,
-    await gitUtils.determineBaseBranchHeadCommitOid(),
-  );
-
-  // Log some useful debug info about the info
-  const rawUploadSizeBytes = sarifPayload.length;
-  logger.debug(`Raw upload size: ${rawUploadSizeBytes} bytes`);
-  const zippedUploadSizeBytes = zippedSarif.length;
-  logger.debug(`Base64 zipped upload size: ${zippedUploadSizeBytes} bytes`);
-  const numResultInSarif = countResultsInSarif(sarifPayload);
-  logger.debug(`Number of results in upload: ${numResultInSarif}`);
-
-  // Make the upload
-  const sarifID = await uploadPayload(
-    payload,
-    getRepositoryNwo(),
-    logger,
-    uploadTarget.target,
-  );
-
-  logger.endGroup();
-
-  return {
-    statusReport: {
-      raw_upload_size_bytes: rawUploadSizeBytes,
-      zipped_upload_size_bytes: zippedUploadSizeBytes,
-      num_results_in_sarif: numResultInSarif,
-    },
-    sarifID,
-  };
 }
 
 /**

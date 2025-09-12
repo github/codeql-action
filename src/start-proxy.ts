@@ -203,7 +203,7 @@ export function getFallbackUrl(proxyPackage: string): string {
  *
  * @returns The response from the GitHub API.
  */
-export async function getCurrentRelease() {
+export async function getLinkedRelease() {
   return getApiClient().rest.repos.getReleaseByTag({
     owner: "github",
     repo: "codeql-action",
@@ -225,7 +225,7 @@ export async function getDownloadUrl(
 
   try {
     // Try to retrieve information about the CLI bundle release pointed at by `defaults.json`.
-    const cliRelease = await getCurrentRelease();
+    const cliRelease = await getLinkedRelease();
 
     // Search the release's assets to find the one we are looking for.
     for (const asset of cliRelease.data.assets) {
@@ -244,13 +244,13 @@ export async function getDownloadUrl(
     }
   } catch (ex) {
     logger.warning(
-      `Failed to retrieve information about the current release: ${getErrorMessage(ex)}`,
+      `Failed to retrieve information about the linked release: ${getErrorMessage(ex)}`,
     );
   }
 
   // Fallback to the hard-coded URL.
   logger.info(
-    `Did not find '${proxyPackage}' in current release, falling back to hard-coded version.`,
+    `Did not find '${proxyPackage}' in the linked release, falling back to hard-coded version.`,
   );
   return {
     url: getFallbackUrl(proxyPackage),

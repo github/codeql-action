@@ -131,3 +131,26 @@ jobs:
       uses: ./analyze
       with:
         category: "/language:actions"
+
+  analyze-python:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Initialize CodeQL
+        uses: ./init
+        with:
+          languages: python
+          config-file: ./.github/codeql/codeql-actions-config.yml
+      - name: Perform CodeQL Analysis
+        uses: ./analyze
+        with:
+          category: "/language:python"

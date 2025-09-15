@@ -64,6 +64,10 @@ jobs:
           - os: macos-latest
             version: stable-v2.21.4
           - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: macos-latest
+            version: stable-v2.22.4
+          - os: ubuntu-latest
             version: default
           - os: macos-latest
             version: default

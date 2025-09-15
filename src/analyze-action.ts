@@ -330,22 +330,27 @@ async function run() {
     }
     core.setOutput("db-locations", dbLocations);
     core.setOutput("sarif-output", path.resolve(outputDir));
-    const uploadInput = actionsUtil.getOptionalInput("upload");
-    if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
+    const uploadInput = actionsUtil.getUploadValue(
+      actionsUtil.getOptionalInput("upload"),
+    );
+    if (runStats) {
       if (isCodeScanningEnabled(config)) {
-        uploadResult = await uploadLib.uploadFiles(
+        uploadResult = await uploadLib.maybeUploadFiles(
           outputDir,
           actionsUtil.getRequiredInput("checkout_path"),
           actionsUtil.getOptionalInput("category"),
           features,
           logger,
           analyses.CodeScanning,
+          uploadInput,
         );
-        core.setOutput("sarif-id", uploadResult.sarifID);
+        if (uploadResult) {
+          core.setOutput("sarif-id", uploadResult.sarifID);
+        }
       }
 
       if (isCodeQualityEnabled(config)) {
-        const qualityUploadResult = await uploadLib.uploadFiles(
+        const qualityUploadResult = await uploadLib.maybeUploadFiles(
           outputDir,
           actionsUtil.getRequiredInput("checkout_path"),
           actionsUtil.fixCodeQualityCategory(
@@ -355,11 +360,14 @@ async function run() {
           features,
           logger,
           analyses.CodeQuality,
+          uploadInput,
         );
-        core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
+        if (qualityUploadResult) {
+          core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
+        }
       }
     } else {
-      logger.info("Not uploading results");
+      logger.info("No query status report, skipping upload");
     }
 
     // Possibly upload the overlay-base database to actions cache.

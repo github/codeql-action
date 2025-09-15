@@ -95,7 +95,7 @@ jobs:
       id: init
       with:
         languages: javascript
-        config-file: ./.github/codeql/codeql-config.yml
+        config-file: ./.github/codeql/codeql-config-javascript.yml
         tools: ${{ matrix.tools }}
     # confirm steps.init.outputs.codeql-path points to the codeql binary
     - name: Print CodeQL Version
@@ -108,11 +108,16 @@ jobs:
       with:
         category: "/language:javascript"
 
-
-  analyze-actions:
+  analyze-other:
     runs-on: ubuntu-latest
 
     strategy:
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: python
+            build-mode: none
       fail-fast: false
 
     permissions:
@@ -125,9 +130,12 @@ jobs:
     - name: Initialize CodeQL
       uses: ./init
       with:
-        languages: actions
-        config-file: ./.github/codeql/codeql-actions-config.yml
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        config: >
+          queries:
+            - uses: security-and-quality
     - name: Perform CodeQL Analysis
       uses: ./analyze
       with:
-        category: "/language:actions"
+        category: "/language:${{ matrix.language }}"

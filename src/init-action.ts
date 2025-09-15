@@ -608,13 +608,17 @@ async function run() {
 
     // If the feature flag to minimize Java dependency jars is enabled, and we are doing a Java
     // `build-mode: none` analysis (i.e. the flag is relevant), then set the environment variable
-    // that enables the corresponding option in the Java extractor.
+    // that enables the corresponding option in the Java extractor. We also only do this if
+    // dependency caching is enabled, since the option is intended to reduce the size of
+    // dependency caches, but the jar-rewriting does have a performance cost that we'd like to avoid
+    // when caching is not being used.
     if (process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]) {
       logger.debug(
         `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
       );
     } else if (
       minimizeJavaJars &&
+      config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
       config.languages.includes(KnownLanguage.java)
     ) {

@@ -1163,14 +1163,18 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
           }),
       });
 
+      const languageMap = await configUtils.getSupportedLanguageMap(
+        codeQL,
+        features,
+        mockLogger,
+      );
       if (args.expectedLanguages) {
         // happy path
         const actualLanguages = await configUtils.getLanguages(
-          codeQL,
+          languageMap,
           args.languagesInput,
           mockRepositoryNwo,
           ".",
-          features,
           mockLogger,
         );
 
@@ -1180,11 +1184,10 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
         await t.throwsAsync(
           async () =>
             await configUtils.getLanguages(
-              codeQL,
+              languageMap,
               args.languagesInput,
               mockRepositoryNwo,
               ".",
-              features,
               mockLogger,
             ),
           { message: args.expectedError },

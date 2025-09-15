@@ -443,11 +443,10 @@ export async function getRawLanguagesInRepo(
  * then throw an error.
  */
 export async function getLanguages(
-  codeql: CodeQL,
+  languageMap: Record<string, string>,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
@@ -457,8 +456,6 @@ export async function getLanguages(
     sourceRoot,
     logger,
   );
-
-  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -600,12 +597,12 @@ export async function initActionState(
     analysisKinds.push(AnalysisKind.CodeQuality);
   }
 
+  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
   const languages = await getLanguages(
-    codeql,
+    languageMap,
     languagesInput,
     repository,
     sourceRoot,
-    features,
     logger,
   );
 

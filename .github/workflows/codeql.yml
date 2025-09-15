@@ -112,13 +112,13 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - language: actions
             build-mode: none
           - language: python
             build-mode: none
-      fail-fast: false
 
     permissions:
       contents: read

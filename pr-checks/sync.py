@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 import ruamel.yaml
-from ruamel.yaml.scalarstring import FoldedScalarString, SingleQuotedScalarString
+from ruamel.yaml.scalarstring import SingleQuotedScalarString
 import pathlib
-import textwrap
 import os
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
@@ -18,6 +17,8 @@ defaultTestVersions = [
     "stable-v2.20.7",
     # The last CodeQL release in the 2.21 series.
     "stable-v2.21.4",
+    # The last CodeQL release in the 2.22 series.
+    "stable-v2.22.4",
     # The default version of CodeQL for Dotcom, as determined by feature flags.
     "default",
     # The version of CodeQL shipped with the Action in `defaults.json`. During the release process

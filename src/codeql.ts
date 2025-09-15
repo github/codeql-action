@@ -237,12 +237,10 @@ export interface BetterResolveLanguagesOutput {
     [alias: string]: string;
   };
   extractors: {
-    [language: string]: [
-      {
-        extractor_root: string;
-        extractor_options?: any;
-      },
-    ];
+    [language: string]: Array<{
+      extractor_root: string;
+      extractor_options?: any;
+    }>;
   };
 }
 

@@ -61,6 +61,10 @@ jobs:
             echo "::error file=src/resolved-languages.json::The resolved-languages.json file is missing."
             exit 1
           fi
+          #
+          # Please update getStoredSupportedLanguageMap() when you update the
+          # following call to use --filter-to-languages-with-queries.
+          #
           "${CODEQL}" resolve languages --format=betterjson --extractor-include-aliases > resolved-languages.json
           if ! diff -u resolved-languages.json "${RESOLVED_LANGUAGES_FILE}"; then
             echo "::error file=src/resolved-languages.json::The saved resolved-languages.json file is out of date."

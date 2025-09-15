@@ -107,6 +107,7 @@ jobs:
       uses: ./analyze
       with:
         category: "/language:javascript"
+        upload: ${{ matrix.os == 'ubuntu-24.04' && matrix.tools == '' && 'always' || 'never' }}
 
   analyze-other:
     runs-on: ubuntu-latest

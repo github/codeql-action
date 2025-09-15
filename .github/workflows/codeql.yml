@@ -117,9 +117,7 @@ jobs:
       matrix:
         include:
           - language: actions
-            build-mode: none
           - language: python
-            build-mode: none
 
     permissions:
       contents: read
@@ -132,7 +130,7 @@ jobs:
       uses: ./init
       with:
         languages: ${{ matrix.language }}
-        build-mode: ${{ matrix.build-mode }}
+        build-mode: none
         config: >
           paths-ignore:
             - lib

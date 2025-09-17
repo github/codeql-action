@@ -19,8 +19,8 @@ import { getErrorMessage, getRequiredEnvParam } from "./util";
  * Caching configuration for a particular language.
  */
 interface CacheConfig {
-  /** The paths of directories on the runner that should be included in the cache. */
-  paths: string[];
+  /** Gets the paths of directories on the runner that should be included in the cache. */
+  getDependencyPaths: () => string[];
   /**
    * Patterns for the paths of files whose contents affect which dependencies are used
    * by a project. We find all files which match these patterns, calculate a hash for
@@ -42,46 +42,56 @@ export function getJavaTempDependencyDir(): string {
 }
 
 /**
+ * Returns an array of paths of directories on the runner that should be included in a dependency cache
+ * for a Java analysis. It is important that this is a function, because we call `getTemporaryDirectory`
+ * which would otherwise fail in tests if we haven't had a chance to initialise `RUNNER_TEMP`.
+ *
+ * @returns The paths of directories on the runner that should be included in a dependency cache
+ * for a Java analysis.
+ */
+export function getJavaDependencyDirs(): string[] {
+  return [
+    // Maven
+    join(os.homedir(), ".m2", "repository"),
+    // Gradle
+    join(os.homedir(), ".gradle", "caches"),
+    // CodeQL Java build-mode: none
+    getJavaTempDependencyDir(),
+  ];
+}
+
+/**
  * Default caching configurations per language.
  */
-function getDefaultCacheConfig(): { [language: string]: CacheConfig } {
-  return {
-    java: {
-      paths: [
-        // Maven
-        join(os.homedir(), ".m2", "repository"),
-        // Gradle
-        join(os.homedir(), ".gradle", "caches"),
-        // CodeQL Java build-mode: none
-        getJavaTempDependencyDir(),
-      ],
-      hash: [
-        // Maven
-        "**/pom.xml",
-        // Gradle
-        "**/*.gradle*",
-        "**/gradle-wrapper.properties",
-        "buildSrc/**/Versions.kt",
-        "buildSrc/**/Dependencies.kt",
-        "gradle/*.versions.toml",
-        "**/versions.properties",
-      ],
-    },
-    csharp: {
-      paths: [join(os.homedir(), ".nuget", "packages")],
-      hash: [
-        // NuGet
-        "**/packages.lock.json",
-        // Paket
-        "**/paket.lock",
-      ],
-    },
-    go: {
-      paths: [join(os.homedir(), "go", "pkg", "mod")],
-      hash: ["**/go.sum"],
-    },
-  };
-}
+const defaultCacheConfigs: { [language: string]: CacheConfig } = {
+  java: {
+    getDependencyPaths: getJavaDependencyDirs,
+    hash: [
+      // Maven
+      "**/pom.xml",
+      // Gradle
+      "**/*.gradle*",
+      "**/gradle-wrapper.properties",
+      "buildSrc/**/Versions.kt",
+      "buildSrc/**/Dependencies.kt",
+      "gradle/*.versions.toml",
+      "**/versions.properties",
+    ],
+  },
+  csharp: {
+    getDependencyPaths: () => [join(os.homedir(), ".nuget", "packages")],
+    hash: [
+      // NuGet
+      "**/packages.lock.json",
+      // Paket
+      "**/paket.lock",
+    ],
+  },
+  go: {
+    getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],
+    hash: ["**/go.sum"],
+  },
+};
 
 async function makeGlobber(patterns: string[]): Promise<glob.Globber> {
   return glob.create(patterns.join("\n"));
@@ -128,7 +138,7 @@ export async function downloadDependencyCaches(
   const status: DependencyCacheRestoreStatusReport = [];
 
   for (const language of languages) {
-    const cacheConfig = getDefaultCacheConfig()[language];
+    const cacheConfig = defaultCacheConfigs[language];
 
     if (cacheConfig === undefined) {
       logger.info(
@@ -162,7 +172,7 @@ export async function downloadDependencyCaches(
 
     const start = performance.now();
     const hitKey = await actionsCache.restoreCache(
-      cacheConfig.paths,
+      cacheConfig.getDependencyPaths(),
       primaryKey,
       restoreKeys,
     );
@@ -223,7 +233,7 @@ export async function uploadDependencyCaches(
 ): Promise<DependencyCacheUploadStatusReport> {
   const status: DependencyCacheUploadStatusReport = [];
   for (const language of config.languages) {
-    const cacheConfig = getDefaultCacheConfig()[language];
+    const cacheConfig = defaultCacheConfigs[language];
 
     if (cacheConfig === undefined) {
       logger.info(
@@ -254,7 +264,11 @@ export async function uploadDependencyCaches(
     //   use the cache quota that we compete with. In that case, we do not wish to use up all of the quota
     //   with the dependency caches. For this, we could use the Cache API to check whether other workflows
     //   are using the quota and how full it is.
-    const size = await getTotalCacheSize(cacheConfig.paths, logger, true);
+    const size = await getTotalCacheSize(
+      cacheConfig.getDependencyPaths(),
+      logger,
+      true,
+    );
 
     // Skip uploading an empty cache.
     if (size === 0) {
@@ -273,7 +287,7 @@ export async function uploadDependencyCaches(
 
     try {
       const start = performance.now();
-      await actionsCache.saveCache(cacheConfig.paths, key);
+      await actionsCache.saveCache(cacheConfig.getDependencyPaths(), key);
       const upload_duration_ms = Math.round(performance.now() - start);
 
       status.push({

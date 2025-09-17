@@ -231,10 +231,10 @@ export async function getDownloadUrl(
     for (const asset of cliRelease.data.assets) {
       if (asset.name === proxyPackage) {
         logger.info(
-          `Found '${proxyPackage}' in release '${defaults.bundleVersion}' at '${asset.url}'`,
+          `Found '${proxyPackage}' in release '${defaults.bundleVersion}' at '${asset.browser_download_url}'`,
         );
         return {
-          url: asset.url,
+          url: asset.browser_download_url,
           // The `update-job-proxy` doesn't have a version as such. Since we now bundle it
           // with CodeQL CLI bundle releases, we use the corresponding CLI version to
           // differentiate between (potentially) different versions of `update-job-proxy`.

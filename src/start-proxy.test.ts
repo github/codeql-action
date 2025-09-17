@@ -255,8 +255,11 @@ test("getDownloadUrl returns fallback when there's no matching release asset", a
 
 test("getDownloadUrl returns matching release asset", async (t) => {
   const assets = [
-    { name: "foo", url: "other-url" },
-    { name: startProxyExports.getProxyPackage(), url: "url-we-want" },
+    { name: "foo", browser_download_url: "other-url" },
+    {
+      name: startProxyExports.getProxyPackage(),
+      browser_download_url: "url-we-want",
+    },
   ];
   mockGetReleaseByTag(assets);
 

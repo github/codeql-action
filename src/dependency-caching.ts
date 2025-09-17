@@ -15,6 +15,14 @@ import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getErrorMessage, getRequiredEnvParam } from "./util";
 
+class NoMatchingFilesError extends Error {
+  constructor(msg?: string) {
+    super(msg);
+
+    this.name = "NoMatchingFilesError";
+  }
+}
+
 /**
  * Caching configuration for a particular language.
  */
@@ -22,9 +30,12 @@ interface CacheConfig {
   /** Gets the paths of directories on the runner that should be included in the cache. */
   getDependencyPaths: () => string[];
   /**
-   * Gets patterns for the paths of files whose contents affect which dependencies are used
-   * by a project. We find all files which match these patterns, calculate a hash for
-   * their contents, and use that hash as part of the cache key.
+   * Gets an array of glob patterns for the paths of files whose contents affect which dependencies are used
+   * by a project. This function also checks whether there are any matching files and throws
+   * a `NoMatchingFilesError` error if no files match.
+   *
+   * The glob patterns are intended to be used for cache keys, where we find all files which match these
+   * patterns, calculate a hash for their contents, and use that hash as part of the cache key.
    */
   getHashPatterns: (codeql: CodeQL, features: Features) => Promise<string[]>;
 }
@@ -61,35 +72,54 @@ export function getJavaDependencyDirs(): string[] {
 }
 
 /**
+ * Checks that there are files which match `patterns`. If there are matching files for any of the patterns,
+ * this function returns all `patterns`. Otherwise, a `NoMatchingFilesError` is thrown.
+ *
+ * @param patterns The glob patterns to find matching files for.
+ * @returns The array of glob patterns if there are matching files.
+ */
+async function makePatternCheck(patterns: string[]): Promise<string[]> {
+  const globber = await makeGlobber(patterns);
+
+  if ((await globber.glob()).length === 0) {
+    throw new NoMatchingFilesError();
+  }
+
+  return patterns;
+}
+
+/**
  * Default caching configurations per language.
  */
 const defaultCacheConfigs: { [language: string]: CacheConfig } = {
   java: {
     getDependencyPaths: getJavaDependencyDirs,
-    getHashPatterns: async () => [
-      // Maven
-      "**/pom.xml",
-      // Gradle
-      "**/*.gradle*",
-      "**/gradle-wrapper.properties",
-      "buildSrc/**/Versions.kt",
-      "buildSrc/**/Dependencies.kt",
-      "gradle/*.versions.toml",
-      "**/versions.properties",
-    ],
+    getHashPatterns: async () =>
+      makePatternCheck([
+        // Maven
+        "**/pom.xml",
+        // Gradle
+        "**/*.gradle*",
+        "**/gradle-wrapper.properties",
+        "buildSrc/**/Versions.kt",
+        "buildSrc/**/Dependencies.kt",
+        "gradle/*.versions.toml",
+        "**/versions.properties",
+      ]),
   },
   csharp: {
     getDependencyPaths: () => [join(os.homedir(), ".nuget", "packages")],
-    getHashPatterns: async () => [
-      // NuGet
-      "**/packages.lock.json",
-      // Paket
-      "**/paket.lock",
-    ],
+    getHashPatterns: async () =>
+      makePatternCheck([
+        // NuGet
+        "**/packages.lock.json",
+        // Paket
+        "**/paket.lock",
+      ]),
   },
   go: {
     getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],
-    getHashPatterns: async () => ["**/go.sum"],
+    getHashPatterns: async () => makePatternCheck(["**/go.sum"]),
   },
 };
 
@@ -118,6 +148,37 @@ export interface DependencyCacheRestoreStatus {
 
 /** An array of `DependencyCacheRestoreStatus` objects for each analysed language with a caching configuration. */
 export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
+
+/**
+ * A wrapper around `cacheConfig.getHashPatterns` which catches `NoMatchingFilesError` errors,
+ * and logs that there are no files to calculate a hash for the cache key from.
+ *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
+ * @param language The language the `CacheConfig` is for. For use in the log message.
+ * @param cacheConfig The caching configuration to call `getHashPatterns` on.
+ * @param logger The logger to write the log message to if there is an error.
+ * @returns An array of glob patterns to use for hashing files, or `undefined` if there are no matching files.
+ */
+async function checkHashPatterns(
+  codeql: CodeQL,
+  features: Features,
+  language: Language,
+  cacheConfig: CacheConfig,
+  logger: Logger,
+): Promise<string[] | undefined> {
+  try {
+    return cacheConfig.getHashPatterns(codeql, features);
+  } catch (err) {
+    if (err instanceof NoMatchingFilesError) {
+      logger.info(
+        `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
+      );
+      return undefined;
+    }
+    throw err;
+  }
+}
 
 /**
  * Attempts to restore dependency caches for the languages being analyzed.
@@ -149,14 +210,15 @@ export async function downloadDependencyCaches(
 
     // Check that we can find files to calculate the hash for the cache key from, so we don't end up
     // with an empty string.
-    const patterns = await cacheConfig.getHashPatterns(codeql, features);
-    const globber = await makeGlobber(patterns);
-
-    if ((await globber.glob()).length === 0) {
+    const patterns = await checkHashPatterns(
+      codeql,
+      features,
+      language,
+      cacheConfig,
+      logger,
+    );
+    if (patterns === undefined) {
       status.push({ language, hit_kind: CacheHitKind.NoHash });
-      logger.info(
-        `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
-      );
       continue;
     }
 
@@ -245,14 +307,14 @@ export async function uploadDependencyCaches(
 
     // Check that we can find files to calculate the hash for the cache key from, so we don't end up
     // with an empty string.
-    const patterns = await cacheConfig.getHashPatterns(codeql, features);
-    const globber = await makeGlobber(patterns);
-
-    if ((await globber.glob()).length === 0) {
-      status.push({ language, result: CacheStoreResult.NoHash });
-      logger.info(
-        `Skipping upload of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
-      );
+    const patterns = await checkHashPatterns(
+      codeql,
+      features,
+      language,
+      cacheConfig,
+      logger,
+    );
+    if (patterns === undefined) {
       continue;
     }
 

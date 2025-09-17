@@ -22,11 +22,11 @@ interface CacheConfig {
   /** Gets the paths of directories on the runner that should be included in the cache. */
   getDependencyPaths: () => string[];
   /**
-   * Patterns for the paths of files whose contents affect which dependencies are used
+   * Gets patterns for the paths of files whose contents affect which dependencies are used
    * by a project. We find all files which match these patterns, calculate a hash for
    * their contents, and use that hash as part of the cache key.
    */
-  hash: string[];
+  getHashPatterns: (codeql: CodeQL, features: Features) => Promise<string[]>;
 }
 
 const CODEQL_DEPENDENCY_CACHE_PREFIX = "codeql-dependencies";
@@ -66,7 +66,7 @@ export function getJavaDependencyDirs(): string[] {
 const defaultCacheConfigs: { [language: string]: CacheConfig } = {
   java: {
     getDependencyPaths: getJavaDependencyDirs,
-    hash: [
+    getHashPatterns: async () => [
       // Maven
       "**/pom.xml",
       // Gradle
@@ -80,7 +80,7 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
   },
   csharp: {
     getDependencyPaths: () => [join(os.homedir(), ".nuget", "packages")],
-    hash: [
+    getHashPatterns: async () => [
       // NuGet
       "**/packages.lock.json",
       // Paket
@@ -89,7 +89,7 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
   },
   go: {
     getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],
-    hash: ["**/go.sum"],
+    getHashPatterns: async () => ["**/go.sum"],
   },
 };
 
@@ -149,7 +149,8 @@ export async function downloadDependencyCaches(
 
     // Check that we can find files to calculate the hash for the cache key from, so we don't end up
     // with an empty string.
-    const globber = await makeGlobber(cacheConfig.hash);
+    const patterns = await cacheConfig.getHashPatterns(codeql, features);
+    const globber = await makeGlobber(patterns);
 
     if ((await globber.glob()).length === 0) {
       status.push({ language, hit_kind: CacheHitKind.NoHash });
@@ -159,7 +160,7 @@ export async function downloadDependencyCaches(
       continue;
     }
 
-    const primaryKey = await cacheKey(codeql, features, language, cacheConfig);
+    const primaryKey = await cacheKey(codeql, features, language, patterns);
     const restoreKeys: string[] = [
       await cachePrefix(codeql, features, language),
     ];
@@ -244,7 +245,8 @@ export async function uploadDependencyCaches(
 
     // Check that we can find files to calculate the hash for the cache key from, so we don't end up
     // with an empty string.
-    const globber = await makeGlobber(cacheConfig.hash);
+    const patterns = await cacheConfig.getHashPatterns(codeql, features);
+    const globber = await makeGlobber(patterns);
 
     if ((await globber.glob()).length === 0) {
       status.push({ language, result: CacheStoreResult.NoHash });
@@ -279,7 +281,7 @@ export async function uploadDependencyCaches(
       continue;
     }
 
-    const key = await cacheKey(codeql, features, language, cacheConfig);
+    const key = await cacheKey(codeql, features, language, patterns);
 
     logger.info(
       `Uploading cache of size ${size} for ${language} with key ${key}...`,
@@ -330,9 +332,9 @@ async function cacheKey(
   codeql: CodeQL,
   features: Features,
   language: Language,
-  cacheConfig: CacheConfig,
+  patterns: string[],
 ): Promise<string> {
-  const hash = await glob.hashFiles(cacheConfig.hash.join("\n"));
+  const hash = await glob.hashFiles(patterns.join("\n"));
   return `${await cachePrefix(codeql, features, language)}${hash}`;
 }
 

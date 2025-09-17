@@ -89,6 +89,54 @@ async function makePatternCheck(patterns: string[]): Promise<string[]> {
 }
 
 /**
+ * Returns the list of glob patterns that should be used to calculate the cache key hash
+ * for a C# dependency cache.
+ *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
+ * @returns A list of glob patterns to use for hashing.
+ */
+async function getCsharpHashPatterns(
+  codeql: CodeQL,
+  features: Features,
+): Promise<string[]> {
+  // These files contain accurate information about dependencies, including the exact versions
+  // that the relevant package manager has determined for the project. Using these gives us
+  // stable hashes unless the dependencies change.
+  const basePatterns = [
+    // NuGet
+    "**/packages.lock.json",
+    // Paket
+    "**/paket.lock",
+  ];
+  const globber = await makeGlobber(basePatterns);
+
+  if ((await globber.glob()).length > 0) {
+    return basePatterns;
+  }
+
+  if (await features.getValue(Feature.CsharpNewCacheKey, codeql)) {
+    // These are less accurate for use in cache key calculations, because they:
+    //
+    // - Don't contain the exact versions used. They may only contain version ranges or none at all.
+    // - They contain information unrelated to dependencies, which we don't care about.
+    //
+    // As a result, the hash we compute from these files may change, even if
+    // the dependencies haven't changed.
+    return makePatternCheck([
+      "**/*.csproj",
+      "**/packages.config",
+      "**/nuget.config",
+    ]);
+  }
+
+  // If we get to this point, the `basePatterns` didn't find any files,
+  // and `Feature.CsharpNewCacheKey` is either not enabled or we didn't
+  // find any files using those patterns either.
+  throw new NoMatchingFilesError();
+}
+
+/**
  * Default caching configurations per language.
  */
 const defaultCacheConfigs: { [language: string]: CacheConfig } = {
@@ -109,13 +157,7 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
   },
   csharp: {
     getDependencyPaths: () => [join(os.homedir(), ".nuget", "packages")],
-    getHashPatterns: async () =>
-      makePatternCheck([
-        // NuGet
-        "**/packages.lock.json",
-        // Paket
-        "**/paket.lock",
-      ]),
+    getHashPatterns: getCsharpHashPatterns,
   },
   go: {
     getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],

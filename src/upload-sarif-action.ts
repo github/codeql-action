@@ -38,7 +38,7 @@ interface UploadSarifStatusReport
  *
  * @param logger The logger to use.
  * @param features Information about FFs.
- * @param sarifPath The path to a directory containing SARIF files.
+ * @param sarifPath The path to a SARIF file or directory containing SARIF files.
  * @param pathStats Information about `sarifPath`.
  * @param checkoutPath The checkout path.
  * @param analysis The configuration of the analysis we should upload SARIF files for.
@@ -54,22 +54,28 @@ async function findAndUpload(
   analysis: analyses.AnalysisConfig,
   category?: string,
 ): Promise<upload_lib.UploadResult | undefined> {
+  let sarifFiles: string[] | undefined;
+
   if (pathStats.isDirectory()) {
-    const sarifFiles = upload_lib.findSarifFilesInDir(
+    sarifFiles = upload_lib.findSarifFilesInDir(
       sarifPath,
       analysis.sarifPredicate,
     );
+  } else if (pathStats.isFile() && analysis.sarifPredicate(sarifPath)) {
+    sarifFiles = [sarifPath];
+  } else {
+    return undefined;
+  }
 
-    if (sarifFiles.length !== 0) {
-      return await upload_lib.uploadSpecifiedFiles(
-        sarifFiles,
-        checkoutPath,
-        category,
-        features,
-        logger,
-        analysis,
-      );
-    }
+  if (sarifFiles.length !== 0) {
+    return await upload_lib.uploadSpecifiedFiles(
+      sarifFiles,
+      checkoutPath,
+      category,
+      features,
+      logger,
+      analysis,
+    );
   }
 
   return undefined;

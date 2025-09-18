@@ -73,7 +73,7 @@ jobs:
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-          languages: cpp,csharp,java,javascript,python
+          languages: csharp,java,javascript,python
           analysis-kinds: code-quality
       - name: Build code
         run: ./build.sh

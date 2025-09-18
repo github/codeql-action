@@ -192,7 +192,14 @@ async function getProxyBinaryPath(logger: Logger): Promise<string> {
 
   let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
   if (!proxyBin) {
-    const temp = await toolcache.downloadTool(proxyInfo.url);
+    const temp = await toolcache.downloadTool(
+      proxyInfo.url,
+      undefined,
+      undefined,
+      {
+        accept: "application/octet-stream",
+      },
+    );
     const extracted = await toolcache.extractTar(temp);
     proxyBin = await toolcache.cacheDir(
       extracted,

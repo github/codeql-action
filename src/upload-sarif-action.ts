@@ -145,15 +145,18 @@ async function run() {
       throw new ConfigurationError(`Path does not exist: ${sarifPath}.`);
     }
 
-    const uploadResult = await upload_lib.uploadFiles(
-      sarifPath,
-      checkoutPath,
-      category,
-      features,
+    const uploadResult = await findAndUpload(
       logger,
+      features,
+      sarifPath,
+      pathStats,
+      checkoutPath,
       analyses.CodeScanning,
+      category,
     );
-    core.setOutput("sarif-id", uploadResult.sarifID);
+    if (uploadResult !== undefined) {
+      core.setOutput("sarif-id", uploadResult.sarifID);
+    }
 
     // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
     // Code quality can currently only be enabled on top of security, so we'd currently always expect to
@@ -172,15 +175,21 @@ async function run() {
     if (isInTestMode()) {
       core.debug("In test mode. Waiting for processing is disabled.");
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
-      await upload_lib.waitForProcessing(
-        getRepositoryNwo(),
-        uploadResult.sarifID,
-        logger,
-      );
+      if (uploadResult !== undefined) {
+        await upload_lib.waitForProcessing(
+          getRepositoryNwo(),
+          uploadResult.sarifID,
+          logger,
+        );
+      }
       // The code quality service does not currently have an endpoint to wait for SARIF processing,
       // so we can't wait for that here.
     }
-    await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
+    await sendSuccessStatusReport(
+      startedAt,
+      uploadResult?.statusReport || {},
+      logger,
+    );
   } catch (unwrappedError) {
     const error =
       isThirdPartyAnalysis(ActionName.UploadSarif) &&

@@ -10,7 +10,11 @@ import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
-import { isInTestMode, tryGetFolderBytes, withTimeout } from "./util";
+import {
+  isInTestMode,
+  tryGetFolderBytes,
+  waitForResultWithTimeLimit,
+} from "./util";
 
 export enum OverlayDatabaseMode {
   Overlay = "overlay",
@@ -268,7 +272,7 @@ export async function uploadOverlayBaseDatabaseToCache(
   );
 
   try {
-    const cacheId = await withTimeout(
+    const cacheId = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.saveCache([dbLocation], cacheSaveKey),
       () => {},
@@ -346,7 +350,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
   let databaseDownloadDurationMs = 0;
   try {
     const databaseDownloadStart = performance.now();
-    const foundKey = await withTimeout(
+    const foundKey = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.restoreCache([dbLocation], cacheRestoreKeyPrefix),
       () => {

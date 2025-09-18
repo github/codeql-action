@@ -297,7 +297,7 @@ test("listFolder", async (t) => {
 const longTime = 999_999;
 const shortTime = 10;
 
-test("withTimeout on long task", async (t) => {
+test("waitForResultWithTimeLimit on long task", async (t) => {
   let longTaskTimedOut = false;
   const longTask = new Promise((resolve) => {
     const timer = setTimeout(() => {
@@ -305,35 +305,43 @@ test("withTimeout on long task", async (t) => {
     }, longTime);
     t.teardown(() => clearTimeout(timer));
   });
-  const result = await util.withTimeout(shortTime, longTask, () => {
-    longTaskTimedOut = true;
-  });
+  const result = await util.waitForResultWithTimeLimit(
+    shortTime,
+    longTask,
+    () => {
+      longTaskTimedOut = true;
+    },
+  );
   t.deepEqual(longTaskTimedOut, true);
   t.deepEqual(result, undefined);
 });
 
-test("withTimeout on short task", async (t) => {
+test("waitForResultWithTimeLimit on short task", async (t) => {
   let shortTaskTimedOut = false;
   const shortTask = new Promise((resolve) => {
     setTimeout(() => {
       resolve(99);
     }, shortTime);
   });
-  const result = await util.withTimeout(longTime, shortTask, () => {
-    shortTaskTimedOut = true;
-  });
+  const result = await util.waitForResultWithTimeLimit(
+    longTime,
+    shortTask,
+    () => {
+      shortTaskTimedOut = true;
+    },
+  );
   t.deepEqual(shortTaskTimedOut, false);
   t.deepEqual(result, 99);
 });
 
-test("withTimeout doesn't call callback if promise resolves", async (t) => {
+test("waitForResultWithTimeLimit doesn't call callback if promise resolves", async (t) => {
   let shortTaskTimedOut = false;
   const shortTask = new Promise((resolve) => {
     setTimeout(() => {
       resolve(99);
     }, shortTime);
   });
-  const result = await util.withTimeout(100, shortTask, () => {
+  const result = await util.waitForResultWithTimeLimit(100, shortTask, () => {
     shortTaskTimedOut = true;
   });
   await new Promise((r) => setTimeout(r, 200));

@@ -22,5 +22,5 @@ steps:
       ref: 'refs/heads/main'
       sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
   - name: "Check output from `upload-sarif` step"
-    if: fromJSON(steps.upload-sarif.sarif-ids)[0].analysis != 'code-quality'
+    if: fromJSON(steps.upload-sarif.outputs.sarif-ids)[0].analysis != 'code-quality'
     run: exit 1

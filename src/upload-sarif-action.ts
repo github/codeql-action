@@ -164,8 +164,6 @@ async function run() {
     }
 
     // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-    // Code quality can currently only be enabled on top of security, so we'd currently always expect to
-    // have a directory for the results here.
     const qualityUploadResult = await findAndUpload(
       logger,
       features,

@@ -864,7 +864,7 @@ let hadTimeout = false;
  * @param onTimeout A callback to call if the promise times out.
  * @returns The result of the promise, or undefined if the promise times out.
  */
-export async function withTimeout<T>(
+export async function waitForResultWithTimeLimit<T>(
   timeoutMs: number,
   promise: Promise<T>,
   onTimeout: () => void,
@@ -894,7 +894,7 @@ export async function withTimeout<T>(
  * Check if the global hadTimeout variable has been set, and if so then
  * exit the process to ensure any background tasks that are still running
  * are killed. This should be called at the end of execution if the
- * `withTimeout` function has been used.
+ * `waitForResultWithTimeLimit` function has been used.
  */
 export async function checkForTimeout() {
   if (hadTimeout === true) {

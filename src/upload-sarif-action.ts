@@ -129,6 +129,11 @@ async function run() {
     const sarifPath = actionsUtil.getRequiredInput("sarif_file");
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
+    const pathStats = fs.lstatSync(sarifPath, { throwIfNoEntry: false });
+
+    if (pathStats === undefined) {
+      throw new ConfigurationError(`Path does not exist: ${sarifPath}.`);
+    }
 
     const uploadResult = await upload_lib.uploadFiles(
       sarifPath,
@@ -143,7 +148,7 @@ async function run() {
     // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
     // Code quality can currently only be enabled on top of security, so we'd currently always expect to
     // have a directory for the results here.
-    if (fs.lstatSync(sarifPath).isDirectory()) {
+    if (pathStats.isDirectory()) {
       await findAndUpload(
         logger,
         features,

@@ -32,6 +32,7 @@ import {
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
+import { loadPropertiesFromApi } from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -196,6 +197,12 @@ async function run() {
     logger,
   );
 
+  // Fetch the values of known repository properties that affect us.
+  const repositoryProperties = await loadPropertiesFromApi(
+    logger,
+    repositoryNwo,
+  );
+
   const jobRunUuid = uuidV4();
   logger.info(`Job run UUID is ${jobRunUuid}.`);
   core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
@@ -317,6 +324,7 @@ async function run() {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
+      repositoryProperties,
       logger,
     });
 

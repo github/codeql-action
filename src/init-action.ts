@@ -547,15 +547,12 @@ async function run() {
     }
 
     // Restore dependency cache(s), if they exist.
-    const minimizeJavaJars = await features.getValue(
-      Feature.JavaMinimizeDependencyJars,
-      codeql,
-    );
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
       await downloadDependencyCaches(
+        codeql,
+        features,
         config.languages,
         logger,
-        minimizeJavaJars,
       );
     }
 
@@ -617,7 +614,7 @@ async function run() {
         `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
       );
     } else if (
-      minimizeJavaJars &&
+      (await features.getValue(Feature.JavaMinimizeDependencyJars, codeql)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
       config.languages.includes(KnownLanguage.java)

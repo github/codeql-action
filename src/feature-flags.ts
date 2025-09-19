@@ -45,6 +45,7 @@ export interface FeatureEnablement {
 export enum Feature {
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  CsharpNewCacheKey = "csharp_new_cache_key",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -118,6 +119,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     legacyApi: true,
     minimumVersion: "2.15.0",
+  },
+  [Feature.CsharpNewCacheKey]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CSHARP_NEW_CACHE_KEY",
+    minimumVersion: undefined,
   },
   [Feature.DiffInformedQueries]: {
     defaultValue: true,

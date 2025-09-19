@@ -29,7 +29,7 @@ import { uploadDatabases } from "./database-upload";
 import { uploadDependencyCaches } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { uploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
@@ -384,11 +384,7 @@ async function run() {
 
     // Store dependency cache(s) if dependency caching is enabled.
     if (shouldStoreCache(config.dependencyCachingEnabled)) {
-      const minimizeJavaJars = await features.getValue(
-        Feature.JavaMinimizeDependencyJars,
-        codeql,
-      );
-      await uploadDependencyCaches(config, logger, minimizeJavaJars);
+      await uploadDependencyCaches(codeql, features, config, logger);
     }
 
     // We don't upload results in test mode, so don't wait for processing

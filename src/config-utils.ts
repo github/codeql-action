@@ -17,6 +17,7 @@ import {
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
+import { ExcludeQueryFilter, UserConfig } from "./config/db-config";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
@@ -38,34 +39,11 @@ import {
   isDefined,
 } from "./util";
 
+export * from "./config/db-config";
+
 // Property names from the user-supplied config file.
 
 const PACKS_PROPERTY = "packs";
-
-/**
- * Format of the config file supplied by the user.
- */
-export interface UserConfig {
-  name?: string;
-  "disable-default-queries"?: boolean;
-  queries?: Array<{
-    name?: string;
-    uses: string;
-  }>;
-  "paths-ignore"?: string[];
-  paths?: string[];
-
-  // If this is a multi-language analysis, then the packages must be split by
-  // language. If this is a single language analysis, then no split by
-  // language is necessary.
-  packs?: Record<string, string[]> | string[];
-
-  // Set of query filters to include and exclude extra queries based on
-  // codeql query suite `include` and `exclude` properties
-  "query-filters"?: QueryFilter[];
-}
-
-export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -88,14 +66,6 @@ export interface RegistryConfigNoCredentials {
   // "github" refers to packs published as content in a GitHub repository. This kind of registry is used in scenarios
   // where GHCR is not available, such as certain GHES environments.
   kind?: "github" | "docker";
-}
-
-interface ExcludeQueryFilter {
-  exclude: Record<string, string[] | string>;
-}
-
-interface IncludeQueryFilter {
-  include: Record<string, string[] | string>;
 }
 
 /**

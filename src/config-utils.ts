@@ -25,6 +25,7 @@ import {
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
+import { RepositoryProperties } from "./feature-flags/properties";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -167,6 +168,11 @@ export interface Config {
    * `OverlayBase`.
    */
   useOverlayDatabaseCaching: boolean;
+
+  /**
+   * A partial mapping from repository properties that affect us to their values.
+   */
+  repositoryProperties: RepositoryProperties;
 }
 
 export async function getSupportedLanguageMap(
@@ -389,6 +395,7 @@ export interface InitConfigInputs {
   githubVersion: GitHubVersion;
   apiDetails: api.GitHubApiCombinedDetails;
   features: FeatureEnablement;
+  repositoryProperties: RepositoryProperties;
   logger: Logger;
 }
 
@@ -416,6 +423,7 @@ export async function initActionState(
     sourceRoot,
     githubVersion,
     features,
+    repositoryProperties,
     logger,
   }: InitConfigInputs,
   userConfig: UserConfig,
@@ -488,6 +496,7 @@ export async function initActionState(
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    repositoryProperties,
   };
 }
 

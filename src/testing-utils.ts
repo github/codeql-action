@@ -378,6 +378,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
     } satisfies Config,
     overrides,
   );

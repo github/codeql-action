@@ -34,7 +34,12 @@ inputs:
     default: "true"
 outputs:
   sarif-id:
-    description: The ID of the uploaded SARIF file.
+    description: The ID of the uploaded Code Scanning SARIF file, if any.
+  sarif-ids:
+    description: |
+      A stringified JSON object containing the SARIF ID for each kind of analysis. For example:
+
+      { "code-scanning": "some-id", "code-quality": "some-other-id" }
 runs:
   using: node20
   main: '../lib/upload-sarif-action.js'

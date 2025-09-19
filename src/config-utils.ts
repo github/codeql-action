@@ -16,7 +16,7 @@ import {
 } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
-import { type CodeQL } from "./codeql";
+import { type BetterResolveLanguagesOutput, type CodeQL } from "./codeql";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
@@ -27,6 +27,7 @@ import {
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
+import * as resolvedLanguages from "./resolved-languages.json";
 import { downloadTrapCaches } from "./trap-caching";
 import {
   GitHubVersion,
@@ -331,6 +332,30 @@ export async function getSupportedLanguageMap(
       `The CodeQL CLI supports the following languages: ${Object.keys(resolveResult.extractors).join(", ")}`,
     );
   }
+  return buildSupportedLanguageMap(
+    resolveResult,
+    resolveSupportedLanguagesUsingCli,
+  );
+}
+
+// This function serves the same purpose as getSupportedLanguageMap(), but it
+// uses the stored resolved-languages.json file instead of calling out to the
+// CodeQL CLI.
+export function getStoredSupportedLanguageMap(): Record<string, string> {
+  return buildSupportedLanguageMap(
+    resolvedLanguages,
+    // resolveSupportedLanguagesUsingCli is false because we currently generate
+    // resolved-languages.json without the --filter-to-languages-with-queries
+    // flag (see .github/workflows/validate-resolved-languages.yml). Once that
+    // changes, we should set this to true.
+    false,
+  );
+}
+
+function buildSupportedLanguageMap(
+  resolveResult: BetterResolveLanguagesOutput,
+  resolveSupportedLanguagesUsingCli: boolean,
+): Record<string, string> {
   const supportedLanguages: Record<string, string> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
@@ -418,11 +443,10 @@ export async function getRawLanguagesInRepo(
  * then throw an error.
  */
 export async function getLanguages(
-  codeql: CodeQL,
+  languageMap: Record<string, string>,
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
@@ -432,8 +456,6 @@ export async function getLanguages(
     sourceRoot,
     logger,
   );
-
-  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -575,12 +597,12 @@ export async function initActionState(
     analysisKinds.push(AnalysisKind.CodeQuality);
   }
 
+  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
   const languages = await getLanguages(
-    codeql,
+    languageMap,
     languagesInput,
     repository,
     sourceRoot,
-    features,
     logger,
   );
 

@@ -16,16 +16,18 @@ export interface IncludeQueryFilter {
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
 
+export interface QuerySpec {
+  name?: string;
+  uses: string;
+}
+
 /**
  * Format of the config file supplied by the user.
  */
 export interface UserConfig {
   name?: string;
   "disable-default-queries"?: boolean;
-  queries?: Array<{
-    name?: string;
-    uses: string;
-  }>;
+  queries?: QuerySpec[];
   "paths-ignore"?: string[];
   paths?: string[];
 
@@ -58,7 +60,7 @@ export interface AugmentationProperties {
   /**
    * The queries input from the `with` block of the action declaration
    */
-  queriesInput?: Array<{ uses: string }>;
+  queriesInput?: QuerySpec[];
 
   /**
    * Whether or not the packs input combines with the packs in the config.

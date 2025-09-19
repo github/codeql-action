@@ -19,6 +19,7 @@ import { CachingKind, getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
 import { ExcludeQueryFilter, UserConfig } from "./config/db-config";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -40,10 +41,6 @@ import {
 } from "./util";
 
 export * from "./config/db-config";
-
-// Property names from the user-supplied config file.
-
-const PACKS_PROPERTY = "packs";
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -219,71 +216,6 @@ export interface Pack {
   path?: string;
 }
 
-export function getPacksStrInvalid(
-  packStr: string,
-  configFile?: string,
-): string {
-  return configFile
-    ? getConfigFilePropertyError(
-        configFile,
-        PACKS_PROPERTY,
-        `"${packStr}" is not a valid pack`,
-      )
-    : `"${packStr}" is not a valid pack`;
-}
-
-export function getConfigFileOutsideWorkspaceErrorMessage(
-  configFile: string,
-): string {
-  return `The configuration file "${configFile}" is outside of the workspace`;
-}
-
-export function getConfigFileDoesNotExistErrorMessage(
-  configFile: string,
-): string {
-  return `The configuration file "${configFile}" does not exist`;
-}
-
-export function getConfigFileRepoFormatInvalidMessage(
-  configFile: string,
-): string {
-  let error = `The configuration file "${configFile}" is not a supported remote file reference.`;
-  error += " Expected format <owner>/<repository>/<file-path>@<ref>";
-
-  return error;
-}
-
-export function getConfigFileFormatInvalidMessage(configFile: string): string {
-  return `The configuration file "${configFile}" could not be read`;
-}
-
-export function getConfigFileDirectoryGivenMessage(configFile: string): string {
-  return `The configuration file "${configFile}" looks like a directory, not a file`;
-}
-
-function getConfigFilePropertyError(
-  configFile: string | undefined,
-  property: string,
-  error: string,
-): string {
-  if (configFile === undefined) {
-    return `The workflow property "${property}" is invalid: ${error}`;
-  } else {
-    return `The configuration file "${configFile}" is invalid: property "${property}" ${error}`;
-  }
-}
-
-export function getNoLanguagesError(): string {
-  return (
-    "Did not detect any languages to analyze. " +
-    "Please update input in workflow or check that GitHub detects the correct languages in your repository."
-  );
-}
-
-export function getUnknownLanguagesError(languages: string[]): string {
-  return `Did not recognize the following languages: ${languages.join(", ")}`;
-}
-
 export async function getSupportedLanguageMap(
   codeql: CodeQL,
   features: FeatureEnablement,
@@ -420,13 +352,15 @@ export async function getLanguages(
   const languages = Array.from(languagesSet);
 
   if (!autodetected && unknownLanguages.length > 0) {
-    throw new ConfigurationError(getUnknownLanguagesError(unknownLanguages));
+    throw new ConfigurationError(
+      errorMessages.getUnknownLanguagesError(unknownLanguages),
+    );
   }
 
   // If the languages parameter was not given and no languages were
   // detected then fail here as this is a workflow configuration error.
   if (languages.length === 0) {
-    throw new ConfigurationError(getNoLanguagesError());
+    throw new ConfigurationError(errorMessages.getNoLanguagesError());
   }
 
   if (autodetected) {
@@ -636,7 +570,7 @@ async function loadUserConfig(
       // Error if the config file is now outside of the workspace
       if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
         throw new ConfigurationError(
-          getConfigFileOutsideWorkspaceErrorMessage(configFile),
+          errorMessages.getConfigFileOutsideWorkspaceErrorMessage(configFile),
         );
       }
     }
@@ -703,7 +637,7 @@ function parseQueriesFromInput(
     : (rawQueriesInput?.trim() ?? "");
   if (queriesInputCombines && trimmedInput.length === 0) {
     throw new ConfigurationError(
-      getConfigFilePropertyError(
+      errorMessages.getConfigFilePropertyError(
         undefined,
         "queries",
         "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
@@ -944,7 +878,7 @@ export function parsePacksFromInput(
     rawPacksInput = rawPacksInput.trim().substring(1).trim();
     if (!rawPacksInput) {
       throw new ConfigurationError(
-        getConfigFilePropertyError(
+        errorMessages.getConfigFilePropertyError(
           undefined,
           "packs",
           "A '+' was used in the 'packs' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
@@ -981,7 +915,7 @@ export function parsePacksFromInput(
  */
 export function parsePacksSpecification(packStr: string): Pack {
   if (typeof packStr !== "string") {
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(errorMessages.getPacksStrInvalid(packStr));
   }
 
   packStr = packStr.trim();
@@ -1009,14 +943,14 @@ export function parsePacksSpecification(packStr: string): Pack {
     : undefined;
 
   if (!PACK_IDENTIFIER_PATTERN.test(packName)) {
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(errorMessages.getPacksStrInvalid(packStr));
   }
   if (version) {
     try {
       new semver.Range(version);
     } catch {
       // The range string is invalid. OK to ignore the caught error
-      throw new ConfigurationError(getPacksStrInvalid(packStr));
+      throw new ConfigurationError(errorMessages.getPacksStrInvalid(packStr));
     }
   }
 
@@ -1030,12 +964,12 @@ export function parsePacksSpecification(packStr: string): Pack {
       path.normalize(packPath).split(path.sep).join("/") !==
         packPath.split(path.sep).join("/"))
   ) {
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(errorMessages.getPacksStrInvalid(packStr));
   }
 
   if (!packPath && pathStart) {
     // 0 length path
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
+    throw new ConfigurationError(errorMessages.getPacksStrInvalid(packStr));
   }
 
   return {
@@ -1215,7 +1149,7 @@ function getLocalConfig(configFile: string): UserConfig {
   // Error if the file does not exist
   if (!fs.existsSync(configFile)) {
     throw new ConfigurationError(
-      getConfigFileDoesNotExistErrorMessage(configFile),
+      errorMessages.getConfigFileDoesNotExistErrorMessage(configFile),
     );
   }
 
@@ -1234,7 +1168,7 @@ async function getRemoteConfig(
   // 5 = 4 groups + the whole expression
   if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
     throw new ConfigurationError(
-      getConfigFileRepoFormatInvalidMessage(configFile),
+      errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
     );
   }
 
@@ -1252,10 +1186,12 @@ async function getRemoteConfig(
     fileContents = response.data.content;
   } else if (Array.isArray(response.data)) {
     throw new ConfigurationError(
-      getConfigFileDirectoryGivenMessage(configFile),
+      errorMessages.getConfigFileDirectoryGivenMessage(configFile),
     );
   } else {
-    throw new ConfigurationError(getConfigFileFormatInvalidMessage(configFile));
+    throw new ConfigurationError(
+      errorMessages.getConfigFileFormatInvalidMessage(configFile),
+    );
   }
 
   return yaml.load(

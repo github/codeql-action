@@ -12,6 +12,7 @@ import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -341,7 +342,7 @@ test("load input outside of workspace", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileOutsideWorkspaceErrorMessage(
+          errorMessages.getConfigFileOutsideWorkspaceErrorMessage(
             path.join(tempDir, "../input"),
           ),
         ),
@@ -368,7 +369,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileRepoFormatInvalidMessage(
+          errorMessages.getConfigFileRepoFormatInvalidMessage(
             "octo-org/codeql-config@main",
           ),
         ),
@@ -397,7 +398,7 @@ test("load non-existent input", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileDoesNotExistErrorMessage(
+          errorMessages.getConfigFileDoesNotExistErrorMessage(
             path.join(tempDir, "input"),
           ),
         ),
@@ -604,7 +605,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileDirectoryGivenMessage(repoReference),
+          errorMessages.getConfigFileDirectoryGivenMessage(repoReference),
         ),
       );
     }
@@ -632,7 +633,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileFormatInvalidMessage(repoReference),
+          errorMessages.getConfigFileFormatInvalidMessage(repoReference),
         ),
       );
     }
@@ -660,7 +661,7 @@ test("No detected languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new ConfigurationError(configUtils.getNoLanguagesError()),
+        new ConfigurationError(errorMessages.getNoLanguagesError()),
       );
     }
   });
@@ -683,7 +684,7 @@ test("Unknown languages", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getUnknownLanguagesError(["rubbish", "english"]),
+          errorMessages.getUnknownLanguagesError(["rubbish", "english"]),
         ),
       );
     }
@@ -1097,28 +1098,28 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     languagesInput: "",
     languagesInRepository: ["html"],
     expectedApiCall: true,
-    expectedError: configUtils.getNoLanguagesError(),
+    expectedError: errorMessages.getNoLanguagesError(),
   },
   {
     name: "no languages",
     languagesInput: "",
     languagesInRepository: [],
     expectedApiCall: true,
-    expectedError: configUtils.getNoLanguagesError(),
+    expectedError: errorMessages.getNoLanguagesError(),
   },
   {
     name: "unrecognized languages from input",
     languagesInput: "a, b, c, javascript",
     languagesInRepository: [],
     expectedApiCall: false,
-    expectedError: configUtils.getUnknownLanguagesError(["a", "b"]),
+    expectedError: errorMessages.getUnknownLanguagesError(["a", "b"]),
   },
   {
     name: "extractors that aren't languages aren't included (specified)",
     languagesInput: "html",
     languagesInRepository: [],
     expectedApiCall: false,
-    expectedError: configUtils.getUnknownLanguagesError(["html"]),
+    expectedError: errorMessages.getUnknownLanguagesError(["html"]),
   },
   {
     name: "extractors that aren't languages aren't included (autodetected)",

@@ -271,7 +271,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             },
             'concurrency': {
                 # Cancel in-progress workflows in the same 'group' for pull_request events,
-                # but other event types. This should have the effect that workflows on PRs
+                # but not other event types. This should have the effect that workflows on PRs
                 # get cancelled if there is a newer workflow in the same concurrency group.
                 # For other events, the new workflows should wait until earlier ones have finished.
                 # This should help reduce the number of concurrent workflows on the repo, and

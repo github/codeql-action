@@ -1,3 +1,5 @@
+import { RepositoryPropertyName } from "./feature-flags/properties";
+
 const PACKS_PROPERTY = "packs";
 
 export function getConfigFileOutsideWorkspaceErrorMessage(
@@ -29,6 +31,10 @@ export function getConfigFileDirectoryGivenMessage(configFile: string): string {
   return `The configuration file "${configFile}" looks like a directory, not a file`;
 }
 
+export function getEmptyCombinesError(): string {
+  return `A '+' was used to specify that you want to add extra arguments to the configuration, but no extra arguments were specified. Please either remove the '+' or specify some extra arguments.`;
+}
+
 export function getConfigFilePropertyError(
   configFile: string | undefined,
   property: string,
@@ -39,6 +45,13 @@ export function getConfigFilePropertyError(
   } else {
     return `The configuration file "${configFile}" is invalid: property "${property}" ${error}`;
   }
+}
+
+export function getRepoPropertyError(
+  propertyName: RepositoryPropertyName,
+  error: string,
+): string {
+  return `The repository property "${propertyName}" is invalid: ${error}`;
 }
 
 export function getPacksStrInvalid(

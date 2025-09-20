@@ -82,11 +82,11 @@ function createTestInitConfigInputs(
         externalRepoAuth: "token",
         url: "https://github.example.com",
         apiURL: undefined,
-        registriesAuthTokens: undefined,
       },
       features: createFeatures([]),
+      repositoryProperties: {},
       logger: getRunnerLogger(true),
-    },
+    } satisfies configUtils.InitConfigInputs,
     overrides,
   );
 }
@@ -223,6 +223,7 @@ test("load code quality config", async (t) => {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
     };
 
     t.deepEqual(config, expectedConfig);
@@ -461,6 +462,7 @@ test("load non-empty input", async (t) => {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
     };
 
     const languagesInput = "javascript";

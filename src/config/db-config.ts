@@ -364,25 +364,53 @@ function parseQueriesFromInput(
 /**
  * Combines queries from various configuration sources.
  *
- * @param augmentedConfig The loaded configuration file (either `config-file` or `config` input).
+ * @param config The loaded configuration file (either `config-file` or `config` input).
  * @param augmentationProperties Additional configuration data from other sources.
  * @returns Returns `augmentedConfig` with `queries` set to the computed array of queries.
  */
 function combineQueries(
-  augmentedConfig: UserConfig,
+  config: UserConfig,
   augmentationProperties: AugmentationProperties,
-): QuerySpec[] | undefined {
-  if (augmentationProperties.queriesInput) {
-    if (augmentationProperties.queriesInputCombines) {
-      return (augmentedConfig.queries || []).concat(
-        augmentationProperties.queriesInput,
-      );
+): QuerySpec[] {
+  const result: QuerySpec[] = [];
+
+  // Query settings obtained from the repository properties have the highest precedence.
+  if (
+    augmentationProperties.repoPropertyQueries &&
+    augmentationProperties.repoPropertyQueries.input
+  ) {
+    // If there are queries configured as a repository property, these may be organisational
+    // settings. If they don't allow combining with other query configurations, return just the
+    // ones configured in the repository properties.
+    if (!augmentationProperties.repoPropertyQueries.combines) {
+      return augmentationProperties.repoPropertyQueries.input;
     } else {
-      return augmentationProperties.queriesInput;
+      // Otherwise, add them to the query array and continue.
+      result.push(...augmentationProperties.repoPropertyQueries.input);
     }
   }
 
-  return augmentedConfig.queries;
+  // If there is a `queries` input to the Action, it has the next highest precedence.
+  if (augmentationProperties.queriesInput) {
+    // If there is a `queries` input and `queriesInputCombines` is `false`, then we don't
+    // combine it with the queries configured in the configuration file (if any). That is the
+    // original behaviour of this property. However, we DO combine it with any queries that
+    // we obtained from the repository properties, since that may be enforced by the organisation.
+    if (!augmentationProperties.queriesInputCombines) {
+      return result.concat(augmentationProperties.queriesInput);
+    } else {
+      // If they combine, add them to the query array and continue.
+      result.push(...augmentationProperties.queriesInput);
+    }
+  }
+
+  // If we get to this point, we either don't have any extra configuration inputs or all of them
+  // allow themselves to be combined with the settings from the configuration file.
+  if (config.queries) {
+    result.push(...config.queries);
+  }
+
+  return result;
 }
 
 export function generateCodeScanningConfig(

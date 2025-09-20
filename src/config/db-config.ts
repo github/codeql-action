@@ -313,7 +313,16 @@ export async function calculateAugmentation(
   const repoExtraQueriesCombines = shouldCombine(repoExtraQueries);
   const repoPropertyQueries = {
     combines: repoExtraQueriesCombines,
-    input: parseQueriesFromInput(repoExtraQueries, repoExtraQueriesCombines),
+    input: parseQueriesFromInput(
+      repoExtraQueries,
+      repoExtraQueriesCombines,
+      new ConfigurationError(
+        errorMessages.getRepoPropertyError(
+          RepositoryPropertyName.EXTRA_QUERIES,
+          errorMessages.getEmptyCombinesError(),
+        ),
+      ),
+    ),
   };
 
   return {
@@ -328,6 +337,7 @@ export async function calculateAugmentation(
 function parseQueriesFromInput(
   rawQueriesInput: string | undefined,
   queriesInputCombines: boolean,
+  errorToThrow?: ConfigurationError,
 ) {
   if (!rawQueriesInput) {
     return undefined;
@@ -337,6 +347,9 @@ function parseQueriesFromInput(
     ? rawQueriesInput.trim().slice(1).trim()
     : (rawQueriesInput?.trim() ?? "");
   if (queriesInputCombines && trimmedInput.length === 0) {
+    if (errorToThrow) {
+      throw errorToThrow;
+    }
     throw new ConfigurationError(
       errorMessages.getConfigFilePropertyError(
         undefined,

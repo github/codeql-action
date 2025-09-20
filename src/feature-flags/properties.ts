@@ -5,7 +5,9 @@ import { RepositoryNwo } from "../repository";
 /**
  * Enumerates repository property names that have some meaning to us.
  */
-export enum RepositoryPropertyName {}
+export enum RepositoryPropertyName {
+  EXTRA_QUERIES = "github-codeql-extra-queries",
+}
 
 /**
  * A repository property has a name and a value.

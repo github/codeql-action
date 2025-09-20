@@ -459,6 +459,7 @@ export async function initActionState(
   const augmentationProperties = await calculateAugmentation(
     packsInput,
     queriesInput,
+    repositoryProperties,
     languages,
   );
 

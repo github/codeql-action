@@ -1,5 +1,6 @@
 import test, { ExecutionContext } from "ava";
 
+import { RepositoryProperties } from "../feature-flags/properties";
 import { KnownLanguage, Language } from "../languages";
 import { prettyPrintPack } from "../util";
 
@@ -190,11 +191,13 @@ const calculateAugmentationMacro = test.macro({
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
     languages: Language[],
+    repositoryProperties: RepositoryProperties,
     expectedAugmentationProperties: dbConfig.AugmentationProperties,
   ) => {
     const actualAugmentationProperties = await dbConfig.calculateAugmentation(
       rawPacksInput,
       rawQueriesInput,
+      repositoryProperties,
       languages,
     );
     t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
@@ -208,6 +211,7 @@ test(
   undefined,
   undefined,
   [KnownLanguage.javascript],
+  {},
   {
     ...dbConfig.defaultAugmentationProperties,
   },
@@ -219,6 +223,7 @@ test(
   undefined,
   " a, b , c, d",
   [KnownLanguage.javascript],
+  {},
   {
     ...dbConfig.defaultAugmentationProperties,
     queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
@@ -231,6 +236,7 @@ test(
   undefined,
   "   +   a, b , c, d ",
   [KnownLanguage.javascript],
+  {},
   {
     ...dbConfig.defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -244,6 +250,7 @@ test(
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
   [KnownLanguage.javascript],
+  {},
   {
     ...dbConfig.defaultAugmentationProperties,
     packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
@@ -256,6 +263,7 @@ test(
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
   [KnownLanguage.javascript],
+  {},
   {
     ...dbConfig.defaultAugmentationProperties,
     packsInputCombines: true,
@@ -270,6 +278,7 @@ const calculateAugmentationErrorMacro = test.macro({
     rawPacksInput: string | undefined,
     rawQueriesInput: string | undefined,
     languages: Language[],
+    repositoryProperties: RepositoryProperties,
     expectedError: RegExp | string,
   ) => {
     await t.throwsAsync(
@@ -277,6 +286,7 @@ const calculateAugmentationErrorMacro = test.macro({
         dbConfig.calculateAugmentation(
           rawPacksInput,
           rawQueriesInput,
+          repositoryProperties,
           languages,
         ),
       { message: expectedError },
@@ -291,6 +301,7 @@ test(
   undefined,
   "   +   ",
   [KnownLanguage.javascript],
+  {},
   /The workflow property "queries" is invalid/,
 );
 
@@ -300,6 +311,7 @@ test(
   "   +   ",
   undefined,
   [KnownLanguage.javascript],
+  {},
   /The workflow property "packs" is invalid/,
 );
 
@@ -309,6 +321,7 @@ test(
   "   +  a/b, c/d ",
   undefined,
   [KnownLanguage.javascript, KnownLanguage.java],
+  {},
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
 
@@ -318,6 +331,7 @@ test(
   "   +  a/b, c/d ",
   undefined,
   [],
+  {},
   /No languages specified/,
 );
 
@@ -327,5 +341,6 @@ test(
   " a-pack-without-a-scope ",
   undefined,
   [KnownLanguage.javascript],
+  {},
   /"a-pack-without-a-scope" is not a valid pack/,
 );

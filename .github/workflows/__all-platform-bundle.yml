@@ -8,16 +8,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
 on:
-  push:
-    branches:
-      - main
-      - releases/v*
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:

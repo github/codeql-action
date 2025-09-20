@@ -31,7 +31,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@v5
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -69,6 +69,12 @@ jobs:
         with:
           sarif_file: eslint.sarif
           category: eslint
+
+  pr-checks:
+    name: "Run all PR checks"
+    needs:
+      - unit-tests
+    uses: ./.github/workflows/__all.yml
 
   check-node-version:
     if: github.event.pull_request

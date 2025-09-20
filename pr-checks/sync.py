@@ -269,6 +269,17 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                     'shell': 'bash',
                 },
             },
+            'concurrency': {
+                # Cancel in-progress workflows in the same 'group' for pull_request events,
+                # but other event types. This should have the effect that workflows on PRs
+                # get cancelled if there is a newer workflow in the same concurrency group.
+                # For other events, the new workflows should wait until earlier ones have finished.
+                # This should help reduce the number of concurrent workflows on the repo, and
+                # consequently the number of concurrent API requests.
+                'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+                # The group is determined by the workflow name + the ref
+                'group': "${{ github.workflow }}-${{ github.ref }}"
+            },
             'jobs': {
                 checkName: checkJob
             }

@@ -660,13 +660,13 @@ test(
   {
     queries: [
       {
-        uses: "zzz",
-      },
-      {
         uses: "xxx",
       },
       {
         uses: "yyy",
+      },
+      {
+        uses: "zzz",
       },
     ],
   },

@@ -3,6 +3,10 @@ import * as path from "path";
 import * as semver from "semver";
 
 import * as errorMessages from "../error-messages";
+import {
+  RepositoryProperties,
+  RepositoryPropertyName,
+} from "../feature-flags/properties";
 import { Language } from "../languages";
 import { cloneObject, ConfigurationError, prettyPrintPack } from "../util";
 
@@ -42,6 +46,17 @@ export interface UserConfig {
 }
 
 /**
+ * Represents additional configuration data from a source other than
+ * a configuration file.
+ */
+interface Augmentation<T> {
+  /** Whether or not the `input` combines with data in the base config. */
+  combines: boolean;
+  /** The additional input data. */
+  input?: T;
+}
+
+/**
  * Describes how to augment the user config with inputs from the action.
  *
  * When running a CodeQL analysis, the user can supply a config file. When
@@ -71,6 +86,11 @@ export interface AugmentationProperties {
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
+
+  /**
+   * Extra queries from the corresponding repository property.
+   */
+  repoPropertyQueries: Augmentation<QuerySpec[]>;
 }
 
 /**
@@ -82,6 +102,10 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
+  repoPropertyQueries: {
+    combines: false,
+    input: undefined,
+  },
 };
 
 /**
@@ -256,6 +280,7 @@ export function parsePacksFromInput(
  *
  * @param rawPacksInput The packs input from the action configuration.
  * @param rawQueriesInput The queries input from the action configuration.
+ * @param repositoryProperties The dictionary of repository properties.
  * @param languages The languages that the config file is for. If the packs input
  *    is non-empty, then there must be exactly one language. Otherwise, an
  *    error is thrown.
@@ -265,10 +290,10 @@ export function parsePacksFromInput(
  * @throws An error if the packs input is non-empty and the languages input does
  *     not have exactly one language.
  */
-// exported for testing.
 export async function calculateAugmentation(
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
+  repositoryProperties: RepositoryProperties,
   languages: Language[],
 ): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
@@ -283,11 +308,20 @@ export async function calculateAugmentation(
     queriesInputCombines,
   );
 
+  const repoExtraQueries =
+    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES];
+  const repoExtraQueriesCombines = shouldCombine(repoExtraQueries);
+  const repoPropertyQueries = {
+    combines: repoExtraQueriesCombines,
+    input: parseQueriesFromInput(repoExtraQueries, repoExtraQueriesCombines),
+  };
+
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
+    repoPropertyQueries,
   };
 }
 

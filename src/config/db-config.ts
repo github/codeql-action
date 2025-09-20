@@ -361,6 +361,30 @@ function parseQueriesFromInput(
   return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
 }
 
+/**
+ * Combines queries from various configuration sources.
+ *
+ * @param augmentedConfig The loaded configuration file (either `config-file` or `config` input).
+ * @param augmentationProperties Additional configuration data from other sources.
+ * @returns Returns `augmentedConfig` with `queries` set to the computed array of queries.
+ */
+function combineQueries(
+  augmentedConfig: UserConfig,
+  augmentationProperties: AugmentationProperties,
+): QuerySpec[] | undefined {
+  if (augmentationProperties.queriesInput) {
+    if (augmentationProperties.queriesInputCombines) {
+      return (augmentedConfig.queries || []).concat(
+        augmentationProperties.queriesInput,
+      );
+    } else {
+      return augmentationProperties.queriesInput;
+    }
+  }
+
+  return augmentedConfig.queries;
+}
+
 export function generateCodeScanningConfig(
   originalUserInput: UserConfig,
   augmentationProperties: AugmentationProperties,
@@ -369,15 +393,10 @@ export function generateCodeScanningConfig(
   const augmentedConfig = cloneObject(originalUserInput);
 
   // Inject the queries from the input
-  if (augmentationProperties.queriesInput) {
-    if (augmentationProperties.queriesInputCombines) {
-      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        augmentationProperties.queriesInput,
-      );
-    } else {
-      augmentedConfig.queries = augmentationProperties.queriesInput;
-    }
-  }
+  augmentedConfig.queries = combineQueries(
+    augmentedConfig,
+    augmentationProperties,
+  );
   if (augmentedConfig.queries?.length === 0) {
     delete augmentedConfig.queries;
   }

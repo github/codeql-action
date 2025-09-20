@@ -1,0 +1,437 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: Manual Check - all
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    paths:
+      - .github/workflows/__all.yml
+  workflow_dispatch:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
+jobs:
+  all-platform-bundle:
+    name: All-platform bundle
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__all-platform-bundle.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  analyze-ref-input:
+    name: "Analyze: 'ref' and 'sha' from inputs"
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__analyze-ref-input.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  autobuild-action:
+    name: autobuild-action
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__autobuild-action.yml
+    with: {}
+  autobuild-direct-tracing-with-working-dir:
+    name: Autobuild direct tracing (custom working directory)
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__autobuild-direct-tracing-with-working-dir.yml
+    with:
+      java-version: ${{ inputs.java-version }}
+  autobuild-direct-tracing:
+    name: Autobuild direct tracing
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__autobuild-direct-tracing.yml
+    with:
+      java-version: ${{ inputs.java-version }}
+  build-mode-autobuild:
+    name: Build mode autobuild
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__build-mode-autobuild.yml
+    with: {}
+  build-mode-manual:
+    name: Build mode manual
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__build-mode-manual.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  build-mode-none:
+    name: Build mode none
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__build-mode-none.yml
+    with: {}
+  build-mode-rollback:
+    name: Build mode rollback
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__build-mode-rollback.yml
+    with: {}
+  bundle-toolcache:
+    name: 'Bundle: Caching checks'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__bundle-toolcache.yml
+    with: {}
+  bundle-zstd:
+    name: 'Bundle: Zstandard checks'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__bundle-zstd.yml
+    with: {}
+  cleanup-db-cluster-dir:
+    name: Clean up database cluster directory
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__cleanup-db-cluster-dir.yml
+    with: {}
+  config-export:
+    name: Config export
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__config-export.yml
+    with: {}
+  config-input:
+    name: Config input
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__config-input.yml
+    with: {}
+  cpp-deptrace-disabled:
+    name: 'C/C++: disabling autoinstalling dependencies (Linux)'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__cpp-deptrace-disabled.yml
+    with: {}
+  cpp-deptrace-enabled-on-macos:
+    name: 'C/C++: autoinstalling dependencies is skipped (macOS)'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__cpp-deptrace-enabled-on-macos.yml
+    with: {}
+  cpp-deptrace-enabled:
+    name: 'C/C++: autoinstalling dependencies (Linux)'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__cpp-deptrace-enabled.yml
+    with: {}
+  diagnostics-export:
+    name: Diagnostic export
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__diagnostics-export.yml
+    with: {}
+  export-file-baseline-information:
+    name: Export file baseline information
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__export-file-baseline-information.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  extractor-ram-threads:
+    name: Extractor ram and threads options test
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__extractor-ram-threads.yml
+    with: {}
+  go-custom-queries:
+    name: 'Go: Custom queries'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-custom-queries.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-indirect-tracing-workaround-diagnostic:
+    name: 'Go: diagnostic when Go is changed after init step'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround-diagnostic.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-indirect-tracing-workaround-no-file-program:
+    name: 'Go: diagnostic when `file` is not installed'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround-no-file-program.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-indirect-tracing-workaround:
+    name: 'Go: workaround for indirect tracing'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-indirect-tracing-workaround.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-tracing-autobuilder:
+    name: 'Go: tracing with autobuilder step'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-autobuilder.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-tracing-custom-build-steps:
+    name: 'Go: tracing with custom build steps'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-custom-build-steps.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  go-tracing-legacy-workflow:
+    name: 'Go: tracing with legacy workflow'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__go-tracing-legacy-workflow.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  init-with-registries:
+    name: 'Packaging: Download using registries'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__init-with-registries.yml
+    with: {}
+  javascript-source-root:
+    name: Custom source root
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__javascript-source-root.yml
+    with: {}
+  job-run-uuid-sarif:
+    name: Job run UUID added to SARIF
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__job-run-uuid-sarif.yml
+    with: {}
+  language-aliases:
+    name: Language aliases
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__language-aliases.yml
+    with: {}
+  multi-language-autodetect:
+    name: Multi-language repository
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__multi-language-autodetect.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  overlay-init-fallback:
+    name: Overlay database init fallback
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__overlay-init-fallback.yml
+    with: {}
+  packaging-codescanning-config-inputs-js:
+    name: 'Packaging: Config and input passed to the CLI'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__packaging-codescanning-config-inputs-js.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  packaging-config-inputs-js:
+    name: 'Packaging: Config and input'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__packaging-config-inputs-js.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  packaging-config-js:
+    name: 'Packaging: Config file'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__packaging-config-js.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  packaging-inputs-js:
+    name: 'Packaging: Action input'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__packaging-inputs-js.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  quality-queries:
+    name: Quality queries input
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__quality-queries.yml
+    with: {}
+  remote-config:
+    name: Remote config file
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__remote-config.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  resolve-environment-action:
+    name: Resolve environment
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__resolve-environment-action.yml
+    with: {}
+  rubocop-multi-language:
+    name: RuboCop multi-language
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__rubocop-multi-language.yml
+    with: {}
+  ruby:
+    name: Ruby analysis
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__ruby.yml
+    with: {}
+  rust:
+    name: Rust analysis
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__rust.yml
+    with: {}
+  split-workflow:
+    name: Split workflow
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__split-workflow.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  start-proxy:
+    name: Start proxy
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__start-proxy.yml
+    with: {}
+  submit-sarif-failure:
+    name: Submit SARIF after failure
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__submit-sarif-failure.yml
+    with: {}
+  swift-autobuild:
+    name: Swift analysis using autobuild
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__swift-autobuild.yml
+    with: {}
+  swift-custom-build:
+    name: Swift analysis using a custom build command
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__swift-custom-build.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  test-autobuild-working-dir:
+    name: Autobuild working directory
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__test-autobuild-working-dir.yml
+    with: {}
+  test-local-codeql:
+    name: Local CodeQL bundle
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__test-local-codeql.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  test-proxy:
+    name: Proxy test
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__test-proxy.yml
+    with: {}
+  unset-environment:
+    name: Test unsetting environment variables
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__unset-environment.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  upload-quality-sarif:
+    name: 'Upload-sarif: code quality endpoint'
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__upload-quality-sarif.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  upload-ref-sha-input:
+    name: "Upload-sarif: 'ref' and 'sha' from inputs"
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__upload-ref-sha-input.yml
+    with:
+      go-version: ${{ inputs.go-version }}
+  with-checkout-path:
+    name: Use a custom `checkout_path`
+    permissions:
+      contents: read
+      security-events: read
+    uses: ./.github/workflows/__with-checkout-path.yml
+    with:
+      go-version: ${{ inputs.go-version }}

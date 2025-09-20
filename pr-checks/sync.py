@@ -231,6 +231,13 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         checkJob['env']['CODEQL_ACTION_TEST_MODE'] = True
     checkName = file.stem
 
+    # Add this check to the collection of all PR checks.
+    collections.setdefault("all", []).append({
+        'specification': checkSpecification,
+        'checkName': checkName,
+        'inputs': workflowInputs
+    })
+
     # If this check belongs to a named collection, record it.
     if 'collection' in checkSpecification:
         collection_name = checkSpecification['collection']

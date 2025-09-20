@@ -331,6 +331,9 @@ for collection_name in collections:
                 'workflow_dispatch': {
                     'inputs': combinedInputs
                 },
+                'workflow_call': {
+                    'inputs': combinedInputs
+                }
             },
             'jobs': jobs
         }, output_stream)

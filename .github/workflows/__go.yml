@@ -18,6 +18,13 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+  workflow_call:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
 jobs:
   go-custom-queries:
     name: 'Go: Custom queries'

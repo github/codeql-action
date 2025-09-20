@@ -12,6 +12,7 @@ import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -32,7 +33,6 @@ import {
 import {
   GitHubVariant,
   GitHubVersion,
-  prettyPrintPack,
   ConfigurationError,
   withTmpDir,
   BuildMode,
@@ -341,7 +341,7 @@ test("load input outside of workspace", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileOutsideWorkspaceErrorMessage(
+          errorMessages.getConfigFileOutsideWorkspaceErrorMessage(
             path.join(tempDir, "../input"),
           ),
         ),
@@ -368,7 +368,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileRepoFormatInvalidMessage(
+          errorMessages.getConfigFileRepoFormatInvalidMessage(
             "octo-org/codeql-config@main",
           ),
         ),
@@ -397,7 +397,7 @@ test("load non-existent input", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileDoesNotExistErrorMessage(
+          errorMessages.getConfigFileDoesNotExistErrorMessage(
             path.join(tempDir, "input"),
           ),
         ),
@@ -604,7 +604,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileDirectoryGivenMessage(repoReference),
+          errorMessages.getConfigFileDirectoryGivenMessage(repoReference),
         ),
       );
     }
@@ -632,7 +632,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileFormatInvalidMessage(repoReference),
+          errorMessages.getConfigFileFormatInvalidMessage(repoReference),
         ),
       );
     }
@@ -660,7 +660,7 @@ test("No detected languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new ConfigurationError(configUtils.getNoLanguagesError()),
+        new ConfigurationError(errorMessages.getNoLanguagesError()),
       );
     }
   });
@@ -683,343 +683,14 @@ test("Unknown languages", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getUnknownLanguagesError(["rubbish", "english"]),
+          errorMessages.getUnknownLanguagesError(["rubbish", "english"]),
         ),
       );
     }
   });
 });
 
-/**
- * Test macro for ensuring the packs block is valid
- */
-const parsePacksMacro = test.macro({
-  exec: (
-    t: ExecutionContext<unknown>,
-    packsInput: string,
-    languages: Language[],
-    expected: configUtils.Packs | undefined,
-  ) =>
-    t.deepEqual(
-      configUtils.parsePacksFromInput(packsInput, languages, false),
-      expected,
-    ),
-
-  title: (providedTitle = "") => `Parse Packs: ${providedTitle}`,
-});
-
-/**
- * Test macro for testing when the packs block is invalid
- */
-const parsePacksErrorMacro = test.macro({
-  exec: (
-    t: ExecutionContext<unknown>,
-    packsInput: string,
-    languages: Language[],
-    expected: RegExp,
-  ) =>
-    t.throws(
-      () => configUtils.parsePacksFromInput(packsInput, languages, false),
-      {
-        message: expected,
-      },
-    ),
-  title: (providedTitle = "") => `Parse Packs Error: ${providedTitle}`,
-});
-
-/**
- * Test macro for testing when the packs block is invalid
- */
-const invalidPackNameMacro = test.macro({
-  exec: (t: ExecutionContext, name: string) =>
-    parsePacksErrorMacro.exec(
-      t,
-      name,
-      [KnownLanguage.cpp],
-      new RegExp(`^"${name}" is not a valid pack$`),
-    ),
-  title: (_providedTitle: string | undefined, arg: string | undefined) =>
-    `Invalid pack string: ${arg}`,
-});
-
-test("no packs", parsePacksMacro, "", [], undefined);
-test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [KnownLanguage.cpp], {
-  [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
-});
-test(
-  "two packs with spaces",
-  parsePacksMacro,
-  " a/b , c/d@1.2.3 ",
-  [KnownLanguage.cpp],
-  {
-    [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
-  },
-);
-test(
-  "two packs with language",
-  parsePacksErrorMacro,
-  "a/b,c/d@1.2.3",
-  [KnownLanguage.cpp, KnownLanguage.java],
-  new RegExp(
-    "Cannot specify a 'packs' input in a multi-language analysis. " +
-      "Use a codeql-config.yml file instead and specify packs by language.",
-  ),
-);
-
-test(
-  "packs with other valid names",
-  parsePacksMacro,
-  [
-    // ranges are ok
-    "c/d@1.0",
-    "c/d@~1.0.0",
-    "c/d@~1.0.0:a/b",
-    "c/d@~1.0.0+abc:a/b",
-    "c/d@~1.0.0-abc:a/b",
-    "c/d:a/b",
-    // whitespace is removed
-    " c/d      @     ~1.0.0    :    b.qls   ",
-    // and it is retained within a path
-    " c/d      @     ~1.0.0    :    b/a path with/spaces.qls   ",
-    // this is valid. the path is '@'. It will probably fail when passed to the CLI
-    "c/d@1.2.3:@",
-    // this is valid, too. It will fail if it doesn't match a path
-    // (globbing is not done)
-    "c/d@1.2.3:+*)_(",
-  ].join(","),
-  [KnownLanguage.cpp],
-  {
-    [KnownLanguage.cpp]: [
-      "c/d@1.0",
-      "c/d@~1.0.0",
-      "c/d@~1.0.0:a/b",
-      "c/d@~1.0.0+abc:a/b",
-      "c/d@~1.0.0-abc:a/b",
-      "c/d:a/b",
-      "c/d@~1.0.0:b.qls",
-      "c/d@~1.0.0:b/a path with/spaces.qls",
-      "c/d@1.2.3:@",
-      "c/d@1.2.3:+*)_(",
-    ],
-  },
-);
-
-test(invalidPackNameMacro, "c"); // all packs require at least a scope and a name
-test(invalidPackNameMacro, "c-/d");
-test(invalidPackNameMacro, "-c/d");
-test(invalidPackNameMacro, "c/d_d");
-test(invalidPackNameMacro, "c/d@@");
-test(invalidPackNameMacro, "c/d@1.0.0:");
-test(invalidPackNameMacro, "c/d:");
-test(invalidPackNameMacro, "c/d:/a");
-test(invalidPackNameMacro, "@1.0.0:a");
-test(invalidPackNameMacro, "c/d@../a");
-test(invalidPackNameMacro, "c/d@b/../a");
-test(invalidPackNameMacro, "c/d:z@1");
-
-/**
- * Test macro for pretty printing pack specs
- */
-const packSpecPrettyPrintingMacro = test.macro({
-  exec: (t: ExecutionContext, packStr: string, packObj: configUtils.Pack) => {
-    const parsed = configUtils.parsePacksSpecification(packStr);
-    t.deepEqual(parsed, packObj, "parsed pack spec is correct");
-    const stringified = prettyPrintPack(packObj);
-    t.deepEqual(
-      stringified,
-      packStr.trim(),
-      "pretty-printed pack spec is correct",
-    );
-
-    t.deepEqual(
-      configUtils.validatePackSpecification(packStr),
-      packStr.trim(),
-      "pack spec is valid",
-    );
-  },
-  title: (
-    _providedTitle: string | undefined,
-    packStr: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _packObj: configUtils.Pack,
-  ) => `Prettyprint pack spec: '${packStr}'`,
-});
-
-test(packSpecPrettyPrintingMacro, "a/b", {
-  name: "a/b",
-  version: undefined,
-  path: undefined,
-});
-test(packSpecPrettyPrintingMacro, "a/b@~1.2.3", {
-  name: "a/b",
-  version: "~1.2.3",
-  path: undefined,
-});
-test(packSpecPrettyPrintingMacro, "a/b@~1.2.3:abc/def", {
-  name: "a/b",
-  version: "~1.2.3",
-  path: "abc/def",
-});
-test(packSpecPrettyPrintingMacro, "a/b:abc/def", {
-  name: "a/b",
-  version: undefined,
-  path: "abc/def",
-});
-test(packSpecPrettyPrintingMacro, "    a/b:abc/def    ", {
-  name: "a/b",
-  version: undefined,
-  path: "abc/def",
-});
-
 const mockLogger = getRunnerLogger(true);
-
-const calculateAugmentationMacro = test.macro({
-  exec: async (
-    t: ExecutionContext,
-    _title: string,
-    rawPacksInput: string | undefined,
-    rawQueriesInput: string | undefined,
-    languages: Language[],
-    expectedAugmentationProperties: configUtils.AugmentationProperties,
-  ) => {
-    const actualAugmentationProperties =
-      await configUtils.calculateAugmentation(
-        rawPacksInput,
-        rawQueriesInput,
-        languages,
-      );
-    t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
-  },
-  title: (_, title) => `Calculate Augmentation: ${title}`,
-});
-
-test(
-  calculateAugmentationMacro,
-  "All empty",
-  undefined,
-  undefined,
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With queries",
-  undefined,
-  " a, b , c, d",
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With queries combining",
-  undefined,
-  "   +   a, b , c, d ",
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    queriesInputCombines: true,
-    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With packs",
-  "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
-  undefined,
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With packs combining",
-  "   +   codeql/a, codeql/b, codeql/c, codeql/d",
-  undefined,
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    packsInputCombines: true,
-    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-  },
-);
-
-const calculateAugmentationErrorMacro = test.macro({
-  exec: async (
-    t: ExecutionContext,
-    _title: string,
-    rawPacksInput: string | undefined,
-    rawQueriesInput: string | undefined,
-    languages: Language[],
-    expectedError: RegExp | string,
-  ) => {
-    await t.throwsAsync(
-      () =>
-        configUtils.calculateAugmentation(
-          rawPacksInput,
-          rawQueriesInput,
-          languages,
-        ),
-      { message: expectedError },
-    );
-  },
-  title: (_, title) => `Calculate Augmentation Error: ${title}`,
-});
-
-test(
-  calculateAugmentationErrorMacro,
-  "Plus (+) with nothing else (queries)",
-  undefined,
-  "   +   ",
-  [KnownLanguage.javascript],
-  /The workflow property "queries" is invalid/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Plus (+) with nothing else (packs)",
-  "   +   ",
-  undefined,
-  [KnownLanguage.javascript],
-  /The workflow property "packs" is invalid/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Packs input with multiple languages",
-  "   +  a/b, c/d ",
-  undefined,
-  [KnownLanguage.javascript, KnownLanguage.java],
-  /Cannot specify a 'packs' input in a multi-language analysis/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Packs input with no languages",
-  "   +  a/b, c/d ",
-  undefined,
-  [],
-  /No languages specified/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Invalid packs",
-  " a-pack-without-a-scope ",
-  undefined,
-  [KnownLanguage.javascript],
-  /"a-pack-without-a-scope" is not a valid pack/,
-);
 
 test("no generateRegistries when registries is undefined", async (t) => {
   return await withTmpDir(async (tmpDir) => {
@@ -1097,28 +768,28 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     languagesInput: "",
     languagesInRepository: ["html"],
     expectedApiCall: true,
-    expectedError: configUtils.getNoLanguagesError(),
+    expectedError: errorMessages.getNoLanguagesError(),
   },
   {
     name: "no languages",
     languagesInput: "",
     languagesInRepository: [],
     expectedApiCall: true,
-    expectedError: configUtils.getNoLanguagesError(),
+    expectedError: errorMessages.getNoLanguagesError(),
   },
   {
     name: "unrecognized languages from input",
     languagesInput: "a, b, c, javascript",
     languagesInRepository: [],
     expectedApiCall: false,
-    expectedError: configUtils.getUnknownLanguagesError(["a", "b"]),
+    expectedError: errorMessages.getUnknownLanguagesError(["a", "b"]),
   },
   {
     name: "extractors that aren't languages aren't included (specified)",
     languagesInput: "html",
     languagesInRepository: [],
     expectedApiCall: false,
-    expectedError: configUtils.getUnknownLanguagesError(["html"]),
+    expectedError: errorMessages.getUnknownLanguagesError(["html"]),
   },
   {
     name: "extractors that aren't languages aren't included (autodetected)",

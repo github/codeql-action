@@ -713,6 +713,84 @@ test(
   {},
 );
 
+test(
+  "repo property queries have the highest precedence",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: false,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [{ uses: "zzz" }, { uses: "aaa" }],
+  },
+);
+
+test(
+  "repo property queries combines with queries input",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+    ],
+  },
+);
+
+test(
+  "repo property queries combines everything else",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+      { uses: "uu" },
+      { uses: "vv" },
+    ],
+  },
+);
+
 test("passes a code scanning config AND qlconfig to the CLI", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();

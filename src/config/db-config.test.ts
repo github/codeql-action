@@ -271,6 +271,42 @@ test(
   },
 );
 
+test(
+  calculateAugmentationMacro,
+  "With repo property queries",
+  undefined,
+  undefined,
+  [KnownLanguage.javascript],
+  {
+    "github-codeql-extra-queries": "a, b, c, d",
+  },
+  {
+    ...dbConfig.defaultAugmentationProperties,
+    repoPropertyQueries: {
+      combines: false,
+      input: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    },
+  },
+);
+
+test(
+  calculateAugmentationMacro,
+  "With repo property queries combining",
+  undefined,
+  undefined,
+  [KnownLanguage.javascript],
+  {
+    "github-codeql-extra-queries": "+ a, b, c, d",
+  },
+  {
+    ...dbConfig.defaultAugmentationProperties,
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
+    },
+  },
+);
+
 const calculateAugmentationErrorMacro = test.macro({
   exec: async (
     t: ExecutionContext,
@@ -313,6 +349,18 @@ test(
   [KnownLanguage.javascript],
   {},
   /The workflow property "packs" is invalid/,
+);
+
+test(
+  calculateAugmentationErrorMacro,
+  "Plus (+) with nothing else (repo property queries)",
+  undefined,
+  undefined,
+  [KnownLanguage.javascript],
+  {
+    "github-codeql-extra-queries": "    + ",
+  },
+  /The repository property "github-codeql-extra-queries" is invalid/,
 );
 
 test(

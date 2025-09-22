@@ -279,8 +279,7 @@ export async function getCodeQLSource(
 ): Promise<CodeQLToolsSource> {
   if (
     toolsInput &&
-    !CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput) &&
-    !CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput) &&
+    !isReservedToolsValue(toolsInput) &&
     !toolsInput.startsWith("http")
   ) {
     logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
@@ -820,4 +819,9 @@ async function getNightlyToolsUrl(logger: Logger) {
       `Failed to retrieve the latest nightly release: ${util.wrapError(e)}`,
     );
   }
+}
+
+function isReservedToolsValue(tools: string): boolean {
+  return CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools);
 }

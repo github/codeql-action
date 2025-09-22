@@ -689,14 +689,17 @@ async function isOverlayAnalysisFeatureEnabled(
  * For `Overlay` and `OverlayBase`, the function performs further checks and
  * reverts to `None` if any check should fail.
  *
+ * If `codeql` or `languages` is undefined, the function will skip checks that
+ * depend on them.
+ *
  * @returns An object containing the overlay database mode and whether the
  * action should perform overlay-base database caching.
  */
 export async function getOverlayDatabaseMode(
-  codeql: CodeQL,
+  codeql: CodeQL | undefined,
   repository: RepositoryNwo,
   features: FeatureEnablement,
-  languages: Language[],
+  languages: Language[] | undefined,
   languagesInput: string | undefined,
   sourceRoot: string,
   buildMode: BuildMode | undefined,
@@ -759,6 +762,8 @@ export async function getOverlayDatabaseMode(
   }
 
   if (
+    codeql !== undefined &&
+    languages !== undefined &&
     buildMode !== BuildMode.None &&
     (
       await Promise.all(
@@ -773,7 +778,10 @@ export async function getOverlayDatabaseMode(
     );
     return nonOverlayAnalysis;
   }
-  if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
+  if (
+    codeql !== undefined &&
+    !(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))
+  ) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +

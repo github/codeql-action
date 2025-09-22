@@ -44,7 +44,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: nightly-latest
+            version: linked
     name: Local CodeQL bundle
     permissions:
       contents: read

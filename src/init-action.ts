@@ -233,6 +233,39 @@ async function run() {
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
+
+    const inputs: configUtils.InitConfigInputs = {
+      analysisKindsInput: getRequiredInput("analysis-kinds"),
+      languagesInput: getOptionalInput("languages"),
+      queriesInput: getOptionalInput("queries"),
+      qualityQueriesInput: getOptionalInput("quality-queries"),
+      packsInput: getOptionalInput("packs"),
+      buildModeInput: getOptionalInput("build-mode"),
+      configFile,
+      dbLocation: getOptionalInput("db-location"),
+      configInput: getOptionalInput("config"),
+      trapCachingEnabled: getTrapCachingEnabled(),
+      dependencyCachingEnabled: getDependencyCachingEnabled(),
+      // Debug mode is enabled if:
+      // - The `init` Action is passed `debug: true`.
+      // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
+      //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
+      debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+      debugArtifactName:
+        getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
+      debugDatabaseName:
+        getOptionalInput("debug-database-name") || DEFAULT_DEBUG_DATABASE_NAME,
+      repository: repositoryNwo,
+      tempDir: getTemporaryDirectory(),
+      workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+      sourceRoot,
+      githubVersion: gitHubVersion,
+      apiDetails,
+      features,
+      repositoryProperties,
+      logger,
+    };
+
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );
@@ -288,51 +321,14 @@ async function run() {
     }
 
     // Warn that `quality-queries` is deprecated if there is an argument for it.
-    const qualityQueriesInput = getOptionalInput("quality-queries");
-
-    if (qualityQueriesInput !== undefined) {
+    if (inputs.qualityQueriesInput !== undefined) {
       logger.warning(
         "The `quality-queries` input is deprecated and will be removed in a future version of the CodeQL Action. " +
           "Use the `analysis-kinds` input to configure different analysis kinds instead.",
       );
     }
 
-    config = await initConfig(
-      {
-        analysisKindsInput: getRequiredInput("analysis-kinds"),
-        languagesInput: getOptionalInput("languages"),
-        queriesInput: getOptionalInput("queries"),
-        qualityQueriesInput,
-        packsInput: getOptionalInput("packs"),
-        buildModeInput: getOptionalInput("build-mode"),
-        configFile,
-        dbLocation: getOptionalInput("db-location"),
-        configInput: getOptionalInput("config"),
-        trapCachingEnabled: getTrapCachingEnabled(),
-        dependencyCachingEnabled: getDependencyCachingEnabled(),
-        // Debug mode is enabled if:
-        // - The `init` Action is passed `debug: true`.
-        // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
-        //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-        debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
-        debugArtifactName:
-          getOptionalInput("debug-artifact-name") ||
-          DEFAULT_DEBUG_ARTIFACT_NAME,
-        debugDatabaseName:
-          getOptionalInput("debug-database-name") ||
-          DEFAULT_DEBUG_DATABASE_NAME,
-        repository: repositoryNwo,
-        tempDir: getTemporaryDirectory(),
-        workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
-        sourceRoot,
-        githubVersion: gitHubVersion,
-        apiDetails,
-        features,
-        repositoryProperties,
-        logger,
-      },
-      codeql,
-    );
+    config = await initConfig(inputs, codeql);
 
     await checkInstallPython311(config.languages, codeql);
   } catch (unwrappedError) {

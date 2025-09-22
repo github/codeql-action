@@ -822,6 +822,8 @@ async function getNightlyToolsUrl(logger: Logger) {
 }
 
 function isReservedToolsValue(tools: string): boolean {
-  return CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||
-    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools);
+  return (
+    CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools)
+  );
 }

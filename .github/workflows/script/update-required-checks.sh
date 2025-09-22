@@ -33,6 +33,12 @@ CHECKS="$(gh api repos/github/codeql-action/commits/"${GITHUB_SHA}"/check-runs -
 
 echo "$CHECKS" | jq
 
+# Fail if there are no checks
+if [ -z "$CHECKS" ] || [ "$CHECKS" == "[]" ]; then
+  echo "No checks found for $GITHUB_SHA"
+  exit 1
+fi
+
 echo "{\"contexts\": ${CHECKS}}" > checks.json
 
 echo "Updating main"

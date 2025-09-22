@@ -27,6 +27,9 @@ on:
 defaults:
   run:
     shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   language-aliases:
     strategy:

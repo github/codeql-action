@@ -339,6 +339,9 @@ export async function getCodeQLSource(
     toolsInput !== undefined &&
     CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput)
   ) {
+    logger.info(
+      `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
+    );
     toolsInput = await getNightlyToolsUrl(logger);
   }
 

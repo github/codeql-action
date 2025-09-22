@@ -7,7 +7,7 @@ import * as assert from 'assert'
 const actualConfig = loadActualConfig()
 
 function sortConfigArrays(config) {
-  for (const key in Object.keys(config)) {
+  for (const key of Object.keys(config)) {
     const value = config[key];
     if (key === 'queries' && Array.isArray(value)) {
       config[key] = value.sort();

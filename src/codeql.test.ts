@@ -496,6 +496,8 @@ const injectedConfigMacro = test.macro({
     expectedConfig: any,
   ) => {
     await util.withTmpDir(async (tempDir) => {
+      sinon.stub(actionsUtil, "isDefaultSetup").resolves(false);
+
       const runnerConstructorStub = stubToolRunnerConstructor();
       const codeqlObject = await stubCodeql();
 
@@ -505,6 +507,7 @@ const injectedConfigMacro = test.macro({
         tempDir,
       };
       thisStubConfig.computedConfig = generateCodeScanningConfig(
+        getRunnerLogger(true),
         thisStubConfig.originalUserInput,
         augmentationProperties,
       );

@@ -137,7 +137,6 @@ def update_template_files(checks_dir: str, action_versions: Dict[str, str]) -> L
 
 def main():
     parser = argparse.ArgumentParser(description="Sync action versions from generated workflows back to templates")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be changed without making changes")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     args = parser.parse_args()
 
@@ -160,11 +159,6 @@ def main():
     if not action_versions:
         print("No action versions found in generated workflows")
         return 1
-
-    if args.dry_run:
-        print("\nDRY RUN - Would make the following changes:")
-        print(f"Action versions to sync: {action_versions}")
-        return 0
 
     # Update files
     print("\nUpdating source files...")

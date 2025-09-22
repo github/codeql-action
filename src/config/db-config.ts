@@ -2,12 +2,14 @@ import * as path from "path";
 
 import * as semver from "semver";
 
+import { isDefaultSetup } from "../actions-util";
 import * as errorMessages from "../error-messages";
 import {
   RepositoryProperties,
   RepositoryPropertyName,
 } from "../feature-flags/properties";
 import { Language } from "../languages";
+import { Logger } from "../logging";
 import { cloneObject, ConfigurationError, prettyPrintPack } from "../util";
 
 export interface ExcludeQueryFilter {
@@ -364,11 +366,13 @@ function parseQueriesFromInput(
 /**
  * Combines queries from various configuration sources.
  *
+ * @param logger The logger to use.
  * @param config The loaded configuration file (either `config-file` or `config` input).
  * @param augmentationProperties Additional configuration data from other sources.
  * @returns Returns `augmentedConfig` with `queries` set to the computed array of queries.
  */
 function combineQueries(
+  logger: Logger,
   config: UserConfig,
   augmentationProperties: AugmentationProperties,
 ): QuerySpec[] {
@@ -383,6 +387,12 @@ function combineQueries(
     // settings. If they don't allow combining with other query configurations, return just the
     // ones configured in the repository properties.
     if (!augmentationProperties.repoPropertyQueries.combines) {
+      if (!isDefaultSetup()) {
+        logger.info(
+          `Queries are configured in the repository properties and don't allow combining with other query settings. ` +
+            `Any queries configured elsewhere will be ignored.`,
+        );
+      }
       return augmentationProperties.repoPropertyQueries.input;
     } else {
       // Otherwise, add them to the query array and continue.
@@ -414,6 +424,7 @@ function combineQueries(
 }
 
 export function generateCodeScanningConfig(
+  logger: Logger,
   originalUserInput: UserConfig,
   augmentationProperties: AugmentationProperties,
 ): UserConfig {
@@ -422,8 +433,12 @@ export function generateCodeScanningConfig(
 
   // Inject the queries from the input
   augmentedConfig.queries = combineQueries(
+    logger,
     augmentedConfig,
     augmentationProperties,
+  );
+  logger.debug(
+    `Combined queries: ${augmentedConfig.queries?.map((q) => q.uses).join(",")}`,
   );
   if (augmentedConfig.queries?.length === 0) {
     delete augmentedConfig.queries;

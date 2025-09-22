@@ -473,6 +473,7 @@ export async function initActionState(
   // Compute the full Code Scanning configuration that combines the configuration from the
   // configuration file / `config` input with other inputs, such as `queries`.
   const computedConfig = generateCodeScanningConfig(
+    logger,
     userConfig,
     augmentationProperties,
   );

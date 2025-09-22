@@ -34,7 +34,7 @@ CHECKS="$(gh api repos/github/codeql-action/commits/"${GITHUB_SHA}"/check-runs -
 echo "$CHECKS" | jq
 
 # Fail if there are no checks
-if [ -z "$CHECKS" ] || [ "$CHECKS" == "[]" ]; then
+if [ -z "$CHECKS" ] || [ "$(echo "$CHECKS" | jq '. | length')" -eq 0 ]; then
   echo "No checks found for $GITHUB_SHA"
   exit 1
 fi

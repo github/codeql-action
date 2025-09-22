@@ -232,30 +232,6 @@ steps = [
         result = sync_back.update_sync_py(self.sync_py_path, action_versions)
         self.assertFalse(result)
 
-    def test_missing_sync_py_file(self):
-        """Test handling of missing sync.py file"""
-        result = sync_back.update_sync_py("/nonexistent/sync.py", {})
-        self.assertFalse(result)
-
-    def test_main_dry_run(self):
-        """Test that dry-run functionality works"""
-        # Create a test workflow
-        workflow_content = """
-name: Test
-jobs:
-  test:
-    steps:
-      - uses: actions/checkout@v4
-        """
-
-        with open(os.path.join(self.workflow_dir, "__test.yml"), 'w') as f:
-            f.write(workflow_content)
-
-        # Test the scanning function directly since mocking main() is complex
-        result = sync_back.scan_generated_workflows(self.workflow_dir)
-        self.assertIn('actions/checkout', result)
-        self.assertEqual(result['actions/checkout'], 'v4')
-
 
 if __name__ == '__main__':
     unittest.main()

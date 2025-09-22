@@ -3,7 +3,6 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
-import * as semver from "semver";
 
 import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
 import {
@@ -17,7 +16,14 @@ import {
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
+import {
+  calculateAugmentation,
+  ExcludeQueryFilter,
+  generateCodeScanningConfig,
+  UserConfig,
+} from "./config/db-config";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -30,7 +36,6 @@ import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
   GitHubVersion,
-  prettyPrintPack,
   ConfigurationError,
   BuildMode,
   codeQlVersionAtLeast,
@@ -38,34 +43,7 @@ import {
   isDefined,
 } from "./util";
 
-// Property names from the user-supplied config file.
-
-const PACKS_PROPERTY = "packs";
-
-/**
- * Format of the config file supplied by the user.
- */
-export interface UserConfig {
-  name?: string;
-  "disable-default-queries"?: boolean;
-  queries?: Array<{
-    name?: string;
-    uses: string;
-  }>;
-  "paths-ignore"?: string[];
-  paths?: string[];
-
-  // If this is a multi-language analysis, then the packages must be split by
-  // language. If this is a single language analysis, then no split by
-  // language is necessary.
-  packs?: Record<string, string[]> | string[];
-
-  // Set of query filters to include and exclude extra queries based on
-  // codeql query suite `include` and `exclude` properties
-  "query-filters"?: QueryFilter[];
-}
-
-export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
+export * from "./config/db-config";
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -88,14 +66,6 @@ export interface RegistryConfigNoCredentials {
   // "github" refers to packs published as content in a GitHub repository. This kind of registry is used in scenarios
   // where GHCR is not available, such as certain GHES environments.
   kind?: "github" | "docker";
-}
-
-interface ExcludeQueryFilter {
-  exclude: Record<string, string[] | string>;
-}
-
-interface IncludeQueryFilter {
-  include: Record<string, string[] | string>;
 }
 
 /**
@@ -197,121 +167,6 @@ export interface Config {
    * `OverlayBase`.
    */
   useOverlayDatabaseCaching: boolean;
-}
-
-/**
- * Describes how to augment the user config with inputs from the action.
- *
- * When running a CodeQL analysis, the user can supply a config file. When
- * running a CodeQL analysis from a GitHub action, the user can supply a
- * config file _and_ a set of inputs.
- *
- * The inputs from the action are used to augment the user config before
- * passing the user config to the CodeQL CLI invocation.
- */
-export interface AugmentationProperties {
-  /**
-   * Whether or not the queries input combines with the queries in the config.
-   */
-  queriesInputCombines: boolean;
-
-  /**
-   * The queries input from the `with` block of the action declaration
-   */
-  queriesInput?: Array<{ uses: string }>;
-
-  /**
-   * Whether or not the packs input combines with the packs in the config.
-   */
-  packsInputCombines: boolean;
-
-  /**
-   * The packs input from the `with` block of the action declaration
-   */
-  packsInput?: string[];
-}
-
-/**
- * The default, empty augmentation properties. This is most useful
- * for tests.
- */
-export const defaultAugmentationProperties: AugmentationProperties = {
-  queriesInputCombines: false,
-  packsInputCombines: false,
-  packsInput: undefined,
-  queriesInput: undefined,
-};
-export type Packs = Partial<Record<Language, string[]>>;
-
-export interface Pack {
-  name: string;
-  version?: string;
-  path?: string;
-}
-
-export function getPacksStrInvalid(
-  packStr: string,
-  configFile?: string,
-): string {
-  return configFile
-    ? getConfigFilePropertyError(
-        configFile,
-        PACKS_PROPERTY,
-        `"${packStr}" is not a valid pack`,
-      )
-    : `"${packStr}" is not a valid pack`;
-}
-
-export function getConfigFileOutsideWorkspaceErrorMessage(
-  configFile: string,
-): string {
-  return `The configuration file "${configFile}" is outside of the workspace`;
-}
-
-export function getConfigFileDoesNotExistErrorMessage(
-  configFile: string,
-): string {
-  return `The configuration file "${configFile}" does not exist`;
-}
-
-export function getConfigFileRepoFormatInvalidMessage(
-  configFile: string,
-): string {
-  let error = `The configuration file "${configFile}" is not a supported remote file reference.`;
-  error += " Expected format <owner>/<repository>/<file-path>@<ref>";
-
-  return error;
-}
-
-export function getConfigFileFormatInvalidMessage(configFile: string): string {
-  return `The configuration file "${configFile}" could not be read`;
-}
-
-export function getConfigFileDirectoryGivenMessage(configFile: string): string {
-  return `The configuration file "${configFile}" looks like a directory, not a file`;
-}
-
-function getConfigFilePropertyError(
-  configFile: string | undefined,
-  property: string,
-  error: string,
-): string {
-  if (configFile === undefined) {
-    return `The workflow property "${property}" is invalid: ${error}`;
-  } else {
-    return `The configuration file "${configFile}" is invalid: property "${property}" ${error}`;
-  }
-}
-
-export function getNoLanguagesError(): string {
-  return (
-    "Did not detect any languages to analyze. " +
-    "Please update input in workflow or check that GitHub detects the correct languages in your repository."
-  );
-}
-
-export function getUnknownLanguagesError(languages: string[]): string {
-  return `Did not recognize the following languages: ${languages.join(", ")}`;
 }
 
 export async function getSupportedLanguageMap(
@@ -450,13 +305,15 @@ export async function getLanguages(
   const languages = Array.from(languagesSet);
 
   if (!autodetected && unknownLanguages.length > 0) {
-    throw new ConfigurationError(getUnknownLanguagesError(unknownLanguages));
+    throw new ConfigurationError(
+      errorMessages.getUnknownLanguagesError(unknownLanguages),
+    );
   }
 
   // If the languages parameter was not given and no languages were
   // detected then fail here as this is a workflow configuration error.
   if (languages.length === 0) {
-    throw new ConfigurationError(getNoLanguagesError());
+    throw new ConfigurationError(errorMessages.getNoLanguagesError());
   }
 
   if (autodetected) {
@@ -666,7 +523,7 @@ async function loadUserConfig(
       // Error if the config file is now outside of the workspace
       if (!(configFile + path.sep).startsWith(workspacePath + path.sep)) {
         throw new ConfigurationError(
-          getConfigFileOutsideWorkspaceErrorMessage(configFile),
+          errorMessages.getConfigFileOutsideWorkspaceErrorMessage(configFile),
         );
       }
     }
@@ -674,73 +531,6 @@ async function loadUserConfig(
   } else {
     return await getRemoteConfig(configFile, apiDetails);
   }
-}
-
-/**
- * Calculates how the codeql config file needs to be augmented before passing
- * it to the CLI. The reason this is necessary is the codeql-action can be called
- * with extra inputs from the workflow. These inputs are not part of the config
- * and the CLI does not know about these inputs so we need to inject them into
- * the config file sent to the CLI.
- *
- * @param rawPacksInput The packs input from the action configuration.
- * @param rawQueriesInput The queries input from the action configuration.
- * @param languages The languages that the config file is for. If the packs input
- *    is non-empty, then there must be exactly one language. Otherwise, an
- *    error is thrown.
- *
- * @returns The properties that need to be augmented in the config file.
- *
- * @throws An error if the packs input is non-empty and the languages input does
- *     not have exactly one language.
- */
-// exported for testing.
-export async function calculateAugmentation(
-  rawPacksInput: string | undefined,
-  rawQueriesInput: string | undefined,
-  languages: Language[],
-): Promise<AugmentationProperties> {
-  const packsInputCombines = shouldCombine(rawPacksInput);
-  const packsInput = parsePacksFromInput(
-    rawPacksInput,
-    languages,
-    packsInputCombines,
-  );
-  const queriesInputCombines = shouldCombine(rawQueriesInput);
-  const queriesInput = parseQueriesFromInput(
-    rawQueriesInput,
-    queriesInputCombines,
-  );
-
-  return {
-    packsInputCombines,
-    packsInput: packsInput?.[languages[0]],
-    queriesInput,
-    queriesInputCombines,
-  };
-}
-
-function parseQueriesFromInput(
-  rawQueriesInput: string | undefined,
-  queriesInputCombines: boolean,
-) {
-  if (!rawQueriesInput) {
-    return undefined;
-  }
-
-  const trimmedInput = queriesInputCombines
-    ? rawQueriesInput.trim().slice(1).trim()
-    : (rawQueriesInput?.trim() ?? "");
-  if (queriesInputCombines && trimmedInput.length === 0) {
-    throw new ConfigurationError(
-      getConfigFilePropertyError(
-        undefined,
-        "queries",
-        "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
-      ),
-    );
-  }
-  return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
 }
 
 const OVERLAY_ANALYSIS_FEATURES: Record<Language, Feature> = {
@@ -938,161 +728,6 @@ export async function getOverlayDatabaseMode(
   };
 }
 
-/**
- * Pack names must be in the form of `scope/name`, with only alpha-numeric characters,
- * and `-` allowed as long as not the first or last char.
- **/
-const PACK_IDENTIFIER_PATTERN = (function () {
-  const alphaNumeric = "[a-z0-9]";
-  const alphaNumericDash = "[a-z0-9-]";
-  const component = `${alphaNumeric}(${alphaNumericDash}*${alphaNumeric})?`;
-  return new RegExp(`^${component}/${component}$`);
-})();
-
-// Exported for testing
-export function parsePacksFromInput(
-  rawPacksInput: string | undefined,
-  languages: Language[],
-  packsInputCombines: boolean,
-): Packs | undefined {
-  if (!rawPacksInput?.trim()) {
-    return undefined;
-  }
-
-  if (languages.length > 1) {
-    throw new ConfigurationError(
-      "Cannot specify a 'packs' input in a multi-language analysis. Use a codeql-config.yml file instead and specify packs by language.",
-    );
-  } else if (languages.length === 0) {
-    throw new ConfigurationError(
-      "No languages specified. Cannot process the packs input.",
-    );
-  }
-
-  rawPacksInput = rawPacksInput.trim();
-  if (packsInputCombines) {
-    rawPacksInput = rawPacksInput.trim().substring(1).trim();
-    if (!rawPacksInput) {
-      throw new ConfigurationError(
-        getConfigFilePropertyError(
-          undefined,
-          "packs",
-          "A '+' was used in the 'packs' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
-        ),
-      );
-    }
-  }
-
-  return {
-    [languages[0]]: rawPacksInput.split(",").reduce((packs, pack) => {
-      packs.push(validatePackSpecification(pack));
-      return packs;
-    }, [] as string[]),
-  };
-}
-
-/**
- * Validates that this package specification is syntactically correct.
- * It may not point to any real package, but after this function returns
- * without throwing, we are guaranteed that the package specification
- * is roughly correct.
- *
- * The CLI itself will do a more thorough validation of the package
- * specification.
- *
- * A package specification looks like this:
- *
- * `scope/name@version:path`
- *
- * Version and path are optional.
- *
- * @param packStr the package specification to verify.
- * @param configFile Config file to use for error reporting
- */
-export function parsePacksSpecification(packStr: string): Pack {
-  if (typeof packStr !== "string") {
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
-  }
-
-  packStr = packStr.trim();
-  const atIndex = packStr.indexOf("@");
-  const colonIndex = packStr.indexOf(":", atIndex);
-  const packStart = 0;
-  const versionStart = atIndex + 1 || undefined;
-  const pathStart = colonIndex + 1 || undefined;
-  const packEnd = Math.min(
-    atIndex > 0 ? atIndex : Infinity,
-    colonIndex > 0 ? colonIndex : Infinity,
-    packStr.length,
-  );
-  const versionEnd = versionStart
-    ? Math.min(colonIndex > 0 ? colonIndex : Infinity, packStr.length)
-    : undefined;
-  const pathEnd = pathStart ? packStr.length : undefined;
-
-  const packName = packStr.slice(packStart, packEnd).trim();
-  const version = versionStart
-    ? packStr.slice(versionStart, versionEnd).trim()
-    : undefined;
-  const packPath = pathStart
-    ? packStr.slice(pathStart, pathEnd).trim()
-    : undefined;
-
-  if (!PACK_IDENTIFIER_PATTERN.test(packName)) {
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
-  }
-  if (version) {
-    try {
-      new semver.Range(version);
-    } catch {
-      // The range string is invalid. OK to ignore the caught error
-      throw new ConfigurationError(getPacksStrInvalid(packStr));
-    }
-  }
-
-  if (
-    packPath &&
-    (path.isAbsolute(packPath) ||
-      // Permit using "/" instead of "\" on Windows
-      // Use `x.split(y).join(z)` as a polyfill for `x.replaceAll(y, z)` since
-      // if we used a regex we'd need to escape the path separator on Windows
-      // which seems more awkward.
-      path.normalize(packPath).split(path.sep).join("/") !==
-        packPath.split(path.sep).join("/"))
-  ) {
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
-  }
-
-  if (!packPath && pathStart) {
-    // 0 length path
-    throw new ConfigurationError(getPacksStrInvalid(packStr));
-  }
-
-  return {
-    name: packName,
-    version,
-    path: packPath,
-  };
-}
-
-export function validatePackSpecification(pack: string) {
-  return prettyPrintPack(parsePacksSpecification(pack));
-}
-
-/**
- * The convention in this action is that an input value that is prefixed with a '+' will
- * be combined with the corresponding value in the config file.
- *
- * Without a '+', an input value will override the corresponding value in the config file.
- *
- * @param inputValue The input value to process.
- * @returns true if the input value should replace the corresponding value in the config file,
- *          false if it should be appended.
- */
-function shouldCombine(inputValue?: string): boolean {
-  return !!inputValue?.trim().startsWith("+");
-}
-
 function dbLocationOrDefault(
   dbLocation: string | undefined,
   tempDir: string,
@@ -1245,7 +880,7 @@ function getLocalConfig(configFile: string): UserConfig {
   // Error if the file does not exist
   if (!fs.existsSync(configFile)) {
     throw new ConfigurationError(
-      getConfigFileDoesNotExistErrorMessage(configFile),
+      errorMessages.getConfigFileDoesNotExistErrorMessage(configFile),
     );
   }
 
@@ -1264,7 +899,7 @@ async function getRemoteConfig(
   // 5 = 4 groups + the whole expression
   if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
     throw new ConfigurationError(
-      getConfigFileRepoFormatInvalidMessage(configFile),
+      errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
     );
   }
 
@@ -1282,10 +917,12 @@ async function getRemoteConfig(
     fileContents = response.data.content;
   } else if (Array.isArray(response.data)) {
     throw new ConfigurationError(
-      getConfigFileDirectoryGivenMessage(configFile),
+      errorMessages.getConfigFileDirectoryGivenMessage(configFile),
     );
   } else {
-    throw new ConfigurationError(getConfigFileFormatInvalidMessage(configFile));
+    throw new ConfigurationError(
+      errorMessages.getConfigFileFormatInvalidMessage(configFile),
+    );
   }
 
   return yaml.load(
@@ -1494,56 +1131,6 @@ export async function parseBuildModeInput(
     return BuildMode.Autobuild;
   }
   return input as BuildMode;
-}
-
-export function generateCodeScanningConfig(
-  originalUserInput: UserConfig,
-  augmentationProperties: AugmentationProperties,
-): UserConfig {
-  // make a copy so we can modify it
-  const augmentedConfig = cloneObject(originalUserInput);
-
-  // Inject the queries from the input
-  if (augmentationProperties.queriesInput) {
-    if (augmentationProperties.queriesInputCombines) {
-      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        augmentationProperties.queriesInput,
-      );
-    } else {
-      augmentedConfig.queries = augmentationProperties.queriesInput;
-    }
-  }
-  if (augmentedConfig.queries?.length === 0) {
-    delete augmentedConfig.queries;
-  }
-
-  // Inject the packs from the input
-  if (augmentationProperties.packsInput) {
-    if (augmentationProperties.packsInputCombines) {
-      // At this point, we already know that this is a single-language analysis
-      if (Array.isArray(augmentedConfig.packs)) {
-        augmentedConfig.packs = (augmentedConfig.packs || []).concat(
-          augmentationProperties.packsInput,
-        );
-      } else if (!augmentedConfig.packs) {
-        augmentedConfig.packs = augmentationProperties.packsInput;
-      } else {
-        // At this point, we know there is only one language.
-        // If there were more than one language, an error would already have been thrown.
-        const language = Object.keys(augmentedConfig.packs)[0];
-        augmentedConfig.packs[language] = augmentedConfig.packs[
-          language
-        ].concat(augmentationProperties.packsInput);
-      }
-    } else {
-      augmentedConfig.packs = augmentationProperties.packsInput;
-    }
-  }
-  if (Array.isArray(augmentedConfig.packs) && !augmentedConfig.packs.length) {
-    delete augmentedConfig.packs;
-  }
-
-  return augmentedConfig;
 }
 
 /**

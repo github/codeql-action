@@ -66,11 +66,9 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
-      - name: Fetch a CodeQL bundle
-        env:
-          CODEQL_URL: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Fetch latest CodeQL bundle
         run: |
-          wget "$CODEQL_URL"
+          wget https://github.com/github/codeql-action/releases/latest/download/codeql-bundle-linux64.tar.zst
       - id: init
         uses: ./../action/init
         with:

@@ -799,21 +799,25 @@ async function getNightlyToolsUrl(logger: Logger) {
     ? "zstd"
     : "gzip";
 
-  // Since nightlies are prereleases, we can't just download the latest release
-  // on the repository. So instead we need to find the latest pre-release
-  // version and construct the download URL from that.
-  const release = await api.getApiClient().rest.repos.listReleases({
-    owner: CODEQL_NIGHTLIES_REPOSITORY_OWNER,
-    repo: CODEQL_NIGHTLIES_REPOSITORY_NAME,
-    per_page: 1,
-    page: 1,
-    prerelease: true,
-  });
-
-  const latestRelease = release.data[0];
-  if (!latestRelease) {
-    throw new Error("Could not find latest nightly release.");
+  try {
+    // Since nightlies are prereleases, we can't just download the latest release
+    // on the repository. So instead we need to find the latest pre-release
+    // version and construct the download URL from that.
+    const release = await api.getApiClient().rest.repos.listReleases({
+      owner: CODEQL_NIGHTLIES_REPOSITORY_OWNER,
+      repo: CODEQL_NIGHTLIES_REPOSITORY_NAME,
+      per_page: 1,
+      page: 1,
+      prerelease: true,
+    });
+    const latestRelease = release.data[0];
+    if (!latestRelease) {
+      throw new Error("Could not find the latest nightly release.");
+    }
+    return `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${getCodeQLBundleName(compressionMethod)}`;
+  } catch (e) {
+    throw new Error(
+      `Failed to retrieve the latest nightly release: ${util.wrapError(e)}`,
+    );
   }
-
-  return `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${getCodeQLBundleName(compressionMethod)}`;
 }

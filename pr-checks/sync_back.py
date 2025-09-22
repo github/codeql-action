@@ -68,8 +68,7 @@ def update_sync_py(sync_py_path: str, action_versions: Dict[str, str]) -> bool:
         True if file was modified, False otherwise
     """
     if not os.path.exists(sync_py_path):
-        print(f"Warning: {sync_py_path} not found")
-        return False
+        raise FileNotFoundError(f"Could not find {sync_py_path}")
 
     with open(sync_py_path, 'r') as f:
         content = f.read()

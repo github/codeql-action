@@ -55,6 +55,9 @@ jobs:
       - name: Configure runner for release
         uses: ./.github/actions/release-initialise
 
+      - name: Install TypeScript dependencies
+        run: npm install --location=global ts-node
+
       - name: Create tag for testing
         if: github.event_name != 'workflow_dispatch'
         run: git tag v0.0.0
@@ -89,7 +92,7 @@ jobs:
           LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
           VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/rollback_changelog.py \
+          npx ts-node .github/workflows/script/rollback_changelog.ts \
             --target-version "${ROLLBACK_TAG:1}" \
             --rollback-version "${LATEST_TAG:1}" \
             --new-version "$VERSION" > $NEW_CHANGELOG
@@ -125,7 +128,7 @@ jobs:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
           VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG "$VERSION" > $PARTIAL_CHANGELOG
+          npx ts-node .github/workflows/script/prepare_changelog.ts $NEW_CHANGELOG "$VERSION" > $PARTIAL_CHANGELOG
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG

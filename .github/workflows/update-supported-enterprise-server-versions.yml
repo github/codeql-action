@@ -16,10 +16,6 @@ jobs:
       pull-requests: write # needed to create pull request
 
     steps:
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
       - name: Checkout CodeQL Action
         uses: actions/checkout@v5
       - name: Checkout Enterprise Releases
@@ -30,10 +26,9 @@ jobs:
           path: ${{ github.workspace }}/enterprise-releases/
       - name: Update Supported Enterprise Server Versions
         run: |
+          npm install --location=global ts-node
           cd ./.github/workflows/update-supported-enterprise-server-versions/
-          python3 -m pip install pipenv
-          pipenv install
-          pipenv run ./update.py
+          npx ts-node update.ts
           rm --recursive "$ENTERPRISE_RELEASES_PATH"
           npm run build
         env:

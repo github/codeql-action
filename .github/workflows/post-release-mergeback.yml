@@ -49,6 +49,9 @@ jobs:
           fetch-depth: 0  # ensure we have all tags and can push commits
       - uses: actions/setup-node@v4
 
+      - name: Install TypeScript dependencies
+        run: npm install --location=global ts-node
+
       - name: Update git config
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -122,7 +125,7 @@ jobs:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
           VERSION: "${{ steps.getVersion.outputs.version }}"
         run: |
-          python .github/workflows/script/prepare_changelog.py CHANGELOG.md "$VERSION" > $PARTIAL_CHANGELOG
+          npx ts-node .github/workflows/script/prepare_changelog.ts CHANGELOG.md "$VERSION" > $PARTIAL_CHANGELOG
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG

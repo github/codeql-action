@@ -12,6 +12,9 @@ inputs:
       - The URL of a CodeQL Bundle tarball GitHub release asset, or
       - A special value `linked` which uses the version of the CodeQL tools
         that the Action has been bundled with.
+      - A special value `nightly` which uses the latest nightly version of the
+        CodeQL tools. Note that this is unstable and not recommended for
+        production use.
 
       If not specified, the Action will check in several places until it finds
       the CodeQL tools.

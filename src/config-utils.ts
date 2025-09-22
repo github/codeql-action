@@ -569,6 +569,30 @@ async function downloadCacheWithTime(
   return { trapCaches, trapCacheDownloadTime };
 }
 
+/**
+ * Amends the input config file if configInput is provided.
+ * If configInput is set, it takes precedence over configFile.
+ *
+ * This function should be called only once on any specific `InitConfigInputs`
+ * object. Otherwise it could emit a false warning.
+ */
+export function amendInputConfigFile(
+  inputs: InitConfigInputs,
+  logger: Logger,
+): void {
+  // if configInput is set, it takes precedence over configFile
+  if (inputs.configInput) {
+    if (inputs.configFile) {
+      logger.warning(
+        `Both a config file and config input were provided. Ignoring config file.`,
+      );
+    }
+    inputs.configFile = userConfigFromActionPath(inputs.tempDir);
+    fs.writeFileSync(inputs.configFile, inputs.configInput);
+    logger.debug(`Using config from action input: ${inputs.configFile}`);
+  }
+}
+
 async function loadUserConfig(
   configFile: string,
   workspacePath: string,
@@ -838,18 +862,6 @@ export async function initConfig(
   codeql: CodeQL,
 ): Promise<Config> {
   const { logger, tempDir } = inputs;
-
-  // if configInput is set, it takes precedence over configFile
-  if (inputs.configInput) {
-    if (inputs.configFile) {
-      logger.warning(
-        `Both a config file and config input were provided. Ignoring config file.`,
-      );
-    }
-    inputs.configFile = userConfigFromActionPath(tempDir);
-    fs.writeFileSync(inputs.configFile, inputs.configInput);
-    logger.debug(`Using config from action input: ${inputs.configFile}`);
-  }
 
   let userConfig: UserConfig = {};
   if (!inputs.configFile) {

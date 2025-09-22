@@ -589,16 +589,15 @@ test("Using config input and file together, config input should be used.", async
     // Only JS, python packs will be ignored
     const languagesInput = "javascript";
 
-    const config = await configUtils.initConfig(
-      createTestInitConfigInputs({
-        languagesInput,
-        configFile: configFilePath,
-        configInput,
-        tempDir,
-        workspacePath: tempDir,
-      }),
-      codeql,
-    );
+    const inputs = createTestInitConfigInputs({
+      languagesInput,
+      configFile: configFilePath,
+      configInput,
+      tempDir,
+      workspacePath: tempDir,
+    });
+    configUtils.amendInputConfigFile(inputs, inputs.logger);
+    const config = await configUtils.initConfig(inputs, codeql);
 
     t.deepEqual(config.originalUserInput, yaml.load(configInput));
   });

@@ -265,6 +265,7 @@ async function run() {
       repositoryProperties,
       logger,
     };
+    configUtils.amendInputConfigFile(inputs, logger);
 
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,

@@ -463,6 +463,24 @@ export async function initActionState(
     languages,
   );
 
+  // If `code-quality` is the only enabled analysis kind, we don't support query customisation.
+  // It would be a problem if queries that are configured in repository properties cause `code-quality`-only
+  // analyses to break. We therefore ignore query customisations that are configured in repository properties
+  // if `code-quality` is the only enabled analysis kind.
+  if (
+    analysisKinds.length === 1 &&
+    analysisKinds.includes(AnalysisKind.CodeQuality) &&
+    augmentationProperties.repoPropertyQueries.input
+  ) {
+    logger.info(
+      `Ignoring queries configured in the repository properties, because query customisations are not supported for Code Quality analyses.`,
+    );
+    augmentationProperties.repoPropertyQueries = {
+      combines: false,
+      input: undefined,
+    };
+  }
+
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
     trapCachingEnabled,
     codeql,

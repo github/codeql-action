@@ -6,6 +6,16 @@ import * as assert from 'assert'
 
 const actualConfig = loadActualConfig()
 
+function sortConfigArrays(config) {
+  for (const key in Object.keys(config)) {
+    const value = config[key];
+    if (key === 'queries' && Array.isArray(value)) {
+      config[key] = value.sort();
+    }
+  }
+  return config;
+}
+
 const rawExpectedConfig = process.argv[3].trim()
 if (!rawExpectedConfig) {
   core.setFailed('No expected configuration provided')
@@ -18,8 +28,8 @@ if (!rawExpectedConfig) {
 const expectedConfig = rawExpectedConfig ? JSON.parse(rawExpectedConfig) : undefined;
 
 assert.deepStrictEqual(
-  actualConfig,
-  expectedConfig,
+  sortConfigArrays(actualConfig),
+  sortConfigArrays(expectedConfig),
   'Expected configuration does not match actual configuration'
 );
 

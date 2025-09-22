@@ -49,7 +49,7 @@ def scan_generated_workflows(workflow_dir: str) -> Dict[str, str]:
         
         for action_name, version_with_comment in matches:
             # Only track non-local actions (those with / but not starting with ./)
-            if '/' in action_name and not action_name.startswith('./'):
+            if not action_name.startswith('./'):
                 # Take the latest version seen (they should all be the same after Dependabot)
                 action_versions[action_name] = version_with_comment.rstrip()
                 

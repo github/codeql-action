@@ -198,10 +198,12 @@ async function run() {
   );
 
   // Fetch the values of known repository properties that affect us.
-  const repositoryProperties = await loadPropertiesFromApi(
-    logger,
-    repositoryNwo,
+  const enableRepoProps = await features.getValue(
+    Feature.UseRepositoryProperties,
   );
+  const repositoryProperties = enableRepoProps
+    ? await loadPropertiesFromApi(logger, repositoryNwo)
+    : {};
 
   const jobRunUuid = uuidV4();
   logger.info(`Job run UUID is ${jobRunUuid}.`);

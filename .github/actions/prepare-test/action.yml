@@ -35,7 +35,10 @@ runs:
       run: |
         set -e # Fail this Action if `gh release list` fails.
 
-        if [[ "$VERSION" == "linked" ]]; then
+        if [[ "$VERSION" == "nightly" || "$VERSION" == "nightly-latest" ]]; then
+          echo "tools-url=nightly" >> "$GITHUB_OUTPUT"
+          exit 0
+        elif [[ "$VERSION" == "linked" ]]; then
           echo "tools-url=linked" >> "$GITHUB_OUTPUT"
           exit 0
         elif [[ "$VERSION" == "default" ]]; then
@@ -43,29 +46,20 @@ runs:
           exit 0
         fi
 
-        if [[ "$VERSION" == "nightly-latest" && "$RUNNER_OS" != "Windows" ]]; then
-          extension="tar.zst"
-        else
-          extension="tar.gz"
-        fi
-
         if [[ "$USE_ALL_PLATFORM_BUNDLE" == "true" ]]; then
-          artifact_name="codeql-bundle.$extension"
+          artifact_name="codeql-bundle.tar.gz"
         elif [[ "$RUNNER_OS" == "Linux" ]]; then
-          artifact_name="codeql-bundle-linux64.$extension"
+          artifact_name="codeql-bundle-linux64.tar.gz"
         elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          artifact_name="codeql-bundle-osx64.$extension"
+          artifact_name="codeql-bundle-osx64.tar.gz"
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          artifact_name="codeql-bundle-win64.$extension"
+          artifact_name="codeql-bundle-win64.tar.gz"
         else
           echo "::error::Unrecognized OS $RUNNER_OS"
           exit 1
         fi
 
-        if [[ "$VERSION" == "nightly-latest" ]]; then
-          tag=`gh release list --repo dsp-testing/codeql-cli-nightlies -L 1 | cut -f 3`
-          echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$tag/$artifact_name" >> $GITHUB_OUTPUT
-        elif [[ "$VERSION" == *"nightly"* ]]; then
+        if [[ "$VERSION" == *"nightly"* ]]; then
           version=`echo "$VERSION" | sed -e 's/^.*\-//'`
           echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-$version/$artifact_name" >> $GITHUB_OUTPUT
         elif [[ "$VERSION" == *"stable"* ]]; then

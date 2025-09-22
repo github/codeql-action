@@ -420,7 +420,6 @@ export interface InitConfigInputs {
   debugDatabaseName: string;
   repository: RepositoryNwo;
   tempDir: string;
-  codeql: CodeQL;
   workspacePath: string;
   sourceRoot: string;
   githubVersion: GitHubVersion;
@@ -450,7 +449,6 @@ export async function initActionState(
     debugDatabaseName,
     repository,
     tempDir,
-    codeql,
     sourceRoot,
     githubVersion,
     features,
@@ -458,6 +456,7 @@ export async function initActionState(
     logger,
   }: InitConfigInputs,
   userConfig: UserConfig,
+  codeql: CodeQL,
 ): Promise<Config> {
   const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
 
@@ -834,7 +833,10 @@ function hasQueryCustomisation(userConfig: UserConfig): boolean {
  * This will parse the config from the user input if present, or generate
  * a default config. The parsed config is then stored to a known location.
  */
-export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
+export async function initConfig(
+  inputs: InitConfigInputs,
+  codeql: CodeQL,
+): Promise<Config> {
   const { logger, tempDir } = inputs;
 
   // if configInput is set, it takes precedence over configFile
@@ -862,7 +864,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     );
   }
 
-  const config = await initActionState(inputs, userConfig);
+  const config = await initActionState(inputs, userConfig, codeql);
 
   // If Code Quality analysis is the only enabled analysis kind, then we will initialise
   // the database for Code Quality. That entails disabling the default queries and only
@@ -889,7 +891,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   // rest of the config has been populated.
   const { overlayDatabaseMode, useOverlayDatabaseCaching } =
     await getOverlayDatabaseMode(
-      inputs.codeql,
+      codeql,
       inputs.repository,
       inputs.features,
       config.languages,
@@ -908,11 +910,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
 
   if (
     overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
-    (await shouldPerformDiffInformedAnalysis(
-      inputs.codeql,
-      inputs.features,
-      logger,
-    ))
+    (await shouldPerformDiffInformedAnalysis(codeql, inputs.features, logger))
   ) {
     config.extraQueryExclusions.push({
       exclude: { tags: "exclude-from-incremental" },

@@ -600,21 +600,18 @@ async function isOverlayAnalysisFeatureEnabled(
   if (!["github", "dsp-testing"].includes(repository.owner)) {
     return false;
   }
-  if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
+  if (!(await features.getValue(Feature.OverlayAnalysis))) {
     return false;
   }
   let enableForCodeScanningOnly = false;
   for (const language of languages) {
     const feature = OVERLAY_ANALYSIS_FEATURES[language];
-    if (feature && (await features.getValue(feature, codeql))) {
+    if (feature && (await features.getValue(feature))) {
       continue;
     }
     const codeScanningFeature =
       OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES[language];
-    if (
-      codeScanningFeature &&
-      (await features.getValue(codeScanningFeature, codeql))
-    ) {
+    if (codeScanningFeature && (await features.getValue(codeScanningFeature))) {
       enableForCodeScanningOnly = true;
       continue;
     }

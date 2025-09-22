@@ -82,6 +82,9 @@ def update_sync_py(sync_py_path: str, action_versions: Dict[str, str]) -> bool:
         version = version_with_comment.split('#')[0].strip() if '#' in version_with_comment else version_with_comment.strip()
         
         # Look for patterns like 'uses': 'actions/setup-node@v4'
+        # Note that this will break if we store an Action uses reference in a
+        # variable - that's a risk we're happy to take since in that case the
+        # PR checks will just fail.
         pattern = rf"('uses':\s*'){re.escape(action_name)}@(?:[^']+)(')"
         replacement = rf"\1{action_name}@{version}\2"
         content = re.sub(pattern, replacement, content)

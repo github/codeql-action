@@ -22,7 +22,7 @@ export enum OverlayDatabaseMode {
   None = "none",
 }
 
-export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.3";
+export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.4";
 
 /**
  * The maximum (uncompressed) size of the overlay base database that we will

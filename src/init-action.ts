@@ -202,7 +202,7 @@ async function run() {
     Feature.UseRepositoryProperties,
   );
   const repositoryProperties = enableRepoProps
-    ? await loadPropertiesFromApi(logger, repositoryNwo)
+    ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
     : {};
 
   const jobRunUuid = uuidV4();

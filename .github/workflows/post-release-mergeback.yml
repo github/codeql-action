@@ -139,7 +139,7 @@ jobs:
           token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Generate token
-        uses: actions/create-github-app-token@v2.1.1
+        uses: actions/create-github-app-token@v2.1.4
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}

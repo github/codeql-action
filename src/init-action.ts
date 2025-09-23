@@ -42,7 +42,7 @@ import {
   runDatabaseInitCluster,
 } from "./init";
 import { KnownLanguage } from "./languages";
-import { getActionsLogger, Logger } from "./logging";
+import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
@@ -266,6 +266,11 @@ async function run() {
       logger,
     };
     configUtils.amendInputConfigFile(inputs, logger);
+
+    await withGroupAsync(
+      "Compute preliminary overlay database mode",
+      async () => configUtils.getPreliminaryOverlayDatabaseMode(inputs),
+    );
 
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,

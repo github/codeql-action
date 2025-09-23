@@ -51,7 +51,7 @@ test("loadPropertiesFromApi throws if response data contains unexpected objects"
   );
 });
 
-test("loadPropertiesFromApi returns empty object if not on dotcom", async (t) => {
+test("loadPropertiesFromApi returns empty object if on GHES", async (t) => {
   sinon.stub(api, "getRepositoryProperties").resolves({
     headers: {},
     status: 200,

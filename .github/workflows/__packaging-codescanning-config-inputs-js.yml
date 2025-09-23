@@ -74,7 +74,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20.x
           cache: npm
@@ -88,7 +88,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false

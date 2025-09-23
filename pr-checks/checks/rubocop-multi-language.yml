@@ -1,6 +1,5 @@
 name: "RuboCop multi-language"
 description: "Tests using RuboCop to analyze a multi-language repository and then using the CodeQL Action to upload the resulting SARIF"
-operatingSystems: ["ubuntu"]
 # This check doesn't use CodeQL, so the `version` matrix variable is unused.
 versions: ["default"]
 steps:

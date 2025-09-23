@@ -1,7 +1,6 @@
 name: "Overlay database init fallback"
 description: "Tests that overlay init action succeeds with non-overlay packs"
 versions: ["linked", "nightly-latest"]
-operatingSystems: ["ubuntu"]
 steps:
   - uses: ./../action/init
     with:

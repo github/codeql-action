@@ -1,7 +1,6 @@
 name: "All-platform bundle"
 description: "Tests using an all-platform CodeQL Bundle"
 versions: ["nightly-latest"]
-operatingSystems: ["ubuntu"]
 useAllPlatformBundle: "true"
 installGo: true
 steps:

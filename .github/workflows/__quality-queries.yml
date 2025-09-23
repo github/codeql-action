@@ -45,24 +45,6 @@ jobs:
           - os: ubuntu-latest
             version: linked
             analysis-kinds: code-scanning,code-quality
-          - os: macos-latest
-            version: linked
-            analysis-kinds: code-scanning
-          - os: macos-latest
-            version: linked
-            analysis-kinds: code-quality
-          - os: macos-latest
-            version: linked
-            analysis-kinds: code-scanning,code-quality
-          - os: windows-latest
-            version: linked
-            analysis-kinds: code-scanning
-          - os: windows-latest
-            version: linked
-            analysis-kinds: code-quality
-          - os: windows-latest
-            version: linked
-            analysis-kinds: code-scanning,code-quality
           - os: ubuntu-latest
             version: nightly-latest
             analysis-kinds: code-scanning
@@ -70,24 +52,6 @@ jobs:
             version: nightly-latest
             analysis-kinds: code-quality
           - os: ubuntu-latest
-            version: nightly-latest
-            analysis-kinds: code-scanning,code-quality
-          - os: macos-latest
-            version: nightly-latest
-            analysis-kinds: code-scanning
-          - os: macos-latest
-            version: nightly-latest
-            analysis-kinds: code-quality
-          - os: macos-latest
-            version: nightly-latest
-            analysis-kinds: code-scanning,code-quality
-          - os: windows-latest
-            version: nightly-latest
-            analysis-kinds: code-scanning
-          - os: windows-latest
-            version: nightly-latest
-            analysis-kinds: code-quality
-          - os: windows-latest
             version: nightly-latest
             analysis-kinds: code-scanning,code-quality
     name: Quality queries input

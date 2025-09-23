@@ -50,7 +50,11 @@ export async function loadPropertiesFromApi(
       );
     }
 
-    const knownProperties = new Set(Object.keys(RepositoryPropertyName));
+    logger.debug(
+      `Retrieved ${remoteProperties.length} repository properties: ${remoteProperties.map((p) => p.property_name).join(", ")}`,
+    );
+
+    const knownProperties = new Set(Object.values(RepositoryPropertyName));
     const properties: RepositoryProperties = {};
     for (const property of remoteProperties) {
       if (property.property_name === undefined) {
@@ -59,7 +63,9 @@ export async function loadPropertiesFromApi(
         );
       }
 
-      if (knownProperties.has(property.property_name)) {
+      if (
+        knownProperties.has(property.property_name as RepositoryPropertyName)
+      ) {
         properties[property.property_name] = property.value;
       }
     }

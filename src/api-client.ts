@@ -214,7 +214,7 @@ export interface ActionsCacheItem {
 /** List all Actions cache entries matching the provided key and ref. */
 export async function listActionsCaches(
   key: string,
-  ref: string,
+  ref?: string,
 ): Promise<ActionsCacheItem[]> {
   const repositoryNwo = getRepositoryNwo();
 

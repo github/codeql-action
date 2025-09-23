@@ -45,6 +45,10 @@ export interface JobStatusReport {
   job_status: JobStatus;
 }
 
+export interface DependencyCachingUsageReport {
+  dependency_caching_usage?: string;
+}
+
 function createFailedUploadFailedSarifResult(
   error: unknown,
 ): UploadFailedSarifResult {

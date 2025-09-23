@@ -5,12 +5,13 @@ import * as actionsCache from "@actions/cache";
 import * as glob from "@actions/glob";
 
 import { getTemporaryDirectory } from "./actions-util";
+import { listActionsCaches } from "./api-client";
 import { getTotalCacheSize } from "./caching-utils";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import { getRequiredEnvParam } from "./util";
+import { getErrorMessage, getRequiredEnvParam } from "./util";
 
 /**
  * Caching configuration for a particular language.
@@ -343,4 +344,35 @@ async function cachePrefix(
   }
 
   return `${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
+}
+
+/** Represents information about our overall cache usage for CodeQL dependency caches. */
+export interface DependencyCachingUsageReport {
+  count: number;
+  size_bytes: number;
+}
+
+/**
+ * Tries to determine the overall cache usage for CodeQL dependencies caches.
+ *
+ * @param logger The logger to log errors to.
+ * @returns Returns the overall cache usage for CodeQL dependencies caches, or `undefined` if we couldn't determine it.
+ */
+export async function getDependencyCacheUsage(
+  logger: Logger,
+): Promise<DependencyCachingUsageReport | undefined> {
+  try {
+    const caches = await listActionsCaches(CODEQL_DEPENDENCY_CACHE_PREFIX);
+    const totalSize = caches.reduce(
+      (acc, cache) => acc + (cache.size_in_bytes ?? 0),
+      0,
+    );
+    return { count: caches.length, size_bytes: totalSize };
+  } catch (err) {
+    logger.warning(
+      `Unable to retrieve information about dependency cache usage: ${getErrorMessage(err)}`,
+    );
+  }
+
+  return undefined;
 }

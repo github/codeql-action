@@ -39,8 +39,18 @@ export interface GitHubApiExternalRepoDetails {
   apiURL: string | undefined;
 }
 
-export function getRetryConfig(): { retries: number } {
-  return isInTestMode() ? { retries: 10 } : { retries: 3 };
+export function getRetryConfig(): {
+  retries: number;
+  retryAfterBaseValue?: number;
+} {
+  // If we are in test mode, increase the allowed number of retries to 10
+  // and the base backoff from 1s to 10s. `plugin-retry` will wait
+  // `(failedAttempts ^ 2) * retryAfterBaseValue`-long (in ms) after
+  // each failed attempt.
+  // If we are not in test mode, we use the default configuration.
+  return isInTestMode()
+    ? { retries: 10, retryAfterBaseValue: 10_000 }
+    : { retries: 3, retryAfterBaseValue: 1_000 };
 }
 
 function createApiClientWithDetails(

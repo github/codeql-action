@@ -181,7 +181,7 @@ export async function downloadDependencyCaches(
   return status;
 }
 
-/** Enumerates possible outcomes for cache hits. */
+/** Enumerates possible outcomes for storing caches. */
 export enum CacheStoreResult {
   /** We were unable to calculate a hash for the key. */
   NoHash = "no-hash",

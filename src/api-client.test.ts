@@ -36,6 +36,7 @@ test("getApiClient", async (t) => {
       baseUrl: "http://api.github.localhost",
       log: sinon.match.any,
       userAgent: `CodeQL-Action/${actionsUtil.getActionVersion()}`,
+      retry: api.getRetryConfig(),
     }),
   );
 });

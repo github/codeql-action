@@ -12,6 +12,7 @@ import {
   GitHubVariant,
   GitHubVersion,
   isHTTPError,
+  isInTestMode,
   parseGitHubUrl,
   parseMatrixInput,
 } from "./util";
@@ -38,6 +39,10 @@ export interface GitHubApiExternalRepoDetails {
   apiURL: string | undefined;
 }
 
+export function getRetryConfig(): { retries: number } {
+  return isInTestMode() ? { retries: 10 } : { retries: 3 };
+}
+
 function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
   { allowExternal = false } = {},
@@ -50,6 +55,7 @@ function createApiClientWithDetails(
       baseUrl: apiDetails.apiURL,
       userAgent: `CodeQL-Action/${getActionVersion()}`,
       log: consoleLogLevel({ level: "debug" }),
+      retry: getRetryConfig(),
     }),
   );
 }

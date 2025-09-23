@@ -20,20 +20,14 @@ updates:
         patterns:
           - "*"
   - package-ecosystem: github-actions
-    directory: "/"
+    directories:
+      - "/"
+      - "/.github/actions" # All subdirectories outside of "/.github/workflows" must be explicitly included.
     schedule:
       interval: weekly
     labels:
       - Rebuild
     groups:
       actions:
-        patterns:
-          - "*"
-  - package-ecosystem: github-actions
-    directory: "/.github/actions/setup-swift/" # All subdirectories outside of "/.github/workflows" must be explicitly included.
-    schedule:
-      interval: weekly
-    groups:
-      actions-setup-swift:
         patterns:
           - "*"

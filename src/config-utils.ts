@@ -33,6 +33,7 @@ import {
   CODEQL_OVERLAY_MINIMUM_VERSION,
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
+import * as overlayLanguageAliases from "./overlay-language-aliases.json";
 import { RepositoryNwo } from "./repository";
 import { downloadTrapCaches } from "./trap-caching";
 import {
@@ -331,6 +332,36 @@ export async function getLanguages(
   return languages;
 }
 
+/**
+ * Get the (unverified) languages for overlay analysis.
+ *
+ * This is a simplified version of `getLanguages` that only resolves language
+ * aliases but does not check if the languages are actually supported by the
+ * CodeQL CLI. It is intended to be used for overlay analysis preparations
+ * before the CodeQL CLI is available.
+ */
+async function getUnverifiedLanguagesForOverlay(
+  languagesInput: string | undefined,
+  repository: RepositoryNwo,
+  sourceRoot: string,
+  logger: Logger,
+): Promise<string[]> {
+  // Obtain languages without filtering them.
+  const { rawLanguages } = await getRawLanguages(
+    languagesInput,
+    repository,
+    sourceRoot,
+    logger,
+  );
+  const languageAliases = overlayLanguageAliases as Record<string, string>;
+
+  const languagesSet: string[] = [];
+  for (const language of rawLanguages) {
+    languagesSet.push(languageAliases[language] || language);
+  }
+  return languagesSet;
+}
+
 export function getRawLanguagesNoAutodetect(
   languagesInput: string | undefined,
 ): string[] {
@@ -589,11 +620,12 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
 };
 
 async function isOverlayAnalysisFeatureEnabled(
-  repository: RepositoryNwo,
-  features: FeatureEnablement,
-  codeql: CodeQL,
-  languages: Language[],
   codeScanningConfig: UserConfig,
+  languagesInput: string | undefined,
+  repository: RepositoryNwo,
+  sourceRoot: string,
+  features: FeatureEnablement,
+  logger: Logger,
 ): Promise<boolean> {
   // TODO: Remove the repository owner check once support for overlay analysis
   // stabilizes, and no more backward-incompatible changes are expected.
@@ -603,6 +635,14 @@ async function isOverlayAnalysisFeatureEnabled(
   if (!(await features.getValue(Feature.OverlayAnalysis))) {
     return false;
   }
+
+  const languages = await getUnverifiedLanguagesForOverlay(
+    languagesInput,
+    repository,
+    sourceRoot,
+    logger,
+  );
+
   let enableForCodeScanningOnly = false;
   for (const language of languages) {
     const feature = OVERLAY_ANALYSIS_FEATURES[language];
@@ -657,6 +697,7 @@ export async function getOverlayDatabaseMode(
   repository: RepositoryNwo,
   features: FeatureEnablement,
   languages: Language[],
+  languagesInput: string | undefined,
   sourceRoot: string,
   buildMode: BuildMode | undefined,
   codeScanningConfig: UserConfig,
@@ -683,11 +724,12 @@ export async function getOverlayDatabaseMode(
     );
   } else if (
     await isOverlayAnalysisFeatureEnabled(
-      repository,
-      features,
-      codeql,
-      languages,
       codeScanningConfig,
+      languagesInput,
+      repository,
+      sourceRoot,
+      features,
+      logger,
     )
   ) {
     if (isAnalyzingPullRequest()) {
@@ -843,6 +885,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
       inputs.repository,
       inputs.features,
       config.languages,
+      inputs.languagesInput,
       inputs.sourceRoot,
       config.buildMode,
       config.computedConfig,

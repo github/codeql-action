@@ -987,7 +987,7 @@ interface OverlayDatabaseModeTestSetup {
   isDefaultBranch: boolean;
   repositoryOwner: string;
   buildMode: BuildMode | undefined;
-  languages: Language[];
+  languages: string[];
   codeqlVersion: string;
   gitRoot: string | undefined;
   codeScanningConfig: configUtils.UserConfig;
@@ -1075,6 +1075,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           repository,
           features,
           setup.languages,
+          setup.languages.join(","),
           tempDir, // sourceRoot
           setup.buildMode,
           setup.codeScanningConfig,
@@ -1338,6 +1339,20 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR when feature enabled via language alias",
+  {
+    languages: ["javascript-typescript"],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
     languages: [KnownLanguage.javascript],
@@ -1483,6 +1498,20 @@ test(
   "No overlay analysis on PR when language-specific feature disabled",
   {
     languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when the language is unknown",
+  {
+    languages: ["cobol"],
     features: [Feature.OverlayAnalysis],
     isPullRequest: true,
   },

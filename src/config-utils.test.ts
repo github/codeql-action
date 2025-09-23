@@ -1023,6 +1023,8 @@ const getOverlayDatabaseModeMacro = test.macro({
     expected: {
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
+      preliminaryOverlayDatabaseMode?: OverlayDatabaseMode;
+      preliminaryUseOverlayDatabaseCaching?: boolean;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1091,7 +1093,44 @@ const getOverlayDatabaseModeMacro = test.macro({
           logger,
         );
 
-        t.deepEqual(result, expected);
+        const expectedResult = {
+          overlayDatabaseMode: expected.overlayDatabaseMode,
+          useOverlayDatabaseCaching: expected.useOverlayDatabaseCaching,
+        };
+        t.deepEqual(result, expectedResult);
+
+        let configFile: string | undefined;
+        if (Object.keys(setup.codeScanningConfig).length > 0) {
+          configFile = createConfigFile(
+            yaml.dump(setup.codeScanningConfig),
+            tempDir,
+          );
+        }
+
+        // Test getPreliminaryOverlayDatabaseMode as well
+        const preliminaryResult =
+          await configUtils.getPreliminaryOverlayDatabaseMode(
+            createTestInitConfigInputs({
+              languagesInput: setup.languages.join(","),
+              configFile,
+              features,
+              tempDir,
+              workspacePath: tempDir,
+              sourceRoot: tempDir,
+              repository,
+              logger,
+            }),
+          );
+
+        const expectedPreliminaryResult = {
+          overlayDatabaseMode:
+            expected.preliminaryOverlayDatabaseMode ??
+            expected.overlayDatabaseMode,
+          useOverlayDatabaseCaching:
+            expected.preliminaryUseOverlayDatabaseCaching ??
+            expected.useOverlayDatabaseCaching,
+        };
+        t.deepEqual(preliminaryResult, expectedPreliminaryResult);
       } finally {
         // Restore the original environment
         process.env = originalEnv;
@@ -1597,6 +1636,8 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    preliminaryOverlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    preliminaryUseOverlayDatabaseCaching: false,
   },
 );
 
@@ -1611,6 +1652,8 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    preliminaryOverlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    preliminaryUseOverlayDatabaseCaching: false,
   },
 );
 
@@ -1624,6 +1667,8 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    preliminaryOverlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    preliminaryUseOverlayDatabaseCaching: false,
   },
 );
 

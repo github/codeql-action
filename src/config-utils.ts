@@ -839,6 +839,62 @@ export async function getOverlayDatabaseMode(
   };
 }
 
+/**
+ * Get preliminary overlay database mode using only the information available
+ * in InitConfigInputs, without depending on CodeQL.
+ *
+ * This is a simplified version of getOverlayDatabaseMode that can be called
+ * before the CodeQL CLI is available.
+ *
+ * @param inputs The initialization configuration inputs.
+ * @returns An object containing the overlay database mode and whether the
+ * action should perform overlay-base database caching.
+ */
+export async function getPreliminaryOverlayDatabaseMode(
+  inputs: InitConfigInputs,
+): Promise<{
+  overlayDatabaseMode: OverlayDatabaseMode;
+  useOverlayDatabaseCaching: boolean;
+}> {
+  const userConfig = await loadUserConfig(
+    inputs.configFile,
+    inputs.workspacePath,
+    inputs.apiDetails,
+    inputs.tempDir,
+    inputs.logger,
+  );
+
+  const languages = await getUnverifiedLanguagesForOverlay(
+    inputs.languagesInput,
+    inputs.repository,
+    inputs.sourceRoot,
+    inputs.logger,
+  );
+  const augmentationProperties = await calculateAugmentation(
+    inputs.packsInput,
+    inputs.queriesInput,
+    inputs.repositoryProperties,
+    languages,
+  );
+  const computedConfig = generateCodeScanningConfig(
+    inputs.logger,
+    userConfig,
+    augmentationProperties,
+  );
+
+  return getOverlayDatabaseMode(
+    undefined, // codeql
+    inputs.repository,
+    inputs.features,
+    undefined, // languages
+    inputs.languagesInput,
+    inputs.sourceRoot,
+    undefined, // buildMode
+    computedConfig,
+    inputs.logger,
+  );
+}
+
 function dbLocationOrDefault(
   dbLocation: string | undefined,
   tempDir: string,

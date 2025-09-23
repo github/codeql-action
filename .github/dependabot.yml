@@ -23,6 +23,8 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    labels:
+      - Rebuild
     groups:
       actions:
         patterns:

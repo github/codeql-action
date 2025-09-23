@@ -15,6 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.label.name == 'Rebuild' || github.event_name == 'workflow_dispatch'
 
+    env:
+      HEAD_REF: ${{ github.event.pull_request.head.ref || github.event.ref }}
+      BASE_BRANCH: ${{ github.event.pull_request.base.ref || 'main' }}
+
     permissions:
       contents: write # needed to push rebuilt commit
       pull-requests: write # needed to comment on the PR
@@ -23,7 +27,7 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref || github.event.ref }}
+          ref: ${{ env.HEAD_REF }}
 
       - name: Remove label
         if: github.event_name == 'pull_request'
@@ -41,8 +45,6 @@ jobs:
 
       - name: Merge in changes from base branch
         id: merge
-        env:
-          BASE_BRANCH: ${{ github.event.pull_request.base.ref || 'main' }}
         run: |
           git fetch origin "$BASE_BRANCH"
 
@@ -72,13 +74,20 @@ jobs:
           npm run build
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
-      - name: Generate workflows
+      - name: Sync back version updates to generated workflows
+        # Only sync back versions on Dependabot update PRs
+        if: startsWith(env.HEAD_REF, 'dependabot/')
+        working-directory: pr-checks
         run: |
-          cd pr-checks
+          python3 sync_back.py -v
+
+      - name: Generate workflows
+        working-directory: pr-checks
+        run: |
           python -m pip install --upgrade pip
           pip install ruamel.yaml==0.17.31
           python3 sync.py

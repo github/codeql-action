@@ -128,7 +128,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         steps.extend([
             {
                 'name': 'Install Node.js',
-                'uses': 'actions/setup-node@v4',
+                'uses': 'actions/setup-node@v5',
                 'with': {
                     'node-version': '20.x',
                     'cache': 'npm',
@@ -166,7 +166,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
 
         steps.append({
             'name': 'Install Go',
-            'uses': 'actions/setup-go@v5',
+            'uses': 'actions/setup-go@v6',
             'with': {
                 'go-version': '${{ inputs.go-version || \'' + baseGoVersionExpr + '\' }}',
                 # to avoid potentially misleading autobuilder results where we expect it to download

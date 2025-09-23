@@ -496,6 +496,8 @@ const injectedConfigMacro = test.macro({
     expectedConfig: any,
   ) => {
     await util.withTmpDir(async (tempDir) => {
+      sinon.stub(actionsUtil, "isDefaultSetup").resolves(false);
+
       const runnerConstructorStub = stubToolRunnerConstructor();
       const codeqlObject = await stubCodeql();
 
@@ -505,6 +507,7 @@ const injectedConfigMacro = test.macro({
         tempDir,
       };
       thisStubConfig.computedConfig = generateCodeScanningConfig(
+        getRunnerLogger(true),
         thisStubConfig.originalUserInput,
         augmentationProperties,
       );
@@ -660,13 +663,13 @@ test(
   {
     queries: [
       {
-        uses: "zzz",
-      },
-      {
         uses: "xxx",
       },
       {
         uses: "yyy",
+      },
+      {
+        uses: "zzz",
       },
     ],
   },
@@ -711,6 +714,84 @@ test(
     },
   },
   {},
+);
+
+test(
+  "repo property queries have the highest precedence",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: false,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [{ uses: "zzz" }, { uses: "aaa" }],
+  },
+);
+
+test(
+  "repo property queries combines with queries input",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+    ],
+  },
+);
+
+test(
+  "repo property queries combines everything else",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+      { uses: "uu" },
+      { uses: "vv" },
+    ],
+  },
 );
 
 test("passes a code scanning config AND qlconfig to the CLI", async (t: ExecutionContext<unknown>) => {

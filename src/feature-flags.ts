@@ -73,6 +73,7 @@ export enum Feature {
   OverlayAnalysisRust = "overlay_analysis_rust",
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
+  UseRepositoryProperties = "use_repository_properties",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
 }
@@ -263,6 +264,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_DISABLE_PYTHON_STANDARD_LIBRARY_EXTRACTION",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
+  },
+  [Feature.UseRepositoryProperties]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_USE_REPOSITORY_PROPERTIES",
+    minimumVersion: undefined,
   },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,

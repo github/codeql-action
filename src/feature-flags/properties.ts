@@ -44,7 +44,7 @@ export async function loadPropertiesFromApi(
 ): Promise<RepositoryProperties> {
   // TODO: To be safe for now; later we should replace this with a version check once we know
   // which version of GHES we expect this to be supported by.
-  if (gitHubVersion.type !== GitHubVariant.DOTCOM) {
+  if (gitHubVersion.type === GitHubVariant.GHES) {
     return {};
   }
 

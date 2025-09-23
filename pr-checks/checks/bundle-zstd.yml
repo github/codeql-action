@@ -8,7 +8,7 @@ operatingSystems:
   - windows
 steps:
   - name: Remove CodeQL from toolcache
-    uses: actions/github-script@v7
+    uses: actions/github-script@v8
     with:
       script: |
         const fs = require('fs');
@@ -33,7 +33,7 @@ steps:
       path: ${{ runner.temp }}/results/javascript.sarif
       retention-days: 7
   - name: Check diagnostic with expected tools URL appears in SARIF
-    uses: actions/github-script@v7
+    uses: actions/github-script@v8
     env:
       SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
     with:

@@ -286,6 +286,7 @@ const testCreateInitWithConfigStatusReport = test.macro({
             undefined,
             1024,
             undefined,
+            undefined,
           );
 
         if (t.truthy(initWithConfigStatusReport)) {

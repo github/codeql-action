@@ -383,6 +383,11 @@ function combineQueries(
     augmentationProperties.repoPropertyQueries &&
     augmentationProperties.repoPropertyQueries.input
   ) {
+    logger.info(
+      `Found query configuration in the repository properties (${RepositoryPropertyName.EXTRA_QUERIES}): ` +
+        `${augmentationProperties.repoPropertyQueries.input.map((q) => q.uses).join(", ")}`,
+    );
+
     // If there are queries configured as a repository property, these may be organisational
     // settings. If they don't allow combining with other query configurations, return just the
     // ones configured in the repository properties.

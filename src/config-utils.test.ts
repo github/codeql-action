@@ -29,6 +29,7 @@ import {
   getRecordingLogger,
   LoggedMessage,
   mockCodeQLVersion,
+  createTestConfig,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -82,11 +83,11 @@ function createTestInitConfigInputs(
         externalRepoAuth: "token",
         url: "https://github.example.com",
         apiURL: undefined,
-        registriesAuthTokens: undefined,
       },
       features: createFeatures([]),
+      repositoryProperties: {},
       logger: getRunnerLogger(true),
-    },
+    } satisfies configUtils.InitConfigInputs,
     overrides,
   );
 }
@@ -223,9 +224,67 @@ test("load code quality config", async (t) => {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
     };
 
     t.deepEqual(config, expectedConfig);
+  });
+});
+
+test("initActionState doesn't throw if there are queries configured in the repository properties", async (t) => {
+  return await withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+    const languages = "javascript";
+
+    const codeql = createStubCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+          },
+        };
+      },
+    });
+
+    // This should be ignored and no error should be thrown.
+    const repositoryProperties = {
+      "github-codeql-extra-queries": "+foo",
+    };
+
+    // Expected configuration for a CQ-only analysis.
+    const computedConfig: configUtils.UserConfig = {
+      "disable-default-queries": true,
+      queries: [{ uses: "code-quality" }],
+      "query-filters": [],
+    };
+
+    const expectedConfig = createTestConfig({
+      analysisKinds: [AnalysisKind.CodeQuality],
+      languages: [KnownLanguage.javascript],
+      codeQLCmd: codeql.getPath(),
+      computedConfig,
+      dbLocation: path.resolve(tempDir, "codeql_databases"),
+      debugArtifactName: "",
+      debugDatabaseName: "",
+      tempDir,
+      repositoryProperties,
+    });
+
+    await t.notThrowsAsync(async () => {
+      const config = await configUtils.initConfig(
+        createTestInitConfigInputs({
+          analysisKindsInput: "code-quality",
+          languagesInput: languages,
+          repository: { owner: "github", repo: "example" },
+          tempDir,
+          codeql,
+          repositoryProperties,
+          logger,
+        }),
+      );
+
+      t.deepEqual(config, expectedConfig);
+    });
   });
 });
 
@@ -461,6 +520,7 @@ test("load non-empty input", async (t) => {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
     };
 
     const languagesInput = "javascript";

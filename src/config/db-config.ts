@@ -3,7 +3,12 @@ import * as path from "path";
 import * as semver from "semver";
 
 import * as errorMessages from "../error-messages";
+import {
+  RepositoryProperties,
+  RepositoryPropertyName,
+} from "../feature-flags/properties";
 import { Language } from "../languages";
+import { Logger } from "../logging";
 import { cloneObject, ConfigurationError, prettyPrintPack } from "../util";
 
 export interface ExcludeQueryFilter {
@@ -16,16 +21,18 @@ export interface IncludeQueryFilter {
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
 
+export interface QuerySpec {
+  name?: string;
+  uses: string;
+}
+
 /**
  * Format of the config file supplied by the user.
  */
 export interface UserConfig {
   name?: string;
   "disable-default-queries"?: boolean;
-  queries?: Array<{
-    name?: string;
-    uses: string;
-  }>;
+  queries?: QuerySpec[];
   "paths-ignore"?: string[];
   paths?: string[];
 
@@ -37,6 +44,17 @@ export interface UserConfig {
   // Set of query filters to include and exclude extra queries based on
   // codeql query suite `include` and `exclude` properties
   "query-filters"?: QueryFilter[];
+}
+
+/**
+ * Represents additional configuration data from a source other than
+ * a configuration file.
+ */
+interface Augmentation<T> {
+  /** Whether or not the `input` combines with data in the base config. */
+  combines: boolean;
+  /** The additional input data. */
+  input?: T;
 }
 
 /**
@@ -58,7 +76,7 @@ export interface AugmentationProperties {
   /**
    * The queries input from the `with` block of the action declaration
    */
-  queriesInput?: Array<{ uses: string }>;
+  queriesInput?: QuerySpec[];
 
   /**
    * Whether or not the packs input combines with the packs in the config.
@@ -69,6 +87,11 @@ export interface AugmentationProperties {
    * The packs input from the `with` block of the action declaration
    */
   packsInput?: string[];
+
+  /**
+   * Extra queries from the corresponding repository property.
+   */
+  repoPropertyQueries: Augmentation<QuerySpec[]>;
 }
 
 /**
@@ -80,6 +103,10 @@ export const defaultAugmentationProperties: AugmentationProperties = {
   packsInputCombines: false,
   packsInput: undefined,
   queriesInput: undefined,
+  repoPropertyQueries: {
+    combines: false,
+    input: undefined,
+  },
 };
 
 /**
@@ -254,6 +281,7 @@ export function parsePacksFromInput(
  *
  * @param rawPacksInput The packs input from the action configuration.
  * @param rawQueriesInput The queries input from the action configuration.
+ * @param repositoryProperties The dictionary of repository properties.
  * @param languages The languages that the config file is for. If the packs input
  *    is non-empty, then there must be exactly one language. Otherwise, an
  *    error is thrown.
@@ -263,10 +291,10 @@ export function parsePacksFromInput(
  * @throws An error if the packs input is non-empty and the languages input does
  *     not have exactly one language.
  */
-// exported for testing.
 export async function calculateAugmentation(
   rawPacksInput: string | undefined,
   rawQueriesInput: string | undefined,
+  repositoryProperties: RepositoryProperties,
   languages: Language[],
 ): Promise<AugmentationProperties> {
   const packsInputCombines = shouldCombine(rawPacksInput);
@@ -281,17 +309,36 @@ export async function calculateAugmentation(
     queriesInputCombines,
   );
 
+  const repoExtraQueries =
+    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES];
+  const repoExtraQueriesCombines = shouldCombine(repoExtraQueries);
+  const repoPropertyQueries = {
+    combines: repoExtraQueriesCombines,
+    input: parseQueriesFromInput(
+      repoExtraQueries,
+      repoExtraQueriesCombines,
+      new ConfigurationError(
+        errorMessages.getRepoPropertyError(
+          RepositoryPropertyName.EXTRA_QUERIES,
+          errorMessages.getEmptyCombinesError(),
+        ),
+      ),
+    ),
+  };
+
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
     queriesInput,
     queriesInputCombines,
+    repoPropertyQueries,
   };
 }
 
 function parseQueriesFromInput(
   rawQueriesInput: string | undefined,
   queriesInputCombines: boolean,
+  errorToThrow?: ConfigurationError,
 ) {
   if (!rawQueriesInput) {
     return undefined;
@@ -301,6 +348,9 @@ function parseQueriesFromInput(
     ? rawQueriesInput.trim().slice(1).trim()
     : (rawQueriesInput?.trim() ?? "");
   if (queriesInputCombines && trimmedInput.length === 0) {
+    if (errorToThrow) {
+      throw errorToThrow;
+    }
     throw new ConfigurationError(
       errorMessages.getConfigFilePropertyError(
         undefined,
@@ -312,7 +362,71 @@ function parseQueriesFromInput(
   return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
 }
 
+/**
+ * Combines queries from various configuration sources.
+ *
+ * @param logger The logger to use.
+ * @param config The loaded configuration file (either `config-file` or `config` input).
+ * @param augmentationProperties Additional configuration data from other sources.
+ * @returns Returns `augmentedConfig` with `queries` set to the computed array of queries.
+ */
+function combineQueries(
+  logger: Logger,
+  config: UserConfig,
+  augmentationProperties: AugmentationProperties,
+): QuerySpec[] {
+  const result: QuerySpec[] = [];
+
+  // Query settings obtained from the repository properties have the highest precedence.
+  if (
+    augmentationProperties.repoPropertyQueries &&
+    augmentationProperties.repoPropertyQueries.input
+  ) {
+    logger.info(
+      `Found query configuration in the repository properties (${RepositoryPropertyName.EXTRA_QUERIES}): ` +
+        `${augmentationProperties.repoPropertyQueries.input.map((q) => q.uses).join(", ")}`,
+    );
+
+    // If there are queries configured as a repository property, these may be organisational
+    // settings. If they don't allow combining with other query configurations, return just the
+    // ones configured in the repository properties.
+    if (!augmentationProperties.repoPropertyQueries.combines) {
+      logger.info(
+        `The queries configured in the repository properties don't allow combining with other query settings. ` +
+          `Any queries configured elsewhere will be ignored.`,
+      );
+      return augmentationProperties.repoPropertyQueries.input;
+    } else {
+      // Otherwise, add them to the query array and continue.
+      result.push(...augmentationProperties.repoPropertyQueries.input);
+    }
+  }
+
+  // If there is a `queries` input to the Action, it has the next highest precedence.
+  if (augmentationProperties.queriesInput) {
+    // If there is a `queries` input and `queriesInputCombines` is `false`, then we don't
+    // combine it with the queries configured in the configuration file (if any). That is the
+    // original behaviour of this property. However, we DO combine it with any queries that
+    // we obtained from the repository properties, since that may be enforced by the organisation.
+    if (!augmentationProperties.queriesInputCombines) {
+      return result.concat(augmentationProperties.queriesInput);
+    } else {
+      // If they combine, add them to the query array and continue.
+      result.push(...augmentationProperties.queriesInput);
+    }
+  }
+
+  // If we get to this point, we either don't have any extra configuration inputs or all of them
+  // allow themselves to be combined with the settings from the configuration file.
+  if (config.queries) {
+    result.push(...config.queries);
+  }
+
+  return result;
+}
+
 export function generateCodeScanningConfig(
+  logger: Logger,
   originalUserInput: UserConfig,
   augmentationProperties: AugmentationProperties,
 ): UserConfig {
@@ -320,15 +434,14 @@ export function generateCodeScanningConfig(
   const augmentedConfig = cloneObject(originalUserInput);
 
   // Inject the queries from the input
-  if (augmentationProperties.queriesInput) {
-    if (augmentationProperties.queriesInputCombines) {
-      augmentedConfig.queries = (augmentedConfig.queries || []).concat(
-        augmentationProperties.queriesInput,
-      );
-    } else {
-      augmentedConfig.queries = augmentationProperties.queriesInput;
-    }
-  }
+  augmentedConfig.queries = combineQueries(
+    logger,
+    augmentedConfig,
+    augmentationProperties,
+  );
+  logger.debug(
+    `Combined queries: ${augmentedConfig.queries?.map((q) => q.uses).join(",")}`,
+  );
   if (augmentedConfig.queries?.length === 0) {
     delete augmentedConfig.queries;
   }

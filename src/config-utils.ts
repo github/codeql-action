@@ -25,6 +25,7 @@ import {
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
+import { RepositoryProperties } from "./feature-flags/properties";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -167,6 +168,11 @@ export interface Config {
    * `OverlayBase`.
    */
   useOverlayDatabaseCaching: boolean;
+
+  /**
+   * A partial mapping from repository properties that affect us to their values.
+   */
+  repositoryProperties: RepositoryProperties;
 }
 
 export async function getSupportedLanguageMap(
@@ -389,6 +395,7 @@ export interface InitConfigInputs {
   githubVersion: GitHubVersion;
   apiDetails: api.GitHubApiCombinedDetails;
   features: FeatureEnablement;
+  repositoryProperties: RepositoryProperties;
   logger: Logger;
 }
 
@@ -416,6 +423,7 @@ export async function initActionState(
     sourceRoot,
     githubVersion,
     features,
+    repositoryProperties,
     logger,
   }: InitConfigInputs,
   userConfig: UserConfig,
@@ -451,8 +459,27 @@ export async function initActionState(
   const augmentationProperties = await calculateAugmentation(
     packsInput,
     queriesInput,
+    repositoryProperties,
     languages,
   );
+
+  // If `code-quality` is the only enabled analysis kind, we don't support query customisation.
+  // It would be a problem if queries that are configured in repository properties cause `code-quality`-only
+  // analyses to break. We therefore ignore query customisations that are configured in repository properties
+  // if `code-quality` is the only enabled analysis kind.
+  if (
+    analysisKinds.length === 1 &&
+    analysisKinds.includes(AnalysisKind.CodeQuality) &&
+    augmentationProperties.repoPropertyQueries.input
+  ) {
+    logger.info(
+      `Ignoring queries configured in the repository properties, because query customisations are not supported for Code Quality analyses.`,
+    );
+    augmentationProperties.repoPropertyQueries = {
+      combines: false,
+      input: undefined,
+    };
+  }
 
   const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
     trapCachingEnabled,
@@ -464,6 +491,7 @@ export async function initActionState(
   // Compute the full Code Scanning configuration that combines the configuration from the
   // configuration file / `config` input with other inputs, such as `queries`.
   const computedConfig = generateCodeScanningConfig(
+    logger,
     userConfig,
     augmentationProperties,
   );
@@ -488,6 +516,7 @@ export async function initActionState(
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    repositoryProperties,
   };
 }
 

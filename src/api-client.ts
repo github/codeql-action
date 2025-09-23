@@ -4,7 +4,7 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { getRepositoryNwo } from "./repository";
+import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
   ConfigurationError,
   getRequiredEnvParam,
@@ -237,6 +237,14 @@ export async function deleteActionsCache(id: number) {
     owner: repositoryNwo.owner,
     repo: repositoryNwo.repo,
     cache_id: id,
+  });
+}
+
+/** Retrieve all custom repository properties. */
+export async function getRepositoryProperties(repositoryNwo: RepositoryNwo) {
+  return getApiClient().request("GET /repos/:owner/:repo/properties/values", {
+    owner: repositoryNwo.owner,
+    repo: repositoryNwo.repo,
   });
 }
 

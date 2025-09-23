@@ -181,18 +181,45 @@ export async function downloadDependencyCaches(
   return status;
 }
 
+/** Enumerates possible outcomes for cache hits. */
+export enum CacheStoreResult {
+  /** We were unable to calculate a hash for the key. */
+  NoHash = "no-hash",
+  /** There is nothing to store in the cache. */
+  Empty = "empty",
+  /** There already exists a cache with the key we are trying to store. */
+  Duplicate = "duplicate",
+  /** The cache was stored successfully. */
+  Stored = "stored",
+}
+
+/** Represents results of trying to upload a dependency cache for a language. */
+export interface DependencyCacheUploadStatus {
+  result: CacheStoreResult;
+  upload_size_bytes?: number;
+  upload_duration_ms?: number;
+}
+
+/** A partial mapping from languages to the results of uploading dependency caches for them. */
+export type DependencyCacheUploadStatusReport = Partial<
+  Record<Language, DependencyCacheUploadStatus>
+>;
+
 /**
  * Attempts to store caches for the languages that were analyzed.
  *
  * @param config The configuration for this workflow.
  * @param logger A logger to record some informational messages to.
  * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
+ *
+ * @returns A partial mapping of languages to results of uploading dependency caches for them.
  */
 export async function uploadDependencyCaches(
   config: Config,
   logger: Logger,
   minimizeJavaJars: boolean,
-): Promise<void> {
+): Promise<DependencyCacheUploadStatusReport> {
+  const status: DependencyCacheUploadStatusReport = {};
   for (const language of config.languages) {
     const cacheConfig = getDefaultCacheConfig()[language];
 
@@ -208,6 +235,7 @@ export async function uploadDependencyCaches(
     const globber = await makeGlobber(cacheConfig.hash);
 
     if ((await globber.glob()).length === 0) {
+      status[language] = { result: CacheStoreResult.NoHash };
       logger.info(
         `Skipping upload of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
       );
@@ -228,6 +256,7 @@ export async function uploadDependencyCaches(
 
     // Skip uploading an empty cache.
     if (size === 0) {
+      status[language] = { result: CacheStoreResult.Empty };
       logger.info(
         `Skipping upload of dependency cache for ${language} since it is empty.`,
       );
@@ -241,7 +270,15 @@ export async function uploadDependencyCaches(
     );
 
     try {
+      const start = performance.now();
       await actionsCache.saveCache(cacheConfig.paths, key);
+      const upload_duration_ms = Math.round(performance.now() - start);
+
+      status[language] = {
+        result: CacheStoreResult.Stored,
+        upload_size_bytes: Math.round(size),
+        upload_duration_ms,
+      };
     } catch (error) {
       // `ReserveCacheError` indicates that the cache key is already in use, which means that a
       // cache with that key already exists or is in the process of being uploaded by another
@@ -251,12 +288,16 @@ export async function uploadDependencyCaches(
           `Not uploading cache for ${language}, because ${key} is already in use.`,
         );
         logger.debug(error.message);
+
+        status[language] = { result: CacheStoreResult.Duplicate };
       } else {
         // Propagate other errors upwards.
         throw error;
       }
     }
   }
+
+  return status;
 }
 
 /**

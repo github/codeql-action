@@ -26,7 +26,10 @@ import {
   isCodeScanningEnabled,
 } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
-import { uploadDependencyCaches } from "./dependency-caching";
+import {
+  DependencyCacheUploadStatusReport,
+  uploadDependencyCaches,
+} from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
@@ -55,10 +58,15 @@ interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
     QueriesStatusReport {}
 
+interface DependencyCachingUploadStatusReport {
+  dependency_caching_upload_results?: string;
+}
+
 interface FinishStatusReport
   extends StatusReportBase,
     DatabaseCreationTimings,
-    AnalysisStatusReport {}
+    AnalysisStatusReport,
+    DependencyCachingUploadStatusReport {}
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   /** Size of TRAP caches that we uploaded, in bytes. */
@@ -76,6 +84,7 @@ async function sendStatusReport(
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
   trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
+  dependencyCacheResults: DependencyCacheUploadStatusReport | undefined,
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
@@ -95,6 +104,9 @@ async function sendStatusReport(
       ...(stats || {}),
       ...(dbCreationTimings || {}),
       ...(trapCacheCleanup || {}),
+      dependency_caching_upload_results: JSON.stringify(
+        dependencyCacheResults ?? {},
+      ),
     };
     if (config && didUploadTrapCaches) {
       const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
@@ -209,6 +221,7 @@ async function run() {
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
+  let dependencyCacheResults: DependencyCacheUploadStatusReport | undefined;
   util.initializeEnvironment(actionsUtil.getActionVersion());
 
   // Make inputs accessible in the `post` step, details at
@@ -388,7 +401,11 @@ async function run() {
         Feature.JavaMinimizeDependencyJars,
         codeql,
       );
-      await uploadDependencyCaches(config, logger, minimizeJavaJars);
+      dependencyCacheResults = await uploadDependencyCaches(
+        config,
+        logger,
+        minimizeJavaJars,
+      );
     }
 
     // We don't upload results in test mode, so don't wait for processing
@@ -431,6 +448,7 @@ async function run() {
       dbCreationTimings,
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
+      dependencyCacheResults,
       logger,
     );
     return;
@@ -449,6 +467,7 @@ async function run() {
       dbCreationTimings,
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
+      dependencyCacheResults,
       logger,
     );
   } else if (runStats) {
@@ -461,6 +480,7 @@ async function run() {
       dbCreationTimings,
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
+      dependencyCacheResults,
       logger,
     );
   } else {
@@ -473,6 +493,7 @@ async function run() {
       dbCreationTimings,
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
+      dependencyCacheResults,
       logger,
     );
   }

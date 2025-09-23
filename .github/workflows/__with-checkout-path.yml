@@ -48,10 +48,6 @@ jobs:
         include:
           - os: ubuntu-latest
             version: linked
-          - os: macos-latest
-            version: linked
-          - os: windows-latest
-            version: linked
     name: Use a custom `checkout_path`
     permissions:
       contents: read

@@ -1,6 +1,5 @@
 name: "Build mode manual"
 description: "An end-to-end integration test of a Java repository built using 'build-mode: manual'"
-operatingSystems: ["ubuntu"]
 versions: ["nightly-latest"]
 installGo: true
 steps:

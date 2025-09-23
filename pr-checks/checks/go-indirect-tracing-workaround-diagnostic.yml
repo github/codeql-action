@@ -1,7 +1,6 @@
 name: "Go: diagnostic when Go is changed after init step"
 description: "Checks that we emit a diagnostic if Go is changed after the init step"
 # only Linux is affected
-operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
 versions: ["default"]
 installGo: true

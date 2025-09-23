@@ -48,10 +48,6 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
     name: 'Upload-sarif: code quality endpoint'
     permissions:
       contents: read

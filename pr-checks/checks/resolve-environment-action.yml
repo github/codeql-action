@@ -1,5 +1,6 @@
 name: "Resolve environment"
 description: "Tests that the resolve-environment action works for Go and JavaScript/TypeScript"
+operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["default", "linked", "nightly-latest"]
 steps:
   - uses: ./../action/init

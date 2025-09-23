@@ -1,4 +1,4 @@
-import { getApiClient } from "../api-client";
+import { getRepositoryProperties } from "../api-client";
 import { Logger } from "../logging";
 import { RepositoryNwo } from "../repository";
 
@@ -41,13 +41,7 @@ export async function loadPropertiesFromApi(
   repositoryNwo: RepositoryNwo,
 ): Promise<RepositoryProperties> {
   try {
-    const response = await getApiClient().request(
-      "GET /repos/:owner/:repo/properties/values",
-      {
-        owner: repositoryNwo.owner,
-        repo: repositoryNwo.repo,
-      },
-    );
+    const response = await getRepositoryProperties(repositoryNwo);
     const remoteProperties = response.data as GitHubPropertiesResponse;
 
     if (!Array.isArray(remoteProperties)) {

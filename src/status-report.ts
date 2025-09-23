@@ -13,6 +13,7 @@ import {
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
 import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
+import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
@@ -497,6 +498,8 @@ export interface InitWithConfigStatusReport extends InitStatusReport {
   overlay_base_database_download_size_bytes?: number;
   /** Time taken to download the overlay-base database, in milliseconds. */
   overlay_base_database_download_duration_ms?: number;
+  /** Stringified JSON object representing information about the results of restoring dependency caches. */
+  dependency_caching_restore_results: string;
   /** Stringified JSON array of registry configuration objects, from the 'registries' config field
   or workflow input. **/
   registries: string;
@@ -522,6 +525,7 @@ export async function createInitWithConfigStatusReport(
   configFile: string | undefined,
   totalCacheSize: number,
   overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
+  dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined,
 ): Promise<InitWithConfigStatusReport> {
   const languages = config.languages.join(",");
   const paths = (config.originalUserInput.paths || []).join(",");
@@ -570,6 +574,9 @@ export async function createInitWithConfigStatusReport(
       overlayBaseDatabaseStats?.databaseSizeBytes,
     overlay_base_database_download_duration_ms:
       overlayBaseDatabaseStats?.databaseDownloadDurationMs,
+    dependency_caching_restore_results: JSON.stringify(
+      dependencyCachingResults ?? {},
+    ),
     query_filters: JSON.stringify(
       config.originalUserInput["query-filters"] ?? [],
     ),

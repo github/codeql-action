@@ -84,20 +84,44 @@ async function makeGlobber(patterns: string[]): Promise<glob.Globber> {
   return glob.create(patterns.join("\n"));
 }
 
+/** Enumerates possible outcomes for cache hits. */
+export enum CacheHitResult {
+  /** We were unable to calculate a hash for the key. */
+  NoHash = "no-hash",
+  /** No cache was found. */
+  Miss = "miss",
+  /** The primary cache key matched. */
+  Exact = "exact",
+  /** A restore key matched. */
+  Partial = "partial",
+}
+
+/** Represents results of trying to restore a dependency cache for a language. */
+export interface DependencyCacheRestoreStatus {
+  hit: CacheHitResult;
+  download_size_bytes?: number;
+  download_duration_ms?: number;
+}
+
+/** A partial mapping from languages to the results of restoring dependency caches for them. */
+export type DependencyCacheRestoreStatusReport = Partial<
+  Record<Language, DependencyCacheRestoreStatus>
+>;
+
 /**
  * Attempts to restore dependency caches for the languages being analyzed.
  *
  * @param languages The languages being analyzed.
  * @param logger A logger to record some informational messages to.
  * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
- * @returns A list of languages for which dependency caches were restored.
+ * @returns A partial mapping of languages to results of restoring dependency caches for them.
  */
 export async function downloadDependencyCaches(
   languages: Language[],
   logger: Logger,
   minimizeJavaJars: boolean,
-): Promise<Language[]> {
-  const restoredCaches: Language[] = [];
+): Promise<DependencyCacheRestoreStatusReport> {
+  const status: DependencyCacheRestoreStatusReport = {};
 
   for (const language of languages) {
     const cacheConfig = getDefaultCacheConfig()[language];
@@ -114,6 +138,7 @@ export async function downloadDependencyCaches(
     const globber = await makeGlobber(cacheConfig.hash);
 
     if ((await globber.glob()).length === 0) {
+      status[language] = { hit: CacheHitResult.NoHash };
       logger.info(
         `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
       );
@@ -131,21 +156,29 @@ export async function downloadDependencyCaches(
       )}`,
     );
 
+    const start = performance.now();
     const hitKey = await actionsCache.restoreCache(
       cacheConfig.paths,
       primaryKey,
       restoreKeys,
     );
+    const download_duration_ms = Math.round(performance.now() - start);
+    const download_size_bytes = Math.round(
+      await getTotalCacheSize(cacheConfig.paths, logger),
+    );
 
     if (hitKey !== undefined) {
       logger.info(`Cache hit on key ${hitKey} for ${language}.`);
-      restoredCaches.push(language);
+      const hit =
+        hitKey === primaryKey ? CacheHitResult.Exact : CacheHitResult.Partial;
+      status[language] = { hit, download_duration_ms, download_size_bytes };
     } else {
+      status[language] = { hit: CacheHitResult.Miss };
       logger.info(`No suitable cache found for ${language}.`);
     }
   }
 
-  return restoredCaches;
+  return status;
 }
 
 /**

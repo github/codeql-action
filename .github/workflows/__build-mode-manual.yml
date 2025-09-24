@@ -49,6 +49,7 @@ jobs:
           - os: ubuntu-latest
             version: nightly-latest
     name: Build mode manual
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

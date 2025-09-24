@@ -133,7 +133,7 @@ jobs:
 
       - name: Generate token
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/create-github-app-token@v2.1.1
+        uses: actions/create-github-app-token@v2.1.4
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}

@@ -95,11 +95,11 @@ export function getAuthorizationHeaderFor(
     url.startsWith(`${apiDetails.url}/`) ||
     (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
   ) {
-    logger.debug(`Providing an authorization token for '${url}'.`);
+    logger.debug(`Providing an authorization token.`);
     return `token ${apiDetails.auth}`;
   }
 
-  logger.debug(`Requesting '${url}' without an authorization token.`);
+  logger.debug(`Not using an authorization token.`);
   return undefined;
 }
 

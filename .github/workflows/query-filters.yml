@@ -22,6 +22,7 @@ defaults:
 jobs:
   query-filters:
     name: Query Filters Tests
+    if: github.triggering_actor != 'dependabot[bot]'
     timeout-minutes: 45
     runs-on: ubuntu-latest
     permissions:

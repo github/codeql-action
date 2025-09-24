@@ -49,6 +49,7 @@ jobs:
           - os: ubuntu-latest
             version: default
     name: 'Go: diagnostic when Go is changed after init step'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

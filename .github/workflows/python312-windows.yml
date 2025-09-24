@@ -18,6 +18,7 @@ defaults:
 
 jobs:
   test-setup-python-scripts:
+    if: github.triggering_actor != 'dependabot[bot]'
     env:
       CODEQL_ACTION_TEST_MODE: true
     timeout-minutes: 45

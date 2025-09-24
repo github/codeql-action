@@ -74,30 +74,32 @@ export function getApiClientWithExternalAuth(
 }
 
 /**
- * Gets a value for the `Authorization` header to download `url` or `undefined` if the
+ * Gets a value for the `Authorization` header for a request to `url`; or `undefined` if the
  * `Authorization` header should not be set for `url`.
  *
  * @param logger The logger to use for debugging messages.
  * @param apiDetails Details of the GitHub API we are using.
  * @param url The URL for which we want to add an `Authorization` header.
- * @param purpose A description of what we want to download, for debug messages.
+ *
  * @returns The value for the `Authorization` header or `undefined` if it shouldn't be populated.
  */
 export function getAuthorizationHeaderFor(
   logger: Logger,
   apiDetails: GitHubApiDetails,
   url: string,
-  purpose: string = "CodeQL tools",
 ): string | undefined {
+  // We only want to provide an authorization header if we are downloading
+  // from the same GitHub instance the Action is running on.
+  // This avoids leaking Enterprise tokens to dotcom.
   if (
     url.startsWith(`${apiDetails.url}/`) ||
     (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
   ) {
-    logger.debug(`Providing an authorization token to download ${purpose}.`);
+    logger.debug(`Providing an authorization token for '${url}'.`);
     return `token ${apiDetails.auth}`;
   }
 
-  logger.debug(`Downloading ${purpose} without an authorization token.`);
+  logger.debug(`Requesting '${url}' without an authorization token.`);
   return undefined;
 }
 

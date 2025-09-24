@@ -11,6 +11,8 @@ import * as gitUtils from "./git-utils";
 import { getRunnerLogger } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
+  getCacheRestoreKeyPrefix,
+  getCacheSaveKey,
   OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
@@ -261,3 +263,40 @@ test(
   },
   false,
 );
+
+test("overlay-base database cache keys remain stable", async (t) => {
+  const config = createTestConfig({ languages: ["python", "javascript"] });
+  const codeQlVersion = "2.23.0";
+  const commitOid = "abc123def456";
+
+  sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+  sinon.stub(gitUtils, "getCommitOid").resolves(commitOid);
+
+  const saveKey = await getCacheSaveKey(config, codeQlVersion, "checkout-path");
+  const expectedSaveKey =
+    "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-abc123def456";
+  t.is(
+    saveKey,
+    expectedSaveKey,
+    "Cache save key changed unexpectedly. " +
+      "This may indicate breaking changes in the cache key generation logic.",
+  );
+
+  const restoreKeyPrefix = await getCacheRestoreKeyPrefix(
+    config,
+    codeQlVersion,
+  );
+  const expectedRestoreKeyPrefix =
+    "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-";
+  t.is(
+    restoreKeyPrefix,
+    expectedRestoreKeyPrefix,
+    "Cache restore key prefix changed unexpectedly. " +
+      "This may indicate breaking changes in the cache key generation logic.",
+  );
+
+  t.true(
+    saveKey.startsWith(restoreKeyPrefix),
+    `Expected save key "${saveKey}" to start with restore key prefix "${restoreKeyPrefix}"`,
+  );
+});

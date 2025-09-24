@@ -4,6 +4,7 @@ import * as retry from "@octokit/plugin-retry";
 import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
+import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
   ConfigurationError,
@@ -54,7 +55,7 @@ function createApiClientWithDetails(
   );
 }
 
-export function getApiDetails() {
+export function getApiDetails(): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
@@ -70,6 +71,34 @@ export function getApiClientWithExternalAuth(
   apiDetails: GitHubApiCombinedDetails,
 ) {
   return createApiClientWithDetails(apiDetails, { allowExternal: true });
+}
+
+/**
+ * Gets a value for the `Authorization` header to download `url` or `undefined` if the
+ * `Authorization` header should not be set for `url`.
+ *
+ * @param logger The logger to use for debugging messages.
+ * @param apiDetails Details of the GitHub API we are using.
+ * @param url The URL for which we want to add an `Authorization` header.
+ * @param purpose A description of what we want to download, for debug messages.
+ * @returns The value for the `Authorization` header or `undefined` if it shouldn't be populated.
+ */
+export function getAuthorizationHeaderFor(
+  logger: Logger,
+  apiDetails: GitHubApiDetails,
+  url: string,
+  purpose: string = "CodeQL tools",
+): string | undefined {
+  if (
+    url.startsWith(`${apiDetails.url}/`) ||
+    (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
+  ) {
+    logger.debug(`Providing an authorization token to download ${purpose}.`);
+    return `token ${apiDetails.auth}`;
+  }
+
+  logger.debug(`Downloading ${purpose} without an authorization token.`);
+  return undefined;
 }
 
 let cachedGitHubVersion: GitHubVersion | undefined = undefined;

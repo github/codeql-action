@@ -41,7 +41,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
-  test-local-codeql:
+  local-bundle:
     strategy:
       fail-fast: false
       matrix:

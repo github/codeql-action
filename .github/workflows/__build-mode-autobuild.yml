@@ -21,9 +21,19 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
-    inputs: {}
+    inputs:
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
   workflow_call:
-    inputs: {}
+    inputs:
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 defaults:
   run:
     shell: bash
@@ -37,6 +47,12 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: windows-latest
             version: nightly-latest
     name: Build mode autobuild
     permissions:
@@ -54,6 +70,11 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
+      - name: Install Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
       - name: Set up Java test repo configuration
         run: |
           mv * .github ../action/tests/multi-language-repo/
@@ -74,6 +95,14 @@ jobs:
           build_mode=$(yq eval '.buildMode' "$metadata_path")
           if [[ "$build_mode" != "autobuild" ]]; then
             echo "Expected build mode to be 'autobuild' but was $build_mode"
+            exit 1
+          fi
+
+      - name: Check that indirect tracing is disabled
+        run: |
+          if [[ ! -z "${CODEQL_RUNNER}" ]]; then
+            echo "Expected indirect tracing to be disabled, but the" \
+              "CODEQL_RUNNER environment variable is set."
             exit 1
           fi
 

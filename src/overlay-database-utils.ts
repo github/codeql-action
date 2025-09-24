@@ -480,26 +480,37 @@ export async function getCacheRestoreKeyPrefix(
   codeQlVersion: string,
 ): Promise<string> {
   const languages = [...config.languages].sort().join("_");
-
-  const cacheKeyComponents = {
-    automationID: await getAutomationID(),
-    // Add more components here as needed in the future
-  };
-  const componentsHash = createCacheKeyHash(cacheKeyComponents);
+  const workflowPrefix = await getCacheWorkflowKeyPrefix();
 
   // For a cached overlay-base database to be considered compatible for overlay
   // analysis, all components in the cache restore key must match:
   //
-  // CACHE_PREFIX: distinguishes overlay-base databases from other cache objects
-  // CACHE_VERSION: cache format version
-  // componentsHash: hash of additional components (see above for details)
+  // workflowPrefix contains components that depend only on the workflow:
+  //   CACHE_PREFIX: distinguishes overlay-base databases from other cache objects
+  //   CACHE_VERSION: cache format version
+  //   componentsHash: hash of additional components (see above for details)
   // languages: the languages included in the overlay-base database
   // codeQlVersion: CodeQL bundle version
   //
   // Technically we can also include languages and codeQlVersion in the
   // componentsHash, but including them explicitly in the cache key makes it
   // easier to debug and understand the cache key structure.
-  return `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-${languages}-${codeQlVersion}-`;
+  return `${workflowPrefix}${languages}-${codeQlVersion}-`;
+}
+
+/**
+ * Computes the cache key prefix that depends only on the workflow.
+ *
+ * @returns A promise that resolves to the common cache key prefix in the format
+ * `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-`
+ */
+export async function getCacheWorkflowKeyPrefix(): Promise<string> {
+  const cacheKeyComponents = {
+    automationID: await getAutomationID(),
+    // Add more components here as needed in the future
+  };
+  const componentsHash = createCacheKeyHash(cacheKeyComponents);
+  return `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-`;
 }
 
 /**

@@ -13,6 +13,7 @@ import {
   downloadOverlayBaseDatabaseFromCache,
   getCacheRestoreKeyPrefix,
   getCacheSaveKey,
+  getCacheWorkflowKeyPrefix,
   OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
@@ -295,8 +296,22 @@ test("overlay-base database cache keys remain stable", async (t) => {
       "This may indicate breaking changes in the cache key generation logic.",
   );
 
+  const workflowKeyPrefix = await getCacheWorkflowKeyPrefix();
+  const expectedWorkflowKeyPrefix =
+    "codeql-overlay-base-database-1-c5666c509a2d9895-";
+  t.is(
+    workflowKeyPrefix,
+    expectedWorkflowKeyPrefix,
+    "Cache workflow key prefix changed unexpectedly. " +
+      "This may indicate breaking changes in the cache key generation logic.",
+  );
+
   t.true(
     saveKey.startsWith(restoreKeyPrefix),
     `Expected save key "${saveKey}" to start with restore key prefix "${restoreKeyPrefix}"`,
+  );
+  t.true(
+    restoreKeyPrefix.startsWith(workflowKeyPrefix),
+    `Expected restore key prefix "${restoreKeyPrefix}" to start with workflow key prefix "${workflowKeyPrefix}"`,
   );
 });

@@ -22,7 +22,7 @@ test: build
 
 # Run the tests for a single file
 test_file filename: build
-    npx ava --verbose {{filename}}
+    npx ava --serial --verbose {{filename}}
 
 [doc("Refresh the .js build artefacts in the lib directory")]
 [confirm]

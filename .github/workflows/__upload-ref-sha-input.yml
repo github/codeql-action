@@ -49,6 +49,7 @@ jobs:
           - os: ubuntu-latest
             version: default
     name: "Upload-sarif: 'ref' and 'sha' from inputs"
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

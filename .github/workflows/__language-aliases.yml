@@ -39,6 +39,7 @@ jobs:
           - os: ubuntu-latest
             version: linked
     name: Language aliases
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

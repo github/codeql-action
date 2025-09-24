@@ -6,6 +6,7 @@ import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
+import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
 import { getActionsLogger, Logger } from "./logging";
 import {
   Credential,
@@ -192,10 +193,20 @@ async function getProxyBinaryPath(logger: Logger): Promise<string> {
 
   let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
   if (!proxyBin) {
+    // We only want to provide an authorization header if we are downloading
+    // from the same GitHub instance the Action is running on.
+    // This avoids leaking Enterprise tokens to dotcom.
+    const apiDetails = getApiDetails();
+    const authorization = getAuthorizationHeaderFor(
+      logger,
+      apiDetails,
+      proxyInfo.url,
+      "`update-job-proxy`",
+    );
     const temp = await toolcache.downloadTool(
       proxyInfo.url,
       undefined,
-      undefined,
+      authorization,
       {
         accept: "application/octet-stream",
       },

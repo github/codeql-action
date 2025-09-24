@@ -15,6 +15,7 @@ defaults:
 jobs:
   unit-tests:
     name: Unit Tests
+    if: github.triggering_actor != 'dependabot[bot]'
     strategy:
       fail-fast: false
       matrix:
@@ -31,7 +32,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - uses: actions/checkout@v5
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
@@ -75,7 +76,7 @@ jobs:
           category: eslint
 
   check-node-version:
-    if: github.event.pull_request
+    if: github.event.pull_request && github.triggering_actor != 'dependabot[bot]'
     name: Check Action Node versions
     runs-on: ubuntu-latest
     timeout-minutes: 45

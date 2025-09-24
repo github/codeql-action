@@ -24,6 +24,7 @@ defaults:
 
 jobs:
   upload-artifacts:
+    if: github.triggering_actor != 'dependabot[bot]'
     strategy:
       fail-fast: false
       matrix:
@@ -70,6 +71,7 @@ jobs:
           expect-error: true
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
+    if: github.triggering_actor != 'dependabot[bot]'
     needs: upload-artifacts
     timeout-minutes: 45
     permissions:

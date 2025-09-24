@@ -574,14 +574,12 @@ export const downloadCodeQL = async function (
   let authorization: string | undefined = undefined;
   if (searchParams.has("token")) {
     logger.debug("CodeQL tools URL contains an authorization token.");
-  } else if (
-    codeqlURL.startsWith(`${apiDetails.url}/`) ||
-    (apiDetails.apiURL && codeqlURL.startsWith(`${apiDetails.apiURL}/`))
-  ) {
-    logger.debug("Providing an authorization token to download CodeQL tools.");
-    authorization = `token ${apiDetails.auth}`;
   } else {
-    logger.debug("Downloading CodeQL tools without an authorization token.");
+    authorization = api.getAuthorizationHeaderFor(
+      logger,
+      apiDetails,
+      codeqlURL,
+    );
   }
 
   const toolcacheInfo = getToolcacheDestinationInfo(

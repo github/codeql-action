@@ -39,6 +39,7 @@ jobs:
           - os: ubuntu-latest
             version: linked
     name: Config input
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

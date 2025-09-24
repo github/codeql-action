@@ -91,6 +91,7 @@ jobs:
             version: nightly-latest
             analysis-kinds: code-scanning,code-quality
     name: Quality queries input
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

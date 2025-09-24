@@ -23,6 +23,7 @@ env:
 jobs:
   # Identify the CodeQL tool versions to use in the analysis job.
   check-codeql-versions:
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.compare.outputs.versions }}
@@ -75,6 +76,7 @@ jobs:
         echo "versions=${VERSIONS_JSON}" >> $GITHUB_OUTPUT
 
   analyze-javascript:
+    if: github.triggering_actor != 'dependabot[bot]'
     needs: [check-codeql-versions]
     strategy:
       fail-fast: false
@@ -110,6 +112,7 @@ jobs:
         upload: ${{ (matrix.os == 'ubuntu-24.04' && !matrix.tools && 'always') || 'never' }}
 
   analyze-other:
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     strategy:

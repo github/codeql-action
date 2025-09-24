@@ -49,6 +49,7 @@ jobs:
           - os: ubuntu-latest
             version: linked
     name: Local CodeQL bundle
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

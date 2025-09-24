@@ -200,6 +200,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         },
         'name': checkSpecification['name'],
+        'if': 'github.triggering_actor != \'dependabot[bot]\'',
         'permissions': {
             'contents': 'read',
             'security-events': 'read'

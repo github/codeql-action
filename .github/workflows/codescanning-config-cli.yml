@@ -28,6 +28,7 @@ defaults:
 
 jobs:
   code-scanning-config-tests:
+    if: github.triggering_actor != 'dependabot[bot]'
     continue-on-error: true
 
     permissions:

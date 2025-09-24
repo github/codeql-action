@@ -21,8 +21,8 @@ updates:
           - "*"
   - package-ecosystem: github-actions
     directories:
-      - "/"
-      - "/.github/actions" # All subdirectories outside of "/.github/workflows" must be explicitly included.
+      - "/.github/workflows"
+      - "/.github/actions"
     schedule:
       interval: weekly
     labels:

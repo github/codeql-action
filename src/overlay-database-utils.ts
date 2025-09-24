@@ -448,7 +448,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
  * The key consists of the restore key prefix (which does not include the
  * commit SHA) and the commit SHA of the current checkout.
  */
-async function getCacheSaveKey(
+export async function getCacheSaveKey(
   config: Config,
   codeQlVersion: string,
   checkoutPath: string,
@@ -475,7 +475,7 @@ async function getCacheSaveKey(
  * not include the commit SHA. This allows us to restore the most recent
  * compatible overlay-base database.
  */
-async function getCacheRestoreKeyPrefix(
+export async function getCacheRestoreKeyPrefix(
   config: Config,
   codeQlVersion: string,
 ): Promise<string> {

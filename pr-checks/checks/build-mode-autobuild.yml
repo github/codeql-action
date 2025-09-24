@@ -18,6 +18,11 @@ steps:
       languages: java
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
+  - name: Install yq
+    if: runner.os == 'Windows'
+    run: |
+      choco install yq -y
+
   - name: Validate database build mode
     run: |
       metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"

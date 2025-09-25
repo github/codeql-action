@@ -22,7 +22,6 @@ steps:
       fi
 
   - name: Build code
-    shell: bash
     run: ./build.sh
 
   - uses: ./../action/analyze

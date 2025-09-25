@@ -16,7 +16,7 @@ import {
   getErrorMessage,
   isHTTPError,
   tryGetFolderBytes,
-  withTimeout,
+  waitForResultWithTimeLimit,
 } from "./util";
 
 // This constant should be bumped if we make a breaking change
@@ -96,7 +96,7 @@ export async function downloadTrapCaches(
     logger.info(
       `Looking in Actions cache for TRAP cache with key ${preferredKey}`,
     );
-    const found = await withTimeout(
+    const found = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.restoreCache([cacheDir], preferredKey, [
         // Fall back to any cache with the right key prefix
@@ -156,7 +156,7 @@ export async function uploadTrapCaches(
       process.env.GITHUB_SHA || "unknown",
     );
     logger.info(`Uploading TRAP cache to Actions cache with key ${key}`);
-    await withTimeout(
+    await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.saveCache([cacheDir], key),
       () => {

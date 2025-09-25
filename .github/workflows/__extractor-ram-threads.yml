@@ -24,6 +24,12 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   extractor-ram-threads:
     strategy:
@@ -33,6 +39,7 @@ jobs:
           - os: ubuntu-latest
             version: linked
     name: Extractor ram and threads options test
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -54,7 +61,6 @@ jobs:
           ram: 230
           threads: 1
       - name: Assert Results
-        shell: bash
         run: |
           if [ "${CODEQL_RAM}" != "230" ]; then
             echo "CODEQL_RAM is '${CODEQL_RAM}' instead of 230"

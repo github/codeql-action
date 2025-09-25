@@ -8,7 +8,7 @@ import { getTemporaryDirectory } from "./actions-util";
 import { getTotalCacheSize } from "./caching-utils";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Language } from "./languages";
+import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getRequiredEnvParam } from "./util";
 
@@ -89,11 +89,13 @@ async function makeGlobber(patterns: string[]): Promise<glob.Globber> {
  *
  * @param languages The languages being analyzed.
  * @param logger A logger to record some informational messages to.
+ * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
  * @returns A list of languages for which dependency caches were restored.
  */
 export async function downloadDependencyCaches(
   languages: Language[],
   logger: Logger,
+  minimizeJavaJars: boolean,
 ): Promise<Language[]> {
   const restoredCaches: Language[] = [];
 
@@ -118,8 +120,10 @@ export async function downloadDependencyCaches(
       continue;
     }
 
-    const primaryKey = await cacheKey(language, cacheConfig);
-    const restoreKeys: string[] = [await cachePrefix(language)];
+    const primaryKey = await cacheKey(language, cacheConfig, minimizeJavaJars);
+    const restoreKeys: string[] = [
+      await cachePrefix(language, minimizeJavaJars),
+    ];
 
     logger.info(
       `Downloading cache for ${language} with key ${primaryKey} and restore keys ${restoreKeys.join(
@@ -149,8 +153,13 @@ export async function downloadDependencyCaches(
  *
  * @param config The configuration for this workflow.
  * @param logger A logger to record some informational messages to.
+ * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
  */
-export async function uploadDependencyCaches(config: Config, logger: Logger) {
+export async function uploadDependencyCaches(
+  config: Config,
+  logger: Logger,
+  minimizeJavaJars: boolean,
+): Promise<void> {
   for (const language of config.languages) {
     const cacheConfig = getDefaultCacheConfig()[language];
 
@@ -192,7 +201,7 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
       continue;
     }
 
-    const key = await cacheKey(language, cacheConfig);
+    const key = await cacheKey(language, cacheConfig, minimizeJavaJars);
 
     logger.info(
       `Uploading cache of size ${size} for ${language} with key ${key}...`,
@@ -222,14 +231,16 @@ export async function uploadDependencyCaches(config: Config, logger: Logger) {
  *
  * @param language The language being analyzed.
  * @param cacheConfig The cache configuration for the language.
+ * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
  * @returns A cache key capturing information about the project(s) being analyzed in the specified language.
  */
 async function cacheKey(
   language: Language,
   cacheConfig: CacheConfig,
+  minimizeJavaJars: boolean = false,
 ): Promise<string> {
   const hash = await glob.hashFiles(cacheConfig.hash.join("\n"));
-  return `${await cachePrefix(language)}${hash}`;
+  return `${await cachePrefix(language, minimizeJavaJars)}${hash}`;
 }
 
 /**
@@ -237,15 +248,24 @@ async function cacheKey(
  * can be changed to invalidate old caches, the runner's operating system, and the specified language name.
  *
  * @param language The language being analyzed.
+ * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
  * @returns The prefix that identifies what a cache is for.
  */
-async function cachePrefix(language: Language): Promise<string> {
+async function cachePrefix(
+  language: Language,
+  minimizeJavaJars: boolean,
+): Promise<string> {
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const customPrefix = process.env[EnvVar.DEPENDENCY_CACHING_PREFIX];
   let prefix = CODEQL_DEPENDENCY_CACHE_PREFIX;
 
   if (customPrefix !== undefined && customPrefix.length > 0) {
     prefix = `${prefix}-${customPrefix}`;
+  }
+
+  // To ensure a safe rollout of JAR minimization, we change the key when the feature is enabled.
+  if (language === KnownLanguage.java && minimizeJavaJars) {
+    prefix = `minify-${prefix}`;
   }
 
   return `${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;

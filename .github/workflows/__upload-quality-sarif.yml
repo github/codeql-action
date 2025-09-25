@@ -34,6 +34,12 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   upload-quality-sarif:
     strategy:
@@ -47,6 +53,7 @@ jobs:
           - os: windows-latest
             version: default
     name: 'Upload-sarif: code quality endpoint'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -63,19 +70,16 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-          languages: cpp,csharp,java,javascript,python
-          config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
-            github.sha }}
-          analysis-kinds: code-scanning,code-quality
+          languages: csharp,java,javascript,python
+          analysis-kinds: code-quality
       - name: Build code
-        shell: bash
         run: ./build.sh
   # Generate some SARIF we can upload with the upload-sarif step
       - uses: ./../action/analyze
@@ -84,8 +88,12 @@ jobs:
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
           upload: never
       - uses: ./../action/upload-sarif
+        id: upload-sarif
         with:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+      - name: Check output from `upload-sarif` step
+        if: fromJSON(steps.upload-sarif.outputs.sarif-ids)[0].analysis != 'code-quality'
+        run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

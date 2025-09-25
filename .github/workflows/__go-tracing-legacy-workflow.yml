@@ -34,6 +34,12 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   go-tracing-legacy-workflow:
     strategy:
@@ -61,6 +67,10 @@ jobs:
           - os: macos-latest
             version: stable-v2.21.4
           - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: macos-latest
+            version: stable-v2.22.4
+          - os: ubuntu-latest
             version: default
           - os: macos-latest
             version: default
@@ -73,6 +83,7 @@ jobs:
           - os: macos-latest
             version: nightly-latest
     name: 'Go: tracing with legacy workflow'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -89,7 +100,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
@@ -98,8 +109,7 @@ jobs:
           languages: go
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/analyze
-      - shell: bash
-        run: |
+      - run: |
           cd "$RUNNER_TEMP/codeql_databases"
           if [[ ! -d go ]]; then
             echo "Did not find a Go database"

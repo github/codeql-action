@@ -12,7 +12,6 @@ steps:
     with:
       upload-database: false
   - name: Check database
-    shell: bash
     run: |
       RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
       if [[ ! -d "$RUBY_DB" ]]; then

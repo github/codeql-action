@@ -13,6 +13,10 @@ on:
     # to filter pre-release attribute.
     types: [published]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   update-bundle:
     if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')
@@ -37,7 +41,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20.x'
           cache: 'npm'

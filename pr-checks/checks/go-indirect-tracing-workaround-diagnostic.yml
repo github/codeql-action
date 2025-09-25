@@ -12,18 +12,17 @@ steps:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   # Deliberately change Go after the `init` step
-  - uses: actions/setup-go@v5
+  - uses: actions/setup-go@v6
     with:
       go-version: "1.20"
   - name: Build code
-    shell: bash
     run: go build main.go
   - uses: ./../action/analyze
     with:
       output: "${{ runner.temp }}/results"
       upload-database: false
   - name: Check diagnostic appears in SARIF
-    uses: actions/github-script@v7
+    uses: actions/github-script@v8
     env:
       SARIF_PATH: "${{ runner.temp }}/results/go.sarif"
     with:

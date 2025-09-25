@@ -14,6 +14,10 @@ on:
       - .github/workflows/rollback-release.yml
       - .github/actions/prepare-mergeback-branch/**
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   prepare:
     name: "Prepare release"
@@ -53,7 +57,6 @@ jobs:
 
       - name: Create tag for testing
         if: github.event_name != 'workflow_dispatch'
-        shell: bash
         run: git tag v0.0.0
 
       # We start by preparing the mergeback branch, mainly so that we have the updated changelog
@@ -96,7 +99,6 @@ jobs:
           echo "::endgroup::"
 
       - name: Create tags
-        shell: bash
         env:
           # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
           # but use `v0.0.0` for testing.
@@ -111,7 +113,6 @@ jobs:
       - name: Push tags
         # skip when testing
         if: github.event_name == 'workflow_dispatch'
-        shell: bash
         env:
           RELEASE_TAG: ${{ needs.prepare.outputs.version }}
           MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
@@ -132,7 +133,7 @@ jobs:
 
       - name: Generate token
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/create-github-app-token@v2.1.1
+        uses: actions/create-github-app-token@v2.1.4
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}
@@ -160,7 +161,6 @@ jobs:
           echo "Created draft rollback release at $RELEASE_URL" >> $GITHUB_STEP_SUMMARY
 
       - name: Update changelog
-        shell: bash
         env:
           NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
           NEW_BRANCH: "${{ steps.mergeback-branch.outputs.new-branch }}"

@@ -34,6 +34,12 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   multi-language-autodetect:
     strategy:
@@ -61,6 +67,10 @@ jobs:
           - os: ubuntu-latest
             version: stable-v2.21.4
           - os: macos-latest
+            version: stable-v2.22.4
+          - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: macos-latest
             version: default
           - os: ubuntu-latest
             version: default
@@ -73,6 +83,7 @@ jobs:
           - os: ubuntu-latest
             version: nightly-latest
     name: Multi-language repository
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -89,12 +100,11 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
       - name: Use Xcode 16
-        shell: bash
         if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
         run: sudo xcode-select -s "/Applications/Xcode_16.app"
 
@@ -107,7 +117,6 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
       - name: Build code
-        shell: bash
         run: ./build.sh
 
       - uses: ./../action/analyze
@@ -116,7 +125,6 @@ jobs:
           upload-database: false
 
       - name: Check language autodetect for all languages excluding Swift
-        shell: bash
         run: |
           CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
           if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
@@ -156,7 +164,6 @@ jobs:
 
       - name: Check language autodetect for Swift on macOS
         if: runner.os == 'macOS'
-        shell: bash
         run: |
           SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
           if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
@@ -164,4 +171,5 @@ jobs:
             exit 1
           fi
     env:
+      CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
       CODEQL_ACTION_TEST_MODE: true

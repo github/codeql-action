@@ -32,6 +32,7 @@ import {
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
+import { loadPropertiesFromApi } from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -78,6 +79,7 @@ import {
   wrapError,
   checkActionVersion,
   getErrorMessage,
+  BuildMode,
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
@@ -194,6 +196,14 @@ async function run() {
     getTemporaryDirectory(),
     logger,
   );
+
+  // Fetch the values of known repository properties that affect us.
+  const enableRepoProps = await features.getValue(
+    Feature.UseRepositoryProperties,
+  );
+  const repositoryProperties = enableRepoProps
+    ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
+    : {};
 
   const jobRunUuid = uuidV4();
   logger.info(`Job run UUID is ${jobRunUuid}.`);
@@ -316,6 +326,7 @@ async function run() {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
+      repositoryProperties,
       logger,
     });
 
@@ -546,8 +557,16 @@ async function run() {
     }
 
     // Restore dependency cache(s), if they exist.
+    const minimizeJavaJars = await features.getValue(
+      Feature.JavaMinimizeDependencyJars,
+      codeql,
+    );
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
-      await downloadDependencyCaches(config.languages, logger);
+      await downloadDependencyCaches(
+        config.languages,
+        logger,
+        minimizeJavaJars,
+      );
     }
 
     // Suppress warnings about disabled Python library extraction.
@@ -595,6 +614,28 @@ async function run() {
         // so we need to suppress the new default CLI behavior.
         core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
       }
+    }
+
+    // If the feature flag to minimize Java dependency jars is enabled, and we are doing a Java
+    // `build-mode: none` analysis (i.e. the flag is relevant), then set the environment variable
+    // that enables the corresponding option in the Java extractor. We also only do this if
+    // dependency caching is enabled, since the option is intended to reduce the size of
+    // dependency caches, but the jar-rewriting does have a performance cost that we'd like to avoid
+    // when caching is not being used.
+    if (process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]) {
+      logger.debug(
+        `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
+      );
+    } else if (
+      minimizeJavaJars &&
+      config.dependencyCachingEnabled &&
+      config.buildMode === BuildMode.None &&
+      config.languages.includes(KnownLanguage.java)
+    ) {
+      core.exportVariable(
+        EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS,
+        "true",
+      );
     }
 
     const { registriesAuthTokens, qlconfigFile } =
@@ -680,6 +721,12 @@ async function run() {
   } finally {
     logUnwrittenDiagnostics();
   }
+
+  // We save the config here instead of at the end of `initConfig` because we
+  // may have updated the config returned from `initConfig`, e.g. to revert to
+  // `OverlayDatabaseMode.None` if we failed to download an overlay-base
+  // database.
+  await configUtils.saveConfig(config, logger);
   await sendCompletedStatusReport(
     startedAt,
     config,

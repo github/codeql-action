@@ -115,6 +115,9 @@ export enum EnvVar {
    */
   DEPENDENCY_CACHING_PREFIX = "CODEQL_ACTION_DEPENDENCY_CACHE_PREFIX",
 
+  /** Used by the Java extractor option to enable minimizing dependency JARs. */
+  JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS = "CODEQL_EXTRACTOR_JAVA_OPTION_MINIMIZE_DEPENDENCY_JARS",
+
   /**
    * Whether to enable experimental extractors for CodeQL.
    */

@@ -16,6 +16,5 @@ steps:
       config-file: ./.github/codeql/custom-queries.yml
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
-    shell: bash
     run: ./build.sh
   - uses: ./../action/analyze

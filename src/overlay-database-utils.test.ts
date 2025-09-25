@@ -14,6 +14,7 @@ import {
   getCacheRestoreKeyPrefix,
   getCacheSaveKey,
   getCacheWorkflowKeyPrefix,
+  getCodeQLVersionFromOverlayBaseDatabase,
   OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
@@ -313,5 +314,148 @@ test("overlay-base database cache keys remain stable", async (t) => {
   t.true(
     restoreKeyPrefix.startsWith(workflowKeyPrefix),
     `Expected restore key prefix "${restoreKeyPrefix}" to start with workflow key prefix "${workflowKeyPrefix}"`,
+  );
+});
+
+/**
+ * Helper function to generate a cache save key for testing.
+ * Sets up the necessary sinon stubs and returns the generated cache key.
+ */
+async function generateTestCacheKey(codeQlVersion: string): Promise<string> {
+  const config = createTestConfig({ languages: ["python", "javascript"] });
+  const commitOid = "abc123def456";
+
+  sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+  sinon.stub(gitUtils, "getCommitOid").resolves(commitOid);
+
+  return await getCacheSaveKey(config, codeQlVersion, "checkout-path");
+}
+
+/**
+ * Helper function to stub getMostRecentActionsCacheEntry with a given key and creation date.
+ * Returns the stubbed function for cleanup if needed.
+ */
+function stubMostRecentActionsCacheEntry(key?: string, createdAt?: Date) {
+  const cacheItem =
+    key !== undefined || createdAt !== undefined
+      ? {
+          key,
+          created_at: createdAt?.toISOString(),
+        }
+      : undefined;
+
+  return sinon
+    .stub(apiClient, "getMostRecentActionsCacheEntry")
+    .resolves(cacheItem);
+}
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns version when cache entry is valid", async (t) => {
+  const logger = getRunnerLogger(true);
+  const cacheKey = await generateTestCacheKey("2.23.0");
+
+  stubMostRecentActionsCacheEntry(cacheKey, new Date());
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(result, "2.23.0", "Should return the extracted CodeQL version");
+});
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns undefined when no cache entries found", async (t) => {
+  const logger = getRunnerLogger(true);
+
+  sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+  stubMostRecentActionsCacheEntry();
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(
+    result,
+    undefined,
+    "Should return undefined when no cache entries found",
+  );
+});
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns undefined when cache entry is too old", async (t) => {
+  const logger = getRunnerLogger(true);
+  const cacheKey = await generateTestCacheKey("2.23.0");
+
+  const oldDate = new Date();
+  oldDate.setDate(oldDate.getDate() - 15); // 15 days ago (older than 14 day limit)
+
+  stubMostRecentActionsCacheEntry(cacheKey, oldDate);
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(
+    result,
+    undefined,
+    "Should return undefined when cache entry is too old",
+  );
+});
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns undefined when cache key format is invalid", async (t) => {
+  const logger = getRunnerLogger(true);
+
+  sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+  stubMostRecentActionsCacheEntry("invalid-key-format", new Date());
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(
+    result,
+    undefined,
+    "Should return undefined when cache key format is invalid",
+  );
+});
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns undefined when CodeQL version is invalid semver", async (t) => {
+  const logger = getRunnerLogger(true);
+  const invalidCacheKey = await generateTestCacheKey("invalid.version");
+
+  stubMostRecentActionsCacheEntry(invalidCacheKey, new Date());
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(
+    result,
+    undefined,
+    "Should return undefined when CodeQL version is invalid semver",
+  );
+});
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns undefined when CodeQL version is too old", async (t) => {
+  const logger = getRunnerLogger(true);
+  const cacheKey = await generateTestCacheKey("2.20.0"); // Older than minimum required version (2.22.4)
+
+  stubMostRecentActionsCacheEntry(cacheKey, new Date());
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(
+    result,
+    undefined,
+    "Should return undefined when CodeQL version is older than minimum required version",
+  );
+});
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns undefined when cache entry has no key", async (t) => {
+  const logger = getRunnerLogger(true);
+
+  sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+  stubMostRecentActionsCacheEntry(undefined, new Date());
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(
+    result,
+    undefined,
+    "Should return undefined when cache entry has no key",
+  );
+});
+
+test("getCodeQLVersionFromOverlayBaseDatabase returns undefined when cache entry has no created_at", async (t) => {
+  const logger = getRunnerLogger(true);
+  const cacheKey = await generateTestCacheKey("2.23.0");
+
+  stubMostRecentActionsCacheEntry(cacheKey, undefined);
+
+  const result = await getCodeQLVersionFromOverlayBaseDatabase(logger);
+  t.is(
+    result,
+    undefined,
+    "Should return undefined when cache entry has no created_at",
   );
 });

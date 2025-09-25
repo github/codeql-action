@@ -3,9 +3,10 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
+import * as semver from "semver";
 
 import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
-import { getAutomationID } from "./api-client";
+import { getAutomationID, getMostRecentActionsCacheEntry } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
@@ -439,6 +440,64 @@ export async function downloadOverlayBaseDatabaseFromCache(
     databaseSizeBytes: Math.round(databaseSizeBytes),
     databaseDownloadDurationMs,
   };
+}
+
+const IGNORE_DATABASES_OLDER_THAN_N_DAYS = 14;
+
+export async function getCodeQLVersionFromOverlayBaseDatabase(
+  logger: Logger,
+): Promise<string | undefined> {
+  const keyPrefix = await getCacheWorkflowKeyPrefix();
+  const cacheItem = await getMostRecentActionsCacheEntry(keyPrefix);
+
+  if (cacheItem?.created_at === undefined || cacheItem.key === undefined) {
+    logger.info("No overlay-base database cache entries found");
+    return undefined;
+  }
+
+  const cutoffTime = new Date();
+  cutoffTime.setDate(cutoffTime.getDate() - IGNORE_DATABASES_OLDER_THAN_N_DAYS);
+
+  const cacheCreationTime = new Date(cacheItem.created_at);
+  if (cacheCreationTime < cutoffTime) {
+    logger.info(
+      `Not considering overlay-base database cache entry ${cacheItem.key} ` +
+        `because it is too old (created at ${cacheItem.created_at})`,
+    );
+    return undefined;
+  }
+
+  const keyParts = cacheItem.key.split("-");
+  if (keyParts.length < 9) {
+    logger.info(
+      `Overlay-base database cache entry ${cacheItem.key} has invalid key format`,
+    );
+    return undefined;
+  }
+  const codeQlVersion = keyParts[keyParts.length - 2];
+
+  if (!semver.valid(codeQlVersion)) {
+    logger.info(
+      `Overlay-base database cache entry ${cacheItem.key} has invalid ` +
+        `CodeQL version ${codeQlVersion}`,
+    );
+    return undefined;
+  }
+
+  if (semver.lt(codeQlVersion, CODEQL_OVERLAY_MINIMUM_VERSION)) {
+    logger.info(
+      `Overlay-base database cache entry ${cacheItem.key} has ` +
+        `CodeQL version ${codeQlVersion}, which is older than the ` +
+        `minimum required version ${CODEQL_OVERLAY_MINIMUM_VERSION}`,
+    );
+    return undefined;
+  }
+
+  logger.info(
+    `Found overlay-base database cache entry ${cacheItem.key} ` +
+      `created at ${cacheItem.created_at} with CodeQL version ${codeQlVersion}`,
+  );
+  return codeQlVersion;
 }
 
 /**

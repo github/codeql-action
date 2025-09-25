@@ -1,5 +1,8 @@
 import * as fs from "fs";
 
+import * as core from "@actions/core";
+
+import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import { Features } from "./feature-flags";
 import { Logger } from "./logging";
@@ -45,4 +48,62 @@ export async function findAndUpload(
   }
 
   return undefined;
+}
+
+export interface UploadSarifResult {
+  analysis: analyses.AnalysisKind;
+  id: string;
+}
+
+export type UploadSarifResults = Partial<
+  Record<analyses.AnalysisKind, upload_lib.UploadResult>
+>;
+
+export async function uploadSarif(
+  logger: Logger,
+  features: Features,
+  sarifPath: string,
+  pathStats: fs.Stats,
+  checkoutPath: string,
+  category?: string,
+): Promise<UploadSarifResults> {
+  const uploadResults: UploadSarifResults = {};
+  const uploadResult = await findAndUpload(
+    logger,
+    features,
+    sarifPath,
+    pathStats,
+    checkoutPath,
+    analyses.CodeScanning,
+    category,
+  );
+  if (uploadResult !== undefined) {
+    core.setOutput("sarif-id", uploadResult.sarifID);
+    uploadResults[analyses.AnalysisKind.CodeScanning] = uploadResult;
+  }
+
+  // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
+  const qualityUploadResult = await findAndUpload(
+    logger,
+    features,
+    sarifPath,
+    pathStats,
+    checkoutPath,
+    analyses.CodeQuality,
+    actionsUtil.fixCodeQualityCategory(logger, category),
+  );
+  if (qualityUploadResult !== undefined) {
+    uploadResults[analyses.AnalysisKind.CodeQuality] = qualityUploadResult;
+  }
+
+  return uploadResults;
+}
+
+export function uploadResultsToSarifIds(
+  uploadResults: UploadSarifResults,
+): UploadSarifResult[] {
+  return Object.entries(uploadResults).map(([analysisKind, result]) => ({
+    analysis: analysisKind as analyses.AnalysisKind,
+    id: result.sarifID,
+  }));
 }

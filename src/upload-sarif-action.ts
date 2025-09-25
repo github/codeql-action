@@ -18,7 +18,7 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
-import { findAndUpload } from "./upload-sarif";
+import { uploadResultsToSarifIds, uploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
   checkActionVersion,
@@ -97,55 +97,32 @@ async function run() {
       throw new ConfigurationError(`Path does not exist: ${sarifPath}.`);
     }
 
-    const sarifIds: Array<{ analysis: string; id: string }> = [];
-    const uploadResult = await findAndUpload(
+    const uploadResults = await uploadSarif(
       logger,
       features,
       sarifPath,
       pathStats,
       checkoutPath,
-      analyses.CodeScanning,
       category,
     );
-    if (uploadResult !== undefined) {
-      core.setOutput("sarif-id", uploadResult.sarifID);
-      sarifIds.push({
-        analysis: analyses.AnalysisKind.CodeScanning,
-        id: uploadResult.sarifID,
-      });
-    }
 
-    // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-    const qualityUploadResult = await findAndUpload(
-      logger,
-      features,
-      sarifPath,
-      pathStats,
-      checkoutPath,
-      analyses.CodeQuality,
-      actionsUtil.fixCodeQualityCategory(logger, category),
-    );
-    if (qualityUploadResult !== undefined) {
-      sarifIds.push({
-        analysis: analyses.AnalysisKind.CodeQuality,
-        id: qualityUploadResult.sarifID,
-      });
-    }
-
-    if (sarifIds.length === 0) {
+    if (Object.keys(uploadResults).length === 0) {
       logger.warning(`No SARIF files were uploaded.`);
     }
 
+    const sarifIds = uploadResultsToSarifIds(uploadResults);
     core.setOutput("sarif-ids", JSON.stringify(sarifIds));
 
     // We don't upload results in test mode, so don't wait for processing
     if (isInTestMode()) {
       core.debug("In test mode. Waiting for processing is disabled.");
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
-      if (uploadResult !== undefined) {
+      const codeScanningUploadResult =
+        uploadResults[analyses.AnalysisKind.CodeScanning];
+      if (codeScanningUploadResult !== undefined) {
         await upload_lib.waitForProcessing(
           getRepositoryNwo(),
-          uploadResult.sarifID,
+          codeScanningUploadResult.sarifID,
           logger,
         );
       }
@@ -154,7 +131,7 @@ async function run() {
     }
     await sendSuccessStatusReport(
       startedAt,
-      uploadResult?.statusReport || {},
+      uploadResults[analyses.AnalysisKind.CodeScanning]?.statusReport || {},
       logger,
     );
   } catch (unwrappedError) {

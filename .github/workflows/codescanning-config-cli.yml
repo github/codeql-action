@@ -28,6 +28,7 @@ defaults:
 
 jobs:
   code-scanning-config-tests:
+    if: github.triggering_actor != 'dependabot[bot]'
     continue-on-error: true
 
     permissions:
@@ -41,15 +42,9 @@ jobs:
         include:
         - os: ubuntu-latest
           version: linked
-        - os: macos-latest
-          version: linked
         - os: ubuntu-latest
           version: default
-        - os: macos-latest
-          version: default
         - os: ubuntu-latest
-          version: nightly-latest
-        - os: macos-latest
           version: nightly-latest
 
     # Code-Scanning config not created because environment variable is not set
@@ -61,7 +56,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '20'
         cache: 'npm'

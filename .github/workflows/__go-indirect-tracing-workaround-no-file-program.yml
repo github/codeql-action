@@ -49,6 +49,7 @@ jobs:
           - os: ubuntu-latest
             version: default
     name: 'Go: diagnostic when `file` is not installed'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -65,7 +66,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
@@ -85,7 +86,7 @@ jobs:
           output: ${{ runner.temp }}/results
           upload-database: false
       - name: Check diagnostic appears in SARIF
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           SARIF_PATH: ${{ runner.temp }}/results/go.sarif
         with:

@@ -1,6 +1,5 @@
 name: "Job run UUID added to SARIF"
 description: "Tests that the job run UUID is added to the SARIF output"
-operatingSystems: ["ubuntu"]
 versions: ["nightly-latest"]
 steps:
   - uses: ./../action/init

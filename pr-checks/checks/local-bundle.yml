@@ -1,0 +1,17 @@
+name: "Local CodeQL bundle"
+description: "Tests using a CodeQL bundle from a local file rather than a URL"
+versions: ["linked"]
+installGo: true
+steps:
+  - name: Fetch latest CodeQL bundle
+    run: |
+      wget https://github.com/github/codeql-action/releases/latest/download/codeql-bundle-linux64.tar.zst
+  - id: init
+    uses: ./../action/init
+    with:
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+      languages: cpp,csharp,go,java,javascript,python,ruby
+      tools: ./codeql-bundle-linux64.tar.zst
+  - name: Build code
+    run: ./build.sh
+  - uses: ./../action/analyze

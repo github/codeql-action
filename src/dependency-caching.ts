@@ -100,7 +100,6 @@ export enum CacheHitKind {
 /** Represents results of trying to restore a dependency cache for a language. */
 export interface DependencyCacheRestoreStatus {
   hit_kind: CacheHitKind;
-  download_size_bytes?: number;
   download_duration_ms?: number;
 }
 
@@ -164,9 +163,6 @@ export async function downloadDependencyCaches(
       restoreKeys,
     );
     const download_duration_ms = Math.round(performance.now() - start);
-    const download_size_bytes = Math.round(
-      await getTotalCacheSize(cacheConfig.paths, logger),
-    );
 
     if (hitKey !== undefined) {
       logger.info(`Cache hit on key ${hitKey} for ${language}.`);
@@ -175,7 +171,6 @@ export async function downloadDependencyCaches(
       status[language] = {
         hit_kind,
         download_duration_ms,
-        download_size_bytes,
       };
     } else {
       status[language] = { hit_kind: CacheHitKind.Miss };

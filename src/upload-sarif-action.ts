@@ -179,6 +179,11 @@ async function run() {
         id: qualityUploadResult.sarifID,
       });
     }
+
+    if (sarifIds.length === 0) {
+      logger.warning(`No SARIF files were uploaded.`);
+    }
+
     core.setOutput("sarif-ids", JSON.stringify(sarifIds));
 
     // We don't upload results in test mode, so don't wait for processing

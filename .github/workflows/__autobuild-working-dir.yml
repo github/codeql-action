@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: PR Check - Proxy test
+name: PR Check - Autobuild working directory
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -31,16 +31,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
-  test-proxy:
+  autobuild-working-dir:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             version: linked
-          - os: ubuntu-latest
-            version: nightly-latest
-    name: Proxy test
+    name: Autobuild working directory
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
@@ -48,18 +46,6 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-  # These steps are required to initialise the `gh` cli in a container that doesn't
-  # come pre-installed with it. The reason for that is that this is later
-  # needed by the `prepare-test` workflow to find the latest release of CodeQL.
-      - name: Set up GitHub CLI
-        run: |
-          apt update
-          apt install -y curl libreadline8 gnupg2 software-properties-common zstd
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          apt-key add /usr/share/keyrings/githubcli-archive-keyring.gpg
-          apt-add-repository https://cli.github.com/packages
-          apt install -y gh
-        env: {}
       - name: Check out repository
         uses: actions/checkout@v5
       - name: Prepare test
@@ -68,19 +54,27 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: 'false'
+          setup-kotlin: 'true'
+      - name: Test setup
+        run: |
+          # Make sure that Gradle build succeeds in autobuild-dir ...
+          cp -a ../action/tests/java-repo autobuild-dir
+          # ... and fails if attempted in the current directory
+          echo > build.gradle
       - uses: ./../action/init
         with:
-          languages: javascript
+          languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
       - uses: ./../action/analyze
+      - name: Check database
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d java ]]; then
+            echo "Did not find a Java database"
+            exit 1
+          fi
     env:
-      https_proxy: http://squid-proxy:3128
       CODEQL_ACTION_TEST_MODE: true
-    container:
-      image: ubuntu:22.04
-    services:
-      squid-proxy:
-        image: ubuntu/squid:latest
-        ports:
-          - 3128:3128

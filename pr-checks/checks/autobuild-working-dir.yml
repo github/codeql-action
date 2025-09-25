@@ -1,7 +1,6 @@
 name: "Autobuild working directory"
 description: "Tests working-directory input of autobuild action"
 versions: ["linked"]
-operatingSystems: ["ubuntu"]
 steps:
   - name: Test setup
     run: |

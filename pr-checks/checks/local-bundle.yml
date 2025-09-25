@@ -1,7 +1,6 @@
 name: "Local CodeQL bundle"
 description: "Tests using a CodeQL bundle from a local file rather than a URL"
 versions: ["linked"]
-operatingSystems: ["ubuntu"]
 installGo: true
 steps:
   - name: Fetch latest CodeQL bundle

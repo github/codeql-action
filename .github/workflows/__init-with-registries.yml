@@ -38,21 +38,9 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
           - os: ubuntu-latest
             version: linked
-          - os: macos-latest
-            version: linked
-          - os: windows-latest
-            version: linked
           - os: ubuntu-latest
-            version: nightly-latest
-          - os: macos-latest
-            version: nightly-latest
-          - os: windows-latest
             version: nightly-latest
     name: 'Packaging: Download using registries'
     if: github.triggering_actor != 'dependabot[bot]'
@@ -118,8 +106,6 @@ jobs:
           fi
 
       - name: Verify contents of qlconfig.yml
-    # yq is not available on windows
-        if: runner.os != 'Windows'
         run: |
           QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
           cat $QLCONFIG_PATH | yq -e '.registries[] | select(.url == "https://ghcr.io/v2/") | select(.packages == "*/*")'

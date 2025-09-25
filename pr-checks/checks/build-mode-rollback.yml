@@ -1,6 +1,5 @@
 name: "Build mode rollback"
 description: "The build mode is rolled back from none to autobuild when the relevant feature flag is enabled."
-operatingSystems: ["ubuntu"]
 versions: ["nightly-latest"]
 env:
   CODEQL_ACTION_DISABLE_JAVA_BUILDLESS: true

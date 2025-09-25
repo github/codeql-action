@@ -13,12 +13,17 @@ on:
     - cron: '30 1 * * 0'
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 env:
   CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
 
 jobs:
   # Identify the CodeQL tool versions to use in the analysis job.
   check-codeql-versions:
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.compare.outputs.versions }}
@@ -71,6 +76,7 @@ jobs:
         echo "versions=${VERSIONS_JSON}" >> $GITHUB_OUTPUT
 
   analyze-javascript:
+    if: github.triggering_actor != 'dependabot[bot]'
     needs: [check-codeql-versions]
     strategy:
       fail-fast: false
@@ -91,22 +97,30 @@ jobs:
       id: init
       with:
         languages: javascript
-        config-file: ./.github/codeql/codeql-config.yml
+        config-file: ./.github/codeql/codeql-config-javascript.yml
         tools: ${{ matrix.tools }}
     # confirm steps.init.outputs.codeql-path points to the codeql binary
     - name: Print CodeQL Version
-      run: ${{steps.init.outputs.codeql-path}} version --format=json
+      run: >
+        "$CODEQL" version --format=json
+      env:
+        CODEQL: ${{steps.init.outputs.codeql-path}}
     - name: Perform CodeQL Analysis
       uses: ./analyze
       with:
         category: "/language:javascript"
+        upload: ${{ (matrix.os == 'ubuntu-24.04' && !matrix.tools && 'always') || 'never' }}
 
-
-  analyze-actions:
+  analyze-other:
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
+      matrix:
+        include:
+          - language: actions
+          - language: python
 
     permissions:
       contents: read
@@ -118,9 +132,15 @@ jobs:
     - name: Initialize CodeQL
       uses: ./init
       with:
-        languages: actions
-        config-file: ./.github/codeql/codeql-actions-config.yml
+        languages: ${{ matrix.language }}
+        build-mode: none
+        config: >
+          paths-ignore:
+            - lib
+            - tests
+          queries:
+            - uses: security-and-quality
     - name: Perform CodeQL Analysis
       uses: ./analyze
       with:
-        category: "/language:actions"
+        category: "/language:${{ matrix.language }}"

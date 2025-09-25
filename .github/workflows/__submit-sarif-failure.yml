@@ -24,6 +24,12 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   submit-sarif-failure:
     strategy:
@@ -37,6 +43,7 @@ jobs:
           - os: ubuntu-latest
             version: nightly-latest
     name: Submit SARIF after failure
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: write # needed to upload the SARIF file

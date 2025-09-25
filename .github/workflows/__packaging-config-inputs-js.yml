@@ -34,6 +34,12 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   packaging-config-inputs-js:
     strategy:
@@ -59,6 +65,7 @@ jobs:
           - os: windows-latest
             version: nightly-latest
     name: 'Packaging: Config and input'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -68,7 +75,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20.x
           cache: npm
@@ -82,7 +89,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
@@ -93,7 +100,6 @@ jobs:
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         with:
@@ -109,7 +115,6 @@ jobs:
           queries-not-run: foo,bar
 
       - name: Assert Results
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/results"
           # We should have 4 hits from these rules

@@ -9,6 +9,10 @@ on:
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   check-expected-release-files:
     runs-on: ubuntu-latest

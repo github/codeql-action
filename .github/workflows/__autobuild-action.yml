@@ -24,6 +24,12 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   autobuild-action:
     strategy:
@@ -37,6 +43,7 @@ jobs:
           - os: windows-latest
             version: linked
     name: autobuild-action
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -67,7 +74,6 @@ jobs:
           CORECLR_PROFILER_PATH_64: ''
       - uses: ./../action/analyze
       - name: Check database
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/codeql_databases"
           if [[ ! -d csharp ]]; then

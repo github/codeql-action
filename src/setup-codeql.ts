@@ -33,8 +33,11 @@ export enum ToolsSource {
 }
 
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+const CODEQL_NIGHTLIES_REPOSITORY_OWNER = "dsp-testing";
+const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
+const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
 
 function getCodeQLBundleExtension(
   compressionMethod: tar.CompressionMethod,
@@ -276,7 +279,7 @@ export async function getCodeQLSource(
 ): Promise<CodeQLToolsSource> {
   if (
     toolsInput &&
-    !CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput) &&
+    !isReservedToolsValue(toolsInput) &&
     !toolsInput.startsWith("http")
   ) {
     logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
@@ -330,6 +333,16 @@ export async function getCodeQLSource(
    * This does not always include a tag name.
    */
   let url: string | undefined;
+
+  if (
+    toolsInput !== undefined &&
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput)
+  ) {
+    logger.info(
+      `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
+    );
+    toolsInput = await getNightlyToolsUrl(logger);
+  }
 
   if (forceShippedTools) {
     cliVersion = defaults.cliVersion;
@@ -554,21 +567,17 @@ export const downloadCodeQL = async function (
   const headers: OutgoingHttpHeaders = {
     accept: "application/octet-stream",
   };
-  // We only want to provide an authorization header if we are downloading
-  // from the same GitHub instance the Action is running on.
-  // This avoids leaking Enterprise tokens to dotcom.
-  // We also don't want to send an authorization header if there's already a token provided in the URL.
   let authorization: string | undefined = undefined;
+
+  // We don't want to send an authorization header if there's already a token provided in the URL.
   if (searchParams.has("token")) {
     logger.debug("CodeQL tools URL contains an authorization token.");
-  } else if (
-    codeqlURL.startsWith(`${apiDetails.url}/`) ||
-    (apiDetails.apiURL && codeqlURL.startsWith(`${apiDetails.apiURL}/`))
-  ) {
-    logger.debug("Providing an authorization token to download CodeQL tools.");
-    authorization = `token ${apiDetails.auth}`;
   } else {
-    logger.debug("Downloading CodeQL tools without an authorization token.");
+    authorization = api.getAuthorizationHeaderFor(
+      logger,
+      apiDetails,
+      codeqlURL,
+    );
   }
 
   const toolcacheInfo = getToolcacheDestinationInfo(
@@ -770,4 +779,47 @@ async function useZstdBundle(
 
 function getTempExtractionDir(tempDir: string) {
   return path.join(tempDir, uuidV4());
+}
+
+/**
+ * Get the URL of the latest nightly CodeQL bundle.
+ */
+async function getNightlyToolsUrl(logger: Logger) {
+  const zstdAvailability = await tar.isZstdAvailable(logger);
+  // The nightly is guaranteed to have a zstd bundle
+  const compressionMethod = (await useZstdBundle(
+    CODEQL_VERSION_ZSTD_BUNDLE,
+    zstdAvailability.available,
+  ))
+    ? "zstd"
+    : "gzip";
+
+  try {
+    // Since nightlies are prereleases, we can't just download the latest release
+    // on the repository. So instead we need to find the latest pre-release
+    // version and construct the download URL from that.
+    const release = await api.getApiClient().rest.repos.listReleases({
+      owner: CODEQL_NIGHTLIES_REPOSITORY_OWNER,
+      repo: CODEQL_NIGHTLIES_REPOSITORY_NAME,
+      per_page: 1,
+      page: 1,
+      prerelease: true,
+    });
+    const latestRelease = release.data[0];
+    if (!latestRelease) {
+      throw new Error("Could not find the latest nightly release.");
+    }
+    return `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${getCodeQLBundleName(compressionMethod)}`;
+  } catch (e) {
+    throw new Error(
+      `Failed to retrieve the latest nightly release: ${util.wrapError(e)}`,
+    );
+  }
+}
+
+function isReservedToolsValue(tools: string): boolean {
+  return (
+    CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools)
+  );
 }

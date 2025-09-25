@@ -24,6 +24,12 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   quality-queries:
     strategy:
@@ -85,6 +91,7 @@ jobs:
             version: nightly-latest
             analysis-kinds: code-scanning,code-quality
     name: Quality queries input
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -127,7 +134,7 @@ jobs:
           retention-days: 7
       - name: Check quality query does not appear in security SARIF
         if: contains(matrix.analysis-kinds, 'code-scanning')
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
           EXPECT_PRESENT: 'false'
@@ -135,7 +142,7 @@ jobs:
           script: ${{ env.CHECK_SCRIPT }}
       - name: Check quality query appears in quality SARIF
         if: contains(matrix.analysis-kinds, 'code-quality')
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.quality.sarif
           EXPECT_PRESENT: 'true'

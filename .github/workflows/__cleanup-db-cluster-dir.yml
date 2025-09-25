@@ -24,6 +24,12 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   cleanup-db-cluster-dir:
     strategy:
@@ -33,6 +39,7 @@ jobs:
           - os: ubuntu-latest
             version: linked
     name: Clean up database cluster directory
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

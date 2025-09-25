@@ -24,6 +24,12 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   rust:
     strategy:
@@ -41,6 +47,7 @@ jobs:
           - os: ubuntu-latest
             version: nightly-latest
     name: Rust analysis
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -65,7 +72,6 @@ jobs:
         with:
           upload-database: false
       - name: Check database
-        shell: bash
         run: |
           RUST_DB="${{ fromJson(steps.analysis.outputs.db-locations).rust }}"
           if [[ ! -d "$RUST_DB" ]]; then

@@ -34,6 +34,12 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   go-indirect-tracing-workaround:
     strategy:
@@ -43,6 +49,7 @@ jobs:
           - os: ubuntu-latest
             version: default
     name: 'Go: workaround for indirect tracing'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -59,7 +66,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
@@ -68,11 +75,9 @@ jobs:
           languages: go
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Build code
-        shell: bash
         run: go build main.go
       - uses: ./../action/analyze
-      - shell: bash
-        run: |
+      - run: |
           if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then
             echo "Expected the workaround for indirect tracing of static binaries to trigger, but the" \
               "CODEQL_ACTION_GO_BINARY environment variable is not set."

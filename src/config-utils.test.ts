@@ -12,6 +12,7 @@ import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -28,11 +29,11 @@ import {
   getRecordingLogger,
   LoggedMessage,
   mockCodeQLVersion,
+  createTestConfig,
 } from "./testing-utils";
 import {
   GitHubVariant,
   GitHubVersion,
-  prettyPrintPack,
   ConfigurationError,
   withTmpDir,
   BuildMode,
@@ -82,11 +83,11 @@ function createTestInitConfigInputs(
         externalRepoAuth: "token",
         url: "https://github.example.com",
         apiURL: undefined,
-        registriesAuthTokens: undefined,
       },
       features: createFeatures([]),
+      repositoryProperties: {},
       logger: getRunnerLogger(true),
-    },
+    } satisfies configUtils.InitConfigInputs,
     overrides,
   );
 }
@@ -199,6 +200,7 @@ test("load code quality config", async (t) => {
 
     // And the config we expect it to result in
     const expectedConfig: configUtils.Config = {
+      version: actionsUtil.getActionVersion(),
       analysisKinds: [AnalysisKind.CodeQuality],
       languages: [KnownLanguage.actions],
       buildMode: undefined,
@@ -222,13 +224,71 @@ test("load code quality config", async (t) => {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
     };
 
     t.deepEqual(config, expectedConfig);
   });
 });
 
-test("loading config saves config", async (t) => {
+test("initActionState doesn't throw if there are queries configured in the repository properties", async (t) => {
+  return await withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+    const languages = "javascript";
+
+    const codeql = createStubCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+          },
+        };
+      },
+    });
+
+    // This should be ignored and no error should be thrown.
+    const repositoryProperties = {
+      "github-codeql-extra-queries": "+foo",
+    };
+
+    // Expected configuration for a CQ-only analysis.
+    const computedConfig: configUtils.UserConfig = {
+      "disable-default-queries": true,
+      queries: [{ uses: "code-quality" }],
+      "query-filters": [],
+    };
+
+    const expectedConfig = createTestConfig({
+      analysisKinds: [AnalysisKind.CodeQuality],
+      languages: [KnownLanguage.javascript],
+      codeQLCmd: codeql.getPath(),
+      computedConfig,
+      dbLocation: path.resolve(tempDir, "codeql_databases"),
+      debugArtifactName: "",
+      debugDatabaseName: "",
+      tempDir,
+      repositoryProperties,
+    });
+
+    await t.notThrowsAsync(async () => {
+      const config = await configUtils.initConfig(
+        createTestInitConfigInputs({
+          analysisKindsInput: "code-quality",
+          languagesInput: languages,
+          repository: { owner: "github", repo: "example" },
+          tempDir,
+          codeql,
+          repositoryProperties,
+          logger,
+        }),
+      );
+
+      t.deepEqual(config, expectedConfig);
+    });
+  });
+});
+
+test("loading a saved config produces the same config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
@@ -258,6 +318,7 @@ test("loading config saves config", async (t) => {
         logger,
       }),
     );
+    await configUtils.saveConfig(config1, logger);
 
     // The saved config file should now exist
     t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
@@ -270,6 +331,57 @@ test("loading config saves config", async (t) => {
       const expectedConfig = JSON.parse(JSON.stringify(config1));
       t.deepEqual(expectedConfig, config2);
     }
+  });
+});
+
+test("loading config with version mismatch throws", async (t) => {
+  return await withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+
+    const codeql = createStubCodeQL({
+      async betterResolveLanguages() {
+        return {
+          extractors: {
+            javascript: [{ extractor_root: "" }],
+            python: [{ extractor_root: "" }],
+          },
+        };
+      },
+    });
+
+    // Sanity check the saved config file does not already exist
+    t.false(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
+
+    // Sanity check that getConfig returns undefined before we have called initConfig
+    t.deepEqual(await configUtils.getConfig(tempDir, logger), undefined);
+
+    // Stub `getActionVersion` to return some nonsense.
+    const getActionVersionStub = sinon
+      .stub(actionsUtil, "getActionVersion")
+      .returns("does-not-exist");
+
+    const config = await configUtils.initConfig(
+      createTestInitConfigInputs({
+        languagesInput: "javascript,python",
+        tempDir,
+        codeql,
+        workspacePath: tempDir,
+        logger,
+      }),
+    );
+    // initConfig does not save the config, so we do it here.
+    await configUtils.saveConfig(config, logger);
+
+    // Restore `getActionVersion`.
+    getActionVersionStub.restore();
+
+    // The saved config file should now exist
+    t.true(fs.existsSync(configUtils.getPathToParsedConfigFile(tempDir)));
+
+    // Trying to read the configuration should now throw an error.
+    await t.throwsAsync(configUtils.getConfig(tempDir, logger), {
+      instanceOf: ConfigurationError,
+    });
   });
 });
 
@@ -288,7 +400,7 @@ test("load input outside of workspace", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileOutsideWorkspaceErrorMessage(
+          errorMessages.getConfigFileOutsideWorkspaceErrorMessage(
             path.join(tempDir, "../input"),
           ),
         ),
@@ -315,7 +427,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileRepoFormatInvalidMessage(
+          errorMessages.getConfigFileRepoFormatInvalidMessage(
             "octo-org/codeql-config@main",
           ),
         ),
@@ -344,7 +456,7 @@ test("load non-existent input", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileDoesNotExistErrorMessage(
+          errorMessages.getConfigFileDoesNotExistErrorMessage(
             path.join(tempDir, "input"),
           ),
         ),
@@ -389,6 +501,7 @@ test("load non-empty input", async (t) => {
 
     // And the config we expect it to parse to
     const expectedConfig: configUtils.Config = {
+      version: actionsUtil.getActionVersion(),
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
@@ -407,6 +520,7 @@ test("load non-empty input", async (t) => {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
     };
 
     const languagesInput = "javascript";
@@ -550,7 +664,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileDirectoryGivenMessage(repoReference),
+          errorMessages.getConfigFileDirectoryGivenMessage(repoReference),
         ),
       );
     }
@@ -578,7 +692,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getConfigFileFormatInvalidMessage(repoReference),
+          errorMessages.getConfigFileFormatInvalidMessage(repoReference),
         ),
       );
     }
@@ -606,7 +720,7 @@ test("No detected languages", async (t) => {
     } catch (err) {
       t.deepEqual(
         err,
-        new ConfigurationError(configUtils.getNoLanguagesError()),
+        new ConfigurationError(errorMessages.getNoLanguagesError()),
       );
     }
   });
@@ -629,343 +743,14 @@ test("Unknown languages", async (t) => {
       t.deepEqual(
         err,
         new ConfigurationError(
-          configUtils.getUnknownLanguagesError(["rubbish", "english"]),
+          errorMessages.getUnknownLanguagesError(["rubbish", "english"]),
         ),
       );
     }
   });
 });
 
-/**
- * Test macro for ensuring the packs block is valid
- */
-const parsePacksMacro = test.macro({
-  exec: (
-    t: ExecutionContext<unknown>,
-    packsInput: string,
-    languages: Language[],
-    expected: configUtils.Packs | undefined,
-  ) =>
-    t.deepEqual(
-      configUtils.parsePacksFromInput(packsInput, languages, false),
-      expected,
-    ),
-
-  title: (providedTitle = "") => `Parse Packs: ${providedTitle}`,
-});
-
-/**
- * Test macro for testing when the packs block is invalid
- */
-const parsePacksErrorMacro = test.macro({
-  exec: (
-    t: ExecutionContext<unknown>,
-    packsInput: string,
-    languages: Language[],
-    expected: RegExp,
-  ) =>
-    t.throws(
-      () => configUtils.parsePacksFromInput(packsInput, languages, false),
-      {
-        message: expected,
-      },
-    ),
-  title: (providedTitle = "") => `Parse Packs Error: ${providedTitle}`,
-});
-
-/**
- * Test macro for testing when the packs block is invalid
- */
-const invalidPackNameMacro = test.macro({
-  exec: (t: ExecutionContext, name: string) =>
-    parsePacksErrorMacro.exec(
-      t,
-      name,
-      [KnownLanguage.cpp],
-      new RegExp(`^"${name}" is not a valid pack$`),
-    ),
-  title: (_providedTitle: string | undefined, arg: string | undefined) =>
-    `Invalid pack string: ${arg}`,
-});
-
-test("no packs", parsePacksMacro, "", [], undefined);
-test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [KnownLanguage.cpp], {
-  [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
-});
-test(
-  "two packs with spaces",
-  parsePacksMacro,
-  " a/b , c/d@1.2.3 ",
-  [KnownLanguage.cpp],
-  {
-    [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
-  },
-);
-test(
-  "two packs with language",
-  parsePacksErrorMacro,
-  "a/b,c/d@1.2.3",
-  [KnownLanguage.cpp, KnownLanguage.java],
-  new RegExp(
-    "Cannot specify a 'packs' input in a multi-language analysis. " +
-      "Use a codeql-config.yml file instead and specify packs by language.",
-  ),
-);
-
-test(
-  "packs with other valid names",
-  parsePacksMacro,
-  [
-    // ranges are ok
-    "c/d@1.0",
-    "c/d@~1.0.0",
-    "c/d@~1.0.0:a/b",
-    "c/d@~1.0.0+abc:a/b",
-    "c/d@~1.0.0-abc:a/b",
-    "c/d:a/b",
-    // whitespace is removed
-    " c/d      @     ~1.0.0    :    b.qls   ",
-    // and it is retained within a path
-    " c/d      @     ~1.0.0    :    b/a path with/spaces.qls   ",
-    // this is valid. the path is '@'. It will probably fail when passed to the CLI
-    "c/d@1.2.3:@",
-    // this is valid, too. It will fail if it doesn't match a path
-    // (globbing is not done)
-    "c/d@1.2.3:+*)_(",
-  ].join(","),
-  [KnownLanguage.cpp],
-  {
-    [KnownLanguage.cpp]: [
-      "c/d@1.0",
-      "c/d@~1.0.0",
-      "c/d@~1.0.0:a/b",
-      "c/d@~1.0.0+abc:a/b",
-      "c/d@~1.0.0-abc:a/b",
-      "c/d:a/b",
-      "c/d@~1.0.0:b.qls",
-      "c/d@~1.0.0:b/a path with/spaces.qls",
-      "c/d@1.2.3:@",
-      "c/d@1.2.3:+*)_(",
-    ],
-  },
-);
-
-test(invalidPackNameMacro, "c"); // all packs require at least a scope and a name
-test(invalidPackNameMacro, "c-/d");
-test(invalidPackNameMacro, "-c/d");
-test(invalidPackNameMacro, "c/d_d");
-test(invalidPackNameMacro, "c/d@@");
-test(invalidPackNameMacro, "c/d@1.0.0:");
-test(invalidPackNameMacro, "c/d:");
-test(invalidPackNameMacro, "c/d:/a");
-test(invalidPackNameMacro, "@1.0.0:a");
-test(invalidPackNameMacro, "c/d@../a");
-test(invalidPackNameMacro, "c/d@b/../a");
-test(invalidPackNameMacro, "c/d:z@1");
-
-/**
- * Test macro for pretty printing pack specs
- */
-const packSpecPrettyPrintingMacro = test.macro({
-  exec: (t: ExecutionContext, packStr: string, packObj: configUtils.Pack) => {
-    const parsed = configUtils.parsePacksSpecification(packStr);
-    t.deepEqual(parsed, packObj, "parsed pack spec is correct");
-    const stringified = prettyPrintPack(packObj);
-    t.deepEqual(
-      stringified,
-      packStr.trim(),
-      "pretty-printed pack spec is correct",
-    );
-
-    t.deepEqual(
-      configUtils.validatePackSpecification(packStr),
-      packStr.trim(),
-      "pack spec is valid",
-    );
-  },
-  title: (
-    _providedTitle: string | undefined,
-    packStr: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _packObj: configUtils.Pack,
-  ) => `Prettyprint pack spec: '${packStr}'`,
-});
-
-test(packSpecPrettyPrintingMacro, "a/b", {
-  name: "a/b",
-  version: undefined,
-  path: undefined,
-});
-test(packSpecPrettyPrintingMacro, "a/b@~1.2.3", {
-  name: "a/b",
-  version: "~1.2.3",
-  path: undefined,
-});
-test(packSpecPrettyPrintingMacro, "a/b@~1.2.3:abc/def", {
-  name: "a/b",
-  version: "~1.2.3",
-  path: "abc/def",
-});
-test(packSpecPrettyPrintingMacro, "a/b:abc/def", {
-  name: "a/b",
-  version: undefined,
-  path: "abc/def",
-});
-test(packSpecPrettyPrintingMacro, "    a/b:abc/def    ", {
-  name: "a/b",
-  version: undefined,
-  path: "abc/def",
-});
-
 const mockLogger = getRunnerLogger(true);
-
-const calculateAugmentationMacro = test.macro({
-  exec: async (
-    t: ExecutionContext,
-    _title: string,
-    rawPacksInput: string | undefined,
-    rawQueriesInput: string | undefined,
-    languages: Language[],
-    expectedAugmentationProperties: configUtils.AugmentationProperties,
-  ) => {
-    const actualAugmentationProperties =
-      await configUtils.calculateAugmentation(
-        rawPacksInput,
-        rawQueriesInput,
-        languages,
-      );
-    t.deepEqual(actualAugmentationProperties, expectedAugmentationProperties);
-  },
-  title: (_, title) => `Calculate Augmentation: ${title}`,
-});
-
-test(
-  calculateAugmentationMacro,
-  "All empty",
-  undefined,
-  undefined,
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With queries",
-  undefined,
-  " a, b , c, d",
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With queries combining",
-  undefined,
-  "   +   a, b , c, d ",
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    queriesInputCombines: true,
-    queriesInput: [{ uses: "a" }, { uses: "b" }, { uses: "c" }, { uses: "d" }],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With packs",
-  "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
-  undefined,
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-  },
-);
-
-test(
-  calculateAugmentationMacro,
-  "With packs combining",
-  "   +   codeql/a, codeql/b, codeql/c, codeql/d",
-  undefined,
-  [KnownLanguage.javascript],
-  {
-    ...configUtils.defaultAugmentationProperties,
-    packsInputCombines: true,
-    packsInput: ["codeql/a", "codeql/b", "codeql/c", "codeql/d"],
-  },
-);
-
-const calculateAugmentationErrorMacro = test.macro({
-  exec: async (
-    t: ExecutionContext,
-    _title: string,
-    rawPacksInput: string | undefined,
-    rawQueriesInput: string | undefined,
-    languages: Language[],
-    expectedError: RegExp | string,
-  ) => {
-    await t.throwsAsync(
-      () =>
-        configUtils.calculateAugmentation(
-          rawPacksInput,
-          rawQueriesInput,
-          languages,
-        ),
-      { message: expectedError },
-    );
-  },
-  title: (_, title) => `Calculate Augmentation Error: ${title}`,
-});
-
-test(
-  calculateAugmentationErrorMacro,
-  "Plus (+) with nothing else (queries)",
-  undefined,
-  "   +   ",
-  [KnownLanguage.javascript],
-  /The workflow property "queries" is invalid/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Plus (+) with nothing else (packs)",
-  "   +   ",
-  undefined,
-  [KnownLanguage.javascript],
-  /The workflow property "packs" is invalid/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Packs input with multiple languages",
-  "   +  a/b, c/d ",
-  undefined,
-  [KnownLanguage.javascript, KnownLanguage.java],
-  /Cannot specify a 'packs' input in a multi-language analysis/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Packs input with no languages",
-  "   +  a/b, c/d ",
-  undefined,
-  [],
-  /No languages specified/,
-);
-
-test(
-  calculateAugmentationErrorMacro,
-  "Invalid packs",
-  " a-pack-without-a-scope ",
-  undefined,
-  [KnownLanguage.javascript],
-  /"a-pack-without-a-scope" is not a valid pack/,
-);
 
 test("no generateRegistries when registries is undefined", async (t) => {
   return await withTmpDir(async (tmpDir) => {
@@ -1039,25 +824,32 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedApiCall: true,
   },
   {
+    name: "unsupported languages from github api",
+    languagesInput: "",
+    languagesInRepository: ["html"],
+    expectedApiCall: true,
+    expectedError: errorMessages.getNoLanguagesError(),
+  },
+  {
     name: "no languages",
     languagesInput: "",
     languagesInRepository: [],
     expectedApiCall: true,
-    expectedError: configUtils.getNoLanguagesError(),
+    expectedError: errorMessages.getNoLanguagesError(),
   },
   {
     name: "unrecognized languages from input",
     languagesInput: "a, b, c, javascript",
     languagesInRepository: [],
     expectedApiCall: false,
-    expectedError: configUtils.getUnknownLanguagesError(["a", "b"]),
+    expectedError: errorMessages.getUnknownLanguagesError(["a", "b"]),
   },
   {
     name: "extractors that aren't languages aren't included (specified)",
     languagesInput: "html",
     languagesInRepository: [],
     expectedApiCall: false,
-    expectedError: configUtils.getUnknownLanguagesError(["html"]),
+    expectedError: errorMessages.getUnknownLanguagesError(["html"]),
   },
   {
     name: "extractors that aren't languages aren't included (autodetected)",
@@ -1067,57 +859,71 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedLanguages: ["javascript"],
   },
 ].forEach((args) => {
-  test(`getLanguages: ${args.name}`, async (t) => {
-    const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
-    const stubExtractorEntry = {
-      extractor_root: "",
-    };
-    const codeQL = createStubCodeQL({
-      betterResolveLanguages: () =>
-        Promise.resolve({
-          aliases: {
-            "c#": KnownLanguage.csharp,
-            c: KnownLanguage.cpp,
-            kotlin: KnownLanguage.java,
-            typescript: KnownLanguage.javascript,
-          },
-          extractors: {
-            cpp: [stubExtractorEntry],
-            csharp: [stubExtractorEntry],
-            java: [stubExtractorEntry],
-            javascript: [stubExtractorEntry],
-            python: [stubExtractorEntry],
-          },
-        }),
+  for (const resolveSupportedLanguagesUsingCli of [true, false]) {
+    test(`getLanguages${resolveSupportedLanguagesUsingCli ? " (supported languages via CLI)" : ""}: ${args.name}`, async (t) => {
+      const features = createFeatures(
+        resolveSupportedLanguagesUsingCli
+          ? [Feature.ResolveSupportedLanguagesUsingCli]
+          : [],
+      );
+      const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
+      const stubExtractorEntry = {
+        extractor_root: "",
+      };
+      const codeQL = createStubCodeQL({
+        betterResolveLanguages: (options) =>
+          Promise.resolve({
+            aliases: {
+              "c#": KnownLanguage.csharp,
+              c: KnownLanguage.cpp,
+              kotlin: KnownLanguage.java,
+              typescript: KnownLanguage.javascript,
+            },
+            extractors: {
+              cpp: [stubExtractorEntry],
+              csharp: [stubExtractorEntry],
+              java: [stubExtractorEntry],
+              javascript: [stubExtractorEntry],
+              python: [stubExtractorEntry],
+              ...(options?.filterToLanguagesWithQueries
+                ? {}
+                : {
+                    html: [stubExtractorEntry],
+                  }),
+            },
+          }),
+      });
+
+      if (args.expectedLanguages) {
+        // happy path
+        const actualLanguages = await configUtils.getLanguages(
+          codeQL,
+          args.languagesInput,
+          mockRepositoryNwo,
+          ".",
+          features,
+          mockLogger,
+        );
+
+        t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
+      } else {
+        // there is an error
+        await t.throwsAsync(
+          async () =>
+            await configUtils.getLanguages(
+              codeQL,
+              args.languagesInput,
+              mockRepositoryNwo,
+              ".",
+              features,
+              mockLogger,
+            ),
+          { message: args.expectedError },
+        );
+      }
+      t.deepEqual(mockRequest.called, args.expectedApiCall);
     });
-
-    if (args.expectedLanguages) {
-      // happy path
-      const actualLanguages = await configUtils.getLanguages(
-        codeQL,
-        args.languagesInput,
-        mockRepositoryNwo,
-        ".",
-        mockLogger,
-      );
-
-      t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
-    } else {
-      // there is an error
-      await t.throwsAsync(
-        async () =>
-          await configUtils.getLanguages(
-            codeQL,
-            args.languagesInput,
-            mockRepositoryNwo,
-            ".",
-            mockLogger,
-          ),
-        { message: args.expectedError },
-      );
-    }
-    t.deepEqual(mockRequest.called, args.expectedApiCall);
-  });
+  }
 });
 
 for (const { displayName, language, feature } of [

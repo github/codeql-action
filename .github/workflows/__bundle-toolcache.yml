@@ -24,6 +24,12 @@ on:
     inputs: {}
   workflow_call:
     inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   bundle-toolcache:
     strategy:
@@ -37,6 +43,7 @@ jobs:
           - os: windows-latest
             version: linked
     name: 'Bundle: Caching checks'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -53,7 +60,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Remove CodeQL from toolcache
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
@@ -63,7 +70,7 @@ jobs:
       - name: Install @actions/tool-cache
         run: npm install @actions/tool-cache
       - name: Check toolcache does not contain CodeQL
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const toolcache = require('@actions/tool-cache');
@@ -82,7 +89,7 @@ jobs:
           output: ${{ runner.temp }}/results
           upload-database: false
       - name: Check CodeQL is installed within the toolcache
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const toolcache = require('@actions/tool-cache');

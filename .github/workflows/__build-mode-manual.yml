@@ -34,6 +34,12 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   build-mode-manual:
     strategy:
@@ -43,6 +49,7 @@ jobs:
           - os: ubuntu-latest
             version: nightly-latest
     name: Build mode manual
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -59,7 +66,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
@@ -81,7 +88,6 @@ jobs:
           fi
 
       - name: Build code
-        shell: bash
         run: ./build.sh
 
       - uses: ./../action/analyze

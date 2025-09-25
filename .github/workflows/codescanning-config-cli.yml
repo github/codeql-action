@@ -22,8 +22,13 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   code-scanning-config-tests:
+    if: github.triggering_actor != 'dependabot[bot]'
     continue-on-error: true
 
     permissions:
@@ -57,7 +62,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: '20'
         cache: 'npm'
@@ -176,13 +181,13 @@ jobs:
       with:
         expected-config-file-contents: |
           {
-            "queries": [
-              { "uses": "./codeql-qlpacks/complex-javascript-qlpack/foo2/show_ifs.ql" },
-              { "uses": "./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql" }
-            ],
             "packs": {
               "javascript": ["codeql-testing/codeql-pack1@1.0.0", "codeql-testing/codeql-pack2", "codeql/javascript-queries" ]
-            }
+            },
+            "queries": [
+              { "uses": "./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql" },
+              { "uses": "./codeql-qlpacks/complex-javascript-qlpack/foo2/show_ifs.ql" }
+            ]
           }
         languages: javascript
         queries: + ./codeql-qlpacks/complex-javascript-qlpack/show_ifs.ql

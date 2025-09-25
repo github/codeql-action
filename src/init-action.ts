@@ -45,6 +45,7 @@ import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
+  getCodeQLVersionFromOverlayBaseDatabase,
   OverlayBaseDatabaseDownloadStats,
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
@@ -267,14 +268,49 @@ async function run() {
     };
     configUtils.amendInputConfigFile(inputs, logger);
 
-    await withGroupAsync(
-      "Compute preliminary overlay database mode",
-      async () => configUtils.getPreliminaryOverlayDatabaseMode(inputs),
-    );
-
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );
+
+    await withGroupAsync(
+      "Compute CodeQL version to use for overlay analysis",
+      async () => {
+        if (getOptionalInput("tools")) {
+          logger.info(
+            "Nothing to do here because the workflow specified a tools input.",
+          );
+          return;
+        }
+
+        const { overlayDatabaseMode, useOverlayDatabaseCaching } =
+          await configUtils.getPreliminaryOverlayDatabaseMode(inputs);
+        if (overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
+          logger.info(
+            "Nothing to do here because we are not performing overlay analysis",
+          );
+          return;
+        }
+        if (!useOverlayDatabaseCaching) {
+          logger.info(
+            `Nothing to do here because we are not using overlay database caching`,
+          );
+          return;
+        }
+
+        const codeQlVersionForOverlay =
+          await getCodeQLVersionFromOverlayBaseDatabase(logger);
+        if (codeQlVersionForOverlay === undefined) {
+          return;
+        }
+
+        logger.info(
+          `Using CodeQL version ${codeQlVersionForOverlay} for overlay analysis.`,
+        );
+        codeQLDefaultVersionInfo.cliVersion = codeQlVersionForOverlay;
+        codeQLDefaultVersionInfo.tagName = `codeql-bundle-v${codeQlVersionForOverlay}`;
+      },
+    );
+
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),

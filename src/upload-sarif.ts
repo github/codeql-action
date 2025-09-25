@@ -62,7 +62,7 @@ export async function findAndUpload(
 }
 
 // Maps analysis kinds to SARIF IDs.
-type UploadSarifResults = Partial<
+export type UploadSarifResults = Partial<
   Record<analyses.AnalysisKind, upload_lib.UploadResult>
 >;
 

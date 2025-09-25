@@ -75,6 +75,12 @@ jobs:
           sarif_file: eslint.sarif
           category: eslint
 
+  pr-checks:
+    name: "Run all PR checks"
+    needs:
+      - unit-tests
+    uses: ./.github/workflows/__all.yml
+
   check-node-version:
     if: github.event.pull_request && github.triggering_actor != 'dependabot[bot]'
     name: Check Action Node versions

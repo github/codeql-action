@@ -86,7 +86,7 @@ async function makeGlobber(patterns: string[]): Promise<glob.Globber> {
 }
 
 /** Enumerates possible outcomes for cache hits. */
-export enum CacheHitResult {
+export enum CacheHitKind {
   /** We were unable to calculate a hash for the key. */
   NoHash = "no-hash",
   /** No cache was found. */
@@ -99,7 +99,7 @@ export enum CacheHitResult {
 
 /** Represents results of trying to restore a dependency cache for a language. */
 export interface DependencyCacheRestoreStatus {
-  hit: CacheHitResult;
+  hit_kind: CacheHitKind;
   download_size_bytes?: number;
   download_duration_ms?: number;
 }
@@ -139,7 +139,7 @@ export async function downloadDependencyCaches(
     const globber = await makeGlobber(cacheConfig.hash);
 
     if ((await globber.glob()).length === 0) {
-      status[language] = { hit: CacheHitResult.NoHash };
+      status[language] = { hit_kind: CacheHitKind.NoHash };
       logger.info(
         `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
       );
@@ -170,11 +170,15 @@ export async function downloadDependencyCaches(
 
     if (hitKey !== undefined) {
       logger.info(`Cache hit on key ${hitKey} for ${language}.`);
-      const hit =
-        hitKey === primaryKey ? CacheHitResult.Exact : CacheHitResult.Partial;
-      status[language] = { hit, download_duration_ms, download_size_bytes };
+      const hit_kind =
+        hitKey === primaryKey ? CacheHitKind.Exact : CacheHitKind.Partial;
+      status[language] = {
+        hit_kind,
+        download_duration_ms,
+        download_size_bytes,
+      };
     } else {
-      status[language] = { hit: CacheHitResult.Miss };
+      status[language] = { hit_kind: CacheHitKind.Miss };
       logger.info(`No suitable cache found for ${language}.`);
     }
   }

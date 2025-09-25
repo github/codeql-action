@@ -59,7 +59,7 @@ interface AnalysisStatusReport
     QueriesStatusReport {}
 
 interface DependencyCachingUploadStatusReport {
-  dependency_caching_upload_results?: string;
+  dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
 }
 
 interface FinishStatusReport
@@ -104,9 +104,7 @@ async function sendStatusReport(
       ...(stats || {}),
       ...(dbCreationTimings || {}),
       ...(trapCacheCleanup || {}),
-      dependency_caching_upload_results: JSON.stringify(
-        dependencyCacheResults ?? {},
-      ),
+      dependency_caching_upload_results: dependencyCacheResults,
     };
     if (config && didUploadTrapCaches) {
       const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {

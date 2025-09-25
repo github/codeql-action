@@ -4,7 +4,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
-import { Features } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import * as upload_lib from "./upload-lib";
 
@@ -23,7 +23,7 @@ import * as upload_lib from "./upload-lib";
  */
 export async function findAndUpload(
   logger: Logger,
-  features: Features,
+  features: FeatureEnablement,
   sarifPath: string,
   pathStats: fs.Stats,
   checkoutPath: string,
@@ -61,7 +61,7 @@ export type UploadSarifResults = Partial<
 
 export async function uploadSarif(
   logger: Logger,
-  features: Features,
+  features: FeatureEnablement,
   sarifPath: string,
   pathStats: fs.Stats,
   checkoutPath: string,

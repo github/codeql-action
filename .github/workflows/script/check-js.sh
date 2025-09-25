@@ -23,6 +23,11 @@ if [ ! -z "$(git status --porcelain)" ]; then
     git diff --output="$RUNNER_TEMP/js.diff"
     cat "$RUNNER_TEMP/js.diff" >> $GITHUB_STEP_SUMMARY
     echo '```' >> $GITHUB_STEP_SUMMARY
+
+    # Reset bundled files to allow other checks to test for changes
+    git checkout lib
+
+    # Fail this check
     exit 1
 fi
 echo "Success: JavaScript files are up to date"

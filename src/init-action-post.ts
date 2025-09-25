@@ -128,7 +128,7 @@ async function runWrapper() {
       ...statusReportBase,
       ...uploadFailedSarifResult,
       job_status: initActionPostHelper.getFinalJobStatus(),
-      dependency_caching_usage: JSON.stringify(dependencyCachingUsage ?? {}),
+      dependency_caching_usage: dependencyCachingUsage,
     };
     logger.info("Sending status report for init-post step.");
     await sendStatusReport(statusReport);

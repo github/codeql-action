@@ -499,7 +499,7 @@ export interface InitWithConfigStatusReport extends InitStatusReport {
   /** Time taken to download the overlay-base database, in milliseconds. */
   overlay_base_database_download_duration_ms?: number;
   /** Stringified JSON object representing information about the results of restoring dependency caches. */
-  dependency_caching_restore_results: string;
+  dependency_caching_restore_results?: DependencyCacheRestoreStatusReport;
   /** Stringified JSON array of registry configuration objects, from the 'registries' config field
   or workflow input. **/
   registries: string;
@@ -574,9 +574,7 @@ export async function createInitWithConfigStatusReport(
       overlayBaseDatabaseStats?.databaseSizeBytes,
     overlay_base_database_download_duration_ms:
       overlayBaseDatabaseStats?.databaseDownloadDurationMs,
-    dependency_caching_restore_results: JSON.stringify(
-      dependencyCachingResults ?? {},
-    ),
+    dependency_caching_restore_results: dependencyCachingResults,
     query_filters: JSON.stringify(
       config.originalUserInput["query-filters"] ?? [],
     ),

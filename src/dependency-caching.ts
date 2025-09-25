@@ -99,14 +99,13 @@ export enum CacheHitKind {
 
 /** Represents results of trying to restore a dependency cache for a language. */
 export interface DependencyCacheRestoreStatus {
+  language: Language;
   hit_kind: CacheHitKind;
   download_duration_ms?: number;
 }
 
 /** A partial mapping from languages to the results of restoring dependency caches for them. */
-export type DependencyCacheRestoreStatusReport = Partial<
-  Record<Language, DependencyCacheRestoreStatus>
->;
+export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
 
 /**
  * Attempts to restore dependency caches for the languages being analyzed.
@@ -121,7 +120,7 @@ export async function downloadDependencyCaches(
   logger: Logger,
   minimizeJavaJars: boolean,
 ): Promise<DependencyCacheRestoreStatusReport> {
-  const status: DependencyCacheRestoreStatusReport = {};
+  const status: DependencyCacheRestoreStatusReport = [];
 
   for (const language of languages) {
     const cacheConfig = getDefaultCacheConfig()[language];
@@ -138,7 +137,7 @@ export async function downloadDependencyCaches(
     const globber = await makeGlobber(cacheConfig.hash);
 
     if ((await globber.glob()).length === 0) {
-      status[language] = { hit_kind: CacheHitKind.NoHash };
+      status.push({ language, hit_kind: CacheHitKind.NoHash });
       logger.info(
         `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
       );
@@ -168,12 +167,9 @@ export async function downloadDependencyCaches(
       logger.info(`Cache hit on key ${hitKey} for ${language}.`);
       const hit_kind =
         hitKey === primaryKey ? CacheHitKind.Exact : CacheHitKind.Partial;
-      status[language] = {
-        hit_kind,
-        download_duration_ms,
-      };
+      status.push({ language, hit_kind, download_duration_ms });
     } else {
-      status[language] = { hit_kind: CacheHitKind.Miss };
+      status.push({ language, hit_kind: CacheHitKind.Miss });
       logger.info(`No suitable cache found for ${language}.`);
     }
   }
@@ -195,15 +191,14 @@ export enum CacheStoreResult {
 
 /** Represents results of trying to upload a dependency cache for a language. */
 export interface DependencyCacheUploadStatus {
+  language: Language;
   result: CacheStoreResult;
   upload_size_bytes?: number;
   upload_duration_ms?: number;
 }
 
 /** A partial mapping from languages to the results of uploading dependency caches for them. */
-export type DependencyCacheUploadStatusReport = Partial<
-  Record<Language, DependencyCacheUploadStatus>
->;
+export type DependencyCacheUploadStatusReport = DependencyCacheUploadStatus[];
 
 /**
  * Attempts to store caches for the languages that were analyzed.
@@ -219,7 +214,7 @@ export async function uploadDependencyCaches(
   logger: Logger,
   minimizeJavaJars: boolean,
 ): Promise<DependencyCacheUploadStatusReport> {
-  const status: DependencyCacheUploadStatusReport = {};
+  const status: DependencyCacheUploadStatusReport = [];
   for (const language of config.languages) {
     const cacheConfig = getDefaultCacheConfig()[language];
 
@@ -235,7 +230,7 @@ export async function uploadDependencyCaches(
     const globber = await makeGlobber(cacheConfig.hash);
 
     if ((await globber.glob()).length === 0) {
-      status[language] = { result: CacheStoreResult.NoHash };
+      status.push({ language, result: CacheStoreResult.NoHash });
       logger.info(
         `Skipping upload of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
       );
@@ -256,7 +251,7 @@ export async function uploadDependencyCaches(
 
     // Skip uploading an empty cache.
     if (size === 0) {
-      status[language] = { result: CacheStoreResult.Empty };
+      status.push({ language, result: CacheStoreResult.Empty });
       logger.info(
         `Skipping upload of dependency cache for ${language} since it is empty.`,
       );
@@ -274,11 +269,12 @@ export async function uploadDependencyCaches(
       await actionsCache.saveCache(cacheConfig.paths, key);
       const upload_duration_ms = Math.round(performance.now() - start);
 
-      status[language] = {
+      status.push({
+        language,
         result: CacheStoreResult.Stored,
         upload_size_bytes: Math.round(size),
         upload_duration_ms,
-      };
+      });
     } catch (error) {
       // `ReserveCacheError` indicates that the cache key is already in use, which means that a
       // cache with that key already exists or is in the process of being uploaded by another
@@ -289,7 +285,7 @@ export async function uploadDependencyCaches(
         );
         logger.debug(error.message);
 
-        status[language] = { result: CacheStoreResult.Duplicate };
+        status.push({ language, result: CacheStoreResult.Duplicate });
       } else {
         // Propagate other errors upwards.
         throw error;

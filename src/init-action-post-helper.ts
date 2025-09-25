@@ -8,6 +8,7 @@ import { CodeScanning } from "./analyses";
 import { getApiClient } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
@@ -46,7 +47,7 @@ export interface JobStatusReport {
 }
 
 export interface DependencyCachingUsageReport {
-  dependency_caching_usage?: string;
+  dependency_caching_usage?: dependencyCaching.DependencyCachingUsageReport;
 }
 
 function createFailedUploadFailedSarifResult(

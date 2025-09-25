@@ -28,6 +28,7 @@ jobs:
         - os: ubuntu-latest
           version: nightly-latest
     name: 'CodeQL Bundle All'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -46,7 +47,7 @@ jobs:
       uses: ./../action/init
       with:
         # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
-        languages: cpp,csharp,go,java,javascript,python,ruby 
+        languages: cpp,csharp,go,java,javascript,python,ruby
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - name: Build code
       run: ./build.sh

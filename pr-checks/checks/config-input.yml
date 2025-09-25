@@ -1,7 +1,6 @@
 name: "Config input"
 description: "Tests specifying configuration using the config input"
 installNode: true
-operatingSystems: ["ubuntu"]
 versions: ["linked"]
 steps:
   - name: Copy queries into workspace

@@ -109,7 +109,7 @@ const uploadSarifMacro = test.macro({
         "uploadSpecifiedFiles",
       );
 
-      for (const analysisKind of Object.keys(expectedResult)) {
+      for (const analysisKind of Object.values(AnalysisKind)) {
         uploadSpecifiedFiles
           .withArgs(
             sinon.match.any,
@@ -134,8 +134,10 @@ const uploadSarifMacro = test.macro({
       for (const analysisKind of Object.values(AnalysisKind)) {
         const analyisKindResult = expectedResult[analysisKind];
         if (analyisKindResult) {
+          // We are expecting a result for this analysis kind, check that we have it.
           t.deepEqual(actual[analysisKind], analyisKindResult.uploadResult);
-
+          // Additionally, check that the mocked `uploadSpecifiedFiles` was called with only the file paths
+          // that we expected it to be called with.
           t.assert(
             uploadSpecifiedFiles.calledWith(
               analyisKindResult.expectedFiles?.map(toFullPath) ??
@@ -150,7 +152,24 @@ const uploadSarifMacro = test.macro({
             ),
           );
         } else {
+          // Otherwise, we are not expecting a result for this analysis kind. However, note that `undefined`
+          // is also returned by our mocked `uploadSpecifiedFiles` when there is no expected result for this
+          // analysis kind.
           t.is(actual[analysisKind], undefined);
+          // Therefore, we also check that the mocked `uploadSpecifiedFiles` was not called for this analysis kind.
+          t.assert(
+            !uploadSpecifiedFiles.calledWith(
+              sinon.match.any,
+              sinon.match.any,
+              sinon.match.any,
+              features,
+              logger,
+              analysisKind === AnalysisKind.CodeScanning
+                ? CodeScanning
+                : CodeQuality,
+            ),
+            `uploadSpecifiedFiles was called for ${analysisKind}, but should not have been.`,
+          );
         }
       }
     });

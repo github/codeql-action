@@ -32,7 +32,7 @@ export async function findAndUpload(
 ): Promise<upload_lib.UploadResult | undefined> {
   const sarifFiles: string[] | undefined = upload_lib.getSarifFilePaths(
     sarifPath,
-    analysis.sarifPredicate,
+    analysis,
     pathStats,
   );
 

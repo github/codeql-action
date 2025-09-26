@@ -437,13 +437,13 @@ export function findSarifFilesInDir(
 
 export function getSarifFilePaths(
   sarifPath: string,
-  isSarif: (name: string) => boolean,
+  analysis: analyses.AnalysisConfig,
   pathStats: fs.Stats,
 ) {
-  let sarifFiles: string[];
+  let sarifFiles: string[] = [];
   if (pathStats.isDirectory()) {
-    sarifFiles = findSarifFilesInDir(sarifPath, isSarif);
-  } else {
+    sarifFiles = findSarifFilesInDir(sarifPath, analysis.sarifPredicate);
+  } else if (!analyses.isOtherAnalysisSarif(analysis.kind, sarifPath)) {
     sarifFiles = [sarifPath];
   }
   return sarifFiles;
@@ -620,11 +620,7 @@ export async function uploadFiles(
     throw new ConfigurationError(`Path does not exist: ${inputSarifPath}`);
   }
 
-  const sarifPaths = getSarifFilePaths(
-    inputSarifPath,
-    uploadTarget.sarifPredicate,
-    pathStats,
-  );
+  const sarifPaths = getSarifFilePaths(inputSarifPath, uploadTarget, pathStats);
 
   if (sarifPaths.length === 0) {
     // This is always a configuration error, even for first-party runs.

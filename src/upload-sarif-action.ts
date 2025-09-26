@@ -18,6 +18,7 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
+import { uploadResultsToSarifIds, uploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
   checkActionVersion,
@@ -31,55 +32,6 @@ import {
 interface UploadSarifStatusReport
   extends StatusReportBase,
     upload_lib.UploadStatusReport {}
-
-/**
- * Searches for SARIF files for the given `analysis` in the given `sarifPath`.
- * If any are found, then they are uploaded to the appropriate endpoint for the given `analysis`.
- *
- * @param logger The logger to use.
- * @param features Information about FFs.
- * @param sarifPath The path to a SARIF file or directory containing SARIF files.
- * @param pathStats Information about `sarifPath`.
- * @param checkoutPath The checkout path.
- * @param analysis The configuration of the analysis we should upload SARIF files for.
- * @param category The SARIF category to use for the upload.
- * @returns The result of uploading the SARIF file(s) or `undefined` if there are none.
- */
-async function findAndUpload(
-  logger: Logger,
-  features: Features,
-  sarifPath: string,
-  pathStats: fs.Stats,
-  checkoutPath: string,
-  analysis: analyses.AnalysisConfig,
-  category?: string,
-): Promise<upload_lib.UploadResult | undefined> {
-  let sarifFiles: string[] | undefined;
-
-  if (pathStats.isDirectory()) {
-    sarifFiles = upload_lib.findSarifFilesInDir(
-      sarifPath,
-      analysis.sarifPredicate,
-    );
-  } else if (pathStats.isFile() && analysis.sarifPredicate(sarifPath)) {
-    sarifFiles = [sarifPath];
-  } else {
-    return undefined;
-  }
-
-  if (sarifFiles.length !== 0) {
-    return await upload_lib.uploadSpecifiedFiles(
-      sarifFiles,
-      checkoutPath,
-      category,
-      features,
-      logger,
-      analysis,
-    );
-  }
-
-  return undefined;
-}
 
 async function sendSuccessStatusReport(
   startedAt: Date,
@@ -145,50 +97,32 @@ async function run() {
       throw new ConfigurationError(`Path does not exist: ${sarifPath}.`);
     }
 
-    const sarifIds: Array<{ analysis: string; id: string }> = [];
-    const uploadResult = await findAndUpload(
+    const uploadResults = await uploadSarif(
       logger,
       features,
       sarifPath,
       pathStats,
       checkoutPath,
-      analyses.CodeScanning,
       category,
     );
-    if (uploadResult !== undefined) {
-      core.setOutput("sarif-id", uploadResult.sarifID);
-      sarifIds.push({
-        analysis: analyses.AnalysisKind.CodeScanning,
-        id: uploadResult.sarifID,
-      });
+
+    if (Object.keys(uploadResults).length === 0) {
+      logger.warning(`No SARIF files were uploaded.`);
     }
 
-    // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-    const qualityUploadResult = await findAndUpload(
-      logger,
-      features,
-      sarifPath,
-      pathStats,
-      checkoutPath,
-      analyses.CodeQuality,
-      actionsUtil.fixCodeQualityCategory(logger, category),
-    );
-    if (qualityUploadResult !== undefined) {
-      sarifIds.push({
-        analysis: analyses.AnalysisKind.CodeQuality,
-        id: qualityUploadResult.sarifID,
-      });
-    }
+    const sarifIds = uploadResultsToSarifIds(uploadResults);
     core.setOutput("sarif-ids", JSON.stringify(sarifIds));
 
     // We don't upload results in test mode, so don't wait for processing
     if (isInTestMode()) {
       core.debug("In test mode. Waiting for processing is disabled.");
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
-      if (uploadResult !== undefined) {
+      const codeScanningUploadResult =
+        uploadResults[analyses.AnalysisKind.CodeScanning];
+      if (codeScanningUploadResult !== undefined) {
         await upload_lib.waitForProcessing(
           getRepositoryNwo(),
-          uploadResult.sarifID,
+          codeScanningUploadResult.sarifID,
           logger,
         );
       }
@@ -197,7 +131,7 @@ async function run() {
     }
     await sendSuccessStatusReport(
       startedAt,
-      uploadResult?.statusReport || {},
+      uploadResults[analyses.AnalysisKind.CodeScanning]?.statusReport || {},
       logger,
     );
   } catch (unwrappedError) {

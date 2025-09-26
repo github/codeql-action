@@ -437,23 +437,13 @@ export function findSarifFilesInDir(
 
 export function getSarifFilePaths(
   sarifPath: string,
-  isSarif: (name: string) => boolean,
+  analysis: analyses.AnalysisConfig,
+  pathStats: fs.Stats,
 ) {
-  if (!fs.existsSync(sarifPath)) {
-    // This is always a configuration error, even for first-party runs.
-    throw new ConfigurationError(`Path does not exist: ${sarifPath}`);
-  }
-
-  let sarifFiles: string[];
-  if (fs.lstatSync(sarifPath).isDirectory()) {
-    sarifFiles = findSarifFilesInDir(sarifPath, isSarif);
-    if (sarifFiles.length === 0) {
-      // This is always a configuration error, even for first-party runs.
-      throw new ConfigurationError(
-        `No SARIF files found to upload in "${sarifPath}".`,
-      );
-    }
-  } else {
+  let sarifFiles: string[] = [];
+  if (pathStats.isDirectory()) {
+    sarifFiles = findSarifFilesInDir(sarifPath, analysis.sarifPredicate);
+  } else if (!analyses.isOtherAnalysisSarif(analysis.kind, sarifPath)) {
     sarifFiles = [sarifPath];
   }
   return sarifFiles;
@@ -623,10 +613,21 @@ export async function uploadFiles(
   logger: Logger,
   uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
-  const sarifPaths = getSarifFilePaths(
-    inputSarifPath,
-    uploadTarget.sarifPredicate,
-  );
+  const pathStats = fs.lstatSync(inputSarifPath, { throwIfNoEntry: false });
+
+  if (pathStats === undefined) {
+    // This is always a configuration error, even for first-party runs.
+    throw new ConfigurationError(`Path does not exist: ${inputSarifPath}`);
+  }
+
+  const sarifPaths = getSarifFilePaths(inputSarifPath, uploadTarget, pathStats);
+
+  if (sarifPaths.length === 0) {
+    // This is always a configuration error, even for first-party runs.
+    throw new ConfigurationError(
+      `No SARIF files found to upload in "${inputSarifPath}".`,
+    );
+  }
 
   return uploadSpecifiedFiles(
     sarifPaths,

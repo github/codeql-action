@@ -86,3 +86,23 @@ export const CodeQuality: AnalysisConfig = {
   sarifPredicate: (name) => name.endsWith(CodeQuality.sarifExtension),
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
+
+// An array of all analysis configurations we know of.
+export const Analyses = [CodeScanning, CodeQuality];
+
+/**
+ * Determines based on the given `filepath`, whether the file is a SARIF file for
+ * an analysis other than the one given by `current`.
+ *
+ * @param current The current analysis kind.
+ * @param filepath The path of the file to check.
+ * @returns True if `filepath` is a SARIF file for an analysis other than `current`; False otherwise.
+ */
+export function isOtherAnalysisSarif(
+  current: AnalysisKind,
+  filepath: string,
+): boolean {
+  return Analyses.some(
+    (config) => config.kind !== current && config.sarifPredicate(filepath),
+  );
+}

@@ -1,7 +1,6 @@
 name: "Go: diagnostic when `file` is not installed"
 description: "Checks that we emit a diagnostic if the `file` program is not installed"
 # only Linux is affected
-operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
 versions: ["default"]
 installGo: true

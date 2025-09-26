@@ -10,6 +10,10 @@ on:
         required: true
   # Only for dry-runs of changes to the workflow.
   push:
+    # Don't run dry-run on release branches, to avoid an issue where the
+    # "new" tag determined by the "Prepare release" job already exists.
+    branches-ignore:
+      - releases/v*
     paths:
       - .github/workflows/rollback-release.yml
       - .github/actions/prepare-mergeback-branch/**

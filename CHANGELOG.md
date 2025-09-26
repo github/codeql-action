@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 3.30.5 - 26 Sep 2025
 
 - We fixed a bug that was introduced in `3.30.4` with `upload-sarif` which resulted in files without a `.sarif` extension not getting uploaded. [#3160](https://github.com/github/codeql-action/pull/3160)
 

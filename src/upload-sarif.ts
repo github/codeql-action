@@ -27,18 +27,11 @@ export async function findAndUpload(
   analysis: analyses.AnalysisConfig,
   category?: string,
 ): Promise<upload_lib.UploadResult | undefined> {
-  let sarifFiles: string[] | undefined;
-
-  if (pathStats.isDirectory()) {
-    sarifFiles = upload_lib.findSarifFilesInDir(
-      sarifPath,
-      analysis.sarifPredicate,
-    );
-  } else if (pathStats.isFile() && analysis.sarifPredicate(sarifPath)) {
-    sarifFiles = [sarifPath];
-  } else {
-    return undefined;
-  }
+  const sarifFiles: string[] | undefined = upload_lib.getSarifFilePaths(
+    sarifPath,
+    analysis.sarifPredicate,
+    pathStats,
+  );
 
   if (sarifFiles.length !== 0) {
     return await upload_lib.uploadSpecifiedFiles(

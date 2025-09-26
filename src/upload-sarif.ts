@@ -101,9 +101,10 @@ export async function uploadSarif(
 
 export function uploadResultsToSarifIds(
   uploadResults: UploadSarifResults,
-): UploadSarifResult[] {
-  return Object.entries(uploadResults).map(([analysisKind, result]) => ({
-    analysis: analysisKind as analyses.AnalysisKind,
-    id: result.sarifID,
-  }));
+): Partial<Record<analyses.AnalysisKind, string>> {
+  const result = {};
+  for (const uploadResult of Object.keys(uploadResults)) {
+    result[uploadResult] = uploadResults[uploadResult].id;
+  }
+  return result;
 }

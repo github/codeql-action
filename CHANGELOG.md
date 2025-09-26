@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- We fixed a bug that was introduced in `3.30.4` with `upload-sarif` which resulted in files without a `.sarif` extension not getting uploaded. [#3160](https://github.com/github/codeql-action/pull/3160)
 
 ## 3.30.4 - 25 Sep 2025
 

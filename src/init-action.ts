@@ -23,7 +23,10 @@ import {
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { downloadDependencyCaches } from "./dependency-caching";
+import {
+  DependencyCacheRestoreStatusReport,
+  downloadDependencyCaches,
+} from "./dependency-caching";
 import {
   addDiagnostic,
   flushDiagnostics,
@@ -102,6 +105,7 @@ async function sendCompletedStatusReport(
   toolsSource: ToolsSource,
   toolsVersion: string,
   overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
+  dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined,
   logger: Logger,
   error?: Error,
 ) {
@@ -151,6 +155,7 @@ async function sendCompletedStatusReport(
           await getTotalCacheSize(Object.values(config.trapCaches), logger),
         ),
         overlayBaseDatabaseStats,
+        dependencyCachingResults,
       );
     await sendStatusReport({
       ...initWithConfigStatusReport,
@@ -351,6 +356,7 @@ async function run() {
   }
 
   let overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined;
+  let dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined;
   try {
     if (
       config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
@@ -562,7 +568,7 @@ async function run() {
       codeql,
     );
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
-      await downloadDependencyCaches(
+      dependencyCachingResults = await downloadDependencyCaches(
         config.languages,
         logger,
         minimizeJavaJars,
@@ -714,6 +720,7 @@ async function run() {
       toolsSource,
       toolsVersion,
       overlayBaseDatabaseStats,
+      dependencyCachingResults,
       logger,
       error,
     );
@@ -736,6 +743,7 @@ async function run() {
     toolsSource,
     toolsVersion,
     overlayBaseDatabaseStats,
+    dependencyCachingResults,
     logger,
   );
 }

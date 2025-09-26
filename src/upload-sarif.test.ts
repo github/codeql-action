@@ -14,7 +14,7 @@ import { getRunnerLogger } from "./logging";
 import { createFeatures, setupTests } from "./testing-utils";
 import { UploadResult } from "./upload-lib";
 import * as uploadLib from "./upload-lib";
-import { findAndUpload, uploadSarif, UploadSarifResults } from "./upload-sarif";
+import { findAndUpload, uploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 setupTests(test);
@@ -85,17 +85,25 @@ test(
   },
 );
 
+interface UploadSarifExpectedResult {
+  uploadResult?: UploadResult;
+  expectedFiles?: string[];
+}
+
 const uploadSarifMacro = test.macro({
   exec: async (
     t: ExecutionContext<unknown>,
     sarifFiles: string[],
     sarifPath: (tempDir: string) => string = (tempDir) => tempDir,
-    expectedResult: UploadSarifResults,
+    expectedResult: Partial<Record<AnalysisKind, UploadSarifExpectedResult>>,
   ) => {
     await util.withTmpDir(async (tempDir) => {
       const logger = getRunnerLogger(true);
       const testPath = sarifPath(tempDir);
       const features = createFeatures([]);
+
+      const toFullPath = (filename: string) => path.join(tempDir, filename);
+
       const uploadSpecifiedFiles = sinon.stub(
         uploadLib,
         "uploadSpecifiedFiles",
@@ -113,17 +121,39 @@ const uploadSarifMacro = test.macro({
               ? CodeScanning
               : CodeQuality,
           )
-          .resolves(expectedResult[analysisKind as AnalysisKind]);
+          .resolves(expectedResult[analysisKind as AnalysisKind]?.uploadResult);
       }
 
-      for (const sarifFile of sarifFiles) {
-        fs.writeFileSync(path.join(tempDir, sarifFile), "");
+      const fullSarifPaths = sarifFiles.map(toFullPath);
+      for (const sarifFile of fullSarifPaths) {
+        fs.writeFileSync(sarifFile, "");
       }
 
       const stats = fs.statSync(testPath);
       const actual = await uploadSarif(logger, features, testPath, stats, "");
 
-      t.deepEqual(actual, expectedResult);
+      for (const analysisKind of Object.values(AnalysisKind)) {
+        const analyisKindResult = expectedResult[analysisKind];
+        if (analyisKindResult) {
+          t.deepEqual(actual[analysisKind], analyisKindResult.uploadResult);
+
+          t.assert(
+            uploadSpecifiedFiles.calledWith(
+              analyisKindResult.expectedFiles?.map(toFullPath) ??
+                fullSarifPaths,
+              sinon.match.any,
+              sinon.match.any,
+              features,
+              logger,
+              analysisKind === AnalysisKind.CodeScanning
+                ? CodeScanning
+                : CodeQuality,
+            ),
+          );
+        } else {
+          t.is(actual[analysisKind], undefined);
+        }
+      }
     });
   },
   title: (providedTitle = "") => `uploadSarif - ${providedTitle}`,
@@ -136,8 +166,10 @@ test(
   (tempDir) => path.join(tempDir, "test.sarif"),
   {
     "code-scanning": {
-      statusReport: {},
-      sarifID: "code-scanning-sarif",
+      uploadResult: {
+        statusReport: {},
+        sarifID: "code-scanning-sarif",
+      },
     },
   },
 );
@@ -149,8 +181,10 @@ test(
   (tempDir) => path.join(tempDir, "test.json"),
   {
     "code-scanning": {
-      statusReport: {},
-      sarifID: "code-scanning-sarif",
+      uploadResult: {
+        statusReport: {},
+        sarifID: "code-scanning-sarif",
+      },
     },
   },
 );
@@ -162,8 +196,11 @@ test(
   undefined,
   {
     "code-scanning": {
-      statusReport: {},
-      sarifID: "code-scanning-sarif",
+      uploadResult: {
+        statusReport: {},
+        sarifID: "code-scanning-sarif",
+      },
+      expectedFiles: ["test.sarif"],
     },
   },
 );
@@ -175,8 +212,10 @@ test(
   (tempDir) => path.join(tempDir, "test.quality.sarif"),
   {
     "code-quality": {
-      statusReport: {},
-      sarifID: "code-quality-sarif",
+      uploadResult: {
+        statusReport: {},
+        sarifID: "code-quality-sarif",
+      },
     },
   },
 );
@@ -188,12 +227,18 @@ test(
   undefined,
   {
     "code-scanning": {
-      statusReport: {},
-      sarifID: "code-scanning-sarif",
+      uploadResult: {
+        statusReport: {},
+        sarifID: "code-scanning-sarif",
+      },
+      expectedFiles: ["test.sarif"],
     },
     "code-quality": {
-      statusReport: {},
-      sarifID: "code-quality-sarif",
+      uploadResult: {
+        statusReport: {},
+        sarifID: "code-quality-sarif",
+      },
+      expectedFiles: ["test.quality.sarif"],
     },
   },
 );

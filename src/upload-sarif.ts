@@ -83,17 +83,22 @@ export async function uploadSarif(
   }
 
   // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-  const qualityUploadResult = await findAndUpload(
-    logger,
-    features,
-    sarifPath,
-    pathStats,
-    checkoutPath,
-    analyses.CodeQuality,
-    actionsUtil.fixCodeQualityCategory(logger, category),
-  );
-  if (qualityUploadResult !== undefined) {
-    uploadResults[analyses.AnalysisKind.CodeQuality] = qualityUploadResult;
+  if (
+    pathStats.isDirectory() ||
+    (pathStats.isFile() && analyses.CodeQuality.sarifPredicate(sarifPath))
+  ) {
+    const qualityUploadResult = await findAndUpload(
+      logger,
+      features,
+      sarifPath,
+      pathStats,
+      checkoutPath,
+      analyses.CodeQuality,
+      actionsUtil.fixCodeQualityCategory(logger, category),
+    );
+    if (qualityUploadResult !== undefined) {
+      uploadResults[analyses.AnalysisKind.CodeQuality] = qualityUploadResult;
+    }
   }
 
   return uploadResults;

@@ -1,5 +1,6 @@
 name: "Export file baseline information"
 description: "Tests that file baseline information is exported when the feature is enabled"
+operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["nightly-latest"]
 installGo: true
 env:

@@ -1,7 +1,6 @@
 name: "Proxy test"
 description: "Tests using a proxy specified by the https_proxy environment variable"
 versions: ["linked", "nightly-latest"]
-operatingSystems: ["ubuntu"]
 container:
   image: ubuntu:22.04
 container-init-steps:

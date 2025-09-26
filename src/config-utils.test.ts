@@ -65,16 +65,6 @@ function createTestInitConfigInputs(
       debugDatabaseName: "",
       repository: { owner: "github", repo: "example" },
       tempDir: "",
-      codeql: createStubCodeQL({
-        async betterResolveLanguages() {
-          return {
-            extractors: {
-              html: [{ extractor_root: "" }],
-              javascript: [{ extractor_root: "" }],
-            },
-          };
-        },
-      }),
       workspacePath: "",
       sourceRoot: "",
       githubVersion,
@@ -97,6 +87,20 @@ function createConfigFile(inputFileContents: string, tmpDir: string): string {
   const configFilePath = path.join(tmpDir, "input");
   fs.writeFileSync(configFilePath, inputFileContents, "utf8");
   return configFilePath;
+}
+
+// Returns a default CodeQL stub for tests
+function createDefaultTestCodeQL() {
+  return createStubCodeQL({
+    async betterResolveLanguages() {
+      return {
+        extractors: {
+          html: [{ extractor_root: "" }],
+          javascript: [{ extractor_root: "" }],
+        },
+      };
+    },
+  });
 }
 
 type GetContentsResponse = { content?: string } | object[];
@@ -153,19 +157,19 @@ test("load empty config", async (t) => {
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
         tempDir,
-        codeql,
         logger,
       }),
+      codeql,
     );
 
     const expectedConfig = await configUtils.initActionState(
       createTestInitConfigInputs({
         languagesInput: languages,
         tempDir,
-        codeql,
         logger,
       }),
       {},
+      codeql,
     );
 
     t.deepEqual(config, expectedConfig);
@@ -193,9 +197,9 @@ test("load code quality config", async (t) => {
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
         tempDir,
-        codeql,
         logger,
       }),
+      codeql,
     );
 
     // And the config we expect it to result in
@@ -277,10 +281,10 @@ test("initActionState doesn't throw if there are queries configured in the repos
           languagesInput: languages,
           repository: { owner: "github", repo: "example" },
           tempDir,
-          codeql,
           repositoryProperties,
           logger,
         }),
+        codeql,
       );
 
       t.deepEqual(config, expectedConfig);
@@ -313,10 +317,10 @@ test("loading a saved config produces the same config", async (t) => {
       createTestInitConfigInputs({
         languagesInput: "javascript,python",
         tempDir,
-        codeql,
         workspacePath: tempDir,
         logger,
       }),
+      codeql,
     );
     await configUtils.saveConfig(config1, logger);
 
@@ -364,10 +368,10 @@ test("loading config with version mismatch throws", async (t) => {
       createTestInitConfigInputs({
         languagesInput: "javascript,python",
         tempDir,
-        codeql,
         workspacePath: tempDir,
         logger,
       }),
+      codeql,
     );
     // initConfig does not save the config, so we do it here.
     await configUtils.saveConfig(config, logger);
@@ -394,6 +398,7 @@ test("load input outside of workspace", async (t) => {
           tempDir,
           workspacePath: tempDir,
         }),
+        createDefaultTestCodeQL(),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -421,6 +426,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
           tempDir,
           workspacePath: tempDir,
         }),
+        createDefaultTestCodeQL(),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -450,6 +456,7 @@ test("load non-existent input", async (t) => {
           tempDir,
           workspacePath: tempDir,
         }),
+        createDefaultTestCodeQL(),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -534,9 +541,9 @@ test("load non-empty input", async (t) => {
         debugArtifactName: "my-artifact",
         debugDatabaseName: "my-db",
         tempDir,
-        codeql,
         workspacePath: tempDir,
       }),
+      codeql,
     );
 
     // Should exactly equal the object we constructed earlier
@@ -582,16 +589,15 @@ test("Using config input and file together, config input should be used.", async
     // Only JS, python packs will be ignored
     const languagesInput = "javascript";
 
-    const config = await configUtils.initConfig(
-      createTestInitConfigInputs({
-        languagesInput,
-        configFile: configFilePath,
-        configInput,
-        tempDir,
-        codeql,
-        workspacePath: tempDir,
-      }),
-    );
+    const inputs = createTestInitConfigInputs({
+      languagesInput,
+      configFile: configFilePath,
+      configInput,
+      tempDir,
+      workspacePath: tempDir,
+    });
+    configUtils.amendInputConfigFile(inputs, inputs.logger);
+    const config = await configUtils.initConfig(inputs, codeql);
 
     t.deepEqual(config.originalUserInput, yaml.load(configInput));
   });
@@ -637,9 +643,9 @@ test("API client used when reading remote config", async (t) => {
         languagesInput,
         configFile,
         tempDir,
-        codeql,
         workspacePath: tempDir,
       }),
+      codeql,
     );
     t.assert(spyGetContents.called);
   });
@@ -658,6 +664,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
           tempDir,
           workspacePath: tempDir,
         }),
+        createDefaultTestCodeQL(),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -686,6 +693,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
           tempDir,
           workspacePath: tempDir,
         }),
+        createDefaultTestCodeQL(),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -712,9 +720,9 @@ test("No detected languages", async (t) => {
       await configUtils.initConfig(
         createTestInitConfigInputs({
           tempDir,
-          codeql,
           workspacePath: tempDir,
         }),
+        codeql,
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -737,6 +745,7 @@ test("Unknown languages", async (t) => {
           tempDir,
           workspacePath: tempDir,
         }),
+        createDefaultTestCodeQL(),
       );
       throw new Error("initConfig did not throw error");
     } catch (err) {
@@ -987,7 +996,7 @@ interface OverlayDatabaseModeTestSetup {
   isDefaultBranch: boolean;
   repositoryOwner: string;
   buildMode: BuildMode | undefined;
-  languages: Language[];
+  languages: string[];
   codeqlVersion: string;
   gitRoot: string | undefined;
   codeScanningConfig: configUtils.UserConfig;
@@ -1014,6 +1023,8 @@ const getOverlayDatabaseModeMacro = test.macro({
     expected: {
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
+      preliminaryOverlayDatabaseMode?: OverlayDatabaseMode;
+      preliminaryUseOverlayDatabaseCaching?: boolean;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1075,13 +1086,51 @@ const getOverlayDatabaseModeMacro = test.macro({
           repository,
           features,
           setup.languages,
+          setup.languages.join(","),
           tempDir, // sourceRoot
           setup.buildMode,
           setup.codeScanningConfig,
           logger,
         );
 
-        t.deepEqual(result, expected);
+        const expectedResult = {
+          overlayDatabaseMode: expected.overlayDatabaseMode,
+          useOverlayDatabaseCaching: expected.useOverlayDatabaseCaching,
+        };
+        t.deepEqual(result, expectedResult);
+
+        let configFile: string | undefined;
+        if (Object.keys(setup.codeScanningConfig).length > 0) {
+          configFile = createConfigFile(
+            yaml.dump(setup.codeScanningConfig),
+            tempDir,
+          );
+        }
+
+        // Test getPreliminaryOverlayDatabaseMode as well
+        const preliminaryResult =
+          await configUtils.getPreliminaryOverlayDatabaseMode(
+            createTestInitConfigInputs({
+              languagesInput: setup.languages.join(","),
+              configFile,
+              features,
+              tempDir,
+              workspacePath: tempDir,
+              sourceRoot: tempDir,
+              repository,
+              logger,
+            }),
+          );
+
+        const expectedPreliminaryResult = {
+          overlayDatabaseMode:
+            expected.preliminaryOverlayDatabaseMode ??
+            expected.overlayDatabaseMode,
+          useOverlayDatabaseCaching:
+            expected.preliminaryUseOverlayDatabaseCaching ??
+            expected.useOverlayDatabaseCaching,
+        };
+        t.deepEqual(preliminaryResult, expectedPreliminaryResult);
       } finally {
         // Restore the original environment
         process.env = originalEnv;
@@ -1338,6 +1387,20 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR when feature enabled via language alias",
+  {
+    languages: ["javascript-typescript"],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
     languages: [KnownLanguage.javascript],
@@ -1494,6 +1557,20 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when the language is unknown",
+  {
+    languages: ["cobol"],
+    features: [Feature.OverlayAnalysis],
+    isPullRequest: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "Overlay PR analysis by env for dsp-testing",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1559,6 +1636,8 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    preliminaryOverlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    preliminaryUseOverlayDatabaseCaching: false,
   },
 );
 
@@ -1573,6 +1652,8 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    preliminaryOverlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    preliminaryUseOverlayDatabaseCaching: false,
   },
 );
 
@@ -1586,6 +1667,8 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    preliminaryOverlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    preliminaryUseOverlayDatabaseCaching: false,
   },
 );
 

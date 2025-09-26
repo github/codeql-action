@@ -60,9 +60,10 @@ export async function initCodeQL(
 
 export async function initConfig(
   inputs: configUtils.InitConfigInputs,
+  codeql: CodeQL,
 ): Promise<configUtils.Config> {
   return await withGroupAsync("Load language configuration", async () => {
-    return await configUtils.initConfig(inputs);
+    return await configUtils.initConfig(inputs, codeql);
   });
 }
 

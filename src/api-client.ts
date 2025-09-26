@@ -260,6 +260,26 @@ export async function listActionsCaches(
   );
 }
 
+/**
+ * List the most recently created Actions cache entry across all refs that
+ * match the provided key.
+ */
+export async function getMostRecentActionsCacheEntry(
+  key: string,
+): Promise<ActionsCacheItem | undefined> {
+  const repositoryNwo = getRepositoryNwo();
+
+  const cacheItems = await getApiClient().rest.actions.getActionsCacheList({
+    owner: repositoryNwo.owner,
+    repo: repositoryNwo.repo,
+    key,
+    sort: "created_at",
+    direction: "desc",
+    per_page: 1,
+  });
+  return cacheItems.data.actions_caches[0];
+}
+
 /** Delete an Actions cache item by its ID. */
 export async function deleteActionsCache(id: number) {
   const repositoryNwo = getRepositoryNwo();

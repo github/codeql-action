@@ -3,9 +3,10 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
+import * as semver from "semver";
 
 import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
-import { getAutomationID } from "./api-client";
+import { getAutomationID, getMostRecentActionsCacheEntry } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
@@ -441,6 +442,64 @@ export async function downloadOverlayBaseDatabaseFromCache(
   };
 }
 
+const IGNORE_DATABASES_OLDER_THAN_N_DAYS = 14;
+
+export async function getCodeQLVersionFromOverlayBaseDatabase(
+  logger: Logger,
+): Promise<string | undefined> {
+  const keyPrefix = await getCacheWorkflowKeyPrefix();
+  const cacheItem = await getMostRecentActionsCacheEntry(keyPrefix);
+
+  if (cacheItem?.created_at === undefined || cacheItem.key === undefined) {
+    logger.info("No overlay-base database cache entries found");
+    return undefined;
+  }
+
+  const cutoffTime = new Date();
+  cutoffTime.setDate(cutoffTime.getDate() - IGNORE_DATABASES_OLDER_THAN_N_DAYS);
+
+  const cacheCreationTime = new Date(cacheItem.created_at);
+  if (cacheCreationTime < cutoffTime) {
+    logger.info(
+      `Not considering overlay-base database cache entry ${cacheItem.key} ` +
+        `because it is too old (created at ${cacheItem.created_at})`,
+    );
+    return undefined;
+  }
+
+  const keyParts = cacheItem.key.split("-");
+  if (keyParts.length < 9) {
+    logger.info(
+      `Overlay-base database cache entry ${cacheItem.key} has invalid key format`,
+    );
+    return undefined;
+  }
+  const codeQlVersion = keyParts[keyParts.length - 2];
+
+  if (!semver.valid(codeQlVersion)) {
+    logger.info(
+      `Overlay-base database cache entry ${cacheItem.key} has invalid ` +
+        `CodeQL version ${codeQlVersion}`,
+    );
+    return undefined;
+  }
+
+  if (semver.lt(codeQlVersion, CODEQL_OVERLAY_MINIMUM_VERSION)) {
+    logger.info(
+      `Overlay-base database cache entry ${cacheItem.key} has ` +
+        `CodeQL version ${codeQlVersion}, which is older than the ` +
+        `minimum required version ${CODEQL_OVERLAY_MINIMUM_VERSION}`,
+    );
+    return undefined;
+  }
+
+  logger.info(
+    `Found overlay-base database cache entry ${cacheItem.key} ` +
+      `created at ${cacheItem.created_at} with CodeQL version ${codeQlVersion}`,
+  );
+  return codeQlVersion;
+}
+
 /**
  * Computes the cache key for saving the overlay-base database to the GitHub
  * Actions cache.
@@ -448,7 +507,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
  * The key consists of the restore key prefix (which does not include the
  * commit SHA) and the commit SHA of the current checkout.
  */
-async function getCacheSaveKey(
+export async function getCacheSaveKey(
   config: Config,
   codeQlVersion: string,
   checkoutPath: string,
@@ -475,31 +534,42 @@ async function getCacheSaveKey(
  * not include the commit SHA. This allows us to restore the most recent
  * compatible overlay-base database.
  */
-async function getCacheRestoreKeyPrefix(
+export async function getCacheRestoreKeyPrefix(
   config: Config,
   codeQlVersion: string,
 ): Promise<string> {
   const languages = [...config.languages].sort().join("_");
-
-  const cacheKeyComponents = {
-    automationID: await getAutomationID(),
-    // Add more components here as needed in the future
-  };
-  const componentsHash = createCacheKeyHash(cacheKeyComponents);
+  const workflowPrefix = await getCacheWorkflowKeyPrefix();
 
   // For a cached overlay-base database to be considered compatible for overlay
   // analysis, all components in the cache restore key must match:
   //
-  // CACHE_PREFIX: distinguishes overlay-base databases from other cache objects
-  // CACHE_VERSION: cache format version
-  // componentsHash: hash of additional components (see above for details)
+  // workflowPrefix contains components that depend only on the workflow:
+  //   CACHE_PREFIX: distinguishes overlay-base databases from other cache objects
+  //   CACHE_VERSION: cache format version
+  //   componentsHash: hash of additional components (see above for details)
   // languages: the languages included in the overlay-base database
   // codeQlVersion: CodeQL bundle version
   //
   // Technically we can also include languages and codeQlVersion in the
   // componentsHash, but including them explicitly in the cache key makes it
   // easier to debug and understand the cache key structure.
-  return `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-${languages}-${codeQlVersion}-`;
+  return `${workflowPrefix}${languages}-${codeQlVersion}-`;
+}
+
+/**
+ * Computes the cache key prefix that depends only on the workflow.
+ *
+ * @returns A promise that resolves to the common cache key prefix in the format
+ * `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-`
+ */
+export async function getCacheWorkflowKeyPrefix(): Promise<string> {
+  const cacheKeyComponents = {
+    automationID: await getAutomationID(),
+    // Add more components here as needed in the future
+  };
+  const componentsHash = createCacheKeyHash(cacheKeyComponents);
+  return `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-`;
 }
 
 /**

@@ -68,7 +68,7 @@ const context = await esbuild.context({
   outdir: OUT_DIR,
   platform: "node",
   plugins: [cleanPlugin, copyDefaultsPlugin, onEndPlugin],
-  target: ["node20"],
+  target: ["node24"],
 });
 
 await context.rebuild();

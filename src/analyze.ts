@@ -7,7 +7,6 @@ import * as del from "del";
 import * as yaml from "js-yaml";
 
 import {
-  fixCodeQualityCategory,
   getRequiredInput,
   getTemporaryDirectory,
   PullRequestBranches,
@@ -781,7 +780,7 @@ export async function runQueries(
     // accepted by the Code Quality backend.
     let category = automationDetailsId;
     if (analysis.kind === analyses.AnalysisKind.CodeQuality) {
-      category = fixCodeQualityCategory(logger, automationDetailsId);
+      category = analysis.fixCategory(logger, automationDetailsId);
     }
 
     const sarifFile = path.join(

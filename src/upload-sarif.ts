@@ -1,6 +1,5 @@
 import * as fs from "fs";
 
-import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
@@ -112,7 +111,7 @@ export async function uploadSarif(
     pathStats,
     checkoutPath,
     analyses.CodeQuality,
-    actionsUtil.fixCodeQualityCategory(logger, category),
+    analyses.CodeQuality.fixCategory(logger, category),
   );
   if (qualityUploadResult !== undefined) {
     uploadResults[analyses.AnalysisKind.CodeQuality] = qualityUploadResult;

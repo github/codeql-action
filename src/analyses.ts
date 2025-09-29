@@ -1,3 +1,5 @@
+import { fixCodeQualityCategory } from "./actions-util";
+import { Logger } from "./logging";
 import { ConfigurationError } from "./util";
 
 export enum AnalysisKind {
@@ -61,6 +63,8 @@ export interface AnalysisConfig {
   /** A predicate on filenames to decide whether a SARIF file
    * belongs to this kind of analysis. */
   sarifPredicate: (name: string) => boolean;
+  /** Analysis-specific adjustment of the category. */
+  fixCategory: (logger: Logger, category?: string) => string | undefined;
   /** A prefix for environment variables used to track the uniqueness of SARIF uploads. */
   sentinelPrefix: string;
 }
@@ -74,6 +78,7 @@ export const CodeScanning: AnalysisConfig = {
   sarifPredicate: (name) =>
     name.endsWith(CodeScanning.sarifExtension) &&
     !CodeQuality.sarifPredicate(name),
+  fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };
 
@@ -84,6 +89,7 @@ export const CodeQuality: AnalysisConfig = {
   target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY,
   sarifExtension: ".quality.sarif",
   sarifPredicate: (name) => name.endsWith(CodeQuality.sarifExtension),
+  fixCategory: fixCodeQualityCategory,
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
 

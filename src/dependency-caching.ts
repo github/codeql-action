@@ -104,7 +104,7 @@ export interface DependencyCacheRestoreStatus {
   download_duration_ms?: number;
 }
 
-/** A partial mapping from languages to the results of restoring dependency caches for them. */
+/** An array of `DependencyCacheRestoreStatus` objects for each analysed language with a caching configuration. */
 export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
 
 /**
@@ -113,7 +113,7 @@ export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
  * @param languages The languages being analyzed.
  * @param logger A logger to record some informational messages to.
  * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
- * @returns A partial mapping of languages to results of restoring dependency caches for them.
+ * @returns An array of `DependencyCacheRestoreStatus` objects for each analysed language with a caching configuration.
  */
 export async function downloadDependencyCaches(
   languages: Language[],
@@ -197,7 +197,7 @@ export interface DependencyCacheUploadStatus {
   upload_duration_ms?: number;
 }
 
-/** A partial mapping from languages to the results of uploading dependency caches for them. */
+/** An array of `DependencyCacheUploadStatus` objects for each analysed language with a caching configuration. */
 export type DependencyCacheUploadStatusReport = DependencyCacheUploadStatus[];
 
 /**
@@ -207,7 +207,7 @@ export type DependencyCacheUploadStatusReport = DependencyCacheUploadStatus[];
  * @param logger A logger to record some informational messages to.
  * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
  *
- * @returns A partial mapping of languages to results of uploading dependency caches for them.
+ * @returns An array of `DependencyCacheUploadStatus` objects for each analysed language with a caching configuration.
  */
 export async function uploadDependencyCaches(
   config: Config,

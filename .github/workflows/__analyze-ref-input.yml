@@ -48,11 +48,8 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
     name: "Analyze: 'ref' and 'sha' from inputs"
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -69,7 +66,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false

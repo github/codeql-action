@@ -38,23 +38,12 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
           - os: ubuntu-latest
             version: linked
-          - os: macos-latest
-            version: linked
-          - os: windows-latest
-            version: linked
           - os: ubuntu-latest
-            version: nightly-latest
-          - os: macos-latest
-            version: nightly-latest
-          - os: windows-latest
             version: nightly-latest
     name: Resolve environment
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

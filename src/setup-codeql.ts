@@ -298,31 +298,6 @@ export async function getCodeQLSource(
     };
   }
 
-  /**
-   * Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced.
-   *
-   * We use the special value of 'linked' to prioritize the version in `defaults.json` over the
-   * version specified by the feature flags on Dotcom and over any pinned cached version on
-   * Enterprise Server.
-   *
-   * Previously we have been using 'latest' to force the shipped tools, but this was not clear
-   * enough for the users, so it has been changed to `linked`. We're keeping around `latest` for
-   * backwards compatibility.
-   */
-  const forceShippedTools =
-    toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
-  if (forceShippedTools) {
-    logger.info(
-      `'tools: ${toolsInput}' was requested, so using CodeQL version ${defaultCliVersion.cliVersion}, the version shipped with the Action.`,
-    );
-
-    if (toolsInput === "latest") {
-      logger.warning(
-        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.",
-      );
-    }
-  }
-
   /** CLI version number, for example 2.12.6. */
   let cliVersion: string | undefined;
   /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
@@ -344,9 +319,33 @@ export async function getCodeQLSource(
     toolsInput = await getNightlyToolsUrl(logger);
   }
 
+  /**
+   * Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced.
+   *
+   * We use the special value of 'linked' to prioritize the version in `defaults.json` over the
+   * version specified by the feature flags on Dotcom and over any pinned cached version on
+   * Enterprise Server.
+   *
+   * Previously we have been using 'latest' to force the shipped tools, but this was not clear
+   * enough for the users, so it has been changed to `linked`. We're keeping around `latest` for
+   * backwards compatibility.
+   */
+  const forceShippedTools =
+    toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
+
   if (forceShippedTools) {
     cliVersion = defaults.cliVersion;
     tagName = defaults.bundleVersion;
+
+    logger.info(
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${cliVersion}, the version shipped with the Action.`,
+    );
+
+    if (toolsInput === "latest") {
+      logger.warning(
+        "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.",
+      );
+    }
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.
     tagName = tryGetTagNameFromUrl(toolsInput, logger);
@@ -567,21 +566,17 @@ export const downloadCodeQL = async function (
   const headers: OutgoingHttpHeaders = {
     accept: "application/octet-stream",
   };
-  // We only want to provide an authorization header if we are downloading
-  // from the same GitHub instance the Action is running on.
-  // This avoids leaking Enterprise tokens to dotcom.
-  // We also don't want to send an authorization header if there's already a token provided in the URL.
   let authorization: string | undefined = undefined;
+
+  // We don't want to send an authorization header if there's already a token provided in the URL.
   if (searchParams.has("token")) {
     logger.debug("CodeQL tools URL contains an authorization token.");
-  } else if (
-    codeqlURL.startsWith(`${apiDetails.url}/`) ||
-    (apiDetails.apiURL && codeqlURL.startsWith(`${apiDetails.apiURL}/`))
-  ) {
-    logger.debug("Providing an authorization token to download CodeQL tools.");
-    authorization = `token ${apiDetails.auth}`;
   } else {
-    logger.debug("Downloading CodeQL tools without an authorization token.");
+    authorization = api.getAuthorizationHeaderFor(
+      logger,
+      apiDetails,
+      codeqlURL,
+    );
   }
 
   const toolcacheInfo = getToolcacheDestinationInfo(

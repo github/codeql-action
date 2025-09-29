@@ -459,6 +459,68 @@ export function getSarifFilePaths(
   return sarifFiles;
 }
 
+/**
+ * Finds SARIF files in `sarifPath`, and groups them by analysis kind, following `SarifScanOrder`.
+ *
+ * @param logger The logger to use.
+ * @param sarifPath The path of a file or directory to recursively scan for SARIF files.
+ * @returns The `.sarif` files found in `sarifPath`, grouped by analysis kind.
+ */
+export async function getGroupedSarifFilePaths(
+  logger: Logger,
+  sarifPath: string,
+): Promise<Partial<Record<analyses.AnalysisKind, string[]>>> {
+  const stats = fs.statSync(sarifPath, { throwIfNoEntry: false });
+
+  if (stats === undefined) {
+    // This is always a configuration error, even for first-party runs.
+    throw new ConfigurationError(`Path does not exist: ${sarifPath}`);
+  }
+
+  const results = {};
+
+  if (stats.isDirectory()) {
+    let sarifFiles = findSarifFilesInDir(sarifPath, (name) =>
+      name.endsWith(".sarif"),
+    );
+    logger.debug(
+      `Found the following .sarif files in ${sarifPath}: ${sarifFiles.join(", ")}`,
+    );
+
+    for (const analysisConfig of analyses.SarifScanOrder) {
+      const files = sarifFiles.filter(analysisConfig.sarifPredicate);
+      if (files.length > 0) {
+        logger.debug(
+          `The following SARIF files are for ${analysisConfig.name}: ${files.join(", ")}`,
+        );
+        // Looping through the array a second time is not efficient, but more readable.
+        // Change this to one loop for both calls to `filter` if this becomes a bottleneck.
+        sarifFiles = sarifFiles.filter(
+          (name) => !analysisConfig.sarifPredicate(name),
+        );
+        results[analysisConfig.kind] = files;
+      } else {
+        logger.debug(`Found no SARIF files for ${analysisConfig.name}`);
+      }
+    }
+  } else {
+    for (const analysisConfig of analyses.SarifScanOrder) {
+      if (
+        analysisConfig.kind === analyses.AnalysisKind.CodeScanning ||
+        analysisConfig.sarifPredicate(sarifPath)
+      ) {
+        logger.debug(
+          `Using '${sarifPath}' as a SARIF file for ${analysisConfig.name}.`,
+        );
+        results[analysisConfig.kind] = [sarifPath];
+        break;
+      }
+    }
+  }
+
+  return results;
+}
+
 // Counts the number of results in the given SARIF file
 function countResultsInSarif(sarif: string): number {
   let numResults = 0;

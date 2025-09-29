@@ -86,3 +86,9 @@ export const CodeQuality: AnalysisConfig = {
   sarifPredicate: (name) => name.endsWith(CodeQuality.sarifExtension),
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
+
+// Since we have overlapping extensions (i.e. ".sarif" includes ".quality.sarif"),
+// we want to scan a folder containing SARIF files in an order that finds the more
+// specific extensions first. This constant defines an array in the order of analyis
+// configurations with more specific extensions to less specific extensions.
+export const SarifScanOrder = [CodeQuality, CodeScanning];

@@ -29,12 +29,6 @@ defaultTestVersions = [
     "nightly-latest"
 ]
 
-def is_os_and_version_excluded(os, version, exclude_params):
-    for exclude_param in exclude_params:
-        if exclude_param[0] == os and exclude_param[1] == version:
-            return True
-    return False
-
 # When updating the ruamel.yaml version here, update the PR check in
 # `.github/workflows/pr-checks.yml` too.
 header = """# Warning: This file is generated automatically, and should not be modified.
@@ -78,22 +72,17 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
     if 'inputs' in checkSpecification:
         workflowInputs = checkSpecification['inputs']
 
-    excludedOsesAndVersions = checkSpecification.get('excludeOsAndVersionCombination', [])
     for version in checkSpecification.get('versions', defaultTestVersions):
         if version == "latest":
             raise ValueError('Did not recognize "version: latest". Did you mean "version: linked"?')
 
         runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
-        operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu", "macos", "windows"])
+        operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu"])
 
         for operatingSystem in operatingSystems:
             runnerImagesForOs = [image for image in runnerImages if image.startswith(operatingSystem)]
 
             for runnerImage in runnerImagesForOs:
-                # Skip appending this combination to the matrix if it is explicitly excluded.
-                if is_os_and_version_excluded(operatingSystem, version, excludedOsesAndVersions):
-                    continue
-
                 matrix.append({
                     'os': runnerImage,
                     'version': version
@@ -128,7 +117,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         steps.extend([
             {
                 'name': 'Install Node.js',
-                'uses': 'actions/setup-node@v4',
+                'uses': 'actions/setup-node@v5',
                 'with': {
                     'node-version': '20.x',
                     'cache': 'npm',
@@ -166,7 +155,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
 
         steps.append({
             'name': 'Install Go',
-            'uses': 'actions/setup-go@v5',
+            'uses': 'actions/setup-go@v6',
             'with': {
                 'go-version': '${{ inputs.go-version || \'' + baseGoVersionExpr + '\' }}',
                 # to avoid potentially misleading autobuilder results where we expect it to download
@@ -211,6 +200,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         },
         'name': checkSpecification['name'],
+        'if': 'github.triggering_actor != \'dependabot[bot]\'',
         'permissions': {
             'contents': 'read',
             'security-events': 'read'

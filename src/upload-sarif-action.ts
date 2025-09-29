@@ -61,7 +61,12 @@ async function findAndUpload(
       sarifPath,
       analysis.sarifPredicate,
     );
-  } else if (pathStats.isFile() && analysis.sarifPredicate(sarifPath)) {
+  } else if (
+    pathStats.isFile() &&
+    (analysis.sarifPredicate(sarifPath) ||
+      (analysis.kind === analyses.AnalysisKind.CodeScanning &&
+        !analyses.CodeQuality.sarifPredicate(sarifPath)))
+  ) {
     sarifFiles = [sarifPath];
   } else {
     return undefined;

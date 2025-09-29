@@ -20,6 +20,7 @@ Before you start, ensure that you have a recent version of node (16 or higher) i
 * Transpile the TypeScript to JavaScript: `npm run build`.  Note that the JavaScript files are committed to git.
 * Run tests: `npm run test`.  You’ll need to ensure that the JavaScript files are up-to-date first by running the command above.
 * Run the linter: `npm run lint`.
+* Run tests for a specific path: `npm run ava -- ./src/filename.test.ts` or `npm run ava -- ./src/feature-flags/`
 
 This project also includes configuration to run tests from VSCode (with support for breakpoints) - open the test file you wish to run and choose "Debug AVA test file" from the Run menu in the Run panel.
 

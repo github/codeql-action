@@ -39,6 +39,7 @@ jobs:
           - os: ubuntu-latest
             version: linked
     name: Config input
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -48,7 +49,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20.x
           cache: npm

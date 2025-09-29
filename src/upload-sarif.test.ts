@@ -7,8 +7,8 @@ import * as sinon from "sinon";
 import {
   AnalysisConfig,
   AnalysisKind,
-  CodeQuality,
   CodeScanning,
+  getAnalysisConfig,
 } from "./analyses";
 import { getRunnerLogger } from "./logging";
 import { createFeatures, setupTests } from "./testing-utils";
@@ -117,9 +117,7 @@ const uploadSarifMacro = test.macro({
             sinon.match.any,
             features,
             logger,
-            analysisKind === AnalysisKind.CodeScanning
-              ? CodeScanning
-              : CodeQuality,
+            getAnalysisConfig(analysisKind),
           )
           .resolves(expectedResult[analysisKind as AnalysisKind]?.uploadResult);
       }
@@ -146,9 +144,7 @@ const uploadSarifMacro = test.macro({
               sinon.match.any,
               features,
               logger,
-              analysisKind === AnalysisKind.CodeScanning
-                ? CodeScanning
-                : CodeQuality,
+              getAnalysisConfig(analysisKind),
             ),
           );
         } else {
@@ -164,9 +160,7 @@ const uploadSarifMacro = test.macro({
               sinon.match.any,
               features,
               logger,
-              analysisKind === AnalysisKind.CodeScanning
-                ? CodeScanning
-                : CodeQuality,
+              getAnalysisConfig(analysisKind),
             ),
             `uploadSpecifiedFiles was called for ${analysisKind}, but should not have been.`,
           );

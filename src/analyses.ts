@@ -87,6 +87,23 @@ export const CodeQuality: AnalysisConfig = {
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
 
+/**
+ * Gets the `AnalysisConfig` corresponding to `kind`.
+ * @param kind The analysis kind to get the `AnalysisConfig` for.
+ * @returns The `AnalysisConfig` corresponding to `kind`.
+ */
+export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
+  // Using a switch statement here accomplishes two things:
+  // 1. The type checker believes us that we have a case for every `AnalysisKind`.
+  // 2. If we ever add another member to `AnalysisKind`, the type checker will alert us that we have to add a case.
+  switch (kind) {
+    case AnalysisKind.CodeScanning:
+      return CodeScanning;
+    case AnalysisKind.CodeQuality:
+      return CodeQuality;
+  }
+}
+
 // Since we have overlapping extensions (i.e. ".sarif" includes ".quality.sarif"),
 // we want to scan a folder containing SARIF files in an order that finds the more
 // specific extensions first. This constant defines an array in the order of analyis

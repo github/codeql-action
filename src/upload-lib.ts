@@ -503,6 +503,12 @@ export async function getGroupedSarifFilePaths(
         logger.debug(`Found no SARIF files for ${analysisConfig.name}`);
       }
     }
+
+    if (sarifFiles.length !== 0) {
+      logger.warning(
+        `Found files in ${sarifPath} which do not belong to any analysis: ${sarifFiles.join(", ")}`,
+      );
+    }
   } else {
     for (const analysisConfig of analyses.SarifScanOrder) {
       if (

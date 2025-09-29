@@ -97,6 +97,14 @@ async function run() {
       sarifPath,
       category,
     );
+
+    // Fail if we didn't upload anything.
+    if (Object.keys(uploadResults).length === 0) {
+      throw new ConfigurationError(
+        `No SARIF files found to upload in "${sarifPath}".`,
+      );
+    }
+
     const codeScanningResult =
       uploadResults[analyses.AnalysisKind.CodeScanning];
     if (codeScanningResult !== undefined) {

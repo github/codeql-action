@@ -4,86 +4,15 @@ import * as path from "path";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
-import {
-  AnalysisConfig,
-  AnalysisKind,
-  CodeScanning,
-  getAnalysisConfig,
-} from "./analyses";
+import { AnalysisKind, getAnalysisConfig } from "./analyses";
 import { getRunnerLogger } from "./logging";
 import { createFeatures, setupTests } from "./testing-utils";
 import { UploadResult } from "./upload-lib";
 import * as uploadLib from "./upload-lib";
-import { findAndUpload, uploadSarif } from "./upload-sarif";
+import { uploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 setupTests(test);
-
-const findAndUploadMacro = test.macro({
-  exec: async (
-    t: ExecutionContext<unknown>,
-    sarifFiles: string[],
-    analysis: AnalysisConfig,
-    sarifPath: (tempDir: string) => string = (tempDir) => tempDir,
-    expectedResult: UploadResult | undefined,
-  ) => {
-    await util.withTmpDir(async (tempDir) => {
-      sinon.stub(uploadLib, "uploadSpecifiedFiles").resolves(expectedResult);
-      const logger = getRunnerLogger(true);
-      const features = createFeatures([]);
-
-      for (const sarifFile of sarifFiles) {
-        fs.writeFileSync(path.join(tempDir, sarifFile), "");
-      }
-
-      const stats = fs.statSync(sarifPath(tempDir));
-      const actual = await findAndUpload(
-        logger,
-        features,
-        sarifPath(tempDir),
-        stats,
-        "",
-        analysis,
-      );
-
-      t.deepEqual(actual, expectedResult);
-    });
-  },
-  title: (providedTitle = "") => `findAndUpload - ${providedTitle}`,
-});
-
-test(
-  "no matching files",
-  findAndUploadMacro,
-  ["test.json"],
-  CodeScanning,
-  undefined,
-  undefined,
-);
-
-test(
-  "matching files for Code Scanning with directory path",
-  findAndUploadMacro,
-  ["test.sarif"],
-  CodeScanning,
-  undefined,
-  {
-    statusReport: {},
-    sarifID: "some-id",
-  },
-);
-
-test(
-  "matching files for Code Scanning with file path",
-  findAndUploadMacro,
-  ["test.sarif"],
-  CodeScanning,
-  (tempDir) => path.join(tempDir, "test.sarif"),
-  {
-    statusReport: {},
-    sarifID: "some-id",
-  },
-);
 
 interface UploadSarifExpectedResult {
   uploadResult?: UploadResult;

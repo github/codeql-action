@@ -1,9 +1,11 @@
 import * as fs from "fs";
 
+import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
-import { Features } from "./feature-flags";
+import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import * as upload_lib from "./upload-lib";
+import { ConfigurationError } from "./util";
 
 /**
  * Searches for SARIF files for the given `analysis` in the given `sarifPath`.
@@ -20,7 +22,7 @@ import * as upload_lib from "./upload-lib";
  */
 export async function findAndUpload(
   logger: Logger,
-  features: Features,
+  features: FeatureEnablement,
   sarifPath: string,
   pathStats: fs.Stats,
   checkoutPath: string,
@@ -57,4 +59,64 @@ export async function findAndUpload(
   }
 
   return undefined;
+}
+
+// Maps analysis kinds to SARIF IDs.
+type UploadSarifResults = Partial<
+  Record<analyses.AnalysisKind, upload_lib.UploadResult>
+>;
+
+/**
+ * Finds SARIF files in `sarifPath` and uploads them to the appropriate services.
+ *
+ * @param logger The logger to use.
+ * @param features Information about enabled features.
+ * @param checkoutPath The path where the repository was checked out at.
+ * @param sarifPath The path to the file or directory to upload.
+ * @param category The analysis category.
+ *
+ * @returns A partial mapping from analysis kinds to the upload results.
+ */
+export async function uploadSarif(
+  logger: Logger,
+  features: FeatureEnablement,
+  checkoutPath: string,
+  sarifPath: string,
+  category?: string,
+): Promise<UploadSarifResults> {
+  const pathStats = fs.lstatSync(sarifPath, { throwIfNoEntry: false });
+
+  if (pathStats === undefined) {
+    throw new ConfigurationError(`Path does not exist: ${sarifPath}.`);
+  }
+
+  const uploadResults: UploadSarifResults = {};
+  const uploadResult = await findAndUpload(
+    logger,
+    features,
+    sarifPath,
+    pathStats,
+    checkoutPath,
+    analyses.CodeScanning,
+    category,
+  );
+  if (uploadResult !== undefined) {
+    uploadResults[analyses.AnalysisKind.CodeScanning] = uploadResult;
+  }
+
+  // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
+  const qualityUploadResult = await findAndUpload(
+    logger,
+    features,
+    sarifPath,
+    pathStats,
+    checkoutPath,
+    analyses.CodeQuality,
+    actionsUtil.fixCodeQualityCategory(logger, category),
+  );
+  if (qualityUploadResult !== undefined) {
+    uploadResults[analyses.AnalysisKind.CodeQuality] = qualityUploadResult;
+  }
+
+  return uploadResults;
 }

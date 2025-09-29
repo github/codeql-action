@@ -1,5 +1,3 @@
-import * as fs from "fs";
-
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -18,7 +16,7 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
-import { findAndUpload } from "./upload-sarif";
+import { uploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
   checkActionVersion,
@@ -91,56 +89,29 @@ async function run() {
     const sarifPath = actionsUtil.getRequiredInput("sarif_file");
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
-    const pathStats = fs.lstatSync(sarifPath, { throwIfNoEntry: false });
 
-    if (pathStats === undefined) {
-      throw new ConfigurationError(`Path does not exist: ${sarifPath}.`);
-    }
-
-    const sarifIds: Array<{ analysis: string; id: string }> = [];
-    const uploadResult = await findAndUpload(
+    const uploadResults = await uploadSarif(
       logger,
       features,
-      sarifPath,
-      pathStats,
       checkoutPath,
-      analyses.CodeScanning,
+      sarifPath,
       category,
     );
-    if (uploadResult !== undefined) {
-      core.setOutput("sarif-id", uploadResult.sarifID);
-      sarifIds.push({
-        analysis: analyses.AnalysisKind.CodeScanning,
-        id: uploadResult.sarifID,
-      });
+    const codeScanningResult =
+      uploadResults[analyses.AnalysisKind.CodeScanning];
+    if (codeScanningResult !== undefined) {
+      core.setOutput("sarif-id", codeScanningResult.sarifID);
     }
-
-    // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-    const qualityUploadResult = await findAndUpload(
-      logger,
-      features,
-      sarifPath,
-      pathStats,
-      checkoutPath,
-      analyses.CodeQuality,
-      actionsUtil.fixCodeQualityCategory(logger, category),
-    );
-    if (qualityUploadResult !== undefined) {
-      sarifIds.push({
-        analysis: analyses.AnalysisKind.CodeQuality,
-        id: qualityUploadResult.sarifID,
-      });
-    }
-    core.setOutput("sarif-ids", JSON.stringify(sarifIds));
+    core.setOutput("sarif-ids", JSON.stringify(uploadResults));
 
     // We don't upload results in test mode, so don't wait for processing
     if (isInTestMode()) {
       core.debug("In test mode. Waiting for processing is disabled.");
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
-      if (uploadResult !== undefined) {
+      if (codeScanningResult !== undefined) {
         await upload_lib.waitForProcessing(
           getRepositoryNwo(),
-          uploadResult.sarifID,
+          codeScanningResult.sarifID,
           logger,
         );
       }
@@ -149,7 +120,7 @@ async function run() {
     }
     await sendSuccessStatusReport(
       startedAt,
-      uploadResult?.statusReport || {},
+      codeScanningResult?.statusReport || {},
       logger,
     );
   } catch (unwrappedError) {

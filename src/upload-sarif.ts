@@ -38,7 +38,7 @@ export async function uploadSarif(
     uploadResults[analysisKind] = await upload_lib.uploadSpecifiedFiles(
       sarifFiles,
       checkoutPath,
-      analysisConfig.fixCategory(logger, category),
+      category,
       features,
       logger,
       analysisConfig,

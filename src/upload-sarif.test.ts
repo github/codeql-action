@@ -132,15 +132,15 @@ const uploadSarifMacro = test.macro({
       const actual = await uploadSarif(logger, features, "", testPath);
 
       for (const analysisKind of Object.values(AnalysisKind)) {
-        const analyisKindResult = expectedResult[analysisKind];
-        if (analyisKindResult) {
+        const analysisKindResult = expectedResult[analysisKind];
+        if (analysisKindResult) {
           // We are expecting a result for this analysis kind, check that we have it.
-          t.deepEqual(actual[analysisKind], analyisKindResult.uploadResult);
+          t.deepEqual(actual[analysisKind], analysisKindResult.uploadResult);
           // Additionally, check that the mocked `uploadSpecifiedFiles` was called with only the file paths
           // that we expected it to be called with.
           t.assert(
             uploadSpecifiedFiles.calledWith(
-              analyisKindResult.expectedFiles?.map(toFullPath) ??
+              analysisKindResult.expectedFiles?.map(toFullPath) ??
                 fullSarifPaths,
               sinon.match.any,
               sinon.match.any,

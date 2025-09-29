@@ -1287,3 +1287,17 @@ export async function asyncSome<T>(
 export function isDefined<T>(value: T | null | undefined): value is T {
   return value !== undefined && value !== null;
 }
+
+/** Like `Object.keys`, but infers the correct key type. */
+export function keysTyped<T extends Record<string, any>>(
+  object: T,
+): Array<keyof T> {
+  return Object.keys(object) as Array<keyof T>;
+}
+
+/** Like `Object.entries`, but infers the correct key type. */
+export function entriesTyped<T extends Record<string, any>>(
+  object: T,
+): Array<[keyof T, NonNullable<T[keyof T]>]> {
+  return Object.entries(object) as Array<[keyof T, NonNullable<T[keyof T]>]>;
+}

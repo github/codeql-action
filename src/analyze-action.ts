@@ -349,10 +349,7 @@ async function run() {
         const qualityUploadResult = await uploadLib.uploadFiles(
           outputDir,
           actionsUtil.getRequiredInput("checkout_path"),
-          analysis.fixCategory(
-            logger,
-            actionsUtil.getOptionalInput("category"),
-          ),
+          actionsUtil.getOptionalInput("category"),
           features,
           logger,
           analysis,

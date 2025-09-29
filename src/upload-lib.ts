@@ -717,6 +717,7 @@ export async function uploadSpecifiedFiles(
   const gitHubVersion = await getGitHubVersion();
 
   let sarif: SarifFile;
+  category = uploadTarget.fixCategory(logger, category);
 
   if (sarifPaths.length > 1) {
     // Validate that the files we were asked to upload are all valid SARIF files

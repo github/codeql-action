@@ -459,6 +459,8 @@ export function getSarifFilePaths(
   return sarifFiles;
 }
 
+type GroupedSarifFiles = Partial<Record<analyses.AnalysisKind, string[]>>;
+
 /**
  * Finds SARIF files in `sarifPath`, and groups them by analysis kind, following `SarifScanOrder`.
  *
@@ -469,7 +471,7 @@ export function getSarifFilePaths(
 export async function getGroupedSarifFilePaths(
   logger: Logger,
   sarifPath: string,
-): Promise<Partial<Record<analyses.AnalysisKind, string[]>>> {
+): Promise<GroupedSarifFiles> {
   const stats = fs.statSync(sarifPath, { throwIfNoEntry: false });
 
   if (stats === undefined) {
@@ -477,37 +479,39 @@ export async function getGroupedSarifFilePaths(
     throw new ConfigurationError(`Path does not exist: ${sarifPath}`);
   }
 
-  const results = {};
+  const results: GroupedSarifFiles = {};
 
   if (stats.isDirectory()) {
-    let sarifFiles = findSarifFilesInDir(
+    let unassignedSarifFiles = findSarifFilesInDir(
       sarifPath,
       (name) => path.extname(name) === ".sarif",
     );
     logger.debug(
-      `Found the following .sarif files in ${sarifPath}: ${sarifFiles.join(", ")}`,
+      `Found the following .sarif files in ${sarifPath}: ${unassignedSarifFiles.join(", ")}`,
     );
 
     for (const analysisConfig of analyses.SarifScanOrder) {
-      const files = sarifFiles.filter(analysisConfig.sarifPredicate);
-      if (files.length > 0) {
+      const filesForCurrentAnalysis = unassignedSarifFiles.filter(
+        analysisConfig.sarifPredicate,
+      );
+      if (filesForCurrentAnalysis.length > 0) {
         logger.debug(
-          `The following SARIF files are for ${analysisConfig.name}: ${files.join(", ")}`,
+          `The following SARIF files are for ${analysisConfig.name}: ${filesForCurrentAnalysis.join(", ")}`,
         );
         // Looping through the array a second time is not efficient, but more readable.
         // Change this to one loop for both calls to `filter` if this becomes a bottleneck.
-        sarifFiles = sarifFiles.filter(
+        unassignedSarifFiles = unassignedSarifFiles.filter(
           (name) => !analysisConfig.sarifPredicate(name),
         );
-        results[analysisConfig.kind] = files;
+        results[analysisConfig.kind] = filesForCurrentAnalysis;
       } else {
         logger.debug(`Found no SARIF files for ${analysisConfig.name}`);
       }
     }
 
-    if (sarifFiles.length !== 0) {
+    if (unassignedSarifFiles.length !== 0) {
       logger.warning(
-        `Found files in ${sarifPath} which do not belong to any analysis: ${sarifFiles.join(", ")}`,
+        `Found files in ${sarifPath} which do not belong to any analysis: ${unassignedSarifFiles.join(", ")}`,
       );
     }
   } else {

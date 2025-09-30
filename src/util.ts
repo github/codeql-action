@@ -1288,16 +1288,26 @@ export function isDefined<T>(value: T | null | undefined): value is T {
   return value !== undefined && value !== null;
 }
 
-/** Like `Object.keys`, but infers the correct key type. */
-export function keysTyped<T extends Record<string, any>>(
+/** Like `Object.keys`, but typed so that the elements of the resulting array have the
+ * same type as the keys of the input object. Note that this may not be sound if the input
+ * object has been cast to `T` from a subtype of `T` and contains additional keys that
+ * are not represented by `keyof T`.
+ */
+export function unsafeKeysInvariant<T extends Record<string, any>>(
   object: T,
 ): Array<keyof T> {
   return Object.keys(object) as Array<keyof T>;
 }
 
-/** Like `Object.entries`, but infers the correct key type. */
-export function entriesTyped<T extends Record<string, any>>(
+/** Like `Object.entries`, but typed so that the key elements of the result have the
+ * same type as the keys of the input object. Note that this may not be sound if the input
+ * object has been cast to `T` from a subtype of `T` and contains additional keys that
+ * are not represented by `keyof T`.
+ */
+export function unsafeEntriesInvariant<T extends Record<string, any>>(
   object: T,
-): Array<[keyof T, NonNullable<T[keyof T]>]> {
-  return Object.entries(object) as Array<[keyof T, NonNullable<T[keyof T]>]>;
+): Array<[keyof T, Exclude<T[keyof T], undefined>]> {
+  return Object.entries(object) as Array<
+    [keyof T, Exclude<T[keyof T], undefined>]
+  >;
 }

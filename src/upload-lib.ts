@@ -480,8 +480,9 @@ export async function getGroupedSarifFilePaths(
   const results = {};
 
   if (stats.isDirectory()) {
-    let sarifFiles = findSarifFilesInDir(sarifPath, (name) =>
-      name.endsWith(".sarif"),
+    let sarifFiles = findSarifFilesInDir(
+      sarifPath,
+      (name) => path.extname(name) === ".sarif",
     );
     logger.debug(
       `Found the following .sarif files in ${sarifPath}: ${sarifFiles.join(", ")}`,

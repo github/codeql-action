@@ -334,7 +334,7 @@ test("resolveQuerySuiteAlias", (t) => {
   for (const suite of defaultSuites) {
     const resolved = resolveQuerySuiteAlias(KnownLanguage.go, suite);
     t.assert(
-      resolved.endsWith(".qls"),
+      path.extname(resolved) === ".qls",
       "Resolved default suite doesn't end in .qls",
     );
     t.assert(

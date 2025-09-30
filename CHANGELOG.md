@@ -16,6 +16,7 @@ No user facing changes.
 - We added support for reducing the size of dependency caches for Java analyses, which will reduce cache usage and speed up workflows. This will be enabled automatically at a later time. [#3107](https://github.com/github/codeql-action/pull/3107)
 - You can now run the latest CodeQL nightly bundle by passing `tools: nightly` to the `init` action. In general, the nightly bundle is unstable and we only recommend running it when directed by GitHub staff. [#3130](https://github.com/github/codeql-action/pull/3130)
 - Update default CodeQL bundle version to 2.23.1. [#3118](https://github.com/github/codeql-action/pull/3118)
+- [v4+ only] The CodeQL Action now runs on Node.js v24. [#3169](https://github.com/github/codeql-action/pull/3169)
 
 ## 3.30.3 - 10 Sep 2025
 

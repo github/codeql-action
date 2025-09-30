@@ -2,7 +2,7 @@ import * as analyses from "./analyses";
 import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import * as upload_lib from "./upload-lib";
-import { entriesTyped } from "./util";
+import { unsafeEntriesInvariant } from "./util";
 
 // Maps analysis kinds to SARIF IDs.
 export type UploadSarifResults = Partial<
@@ -33,7 +33,9 @@ export async function uploadSarif(
   );
 
   const uploadResults: UploadSarifResults = {};
-  for (const [analysisKind, sarifFiles] of entriesTyped(sarifGroups)) {
+  for (const [analysisKind, sarifFiles] of unsafeEntriesInvariant(
+    sarifGroups,
+  )) {
     const analysisConfig = analyses.getAnalysisConfig(analysisKind);
     uploadResults[analysisKind] = await upload_lib.uploadSpecifiedFiles(
       sarifFiles,

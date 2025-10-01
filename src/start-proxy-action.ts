@@ -19,6 +19,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
+  StatusReportBase,
 } from "./status-report";
 import * as util from "./util";
 
@@ -89,7 +90,17 @@ function generateCertificateAuthority(): CertificateAuthority {
   return { cert: pem, key };
 }
 
-async function sendSuccessStatusReport(startedAt: Date, logger: Logger) {
+interface StartProxyStatus extends StatusReportBase {
+  // A comma-separated list of registry types which are configured for CodeQL.
+  // This only includes registry types we support, not all that are configured.
+  registry_types: string;
+}
+
+async function sendSuccessStatusReport(
+  startedAt: Date,
+  registry_types: string[],
+  logger: Logger,
+) {
   const statusReportBase = await createStatusReportBase(
     ActionName.StartProxy,
     "success",
@@ -99,7 +110,11 @@ async function sendSuccessStatusReport(startedAt: Date, logger: Logger) {
     logger,
   );
   if (statusReportBase !== undefined) {
-    await sendStatusReport(statusReportBase);
+    const statusReport: StartProxyStatus = {
+      ...statusReportBase,
+      registry_types: registry_types.join(","),
+    };
+    await sendStatusReport(statusReport);
   }
 }
 
@@ -148,7 +163,11 @@ async function runWrapper() {
     await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
 
     // Report success if we have reached this point.
-    await sendSuccessStatusReport(startedAt, logger);
+    await sendSuccessStatusReport(
+      startedAt,
+      proxyConfig.all_credentials.map((c) => c.type),
+      logger,
+    );
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     core.setFailed(`start-proxy action failed: ${error.message}`);

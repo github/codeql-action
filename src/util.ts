@@ -1307,7 +1307,7 @@ export function unsafeKeysInvariant<T extends Record<string, any>>(
 export function unsafeEntriesInvariant<T extends Record<string, any>>(
   object: T,
 ): Array<[keyof T, Exclude<T[keyof T], undefined>]> {
-  return Object.entries(object) as Array<
-    [keyof T, Exclude<T[keyof T], undefined>]
-  >;
+  return Object.entries(object).filter(
+    ([_, val]) => val !== undefined,
+  ) as Array<[keyof T, Exclude<T[keyof T], undefined>]>;
 }

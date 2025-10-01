@@ -89,6 +89,20 @@ function generateCertificateAuthority(): CertificateAuthority {
   return { cert: pem, key };
 }
 
+async function sendSuccessStatusReport(startedAt: Date, logger: Logger) {
+  const statusReportBase = await createStatusReportBase(
+    ActionName.StartProxy,
+    "success",
+    startedAt,
+    undefined,
+    await util.checkDiskUsage(logger),
+    logger,
+  );
+  if (statusReportBase !== undefined) {
+    await sendStatusReport(statusReportBase);
+  }
+}
+
 async function runWrapper() {
   const startedAt = new Date();
 
@@ -132,6 +146,9 @@ async function runWrapper() {
     // Start the Proxy
     const proxyBin = await getProxyBinaryPath(logger);
     await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
+
+    // Report success if we have reached this point.
+    await sendSuccessStatusReport(startedAt, logger);
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     core.setFailed(`start-proxy action failed: ${error.message}`);

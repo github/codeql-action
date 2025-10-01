@@ -89,40 +89,45 @@ async function runWrapper() {
 
   const logger = getActionsLogger();
 
-  // Setup logging for the proxy
-  const tempDir = actionsUtil.getTemporaryDirectory();
-  const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
-  core.saveState("proxy-log-file", proxyLogFilePath);
+  try {
+    // Setup logging for the proxy
+    const tempDir = actionsUtil.getTemporaryDirectory();
+    const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
+    core.saveState("proxy-log-file", proxyLogFilePath);
 
-  // Get the configuration options
-  const credentials = getCredentials(
-    logger,
-    actionsUtil.getOptionalInput("registry_secrets"),
-    actionsUtil.getOptionalInput("registries_credentials"),
-    actionsUtil.getOptionalInput("language"),
-  );
+    // Get the configuration options
+    const credentials = getCredentials(
+      logger,
+      actionsUtil.getOptionalInput("registry_secrets"),
+      actionsUtil.getOptionalInput("registries_credentials"),
+      actionsUtil.getOptionalInput("language"),
+    );
 
-  if (credentials.length === 0) {
-    logger.info("No credentials found, skipping proxy setup.");
-    return;
+    if (credentials.length === 0) {
+      logger.info("No credentials found, skipping proxy setup.");
+      return;
+    }
+
+    logger.info(
+      `Credentials loaded for the following registries:\n ${credentials
+        .map((c) => credentialToStr(c))
+        .join("\n")}`,
+    );
+
+    const ca = generateCertificateAuthority();
+
+    const proxyConfig: ProxyConfig = {
+      all_credentials: credentials,
+      ca,
+    };
+
+    // Start the Proxy
+    const proxyBin = await getProxyBinaryPath(logger);
+    await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
+  } catch (unwrappedError) {
+    const error = util.wrapError(unwrappedError);
+    core.setFailed(`start-proxy action failed: ${error.message}`);
   }
-
-  logger.info(
-    `Credentials loaded for the following registries:\n ${credentials
-      .map((c) => credentialToStr(c))
-      .join("\n")}`,
-  );
-
-  const ca = generateCertificateAuthority();
-
-  const proxyConfig: ProxyConfig = {
-    all_credentials: credentials,
-    ca,
-  };
-
-  // Start the Proxy
-  const proxyBin = await getProxyBinaryPath(logger);
-  await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
 }
 
 async function startProxy(
@@ -133,57 +138,53 @@ async function startProxy(
 ) {
   const host = "127.0.0.1";
   let port = 49152;
-  try {
-    let subprocess: ChildProcess | undefined = undefined;
-    let tries = 5;
-    let subprocessError: Error | undefined = undefined;
-    while (tries-- > 0 && !subprocess && !subprocessError) {
-      subprocess = spawn(
-        binPath,
-        ["-addr", `${host}:${port}`, "-config", "-", "-logfile", logFilePath],
-        {
-          detached: true,
-          stdio: ["pipe", "ignore", "ignore"],
-        },
-      );
-      subprocess.unref();
-      if (subprocess.pid) {
-        core.saveState("proxy-process-pid", `${subprocess.pid}`);
+  let subprocess: ChildProcess | undefined = undefined;
+  let tries = 5;
+  let subprocessError: Error | undefined = undefined;
+  while (tries-- > 0 && !subprocess && !subprocessError) {
+    subprocess = spawn(
+      binPath,
+      ["-addr", `${host}:${port}`, "-config", "-", "-logfile", logFilePath],
+      {
+        detached: true,
+        stdio: ["pipe", "ignore", "ignore"],
+      },
+    );
+    subprocess.unref();
+    if (subprocess.pid) {
+      core.saveState("proxy-process-pid", `${subprocess.pid}`);
+    }
+    subprocess.on("error", (error) => {
+      subprocessError = error;
+    });
+    subprocess.on("exit", (code) => {
+      if (code !== 0) {
+        // If the proxy failed to start, try a different port from the ephemeral range [49152, 65535]
+        port = Math.floor(Math.random() * (65535 - 49152) + 49152);
+        subprocess = undefined;
       }
-      subprocess.on("error", (error) => {
-        subprocessError = error;
-      });
-      subprocess.on("exit", (code) => {
-        if (code !== 0) {
-          // If the proxy failed to start, try a different port from the ephemeral range [49152, 65535]
-          port = Math.floor(Math.random() * (65535 - 49152) + 49152);
-          subprocess = undefined;
-        }
-      });
-      subprocess.stdin?.write(JSON.stringify(config));
-      subprocess.stdin?.end();
-      // Wait a little to allow the proxy to start
-      await util.delay(1000);
-    }
-    if (subprocessError) {
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
-      throw subprocessError;
-    }
-    logger.info(`Proxy started on ${host}:${port}`);
-    core.setOutput("proxy_host", host);
-    core.setOutput("proxy_port", port.toString());
-    core.setOutput("proxy_ca_certificate", config.ca.cert);
-
-    const registry_urls = config.all_credentials
-      .filter((credential) => credential.url !== undefined)
-      .map((credential) => ({
-        type: credential.type,
-        url: credential.url,
-      }));
-    core.setOutput("proxy_urls", JSON.stringify(registry_urls));
-  } catch (error) {
-    core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
+    });
+    subprocess.stdin?.write(JSON.stringify(config));
+    subprocess.stdin?.end();
+    // Wait a little to allow the proxy to start
+    await util.delay(1000);
   }
+  if (subprocessError) {
+    // eslint-disable-next-line @typescript-eslint/only-throw-error
+    throw subprocessError;
+  }
+  logger.info(`Proxy started on ${host}:${port}`);
+  core.setOutput("proxy_host", host);
+  core.setOutput("proxy_port", port.toString());
+  core.setOutput("proxy_ca_certificate", config.ca.cert);
+
+  const registry_urls = config.all_credentials
+    .filter((credential) => credential.url !== undefined)
+    .map((credential) => ({
+      type: credential.type,
+      url: credential.url,
+    }));
+  core.setOutput("proxy_urls", JSON.stringify(registry_urls));
 }
 
 async function getProxyBinaryPath(logger: Logger): Promise<string> {

@@ -14,6 +14,12 @@ import {
   getDownloadUrl,
   UPDATEJOB_PROXY,
 } from "./start-proxy";
+import {
+  ActionName,
+  createStatusReportBase,
+  getActionsStatus,
+  sendStatusReport,
+} from "./status-report";
 import * as util from "./util";
 
 const KEY_SIZE = 2048;
@@ -84,6 +90,8 @@ function generateCertificateAuthority(): CertificateAuthority {
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+
   // Make inputs accessible in the `post` step.
   actionsUtil.persistInputs();
 
@@ -127,6 +135,20 @@ async function runWrapper() {
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     core.setFailed(`start-proxy action failed: ${error.message}`);
+
+    // We skip sending the error message and stack trace here to avoid the possibility
+    // of leaking any sensitive information into the telemetry.
+    const errorStatusReportBase = await createStatusReportBase(
+      ActionName.StartProxy,
+      getActionsStatus(error),
+      startedAt,
+      undefined,
+      await util.checkDiskUsage(logger),
+      logger,
+    );
+    if (errorStatusReportBase !== undefined) {
+      await sendStatusReport(errorStatusReportBase);
+    }
   }
 }
 

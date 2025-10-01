@@ -36,11 +36,12 @@ import {
 } from "./util";
 
 export enum ActionName {
-  Autobuild = "autobuild",
   Analyze = "finish",
+  Autobuild = "autobuild",
   Init = "init",
   InitPost = "init-post",
   ResolveEnvironment = "resolve-environment",
+  StartProxy = "start-proxy",
   UploadSarif = "upload-sarif",
 }
 

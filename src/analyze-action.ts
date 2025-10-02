@@ -356,16 +356,14 @@ async function run() {
       }
 
       if (isCodeQualityEnabled(config)) {
+        const analysis = analyses.CodeQuality;
         const qualityUploadResult = await uploadLib.uploadFiles(
           outputDir,
           actionsUtil.getRequiredInput("checkout_path"),
-          actionsUtil.fixCodeQualityCategory(
-            logger,
-            actionsUtil.getOptionalInput("category"),
-          ),
+          actionsUtil.getOptionalInput("category"),
           features,
           logger,
-          analyses.CodeQuality,
+          analysis,
         );
         core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
       }

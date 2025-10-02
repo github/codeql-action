@@ -153,7 +153,6 @@ const packSpecPrettyPrintingMacro = test.macro({
   title: (
     _providedTitle: string | undefined,
     packStr: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _packObj: dbConfig.Pack,
   ) => `Prettyprint pack spec: '${packStr}'`,
 });

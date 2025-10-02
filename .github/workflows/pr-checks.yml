@@ -52,12 +52,7 @@ jobs:
           npm config set script-shell bash
           npm ci
 
-      - name: Verify compiled JS up to date (Node.js 20)
-        if: matrix.node-version == 20
-        run: .github/workflows/script/check-js-20.sh
-
-      - name: Verify compiled JS up to date (Node.js 24)
-        if: matrix.node-version == 24
+      - name: Verify compiled JS up to date
         run: .github/workflows/script/check-js.sh
 
       - name: Verify PR checks up to date

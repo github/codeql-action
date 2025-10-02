@@ -146,6 +146,12 @@ export default [
       "@typescript-eslint/prefer-regexp-exec": "off",
       "@typescript-eslint/require-await": "off",
       "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+        }
+      ],
       "func-style": "off",
     },
   },

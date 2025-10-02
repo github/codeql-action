@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 3.30.6 - 02 Oct 2025
 
 - Update default CodeQL bundle version to 2.23.2. [#3168](https://github.com/github/codeql-action/pull/3168)
 

@@ -1,3 +1,5 @@
+import { fixCodeQualityCategory } from "./actions-util";
+import { Logger } from "./logging";
 import { ConfigurationError } from "./util";
 
 export enum AnalysisKind {
@@ -61,6 +63,8 @@ export interface AnalysisConfig {
   /** A predicate on filenames to decide whether a SARIF file
    * belongs to this kind of analysis. */
   sarifPredicate: (name: string) => boolean;
+  /** Analysis-specific adjustment of the category. */
+  fixCategory: (logger: Logger, category?: string) => string | undefined;
   /** A prefix for environment variables used to track the uniqueness of SARIF uploads. */
   sentinelPrefix: string;
 }
@@ -74,6 +78,7 @@ export const CodeScanning: AnalysisConfig = {
   sarifPredicate: (name) =>
     name.endsWith(CodeScanning.sarifExtension) &&
     !CodeQuality.sarifPredicate(name),
+  fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };
 
@@ -84,5 +89,29 @@ export const CodeQuality: AnalysisConfig = {
   target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY,
   sarifExtension: ".quality.sarif",
   sarifPredicate: (name) => name.endsWith(CodeQuality.sarifExtension),
+  fixCategory: fixCodeQualityCategory,
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
+
+/**
+ * Gets the `AnalysisConfig` corresponding to `kind`.
+ * @param kind The analysis kind to get the `AnalysisConfig` for.
+ * @returns The `AnalysisConfig` corresponding to `kind`.
+ */
+export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
+  // Using a switch statement here accomplishes two things:
+  // 1. The type checker believes us that we have a case for every `AnalysisKind`.
+  // 2. If we ever add another member to `AnalysisKind`, the type checker will alert us that we have to add a case.
+  switch (kind) {
+    case AnalysisKind.CodeScanning:
+      return CodeScanning;
+    case AnalysisKind.CodeQuality:
+      return CodeQuality;
+  }
+}
+
+// Since we have overlapping extensions (i.e. ".sarif" includes ".quality.sarif"),
+// we want to scan a folder containing SARIF files in an order that finds the more
+// specific extensions first. This constant defines an array in the order of analyis
+// configurations with more specific extensions to less specific extensions.
+export const SarifScanOrder = [CodeQuality, CodeScanning];

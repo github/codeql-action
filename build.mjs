@@ -13,7 +13,7 @@ const OUT_DIR = join(__dirname, "lib");
 
 /**
  * Clean the output directory before building.
- *
+ * 
  * @type {esbuild.Plugin}
  */
 const cleanPlugin = {
@@ -27,7 +27,7 @@ const cleanPlugin = {
 
 /**
  * Copy defaults.json to the output directory since other projects depend on it.
- *
+ * 
  * @type {esbuild.Plugin}
  */
 const copyDefaultsPlugin = {

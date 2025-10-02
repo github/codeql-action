@@ -59,7 +59,7 @@ export async function uploadCombinedSarifArtifacts(
         for (const outputDir of outputDirs) {
           const sarifFiles = fs
             .readdirSync(path.resolve(baseTempDir, outputDir))
-            .filter((f) => f.endsWith(".sarif"));
+            .filter((f) => path.extname(f) === ".sarif");
 
           for (const sarifFile of sarifFiles) {
             toUpload.push(path.resolve(baseTempDir, outputDir, sarifFile));

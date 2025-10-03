@@ -375,6 +375,12 @@ export async function createStatusReportBase(
     logger.warning(
       `Caught an exception while gathering information for telemetry: ${e}. Will skip sending status report.`,
     );
+
+    // Re-throw the exception in test mode. While testing, we want to know if something goes wrong here.
+    if (isInTestMode()) {
+      throw e;
+    }
+
     return undefined;
   }
 }

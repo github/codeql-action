@@ -16,6 +16,9 @@ inputs:
   language:
     description: The programming language to setup the proxy for the correct ecosystem
     required: false
+  matrix:
+    default: ${{ toJson(matrix) }}
+    required: false
 outputs:
   proxy_host:
     description: The IP address of the proxy

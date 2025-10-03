@@ -165,6 +165,6 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary used for analysis
 runs:
-  using: node20
+  using: node24
   main: '../lib/init-action.js'
   post: '../lib/init-action-post.js'

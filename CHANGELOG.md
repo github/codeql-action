@@ -6,6 +6,9 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 No user facing changes.
 
+## v3.30.2 - 09 Sep 2025
+
+This release rolls back 3.30.1 due to issues with that release. It is identical to 0.0.0.
 ## 3.30.6 - 02 Oct 2025
 
 - Update default CodeQL bundle version to 2.23.2. [#3168](https://github.com/github/codeql-action/pull/3168)
@@ -1047,3 +1050,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

@@ -816,6 +816,34 @@ async function getNightlyToolsUrl(logger: Logger) {
   }
 }
 
+/**
+ * Gets the latest version of the CodeQL CLI that is available in the toolcache, or `undefined`
+ * if no CodeQL CLI is available in the toolcache.
+ *
+ * @param logger The logger to use.
+ * @returns The latest version of the CodeQL CLI that is available in the toolcache, or `undefined` if there is none.
+ */
+export function getLatestToolcacheVersion(logger: Logger): string | undefined {
+  const allVersions = toolcache
+    .findAllVersions("CodeQL")
+    .sort((a, b) => (semver.lt(a, b) ? 1 : -1));
+  logger.debug(
+    `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
+      allVersions,
+    )}.`,
+  );
+
+  if (allVersions.length > 0) {
+    const latestToolcacheVersion = allVersions[0];
+    logger.info(
+      `CLI version ${latestToolcacheVersion} is the latest version in the toolcache.`,
+    );
+    return latestToolcacheVersion;
+  }
+
+  return undefined;
+}
+
 function isReservedToolsValue(tools: string): boolean {
   return (
     CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||

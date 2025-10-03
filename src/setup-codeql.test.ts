@@ -1,5 +1,6 @@
 import * as path from "path";
 
+import * as toolcache from "@actions/tool-cache";
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -262,4 +263,16 @@ test('tryGetTagNameFromUrl extracts the right tag name for a repo name containin
     ),
     "codeql-bundle-v2.19.0",
   );
+});
+
+test("getLatestToolcacheVersion returns undefined if there are no CodeQL CLIs in the toolcache", (t) => {
+  sinon.stub(toolcache, "findAllVersions").returns([]);
+  t.is(setupCodeql.getLatestToolcacheVersion(getRunnerLogger(true)), undefined);
+});
+
+test("getLatestToolcacheVersion returns latest version in the toolcache", (t) => {
+  const testVersions = ["2.3.1", "3.2.1", "1.2.3"];
+  sinon.stub(toolcache, "findAllVersions").returns(testVersions);
+
+  t.is(setupCodeql.getLatestToolcacheVersion(getRunnerLogger(true)), "3.2.1");
 });

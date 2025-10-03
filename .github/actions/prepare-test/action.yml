@@ -2,7 +2,7 @@ name: "Prepare test"
 description: Performs some preparation to run tests
 inputs:
   version:
-    description: "The version of the CodeQL CLI to use. Can be 'linked', 'default', 'nightly', 'nightly-latest', 'nightly-YYYYMMDD', or 'stable-vX.Y.Z"
+    description: "The version of the CodeQL CLI to use. Can be 'linked', 'default', 'toolcache', 'nightly', 'nightly-latest', 'nightly-YYYYMMDD', or 'stable-vX.Y.Z"
     required: true
   use-all-platform-bundle:
     description: "If true, we output a tools URL with codeql-bundle.tar.gz file rather than platform-specific URL"
@@ -40,6 +40,9 @@ runs:
           exit 0
         elif [[ "$VERSION" == "linked" ]]; then
           echo "tools-url=linked" >> "$GITHUB_OUTPUT"
+          exit 0
+        elif [[ "$VERSION" == "toolcache" ]]; then
+          echo "tools-url=toolcache" >> "$GITHUB_OUTPUT"
           exit 0
         elif [[ "$VERSION" == "default" ]]; then
           echo "tools-url=" >> "$GITHUB_OUTPUT"

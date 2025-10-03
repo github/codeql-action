@@ -1,5 +1,6 @@
 name: "autobuild-action"
 description: "Tests that the C# autobuild action works"
+operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["linked"]
 steps:
   - uses: ./../action/init

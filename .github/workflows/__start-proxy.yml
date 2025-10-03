@@ -27,6 +27,9 @@ on:
 defaults:
   run:
     shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   start-proxy:
     strategy:
@@ -40,6 +43,7 @@ jobs:
           - os: windows-latest
             version: linked
     name: Start proxy
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read

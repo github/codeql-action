@@ -11,7 +11,7 @@ steps:
   - name: Build code
     run: go build main.go
   - uses: ./../action/analyze
-    run: |
+  - run: |
       # Once we start running Bash 4.2 in all environments, we can replace the
       # `! -z` flag with the more elegant `-v` which confirms that the variable
       # is actually unset and not potentially set to a blank value.

@@ -17,7 +17,7 @@ steps:
       working-directory: autobuild-dir
     env:
       CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
-    run: |
+  - run: |
       if ! ls /usr/bin/errno; then
         echo "As expected, CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES is a no-op on macOS"
       else

@@ -1,6 +1,8 @@
 name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection for macOS"
 operatingSystems: ["macos", "ubuntu"]
+env:
+  CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true
 steps:
   - name: Use Xcode 16

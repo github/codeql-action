@@ -459,6 +459,79 @@ export function getSarifFilePaths(
   return sarifFiles;
 }
 
+type GroupedSarifFiles = Partial<Record<analyses.AnalysisKind, string[]>>;
+
+/**
+ * Finds SARIF files in `sarifPath`, and groups them by analysis kind, following `SarifScanOrder`.
+ *
+ * @param logger The logger to use.
+ * @param sarifPath The path of a file or directory to recursively scan for SARIF files.
+ * @returns The `.sarif` files found in `sarifPath`, grouped by analysis kind.
+ */
+export async function getGroupedSarifFilePaths(
+  logger: Logger,
+  sarifPath: string,
+): Promise<GroupedSarifFiles> {
+  const stats = fs.statSync(sarifPath, { throwIfNoEntry: false });
+
+  if (stats === undefined) {
+    // This is always a configuration error, even for first-party runs.
+    throw new ConfigurationError(`Path does not exist: ${sarifPath}`);
+  }
+
+  const results: GroupedSarifFiles = {};
+
+  if (stats.isDirectory()) {
+    let unassignedSarifFiles = findSarifFilesInDir(
+      sarifPath,
+      (name) => path.extname(name) === ".sarif",
+    );
+    logger.debug(
+      `Found the following .sarif files in ${sarifPath}: ${unassignedSarifFiles.join(", ")}`,
+    );
+
+    for (const analysisConfig of analyses.SarifScanOrder) {
+      const filesForCurrentAnalysis = unassignedSarifFiles.filter(
+        analysisConfig.sarifPredicate,
+      );
+      if (filesForCurrentAnalysis.length > 0) {
+        logger.debug(
+          `The following SARIF files are for ${analysisConfig.name}: ${filesForCurrentAnalysis.join(", ")}`,
+        );
+        // Looping through the array a second time is not efficient, but more readable.
+        // Change this to one loop for both calls to `filter` if this becomes a bottleneck.
+        unassignedSarifFiles = unassignedSarifFiles.filter(
+          (name) => !analysisConfig.sarifPredicate(name),
+        );
+        results[analysisConfig.kind] = filesForCurrentAnalysis;
+      } else {
+        logger.debug(`Found no SARIF files for ${analysisConfig.name}`);
+      }
+    }
+
+    if (unassignedSarifFiles.length !== 0) {
+      logger.warning(
+        `Found files in ${sarifPath} which do not belong to any analysis: ${unassignedSarifFiles.join(", ")}`,
+      );
+    }
+  } else {
+    for (const analysisConfig of analyses.SarifScanOrder) {
+      if (
+        analysisConfig.kind === analyses.AnalysisKind.CodeScanning ||
+        analysisConfig.sarifPredicate(sarifPath)
+      ) {
+        logger.debug(
+          `Using '${sarifPath}' as a SARIF file for ${analysisConfig.name}.`,
+        );
+        results[analysisConfig.kind] = [sarifPath];
+        break;
+      }
+    }
+  }
+
+  return results;
+}
+
 // Counts the number of results in the given SARIF file
 function countResultsInSarif(sarif: string): number {
   let numResults = 0;
@@ -655,6 +728,7 @@ export async function uploadSpecifiedFiles(
   const gitHubVersion = await getGitHubVersion();
 
   let sarif: SarifFile;
+  category = uploadTarget.fixCategory(logger, category);
 
   if (sarifPaths.length > 1) {
     // Validate that the files we were asked to upload are all valid SARIF files
@@ -696,6 +770,12 @@ export async function uploadSpecifiedFiles(
   validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
   logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
+
+  const dumpDir = process.env[EnvVar.SARIF_DUMP_DIR];
+  if (dumpDir) {
+    dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
+  }
+
   logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = url.pathToFileURL(checkoutPath).href;
@@ -740,6 +820,30 @@ export async function uploadSpecifiedFiles(
     },
     sarifID,
   };
+}
+
+/**
+ * Dumps the given processed SARIF file contents to `outputDir`.
+ */
+function dumpSarifFile(
+  sarifPayload: string,
+  outputDir: string,
+  logger: Logger,
+  uploadTarget: analyses.AnalysisConfig,
+) {
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  } else if (!fs.lstatSync(outputDir).isDirectory()) {
+    throw new ConfigurationError(
+      `The path specified by the ${EnvVar.SARIF_DUMP_DIR} environment variable exists and is not a directory: ${outputDir}`,
+    );
+  }
+  const outputFile = path.resolve(
+    outputDir,
+    `upload${uploadTarget.sarifExtension}`,
+  );
+  logger.info(`Dumping processed SARIF file to ${outputFile}`);
+  fs.writeFileSync(outputFile, sarifPayload);
 }
 
 const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;

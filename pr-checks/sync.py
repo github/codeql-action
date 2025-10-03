@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 import ruamel.yaml
-from ruamel.yaml.scalarstring import FoldedScalarString, SingleQuotedScalarString
+from ruamel.yaml.scalarstring import SingleQuotedScalarString
 import pathlib
-import textwrap
 import os
 
 # The default set of CodeQL Bundle versions to use for the PR checks.
@@ -18,6 +17,8 @@ defaultTestVersions = [
     "stable-v2.20.7",
     # The last CodeQL release in the 2.21 series.
     "stable-v2.21.4",
+    # The last CodeQL release in the 2.22 series.
+    "stable-v2.22.4",
     # The default version of CodeQL for Dotcom, as determined by feature flags.
     "default",
     # The version of CodeQL shipped with the Action in `defaults.json`. During the release process
@@ -27,12 +28,6 @@ defaultTestVersions = [
     # A nightly build directly from the our private repo, built in the last 24 hours.
     "nightly-latest"
 ]
-
-def is_os_and_version_excluded(os, version, exclude_params):
-    for exclude_param in exclude_params:
-        if exclude_param[0] == os and exclude_param[1] == version:
-            return True
-    return False
 
 # When updating the ruamel.yaml version here, update the PR check in
 # `.github/workflows/pr-checks.yml` too.
@@ -77,22 +72,17 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
     if 'inputs' in checkSpecification:
         workflowInputs = checkSpecification['inputs']
 
-    excludedOsesAndVersions = checkSpecification.get('excludeOsAndVersionCombination', [])
     for version in checkSpecification.get('versions', defaultTestVersions):
         if version == "latest":
             raise ValueError('Did not recognize "version: latest". Did you mean "version: linked"?')
 
         runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
-        operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu", "macos", "windows"])
+        operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu"])
 
         for operatingSystem in operatingSystems:
             runnerImagesForOs = [image for image in runnerImages if image.startswith(operatingSystem)]
 
             for runnerImage in runnerImagesForOs:
-                # Skip appending this combination to the matrix if it is explicitly excluded.
-                if is_os_and_version_excluded(operatingSystem, version, excludedOsesAndVersions):
-                    continue
-
                 matrix.append({
                     'os': runnerImage,
                     'version': version
@@ -127,7 +117,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         steps.extend([
             {
                 'name': 'Install Node.js',
-                'uses': 'actions/setup-node@v4',
+                'uses': 'actions/setup-node@v5',
                 'with': {
                     'node-version': '20.x',
                     'cache': 'npm',
@@ -165,7 +155,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
 
         steps.append({
             'name': 'Install Go',
-            'uses': 'actions/setup-go@v5',
+            'uses': 'actions/setup-go@v6',
             'with': {
                 'go-version': '${{ inputs.go-version || \'' + baseGoVersionExpr + '\' }}',
                 # to avoid potentially misleading autobuilder results where we expect it to download
@@ -210,6 +200,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         },
         'name': checkSpecification['name'],
+        'if': 'github.triggering_actor != \'dependabot[bot]\'',
         'permissions': {
             'contents': 'read',
             'security-events': 'read'
@@ -240,7 +231,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         })
 
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
-    with open(raw_file, 'w') as output_stream:
+    with open(raw_file, 'w', newline='\n') as output_stream:
         writeHeader(output_stream)
         yaml.dump({
             'name': f"PR Check - {checkSpecification['name']}",
@@ -268,13 +259,24 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                     'shell': 'bash',
                 },
             },
+            'concurrency': {
+                # Cancel in-progress workflows in the same 'group' for pull_request events,
+                # but not other event types. This should have the effect that workflows on PRs
+                # get cancelled if there is a newer workflow in the same concurrency group.
+                # For other events, the new workflows should wait until earlier ones have finished.
+                # This should help reduce the number of concurrent workflows on the repo, and
+                # consequently the number of concurrent API requests.
+                'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+                # The group is determined by the workflow name + the ref
+                'group': "${{ github.workflow }}-${{ github.ref }}"
+            },
             'jobs': {
                 checkName: checkJob
             }
         }, output_stream)
 
     with open(raw_file, 'r') as input_stream:
-        with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w') as output_stream:
+        with open(this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml", 'w', newline='\n') as output_stream:
             content = input_stream.read()
             output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
     os.remove(raw_file)
@@ -328,7 +330,7 @@ for collection_name in collections:
         }, output_stream)
 
     with open(raw_file, 'r') as input_stream:
-        with open(this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml", 'w') as output_stream:
+        with open(this_dir.parent / ".github" / "workflows" / f"__{collection_name}.yml", 'w', newline='\n') as output_stream:
             content = input_stream.read()
             output_stream.write("\n".join(list(map(lambda x:x.rstrip(), content.splitlines()))+['']))
     os.remove(raw_file)

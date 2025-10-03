@@ -1,5 +1,3 @@
-import * as fs from "fs";
-
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
@@ -18,6 +16,7 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
+import { uploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
   checkActionVersion,
@@ -86,54 +85,52 @@ async function run() {
   }
 
   try {
+    // `sarifPath` can either be a path to a single file, or a path to a directory.
     const sarifPath = actionsUtil.getRequiredInput("sarif_file");
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
 
-    const uploadResult = await upload_lib.uploadFiles(
-      sarifPath,
-      checkoutPath,
-      category,
-      features,
+    const uploadResults = await uploadSarif(
       logger,
-      analyses.CodeScanning,
+      features,
+      checkoutPath,
+      sarifPath,
+      category,
     );
-    core.setOutput("sarif-id", uploadResult.sarifID);
 
-    // If there are `.quality.sarif` files in `sarifPath`, then upload those to the code quality service.
-    // Code quality can currently only be enabled on top of security, so we'd currently always expect to
-    // have a directory for the results here.
-    if (fs.lstatSync(sarifPath).isDirectory()) {
-      const qualitySarifFiles = upload_lib.findSarifFilesInDir(
-        sarifPath,
-        analyses.CodeQuality.sarifPredicate,
+    // Fail if we didn't upload anything.
+    if (Object.keys(uploadResults).length === 0) {
+      throw new ConfigurationError(
+        `No SARIF files found to upload in "${sarifPath}".`,
       );
-
-      if (qualitySarifFiles.length !== 0) {
-        await upload_lib.uploadSpecifiedFiles(
-          qualitySarifFiles,
-          checkoutPath,
-          actionsUtil.fixCodeQualityCategory(logger, category),
-          features,
-          logger,
-          analyses.CodeQuality,
-        );
-      }
     }
+
+    const codeScanningResult =
+      uploadResults[analyses.AnalysisKind.CodeScanning];
+    if (codeScanningResult !== undefined) {
+      core.setOutput("sarif-id", codeScanningResult.sarifID);
+    }
+    core.setOutput("sarif-ids", JSON.stringify(uploadResults));
 
     // We don't upload results in test mode, so don't wait for processing
     if (isInTestMode()) {
       core.debug("In test mode. Waiting for processing is disabled.");
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
-      await upload_lib.waitForProcessing(
-        getRepositoryNwo(),
-        uploadResult.sarifID,
-        logger,
-      );
+      if (codeScanningResult !== undefined) {
+        await upload_lib.waitForProcessing(
+          getRepositoryNwo(),
+          codeScanningResult.sarifID,
+          logger,
+        );
+      }
       // The code quality service does not currently have an endpoint to wait for SARIF processing,
       // so we can't wait for that here.
     }
-    await sendSuccessStatusReport(startedAt, uploadResult.statusReport, logger);
+    await sendSuccessStatusReport(
+      startedAt,
+      codeScanningResult?.statusReport || {},
+      logger,
+    );
   } catch (unwrappedError) {
     const error =
       isThirdPartyAnalysis(ActionName.UploadSarif) &&

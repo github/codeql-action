@@ -496,6 +496,8 @@ const injectedConfigMacro = test.macro({
     expectedConfig: any,
   ) => {
     await util.withTmpDir(async (tempDir) => {
+      sinon.stub(actionsUtil, "isDefaultSetup").resolves(false);
+
       const runnerConstructorStub = stubToolRunnerConstructor();
       const codeqlObject = await stubCodeql();
 
@@ -505,6 +507,7 @@ const injectedConfigMacro = test.macro({
         tempDir,
       };
       thisStubConfig.computedConfig = generateCodeScanningConfig(
+        getRunnerLogger(true),
         thisStubConfig.originalUserInput,
         augmentationProperties,
       );
@@ -660,13 +663,13 @@ test(
   {
     queries: [
       {
-        uses: "zzz",
-      },
-      {
         uses: "xxx",
       },
       {
         uses: "yyy",
+      },
+      {
+        uses: "zzz",
       },
     ],
   },
@@ -711,6 +714,84 @@ test(
     },
   },
   {},
+);
+
+test(
+  "repo property queries have the highest precedence",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: false,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [{ uses: "zzz" }, { uses: "aaa" }],
+  },
+);
+
+test(
+  "repo property queries combines with queries input",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+    ],
+  },
+);
+
+test(
+  "repo property queries combines everything else",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+      { uses: "uu" },
+      { uses: "vv" },
+    ],
+  },
 );
 
 test("passes a code scanning config AND qlconfig to the CLI", async (t: ExecutionContext<unknown>) => {
@@ -953,7 +1034,7 @@ test("runTool recognizes fatal internal errors", async (t) => {
       await codeqlObject.databaseRunQueries(stubConfig.dbLocation, []),
     {
       instanceOf: CliError,
-      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --intra-layer-parallelism --min-disk-free=1024 -v". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
+      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --min-disk-free=1024 -v". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
     com.semmle.util.exception.CatastrophicError: An error occurred while evaluating ControlFlowGraph::ControlFlow::Root.isRootOf/1#dispred#f610e6ed/2@86282cc8
     Severe disk cache trouble (corruption or out of space) at /home/runner/work/_temp/codeql_databases/go/db-go/default/cache/pages/28/33.pack: Failed to write item to disk. See the logs for more details.`,
     },

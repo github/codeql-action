@@ -50,6 +50,7 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  JavaMinimizeDependencyJars = "java_minimize_dependency_jars",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -72,7 +73,9 @@ export enum Feature {
   OverlayAnalysisRust = "overlay_analysis_rust",
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
+  UseRepositoryProperties = "use_repository_properties",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
 }
 
 export const featureConfig: Record<
@@ -144,6 +147,12 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
     minimumVersion: undefined,
+  },
+  [Feature.ResolveSupportedLanguagesUsingCli]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   },
   [Feature.OverlayAnalysis]: {
     defaultValue: false,
@@ -256,11 +265,21 @@ export const featureConfig: Record<
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
   },
+  [Feature.UseRepositoryProperties]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_USE_REPOSITORY_PROPERTIES",
+    minimumVersion: undefined,
+  },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
     minimumVersion: undefined,
+  },
+  [Feature.JavaMinimizeDependencyJars]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
+    minimumVersion: "2.23.0",
   },
 };
 

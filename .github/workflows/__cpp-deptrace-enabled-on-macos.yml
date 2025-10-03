@@ -27,6 +27,9 @@ on:
 defaults:
   run:
     shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   cpp-deptrace-enabled-on-macos:
     strategy:
@@ -38,6 +41,7 @@ jobs:
           - os: macos-latest
             version: nightly-latest
     name: 'C/C++: autoinstalling dependencies is skipped (macOS)'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -65,7 +69,7 @@ jobs:
           working-directory: autobuild-dir
         env:
           CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
-        run: |
+      - run: |
           if ! ls /usr/bin/errno; then
             echo "As expected, CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES is a no-op on macOS"
           else

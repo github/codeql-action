@@ -864,7 +864,7 @@ let hadTimeout = false;
  * @param onTimeout A callback to call if the promise times out.
  * @returns The result of the promise, or undefined if the promise times out.
  */
-export async function withTimeout<T>(
+export async function waitForResultWithTimeLimit<T>(
   timeoutMs: number,
   promise: Promise<T>,
   onTimeout: () => void,
@@ -894,7 +894,7 @@ export async function withTimeout<T>(
  * Check if the global hadTimeout variable has been set, and if so then
  * exit the process to ensure any background tasks that are still running
  * are killed. This should be called at the end of execution if the
- * `withTimeout` function has been used.
+ * `waitForResultWithTimeLimit` function has been used.
  */
 export async function checkForTimeout() {
   if (hadTimeout === true) {
@@ -1286,4 +1286,28 @@ export async function asyncSome<T>(
  */
 export function isDefined<T>(value: T | null | undefined): value is T {
   return value !== undefined && value !== null;
+}
+
+/** Like `Object.keys`, but typed so that the elements of the resulting array have the
+ * same type as the keys of the input object. Note that this may not be sound if the input
+ * object has been cast to `T` from a subtype of `T` and contains additional keys that
+ * are not represented by `keyof T`.
+ */
+export function unsafeKeysInvariant<T extends Record<string, any>>(
+  object: T,
+): Array<keyof T> {
+  return Object.keys(object) as Array<keyof T>;
+}
+
+/** Like `Object.entries`, but typed so that the key elements of the result have the
+ * same type as the keys of the input object. Note that this may not be sound if the input
+ * object has been cast to `T` from a subtype of `T` and contains additional keys that
+ * are not represented by `keyof T`.
+ */
+export function unsafeEntriesInvariant<T extends Record<string, any>>(
+  object: T,
+): Array<[keyof T, Exclude<T[keyof T], undefined>]> {
+  return Object.entries(object).filter(
+    ([_, val]) => val !== undefined,
+  ) as Array<[keyof T, Exclude<T[keyof T], undefined>]>;
 }

@@ -3,7 +3,7 @@ import * as path from "path";
 
 import test from "ava";
 
-import { CodeQuality, CodeScanning } from "./analyses";
+import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -127,27 +127,97 @@ test("finding SARIF files", async (t) => {
     fs.writeFileSync(path.join(tmpDir, "a.quality.sarif"), "");
     fs.writeFileSync(path.join(tmpDir, "dir1", "b.quality.sarif"), "");
 
+    const expectedSarifFiles = [
+      path.join(tmpDir, "a.sarif"),
+      path.join(tmpDir, "b.sarif"),
+      path.join(tmpDir, "dir1", "d.sarif"),
+      path.join(tmpDir, "dir1", "dir2", "e.sarif"),
+    ];
     const sarifFiles = uploadLib.findSarifFilesInDir(
       tmpDir,
       CodeScanning.sarifPredicate,
     );
 
-    t.deepEqual(sarifFiles, [
-      path.join(tmpDir, "a.sarif"),
-      path.join(tmpDir, "b.sarif"),
-      path.join(tmpDir, "dir1", "d.sarif"),
-      path.join(tmpDir, "dir1", "dir2", "e.sarif"),
-    ]);
+    t.deepEqual(sarifFiles, expectedSarifFiles);
 
+    const expectedQualitySarifFiles = [
+      path.join(tmpDir, "a.quality.sarif"),
+      path.join(tmpDir, "dir1", "b.quality.sarif"),
+    ];
     const qualitySarifFiles = uploadLib.findSarifFilesInDir(
       tmpDir,
       CodeQuality.sarifPredicate,
     );
 
-    t.deepEqual(qualitySarifFiles, [
-      path.join(tmpDir, "a.quality.sarif"),
-      path.join(tmpDir, "dir1", "b.quality.sarif"),
-    ]);
+    t.deepEqual(qualitySarifFiles, expectedQualitySarifFiles);
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      tmpDir,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.deepEqual(
+      groupedSarifFiles[AnalysisKind.CodeScanning],
+      expectedSarifFiles,
+    );
+    t.deepEqual(
+      groupedSarifFiles[AnalysisKind.CodeQuality],
+      expectedQualitySarifFiles,
+    );
+  });
+});
+
+test("getGroupedSarifFilePaths - Code Quality file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.quality.sarif");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.CodeQuality], [sarifPath]);
+  });
+});
+
+test("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.sarif");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
+  });
+});
+
+test("getGroupedSarifFilePaths - Other file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.json");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
   });
 });
 

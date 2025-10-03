@@ -1,6 +1,5 @@
 name: "C/C++: autoinstalling dependencies (Linux)"
 description: "Checks that running C/C++ autobuild with autoinstalling dependencies works"
-operatingSystems: ["ubuntu"]
 versions: ["linked", "default", "nightly-latest"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
@@ -17,7 +16,7 @@ steps:
       working-directory: autobuild-dir
     env:
       CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
-    run: |
+  - run: |
       if ! ls /usr/bin/errno; then
         echo "Did not autoinstall errno"
         exit 1

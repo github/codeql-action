@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: PR Check - Autobuild working directory
+name: PR Check - Local CodeQL bundle
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -21,21 +21,35 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
-    inputs: {}
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
   workflow_call:
-    inputs: {}
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
 defaults:
   run:
     shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
-  test-autobuild-working-dir:
+  local-bundle:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             version: linked
-    name: Autobuild working directory
+    name: Local CodeQL bundle
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -51,26 +65,22 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Test setup
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Fetch latest CodeQL bundle
         run: |
-          # Make sure that Gradle build succeeds in autobuild-dir ...
-          cp -a ../action/tests/java-repo autobuild-dir
-          # ... and fails if attempted in the current directory
-          echo > build.gradle
-      - uses: ./../action/init
+          wget https://github.com/github/codeql-action/releases/latest/download/codeql-bundle-linux64.tar.zst
+      - id: init
+        uses: ./../action/init
         with:
-          languages: java
-          tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: ./../action/autobuild
-        with:
-          working-directory: autobuild-dir
+      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          languages: cpp,csharp,go,java,javascript,python,ruby
+          tools: ./codeql-bundle-linux64.tar.zst
+      - name: Build code
+        run: ./build.sh
       - uses: ./../action/analyze
-      - name: Check database
-        run: |
-          cd "$RUNNER_TEMP/codeql_databases"
-          if [[ ! -d java ]]; then
-            echo "Did not find a Java database"
-            exit 1
-          fi
     env:
       CODEQL_ACTION_TEST_MODE: true

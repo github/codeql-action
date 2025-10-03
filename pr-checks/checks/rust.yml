@@ -8,7 +8,6 @@ versions:
   - linked
   - default
   - nightly-latest
-operatingSystems: ["ubuntu"]
 steps:
   - uses: ./../action/init
     with:

@@ -37,6 +37,9 @@ on:
 defaults:
   run:
     shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   go-tracing-autobuilder:
     strategy:
@@ -64,6 +67,10 @@ jobs:
           - os: macos-latest
             version: stable-v2.21.4
           - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: macos-latest
+            version: stable-v2.22.4
+          - os: ubuntu-latest
             version: default
           - os: macos-latest
             version: default
@@ -76,6 +83,7 @@ jobs:
           - os: macos-latest
             version: nightly-latest
     name: 'Go: tracing with autobuilder step'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -92,7 +100,7 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
@@ -102,7 +110,7 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/autobuild
       - uses: ./../action/analyze
-        run: |
+      - run: |
           if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
             echo "Expected the Go autobuilder to be run, but the" \
               "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."

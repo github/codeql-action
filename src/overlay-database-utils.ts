@@ -10,7 +10,11 @@ import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
-import { isInTestMode, tryGetFolderBytes, withTimeout } from "./util";
+import {
+  isInTestMode,
+  tryGetFolderBytes,
+  waitForResultWithTimeLimit,
+} from "./util";
 
 export enum OverlayDatabaseMode {
   Overlay = "overlay",
@@ -18,22 +22,27 @@ export enum OverlayDatabaseMode {
   None = "none",
 }
 
-export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.3";
+export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.4";
 
 /**
  * The maximum (uncompressed) size of the overlay base database that we will
- * upload. Actions Cache has an overall capacity of 10 GB, and the Actions Cache
- * client library uses zstd compression.
+ * upload. By default, the Actions Cache has an overall capacity of 10 GB, and
+ * the Actions Cache client library uses zstd compression.
  *
  * Ideally we would apply a size limit to the compressed overlay-base database,
  * but we cannot do so because compression is handled transparently by the
  * Actions Cache client library. Instead we place a limit on the uncompressed
  * size of the overlay-base database.
  *
- * Assuming 2.5:1 compression ratio, the 6 GB limit on uncompressed data would
- * translate to a limit of around 2.4 GB after compression.
+ * Assuming 2.5:1 compression ratio, the 15 GB limit on uncompressed data would
+ * translate to a limit of around 6 GB after compression. This is a high limit
+ * compared to the default 10GB Actions Cache capacity, but enforcement of Actions
+ * Cache quotas is not immediate.
+ *
+ * TODO: revisit this limit before removing the restriction for overlay analysis
+ * to the `github` and `dsp-testing` orgs.
  */
-const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB = 6000;
+const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB = 15000;
 const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_BYTES =
   OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_MB * 1_000_000;
 
@@ -149,7 +158,12 @@ function computeChangedFiles(
 // Constants for database caching
 const CACHE_VERSION = 1;
 const CACHE_PREFIX = "codeql-overlay-base-database";
-const MAX_CACHE_OPERATION_MS = 120_000; // Two minutes
+
+// The purpose of this ten-minute limit is to guard against the possibility
+// that the cache service is unresponsive, which would otherwise cause the
+// entire action to hang.  Normally we expect cache operations to complete
+// within two minutes.
+const MAX_CACHE_OPERATION_MS = 600_000;
 
 /**
  * Checks that the overlay-base database is valid by checking for the
@@ -263,7 +277,7 @@ export async function uploadOverlayBaseDatabaseToCache(
   );
 
   try {
-    const cacheId = await withTimeout(
+    const cacheId = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.saveCache([dbLocation], cacheSaveKey),
       () => {},
@@ -341,9 +355,39 @@ export async function downloadOverlayBaseDatabaseFromCache(
   let databaseDownloadDurationMs = 0;
   try {
     const databaseDownloadStart = performance.now();
-    const foundKey = await withTimeout(
+    const foundKey = await waitForResultWithTimeLimit(
+      // This ten-minute limit for the cache restore operation is mainly to
+      // guard against the possibility that the cache service is unresponsive
+      // and hangs outside the data download.
+      //
+      // Data download (which is normally the most time-consuming part of the
+      // restore operation) should not run long enough to hit this limit. Even
+      // for an extremely large 10GB database, at a download speed of 40MB/s
+      // (see below), the download should complete within five minutes. If we
+      // do hit this limit, there are likely more serious problems other than
+      // mere slow download speed.
+      //
+      // This is important because we don't want any ongoing file operations
+      // on the database directory when we do hit this limit. Hitting this
+      // time limit takes us to a fallback path where we re-initialize the
+      // database from scratch at dbLocation, and having the cache restore
+      // operation continue to write into dbLocation in the background would
+      // really mess things up. We want to hit this limit only in the case
+      // of a hung cache service, not just slow download speed.
       MAX_CACHE_OPERATION_MS,
-      actionsCache.restoreCache([dbLocation], cacheRestoreKeyPrefix),
+      actionsCache.restoreCache(
+        [dbLocation],
+        cacheRestoreKeyPrefix,
+        undefined,
+        {
+          // Azure SDK download (which is the default) uses 128MB segments; see
+          // https://github.com/actions/toolkit/blob/main/packages/cache/README.md.
+          // Setting segmentTimeoutInMs to 3000 translates to segment download
+          // speed of about 40 MB/s, which should be achievable unless the
+          // download is unreliable (in which case we do want to abort).
+          segmentTimeoutInMs: 3000,
+        },
+      ),
       () => {
         logger.info("Timed out downloading overlay-base database from cache");
       },

@@ -115,8 +115,17 @@ export enum EnvVar {
    */
   DEPENDENCY_CACHING_PREFIX = "CODEQL_ACTION_DEPENDENCY_CACHE_PREFIX",
 
+  /** Used by the Java extractor option to enable minimizing dependency JARs. */
+  JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS = "CODEQL_EXTRACTOR_JAVA_OPTION_MINIMIZE_DEPENDENCY_JARS",
+
   /**
    * Whether to enable experimental extractors for CodeQL.
    */
   EXPERIMENTAL_FEATURES = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES",
+
+  /**
+   * Whether and where to dump the processed SARIF file that would be uploaded, regardless of
+   * whether the upload is disabled. This is intended for testing and debugging purposes.
+   */
+  SARIF_DUMP_DIR = "CODEQL_ACTION_SARIF_DUMP_DIR",
 }

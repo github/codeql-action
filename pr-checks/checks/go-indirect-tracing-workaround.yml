@@ -1,7 +1,6 @@
 name: "Go: workaround for indirect tracing"
 description: "Checks that our workaround for indirect tracing for Go 1.21+ on Linux works"
 # only Linux is affected
-operatingSystems: ["ubuntu"]
 # pinned to a version which does not support statically linked binaries for indirect tracing
 versions: ["default"]
 installGo: true
@@ -14,7 +13,7 @@ steps:
   - name: Build code
     run: go build main.go
   - uses: ./../action/analyze
-    run: |
+  - run: |
       if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then
         echo "Expected the workaround for indirect tracing of static binaries to trigger, but the" \
           "CODEQL_ACTION_GO_BINARY environment variable is not set."

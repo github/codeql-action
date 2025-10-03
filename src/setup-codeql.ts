@@ -38,6 +38,7 @@ const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
+const CODEQL_TOOLCACHE_INPUT = "toolcache";
 
 function getCodeQLBundleExtension(
   compressionMethod: tar.CompressionMethod,
@@ -345,6 +346,27 @@ export async function getCodeQLSource(
       logger.warning(
         "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.",
       );
+    }
+  } else if (
+    toolsInput !== undefined &&
+    toolsInput === CODEQL_TOOLCACHE_INPUT
+  ) {
+    // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
+    // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
+    // the linked version.
+    logger.info(
+      `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: ${toolsInput}'.`,
+    );
+
+    const latestToolcacheVersion = getLatestToolcacheVersion(logger);
+    if (latestToolcacheVersion) {
+      cliVersion = latestToolcacheVersion;
+    } else {
+      logger.info(
+        `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
+      );
+      cliVersion = defaultCliVersion.cliVersion;
+      tagName = defaultCliVersion.tagName;
     }
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.
@@ -847,6 +869,7 @@ export function getLatestToolcacheVersion(logger: Logger): string | undefined {
 function isReservedToolsValue(tools: string): boolean {
   return (
     CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||
-    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools)
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools) ||
+    tools === CODEQL_TOOLCACHE_INPUT
   );
 }

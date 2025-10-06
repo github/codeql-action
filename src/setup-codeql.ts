@@ -7,7 +7,7 @@ import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isRunningLocalAction } from "./actions-util";
+import { isDynamicWorkflow, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import {
@@ -351,20 +351,37 @@ export async function getCodeQLSource(
     toolsInput !== undefined &&
     toolsInput === CODEQL_TOOLCACHE_INPUT
   ) {
-    // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
-    // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
-    // the linked version.
-    logger.info(
-      `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: ${toolsInput}'.`,
-    );
+    let latestToolcacheVersion: string | undefined;
 
-    const latestToolcacheVersion = getLatestToolcacheVersion(logger);
-    if (latestToolcacheVersion) {
-      cliVersion = latestToolcacheVersion;
-    } else {
+    // We only allow `toolsInput === "toolcache"` for `dynamic` events. In general, using `toolsInput === "toolcache"`
+    // can lead to alert wobble and so it shouldn't be used for an analysis where results are intended to be uploaded.
+    // We also allow this in test mode.
+    const allowToolcacheValue = isDynamicWorkflow() || util.isInTestMode();
+    if (allowToolcacheValue) {
+      // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
+      // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
+      // the linked version.
       logger.info(
-        `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: ${toolsInput}'.`,
       );
+
+      latestToolcacheVersion = getLatestToolcacheVersion(logger);
+      if (latestToolcacheVersion) {
+        cliVersion = latestToolcacheVersion;
+      }
+    }
+
+    if (latestToolcacheVersion === undefined) {
+      if (allowToolcacheValue) {
+        logger.info(
+          `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
+        );
+      } else {
+        logger.warning(
+          `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
+        );
+      }
+
       cliVersion = defaultCliVersion.cliVersion;
       tagName = defaultCliVersion.tagName;
     }

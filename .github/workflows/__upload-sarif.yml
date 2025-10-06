@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: 'PR Check - Upload-sarif: code quality endpoint'
+name: PR Check - Test different uses of `upload-sarif`
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -41,14 +41,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   group: ${{ github.workflow }}-${{ github.ref }}
 jobs:
-  upload-quality-sarif:
+  upload-sarif:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             version: default
-    name: 'Upload-sarif: code quality endpoint'
+    name: Test different uses of `upload-sarif`
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read

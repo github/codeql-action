@@ -1,4 +1,4 @@
-name: "Upload-sarif: code quality endpoint"
+name: "Test different uses of `upload-sarif`"
 description: "Checks that uploading SARIFs to the code quality endpoint works"
 versions: ["default"]
 installGo: true

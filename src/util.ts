@@ -764,10 +764,17 @@ export function isGoodVersion(versionSpec: string) {
 /**
  * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
  *
- * In test mode, we don't upload SARIF results or status reports to the GitHub API.
+ * In test mode, we several uploads (SARIF results, status reports, DBs, ...).
  */
 export function isInTestMode(): boolean {
   return process.env[EnvVar.TEST_MODE] === "true";
+}
+
+/**
+ * Returns whether we specifically want to skip uploading SARIF files.
+ */
+export function shouldSkipSarifUpload(): boolean {
+  return isInTestMode() || process.env[EnvVar.SKIP_SARIF_UPLOAD] === "true";
 }
 
 /**

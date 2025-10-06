@@ -357,12 +357,13 @@ async function uploadPayload(
   logger.info("Uploading results");
 
   // If in test mode we don't want to upload the results,
-  if (util.shouldSkipSarifUpload()) {
+  const skipReason = util.getSarifUploadSkipReason();
+  if (skipReason) {
     const payloadSaveFile = path.join(
       actionsUtil.getTemporaryDirectory(),
       "payload.json",
     );
-    logger.info(`SARIF upload disabled. Saving to ${payloadSaveFile}`);
+    logger.info(`${skipReason}. Saving to ${payloadSaveFile}`);
     logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
     fs.writeFileSync(payloadSaveFile, JSON.stringify(payload, null, 2));
     return "dummy-sarif-id";

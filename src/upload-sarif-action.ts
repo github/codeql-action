@@ -23,7 +23,7 @@ import {
   checkDiskUsage,
   getErrorMessage,
   initializeEnvironment,
-  getSarifUploadSkipReason,
+  shouldSkipSarifUpload,
   wrapError,
 } from "./util";
 
@@ -113,9 +113,8 @@ async function run() {
     core.setOutput("sarif-ids", JSON.stringify(uploadResults));
 
     // We don't upload results in test mode, so don't wait for processing
-    const skipReason = getSarifUploadSkipReason();
-    if (skipReason) {
-      core.debug(`${skipReason}. Waiting for processing is disabled.`);
+    if (shouldSkipSarifUpload()) {
+      core.debug("SARIF upload disabled. Waiting for processing is disabled.");
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
       if (codeScanningResult !== undefined) {
         await upload_lib.waitForProcessing(

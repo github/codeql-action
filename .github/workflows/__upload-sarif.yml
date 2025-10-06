@@ -48,6 +48,13 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-scanning,code-quality
     name: Test different uses of `upload-sarif`
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
@@ -74,7 +81,7 @@ jobs:
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           languages: csharp,java,javascript,python
-          analysis-kinds: code-quality
+          analysis-kinds: ${{ matrix.analysis-kinds }}
       - name: Build code
         run: ./build.sh
   # Generate some SARIF we can upload with the upload-sarif step
@@ -83,13 +90,19 @@ jobs:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
           upload: never
-      - uses: ./../action/upload-sarif
+
+      - name: |
+          Upload all SARIF files for `analysis-kinds: ${{ matrix.analysis-kinds }}`
+        uses: ./../action/upload-sarif
         id: upload-sarif
         with:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
-      - name: Check output from `upload-sarif` step
-        if: '!(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-quality)'
+      - name: Check output from `upload-sarif` step for `code-scanning`
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-scanning)
+        run: exit 1
+      - name: Check output from `upload-sarif` step for `code-quality`
+        if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-quality)
         run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

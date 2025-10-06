@@ -102,10 +102,10 @@ jobs:
           sarif_file: ${{ runner.temp }}/results
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:all-files/
-      - name: Check output from `upload-sarif` step for `code-scanning`
+      - name: Fail for missing output from `upload-sarif` step for `code-scanning`
         if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1
-      - name: Check output from `upload-sarif` step for `code-quality`
+      - name: Fail for missing output from `upload-sarif` step for `code-quality`
         if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-quality)
         run: exit 1
 
@@ -119,11 +119,11 @@ jobs:
           sarif_file: ${{ runner.temp }}/results/javascript.sarif
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-scanning/
-      - name: Check output from `upload-single-sarif-code-scanning` step
+      - name: Fail for missing output from `upload-single-sarif-code-scanning` step
         if: contains(matrix.analysis-kinds, 'code-scanning') &&
           !(fromJSON(steps.upload-single-sarif-code-scanning.outputs.sarif-ids).code-scanning)
         run: exit 1
-      - name: Upload single SARIF file for Code Scanning
+      - name: Upload single SARIF file for Code Quality
         uses: ./../action/upload-sarif
         id: upload-single-sarif-code-quality
         if: contains(matrix.analysis-kinds, 'code-quality')
@@ -133,7 +133,7 @@ jobs:
           sarif_file: ${{ runner.temp }}/results/javascript.quality.sarif
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-quality/
-      - name: Check output from `upload-single-sarif-code-quality` step
+      - name: Fail for missing output from `upload-single-sarif-code-quality` step
         if: contains(matrix.analysis-kinds, 'code-quality') &&
           !(fromJSON(steps.upload-single-sarif-code-quality.outputs.sarif-ids).code-quality)
         run: exit 1
@@ -151,7 +151,7 @@ jobs:
           sarif_file: ${{ runner.temp }}/results/javascript.sarif.json
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:non-sarif/
-      - name: Check output from `upload-single-non-sarif` step
+      - name: Fail for missing output from `upload-single-non-sarif` step
         if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-non-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1
     env:

@@ -764,7 +764,7 @@ export function isGoodVersion(versionSpec: string) {
 /**
  * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
  *
- * In test mode, we several uploads (SARIF results, status reports, DBs, ...).
+ * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
  */
 export function isInTestMode(): boolean {
   return process.env[EnvVar.TEST_MODE] === "true";

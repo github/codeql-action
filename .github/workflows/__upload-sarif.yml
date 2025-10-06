@@ -100,6 +100,8 @@ jobs:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
           sarif_file: ${{ runner.temp }}/results
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:all-files/
       - name: Check output from `upload-sarif` step for `code-scanning`
         if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1
@@ -115,6 +117,8 @@ jobs:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
           sarif_file: ${{ runner.temp }}/results/javascript.sarif
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-scanning/
       - name: Check output from `upload-single-sarif-code-scanning` step
         if: contains(matrix.analysis-kinds, 'code-scanning') &&
           !(fromJSON(steps.upload-single-sarif-code-scanning.outputs.sarif-ids).code-scanning)
@@ -127,6 +131,8 @@ jobs:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
           sarif_file: ${{ runner.temp }}/results/javascript.quality.sarif
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-quality/
       - name: Check output from `upload-single-sarif-code-quality` step
         if: contains(matrix.analysis-kinds, 'code-quality') &&
           !(fromJSON(steps.upload-single-sarif-code-quality.outputs.sarif-ids).code-quality)
@@ -143,6 +149,8 @@ jobs:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
           sarif_file: ${{ runner.temp }}/results/javascript.sarif.json
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:non-sarif/
       - name: Check output from `upload-single-non-sarif` step
         if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-non-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1

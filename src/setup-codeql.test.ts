@@ -259,6 +259,8 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
 
+  process.env["GITHUB_EVENT_NAME"] = "dynamic";
+
   const latestToolcacheVersion = "3.2.1";
   const latestVersionPath = "/path/to/latest";
   const testVersions = ["2.3.1", latestToolcacheVersion, "1.2.3"];
@@ -317,6 +319,8 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
 test("getCodeQLSource falls back to downloading the CLI if the toolcache doesn't have a CodeQL CLI when tools == toolcache", async (t) => {
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
+
+  process.env["GITHUB_EVENT_NAME"] = "dynamic";
 
   const testVersions = [];
   const findAllVersionsStub = sinon

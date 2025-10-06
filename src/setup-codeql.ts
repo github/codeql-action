@@ -848,7 +848,7 @@ async function getNightlyToolsUrl(logger: Logger) {
 export function getLatestToolcacheVersion(logger: Logger): string | undefined {
   const allVersions = toolcache
     .findAllVersions("CodeQL")
-    .sort((a, b) => (semver.lt(a, b) ? 1 : -1));
+    .sort((a, b) => semver.compare(b, a));
   logger.debug(
     `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
       allVersions,

@@ -771,16 +771,10 @@ export function isInTestMode(): boolean {
 }
 
 /**
- * Returns whether we specifically want to skip uploading SARIF files, and if so, why.
+ * Returns whether we specifically want to skip uploading SARIF files.
  */
-export function getSarifUploadSkipReason(): string | null {
-  if (isInTestMode()) {
-    return `SARIF upload is disabled via ${EnvVar.TEST_MODE}`;
-  }
-  if (process.env[EnvVar.SKIP_SARIF_UPLOAD] === "true") {
-    return `SARIF upload is disabled via ${EnvVar.SKIP_SARIF_UPLOAD}`;
-  }
-  return null;
+export function shouldSkipSarifUpload(): boolean {
+  return isInTestMode() || process.env[EnvVar.SKIP_SARIF_UPLOAD] === "true";
 }
 
 /**

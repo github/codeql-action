@@ -20,7 +20,7 @@ import {
   getErrorMessage,
   getRequiredEnvParam,
   parseMatrixInput,
-  getSarifUploadSkipReason,
+  shouldSkipSarifUpload,
   wrapError,
 } from "./util";
 import {
@@ -80,13 +80,10 @@ async function maybeUploadFailedSarif(
   if (
     !["always", "failure-only"].includes(
       actionsUtil.getUploadValue(shouldUpload),
-    )
+    ) ||
+    shouldSkipSarifUpload()
   ) {
     return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
-  }
-  const skipReason = getSarifUploadSkipReason();
-  if (skipReason) {
-    return { upload_failed_run_skipped_because: skipReason };
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);

@@ -362,7 +362,9 @@ async function uploadPayload(
       actionsUtil.getTemporaryDirectory(),
       "payload.json",
     );
-    logger.info(`SARIF upload disabled. Saving to ${payloadSaveFile}`);
+    logger.info(
+      `SARIF upload disabled via environment variable. Saving to ${payloadSaveFile}`,
+    );
     logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
     fs.writeFileSync(payloadSaveFile, JSON.stringify(payload, null, 2));
     return "dummy-sarif-id";

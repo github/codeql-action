@@ -114,7 +114,9 @@ async function run() {
 
     // We don't upload results in test mode, so don't wait for processing
     if (shouldSkipSarifUpload()) {
-      core.debug("SARIF upload disabled. Waiting for processing is disabled.");
+      core.debug(
+        "SARIF upload disabled via environment variable. Waiting for processing is disabled.",
+      );
     } else if (actionsUtil.getRequiredInput("wait-for-processing") === "true") {
       if (codeScanningResult !== undefined) {
         await upload_lib.waitForProcessing(

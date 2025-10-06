@@ -131,7 +131,7 @@ export enum EnvVar {
 
   /**
    * Whether to skip uploading SARIF results to GitHub. Intended for testing purposes.
-   * This setting is implied but is more specific than `CODEQL_ACTION_TEST_MODE`.
+   * This setting is implied by but is more specific than `CODEQL_ACTION_TEST_MODE`.
    */
   SKIP_SARIF_UPLOAD = "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
 }

@@ -90,6 +90,7 @@ jobs:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
           upload: never
+          output: ${{ runner.temp }}/results
 
       - name: |
           Upload all SARIF files for `analysis-kinds: ${{ matrix.analysis-kinds }}`
@@ -98,11 +99,52 @@ jobs:
         with:
           ref: refs/heads/main
           sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results
       - name: Check output from `upload-sarif` step for `code-scanning`
         if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1
       - name: Check output from `upload-sarif` step for `code-quality`
         if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-quality)
+        run: exit 1
+
+      - name: Upload single SARIF file for Code Scanning
+        uses: ./../action/upload-sarif
+        id: upload-single-sarif-code-scanning
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results/javascript.sarif
+      - name: Check output from `upload-single-sarif-code-scanning` step
+        if: contains(matrix.analysis-kinds, 'code-scanning') &&
+          !(fromJSON(steps.upload-single-sarif-code-scanning.outputs.sarif-ids).code-scanning)
+        run: exit 1
+      - name: Upload single SARIF file for Code Scanning
+        uses: ./../action/upload-sarif
+        id: upload-single-sarif-code-quality
+        if: contains(matrix.analysis-kinds, 'code-quality')
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results/javascript.quality.sarif
+      - name: Check output from `upload-single-sarif-code-quality` step
+        if: contains(matrix.analysis-kinds, 'code-quality') &&
+          !(fromJSON(steps.upload-single-sarif-code-quality.outputs.sarif-ids).code-quality)
+        run: exit 1
+
+      - name: Change SARIF file extension
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        run: mv ${{ runner.temp }}/results/javascript.sarif ${{ runner.temp }}/results/javascript.sarif.json
+      - name: Upload single non-`.sarif` file
+        uses: ./../action/upload-sarif
+        id: upload-single-non-sarif
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results/javascript.sarif.json
+      - name: Check output from `upload-single-non-sarif` step
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-non-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

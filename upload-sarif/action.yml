@@ -41,6 +41,6 @@ outputs:
 
       { "code-scanning": "some-id", "code-quality": "some-other-id" }
 runs:
-  using: node20
+  using: node24
   main: '../lib/upload-sarif-action.js'
   post: '../lib/upload-sarif-action-post.js'

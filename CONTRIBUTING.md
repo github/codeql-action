@@ -13,7 +13,7 @@ Please note that this project is released with a [Contributor Code of Conduct][c
 
 ## Development and Testing
 
-Before you start, ensure that you have a recent version of node (16 or higher) installed, along with a recent version of npm (9.2 or higher). You can see which version of node is used by the action in `init/action.yml`.
+Before you start, ensure that you have a recent version of node (24 or higher) installed, along with a recent version of npm (9.2 or higher). You can see which version of node is used by the action in `init/action.yml`.
 
 ### Common tasks
 

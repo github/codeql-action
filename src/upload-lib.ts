@@ -362,7 +362,7 @@ async function uploadPayload(
       "payload.json",
     );
     logger.info(
-      `SARIF upload disabled via environment variable. Saving to ${payloadSaveFile}`,
+      `SARIF upload disabled by an environment variable. Saving to ${payloadSaveFile}`,
     );
     logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
     fs.writeFileSync(payloadSaveFile, JSON.stringify(payload, null, 2));

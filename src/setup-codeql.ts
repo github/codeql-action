@@ -7,7 +7,7 @@ import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isRunningLocalAction } from "./actions-util";
+import { isDynamicWorkflow, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import {
@@ -38,6 +38,7 @@ const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
+const CODEQL_TOOLCACHE_INPUT = "toolcache";
 
 function getCodeQLBundleExtension(
   compressionMethod: tar.CompressionMethod,
@@ -345,6 +346,44 @@ export async function getCodeQLSource(
       logger.warning(
         "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.",
       );
+    }
+  } else if (
+    toolsInput !== undefined &&
+    toolsInput === CODEQL_TOOLCACHE_INPUT
+  ) {
+    let latestToolcacheVersion: string | undefined;
+
+    // We only allow `toolsInput === "toolcache"` for `dynamic` events. In general, using `toolsInput === "toolcache"`
+    // can lead to alert wobble and so it shouldn't be used for an analysis where results are intended to be uploaded.
+    // We also allow this in test mode.
+    const allowToolcacheValue = isDynamicWorkflow() || util.isInTestMode();
+    if (allowToolcacheValue) {
+      // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
+      // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
+      // the linked version.
+      logger.info(
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: ${toolsInput}'.`,
+      );
+
+      latestToolcacheVersion = getLatestToolcacheVersion(logger);
+      if (latestToolcacheVersion) {
+        cliVersion = latestToolcacheVersion;
+      }
+    }
+
+    if (latestToolcacheVersion === undefined) {
+      if (allowToolcacheValue) {
+        logger.info(
+          `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
+        );
+      } else {
+        logger.warning(
+          `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
+        );
+      }
+
+      cliVersion = defaultCliVersion.cliVersion;
+      tagName = defaultCliVersion.tagName;
     }
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.
@@ -816,9 +855,38 @@ async function getNightlyToolsUrl(logger: Logger) {
   }
 }
 
+/**
+ * Gets the latest version of the CodeQL CLI that is available in the toolcache, or `undefined`
+ * if no CodeQL CLI is available in the toolcache.
+ *
+ * @param logger The logger to use.
+ * @returns The latest version of the CodeQL CLI that is available in the toolcache, or `undefined` if there is none.
+ */
+export function getLatestToolcacheVersion(logger: Logger): string | undefined {
+  const allVersions = toolcache
+    .findAllVersions("CodeQL")
+    .sort((a, b) => semver.compare(b, a));
+  logger.debug(
+    `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
+      allVersions,
+    )}.`,
+  );
+
+  if (allVersions.length > 0) {
+    const latestToolcacheVersion = allVersions[0];
+    logger.info(
+      `CLI version ${latestToolcacheVersion} is the latest version in the toolcache.`,
+    );
+    return latestToolcacheVersion;
+  }
+
+  return undefined;
+}
+
 function isReservedToolsValue(tools: string): boolean {
   return (
     CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||
-    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools)
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools) ||
+    tools === CODEQL_TOOLCACHE_INPUT
   );
 }

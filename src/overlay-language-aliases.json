@@ -1,0 +1,11 @@
+{
+  "c": "cpp",
+  "c++": "cpp",
+  "c-c++": "cpp",
+  "c-cpp": "cpp",
+  "c#": "csharp",
+  "java-kotlin": "java",
+  "kotlin": "java",
+  "javascript-typescript": "javascript",
+  "typescript": "javascript"
+}

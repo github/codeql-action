@@ -1053,7 +1053,7 @@ test("uploadSpecifiedFiles - multiple SARIF files", async (t) => {
   });
 });
 
-test("uploadSpecifiedFiles - category is fixed by upload target on quality sarif", async (t) => {
+test("uploadSpecifiedFiles - category is mapped when doing code quality", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const logger = getRunnerLogger(true);
     const features = createFeatures([]);
@@ -1261,7 +1261,7 @@ test("uploadSpecifiedFiles - skips upload when CODEQL_ACTION_TEST_MODE is set", 
       );
 
       // Verify payload was saved to file instead
-      const payloadFile = path.join(tmpDir, "payload.json");
+      const payloadFile = path.join(tmpDir, "payload-code-scanning.json");
       t.true(fs.existsSync(payloadFile));
 
       const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));

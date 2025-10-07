@@ -62,7 +62,8 @@ For compiled languages:
 
 The following versions of the CodeQL Action are currently supported:
 
-- v3 (latest)
+- v4 (latest)
+- v3
 
 ## Supported versions of the CodeQL Bundle on GitHub Enterprise Server
 

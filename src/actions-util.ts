@@ -247,9 +247,14 @@ export function isSelfHostedRunner() {
   return process.env.RUNNER_ENVIRONMENT === "self-hosted";
 }
 
+/** Determines whether the workflow trigger is `dynamic`. */
+export function isDynamicWorkflow(): boolean {
+  return getWorkflowEventName() === "dynamic";
+}
+
 /** Determines whether we are running in default setup. */
 export function isDefaultSetup(): boolean {
-  return getWorkflowEventName() === "dynamic";
+  return isDynamicWorkflow();
 }
 
 export function prettyPrintInvocation(cmd: string, args: string[]): string {

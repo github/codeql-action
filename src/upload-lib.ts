@@ -352,14 +352,14 @@ async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
-  target: analyses.SARIF_UPLOAD_ENDPOINT,
+  analysis: analyses.AnalysisConfig,
 ): Promise<string> {
   logger.info("Uploading results");
 
   if (util.shouldSkipSarifUpload()) {
     const payloadSaveFile = path.join(
       actionsUtil.getTemporaryDirectory(),
-      "payload.json",
+      `payload-${analysis.kind}.json`,
     );
     logger.info(
       `SARIF upload disabled by an environment variable. Saving to ${payloadSaveFile}`,
@@ -372,7 +372,7 @@ async function uploadPayload(
   const client = api.getApiClient();
 
   try {
-    const response = await client.request(target, {
+    const response = await client.request(analysis.target, {
       owner: repositoryNwo.owner,
       repo: repositoryNwo.repo,
       data: payload,
@@ -806,7 +806,7 @@ export async function uploadSpecifiedFiles(
     payload,
     getRepositoryNwo(),
     logger,
-    uploadTarget.target,
+    uploadTarget,
   );
 
   logger.endGroup();

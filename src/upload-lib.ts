@@ -356,7 +356,6 @@ async function uploadPayload(
 ): Promise<string> {
   logger.info("Uploading results");
 
-  // If in test mode we don't want to upload the results,
   if (util.shouldSkipSarifUpload()) {
     const payloadSaveFile = path.join(
       actionsUtil.getTemporaryDirectory(),

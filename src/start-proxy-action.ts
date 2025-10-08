@@ -8,6 +8,7 @@ import { pki } from "node-forge";
 import * as actionsUtil from "./actions-util";
 import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
 import { Config } from "./config-utils";
+import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
   Credential,
@@ -128,6 +129,7 @@ async function runWrapper() {
   actionsUtil.persistInputs();
 
   const logger = getActionsLogger();
+  let language: KnownLanguage | undefined;
 
   try {
     // Setup logging for the proxy
@@ -137,7 +139,7 @@ async function runWrapper() {
 
     // Get the configuration options
     const languageInput = actionsUtil.getOptionalInput("language");
-    const language = languageInput ? parseLanguage(languageInput) : undefined;
+    language = languageInput ? parseLanguage(languageInput) : undefined;
     const credentials = getCredentials(
       logger,
       actionsUtil.getOptionalInput("registry_secrets"),
@@ -171,7 +173,7 @@ async function runWrapper() {
     await sendSuccessStatusReport(
       startedAt,
       {
-        languages: language ? [language] : [],
+        languages: language && [language],
       },
       proxyConfig.all_credentials.map((c) => c.type),
       logger,
@@ -186,7 +188,9 @@ async function runWrapper() {
       ActionName.StartProxy,
       getActionsStatus(error),
       startedAt,
-      undefined,
+      {
+        languages: language && [language],
+      },
       await util.checkDiskUsage(logger),
       logger,
     );

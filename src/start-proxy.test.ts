@@ -109,7 +109,7 @@ test("getCredentials filters by language when specified", async (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(mixedCredentials),
-    "java",
+    KnownLanguage.java,
   );
   t.is(credentials.length, 1);
   t.is(credentials[0].type, "maven_repository");
@@ -120,7 +120,7 @@ test("getCredentials returns all for a language when specified", async (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(mixedCredentials),
-    "go",
+    KnownLanguage.go,
   );
   t.is(credentials.length, 2);
 

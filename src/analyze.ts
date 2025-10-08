@@ -6,7 +6,7 @@ import * as io from "@actions/io";
 import * as del from "del";
 import * as yaml from "js-yaml";
 
-import { getTemporaryDirectory, PullRequestBranches } from "./actions-util";
+import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 // (getApiClient import removed; no longer needed after diff refactor)
 import { setupCppAutobuild } from "./autobuild";
@@ -14,11 +14,7 @@ import { type CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { getJavaTempDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
-import {
-  DiffThunkRange,
-  writeDiffRangesJsonFile,
-  getPullRequestEditedDiffRanges,
-} from "./diff-informed-analysis-utils";
+import { DiffThunkRange, readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
@@ -284,17 +280,35 @@ async function finalizeDatabaseCreation(
  * the diff range information, or `undefined` if the feature is disabled.
  */
 export async function setupDiffInformedQueryRun(
-  branches: PullRequestBranches,
   logger: Logger,
 ): Promise<string | undefined> {
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {
+      // Only use precomputed diff ranges; never recompute here.
+      let diffRanges: DiffThunkRange[] | undefined;
+      try {
+        diffRanges = readDiffRangesJsonFile(logger);
+      } catch (e) {
+        logger.debug(
+          `Failed to read precomputed diff ranges: ${util.getErrorMessage(e)}`,
+        );
+        diffRanges = undefined;
+      }
+
+      if (diffRanges === undefined) {
+        logger.info(
+          "No precomputed diff ranges found; skipping diff-informed analysis stage.",
+        );
+        return undefined;
+      }
+
+      const fileCount = new Set(diffRanges.filter((r) => r.path).map((r) => r.path)).size;
       logger.info(
-        `Calculating diff ranges for ${branches.base}...${branches.head}`,
+        `Using precomputed diff ranges (${diffRanges.length} ranges across ${fileCount} files).`,
       );
-      const diffRanges = await getPullRequestEditedDiffRanges(branches, logger);
-      const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
+
+  const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
       if (packDir === undefined) {
         logger.warning(
           "Cannot create diff range extension pack for diff-informed queries; " +
@@ -392,9 +406,6 @@ extensions:
     `Wrote pr-diff-range extension pack to ${extensionFilePath}:\n${extensionContents}`,
   );
 
-  // Write the diff ranges to a JSON file, for action-side alert filtering by the
-  // upload-lib module.
-  writeDiffRangesJsonFile(logger, ranges);
 
   return diffRangeDir;
 }

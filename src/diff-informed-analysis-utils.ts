@@ -3,11 +3,25 @@ import * as path from "path";
 
 import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { GitHubVariant, satisfiesGHESVersion } from "./util";
+import { getRepositoryNwoFromEnv } from "./repository";
+import { getRequiredInput } from "./actions-util";
+
+/**
+ * This interface is an abbreviated version of the file diff object returned by
+ * the GitHub API. (Kept internal to this module.)
+ */
+interface FileDiff {
+  filename: string;
+  changes: number;
+  // A patch may be absent if the file is binary, if the file diff is too large,
+  // or if the file is unchanged.
+  patch?: string | undefined;
+}
 
 /**
  * Check if the action should perform diff-informed analysis.
@@ -93,3 +107,176 @@ export function readDiffRangesJsonFile(
   );
   return JSON.parse(jsonContents) as DiffThunkRange[];
 }
+
+/**
+ * Return the file line ranges that were added or modified in the pull request.
+ *
+ * @param branches The base and head branches of the pull request.
+ * @param logger
+ * @returns An array of objects, where each object contains the absolute path of a
+ * file, the start line and the end line (both 1-based and inclusive) of an
+ * added or modified range in that file. Returns `undefined` if the action was
+ * not triggered by a pull request or if there was an error (including API
+ * truncation conditions).
+ */
+export async function getPullRequestEditedDiffRanges(
+  branches: PullRequestBranches,
+  logger: Logger,
+): Promise<DiffThunkRange[] | undefined> {
+  const fileDiffs = await getFileDiffsWithBasehead(branches, logger);
+  if (fileDiffs === undefined) {
+    return undefined;
+  }
+  if (fileDiffs.length >= 300) {
+    // The "compare two commits" API returns a maximum of 300 changed files. If
+    // we see that many changed files, it is possible that there could be more,
+    // with the rest being truncated. In this case, we should not attempt to
+    // compute the diff ranges, as the result would be incomplete.
+    logger.warning(
+      `Cannot retrieve the full diff because there are too many ` +
+        `(${fileDiffs.length}) changed files in the pull request.`,
+    );
+    return undefined;
+  }
+  const results: DiffThunkRange[] = [];
+  for (const filediff of fileDiffs) {
+    const diffRanges = getDiffRanges(filediff, logger);
+    if (diffRanges === undefined) {
+      return undefined;
+    }
+    results.push(...diffRanges);
+  }
+  return results;
+}
+
+async function getFileDiffsWithBasehead(
+  branches: PullRequestBranches,
+  logger: Logger,
+): Promise<FileDiff[] | undefined> {
+  // Check CODE_SCANNING_REPOSITORY first. If it is empty or not set, fall back
+  // to GITHUB_REPOSITORY.
+  const repositoryNwo = getRepositoryNwoFromEnv(
+    "CODE_SCANNING_REPOSITORY",
+    "GITHUB_REPOSITORY",
+  );
+  const basehead = `${branches.base}...${branches.head}`;
+  try {
+    const response = await getApiClient().rest.repos.compareCommitsWithBasehead(
+      {
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
+        basehead,
+        per_page: 1,
+      },
+    );
+    logger.debug(
+      `Response from compareCommitsWithBasehead(${basehead}):` +
+        `\n${JSON.stringify(response, null, 2)}`,
+    );
+    return response.data.files;
+  } catch (error: any) {
+    if (error.status) {
+      logger.warning(`Error retrieving diff ${basehead}: ${error.message}`);
+      logger.debug(
+        `Error running compareCommitsWithBasehead(${basehead}):` +
+          `\nRequest: ${JSON.stringify(error.request, null, 2)}` +
+          `\nError Response: ${JSON.stringify(error.response, null, 2)}`,
+      );
+      return undefined;
+    } else {
+      throw error;
+    }
+  }
+}
+
+function getDiffRanges(
+  fileDiff: FileDiff,
+  logger: Logger,
+): DiffThunkRange[] | undefined {
+  // Diff-informed queries expect the file path to be absolute. CodeQL always
+  // uses forward slashes as the path separator, so on Windows we need to
+  // replace any backslashes with forward slashes.
+  const filename = path
+    .join(getRequiredInput("checkout_path"), fileDiff.filename)
+    .replaceAll(path.sep, "/");
+
+  if (fileDiff.patch === undefined) {
+    if (fileDiff.changes === 0) {
+      // There are situations where a changed file legitimately has no diff.
+      // For example, the file may be a binary file, or that the file may have
+      // been renamed with no changes to its contents. In these cases, the
+      // file would be reported as having 0 changes, and we can return an empty
+      // array to indicate no diff range in this file.
+      return [];
+    }
+    // If a file is reported to have nonzero changes but no patch, that may be
+    // due to the file diff being too large. In this case, we should fall back
+    // to a special diff range that covers the entire file.
+    return [
+      {
+        path: filename,
+        startLine: 0,
+        endLine: 0,
+      },
+    ];
+  }
+
+  // The 1-based file line number of the current line
+  let currentLine = 0;
+  // The 1-based file line number that starts the current range of added lines
+  let additionRangeStartLine: number | undefined = undefined;
+  const diffRanges: DiffThunkRange[] = [];
+
+  const diffLines = fileDiff.patch.split("\n");
+  // Adding a fake context line at the end ensures that the following loop will
+  // always terminate the last range of added lines.
+  diffLines.push(" ");
+
+  for (const diffLine of diffLines) {
+    if (diffLine.startsWith("-")) {
+      // Ignore deletions completely -- we do not even want to consider them when
+      // calculating consecutive ranges of added lines.
+      continue;
+    }
+    if (diffLine.startsWith("+")) {
+      if (additionRangeStartLine === undefined) {
+        additionRangeStartLine = currentLine;
+      }
+      currentLine++;
+      continue;
+    }
+    if (additionRangeStartLine !== undefined) {
+      // Any line that does not start with a "+" or "-" terminates the current
+      // range of added lines.
+      diffRanges.push({
+        path: filename,
+        startLine: additionRangeStartLine,
+        endLine: currentLine - 1,
+      });
+      additionRangeStartLine = undefined;
+    }
+    if (diffLine.startsWith("@@ ")) {
+      // A new hunk header line resets the current line number.
+      const match = diffLine.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      if (match === null) {
+        logger.warning(
+          `Cannot parse diff hunk header for ${fileDiff.filename}: ${diffLine}`,
+        );
+        return undefined;
+      }
+      currentLine = parseInt(match[1], 10);
+      continue;
+    }
+    if (diffLine.startsWith(" ")) {
+      // An unchanged context line advances the current line number.
+      currentLine++;
+      continue;
+    }
+  }
+  return diffRanges;
+}
+
+// Export internal helpers for unit testing only (kept stable for existing tests)
+export const exportedForTesting = {
+  getDiffRanges,
+};

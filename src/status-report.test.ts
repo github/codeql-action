@@ -92,6 +92,49 @@ test("createStatusReportBase", async (t) => {
   });
 });
 
+test("createStatusReportBase - empty configuration", async (t) => {
+  await withTmpDir(async (tmpDir: string) => {
+    setupEnvironmentAndStub(tmpDir);
+
+    const statusReport = await createStatusReportBase(
+      ActionName.StartProxy,
+      "success",
+      new Date("May 19, 2023 05:19:00"),
+      {},
+      { numAvailableBytes: 100, numTotalBytes: 500 },
+      getRunnerLogger(false),
+    );
+
+    if (t.truthy(statusReport)) {
+      t.is(statusReport.action_name, ActionName.StartProxy);
+      t.is(statusReport.status, "success");
+    }
+  });
+});
+
+test("createStatusReportBase - partial configuration", async (t) => {
+  await withTmpDir(async (tmpDir: string) => {
+    setupEnvironmentAndStub(tmpDir);
+
+    const statusReport = await createStatusReportBase(
+      ActionName.StartProxy,
+      "success",
+      new Date("May 19, 2023 05:19:00"),
+      {
+        languages: ["go"],
+      },
+      { numAvailableBytes: 100, numTotalBytes: 500 },
+      getRunnerLogger(false),
+    );
+
+    if (t.truthy(statusReport)) {
+      t.is(statusReport.action_name, ActionName.StartProxy);
+      t.is(statusReport.status, "success");
+      t.is(statusReport.languages, "go");
+    }
+  });
+});
+
 test("createStatusReportBase_firstParty", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupEnvironmentAndStub(tmpDir);

@@ -12,6 +12,7 @@ import {
   Credential,
   getCredentials,
   getDownloadUrl,
+  parseLanguage,
   UPDATEJOB_PROXY,
 } from "./start-proxy";
 import {
@@ -133,11 +134,13 @@ async function runWrapper() {
     core.saveState("proxy-log-file", proxyLogFilePath);
 
     // Get the configuration options
+    const languageInput = actionsUtil.getOptionalInput("language");
+    const language = languageInput ? parseLanguage(languageInput) : undefined;
     const credentials = getCredentials(
       logger,
       actionsUtil.getOptionalInput("registry_secrets"),
       actionsUtil.getOptionalInput("registries_credentials"),
-      actionsUtil.getOptionalInput("language"),
+      language,
     );
 
     if (credentials.length === 0) {

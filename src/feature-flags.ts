@@ -277,7 +277,7 @@ export const featureConfig: Record<
     minimumVersion: undefined,
   },
   [Feature.JavaMinimizeDependencyJars]: {
-    defaultValue: false,
+    defaultValue: true,
     envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
     minimumVersion: "2.23.0",
   },

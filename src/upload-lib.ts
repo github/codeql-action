@@ -356,18 +356,17 @@ async function uploadPayload(
 ): Promise<string> {
   logger.info("Uploading results");
 
-  // If in test mode we don't want to upload the results
-  if (util.isInTestMode()) {
+  if (util.shouldSkipSarifUpload()) {
     const payloadSaveFile = path.join(
       actionsUtil.getTemporaryDirectory(),
       `payload-${analysis.kind}.json`,
     );
     logger.info(
-      `In test mode. Results are not uploaded. Saving to ${payloadSaveFile}`,
+      `SARIF upload disabled by an environment variable. Saving to ${payloadSaveFile}`,
     );
     logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
     fs.writeFileSync(payloadSaveFile, JSON.stringify(payload, null, 2));
-    return "test-mode-sarif-id";
+    return "dummy-sarif-id";
   }
 
   const client = api.getApiClient();

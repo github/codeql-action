@@ -7,6 +7,7 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
+import { Config } from "./config-utils";
 import { getActionsLogger, Logger } from "./logging";
 import {
   Credential,
@@ -99,6 +100,7 @@ interface StartProxyStatus extends StatusReportBase {
 
 async function sendSuccessStatusReport(
   startedAt: Date,
+  config: Partial<Config>,
   registry_types: string[],
   logger: Logger,
 ) {
@@ -106,7 +108,7 @@ async function sendSuccessStatusReport(
     ActionName.StartProxy,
     "success",
     startedAt,
-    undefined,
+    config,
     await util.checkDiskUsage(logger),
     logger,
   );
@@ -168,6 +170,9 @@ async function runWrapper() {
     // Report success if we have reached this point.
     await sendSuccessStatusReport(
       startedAt,
+      {
+        languages: language ? [language] : [],
+      },
       proxyConfig.all_credentials.map((c) => c.type),
       logger,
     );

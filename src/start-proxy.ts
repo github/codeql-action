@@ -79,9 +79,8 @@ export function getCredentials(
   logger: Logger,
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
-  languageString: string | undefined,
+  language: KnownLanguage | undefined,
 ): Credential[] {
-  const language = languageString ? parseLanguage(languageString) : undefined;
   const registryTypeForLanguage = language
     ? LANGUAGE_TO_REGISTRY_TYPE[language]
     : undefined;

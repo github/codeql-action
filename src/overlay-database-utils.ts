@@ -9,6 +9,7 @@ import { getAutomationID } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
+import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
   isInTestMode,
@@ -121,8 +122,43 @@ export async function writeOverlayChangesFile(
   const baseFileOids = await readBaseDatabaseOidsFile(config, logger);
   const overlayFileOids = await getFileOidsUnderPath(sourceRoot);
   const changedFiles = computeChangedFiles(baseFileOids, overlayFileOids);
+
+  // Augment changed files with any files that appear in the precomputed PR diff ranges.
+  // This ensures overlay analysis always includes every file with at least one edited range.
+  const originalCount = changedFiles.length;
+  let extraAddedCount = 0;
+  try {
+    const diffChangedFiles = getFilesFromDiff(logger);
+    if (diffChangedFiles.size > 0) {
+      const existing = new Set(changedFiles);
+      for (const f of diffChangedFiles) {
+        if (!existing.has(f)) {
+          // Only include if file still exists (added/modified) — skip deleted files that might appear in diff.
+          if (overlayFileOids[f] !== undefined || fs.existsSync(path.join(sourceRoot, f))) {
+            existing.add(f);
+            changedFiles.push(f);
+            extraAddedCount++;
+          }
+        }
+      }
+      if (extraAddedCount > 0) {
+        logger.debug(
+          `Added ${extraAddedCount} file(s) from PR diff ranges into overlay: ${changedFiles.slice(-extraAddedCount).join(", ")}`,
+        );
+      } else {
+        logger.debug(
+          "All diff range files were already present in the diff from the base database.",
+        );
+      }
+    }
+  } catch (e) {
+    logger.debug(
+      `Failed while attempting to add diff range files in overlay: ${(e as any).message || e}`,
+    );
+  }
+
   logger.info(
-    `Found ${changedFiles.length} changed file(s) under ${sourceRoot}.`,
+    `Found ${originalCount} natural changed file(s); added from diff ${extraAddedCount}; total ${changedFiles.length} under ${sourceRoot}.`,
   );
 
   const changedFilesJson = JSON.stringify({ changes: changedFiles });
@@ -153,6 +189,22 @@ function computeChangedFiles(
     }
   }
   return changes;
+}
+
+/**
+ * Derive the set of repository-relative file paths that have at least one edited range
+ * in the precomputed diff ranges JSON. Returns an empty set if no JSON exists.
+ */
+function getFilesFromDiff(logger: Logger): Set<string> {
+  const forced = new Set<string>();
+  const diffRanges = readDiffRangesJsonFile(logger);
+  if (!diffRanges || diffRanges.length === 0) {
+    return forced;
+  }
+  for (const r of diffRanges) {
+    forced.add(r.path);
+  }
+  return forced;
 }
 
 // Constants for database caching

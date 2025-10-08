@@ -1,10 +1,14 @@
+// Node.js built-in modules
 import * as fs from "fs";
 import * as path from "path";
 import zlib from "zlib";
 
+// External dependencies
+import * as github from "@actions/github";
 import test from "ava";
 import * as sinon from "sinon";
 
+// Internal modules
 import * as actionsUtil from "./actions-util";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
@@ -917,6 +921,21 @@ function stubUploadDependencies() {
   return { addFingerprintsStub };
 }
 
+// Helper function to stub the API client for upload tests
+function stubApiClientForUpload(sarifId: string) {
+  const mockApiClient = github.getOctokit("123");
+  const requestStub = sinon
+    .stub(mockApiClient, "request")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    .resolves({
+      status: 200,
+      data: { id: sarifId },
+    } as any);
+  sinon.stub(api, "getApiClient").value(() => mockApiClient);
+
+  return { requestStub };
+}
+
 test("uploadSpecifiedFiles - single SARIF file", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const logger = getRunnerLogger(true);
@@ -999,14 +1018,7 @@ test("uploadSpecifiedFiles - multiple SARIF files", async (t) => {
     } as unknown as configUtils.Config);
 
     // Mock the API client to capture the upload request
-    const mockApiClient = {
-      request: sinon.stub().resolves({
-        status: 200,
-        data: { id: "combined-sarif-id-456" },
-      }),
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    sinon.stub(api, "getApiClient").returns(mockApiClient as any);
+    const { requestStub } = stubApiClientForUpload("combined-sarif-id-456");
 
     try {
       const result = await uploadLib.uploadSpecifiedFiles(
@@ -1023,11 +1035,11 @@ test("uploadSpecifiedFiles - multiple SARIF files", async (t) => {
       t.truthy(result.statusReport.raw_upload_size_bytes);
 
       // Verify the API was called
-      t.true(mockApiClient.request.calledOnce);
+      t.true(requestStub.calledOnce);
 
       // Verify the uploaded payload contains the combined SARIF from our mock
-      const uploadCall = mockApiClient.request.getCall(0);
-      const uploadPayload = uploadCall.args[1];
+      const uploadCall = requestStub.getCall(0);
+      const uploadPayload = uploadCall.args[1] as any;
 
       // Decode and verify the uploaded SARIF matches what our mock produced
       const uploadedSarifBase64 = uploadPayload.data.sarif as string;
@@ -1072,16 +1084,7 @@ test("uploadSpecifiedFiles - category is mapped when doing code quality", async 
     stubUploadDependencies();
 
     // Mock the API client to capture the upload request
-    const mockApiClient = {
-      request: sinon.stub().resolves({
-        status: 200,
-        data: { id: "quality-sarif-id-789" },
-      }),
-    };
-    sinon.stub(api, "getApiClient").returns(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      mockApiClient as any,
-    );
+    const { requestStub } = stubApiClientForUpload("quality-sarif-id-789");
 
     try {
       const result = await uploadLib.uploadSpecifiedFiles(
@@ -1095,11 +1098,11 @@ test("uploadSpecifiedFiles - category is mapped when doing code quality", async 
 
       // Verify actual upload happened
       t.is(result.sarifID, "quality-sarif-id-789");
-      t.true(mockApiClient.request.calledOnce);
+      t.true(requestStub.calledOnce);
 
       // Verify the category was fixed from /language:c# to /language:csharp
-      const uploadCall = mockApiClient.request.getCall(0);
-      const uploadPayload = uploadCall.args[1];
+      const uploadCall = requestStub.getCall(0);
+      const uploadPayload = uploadCall.args[1] as any;
 
       // Decode and verify the uploaded SARIF contains the fixed category
       const uploadedSarifBase64 = uploadPayload.data.sarif as string;
@@ -1174,16 +1177,7 @@ test("uploadSpecifiedFiles - performs actual upload when skip flags are not set"
     stubUploadDependencies();
 
     // Mock the API client to capture the upload request
-    const mockApiClient = {
-      request: sinon.stub().resolves({
-        status: 200,
-        data: { id: "real-sarif-id-123" },
-      }),
-    };
-    sinon.stub(api, "getApiClient").returns(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      mockApiClient as any,
-    );
+    const { requestStub } = stubApiClientForUpload("real-sarif-id-123");
 
     try {
       const result = await uploadLib.uploadSpecifiedFiles(
@@ -1197,14 +1191,14 @@ test("uploadSpecifiedFiles - performs actual upload when skip flags are not set"
 
       // Verify actual upload happened
       t.is(result.sarifID, "real-sarif-id-123");
-      t.true(mockApiClient.request.calledOnce);
+      t.true(requestStub.calledOnce);
 
       // Verify the upload target was correct
-      const uploadCall = mockApiClient.request.getCall(0);
+      const uploadCall = requestStub.getCall(0);
       t.is(uploadCall.args[0], CodeScanning.target);
 
       // Verify payload structure
-      const uploadPayload = uploadCall.args[1];
+      const uploadPayload = uploadCall.args[1] as any;
       t.truthy(uploadPayload.data.sarif);
       t.is(uploadPayload.data.commit_oid, "abc123");
       t.is(uploadPayload.data.ref, "refs/heads/main");
@@ -1232,16 +1226,7 @@ test("uploadSpecifiedFiles - skips upload when CODEQL_ACTION_TEST_MODE is set", 
     stubUploadDependencies();
 
     // Mock the API client - this should NOT be called
-    const mockApiClient = {
-      request: sinon.stub().resolves({
-        status: 200,
-        data: { id: "should-not-be-used" },
-      }),
-    };
-    sinon.stub(api, "getApiClient").returns(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      mockApiClient as any,
-    );
+    const { requestStub } = stubApiClientForUpload("should-not-be-used");
 
     try {
       const result = await uploadLib.uploadSpecifiedFiles(
@@ -1256,7 +1241,7 @@ test("uploadSpecifiedFiles - skips upload when CODEQL_ACTION_TEST_MODE is set", 
       // Verify upload was skipped
       t.is(result.sarifID, "dummy-sarif-id");
       t.false(
-        mockApiClient.request.called,
+        requestStub.called,
         "API request should not be called when in test mode",
       );
 

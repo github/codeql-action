@@ -73,6 +73,7 @@ export async function runDatabaseInitCluster(
   sourceRoot: string,
   processName: string | undefined,
   qlconfigFile: string | undefined,
+  prDiffChangedFiles: Set<string> | undefined,
   logger: Logger,
 ): Promise<void> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
@@ -84,6 +85,7 @@ export async function runDatabaseInitCluster(
         sourceRoot,
         processName,
         qlconfigFile,
+        prDiffChangedFiles,
         logger,
       ),
   );

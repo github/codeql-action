@@ -9,7 +9,6 @@ import { getAutomationID } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
-import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
   isInTestMode,
@@ -117,6 +116,7 @@ function getBaseDatabaseOidsFilePath(config: Config): string {
 export async function writeOverlayChangesFile(
   config: Config,
   sourceRoot: string,
+  prDiffChangedFiles: Set<string> | undefined,
   logger: Logger,
 ): Promise<string> {
   const baseFileOids = await readBaseDatabaseOidsFile(config, logger);
@@ -128,10 +128,9 @@ export async function writeOverlayChangesFile(
   const originalCount = changedFiles.length;
   let extraAddedCount = 0;
   try {
-    const diffChangedFiles = getFilesFromDiff(logger);
-    if (diffChangedFiles.size > 0) {
+    if (prDiffChangedFiles && prDiffChangedFiles.size > 0) {
       const existing = new Set(changedFiles);
-      for (const f of diffChangedFiles) {
+      for (const f of prDiffChangedFiles) {
         if (!existing.has(f)) {
           // Only include if file still exists (added/modified) — skip deleted files that might appear in diff.
           if (overlayFileOids[f] !== undefined || fs.existsSync(path.join(sourceRoot, f))) {
@@ -189,22 +188,6 @@ function computeChangedFiles(
     }
   }
   return changes;
-}
-
-/**
- * Derive the set of repository-relative file paths that have at least one edited range
- * in the precomputed diff ranges JSON. Returns an empty set if no JSON exists.
- */
-function getFilesFromDiff(logger: Logger): Set<string> {
-  const forced = new Set<string>();
-  const diffRanges = readDiffRangesJsonFile(logger);
-  if (!diffRanges || diffRanges.length === 0) {
-    return forced;
-  }
-  for (const r of diffRanges) {
-    forced.add(r.path);
-  }
-  return forced;
 }
 
 // Constants for database caching

@@ -69,6 +69,7 @@ test("writeOverlayChangesFile generates correct changes file", async (t) => {
     const changesFilePath = await writeOverlayChangesFile(
       config,
       sourceRoot,
+      new Set([]), // The PR didn't touch any files
       logger,
     );
     getFileOidsStubForOverlay.restore();

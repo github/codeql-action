@@ -96,6 +96,7 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
+    prDiffChangedFiles: Set<string> | undefined,
     logger: Logger,
   ): Promise<void>;
   /**
@@ -560,6 +561,7 @@ export async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
+      prDiffChangedFiles: Set<string> | undefined,
       logger: Logger,
     ) {
       const extraArgs = config.languages.map(
@@ -602,6 +604,7 @@ export async function getCodeQLForCmd(
         const overlayChangesFile = await writeOverlayChangesFile(
           config,
           sourceRoot,
+          prDiffChangedFiles,
           logger,
         );
         extraArgs.push(`--overlay-changes=${overlayChangesFile}`);

@@ -180,6 +180,7 @@ async function run() {
   persistInputs();
 
   let config: configUtils.Config | undefined;
+  let prDiffChangedFiles: Set<string> | undefined;
   let codeql: CodeQL;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
@@ -342,7 +343,7 @@ async function run() {
 
     await checkInstallPython311(config.languages, codeql);
 
-  await computeAndPersistDiffRangesEarly(codeql, features, logger);
+    prDiffChangedFiles = await computeAndPersistDiffRanges(codeql, features, logger);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
@@ -669,6 +670,7 @@ async function run() {
       sourceRoot,
       "Runner.Worker.exe",
       qlconfigFile,
+      prDiffChangedFiles,
       logger,
     );
 
@@ -698,6 +700,7 @@ async function run() {
         sourceRoot,
         "Runner.Worker.exe",
         qlconfigFile,
+        prDiffChangedFiles,
         logger,
       );
     }
@@ -760,35 +763,37 @@ async function run() {
  * is enabled (feature flag + PR context). This writes the standard pr-diff-range.json
  * file for later reuse in the analyze step. Failures are logged but non-fatal.
  */
-async function computeAndPersistDiffRangesEarly(
+async function computeAndPersistDiffRanges(
   codeql: CodeQL,
   features: Features,
   logger: Logger,
-): Promise<void> {
+): Promise<Set<string> | undefined> {
   try {
-    await withGroupAsync("Compute PR diff ranges", async () => {
+    return await withGroupAsync("Compute PR diff ranges", async () => {
       const branches = await getDiffInformedAnalysisBranches(
         codeql,
         features,
         logger,
       );
       if (!branches) {
-        return;
+        return undefined;
       }
       const ranges = await getPullRequestEditedDiffRanges(branches, logger);
       if (ranges === undefined) {
-        return;
+        return undefined;
       }
       writeDiffRangesJsonFile(logger, ranges);
-      const distinctFiles = new Set(ranges.map((r) => r.path)).size;
+      const distinctFiles = new Set(ranges.map((r) => r.path));
       logger.info(
-        `Persisted ${ranges.length} diff range(s) across ${distinctFiles} file(s) for reuse during analyze step.`,
+        `Persisted ${ranges.length} diff range(s) across ${distinctFiles.size} file(s) for reuse during analyze step.`,
       );
+      return distinctFiles;
     });
   } catch (e) {
     logger.warning(
       `Failed to compute and persist PR diff ranges early: ${getErrorMessage(e)}`,
     );
+    return undefined;
   }
 }
 

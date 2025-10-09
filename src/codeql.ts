@@ -992,14 +992,14 @@ export async function getCodeQLForCmd(
       return JSON.parse(extractorPath) as string;
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
-      const codeqlArgs = [
+      const xcodeqlArgs = [
         "resolve",
         "queries",
         "--format=startingpacks",
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
         ...queries,
       ];
-      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+      const output = await runCli(cmd, xcodeqlArgs, { noStreamStdout: true });
 
       try {
         return JSON.parse(output) as string[];

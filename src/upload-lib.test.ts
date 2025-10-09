@@ -878,15 +878,14 @@ const uploadPayloadMacro = test.macro({
     t: ExecutionContext<unknown>,
     options: {
       analysis: analyses.AnalysisConfig;
-      envVars?: Record<string, string>;
       body: (
         t: ExecutionContext<unknown>,
         upload: () => Promise<string>,
-        tmpDir: string,
         requestStub: sinon.SinonStub,
         mockData: {
           payload: { sarif: string; commit_sha: string };
-          repositoryNwo: { owner: string; repo: string };
+          owner: string;
+          repo: string;
           response: {
             status: number;
             data: { id: string };
@@ -897,50 +896,47 @@ const uploadPayloadMacro = test.macro({
       ) => void | Promise<void>;
     },
   ) => {
-    await withTmpDir(async (tmpDir) => {
-      process.env.RUNNER_TEMP = tmpDir;
-      for (const [key, value] of Object.entries(options.envVars ?? {})) {
-        process.env[key] = value;
-      }
+    const mockData = {
+      payload: { sarif: "base64data", commit_sha: "abc123" },
+      owner: "test-owner",
+      repo: "test-repo",
+      response: {
+        status: 200,
+        data: { id: "uploaded-sarif-id" },
+        headers: {},
+        url: options.analysis.target,
+      },
+    };
 
-      const mockData = {
-        payload: { sarif: "base64data", commit_sha: "abc123" },
-        repositoryNwo: { owner: "test-owner", repo: "test-repo" },
-        response: {
-          status: 200,
-          data: { id: "uploaded-sarif-id" },
-          headers: {},
-          url: options.analysis.target,
+    const client = github.getOctokit("123");
+    sinon.stub(api, "getApiClient").value(() => client);
+    const requestStub = sinon.stub(client, "request");
+
+    const upload = async () =>
+      uploadLib.uploadPayload(
+        mockData.payload,
+        {
+          owner: mockData.owner,
+          repo: mockData.repo,
         },
-      };
+        getRunnerLogger(true),
+        options.analysis,
+      );
 
-      const client = github.getOctokit("123");
-      sinon.stub(api, "getApiClient").value(() => client);
-      const requestStub = sinon.stub(client, "request");
-
-      const upload = async () =>
-        uploadLib.uploadPayload(
-          mockData.payload,
-          mockData.repositoryNwo,
-          getRunnerLogger(true),
-          options.analysis,
-        );
-
-      await options.body(t, upload, tmpDir, requestStub, mockData);
-    });
+    await options.body(t, upload, requestStub, mockData);
   },
   title: (providedTitle = "", options: { analysis: analyses.AnalysisConfig }) =>
     `uploadPayload - ${options.analysis.name} - ${providedTitle}`,
 });
 
 for (const analysis of [CodeScanning, CodeQuality]) {
-  test("successful upload", uploadPayloadMacro, {
+  test("uploads successfully", uploadPayloadMacro, {
     analysis,
-    body: async (t, upload, _tmpDir, requestStub, mockData) => {
+    body: async (t, upload, requestStub, mockData) => {
       requestStub
         .withArgs(analysis.target, {
-          owner: mockData.repositoryNwo.owner,
-          repo: mockData.repositoryNwo.repo,
+          owner: mockData.owner,
+          repo: mockData.repo,
           data: mockData.payload,
         })
         .onFirstCall()
@@ -957,26 +953,29 @@ for (const analysis of [CodeScanning, CodeQuality]) {
   ]) {
     test(`skips upload when ${envVar} is set`, uploadPayloadMacro, {
       analysis,
-      envVars: {
-        [envVar]: "true",
-      },
-      body: async (t, upload, tmpDir, requestStub, mockData) => {
-        const result = await upload();
-        t.is(result, "dummy-sarif-id");
-        t.false(requestStub.called);
+      body: async (t, upload, requestStub, mockData) =>
+        withTmpDir(async (tmpDir) => {
+          process.env.RUNNER_TEMP = tmpDir;
+          process.env[envVar] = "true";
+          const result = await upload();
+          t.is(result, "dummy-sarif-id");
+          t.false(requestStub.called);
 
-        const payloadFile = path.join(tmpDir, `payload-${analysis.kind}.json`);
-        t.true(fs.existsSync(payloadFile));
+          const payloadFile = path.join(
+            tmpDir,
+            `payload-${analysis.kind}.json`,
+          );
+          t.true(fs.existsSync(payloadFile));
 
-        const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
-        t.deepEqual(savedPayload, mockData.payload);
-      },
+          const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
+          t.deepEqual(savedPayload, mockData.payload);
+        }),
     });
   }
 
   test("handles error", uploadPayloadMacro, {
     analysis,
-    body: async (t, upload, _tmpDir, requestStub, _mockData) => {
+    body: async (t, upload, requestStub) => {
       const wrapApiConfigurationErrorStub = sinon.stub(
         api,
         "wrapApiConfigurationError",

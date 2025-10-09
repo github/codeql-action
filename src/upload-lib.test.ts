@@ -1,30 +1,18 @@
-// Node.js built-in modules
 import * as fs from "fs";
 import * as path from "path";
-import zlib from "zlib";
 
-// External dependencies
 import * as github from "@actions/github";
-import test from "ava";
+import { HTTPError } from "@actions/tool-cache";
+import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
-// Internal modules
-import * as actionsUtil from "./actions-util";
+import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
-import * as codeqlModule from "./codeql";
-import * as configUtils from "./config-utils";
-import * as fingerprints from "./fingerprints";
-import * as gitUtils from "./git-utils";
 import { getRunnerLogger, Logger } from "./logging";
-import { createFeatures, setupTests } from "./testing-utils";
+import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
-import {
-  GitHubVariant,
-  initializeEnvironment,
-  SarifFile,
-  withTmpDir,
-} from "./util";
+import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -868,414 +856,140 @@ test("shouldConsiderInvalidRequest returns correct recognises processing errors"
   t.false(uploadLib.shouldConsiderInvalidRequest(error3));
 });
 
-// Helper function to set up common environment variables for upload tests
-function setupUploadEnvironment(
-  tmpDir: string,
-  extraVars?: Record<string, string>,
-) {
-  const originalEnv: Record<string, string | undefined> = {};
-
-  // Define all environment variables we might set
-  const envVars = {
-    RUNNER_TEMP: tmpDir,
-    GITHUB_EVENT_NAME: "push",
-    GITHUB_WORKFLOW: "test-workflow",
-    GITHUB_REPOSITORY: "owner/repo",
-    GITHUB_RUN_ID: "123",
-    GITHUB_RUN_ATTEMPT: "1",
-    ...extraVars,
-  };
-
-  // Save original values and set new ones
-  for (const [key, value] of Object.entries(envVars)) {
-    originalEnv[key] = process.env[key];
-    process.env[key] = value;
-  }
-
-  // Return a cleanup function that restores the original environment
-  return () => {
-    for (const [key, originalValue] of Object.entries(originalEnv)) {
-      if (originalValue === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = originalValue;
-      }
-    }
-  };
-}
-
-// Helper function to stub common external dependencies for upload tests
-function stubUploadDependencies() {
-  sinon.stub(api, "getGitHubVersion").resolves({
-    type: GitHubVariant.DOTCOM,
-  });
-  sinon.stub(api, "getAnalysisKey").resolves("test-key");
-  sinon.stub(actionsUtil, "getRequiredInput").returns("{}");
-  const addFingerprintsStub = sinon
-    .stub(fingerprints, "addFingerprints")
-    .resolvesArg(0);
-  sinon.stub(gitUtils, "getCommitOid").resolves("abc123");
-  sinon.stub(gitUtils, "getRef").resolves("refs/heads/main");
-  sinon.stub(gitUtils, "determineBaseBranchHeadCommitOid").resolves(undefined);
-
-  return { addFingerprintsStub };
-}
-
-// Helper function to stub the API client for upload tests
-function stubApiClientForUpload(sarifId: string) {
-  const mockApiClient = github.getOctokit("123");
-  const requestStub = sinon
-    .stub(mockApiClient, "request")
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    .resolves({
-      status: 200,
-      data: { id: sarifId },
-    } as any);
-  sinon.stub(api, "getApiClient").value(() => mockApiClient);
-
-  return { requestStub };
-}
-
-test("uploadSpecifiedFiles - single SARIF file", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const logger = getRunnerLogger(true);
-    const features = createFeatures([]);
-    const sarifPath = path.join(tmpDir, "test.sarif");
-    const checkoutPath = tmpDir;
-
-    // Create a valid SARIF file
-    const mockSarif = createMockSarif("test-id", "TestTool");
-    fs.writeFileSync(sarifPath, JSON.stringify(mockSarif));
-
-    const cleanupEnv = setupUploadEnvironment(tmpDir, {
-      CODEQL_ACTION_SKIP_SARIF_UPLOAD: "true",
-    });
-    const { addFingerprintsStub } = stubUploadDependencies();
-
-    try {
-      const result = await uploadLib.uploadSpecifiedFiles(
-        [sarifPath],
-        checkoutPath,
-        "test-category",
-        features,
-        logger,
-        CodeScanning,
-      );
-
-      // Verify the result
-      t.is(result.sarifID, "dummy-sarif-id");
-      t.truthy(result.statusReport.raw_upload_size_bytes);
-      t.truthy(result.statusReport.zipped_upload_size_bytes);
-      t.is(result.statusReport.num_results_in_sarif, 0);
-
-      // Verify external dependencies were called
-      t.true(addFingerprintsStub.calledOnce);
-    } finally {
-      sinon.restore();
-      cleanupEnv();
-    }
-  });
-});
-
-test("uploadSpecifiedFiles - multiple SARIF files", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const logger = getRunnerLogger(true);
-    const features = createFeatures([]);
-    const sarifPath1 = path.join(tmpDir, "test1.sarif");
-    const sarifPath2 = path.join(tmpDir, "test2.sarif");
-    const checkoutPath = tmpDir;
-
-    // Create valid SARIF files with CodeQL as the tool name to trigger CLI merge
-    const mockSarif1 = createMockSarif("test-id-1", "CodeQL");
-    const mockSarif2 = createMockSarif("test-id-2", "CodeQL");
-    fs.writeFileSync(sarifPath1, JSON.stringify(mockSarif1));
-    fs.writeFileSync(sarifPath2, JSON.stringify(mockSarif2));
-
-    // Set up environment WITHOUT skip flags to perform actual upload
-    const cleanupEnv = setupUploadEnvironment(tmpDir);
-    stubUploadDependencies();
-
-    // Create a mock combined SARIF that will be "returned" by mergeResults
-    const mockCombinedSarif = createMockSarif("combined-id", "CombinedTool");
-
-    // Mock CodeQL CLI with a spy to verify inputs
-    const mergeResultsStub = sinon
-      .stub()
-      .callsFake(async (_inputs: string[], output: string) => {
-        // Write the mock combined SARIF to the output file
-        fs.writeFileSync(output, JSON.stringify(mockCombinedSarif));
-      });
-
-    sinon.stub(codeqlModule, "getCodeQL").resolves({
-      supportsFeature: async () => true,
-      mergeResults: mergeResultsStub,
-    } as unknown as codeqlModule.CodeQL);
-
-    // Mock getConfig to return a config with our mocked CodeQL
-    sinon.stub(configUtils, "getConfig").resolves({
-      codeQLCmd: "/fake/codeql",
-      tempDir: tmpDir,
-    } as unknown as configUtils.Config);
-
-    // Mock the API client to capture the upload request
-    const { requestStub } = stubApiClientForUpload("combined-sarif-id-456");
-
-    try {
-      const result = await uploadLib.uploadSpecifiedFiles(
-        [sarifPath1, sarifPath2],
-        checkoutPath,
-        "test-category",
-        features,
-        logger,
-        CodeScanning,
-      );
-
-      // Verify the result uses the uploaded ID
-      t.is(result.sarifID, "combined-sarif-id-456");
-      t.truthy(result.statusReport.raw_upload_size_bytes);
-
-      // Verify the API was called
-      t.true(requestStub.calledOnce);
-
-      // Verify the uploaded payload contains the combined SARIF from our mock
-      const uploadCall = requestStub.getCall(0);
-      const uploadPayload = uploadCall.args[1] as any;
-
-      // Decode and verify the uploaded SARIF matches what our mock produced
-      const uploadedSarifBase64 = uploadPayload.data.sarif as string;
-      const uploadedSarifGzipped = Buffer.from(uploadedSarifBase64, "base64");
-      const uploadedSarifJson = zlib
-        .gunzipSync(uploadedSarifGzipped)
-        .toString();
-      const uploadedSarif = JSON.parse(uploadedSarifJson) as SarifFile;
-
-      // Verify it contains the combined SARIF data from our CodeQL mock
-      t.is(uploadedSarif.runs[0].automationDetails?.id, "combined-id");
-      t.is(uploadedSarif.runs[0].tool?.driver?.name, "CombinedTool");
-
-      // Verify mergeResults was called with the correct input files
-      t.true(mergeResultsStub.calledOnce);
-      const mergeCall = mergeResultsStub.getCall(0);
-      const inputPaths = mergeCall.args[0];
-      t.deepEqual(inputPaths, [sarifPath1, sarifPath2]);
-    } finally {
-      sinon.restore();
-      cleanupEnv();
-    }
-  });
-});
-
-test("uploadSpecifiedFiles - category is mapped when doing code quality", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const logger = getRunnerLogger(true);
-    const features = createFeatures([]);
-    const sarifPath = path.join(tmpDir, "test.quality.sarif");
-    const checkoutPath = tmpDir;
-
-    // Create a SARIF without automationDetails so the category will be applied
-    const mockSarif = createMockSarif(undefined, "QualityTool");
-    fs.writeFileSync(sarifPath, JSON.stringify(mockSarif));
-
-    // Set up environment WITHOUT skip flags to perform actual upload
-    // Set GITHUB_EVENT_NAME to "dynamic" to enable isDefaultSetup() check
-    const cleanupEnv = setupUploadEnvironment(tmpDir, {
-      GITHUB_EVENT_NAME: "dynamic",
-    });
-    stubUploadDependencies();
-
-    // Mock the API client to capture the upload request
-    const { requestStub } = stubApiClientForUpload("quality-sarif-id-789");
-
-    try {
-      const result = await uploadLib.uploadSpecifiedFiles(
-        [sarifPath],
-        checkoutPath,
-        "/language:c#",
-        features,
-        logger,
-        CodeQuality,
-      );
-
-      // Verify actual upload happened
-      t.is(result.sarifID, "quality-sarif-id-789");
-      t.true(requestStub.calledOnce);
-
-      // Verify the category was fixed from /language:c# to /language:csharp
-      const uploadCall = requestStub.getCall(0);
-      const uploadPayload = uploadCall.args[1] as any;
-
-      // Decode and verify the uploaded SARIF contains the fixed category
-      const uploadedSarifBase64 = uploadPayload.data.sarif as string;
-      const uploadedSarifGzipped = Buffer.from(uploadedSarifBase64, "base64");
-      const uploadedSarifJson = zlib
-        .gunzipSync(uploadedSarifGzipped)
-        .toString();
-      const uploadedSarif = JSON.parse(uploadedSarifJson) as SarifFile;
-
-      // The automation details id should have been updated to use csharp instead of c#
-      t.is(uploadedSarif.runs[0].automationDetails?.id, "/language:csharp/");
-    } finally {
-      sinon.restore();
-      cleanupEnv();
-    }
-  });
-});
-
-test("uploadSpecifiedFiles - dumps SARIF when SARIF_DUMP_DIR is set", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const logger = getRunnerLogger(true);
-    const features = createFeatures([]);
-    const sarifPath = path.join(tmpDir, "test.sarif");
-    const dumpDir = path.join(tmpDir, "dump");
-    const checkoutPath = tmpDir;
-
-    fs.mkdirSync(dumpDir);
-    const mockSarif = createMockSarif("test-id", "TestTool");
-    fs.writeFileSync(sarifPath, JSON.stringify(mockSarif));
-
-    const cleanupEnv = setupUploadEnvironment(tmpDir, {
-      CODEQL_ACTION_SARIF_DUMP_DIR: dumpDir,
-      CODEQL_ACTION_SKIP_SARIF_UPLOAD: "true",
-    });
-    stubUploadDependencies();
-
-    try {
-      await uploadLib.uploadSpecifiedFiles(
-        [sarifPath],
-        checkoutPath,
-        "test-category",
-        features,
-        logger,
-        CodeScanning,
-      );
-
-      // Verify SARIF was dumped
-      const dumpedFile = path.join(
-        dumpDir,
-        `upload${CodeScanning.sarifExtension}`,
-      );
-      t.true(fs.existsSync(dumpedFile));
-    } finally {
-      sinon.restore();
-      cleanupEnv();
-    }
-  });
-});
-
-test("uploadSpecifiedFiles - performs actual upload when skip flags are not set", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const logger = getRunnerLogger(true);
-    const features = createFeatures([]);
-    const sarifPath = path.join(tmpDir, "test.sarif");
-    const checkoutPath = tmpDir;
-
-    const mockSarif = createMockSarif("test-id", "TestTool");
-    fs.writeFileSync(sarifPath, JSON.stringify(mockSarif));
-
-    // Set up environment WITHOUT skip flags
-    const cleanupEnv = setupUploadEnvironment(tmpDir);
-    stubUploadDependencies();
-
-    // Mock the API client to capture the upload request
-    const { requestStub } = stubApiClientForUpload("real-sarif-id-123");
-
-    try {
-      const result = await uploadLib.uploadSpecifiedFiles(
-        [sarifPath],
-        checkoutPath,
-        "test-category",
-        features,
-        logger,
-        CodeScanning,
-      );
-
-      // Verify actual upload happened
-      t.is(result.sarifID, "real-sarif-id-123");
-      t.true(requestStub.calledOnce);
-
-      // Verify the upload target was correct
-      const uploadCall = requestStub.getCall(0);
-      t.is(uploadCall.args[0], CodeScanning.target);
-
-      // Verify payload structure
-      const uploadPayload = uploadCall.args[1] as any;
-      t.truthy(uploadPayload.data.sarif);
-      t.is(uploadPayload.data.commit_oid, "abc123");
-      t.is(uploadPayload.data.ref, "refs/heads/main");
-    } finally {
-      sinon.restore();
-      cleanupEnv();
-    }
-  });
-});
-
-test("uploadSpecifiedFiles - skips upload when CODEQL_ACTION_TEST_MODE is set", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const logger = getRunnerLogger(true);
-    const features = createFeatures([]);
-    const sarifPath = path.join(tmpDir, "test.sarif");
-    const checkoutPath = tmpDir;
-
-    const mockSarif = createMockSarif("test-id", "TestTool");
-    fs.writeFileSync(sarifPath, JSON.stringify(mockSarif));
-
-    // Set up environment with TEST_MODE instead of SKIP_SARIF_UPLOAD
-    const cleanupEnv = setupUploadEnvironment(tmpDir, {
-      CODEQL_ACTION_TEST_MODE: "true",
-    });
-    stubUploadDependencies();
-
-    // Mock the API client - this should NOT be called
-    const { requestStub } = stubApiClientForUpload("should-not-be-used");
-
-    try {
-      const result = await uploadLib.uploadSpecifiedFiles(
-        [sarifPath],
-        checkoutPath,
-        "test-category",
-        features,
-        logger,
-        CodeScanning,
-      );
-
-      // Verify upload was skipped
-      t.is(result.sarifID, "dummy-sarif-id");
-      t.false(
-        requestStub.called,
-        "API request should not be called when in test mode",
-      );
-
-      // Verify payload was saved to file instead
-      const payloadFile = path.join(tmpDir, "payload-code-scanning.json");
-      t.true(fs.existsSync(payloadFile));
-
-      const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
-      t.truthy(savedPayload.sarif);
-      t.is(savedPayload.commit_oid, "abc123");
-    } finally {
-      sinon.restore();
-      cleanupEnv();
-    }
-  });
-});
-
 function createMockSarif(id?: string, tool?: string) {
-  const run: any = {
-    tool: {
-      driver: {
-        name: tool,
+  return {
+    runs: [
+      {
+        automationDetails: {
+          id,
+        },
+        tool: {
+          driver: {
+            name: tool,
+          },
+        },
       },
-    },
-    results: [],
+    ],
   };
+}
 
-  // Only include automationDetails if id is provided
-  if (id !== undefined) {
-    run.automationDetails = { id };
+const uploadPayloadMacro = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    options: {
+      analysis: analyses.AnalysisConfig;
+      envVars?: Record<string, string>;
+      body: (
+        t: ExecutionContext<unknown>,
+        upload: () => Promise<string>,
+        tmpDir: string,
+        requestStub: sinon.SinonStub,
+        mockData: {
+          payload: { sarif: string; commit_sha: string };
+          repositoryNwo: { owner: string; repo: string };
+          response: {
+            status: number;
+            data: { id: string };
+            headers: any;
+            url: string;
+          };
+        },
+      ) => void | Promise<void>;
+    },
+  ) => {
+    await withTmpDir(async (tmpDir) => {
+      process.env.RUNNER_TEMP = tmpDir;
+      for (const [key, value] of Object.entries(options.envVars ?? {})) {
+        process.env[key] = value;
+      }
+
+      const mockData = {
+        payload: { sarif: "base64data", commit_sha: "abc123" },
+        repositoryNwo: { owner: "test-owner", repo: "test-repo" },
+        response: {
+          status: 200,
+          data: { id: "uploaded-sarif-id" },
+          headers: {},
+          url: options.analysis.target,
+        },
+      };
+
+      const client = github.getOctokit("123");
+      sinon.stub(api, "getApiClient").value(() => client);
+      const requestStub = sinon.stub(client, "request");
+
+      const upload = async () =>
+        uploadLib.uploadPayload(
+          mockData.payload,
+          mockData.repositoryNwo,
+          getRunnerLogger(true),
+          options.analysis,
+        );
+
+      await options.body(t, upload, tmpDir, requestStub, mockData);
+    });
+  },
+  title: (providedTitle = "", options: { analysis: analyses.AnalysisConfig }) =>
+    `uploadPayload - ${options.analysis.name} - ${providedTitle}`,
+});
+
+for (const analysis of [CodeScanning, CodeQuality]) {
+  test("successful upload", uploadPayloadMacro, {
+    analysis,
+    body: async (t, upload, _tmpDir, requestStub, mockData) => {
+      requestStub
+        .withArgs(analysis.target, {
+          owner: mockData.repositoryNwo.owner,
+          repo: mockData.repositoryNwo.repo,
+          data: mockData.payload,
+        })
+        .onFirstCall()
+        .returns(Promise.resolve(mockData.response));
+      const result = await upload();
+      t.is(result, mockData.response.data.id);
+      t.true(requestStub.calledOnce);
+    },
+  });
+
+  for (const envVar of [
+    "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
+    "CODEQL_ACTION_TEST_MODE",
+  ]) {
+    test(`skips upload when ${envVar} is set`, uploadPayloadMacro, {
+      analysis,
+      envVars: {
+        [envVar]: "true",
+      },
+      body: async (t, upload, tmpDir, requestStub, mockData) => {
+        const result = await upload();
+        t.is(result, "dummy-sarif-id");
+        t.false(requestStub.called);
+
+        const payloadFile = path.join(tmpDir, `payload-${analysis.kind}.json`);
+        t.true(fs.existsSync(payloadFile));
+
+        const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
+        t.deepEqual(savedPayload, mockData.payload);
+      },
+    });
   }
 
-  return {
-    version: "2.1.0",
-    runs: [run],
-  };
+  test("handles error", uploadPayloadMacro, {
+    analysis,
+    body: async (t, upload, _tmpDir, requestStub, _mockData) => {
+      const wrapApiConfigurationErrorStub = sinon.stub(
+        api,
+        "wrapApiConfigurationError",
+      );
+      const originalError = new HTTPError(404);
+      const wrappedError = new Error("Wrapped error message");
+      requestStub.rejects(originalError);
+      wrapApiConfigurationErrorStub
+        .withArgs(originalError)
+        .returns(wrappedError);
+      await t.throwsAsync(upload, {
+        is: wrappedError,
+      });
+    },
+  });
 }

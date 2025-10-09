@@ -723,7 +723,14 @@ export async function getOverlayDatabaseMode(
     buildMode !== BuildMode.None &&
     (
       await Promise.all(
-        languages.map(async (l) => await codeql.isTracedLanguage(l)),
+        languages.map(
+          async (l) =>
+            l !== KnownLanguage.go && // Workaround to allow overlay analysis for Go with any build
+            // mode, since it does not yet support BMN. The Go autobuilder and/or extractor will
+            // ensure that overlay-base databases are only created for supported Go build setups,
+            // and that we'll fall back to full databases in other cases.
+            (await codeql.isTracedLanguage(l)),
+        ),
       )
     ).some(Boolean)
   ) {

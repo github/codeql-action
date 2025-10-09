@@ -346,9 +346,12 @@ function getAutomationID(
   return api.computeAutomationID(analysis_key, environment);
 }
 
-// Upload the given payload.
-// If the request fails then this will retry a small number of times.
-async function uploadPayload(
+/**
+ * Upload the given payload.
+ * If the request fails then this will retry a small number of times.
+ * This is exported for testing purposes only.
+ */
+export async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   logger: Logger,

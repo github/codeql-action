@@ -371,10 +371,10 @@ def main():
       # releases.
       run_git('revert', vOlder_update_commits[0], '--no-edit')
 
-      # Also revert the "Update checked-in dependencies" commit created by Actions.
-      update_dependencies_commit = run_git('log', '--grep', '^Update checked-in dependencies', '--format=%H').split()[0]
-      print(f'  Reverting {update_dependencies_commit}')
-      run_git('revert', update_dependencies_commit, '--no-edit')
+      # Also revert the "Rebuild" commit created by Actions.
+      rebuild_commit = run_git('log', '--grep', '^Rebuild$', '--format=%H').split()[0]
+      print(f'  Reverting {rebuild_commit}')
+      run_git('revert', rebuild_commit, '--no-edit')
 
     else:
       print('  Nothing to revert.')

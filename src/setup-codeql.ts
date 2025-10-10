@@ -386,11 +386,11 @@ export async function getCodeQLSource(
       } else {
         if (allowToolcacheValueFF) {
           logger.info(
-            `Ignoring 'tools: ${toolsInput}' because the feature is not enabled.`,
+            `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
           );
         } else {
           logger.warning(
-            `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
+            `Ignoring 'tools: ${toolsInput}' because the feature is not enabled.`,
           );
         }
       }

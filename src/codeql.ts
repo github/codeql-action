@@ -309,6 +309,7 @@ const CODEQL_VERSION_CACHE_CLEANUP = "2.17.1";
  * @param tempDir
  * @param variant
  * @param defaultCliVersion
+ * @param features Information about the features that are enabled.
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
@@ -320,6 +321,7 @@ export async function setupCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
 ): Promise<{
@@ -342,6 +344,7 @@ export async function setupCodeQL(
       tempDir,
       variant,
       defaultCliVersion,
+      features,
       logger,
     );
 

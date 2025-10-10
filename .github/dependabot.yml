@@ -16,9 +16,12 @@ updates:
       - dependency-name: "eslint-plugin-import"
         versions: [">=2.30.0"]
     groups:
-      npm:
+      npm-minor:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: github-actions
     directories:
       - "/.github/workflows"
@@ -28,6 +31,9 @@ updates:
     labels:
       - Rebuild
     groups:
-      actions:
+      actions-minor:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"

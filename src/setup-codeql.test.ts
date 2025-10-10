@@ -325,7 +325,7 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
             typeof msg.message === "string" &&
             msg.message.includes(expectedMessage),
         ),
-        `Expected '${expectedMessage}' in the logger output, but didn't find it.`,
+        `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${loggedMessages.map((m) => ` - '${m.message}'`).join("\n")}`,
       );
     }
   });
@@ -381,7 +381,7 @@ const toolcacheInputFallbackMacro = test.macro({
               typeof msg.message === "string" &&
               msg.message.includes(expectedMessage),
           ),
-          `Expected '${expectedMessage}' in the logger output, but didn't find it.`,
+          `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${loggedMessages.map((m) => ` - '${m.message}'`).join("\n")}`,
         );
       }
     });
@@ -400,6 +400,26 @@ test(
     `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: toolcache'.`,
     `Found no CodeQL CLI in the toolcache, ignoring 'tools: toolcache'...`,
   ],
+);
+
+test(
+  "the workflow trigger is not `dynamic`",
+  toolcacheInputFallbackMacro,
+  [Feature.AllowToolcacheInput],
+  { GITHUB_EVENT_NAME: "pull_request" },
+  [],
+  [
+    `Ignoring 'tools: toolcache' because the workflow was not triggered dynamically.`,
+  ],
+);
+
+test(
+  "the feature flag is not enabled",
+  toolcacheInputFallbackMacro,
+  [],
+  { GITHUB_EVENT_NAME: "dynamic" },
+  [],
+  [`Ignoring 'tools: toolcache' because the feature is not enabled.`],
 );
 
 test('tryGetTagNameFromUrl extracts the right tag name for a repo name containing "codeql-bundle"', (t) => {

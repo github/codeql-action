@@ -7,11 +7,14 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
+import { Config } from "./config-utils";
+import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
   Credential,
   getCredentials,
   getDownloadUrl,
+  parseLanguage,
   UPDATEJOB_PROXY,
 } from "./start-proxy";
 import {
@@ -98,6 +101,7 @@ interface StartProxyStatus extends StatusReportBase {
 
 async function sendSuccessStatusReport(
   startedAt: Date,
+  config: Partial<Config>,
   registry_types: string[],
   logger: Logger,
 ) {
@@ -105,7 +109,7 @@ async function sendSuccessStatusReport(
     ActionName.StartProxy,
     "success",
     startedAt,
-    undefined,
+    config,
     await util.checkDiskUsage(logger),
     logger,
   );
@@ -125,6 +129,7 @@ async function runWrapper() {
   actionsUtil.persistInputs();
 
   const logger = getActionsLogger();
+  let language: KnownLanguage | undefined;
 
   try {
     // Setup logging for the proxy
@@ -133,11 +138,13 @@ async function runWrapper() {
     core.saveState("proxy-log-file", proxyLogFilePath);
 
     // Get the configuration options
+    const languageInput = actionsUtil.getOptionalInput("language");
+    language = languageInput ? parseLanguage(languageInput) : undefined;
     const credentials = getCredentials(
       logger,
       actionsUtil.getOptionalInput("registry_secrets"),
       actionsUtil.getOptionalInput("registries_credentials"),
-      actionsUtil.getOptionalInput("language"),
+      language,
     );
 
     if (credentials.length === 0) {
@@ -165,6 +172,9 @@ async function runWrapper() {
     // Report success if we have reached this point.
     await sendSuccessStatusReport(
       startedAt,
+      {
+        languages: language && [language],
+      },
       proxyConfig.all_credentials.map((c) => c.type),
       logger,
     );
@@ -178,7 +188,9 @@ async function runWrapper() {
       ActionName.StartProxy,
       getActionsStatus(error),
       startedAt,
-      undefined,
+      {
+        languages: language && [language],
+      },
       await util.checkDiskUsage(logger),
       logger,
     );

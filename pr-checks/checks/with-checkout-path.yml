@@ -37,28 +37,29 @@ steps:
 
   - name: Verify SARIF after upload
     run: |
+      PAYLOAD_FILE="$RUNNER_TEMP/payload-code-scanning.json"
       EXPECTED_COMMIT_OID="474bbf07f9247ffe1856c6a0f94aeeb10e7afee6"
       EXPECTED_REF="v1.1.0"
       EXPECTED_CHECKOUT_URI_SUFFIX="/x/y/z/some-path/tests/multi-language-repo"
 
-      ACTUAL_COMMIT_OID="$(cat "$RUNNER_TEMP/payload.json" | jq -r .commit_oid)"
-      ACTUAL_REF="$(cat "$RUNNER_TEMP/payload.json" | jq -r .ref)"
-      ACTUAL_CHECKOUT_URI="$(cat "$RUNNER_TEMP/payload.json" | jq -r .checkout_uri)"
+      ACTUAL_COMMIT_OID="$(cat "$PAYLOAD_FILE" | jq -r .commit_oid)"
+      ACTUAL_REF="$(cat "$PAYLOAD_FILE" | jq -r .ref)"
+      ACTUAL_CHECKOUT_URI="$(cat "$PAYLOAD_FILE" | jq -r .checkout_uri)"
 
       if [[ "$EXPECTED_COMMIT_OID" != "$ACTUAL_COMMIT_OID" ]]; then
         echo "::error Invalid commit oid. Expected: $EXPECTED_COMMIT_OID Actual: $ACTUAL_COMMIT_OID"
-        echo "$RUNNER_TEMP/payload.json"
+        echo "$PAYLOAD_FILE"
         exit 1
       fi
 
       if [[ "$EXPECTED_REF" != "$ACTUAL_REF" ]]; then
         echo "::error Invalid ref. Expected: '$EXPECTED_REF' Actual: '$ACTUAL_REF'"
-        echo "$RUNNER_TEMP/payload.json"
+        echo "$PAYLOAD_FILE"
         exit 1
       fi
 
       if [[ "$ACTUAL_CHECKOUT_URI" != *$EXPECTED_CHECKOUT_URI_SUFFIX ]]; then
         echo "::error Invalid checkout URI suffix. Expected suffix: $EXPECTED_CHECKOUT_URI_SUFFIX Actual uri: $ACTUAL_CHECKOUT_URI"
-        echo "$RUNNER_TEMP/payload.json"
+        echo "$PAYLOAD_FILE"
         exit 1
       fi

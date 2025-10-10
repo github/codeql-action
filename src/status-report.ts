@@ -260,7 +260,7 @@ export async function createStatusReportBase(
   actionName: ActionName,
   status: ActionStatus,
   actionStartedAt: Date,
-  config: Config | undefined,
+  config: Partial<Config> | undefined,
   diskInfo: DiskUsage | undefined,
   logger: Logger,
   cause?: string,
@@ -299,7 +299,7 @@ export async function createStatusReportBase(
       action_ref: actionRef,
       action_started_at: actionStartedAt.toISOString(),
       action_version: getActionVersion(),
-      analysis_kinds: config?.analysisKinds.join(","),
+      analysis_kinds: config?.analysisKinds?.join(","),
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,
@@ -324,7 +324,7 @@ export async function createStatusReportBase(
     }
 
     if (config) {
-      statusReport.languages = config.languages.join(",");
+      statusReport.languages = config.languages?.join(",");
     }
 
     if (diskInfo) {

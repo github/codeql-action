@@ -19,8 +19,8 @@ import {
   delay,
   getErrorMessage,
   getRequiredEnvParam,
-  isInTestMode,
   parseMatrixInput,
+  shouldSkipSarifUpload,
   wrapError,
 } from "./util";
 import {
@@ -81,7 +81,7 @@ async function maybeUploadFailedSarif(
     !["always", "failure-only"].includes(
       actionsUtil.getUploadValue(shouldUpload),
     ) ||
-    isInTestMode()
+    shouldSkipSarifUpload()
   ) {
     return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
   }

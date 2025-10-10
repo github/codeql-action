@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import { RequestError } from "@octokit/request-error";
 import * as yaml from "js-yaml";
 
 import {
@@ -308,6 +309,7 @@ const CODEQL_VERSION_CACHE_CLEANUP = "2.17.1";
  * @param tempDir
  * @param variant
  * @param defaultCliVersion
+ * @param features Information about the features that are enabled.
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
  *        version requirement. Must be set to true outside tests.
@@ -319,6 +321,7 @@ export async function setupCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
 ): Promise<{
@@ -341,6 +344,7 @@ export async function setupCodeQL(
       tempDir,
       variant,
       defaultCliVersion,
+      features,
       logger,
     );
 
@@ -370,7 +374,8 @@ export async function setupCodeQL(
   } catch (e) {
     const ErrorClass =
       e instanceof util.ConfigurationError ||
-      (e instanceof Error && e.message.includes("ENOSPC")) // out of disk space
+      (e instanceof Error && e.message.includes("ENOSPC")) || // out of disk space
+      (e instanceof RequestError && e.status === 429) // rate limited
         ? util.ConfigurationError
         : Error;
 

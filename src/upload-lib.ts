@@ -262,6 +262,7 @@ async function combineSarifFilesUsingCLI(
       tempDir,
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      features,
       logger,
     );
 
@@ -346,34 +347,36 @@ function getAutomationID(
   return api.computeAutomationID(analysis_key, environment);
 }
 
-// Upload the given payload.
-// If the request fails then this will retry a small number of times.
-async function uploadPayload(
+/**
+ * Upload the given payload.
+ * If the request fails then this will retry a small number of times.
+ * This is exported for testing purposes only.
+ */
+export async function uploadPayload(
   payload: any,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
-  target: analyses.SARIF_UPLOAD_ENDPOINT,
+  analysis: analyses.AnalysisConfig,
 ): Promise<string> {
   logger.info("Uploading results");
 
-  // If in test mode we don't want to upload the results
-  if (util.isInTestMode()) {
+  if (util.shouldSkipSarifUpload()) {
     const payloadSaveFile = path.join(
       actionsUtil.getTemporaryDirectory(),
-      "payload.json",
+      `payload-${analysis.kind}.json`,
     );
     logger.info(
-      `In test mode. Results are not uploaded. Saving to ${payloadSaveFile}`,
+      `SARIF upload disabled by an environment variable. Saving to ${payloadSaveFile}`,
     );
     logger.info(`Payload: ${JSON.stringify(payload, null, 2)}`);
     fs.writeFileSync(payloadSaveFile, JSON.stringify(payload, null, 2));
-    return "test-mode-sarif-id";
+    return "dummy-sarif-id";
   }
 
   const client = api.getApiClient();
 
   try {
-    const response = await client.request(target, {
+    const response = await client.request(analysis.target, {
       owner: repositoryNwo.owner,
       repo: repositoryNwo.repo,
       data: payload,
@@ -807,7 +810,7 @@ export async function uploadSpecifiedFiles(
     payload,
     getRepositoryNwo(),
     logger,
-    uploadTarget.target,
+    uploadTarget,
   );
 
   logger.endGroup();

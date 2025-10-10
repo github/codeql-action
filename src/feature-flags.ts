@@ -43,6 +43,7 @@ export interface FeatureEnablement {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
+  AllowToolcacheInput = "allow_toolcache_input",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
@@ -73,9 +74,9 @@ export enum Feature {
   OverlayAnalysisRust = "overlay_analysis_rust",
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
-  UseRepositoryProperties = "use_repository_properties",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
+  UseRepositoryProperties = "use_repository_properties",
 }
 
 export const featureConfig: Record<
@@ -109,6 +110,11 @@ export const featureConfig: Record<
     toolsFeature?: ToolsFeature;
   }
 > = {
+  [Feature.AllowToolcacheInput]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
+    minimumVersion: undefined,
+  },
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",

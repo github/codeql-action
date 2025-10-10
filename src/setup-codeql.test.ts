@@ -1,7 +1,7 @@
 import * as path from "path";
 
 import * as toolcache from "@actions/tool-cache";
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
@@ -331,57 +331,76 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
   });
 });
 
-test("getCodeQLSource falls back to downloading the CLI if the toolcache doesn't have a CodeQL CLI when tools == toolcache", async (t) => {
-  const loggedMessages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(loggedMessages);
-  const features = createFeatures([Feature.AllowToolcacheInput]);
+const toolcacheInputFallbackMacro = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    featureList: Feature[],
+    environment: Record<string, string>,
+    testVersions: string[],
+    expectedMessages: string[],
+  ) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures(featureList);
 
-  process.env["GITHUB_EVENT_NAME"] = "dynamic";
-
-  const testVersions = [];
-  const findAllVersionsStub = sinon
-    .stub(toolcache, "findAllVersions")
-    .returns(testVersions);
-
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    const source = await setupCodeql.getCodeQLSource(
-      "toolcache",
-      SAMPLE_DEFAULT_CLI_VERSION,
-      SAMPLE_DOTCOM_API_DETAILS,
-      GitHubVariant.DOTCOM,
-      false,
-      features,
-      logger,
-    );
-
-    // Check that the toolcache functions were called with the expected arguments
-    t.assert(
-      findAllVersionsStub.calledWith("CodeQL"),
-      `toolcache.findAllVersions("CodeQL") wasn't called`,
-    );
-
-    // Check that `sourceType` and `toolsVersion` match expectations.
-    t.is(source.sourceType, "download");
-    t.is(source.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
-
-    // Check that key messages we would expect to find in the log are present.
-    const expectedMessages: string[] = [
-      `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: toolcache'.`,
-      `Found no CodeQL CLI in the toolcache, ignoring 'tools: toolcache'...`,
-    ];
-    for (const expectedMessage of expectedMessages) {
-      t.assert(
-        loggedMessages.some(
-          (msg) =>
-            typeof msg.message === "string" &&
-            msg.message.includes(expectedMessage),
-        ),
-        `Expected '${expectedMessage}' in the logger output, but didn't find it.`,
-      );
+    for (const [k, v] of Object.entries(environment)) {
+      process.env[k] = v;
     }
-  });
+
+    const findAllVersionsStub = sinon
+      .stub(toolcache, "findAllVersions")
+      .returns(testVersions);
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        "toolcache",
+        SAMPLE_DEFAULT_CLI_VERSION,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        logger,
+      );
+
+      // Check that the toolcache functions were called with the expected arguments
+      t.assert(
+        findAllVersionsStub.calledWith("CodeQL"),
+        `toolcache.findAllVersions("CodeQL") wasn't called`,
+      );
+
+      // Check that `sourceType` and `toolsVersion` match expectations.
+      t.is(source.sourceType, "download");
+      t.is(source.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+
+      // Check that key messages we would expect to find in the log are present.
+      for (const expectedMessage of expectedMessages) {
+        t.assert(
+          loggedMessages.some(
+            (msg) =>
+              typeof msg.message === "string" &&
+              msg.message.includes(expectedMessage),
+          ),
+          `Expected '${expectedMessage}' in the logger output, but didn't find it.`,
+        );
+      }
+    });
+  },
+  title: (providedTitle = "") =>
+    `getCodeQLSource falls back to downloading the CLI if ${providedTitle}`,
 });
+
+test(
+  "the toolcache doesn't have a CodeQL CLI when tools == toolcache",
+  toolcacheInputFallbackMacro,
+  [Feature.AllowToolcacheInput],
+  { GITHUB_EVENT_NAME: "dynamic" },
+  [],
+  [
+    `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: toolcache'.`,
+    `Found no CodeQL CLI in the toolcache, ignoring 'tools: toolcache'...`,
+  ],
+);
 
 test('tryGetTagNameFromUrl extracts the right tag name for a repo name containing "codeql-bundle"', (t) => {
   t.is(

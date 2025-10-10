@@ -1,9 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as github from "@actions/github";
+import { HTTPError } from "@actions/tool-cache";
 import test from "ava";
+import * as sinon from "sinon";
 
+import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
+import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -866,4 +871,92 @@ function createMockSarif(id?: string, tool?: string) {
       },
     ],
   };
+}
+
+function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
+  const mockData = {
+    payload: { sarif: "base64data", commit_sha: "abc123" },
+    owner: "test-owner",
+    repo: "test-repo",
+    response: {
+      status: 200,
+      data: { id: "uploaded-sarif-id" },
+      headers: {},
+      url: analysis.target,
+    },
+  };
+  const client = github.getOctokit("123");
+  sinon.stub(api, "getApiClient").value(() => client);
+  const requestStub = sinon.stub(client, "request");
+
+  const upload = async () =>
+    uploadLib.uploadPayload(
+      mockData.payload,
+      {
+        owner: mockData.owner,
+        repo: mockData.repo,
+      },
+      getRunnerLogger(true),
+      analysis,
+    );
+
+  return {
+    upload,
+    requestStub,
+    mockData,
+  };
+}
+
+for (const analysis of [CodeScanning, CodeQuality]) {
+  test(`uploadPayload on ${analysis.name} uploads successfully`, async (t) => {
+    const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
+    requestStub
+      .withArgs(analysis.target, {
+        owner: mockData.owner,
+        repo: mockData.repo,
+        data: mockData.payload,
+      })
+      .onFirstCall()
+      .returns(Promise.resolve(mockData.response));
+    const result = await upload();
+    t.is(result, mockData.response.data.id);
+    t.true(requestStub.calledOnce);
+  });
+
+  for (const envVar of [
+    "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
+    "CODEQL_ACTION_TEST_MODE",
+  ]) {
+    test(`uploadPayload on ${analysis.name} skips upload when ${envVar} is set`, async (t) => {
+      const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
+      await withTmpDir(async (tmpDir) => {
+        process.env.RUNNER_TEMP = tmpDir;
+        process.env[envVar] = "true";
+        const result = await upload();
+        t.is(result, "dummy-sarif-id");
+        t.false(requestStub.called);
+
+        const payloadFile = path.join(tmpDir, `payload-${analysis.kind}.json`);
+        t.true(fs.existsSync(payloadFile));
+
+        const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
+        t.deepEqual(savedPayload, mockData.payload);
+      });
+    });
+  }
+
+  test(`uploadPayload on ${analysis.name} wraps request errors using wrapApiConfigurationError`, async (t) => {
+    const { upload, requestStub } = uploadPayloadFixtures(analysis);
+    const wrapApiConfigurationErrorStub = sinon.stub(
+      api,
+      "wrapApiConfigurationError",
+    );
+    const originalError = new HTTPError(404);
+    const wrappedError = new Error("Wrapped error message");
+    requestStub.rejects(originalError);
+    wrapApiConfigurationErrorStub.withArgs(originalError).returns(wrappedError);
+    await t.throwsAsync(upload, {
+      is: wrappedError,
+    });
+  });
 }

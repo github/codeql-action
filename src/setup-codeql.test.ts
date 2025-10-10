@@ -1,7 +1,7 @@
 import * as path from "path";
 
 import * as toolcache from "@actions/tool-cache";
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
@@ -13,6 +13,7 @@ import {
   LoggedMessage,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
+  createFeatures,
   getRecordingLogger,
   initializeFeatures,
   mockBundleDownloadApi,
@@ -91,6 +92,8 @@ test("getCodeQLActionRepository", (t) => {
 });
 
 test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) => {
+  const features = createFeatures([]);
+
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const tagName = "codeql-bundle-v1.2.3";
@@ -101,6 +104,7 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
       false,
+      features,
       getRunnerLogger(true),
     );
 
@@ -110,6 +114,8 @@ test("getCodeQLSource sets CLI version for a semver tagged bundle", async (t) =>
 });
 
 test("getCodeQLSource correctly returns bundled CLI version when tools == linked", async (t) => {
+  const features = createFeatures([]);
+
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const source = await setupCodeql.getCodeQLSource(
@@ -118,6 +124,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == linked
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
       false,
+      features,
       getRunnerLogger(true),
     );
 
@@ -129,6 +136,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == linked
 test("getCodeQLSource correctly returns bundled CLI version when tools == latest", async (t) => {
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
+  const features = createFeatures([]);
 
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
@@ -138,6 +146,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
       false,
+      features,
       logger,
     );
 
@@ -162,6 +171,7 @@ test("getCodeQLSource correctly returns bundled CLI version when tools == latest
 test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use linked tools", async (t) => {
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
+  const features = createFeatures([]);
 
   // Stub the downloadCodeQL function to prevent downloading artefacts
   // during testing from being called.
@@ -186,6 +196,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      features,
       logger,
     );
 
@@ -208,6 +219,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to use
 test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to download a non-default bundle", async (t) => {
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
+  const features = createFeatures([]);
 
   const bundleUrl =
     "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.16.0/codeql-bundle-linux64.tar.gz";
@@ -236,6 +248,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
       "tmp/codeql_action_test/",
       GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      features,
       logger,
     );
 
@@ -258,6 +271,7 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
 test("getCodeQLSource correctly returns latest version from toolcache when tools == toolcache", async (t) => {
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
+  const features = createFeatures([Feature.AllowToolcacheInput]);
 
   process.env["GITHUB_EVENT_NAME"] = "dynamic";
 
@@ -280,6 +294,7 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
       SAMPLE_DOTCOM_API_DETAILS,
       GitHubVariant.DOTCOM,
       false,
+      features,
       logger,
     );
 
@@ -310,61 +325,102 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
             typeof msg.message === "string" &&
             msg.message.includes(expectedMessage),
         ),
-        `Expected '${expectedMessage}' in the logger output, but didn't find it.`,
+        `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${loggedMessages.map((m) => ` - '${m.message}'`).join("\n")}`,
       );
     }
   });
 });
 
-test("getCodeQLSource falls back to downloading the CLI if the toolcache doesn't have a CodeQL CLI when tools == toolcache", async (t) => {
-  const loggedMessages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(loggedMessages);
+const toolcacheInputFallbackMacro = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    featureList: Feature[],
+    environment: Record<string, string>,
+    testVersions: string[],
+    expectedMessages: string[],
+  ) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures(featureList);
 
-  process.env["GITHUB_EVENT_NAME"] = "dynamic";
+    for (const [k, v] of Object.entries(environment)) {
+      process.env[k] = v;
+    }
 
-  const testVersions = [];
-  const findAllVersionsStub = sinon
-    .stub(toolcache, "findAllVersions")
-    .returns(testVersions);
+    const findAllVersionsStub = sinon
+      .stub(toolcache, "findAllVersions")
+      .returns(testVersions);
 
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    const source = await setupCodeql.getCodeQLSource(
-      "toolcache",
-      SAMPLE_DEFAULT_CLI_VERSION,
-      SAMPLE_DOTCOM_API_DETAILS,
-      GitHubVariant.DOTCOM,
-      false,
-      logger,
-    );
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        "toolcache",
+        SAMPLE_DEFAULT_CLI_VERSION,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        logger,
+      );
 
-    // Check that the toolcache functions were called with the expected arguments
-    t.assert(
-      findAllVersionsStub.calledWith("CodeQL"),
-      `toolcache.findAllVersions("CodeQL") wasn't called`,
-    );
-
-    // Check that `sourceType` and `toolsVersion` match expectations.
-    t.is(source.sourceType, "download");
-    t.is(source.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
-
-    // Check that key messages we would expect to find in the log are present.
-    const expectedMessages: string[] = [
-      `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: toolcache'.`,
-      `Found no CodeQL CLI in the toolcache, ignoring 'tools: toolcache'...`,
-    ];
-    for (const expectedMessage of expectedMessages) {
+      // Check that the toolcache functions were called with the expected arguments
       t.assert(
-        loggedMessages.some(
-          (msg) =>
-            typeof msg.message === "string" &&
-            msg.message.includes(expectedMessage),
-        ),
-        `Expected '${expectedMessage}' in the logger output, but didn't find it.`,
+        findAllVersionsStub.calledWith("CodeQL"),
+        `toolcache.findAllVersions("CodeQL") wasn't called`,
       );
-    }
-  });
+
+      // Check that `sourceType` and `toolsVersion` match expectations.
+      t.is(source.sourceType, "download");
+      t.is(source.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+
+      // Check that key messages we would expect to find in the log are present.
+      for (const expectedMessage of expectedMessages) {
+        t.assert(
+          loggedMessages.some(
+            (msg) =>
+              typeof msg.message === "string" &&
+              msg.message.includes(expectedMessage),
+          ),
+          `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${loggedMessages.map((m) => ` - '${m.message}'`).join("\n")}`,
+        );
+      }
+    });
+  },
+  title: (providedTitle = "") =>
+    `getCodeQLSource falls back to downloading the CLI if ${providedTitle}`,
 });
+
+test(
+  "the toolcache doesn't have a CodeQL CLI when tools == toolcache",
+  toolcacheInputFallbackMacro,
+  [Feature.AllowToolcacheInput],
+  { GITHUB_EVENT_NAME: "dynamic" },
+  [],
+  [
+    `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: toolcache'.`,
+    `Found no CodeQL CLI in the toolcache, ignoring 'tools: toolcache'...`,
+  ],
+);
+
+test(
+  "the workflow trigger is not `dynamic`",
+  toolcacheInputFallbackMacro,
+  [Feature.AllowToolcacheInput],
+  { GITHUB_EVENT_NAME: "pull_request" },
+  [],
+  [
+    `Ignoring 'tools: toolcache' because the workflow was not triggered dynamically.`,
+  ],
+);
+
+test(
+  "the feature flag is not enabled",
+  toolcacheInputFallbackMacro,
+  [],
+  { GITHUB_EVENT_NAME: "dynamic" },
+  [],
+  [`Ignoring 'tools: toolcache' because the feature is not enabled.`],
+);
 
 test('tryGetTagNameFromUrl extracts the right tag name for a repo name containing "codeql-bundle"', (t) => {
   t.is(

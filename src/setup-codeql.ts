@@ -13,6 +13,8 @@ import * as defaults from "./defaults.json";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
 import * as tar from "./tar";
@@ -276,6 +278,7 @@ export async function getCodeQLSource(
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tarSupportsZstd: boolean,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
   if (
@@ -356,7 +359,11 @@ export async function getCodeQLSource(
     // We only allow `toolsInput === "toolcache"` for `dynamic` events. In general, using `toolsInput === "toolcache"`
     // can lead to alert wobble and so it shouldn't be used for an analysis where results are intended to be uploaded.
     // We also allow this in test mode.
-    const allowToolcacheValue = isDynamicWorkflow() || util.isInTestMode();
+    const allowToolcacheValueFF = await features.getValue(
+      Feature.AllowToolcacheInput,
+    );
+    const allowToolcacheValue =
+      allowToolcacheValueFF && (isDynamicWorkflow() || util.isInTestMode());
     if (allowToolcacheValue) {
       // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
       // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
@@ -377,9 +384,15 @@ export async function getCodeQLSource(
           `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
         );
       } else {
-        logger.warning(
-          `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
-        );
+        if (allowToolcacheValueFF) {
+          logger.warning(
+            `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
+          );
+        } else {
+          logger.info(
+            `Ignoring 'tools: ${toolsInput}' because the feature is not enabled.`,
+          );
+        }
       }
 
       cliVersion = defaultCliVersion.cliVersion;
@@ -735,6 +748,7 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
 ) {
   if (!(await util.isBinaryAccessible("tar", logger))) {
@@ -750,6 +764,7 @@ export async function setupCodeQLBundle(
     apiDetails,
     variant,
     zstdAvailability.available,
+    features,
     logger,
   );
 

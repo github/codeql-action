@@ -133,7 +133,10 @@ export async function writeOverlayChangesFile(
       for (const f of prDiffChangedFiles) {
         if (!existing.has(f)) {
           // Only include if file still exists (added/modified) — skip deleted files that might appear in diff.
-          if (overlayFileOids[f] !== undefined || fs.existsSync(path.join(sourceRoot, f))) {
+          if (
+            overlayFileOids[f] !== undefined ||
+            fs.existsSync(path.join(sourceRoot, f))
+          ) {
             existing.add(f);
             changedFiles.push(f);
             extraAddedCount++;

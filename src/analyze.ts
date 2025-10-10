@@ -14,7 +14,10 @@ import { type CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { getJavaTempDependencyDir } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
-import { DiffThunkRange, readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
+import {
+  DiffThunkRange,
+  readDiffRangesJsonFile,
+} from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
@@ -303,12 +306,14 @@ export async function setupDiffInformedQueryRun(
         return undefined;
       }
 
-      const fileCount = new Set(diffRanges.filter((r) => r.path).map((r) => r.path)).size;
+      const fileCount = new Set(
+        diffRanges.filter((r) => r.path).map((r) => r.path),
+      ).size;
       logger.info(
         `Using precomputed diff ranges (${diffRanges.length} ranges across ${fileCount} files).`,
       );
 
-  const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
+      const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
       if (packDir === undefined) {
         logger.warning(
           "Cannot create diff range extension pack for diff-informed queries; " +
@@ -323,8 +328,6 @@ export async function setupDiffInformedQueryRun(
     },
   );
 }
-
-
 
 /**
  * Create an extension pack in the temporary directory that contains the file
@@ -405,7 +408,6 @@ extensions:
   logger.debug(
     `Wrote pr-diff-range extension pack to ${extensionFilePath}:\n${extensionContents}`,
   );
-
 
   return diffRangeDir;
 }

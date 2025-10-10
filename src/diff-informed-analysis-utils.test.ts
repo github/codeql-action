@@ -4,7 +4,10 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
 import * as apiClient from "./api-client";
-import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import {
+  shouldPerformDiffInformedAnalysis,
+  exportedForTesting as diffExportedForTesting,
+} from "./diff-informed-analysis-utils";
 import { Feature, Features } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -187,8 +190,6 @@ test(
 // ---------------------------------------------------------------------------
 // Tests for getDiffRanges (moved from analyze.test.ts after extraction)
 // ---------------------------------------------------------------------------
-import { exportedForTesting as diffExportedForTesting } from "./diff-informed-analysis-utils";
-
 function runGetDiffRanges(changes: number, patch: string[] | undefined): any {
   sinon
     .stub(actionsUtil, "getRequiredInput")

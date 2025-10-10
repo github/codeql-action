@@ -129,7 +129,6 @@ test("status report fields", async (t) => {
   });
 });
 
-
 test("resolveQuerySuiteAlias", (t) => {
   // default query suite names should resolve to something language-specific ending in `.qls`.
   for (const suite of defaultSuites) {

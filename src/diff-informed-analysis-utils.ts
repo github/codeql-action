@@ -1,15 +1,15 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
+import * as actionsUtil from "./actions-util";
+import { getRequiredInput } from "./actions-util";
 import { getGitHubVersion, getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
-import { GitHubVariant, satisfiesGHESVersion } from "./util";
 import { getRepositoryNwoFromEnv } from "./repository";
-import { getRequiredInput } from "./actions-util";
+import { GitHubVariant, satisfiesGHESVersion } from "./util";
 
 /**
  * This interface is an abbreviated version of the file diff object returned by

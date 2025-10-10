@@ -33,6 +33,11 @@ import {
   logUnwrittenDiagnostics,
   makeDiagnostic,
 } from "./diagnostics";
+import {
+  getPullRequestEditedDiffRanges,
+  writeDiffRangesJsonFile,
+  getDiffInformedAnalysisBranches,
+} from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import { loadPropertiesFromApi } from "./feature-flags/properties";
@@ -66,11 +71,6 @@ import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
 import { getCombinedTracerConfig } from "./tracer-config";
-import {
-  getPullRequestEditedDiffRanges,
-  writeDiffRangesJsonFile,
-  getDiffInformedAnalysisBranches,
-} from "./diff-informed-analysis-utils";
 import {
   checkDiskUsage,
   checkForTimeout,
@@ -343,7 +343,11 @@ async function run() {
 
     await checkInstallPython311(config.languages, codeql);
 
-    prDiffChangedFiles = await computeAndPersistDiffRanges(codeql, features, logger);
+    prDiffChangedFiles = await computeAndPersistDiffRanges(
+      codeql,
+      features,
+      logger,
+    );
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

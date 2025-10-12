@@ -400,6 +400,7 @@ test("parseUserConfig - successfully parses valid YAML", (t) => {
       - "some/path"
     queries:
       - uses: foo
+    some-unknown-option: true
     `,
   );
   t.truthy(result);

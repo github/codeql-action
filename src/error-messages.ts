@@ -21,6 +21,13 @@ export function getConfigFileParseErrorMessage(
   return `Cannot parse "${configFile}": ${message}`;
 }
 
+export function getInvalidConfigFileMessage(
+  configFile: string,
+  detail: string,
+): string {
+  return `The configuration file "${configFile}" is invalid: ${detail}`;
+}
+
 export function getConfigFileRepoFormatInvalidMessage(
   configFile: string,
 ): string {

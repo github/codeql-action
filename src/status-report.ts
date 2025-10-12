@@ -41,6 +41,7 @@ export enum ActionName {
   Init = "init",
   InitPost = "init-post",
   ResolveEnvironment = "resolve-environment",
+  SetupCodeQL = "setup-codeql",
   StartProxy = "start-proxy",
   UploadSarif = "upload-sarif",
 }

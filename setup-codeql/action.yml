@@ -1,0 +1,39 @@
+name: 'CodeQL: Setup'
+description: 'Installs the CodeQL CLI'
+author: 'GitHub'
+inputs:
+  tools:
+    description: >-
+      By default, the Action will use the recommended version of the CodeQL
+      Bundle to analyze your project. You can override this choice using this
+      input. One of:
+
+      - A local path to a CodeQL Bundle tarball, or
+      - The URL of a CodeQL Bundle tarball GitHub release asset, or
+      - A special value `linked` which uses the version of the CodeQL tools
+        that the Action has been bundled with.
+      - A special value `nightly` which uses the latest nightly version of the
+        CodeQL tools. Note that this is unstable and not recommended for
+        production use.
+
+      If not specified, the Action will check in several places until it finds
+      the CodeQL tools.
+    required: false
+  token:
+    description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
+    default: ${{ github.token }}
+    required: false
+  matrix:
+    default: ${{ toJson(matrix) }}
+    required: false
+  external-repository-token:
+    description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
+    required: false
+outputs:
+  codeql-path:
+    description: The path of the CodeQL binary used for analysis
+  codeql-version:
+    description: The version of the CodeQL binary used for analysis
+runs:
+  using: node24
+  main: '../lib/setup-codeql-action.js'

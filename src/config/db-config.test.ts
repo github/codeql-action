@@ -2,7 +2,7 @@ import test, { ExecutionContext } from "ava";
 
 import { RepositoryProperties } from "../feature-flags/properties";
 import { KnownLanguage, Language } from "../languages";
-import { prettyPrintPack } from "../util";
+import { ConfigurationError, prettyPrintPack } from "../util";
 
 import * as dbConfig from "./db-config";
 
@@ -391,3 +391,42 @@ test(
   {},
   /"a-pack-without-a-scope" is not a valid pack/,
 );
+
+test("parseUserConfig - successfully parses valid YAML", (t) => {
+  const result = dbConfig.parseUserConfig(
+    "test",
+    `
+    paths-ignore:
+      - "some/path"
+    queries:
+      - uses: foo
+    `,
+  );
+  t.truthy(result);
+  if (t.truthy(result["paths-ignore"])) {
+    t.is(result["paths-ignore"].length, 1);
+    t.is(result["paths-ignore"][0], "some/path");
+  }
+  if (t.truthy(result["queries"])) {
+    t.is(result["queries"].length, 1);
+    t.deepEqual(result["queries"][0], { uses: "foo" });
+  }
+});
+
+test("parseUserConfig - throws a ConfigurationError if the file is not valid YAML", (t) => {
+  t.throws(
+    () =>
+      dbConfig.parseUserConfig(
+        "test",
+        `
+        paths-ignore:
+         - "some/path"
+         queries:
+         - foo
+        `,
+      ),
+    {
+      instanceOf: ConfigurationError,
+    },
+  );
+});

@@ -19,6 +19,7 @@ import {
   calculateAugmentation,
   ExcludeQueryFilter,
   generateCodeScanningConfig,
+  parseUserConfig,
   UserConfig,
 } from "./config/db-config";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
@@ -905,7 +906,7 @@ function getLocalConfig(configFile: string): UserConfig {
     );
   }
 
-  return yaml.load(fs.readFileSync(configFile, "utf8")) as UserConfig;
+  return parseUserConfig(configFile, fs.readFileSync(configFile, "utf-8"));
 }
 
 async function getRemoteConfig(
@@ -946,9 +947,10 @@ async function getRemoteConfig(
     );
   }
 
-  return yaml.load(
+  return parseUserConfig(
+    configFile,
     Buffer.from(fileContents, "base64").toString("binary"),
-  ) as UserConfig;
+  );
 }
 
 /**

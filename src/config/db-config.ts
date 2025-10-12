@@ -1,6 +1,7 @@
 import * as path from "path";
 
 import * as yaml from "js-yaml";
+import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
 import * as errorMessages from "../error-messages";
@@ -489,7 +490,23 @@ export function parseUserConfig(
   contents: string,
 ): UserConfig {
   try {
-    return yaml.load(contents) as UserConfig;
+    const schema =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("../../src/db-config-schema.json") as jsonschema.Schema;
+
+    const doc = yaml.load(contents);
+    const result = new jsonschema.Validator().validate(doc, schema);
+
+    if (result.errors.length > 0) {
+      throw new ConfigurationError(
+        errorMessages.getInvalidConfigFileMessage(
+          pathInput,
+          `The configuration file contained ${result.errors.length} error(s)`,
+        ),
+      );
+    }
+
+    return doc as UserConfig;
   } catch (error) {
     if (error instanceof yaml.YAMLException) {
       throw new ConfigurationError(

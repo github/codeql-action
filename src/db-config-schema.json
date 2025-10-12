@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodeQL Database Configuration",
+  "description": "Format of the config file supplied by the user for CodeQL analysis",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the configuration"
+    },
+    "disable-default-queries": {
+      "type": "boolean",
+      "description": "Whether to disable default queries"
+    },
+    "queries": {
+      "type": "array",
+      "description": "List of additional queries to run",
+      "items": {
+        "$ref": "#/definitions/QuerySpec"
+      }
+    },
+    "paths-ignore": {
+      "type": "array",
+      "description": "Paths to ignore during analysis",
+      "items": {
+        "type": "string"
+      }
+    },
+    "paths": {
+      "type": "array",
+      "description": "Paths to include in analysis",
+      "items": {
+        "type": "string"
+      }
+    },
+    "packs": {
+      "description": "Query packs to include. Can be a simple array for single-language analysis or an object with language-specific arrays for multi-language analysis",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "query-filters": {
+      "type": "array",
+      "description": "Set of query filters to include and exclude extra queries based on CodeQL query suite include and exclude properties",
+      "items": {
+        "$ref": "#/definitions/QueryFilter"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "QuerySpec": {
+      "type": "object",
+      "description": "Detailed query specification object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Optional name for the query"
+        },
+        "uses": {
+          "type": "string",
+          "description": "The query or query suite to use"
+        }
+      },
+      "required": ["uses"],
+      "additionalProperties": false
+    },
+    "QueryFilter": {
+      "description": "Query filter that can either include or exclude queries",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ExcludeQueryFilter"
+        },
+        {
+          "$ref": "#/definitions/IncludeQueryFilter"
+        }
+      ]
+    },
+    "ExcludeQueryFilter": {
+      "type": "object",
+      "description": "Filter to exclude queries",
+      "properties": {
+        "exclude": {
+          "type": "object",
+          "description": "Queries to exclude",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "required": ["exclude"],
+      "additionalProperties": false
+    },
+    "IncludeQueryFilter": {
+      "type": "object",
+      "description": "Filter to include queries",
+      "properties": {
+        "include": {
+          "type": "object",
+          "description": "Queries to include",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "required": ["include"],
+      "additionalProperties": false
+    }
+  }
+}

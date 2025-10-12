@@ -1,5 +1,6 @@
 import * as path from "path";
 
+import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as errorMessages from "../error-messages";
@@ -473,4 +474,28 @@ export function generateCodeScanningConfig(
   }
 
   return augmentedConfig;
+}
+
+/**
+ * Attempts to parse `contents` into a `UserConfig` value.
+ *
+ * @param pathInput The path to the file where `contents` was obtained from, for use in error messages.
+ * @param contents The string contents of a YAML file to try and parse as a `UserConfig`.
+ * @returns The `UserConfig` corresponding to `contents`, if parsing was successful.
+ * @throws A `ConfigurationError` if parsing failed.
+ */
+export function parseUserConfig(
+  pathInput: string,
+  contents: string,
+): UserConfig {
+  try {
+    return yaml.load(contents) as UserConfig;
+  } catch (error) {
+    if (error instanceof yaml.YAMLException) {
+      throw new ConfigurationError(
+        errorMessages.getConfigFileParseErrorMessage(pathInput, error.message),
+      );
+    }
+    throw error;
+  }
 }

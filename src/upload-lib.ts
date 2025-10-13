@@ -688,6 +688,77 @@ export function buildPayload(
   return payloadObj;
 }
 
+export interface PostProcessingResults {
+  sarif: util.SarifFile;
+  analysisKey: string;
+  environment: string;
+}
+
+/**
+ * Performs post-processing of the SARIF files given by `sarifPaths`.
+ *
+ * @param logger The logger to use.
+ * @param features Information about enabled features.
+ * @param checkoutPath The path where the repo was checked out at.
+ * @param sarifPaths The paths of the SARIF files to post-process.
+ * @param category The analysis category.
+ * @param analysis The analysis configuration.
+ *
+ * @returns Returns the results of post-processing the SARIF files,
+ *          including the resulting SARIF file.
+ */
+export async function postProcessSarifFiles(
+  logger: Logger,
+  features: FeatureEnablement,
+  checkoutPath: string,
+  sarifPaths: string[],
+  category: string | undefined,
+  analysis: analyses.AnalysisConfig,
+): Promise<PostProcessingResults> {
+  logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
+
+  const gitHubVersion = await getGitHubVersion();
+
+  let sarif: SarifFile;
+  category = analysis.fixCategory(logger, category);
+
+  if (sarifPaths.length > 1) {
+    // Validate that the files we were asked to upload are all valid SARIF files
+    for (const sarifPath of sarifPaths) {
+      const parsedSarif = readSarifFile(sarifPath);
+      validateSarifFileSchema(parsedSarif, sarifPath, logger);
+    }
+
+    sarif = await combineSarifFilesUsingCLI(
+      sarifPaths,
+      gitHubVersion,
+      features,
+      logger,
+    );
+  } else {
+    const sarifPath = sarifPaths[0];
+    sarif = readSarifFile(sarifPath);
+    validateSarifFileSchema(sarif, sarifPath, logger);
+
+    // Validate that there are no runs for the same category
+    await throwIfCombineSarifFilesDisabled([sarif], gitHubVersion);
+  }
+
+  sarif = filterAlertsByDiffRange(logger, sarif);
+  sarif = await fingerprints.addFingerprints(sarif, checkoutPath, logger);
+
+  const analysisKey = await api.getAnalysisKey();
+  const environment = actionsUtil.getRequiredInput("matrix");
+  sarif = populateRunAutomationDetails(
+    sarif,
+    category,
+    analysisKey,
+    environment,
+  );
+
+  return { sarif, analysisKey, environment };
+}
+
 /**
  * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
  * to.
@@ -727,46 +798,16 @@ export async function uploadSpecifiedFiles(
   uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
-  logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
 
-  const gitHubVersion = await getGitHubVersion();
-
-  let sarif: SarifFile;
-  category = uploadTarget.fixCategory(logger, category);
-
-  if (sarifPaths.length > 1) {
-    // Validate that the files we were asked to upload are all valid SARIF files
-    for (const sarifPath of sarifPaths) {
-      const parsedSarif = readSarifFile(sarifPath);
-      validateSarifFileSchema(parsedSarif, sarifPath, logger);
-    }
-
-    sarif = await combineSarifFilesUsingCLI(
-      sarifPaths,
-      gitHubVersion,
-      features,
-      logger,
-    );
-  } else {
-    const sarifPath = sarifPaths[0];
-    sarif = readSarifFile(sarifPath);
-    validateSarifFileSchema(sarif, sarifPath, logger);
-
-    // Validate that there are no runs for the same category
-    await throwIfCombineSarifFilesDisabled([sarif], gitHubVersion);
-  }
-
-  sarif = filterAlertsByDiffRange(logger, sarif);
-  sarif = await fingerprints.addFingerprints(sarif, checkoutPath, logger);
-
-  const analysisKey = await api.getAnalysisKey();
-  const environment = actionsUtil.getRequiredInput("matrix");
-  sarif = populateRunAutomationDetails(
-    sarif,
+  const processingResults: PostProcessingResults = await postProcessSarifFiles(
+    logger,
+    features,
+    checkoutPath,
+    sarifPaths,
     category,
-    analysisKey,
-    environment,
+    uploadTarget,
   );
+  const sarif = processingResults.sarif;
 
   const toolNames = util.getToolNames(sarif);
 
@@ -787,13 +828,13 @@ export async function uploadSpecifiedFiles(
   const payload = buildPayload(
     await gitUtils.getCommitOid(checkoutPath),
     await gitUtils.getRef(),
-    analysisKey,
+    processingResults.analysisKey,
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     zippedSarif,
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getWorkflowRunAttempt(),
     checkoutURI,
-    environment,
+    processingResults.environment,
     toolNames,
     await gitUtils.determineBaseBranchHeadCommitOid(),
   );

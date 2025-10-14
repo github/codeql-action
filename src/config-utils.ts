@@ -526,6 +526,7 @@ async function downloadCacheWithTime(
 }
 
 async function loadUserConfig(
+  logger: Logger,
   configFile: string,
   workspacePath: string,
   apiDetails: api.GitHubApiCombinedDetails,
@@ -542,9 +543,9 @@ async function loadUserConfig(
         );
       }
     }
-    return getLocalConfig(configFile);
+    return getLocalConfig(logger, configFile);
   } else {
-    return await getRemoteConfig(configFile, apiDetails);
+    return await getRemoteConfig(logger, configFile, apiDetails);
   }
 }
 
@@ -801,6 +802,7 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
     userConfig = await loadUserConfig(
+      logger,
       inputs.configFile,
       inputs.workspacePath,
       inputs.apiDetails,
@@ -898,7 +900,7 @@ function isLocal(configPath: string): boolean {
   return configPath.indexOf("@") === -1;
 }
 
-function getLocalConfig(configFile: string): UserConfig {
+function getLocalConfig(logger: Logger, configFile: string): UserConfig {
   // Error if the file does not exist
   if (!fs.existsSync(configFile)) {
     throw new ConfigurationError(
@@ -906,10 +908,15 @@ function getLocalConfig(configFile: string): UserConfig {
     );
   }
 
-  return parseUserConfig(configFile, fs.readFileSync(configFile, "utf-8"));
+  return parseUserConfig(
+    logger,
+    configFile,
+    fs.readFileSync(configFile, "utf-8"),
+  );
 }
 
 async function getRemoteConfig(
+  logger: Logger,
   configFile: string,
   apiDetails: api.GitHubApiCombinedDetails,
 ): Promise<UserConfig> {
@@ -948,6 +955,7 @@ async function getRemoteConfig(
   }
 
   return parseUserConfig(
+    logger,
     configFile,
     Buffer.from(fileContents, "base64").toString("binary"),
   );

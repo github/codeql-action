@@ -23,9 +23,11 @@ export function getConfigFileParseErrorMessage(
 
 export function getInvalidConfigFileMessage(
   configFile: string,
-  detail: string,
+  messages: string[],
 ): string {
-  return `The configuration file "${configFile}" is invalid: ${detail}`;
+  const andMore =
+    messages.length > 10 ? `, and ${messages.length - 10} more.` : ".";
+  return `The configuration file "${configFile}" is invalid: ${messages.slice(0, 10).join(", ")}${andMore}`;
 }
 
 export function getConfigFileRepoFormatInvalidMessage(

@@ -457,6 +457,8 @@ test("parseUserConfig - throws a ConfigurationError if validation fails", (t) =>
       ),
     {
       instanceOf: ConfigurationError,
+      message:
+        'The configuration file "test" is invalid: instance.queries is not of a type(s) array.',
     },
   );
 

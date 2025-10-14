@@ -480,12 +480,14 @@ export function generateCodeScanningConfig(
 /**
  * Attempts to parse `contents` into a `UserConfig` value.
  *
+ * @param logger The logger to use.
  * @param pathInput The path to the file where `contents` was obtained from, for use in error messages.
  * @param contents The string contents of a YAML file to try and parse as a `UserConfig`.
  * @returns The `UserConfig` corresponding to `contents`, if parsing was successful.
  * @throws A `ConfigurationError` if parsing failed.
  */
 export function parseUserConfig(
+  logger: Logger,
   pathInput: string,
   contents: string,
 ): UserConfig {
@@ -498,10 +500,13 @@ export function parseUserConfig(
     const result = new jsonschema.Validator().validate(doc, schema);
 
     if (result.errors.length > 0) {
+      for (const error of result.errors) {
+        logger.error(error.stack);
+      }
       throw new ConfigurationError(
         errorMessages.getInvalidConfigFileMessage(
           pathInput,
-          `The configuration file contained ${result.errors.length} error(s)`,
+          `There are ${result.errors.length} error(s)`,
         ),
       );
     }

@@ -2,6 +2,12 @@ import test, { ExecutionContext } from "ava";
 
 import { RepositoryProperties } from "../feature-flags/properties";
 import { KnownLanguage, Language } from "../languages";
+import { getRunnerLogger } from "../logging";
+import {
+  checkExpectedLogMessages,
+  getRecordingLogger,
+  LoggedMessage,
+} from "../testing-utils";
 import { ConfigurationError, prettyPrintPack } from "../util";
 
 import * as dbConfig from "./db-config";
@@ -394,6 +400,7 @@ test(
 
 test("parseUserConfig - successfully parses valid YAML", (t) => {
   const result = dbConfig.parseUserConfig(
+    getRunnerLogger(true),
     "test",
     `
     paths-ignore:
@@ -418,6 +425,7 @@ test("parseUserConfig - throws a ConfigurationError if the file is not valid YAM
   t.throws(
     () =>
       dbConfig.parseUserConfig(
+        getRunnerLogger(true),
         "test",
         `
         paths-ignore:
@@ -430,4 +438,28 @@ test("parseUserConfig - throws a ConfigurationError if the file is not valid YAM
       instanceOf: ConfigurationError,
     },
   );
+});
+
+test("parseUserConfig - throws a ConfigurationError if validation fails", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  t.throws(
+    () =>
+      dbConfig.parseUserConfig(
+        logger,
+        "test",
+        `
+        paths-ignore:
+         - "some/path"
+        queries: true
+        `,
+      ),
+    {
+      instanceOf: ConfigurationError,
+    },
+  );
+
+  const expectedMessages = ["instance.queries is not of a type(s) array"];
+  checkExpectedLogMessages(t, loggedMessages, expectedMessages);
 });

@@ -19,12 +19,7 @@ import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
-import {
-  Config,
-  getConfig,
-  isCodeQualityEnabled,
-  isCodeScanningEnabled,
-} from "./config-utils";
+import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import {
   DependencyCacheUploadStatusReport,
@@ -52,6 +47,7 @@ import {
 } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
+import { uploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 interface AnalysisStatusReport
@@ -211,7 +207,9 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
 
 async function run() {
   const startedAt = new Date();
-  let uploadResult: UploadResult | undefined = undefined;
+  let uploadResults:
+    | Partial<Record<analyses.AnalysisKind, UploadResult>>
+    | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
@@ -343,30 +341,25 @@ async function run() {
     core.setOutput("sarif-output", path.resolve(outputDir));
     const uploadInput = actionsUtil.getOptionalInput("upload");
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
-      if (isCodeScanningEnabled(config)) {
-        uploadResult = await uploadLib.uploadFiles(
-          outputDir,
-          actionsUtil.getRequiredInput("checkout_path"),
-          actionsUtil.getOptionalInput("category"),
-          features,
-          logger,
-          analyses.CodeScanning,
-        );
-        core.setOutput("sarif-id", uploadResult.sarifID);
-      }
+      const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
+      const category = actionsUtil.getOptionalInput("category");
 
-      if (isCodeQualityEnabled(config)) {
-        const analysis = analyses.CodeQuality;
-        const qualityUploadResult = await uploadLib.uploadFiles(
-          outputDir,
-          actionsUtil.getRequiredInput("checkout_path"),
-          actionsUtil.getOptionalInput("category"),
-          features,
-          logger,
-          analysis,
-        );
-        core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
-      }
+      uploadResults = await uploadSarif(
+        logger,
+        features,
+        checkoutPath,
+        outputDir,
+        category,
+      );
+
+      core.setOutput(
+        "sarif-id",
+        uploadResults[analyses.AnalysisKind.CodeScanning]?.sarifID,
+      );
+      core.setOutput(
+        "quality-sarif-id",
+        uploadResults[analyses.AnalysisKind.CodeQuality]?.sarifID,
+      );
     } else {
       logger.info("Not uploading results");
     }
@@ -408,12 +401,13 @@ async function run() {
     if (util.isInTestMode()) {
       logger.debug("In test mode. Waiting for processing is disabled.");
     } else if (
-      uploadResult !== undefined &&
+      uploadResults !== undefined &&
+      uploadResults[analyses.AnalysisKind.CodeScanning] !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {
       await uploadLib.waitForProcessing(
         getRepositoryNwo(),
-        uploadResult.sarifID,
+        uploadResults[analyses.AnalysisKind.CodeScanning].sarifID,
         getActionsLogger(),
       );
     }
@@ -450,13 +444,17 @@ async function run() {
     return;
   }
 
-  if (runStats && uploadResult) {
+  if (
+    runStats &&
+    uploadResults &&
+    uploadResults[analyses.AnalysisKind.CodeScanning]
+  ) {
     await sendStatusReport(
       startedAt,
       config,
       {
         ...runStats,
-        ...uploadResult.statusReport,
+        ...uploadResults[analyses.AnalysisKind.CodeScanning].statusReport,
       },
       undefined,
       trapCacheUploadTime,

@@ -506,7 +506,7 @@ export function parseUserConfig(
       throw new ConfigurationError(
         errorMessages.getInvalidConfigFileMessage(
           pathInput,
-          `There are ${result.errors.length} error(s)`,
+          result.errors.map((e) => e.stack),
         ),
       );
     }

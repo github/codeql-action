@@ -20,20 +20,20 @@ inputs:
       the CodeQL tools.
     required: false
   token:
-    description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
+    description: GitHub token to use for authenticating with this instance of GitHub.
     default: ${{ github.token }}
     required: false
   matrix:
     default: ${{ toJson(matrix) }}
     required: false
   external-repository-token:
-    description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
+    description: A token for fetching additional files from private repositories in the same GitHub instance that is running this action.
     required: false
 outputs:
   codeql-path:
-    description: The path of the CodeQL binary used for analysis
+    description: The path of the CodeQL binary that was installed.
   codeql-version:
-    description: The version of the CodeQL binary used for analysis
+    description: The version of the CodeQL binary that was installed.
 runs:
   using: node24
   main: '../lib/setup-codeql-action.js'

@@ -28,12 +28,13 @@ test("post: init action with debug mode off", async (t) => {
     const gitHubVersion: util.GitHubVersion = {
       type: util.GitHubVariant.DOTCOM,
     };
-    sinon.stub(configUtils, "getConfig").resolves({
-      debugMode: false,
-      gitHubVersion,
-      languages: [],
-      packs: [],
-    } as unknown as configUtils.Config);
+    sinon.stub(configUtils, "getConfig").resolves(
+      createTestConfig({
+        debugMode: false,
+        gitHubVersion,
+        languages: [],
+      }),
+    );
 
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
@@ -335,12 +336,11 @@ async function testFailedSarifUpload(
     matrix?: { [key: string]: string };
   } = {},
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
-  const config = {
+  const config = createTestConfig({
     codeQLCmd: "codeql",
     debugMode: true,
     languages: [],
-    packs: [],
-  } as unknown as configUtils.Config;
+  });
   if (databaseExists) {
     config.dbLocation = "path/to/database";
   }

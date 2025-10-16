@@ -7,7 +7,7 @@ import * as actionsUtil from "./actions-util";
 import { CodeScanning } from "./analyses";
 import { getApiClient } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
-import { Config, isCodeQualityEnabled } from "./config-utils";
+import { Config, isCodeScanningEnabled } from "./config-utils";
 import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -142,10 +142,9 @@ export async function tryUploadSarifIfRunFailed(
 
     // If the only enabled analysis kind is `code-quality`, then we shouldn't
     // upload the failed SARIF to Code Scanning.
-    if (config.analysisKinds.length === 1 && isCodeQualityEnabled(config)) {
+    if (!isCodeScanningEnabled(config)) {
       return {
-        upload_failed_run_skipped_because:
-          "Code Quality is the only enabled analysis kind.",
+        upload_failed_run_skipped_because: "Code Scanning is not enabled.",
       };
     }
 

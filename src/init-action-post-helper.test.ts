@@ -297,14 +297,14 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
   t.truthy(result.upload_failed_run_stack_trace);
 });
 
-test("not uploading failed SARIF when `code-quality` is the only analysis kind", async (t) => {
+test("not uploading failed SARIF when `code-scanning` is not an enabled analysis kind", async (t) => {
   const result = await testFailedSarifUpload(t, createTestWorkflow([]), {
     analysisKinds: [AnalysisKind.CodeQuality],
     expectUpload: false,
   });
   t.is(
     result.upload_failed_run_skipped_because,
-    "Code Quality is the only enabled analysis kind.",
+    "Code Scanning is not enabled.",
   );
 });
 

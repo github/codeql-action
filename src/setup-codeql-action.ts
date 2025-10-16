@@ -157,7 +157,7 @@ async function run(): Promise<void> {
     core.setFailed(error.message);
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,
-      error instanceof ConfigurationError ? "user-error" : "aborted",
+      error instanceof ConfigurationError ? "user-error" : "failure",
       startedAt,
       undefined,
       await checkDiskUsage(logger),

@@ -18,6 +18,7 @@ import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   InitStatusReport,
+  InitToolsDownloadFields,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
@@ -34,16 +35,6 @@ import {
   checkActionVersion,
   getErrorMessage,
 } from "./util";
-
-/** Fields of the init status report populated when the tools source is `download`. */
-interface InitToolsDownloadFields {
-  /** Time taken to download the bundle, in milliseconds. */
-  tools_download_duration_ms?: number;
-  /**
-   * Whether the relevant tools dotcom feature flags have been misconfigured.
-   * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
-  tools_feature_flags_valid?: boolean;
-}
 
 /**
  * Helper function to send a full status report for this action.

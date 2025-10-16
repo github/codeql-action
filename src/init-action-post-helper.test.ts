@@ -2,6 +2,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
@@ -296,6 +297,17 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
   t.truthy(result.upload_failed_run_stack_trace);
 });
 
+test("not uploading failed SARIF when `code-quality` is the only analysis kind", async (t) => {
+  const result = await testFailedSarifUpload(t, createTestWorkflow([]), {
+    analysisKinds: [AnalysisKind.CodeQuality],
+    expectUpload: false,
+  });
+  t.is(
+    result.upload_failed_run_skipped_because,
+    "Code Quality is the only enabled analysis kind.",
+  );
+});
+
 function createTestWorkflow(
   steps: workflow.WorkflowJobStep[],
 ): workflow.Workflow {
@@ -328,15 +340,18 @@ async function testFailedSarifUpload(
     expectUpload = true,
     exportDiagnosticsEnabled = false,
     matrix = {},
+    analysisKinds = [AnalysisKind.CodeScanning],
   }: {
     category?: string;
     databaseExists?: boolean;
     expectUpload?: boolean;
     exportDiagnosticsEnabled?: boolean;
     matrix?: { [key: string]: string };
+    analysisKinds?: AnalysisKind[];
   } = {},
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
   const config = createTestConfig({
+    analysisKinds,
     codeQLCmd: "codeql",
     debugMode: true,
     languages: [],

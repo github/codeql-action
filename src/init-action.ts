@@ -201,6 +201,7 @@ async function run() {
     ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
     : {};
 
+  // Create a unique identifier for this run.
   const jobRunUuid = uuidV4();
   logger.info(`Job run UUID is ${jobRunUuid}.`);
   core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
@@ -229,6 +230,14 @@ async function run() {
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
+
+    // Throw a `ConfigurationError` if the `setup-codeql` action has been run.
+    if (process.env[EnvVar.SETUP_CODEQL_ACTION_HAS_RUN] === "true") {
+      throw new ConfigurationError(
+        `The 'init' action should not be run in the same workflow as 'setup-codeql'.`,
+      );
+    }
+
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );

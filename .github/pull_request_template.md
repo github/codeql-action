@@ -29,16 +29,14 @@ For internal use only. Please select the risk level of this change:
 
 #### How did/will you validate this change?
 
-<!-- Delete options that don't apply. Be explicit about test coverage. If no new tests are added, explain why they are not needed. -->
+<!-- Delete options that don't apply. Be explicit about test coverage. -->
 
 - **Test repository** - This change will be tested on a test repository before merging.
 - **Unit tests** - I am depending on existing unit test coverage (i.e. tests in `.test.ts` files).
 - **End-to-end tests** - I am depending on PR checks (i.e. tests in `pr-checks`).
-- **New / updated tests** - I have added or updated unit / end-to-end tests to cover new or changed functionality (summarize below) OR I am providing a justification below for why test updates are not required.
+- **New / updated tests** - I have added or updated tests (summarize below).
 - **Other** - Please provide details.
 - **None** - I am not validating these changes (provide justification below).
-
-<!-- If you selected "New / updated tests" or omitted adding tests, briefly summarize test additions or rationale: -->
 
 #### If something goes wrong after this change is released, what are the mitigation and rollback strategies?
 
@@ -60,6 +58,6 @@ For internal use only. Please select the risk level of this change:
 ### Merge / deployment checklist
 
 - Confirm this change is backwards compatible with existing workflows.
-- Tests (unit and/or end-to-end) have been added or updated as needed and are passing, OR a justification for not adding tests has been provided.
+- Confirm that tests have been added/updated or are not needed.
 - Consider adding a [changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md) entry for this change.
 - Confirm the [readme](https://github.com/github/codeql-action/blob/main/README.md) and docs have been updated if necessary.

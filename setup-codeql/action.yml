@@ -35,5 +35,5 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary that was installed.
 runs:
-  using: node24
+  using: node20
   main: '../lib/setup-codeql-action.js'

@@ -27,6 +27,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      python-version:
+        type: string
+        description: The version of Python to install
+        required: false
+        default: '3.13'
   workflow_call:
     inputs:
       go-version:
@@ -34,6 +39,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      python-version:
+        type: string
+        description: The version of Python to install
+        required: false
+        default: '3.13'
 defaults:
   run:
     shell: bash
@@ -77,6 +87,11 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
+      - name: Install Python
+        if: matrix.version != 'nightly-latest'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version || '3.13' }}
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}

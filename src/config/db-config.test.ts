@@ -442,6 +442,25 @@ test("parseUserConfig - throws a ConfigurationError if the file is not valid YAM
   );
 });
 
+test("parseUserConfig - validation isn't picky about `query-filters`", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  t.notThrows(() =>
+    dbConfig.parseUserConfig(
+      logger,
+      "test",
+      `
+        query-filters:
+          - something
+          - include: foo
+          - exclude: bar
+        `,
+      true,
+    ),
+  );
+});
+
 test("parseUserConfig - throws a ConfigurationError if validation fails", (t) => {
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);

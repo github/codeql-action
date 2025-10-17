@@ -148,6 +148,7 @@ test("load empty config", async (t) => {
     });
 
     const config = await configUtils.initConfig(
+      createFeatures([]),
       createTestInitConfigInputs({
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
@@ -187,6 +188,7 @@ test("load code quality config", async (t) => {
     });
 
     const config = await configUtils.initConfig(
+      createFeatures([]),
       createTestInitConfigInputs({
         analysisKinds: [AnalysisKind.CodeQuality],
         languagesInput: languages,
@@ -271,6 +273,7 @@ test("initActionState doesn't throw if there are queries configured in the repos
 
     await t.notThrowsAsync(async () => {
       const config = await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           analysisKinds: [AnalysisKind.CodeQuality],
           languagesInput: languages,
@@ -309,6 +312,7 @@ test("loading a saved config produces the same config", async (t) => {
     t.deepEqual(await configUtils.getConfig(tempDir, logger), undefined);
 
     const config1 = await configUtils.initConfig(
+      createFeatures([]),
       createTestInitConfigInputs({
         languagesInput: "javascript,python",
         tempDir,
@@ -360,6 +364,7 @@ test("loading config with version mismatch throws", async (t) => {
       .returns("does-not-exist");
 
     const config = await configUtils.initConfig(
+      createFeatures([]),
       createTestInitConfigInputs({
         languagesInput: "javascript,python",
         tempDir,
@@ -388,6 +393,7 @@ test("load input outside of workspace", async (t) => {
   return await withTmpDir(async (tempDir) => {
     try {
       await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           configFile: "../input",
           tempDir,
@@ -415,6 +421,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
 
     try {
       await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           configFile,
           tempDir,
@@ -443,6 +450,7 @@ test("load non-existent input", async (t) => {
 
     try {
       await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           languagesInput,
           configFile,
@@ -526,6 +534,7 @@ test("load non-empty input", async (t) => {
     const configFilePath = createConfigFile(inputFileContents, tempDir);
 
     const actualConfig = await configUtils.initConfig(
+      createFeatures([]),
       createTestInitConfigInputs({
         languagesInput,
         buildModeInput: "none",
@@ -582,6 +591,7 @@ test("Using config input and file together, config input should be used.", async
     const languagesInput = "javascript";
 
     const config = await configUtils.initConfig(
+      createFeatures([]),
       createTestInitConfigInputs({
         languagesInput,
         configFile: configFilePath,
@@ -632,6 +642,7 @@ test("API client used when reading remote config", async (t) => {
     const languagesInput = "javascript";
 
     await configUtils.initConfig(
+      createFeatures([]),
       createTestInitConfigInputs({
         languagesInput,
         configFile,
@@ -652,6 +663,7 @@ test("Remote config handles the case where a directory is provided", async (t) =
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           configFile: repoReference,
           tempDir,
@@ -680,6 +692,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
     const repoReference = "octo-org/codeql-config/config.yaml@main";
     try {
       await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           configFile: repoReference,
           tempDir,
@@ -709,6 +722,7 @@ test("No detected languages", async (t) => {
 
     try {
       await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           tempDir,
           codeql,
@@ -731,6 +745,7 @@ test("Unknown languages", async (t) => {
 
     try {
       await configUtils.initConfig(
+        createFeatures([]),
         createTestInitConfigInputs({
           languagesInput,
           tempDir,

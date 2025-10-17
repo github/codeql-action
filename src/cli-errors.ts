@@ -264,6 +264,9 @@ export const cliErrorsConfig: Record<
       new RegExp(
         "Query pack .* cannot be found\\. Check the spelling of the pack\\.",
       ),
+      new RegExp(
+        "is not a .ql file, .qls file, a directory, or a query pack specification.",
+      ),
     ],
   },
   [CliConfigErrorCategory.PackMissingAuth]: {

@@ -325,7 +325,7 @@ async function run() {
     }
 
     analysisKinds = await getAnalysisKinds(logger);
-    config = await initConfig({
+    config = await initConfig(features, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),

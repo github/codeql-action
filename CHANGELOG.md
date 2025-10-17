@@ -4,7 +4,8 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update default CodeQL bundle version to 2.23.3. [#3205](https://github.com/github/codeql-action/pull/3205)
+- Experimental: A new `setup-codeql` action has been added which is similar to `init`, except it only installs the CodeQL CLI and does not initialize a database. Do not use this in production as it is part of an internal experiment and subject to change at any time. [#3204](https://github.com/github/codeql-action/pull/3204)
 
 ## 4.30.8 - 10 Oct 2025
 

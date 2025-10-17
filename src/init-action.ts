@@ -57,6 +57,7 @@ import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   InitStatusReport,
+  InitToolsDownloadFields,
   InitWithConfigStatusReport,
   createInitWithConfigStatusReport,
   createStatusReportBase,
@@ -86,16 +87,6 @@ import {
   BuildMode,
 } from "./util";
 import { validateWorkflow } from "./workflow";
-
-/** Fields of the init status report populated when the tools source is `download`. */
-interface InitToolsDownloadFields {
-  /** Time taken to download the bundle, in milliseconds. */
-  tools_download_duration_ms?: number;
-  /**
-   * Whether the relevant tools dotcom feature flags have been misconfigured.
-   * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
-  tools_feature_flags_valid?: boolean;
-}
 
 /**
  * Sends a status report indicating that the `init` Action is starting.
@@ -236,6 +227,7 @@ async function run() {
     ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
     : {};
 
+  // Create a unique identifier for this run.
   const jobRunUuid = uuidV4();
   logger.info(`Job run UUID is ${jobRunUuid}.`);
   core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
@@ -269,6 +261,14 @@ async function run() {
 
     // Send a status report indicating that an analysis is starting.
     await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
+
+    // Throw a `ConfigurationError` if the `setup-codeql` action has been run.
+    if (process.env[EnvVar.SETUP_CODEQL_ACTION_HAS_RUN] === "true") {
+      throw new ConfigurationError(
+        `The 'init' action should not be run in the same workflow as 'setup-codeql'.`,
+      );
+    }
+
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );

@@ -49,10 +49,9 @@ function createTestInitConfigInputs(
   return Object.assign(
     {},
     {
-      analysisKindsInput: "code-scanning",
+      analysisKinds: [AnalysisKind.CodeScanning],
       languagesInput: undefined,
       queriesInput: undefined,
-      qualityQueriesInput: undefined,
       packsInput: undefined,
       configFile: undefined,
       dbLocation: undefined,
@@ -189,7 +188,7 @@ test("load code quality config", async (t) => {
 
     const config = await configUtils.initConfig(
       createTestInitConfigInputs({
-        analysisKindsInput: "code-quality",
+        analysisKinds: [AnalysisKind.CodeQuality],
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
         tempDir,
@@ -273,7 +272,7 @@ test("initActionState doesn't throw if there are queries configured in the repos
     await t.notThrowsAsync(async () => {
       const config = await configUtils.initConfig(
         createTestInitConfigInputs({
-          analysisKindsInput: "code-quality",
+          analysisKinds: [AnalysisKind.CodeQuality],
           languagesInput: languages,
           repository: { owner: "github", repo: "example" },
           tempDir,

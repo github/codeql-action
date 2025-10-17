@@ -15,7 +15,7 @@ import {
   getTemporaryDirectory,
   persistInputs,
 } from "./actions-util";
-import { getAnalysisKinds } from "./analyses";
+import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import {
   getDependencyCachingEnabled,
@@ -253,8 +253,20 @@ async function run() {
   );
 
   try {
-    // This may throw a `ConfigurationError` before we have sent the `starting` status report.
-    const analysisKinds = await getAnalysisKinds(logger);
+    // Parsing the `analysis-kinds` input may throw a `ConfigurationError`, which we don't want before
+    // we have called `sendStartingStatusReport` below. However, we want the analysis kinds for that status
+    // report. To work around this, we ignore exceptions that are thrown here and then call `getAnalysisKinds`
+    // a second time later. The second call will then throw the exception again. If `getAnalysisKinds` is
+    // successful, the results are cached so that we don't duplicate the work in normal runs.
+    let analysisKinds: AnalysisKind[] | undefined;
+    try {
+      analysisKinds = await getAnalysisKinds(logger);
+    } catch (err) {
+      logger.debug(
+        `Failed to parse analysis kinds for 'starting' status report: ${getErrorMessage(err)}`,
+      );
+    }
+
     // Send a status report indicating that an analysis is starting.
     await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
@@ -312,6 +324,7 @@ async function run() {
       }
     }
 
+    analysisKinds = await getAnalysisKinds(logger);
     config = await initConfig({
       analysisKinds,
       languagesInput: getOptionalInput("languages"),

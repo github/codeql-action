@@ -4,6 +4,7 @@ import * as yaml from "js-yaml";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
+import type { UserConfig as DbConfig, QuerySpec } from "../db-config-schema";
 import * as errorMessages from "../error-messages";
 import {
   RepositoryProperties,
@@ -12,6 +13,8 @@ import {
 import { Language } from "../languages";
 import { Logger } from "../logging";
 import { cloneObject, ConfigurationError, prettyPrintPack } from "../util";
+
+export type { QuerySpec } from "../db-config-schema";
 
 export interface ExcludeQueryFilter {
   exclude: Record<string, string[] | string>;
@@ -23,30 +26,14 @@ export interface IncludeQueryFilter {
 
 export type QueryFilter = ExcludeQueryFilter | IncludeQueryFilter;
 
-export interface QuerySpec {
-  name?: string;
-  uses: string;
-}
-
 /**
  * Format of the config file supplied by the user.
  */
-export interface UserConfig {
-  name?: string;
-  "disable-default-queries"?: boolean;
-  queries?: QuerySpec[];
-  "paths-ignore"?: string[];
-  paths?: string[];
-
-  // If this is a multi-language analysis, then the packages must be split by
-  // language. If this is a single language analysis, then no split by
-  // language is necessary.
-  packs?: Record<string, string[]> | string[];
-
+export type UserConfig = DbConfig & {
   // Set of query filters to include and exclude extra queries based on
   // codeql query suite `include` and `exclude` properties
   "query-filters"?: QueryFilter[];
-}
+};
 
 /**
  * Represents additional configuration data from a source other than
@@ -496,7 +483,7 @@ export function parseUserConfig(
   try {
     const schema =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require("../../src/db-config-schema.json") as jsonschema.Schema;
+      require("../../schemas/db-config-schema.json") as jsonschema.Schema;
 
     const doc = yaml.load(contents);
 

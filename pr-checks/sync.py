@@ -184,6 +184,26 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         })
 
+    installPython = is_truthy(checkSpecification.get('installPython', ''))
+
+    if installPython:
+        basePythonVersionExpr = '3.13'
+        workflowInputs['python-version'] = {
+            'type': 'string',
+            'description': 'The version of Python to install',
+            'required': False,
+            'default': basePythonVersionExpr,
+        }
+
+        steps.append({
+            'name': 'Install Python',
+            'if': 'matrix.version != \'nightly-latest\'',
+            'uses': 'actions/setup-python@v6',
+            'with': {
+                'python-version': '${{ inputs.python-version || \'' + basePythonVersionExpr + '\' }}'
+            }
+        })
+
     # If container initialisation steps are present in the check specification,
     # make sure to execute them first.
     if 'container' in checkSpecification and 'container-init-steps' in checkSpecification:

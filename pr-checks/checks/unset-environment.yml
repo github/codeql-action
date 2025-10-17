@@ -6,6 +6,7 @@ versions:
   - linked
   - nightly-latest
 installGo: true
+installPython: true
 steps:
   - uses: ./../action/init
     id: init

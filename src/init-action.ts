@@ -15,6 +15,7 @@ import {
   getTemporaryDirectory,
   persistInputs,
 } from "./actions-util";
+import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import {
   getDependencyCachingEnabled,
@@ -86,6 +87,31 @@ import {
   BuildMode,
 } from "./util";
 import { validateWorkflow } from "./workflow";
+
+/**
+ * Sends a status report indicating that the `init` Action is starting.
+ *
+ * @param startedAt
+ * @param config
+ * @param logger
+ */
+async function sendStartingStatusReport(
+  startedAt: Date,
+  config: Partial<configUtils.Config> | undefined,
+  logger: Logger,
+) {
+  const statusReportBase = await createStatusReportBase(
+    ActionName.Init,
+    "starting",
+    startedAt,
+    config,
+    await checkDiskUsage(logger),
+    logger,
+  );
+  if (statusReportBase !== undefined) {
+    await sendStatusReport(statusReportBase);
+  }
+}
 
 async function sendCompletedStatusReport(
   startedAt: Date,
@@ -219,17 +245,22 @@ async function run() {
   );
 
   try {
-    const statusReportBase = await createStatusReportBase(
-      ActionName.Init,
-      "starting",
-      startedAt,
-      config,
-      await checkDiskUsage(logger),
-      logger,
-    );
-    if (statusReportBase !== undefined) {
-      await sendStatusReport(statusReportBase);
+    // Parsing the `analysis-kinds` input may throw a `ConfigurationError`, which we don't want before
+    // we have called `sendStartingStatusReport` below. However, we want the analysis kinds for that status
+    // report. To work around this, we ignore exceptions that are thrown here and then call `getAnalysisKinds`
+    // a second time later. The second call will then throw the exception again. If `getAnalysisKinds` is
+    // successful, the results are cached so that we don't duplicate the work in normal runs.
+    let analysisKinds: AnalysisKind[] | undefined;
+    try {
+      analysisKinds = await getAnalysisKinds(logger);
+    } catch (err) {
+      logger.debug(
+        `Failed to parse analysis kinds for 'starting' status report: ${getErrorMessage(err)}`,
+      );
     }
+
+    // Send a status report indicating that an analysis is starting.
+    await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
 
     // Throw a `ConfigurationError` if the `setup-codeql` action has been run.
     if (process.env[EnvVar.SETUP_CODEQL_ACTION_HAS_RUN] === "true") {
@@ -293,21 +324,11 @@ async function run() {
       }
     }
 
-    // Warn that `quality-queries` is deprecated if there is an argument for it.
-    const qualityQueriesInput = getOptionalInput("quality-queries");
-
-    if (qualityQueriesInput !== undefined) {
-      logger.warning(
-        "The `quality-queries` input is deprecated and will be removed in a future version of the CodeQL Action. " +
-          "Use the `analysis-kinds` input to configure different analysis kinds instead.",
-      );
-    }
-
+    analysisKinds = await getAnalysisKinds(logger);
     config = await initConfig({
-      analysisKindsInput: getRequiredInput("analysis-kinds"),
+      analysisKinds,
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
-      qualityQueriesInput,
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       configFile,

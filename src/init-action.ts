@@ -15,6 +15,7 @@ import {
   getTemporaryDirectory,
   persistInputs,
 } from "./actions-util";
+import { initAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import {
   getDependencyCachingEnabled,
@@ -105,7 +106,7 @@ interface InitToolsDownloadFields {
  */
 async function sendStartingStatusReport(
   startedAt: Date,
-  config: configUtils.Config | undefined,
+  config: Partial<configUtils.Config> | undefined,
   logger: Logger,
 ) {
   const statusReportBase = await createStatusReportBase(
@@ -252,7 +253,10 @@ async function run() {
   );
 
   try {
-    await sendStartingStatusReport(startedAt, config, logger);
+    // This may throw a `ConfigurationError` before we have sent the `starting` status report.
+    const analysisKinds = await initAnalysisKinds(logger);
+    // Send a status report indicating that an analysis is starting.
+    await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );
@@ -319,7 +323,7 @@ async function run() {
     }
 
     config = await initConfig({
-      analysisKindsInput: getRequiredInput("analysis-kinds"),
+      analysisKinds,
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
       qualityQueriesInput,

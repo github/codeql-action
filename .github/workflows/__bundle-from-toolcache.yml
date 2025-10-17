@@ -67,10 +67,9 @@ jobs:
             if (allCodeqlVersions.length === 0) {
               throw new Error(`CodeQL could not be found in the toolcache`);
             }
-      - id: init
-        uses: ./../action/init
+      - id: setup-codeql
+        uses: ./../action/setup-codeql
         with:
-          languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Check CodeQL is installed within the toolcache
         uses: actions/github-script@v8

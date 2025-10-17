@@ -146,6 +146,7 @@ jobs:
           private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
 
       - name: Create the GitHub release
+        if: steps.check.outputs.exists != 'true'
         env:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
           VERSION: "${{ steps.getVersion.outputs.version }}"

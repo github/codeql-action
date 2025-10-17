@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import {
   AnalysisKind,
-  initAnalysisKinds,
+  getAnalysisKinds,
   parseAnalysisKinds,
   supportedAnalysisKinds,
 } from "./analyses";
@@ -42,28 +42,28 @@ test("Parsing analysis kinds requires at least one analysis kind", async (t) => 
   });
 });
 
-test("initAnalysisKinds - returns expected analysis kinds for `analysis-kinds` input", async (t) => {
+test("getAnalysisKinds - returns expected analysis kinds for `analysis-kinds` input", async (t) => {
   const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
   requiredInputStub
     .withArgs("analysis-kinds")
     .returns("code-scanning,code-quality");
-  const result = await initAnalysisKinds(getRunnerLogger(true));
+  const result = await getAnalysisKinds(getRunnerLogger(true), true);
   t.assert(result.includes(AnalysisKind.CodeScanning));
   t.assert(result.includes(AnalysisKind.CodeQuality));
 });
 
-test("initAnalysisKinds - includes `code-quality` when deprecated `quality-queries` input is used", async (t) => {
+test("getAnalysisKinds - includes `code-quality` when deprecated `quality-queries` input is used", async (t) => {
   const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
   requiredInputStub.withArgs("analysis-kinds").returns("code-scanning");
   const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
   optionalInputStub.withArgs("quality-queries").returns("code-quality");
-  const result = await initAnalysisKinds(getRunnerLogger(true));
+  const result = await getAnalysisKinds(getRunnerLogger(true), true);
   t.assert(result.includes(AnalysisKind.CodeScanning));
   t.assert(result.includes(AnalysisKind.CodeQuality));
 });
 
-test("initAnalysisKinds - throws if `analysis-kinds` input is invalid", async (t) => {
+test("getAnalysisKinds - throws if `analysis-kinds` input is invalid", async (t) => {
   const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
   requiredInputStub.withArgs("analysis-kinds").returns("no-such-thing");
-  await t.throwsAsync(initAnalysisKinds(getRunnerLogger(true)));
+  await t.throwsAsync(getAnalysisKinds(getRunnerLogger(true), true));
 });

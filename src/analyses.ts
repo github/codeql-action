@@ -45,19 +45,29 @@ export async function parseAnalysisKinds(
   );
 }
 
+// Used to avoid re-parsing the input after we have done it once.
+let cachedAnalysisKinds: AnalysisKind[] | undefined;
+
 /**
  * Initialises the analysis kinds for the analysis based on the `analysis-kinds` input.
  * This function will also use the deprecated `quality-queries` input as an indicator to enable `code-quality`.
  * If the `analysis-kinds` input cannot be parsed, a `ConfigurationError` is thrown.
  *
  * @param logger The logger to use.
+ * @param skipCache For testing, whether to ignore the cached values (default: false).
+ *
  * @returns The array of enabled analysis kinds.
  * @throws A `ConfigurationError` if the `analysis-kinds` input cannot be parsed.
  */
-export async function initAnalysisKinds(
+export async function getAnalysisKinds(
   logger: Logger,
+  skipCache: boolean = false,
 ): Promise<AnalysisKind[]> {
-  const analysisKinds = await parseAnalysisKinds(
+  if (!skipCache && cachedAnalysisKinds !== undefined) {
+    return cachedAnalysisKinds;
+  }
+
+  cachedAnalysisKinds = await parseAnalysisKinds(
     getRequiredInput("analysis-kinds"),
   );
 
@@ -75,13 +85,13 @@ export async function initAnalysisKinds(
   // if an input to `quality-queries` was specified. We should remove this once
   // `quality-queries` is no longer used.
   if (
-    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
+    !cachedAnalysisKinds.includes(AnalysisKind.CodeQuality) &&
     qualityQueriesInput !== undefined
   ) {
-    analysisKinds.push(AnalysisKind.CodeQuality);
+    cachedAnalysisKinds.push(AnalysisKind.CodeQuality);
   }
 
-  return analysisKinds;
+  return cachedAnalysisKinds;
 }
 
 /** The queries to use for Code Quality analyses. */

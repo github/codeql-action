@@ -15,7 +15,7 @@ import {
   getTemporaryDirectory,
   persistInputs,
 } from "./actions-util";
-import { initAnalysisKinds } from "./analyses";
+import { getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import {
   getDependencyCachingEnabled,
@@ -254,7 +254,7 @@ async function run() {
 
   try {
     // This may throw a `ConfigurationError` before we have sent the `starting` status report.
-    const analysisKinds = await initAnalysisKinds(logger);
+    const analysisKinds = await getAnalysisKinds(logger);
     // Send a status report indicating that an analysis is starting.
     await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(

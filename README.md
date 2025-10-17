@@ -34,6 +34,7 @@ Actions with special purposes and unlikely to be used directly:
 - `autobuild`: Attempts to automatically build the code. Only used for analyzing languages that require a build. Use the `build-mode: autobuild` input in the `init` action instead. For information about input parameters, see the [autobuild action definition](https://github.com/github/codeql-action/blob/main/autobuild/action.yml).
 - `resolve-environment`: [Experimental] Attempts to infer a build environment suitable for automatic builds. For information about input parameters, see the [resolve-environment action definition](https://github.com/github/codeql-action/blob/main/resolve-environment/action.yml).
 - `start-proxy`: [Experimental] Start the HTTP proxy server. Internal use only and will change without notice. For information about input parameters, see the [start-proxy action definition](https://github.com/github/codeql-action/blob/main/start-proxy/action.yml).
+- `setup-codeql`: [Experimental] Similar to `init`, except it only installs the CodeQL CLI and does not initialize a database.
 
 ### Workflow Permissions
 

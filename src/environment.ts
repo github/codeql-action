@@ -47,6 +47,9 @@ export enum EnvVar {
   /** Whether the CodeQL Action has already warned the user about low disk space. */
   HAS_WARNED_ABOUT_DISK_SPACE = "CODEQL_ACTION_HAS_WARNED_ABOUT_DISK_SPACE",
 
+  /** Whether the `setup-codeql` action has been run. */
+  SETUP_CODEQL_ACTION_HAS_RUN = "CODEQL_ACTION_SETUP_CODEQL_HAS_RUN",
+
   /** Whether the init action has been run. */
   INIT_ACTION_HAS_RUN = "CODEQL_ACTION_INIT_HAS_RUN",
 

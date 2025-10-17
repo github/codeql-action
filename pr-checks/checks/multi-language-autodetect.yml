@@ -4,6 +4,7 @@ operatingSystems: ["macos", "ubuntu"]
 env:
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true
+installPython: true
 steps:
   - name: Use Xcode 16
     if: runner.os == 'macOS' && matrix.version != 'nightly-latest'

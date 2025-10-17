@@ -11,7 +11,6 @@ import {
   CodeQuality,
   codeQualityQueries,
   CodeScanning,
-  parseAnalysisKinds,
 } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
@@ -373,10 +372,8 @@ export async function getRawLanguages(
 
 /** Inputs required to initialize a configuration. */
 export interface InitConfigInputs {
-  analysisKindsInput: string;
   languagesInput: string | undefined;
   queriesInput: string | undefined;
-  qualityQueriesInput: string | undefined;
   packsInput: string | undefined;
   configFile: string | undefined;
   dbLocation: string | undefined;
@@ -396,6 +393,7 @@ export interface InitConfigInputs {
   apiDetails: api.GitHubApiCombinedDetails;
   features: FeatureEnablement;
   repositoryProperties: RepositoryProperties;
+  analysisKinds: AnalysisKind[];
   logger: Logger;
 }
 
@@ -405,10 +403,8 @@ export interface InitConfigInputs {
  */
 export async function initActionState(
   {
-    analysisKindsInput,
     languagesInput,
     queriesInput,
-    qualityQueriesInput,
     packsInput,
     buildModeInput,
     dbLocation,
@@ -424,22 +420,11 @@ export async function initActionState(
     githubVersion,
     features,
     repositoryProperties,
+    analysisKinds,
     logger,
   }: InitConfigInputs,
   userConfig: UserConfig,
 ): Promise<Config> {
-  const analysisKinds = await parseAnalysisKinds(analysisKindsInput);
-
-  // For backwards compatibility, add Code Quality to the enabled analysis kinds
-  // if an input to `quality-queries` was specified. We should remove this once
-  // `quality-queries` is no longer used.
-  if (
-    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
-    qualityQueriesInput !== undefined
-  ) {
-    analysisKinds.push(AnalysisKind.CodeQuality);
-  }
-
   const languages = await getLanguages(
     codeql,
     languagesInput,

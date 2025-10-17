@@ -2,6 +2,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
@@ -28,12 +29,13 @@ test("post: init action with debug mode off", async (t) => {
     const gitHubVersion: util.GitHubVersion = {
       type: util.GitHubVariant.DOTCOM,
     };
-    sinon.stub(configUtils, "getConfig").resolves({
-      debugMode: false,
-      gitHubVersion,
-      languages: [],
-      packs: [],
-    } as unknown as configUtils.Config);
+    sinon.stub(configUtils, "getConfig").resolves(
+      createTestConfig({
+        debugMode: false,
+        gitHubVersion,
+        languages: [],
+      }),
+    );
 
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
@@ -295,6 +297,17 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
   t.truthy(result.upload_failed_run_stack_trace);
 });
 
+test("not uploading failed SARIF when `code-scanning` is not an enabled analysis kind", async (t) => {
+  const result = await testFailedSarifUpload(t, createTestWorkflow([]), {
+    analysisKinds: [AnalysisKind.CodeQuality],
+    expectUpload: false,
+  });
+  t.is(
+    result.upload_failed_run_skipped_because,
+    "Code Scanning is not enabled.",
+  );
+});
+
 function createTestWorkflow(
   steps: workflow.WorkflowJobStep[],
 ): workflow.Workflow {
@@ -327,20 +340,22 @@ async function testFailedSarifUpload(
     expectUpload = true,
     exportDiagnosticsEnabled = false,
     matrix = {},
+    analysisKinds = [AnalysisKind.CodeScanning],
   }: {
     category?: string;
     databaseExists?: boolean;
     expectUpload?: boolean;
     exportDiagnosticsEnabled?: boolean;
     matrix?: { [key: string]: string };
+    analysisKinds?: AnalysisKind[];
   } = {},
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
-  const config = {
+  const config = createTestConfig({
+    analysisKinds,
     codeQLCmd: "codeql",
     debugMode: true,
     languages: [],
-    packs: [],
-  } as unknown as configUtils.Config;
+  });
   if (databaseExists) {
     config.dbLocation = "path/to/database";
   }

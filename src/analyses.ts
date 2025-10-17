@@ -1,4 +1,8 @@
-import { fixCodeQualityCategory } from "./actions-util";
+import {
+  fixCodeQualityCategory,
+  getOptionalInput,
+  getRequiredInput,
+} from "./actions-util";
 import { Logger } from "./logging";
 import { ConfigurationError } from "./util";
 
@@ -39,6 +43,45 @@ export async function parseAnalysisKinds(
   return Array.from(
     new Set(components.map((component) => component as AnalysisKind)),
   );
+}
+
+/**
+ * Initialises the analysis kinds for the analysis based on the `analysis-kinds` input.
+ * This function will also use the deprecated `quality-queries` input as an indicator to enable `code-quality`.
+ * If the `analysis-kinds` input cannot be parsed, a `ConfigurationError` is thrown.
+ *
+ * @param logger The logger to use.
+ * @returns The array of enabled analysis kinds.
+ * @throws A `ConfigurationError` if the `analysis-kinds` input cannot be parsed.
+ */
+export async function initAnalysisKinds(
+  logger: Logger,
+): Promise<AnalysisKind[]> {
+  const analysisKinds = await parseAnalysisKinds(
+    getRequiredInput("analysis-kinds"),
+  );
+
+  // Warn that `quality-queries` is deprecated if there is an argument for it.
+  const qualityQueriesInput = getOptionalInput("quality-queries");
+
+  if (qualityQueriesInput !== undefined) {
+    logger.warning(
+      "The `quality-queries` input is deprecated and will be removed in a future version of the CodeQL Action. " +
+        "Use the `analysis-kinds` input to configure different analysis kinds instead.",
+    );
+  }
+
+  // For backwards compatibility, add Code Quality to the enabled analysis kinds
+  // if an input to `quality-queries` was specified. We should remove this once
+  // `quality-queries` is no longer used.
+  if (
+    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
+    qualityQueriesInput !== undefined
+  ) {
+    analysisKinds.push(AnalysisKind.CodeQuality);
+  }
+
+  return analysisKinds;
 }
 
 /** The queries to use for Code Quality analyses. */

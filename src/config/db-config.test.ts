@@ -409,6 +409,7 @@ test("parseUserConfig - successfully parses valid YAML", (t) => {
       - uses: foo
     some-unknown-option: true
     `,
+    true,
   );
   t.truthy(result);
   if (t.truthy(result["paths-ignore"])) {
@@ -433,6 +434,7 @@ test("parseUserConfig - throws a ConfigurationError if the file is not valid YAM
          queries:
          - foo
         `,
+        true,
       ),
     {
       instanceOf: ConfigurationError,
@@ -454,6 +456,7 @@ test("parseUserConfig - throws a ConfigurationError if validation fails", (t) =>
          - "some/path"
         queries: true
         `,
+        true,
       ),
     {
       instanceOf: ConfigurationError,
@@ -464,4 +467,22 @@ test("parseUserConfig - throws a ConfigurationError if validation fails", (t) =>
 
   const expectedMessages = ["instance.queries is not of a type(s) array"];
   checkExpectedLogMessages(t, loggedMessages, expectedMessages);
+});
+
+test("parseUserConfig - throws no ConfigurationError if validation should fail, but feature is disabled", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  t.notThrows(() =>
+    dbConfig.parseUserConfig(
+      logger,
+      "test",
+      `
+        paths-ignore:
+         - "some/path"
+        queries: true
+        `,
+      false,
+    ),
+  );
 });

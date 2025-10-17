@@ -483,6 +483,7 @@ export function generateCodeScanningConfig(
  * @param logger The logger to use.
  * @param pathInput The path to the file where `contents` was obtained from, for use in error messages.
  * @param contents The string contents of a YAML file to try and parse as a `UserConfig`.
+ * @param validateConfig Whether to validate the configuration file against the schema.
  * @returns The `UserConfig` corresponding to `contents`, if parsing was successful.
  * @throws A `ConfigurationError` if parsing failed.
  */
@@ -490,6 +491,7 @@ export function parseUserConfig(
   logger: Logger,
   pathInput: string,
   contents: string,
+  validateConfig: boolean,
 ): UserConfig {
   try {
     const schema =
@@ -497,18 +499,21 @@ export function parseUserConfig(
       require("../../src/db-config-schema.json") as jsonschema.Schema;
 
     const doc = yaml.load(contents);
-    const result = new jsonschema.Validator().validate(doc, schema);
 
-    if (result.errors.length > 0) {
-      for (const error of result.errors) {
-        logger.error(error.stack);
+    if (validateConfig) {
+      const result = new jsonschema.Validator().validate(doc, schema);
+
+      if (result.errors.length > 0) {
+        for (const error of result.errors) {
+          logger.error(error.stack);
+        }
+        throw new ConfigurationError(
+          errorMessages.getInvalidConfigFileMessage(
+            pathInput,
+            result.errors.map((e) => e.stack),
+          ),
+        );
       }
-      throw new ConfigurationError(
-        errorMessages.getInvalidConfigFileMessage(
-          pathInput,
-          result.errors.map((e) => e.stack),
-        ),
-      );
     }
 
     return doc as UserConfig;

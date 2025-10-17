@@ -77,6 +77,7 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
   UseRepositoryProperties = "use_repository_properties",
+  ValidateDbConfig = "validate_db_config",
 }
 
 export const featureConfig: Record<
@@ -286,6 +287,11 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
     minimumVersion: "2.23.0",
+  },
+  [Feature.ValidateDbConfig]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_VALIDATE_DB_CONFIG",
+    minimumVersion: undefined,
   },
 };
 

@@ -116,13 +116,51 @@ function getBaseDatabaseOidsFilePath(config: Config): string {
 export async function writeOverlayChangesFile(
   config: Config,
   sourceRoot: string,
+  prDiffChangedFiles: Set<string> | undefined,
   logger: Logger,
 ): Promise<string> {
   const baseFileOids = await readBaseDatabaseOidsFile(config, logger);
   const overlayFileOids = await getFileOidsUnderPath(sourceRoot);
   const changedFiles = computeChangedFiles(baseFileOids, overlayFileOids);
+
+  // Augment changed files with any files that appear in the precomputed PR diff ranges.
+  // This ensures overlay analysis always includes every file with at least one edited range.
+  const originalCount = changedFiles.length;
+  let extraAddedCount = 0;
+  try {
+    if (prDiffChangedFiles && prDiffChangedFiles.size > 0) {
+      const existing = new Set(changedFiles);
+      for (const f of prDiffChangedFiles) {
+        if (!existing.has(f)) {
+          // Only include if file still exists (added/modified) — skip deleted files that might appear in diff.
+          if (
+            overlayFileOids[f] !== undefined ||
+            fs.existsSync(path.join(sourceRoot, f))
+          ) {
+            existing.add(f);
+            changedFiles.push(f);
+            extraAddedCount++;
+          }
+        }
+      }
+      if (extraAddedCount > 0) {
+        logger.debug(
+          `Added ${extraAddedCount} file(s) from PR diff ranges into overlay: ${changedFiles.slice(-extraAddedCount).join(", ")}`,
+        );
+      } else {
+        logger.debug(
+          "All diff range files were already present in the diff from the base database.",
+        );
+      }
+    }
+  } catch (e) {
+    logger.debug(
+      `Failed while attempting to add diff range files in overlay: ${(e as any).message || e}`,
+    );
+  }
+
   logger.info(
-    `Found ${changedFiles.length} changed file(s) under ${sourceRoot}.`,
+    `Found ${originalCount} natural changed file(s); added from diff ${extraAddedCount}; total ${changedFiles.length} under ${sourceRoot}.`,
   );
 
   const changedFilesJson = JSON.stringify({ changes: changedFiles });

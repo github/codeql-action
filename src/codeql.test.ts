@@ -545,6 +545,7 @@ const injectedConfigMacro = test.macro({
         "",
         undefined,
         undefined,
+        undefined,
         getRunnerLogger(true),
       );
 
@@ -831,6 +832,7 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
       "",
       undefined,
       "/path/to/qlconfig.yml",
+      undefined,
       getRunnerLogger(true),
     );
 
@@ -859,6 +861,7 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
       "",
       undefined,
       undefined, // undefined qlconfigFile
+      undefined,
       getRunnerLogger(true),
     );
 
@@ -1106,6 +1109,7 @@ test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OP
   await codeqlObject.databaseInitCluster(
     stubConfig,
     "sourceRoot",
+    undefined,
     undefined,
     undefined,
     getRunnerLogger(false),

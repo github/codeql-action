@@ -96,6 +96,31 @@ interface InitToolsDownloadFields {
   tools_feature_flags_valid?: boolean;
 }
 
+/**
+ * Sends a status report indicating that the `init` Action is starting.
+ *
+ * @param startedAt
+ * @param config
+ * @param logger
+ */
+async function sendStartingStatusReport(
+  startedAt: Date,
+  config: configUtils.Config | undefined,
+  logger: Logger,
+) {
+  const statusReportBase = await createStatusReportBase(
+    ActionName.Init,
+    "starting",
+    startedAt,
+    config,
+    await checkDiskUsage(logger),
+    logger,
+  );
+  if (statusReportBase !== undefined) {
+    await sendStatusReport(statusReportBase);
+  }
+}
+
 async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
@@ -227,17 +252,7 @@ async function run() {
   );
 
   try {
-    const statusReportBase = await createStatusReportBase(
-      ActionName.Init,
-      "starting",
-      startedAt,
-      config,
-      await checkDiskUsage(logger),
-      logger,
-    );
-    if (statusReportBase !== undefined) {
-      await sendStatusReport(statusReportBase);
-    }
+    await sendStartingStatusReport(startedAt, config, logger);
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );

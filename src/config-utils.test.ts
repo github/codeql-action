@@ -52,7 +52,6 @@ function createTestInitConfigInputs(
       analysisKinds: [AnalysisKind.CodeScanning],
       languagesInput: undefined,
       queriesInput: undefined,
-      qualityQueriesInput: undefined,
       packsInput: undefined,
       configFile: undefined,
       dbLocation: undefined,

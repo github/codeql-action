@@ -374,7 +374,6 @@ export async function getRawLanguages(
 export interface InitConfigInputs {
   languagesInput: string | undefined;
   queriesInput: string | undefined;
-  qualityQueriesInput: string | undefined;
   packsInput: string | undefined;
   configFile: string | undefined;
   dbLocation: string | undefined;

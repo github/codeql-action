@@ -312,21 +312,10 @@ async function run() {
       }
     }
 
-    // Warn that `quality-queries` is deprecated if there is an argument for it.
-    const qualityQueriesInput = getOptionalInput("quality-queries");
-
-    if (qualityQueriesInput !== undefined) {
-      logger.warning(
-        "The `quality-queries` input is deprecated and will be removed in a future version of the CodeQL Action. " +
-          "Use the `analysis-kinds` input to configure different analysis kinds instead.",
-      );
-    }
-
     config = await initConfig({
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
-      qualityQueriesInput,
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       configFile,

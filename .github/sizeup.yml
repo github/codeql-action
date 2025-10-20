@@ -1,0 +1,54 @@
+labeling:
+  applyCategoryLabels: true
+  categoryLabelPrefix: "size/"
+
+commenting:
+  addCommentWhenScoreThresholdHasBeenExceeded: false
+
+sizeup:
+  categories:
+    - name: extra small
+      lte: 10
+      label:
+        name: XS
+        description: Should be very easy to review
+        color: 3cbf00
+    - name: small
+      lte: 30
+      label:
+        name: S
+        description: Should be easy to review
+        color: 5d9801
+    - name: medium
+      lte: 100
+      label:
+        name: M
+        description: Should be of average difficulty to review
+        color: 7f7203
+    - name: large
+      lte: 500
+      label:
+        name: L
+        description: May be hard to review
+        color: a14c05
+    - name: extra large
+      label:
+        name: XL
+        description: May be very hard to review
+        color: c32607
+    - name: extra extra large
+      label:
+        name: XXL
+        description: May be extremely hard to review
+        color: e50009
+  ignoredFilePatterns:
+    - ".github/workflow/__*"
+    - "lib/**/*"
+    - "package-lock.json"
+  testFilePatterns:
+    - "**/*.test.ts"
+  scoring:
+    # This formula and the aliases below it are written in prefix notation.
+    # For an explanation of how this works, please see:
+    # https://github.com/lerebear/sizeup-core/blob/main/README.md#prefix-notation
+    formula: "- - + additions deletions comments whitespace"

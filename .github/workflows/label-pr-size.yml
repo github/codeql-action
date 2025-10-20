@@ -1,4 +1,4 @@
-name: Label PRs by their size
+name: Label PR with size
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   sizeup:
-    name: Estimate reviewability
+    name: Label PR with size
     runs-on: ubuntu-latest
 
     steps:

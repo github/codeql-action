@@ -42,7 +42,7 @@ sizeup:
         description: May be extremely hard to review
         color: e50009
   ignoredFilePatterns:
-    - ".github/workflow/__*"
+    - ".github/workflows/__*"
     - "lib/**/*"
     - "package-lock.json"
   testFilePatterns:

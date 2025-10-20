@@ -32,6 +32,7 @@ sizeup:
         description: May be hard to review
         color: a14c05
     - name: extra large
+      lte: 1000
       label:
         name: XL
         description: May be very hard to review

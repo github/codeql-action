@@ -7,12 +7,12 @@ import { getActionVersion, getRequiredInput } from "./actions-util";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
+  asHTTPError,
   ConfigurationError,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   GitHubVariant,
   GitHubVersion,
-  isHTTPError,
   parseGitHubUrl,
   parseMatrixInput,
 } from "./util";
@@ -280,21 +280,26 @@ export async function getRepositoryProperties(repositoryNwo: RepositoryNwo) {
 }
 
 export function wrapApiConfigurationError(e: unknown) {
-  if (isHTTPError(e)) {
+  const httpError = asHTTPError(e);
+  if (httpError !== undefined) {
     if (
-      e.message.includes("API rate limit exceeded for installation") ||
-      e.message.includes("commit not found") ||
-      e.message.includes("Resource not accessible by integration") ||
-      /ref .* not found in this repository/.test(e.message)
+      httpError.message.includes("API rate limit exceeded") ||
+      httpError.message.includes("commit not found") ||
+      httpError.message.includes("Resource not accessible by integration") ||
+      /ref .* not found in this repository/.test(httpError.message)
     ) {
-      return new ConfigurationError(e.message);
-    } else if (
-      e.message.includes("Bad credentials") ||
-      e.message.includes("Not Found")
+      return new ConfigurationError(httpError.message);
+    }
+    if (
+      httpError.message.includes("Bad credentials") ||
+      httpError.message.includes("Not Found")
     ) {
       return new ConfigurationError(
         "Please check that your token is valid and has the required permissions: contents: read, security-events: write",
       );
+    }
+    if (httpError.status === 429) {
+      return new ConfigurationError("API rate limit exceeded");
     }
   }
   return e;

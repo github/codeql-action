@@ -19,6 +19,7 @@ import {
   calculateAugmentation,
   ExcludeQueryFilter,
   generateCodeScanningConfig,
+  parseUserConfig,
   UserConfig,
 } from "./config/db-config";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
@@ -525,10 +526,12 @@ async function downloadCacheWithTime(
 }
 
 async function loadUserConfig(
+  logger: Logger,
   configFile: string,
   workspacePath: string,
   apiDetails: api.GitHubApiCombinedDetails,
   tempDir: string,
+  validateConfig: boolean,
 ): Promise<UserConfig> {
   if (isLocal(configFile)) {
     if (configFile !== userConfigFromActionPath(tempDir)) {
@@ -541,9 +544,14 @@ async function loadUserConfig(
         );
       }
     }
-    return getLocalConfig(configFile);
+    return getLocalConfig(logger, configFile, validateConfig);
   } else {
-    return await getRemoteConfig(configFile, apiDetails);
+    return await getRemoteConfig(
+      logger,
+      configFile,
+      apiDetails,
+      validateConfig,
+    );
   }
 }
 
@@ -779,7 +787,10 @@ function hasQueryCustomisation(userConfig: UserConfig): boolean {
  * This will parse the config from the user input if present, or generate
  * a default config. The parsed config is then stored to a known location.
  */
-export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
+export async function initConfig(
+  features: FeatureEnablement,
+  inputs: InitConfigInputs,
+): Promise<Config> {
   const { logger, tempDir } = inputs;
 
   // if configInput is set, it takes precedence over configFile
@@ -799,11 +810,14 @@ export async function initConfig(inputs: InitConfigInputs): Promise<Config> {
     logger.debug("No configuration file was provided");
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
+    const validateConfig = await features.getValue(Feature.ValidateDbConfig);
     userConfig = await loadUserConfig(
+      logger,
       inputs.configFile,
       inputs.workspacePath,
       inputs.apiDetails,
       tempDir,
+      validateConfig,
     );
   }
 
@@ -897,7 +911,11 @@ function isLocal(configPath: string): boolean {
   return configPath.indexOf("@") === -1;
 }
 
-function getLocalConfig(configFile: string): UserConfig {
+function getLocalConfig(
+  logger: Logger,
+  configFile: string,
+  validateConfig: boolean,
+): UserConfig {
   // Error if the file does not exist
   if (!fs.existsSync(configFile)) {
     throw new ConfigurationError(
@@ -905,12 +923,19 @@ function getLocalConfig(configFile: string): UserConfig {
     );
   }
 
-  return yaml.load(fs.readFileSync(configFile, "utf8")) as UserConfig;
+  return parseUserConfig(
+    logger,
+    configFile,
+    fs.readFileSync(configFile, "utf-8"),
+    validateConfig,
+  );
 }
 
 async function getRemoteConfig(
+  logger: Logger,
   configFile: string,
   apiDetails: api.GitHubApiCombinedDetails,
+  validateConfig: boolean,
 ): Promise<UserConfig> {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
@@ -946,9 +971,12 @@ async function getRemoteConfig(
     );
   }
 
-  return yaml.load(
+  return parseUserConfig(
+    logger,
+    configFile,
     Buffer.from(fileContents, "base64").toString("binary"),
-  ) as UserConfig;
+    validateConfig,
+  );
 }
 
 /**

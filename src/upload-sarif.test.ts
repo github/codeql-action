@@ -64,7 +64,13 @@ const uploadSarifMacro = test.macro({
         fs.writeFileSync(sarifFile, "");
       }
 
-      const actual = await uploadSarif(logger, features, "", testPath);
+      const actual = await uploadSarif(
+        logger,
+        features,
+        "always",
+        "",
+        testPath,
+      );
 
       for (const analysisKind of Object.values(AnalysisKind)) {
         const analysisKindResult = expectedResult[analysisKind];

@@ -93,6 +93,7 @@ async function run() {
     const uploadResults = await uploadSarif(
       logger,
       features,
+      "always",
       checkoutPath,
       sarifPath,
       category,

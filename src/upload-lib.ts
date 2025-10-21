@@ -797,8 +797,6 @@ export async function uploadSpecifiedFiles(
   logger: Logger,
   uploadTarget: analyses.AnalysisConfig,
 ): Promise<UploadResult> {
-  logger.startGroup(`Uploading ${uploadTarget.name} results`);
-
   const processingResults: PostProcessingResults = await postProcessSarifFiles(
     logger,
     features,
@@ -807,6 +805,33 @@ export async function uploadSpecifiedFiles(
     category,
     uploadTarget,
   );
+
+  return uploadProcessedFiles(
+    logger,
+    checkoutPath,
+    uploadTarget,
+    processingResults,
+  );
+}
+
+/**
+ * Uploads the
+ *
+ * @param logger The logger to use.
+ * @param checkoutPath The path at which the repository was checked out.
+ * @param uploadTarget The analysis configuration.
+ * @param processingResults The results of post-processing SARIF files.
+ *
+ * @returns The results of uploading the `processingResults` to `uploadTarget`.
+ */
+export async function uploadProcessedFiles(
+  logger: Logger,
+  checkoutPath: string,
+  uploadTarget: analyses.AnalysisConfig,
+  processingResults: PostProcessingResults,
+): Promise<UploadResult> {
+  logger.startGroup(`Uploading ${uploadTarget.name} results`);
+
   const sarif = processingResults.sarif;
 
   const toolNames = util.getToolNames(sarif);

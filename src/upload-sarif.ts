@@ -37,13 +37,20 @@ export async function uploadSarif(
     sarifGroups,
   )) {
     const analysisConfig = analyses.getAnalysisConfig(analysisKind);
-    uploadResults[analysisKind] = await upload_lib.uploadSpecifiedFiles(
-      sarifFiles,
-      checkoutPath,
-      category,
-      features,
+    const processingResults = await upload_lib.postProcessSarifFiles(
       logger,
+      features,
+      checkoutPath,
+      sarifFiles,
+      category,
       analysisConfig,
+    );
+
+    uploadResults[analysisKind] = await upload_lib.uploadProcessedFiles(
+      logger,
+      checkoutPath,
+      analysisConfig,
+      processingResults,
     );
   }
 

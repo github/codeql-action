@@ -33,21 +33,29 @@ const uploadSarifMacro = test.macro({
 
       const toFullPath = (filename: string) => path.join(tempDir, filename);
 
-      const uploadSpecifiedFiles = sinon.stub(
+      const postProcessSarifFiles = sinon.stub(
         uploadLib,
-        "uploadSpecifiedFiles",
+        "postProcessSarifFiles",
+      );
+      const uploadProcessedFiles = sinon.stub(
+        uploadLib,
+        "uploadProcessedFiles",
       );
 
       for (const analysisKind of Object.values(AnalysisKind)) {
-        uploadSpecifiedFiles
+        const analysisConfig = getAnalysisConfig(analysisKind);
+        postProcessSarifFiles
           .withArgs(
-            sinon.match.any,
-            sinon.match.any,
-            sinon.match.any,
-            features,
             logger,
-            getAnalysisConfig(analysisKind),
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            sinon.match.any,
+            analysisConfig,
           )
+          .resolves({ sarif: { runs: [] }, analysisKey: "", environment: "" });
+        uploadProcessedFiles
+          .withArgs(logger, sinon.match.any, analysisConfig, sinon.match.any)
           .resolves(expectedResult[analysisKind as AnalysisKind]?.uploadResult);
       }
 
@@ -63,35 +71,33 @@ const uploadSarifMacro = test.macro({
         if (analysisKindResult) {
           // We are expecting a result for this analysis kind, check that we have it.
           t.deepEqual(actual[analysisKind], analysisKindResult.uploadResult);
-          // Additionally, check that the mocked `uploadSpecifiedFiles` was called with only the file paths
+          // Additionally, check that the mocked `postProcessSarifFiles` was called with only the file paths
           // that we expected it to be called with.
           t.assert(
-            uploadSpecifiedFiles.calledWith(
+            postProcessSarifFiles.calledWith(
+              logger,
+              features,
+              sinon.match.any,
               analysisKindResult.expectedFiles?.map(toFullPath) ??
                 fullSarifPaths,
               sinon.match.any,
-              sinon.match.any,
-              features,
-              logger,
               getAnalysisConfig(analysisKind),
             ),
           );
         } else {
           // Otherwise, we are not expecting a result for this analysis kind. However, note that `undefined`
-          // is also returned by our mocked `uploadSpecifiedFiles` when there is no expected result for this
+          // is also returned by our mocked `uploadProcessedFiles` when there is no expected result for this
           // analysis kind.
           t.is(actual[analysisKind], undefined);
-          // Therefore, we also check that the mocked `uploadSpecifiedFiles` was not called for this analysis kind.
+          // Therefore, we also check that the mocked `uploadProcessedFiles` was not called for this analysis kind.
           t.assert(
-            !uploadSpecifiedFiles.calledWith(
-              sinon.match.any,
-              sinon.match.any,
-              sinon.match.any,
-              features,
+            !uploadProcessedFiles.calledWith(
               logger,
+              sinon.match.any,
               getAnalysisConfig(analysisKind),
+              sinon.match.any,
             ),
-            `uploadSpecifiedFiles was called for ${analysisKind}, but should not have been.`,
+            `uploadProcessedFiles was called for ${analysisKind}, but should not have been.`,
           );
         }
       }

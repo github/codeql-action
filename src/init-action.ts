@@ -15,6 +15,7 @@ import {
   getTemporaryDirectory,
   persistInputs,
 } from "./actions-util";
+import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import {
   getDependencyCachingEnabled,
@@ -56,6 +57,7 @@ import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   InitStatusReport,
+  InitToolsDownloadFields,
   InitWithConfigStatusReport,
   createInitWithConfigStatusReport,
   createStatusReportBase,
@@ -86,14 +88,29 @@ import {
 } from "./util";
 import { validateWorkflow } from "./workflow";
 
-/** Fields of the init status report populated when the tools source is `download`. */
-interface InitToolsDownloadFields {
-  /** Time taken to download the bundle, in milliseconds. */
-  tools_download_duration_ms?: number;
-  /**
-   * Whether the relevant tools dotcom feature flags have been misconfigured.
-   * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
-  tools_feature_flags_valid?: boolean;
+/**
+ * Sends a status report indicating that the `init` Action is starting.
+ *
+ * @param startedAt
+ * @param config
+ * @param logger
+ */
+async function sendStartingStatusReport(
+  startedAt: Date,
+  config: Partial<configUtils.Config> | undefined,
+  logger: Logger,
+) {
+  const statusReportBase = await createStatusReportBase(
+    ActionName.Init,
+    "starting",
+    startedAt,
+    config,
+    await checkDiskUsage(logger),
+    logger,
+  );
+  if (statusReportBase !== undefined) {
+    await sendStatusReport(statusReportBase);
+  }
 }
 
 async function sendCompletedStatusReport(
@@ -210,6 +227,7 @@ async function run() {
     ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
     : {};
 
+  // Create a unique identifier for this run.
   const jobRunUuid = uuidV4();
   logger.info(`Job run UUID is ${jobRunUuid}.`);
   core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
@@ -227,17 +245,30 @@ async function run() {
   );
 
   try {
-    const statusReportBase = await createStatusReportBase(
-      ActionName.Init,
-      "starting",
-      startedAt,
-      config,
-      await checkDiskUsage(logger),
-      logger,
-    );
-    if (statusReportBase !== undefined) {
-      await sendStatusReport(statusReportBase);
+    // Parsing the `analysis-kinds` input may throw a `ConfigurationError`, which we don't want before
+    // we have called `sendStartingStatusReport` below. However, we want the analysis kinds for that status
+    // report. To work around this, we ignore exceptions that are thrown here and then call `getAnalysisKinds`
+    // a second time later. The second call will then throw the exception again. If `getAnalysisKinds` is
+    // successful, the results are cached so that we don't duplicate the work in normal runs.
+    let analysisKinds: AnalysisKind[] | undefined;
+    try {
+      analysisKinds = await getAnalysisKinds(logger);
+    } catch (err) {
+      logger.debug(
+        `Failed to parse analysis kinds for 'starting' status report: ${getErrorMessage(err)}`,
+      );
     }
+
+    // Send a status report indicating that an analysis is starting.
+    await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
+
+    // Throw a `ConfigurationError` if the `setup-codeql` action has been run.
+    if (process.env[EnvVar.SETUP_CODEQL_ACTION_HAS_RUN] === "true") {
+      throw new ConfigurationError(
+        `The 'init' action should not be run in the same workflow as 'setup-codeql'.`,
+      );
+    }
+
     const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
       gitHubVersion.type,
     );
@@ -293,21 +324,11 @@ async function run() {
       }
     }
 
-    // Warn that `quality-queries` is deprecated if there is an argument for it.
-    const qualityQueriesInput = getOptionalInput("quality-queries");
-
-    if (qualityQueriesInput !== undefined) {
-      logger.warning(
-        "The `quality-queries` input is deprecated and will be removed in a future version of the CodeQL Action. " +
-          "Use the `analysis-kinds` input to configure different analysis kinds instead.",
-      );
-    }
-
-    config = await initConfig({
-      analysisKindsInput: getRequiredInput("analysis-kinds"),
+    analysisKinds = await getAnalysisKinds(logger);
+    config = await initConfig(features, {
+      analysisKinds,
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),
-      qualityQueriesInput,
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       configFile,

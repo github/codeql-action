@@ -23,7 +23,6 @@ import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ConfigurationError,
-  isHTTPError,
   getRequiredEnvParam,
   getCachedCodeQlVersion,
   isInTestMode,
@@ -33,6 +32,7 @@ import {
   BuildMode,
   getErrorMessage,
   getTestingEnvironment,
+  asHTTPError,
 } from "./util";
 
 export enum ActionName {
@@ -41,6 +41,7 @@ export enum ActionName {
   Init = "init",
   InitPost = "init-post",
   ResolveEnvironment = "resolve-environment",
+  SetupCodeQL = "setup-codeql",
   StartProxy = "start-proxy",
   UploadSarif = "upload-sarif",
 }
@@ -428,8 +429,9 @@ export async function sendStatusReport<S extends StatusReportBase>(
       },
     );
   } catch (e) {
-    if (isHTTPError(e)) {
-      switch (e.status) {
+    const httpError = asHTTPError(e);
+    if (httpError !== undefined) {
+      switch (httpError.status) {
         case 403:
           if (
             getWorkflowEventName() === "push" &&
@@ -442,11 +444,11 @@ export async function sendStatusReport<S extends StatusReportBase>(
                 `See ${DocUrl.SCANNING_ON_PUSH} for more information on how to configure these events.`,
             );
           } else {
-            core.warning(e.message);
+            core.warning(httpError.message);
           }
           return;
         case 404:
-          core.warning(e.message);
+          core.warning(httpError.message);
           return;
         case 422:
           // schema incompatibility when reporting status
@@ -514,6 +516,16 @@ export interface InitWithConfigStatusReport extends InitStatusReport {
   query_filters: string;
   /** Path to the specified code scanning config file, from the 'config-file' config field. */
   config_file: string;
+}
+
+/** Fields of the init status report populated when the tools source is `download`. */
+export interface InitToolsDownloadFields {
+  /** Time taken to download the bundle, in milliseconds. */
+  tools_download_duration_ms?: number;
+  /**
+   * Whether the relevant tools dotcom feature flags have been misconfigured.
+   * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
+  tools_feature_flags_valid?: boolean;
 }
 
 /**

@@ -283,10 +283,12 @@ export function wrapApiConfigurationError(e: unknown) {
   const httpError = asHTTPError(e);
   if (httpError !== undefined) {
     if (
-      httpError.message.includes("API rate limit exceeded") ||
-      httpError.message.includes("commit not found") ||
-      httpError.message.includes("Resource not accessible by integration") ||
-      /ref .* not found in this repository/.test(httpError.message)
+      [
+        /API rate limit exceeded/,
+        /commit not found/,
+        /Resource not accessible by integration/,
+        /ref .* not found in this repository/,
+      ].some((pattern) => pattern.test(httpError.message))
     ) {
       return new ConfigurationError(httpError.message);
     }

@@ -5,6 +5,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
 import { createStubCodeQL } from "./codeql";
@@ -103,6 +104,39 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
           v.type === "debug" &&
           v.message ===
             "Database upload disabled in workflow. Skipping upload.",
+      ) !== undefined,
+    );
+  });
+});
+
+test("Abort database upload if 'analysis-kinds: code-scanning' is not enabled", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    sinon
+      .stub(actionsUtil, "getRequiredInput")
+      .withArgs("upload-database")
+      .returns("true");
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
+
+    await mockHttpRequests(201);
+
+    const loggedMessages = [];
+    await uploadDatabases(
+      testRepoName,
+      getCodeQL(),
+      {
+        ...getTestConfig(tmpDir),
+        analysisKinds: [AnalysisKind.CodeQuality],
+      },
+      testApiDetails,
+      getRecordingLogger(loggedMessages),
+    );
+    t.assert(
+      loggedMessages.find(
+        (v: LoggedMessage) =>
+          v.type === "debug" &&
+          v.message ===
+            "Not uploading database because 'analysis-kinds: code-scanning' is not enabled.",
       ) !== undefined,
     );
   });

@@ -23,7 +23,6 @@ import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ConfigurationError,
-  isHTTPError,
   getRequiredEnvParam,
   getCachedCodeQlVersion,
   isInTestMode,
@@ -33,6 +32,7 @@ import {
   BuildMode,
   getErrorMessage,
   getTestingEnvironment,
+  asHTTPError,
 } from "./util";
 
 export enum ActionName {
@@ -429,8 +429,9 @@ export async function sendStatusReport<S extends StatusReportBase>(
       },
     );
   } catch (e) {
-    if (isHTTPError(e)) {
-      switch (e.status) {
+    const httpError = asHTTPError(e);
+    if (httpError !== undefined) {
+      switch (httpError.status) {
         case 403:
           if (
             getWorkflowEventName() === "push" &&
@@ -443,11 +444,11 @@ export async function sendStatusReport<S extends StatusReportBase>(
                 `See ${DocUrl.SCANNING_ON_PUSH} for more information on how to configure these events.`,
             );
           } else {
-            core.warning(e.message);
+            core.warning(httpError.message);
           }
           return;
         case 404:
-          core.warning(e.message);
+          core.warning(httpError.message);
           return;
         case 422:
           // schema incompatibility when reporting status

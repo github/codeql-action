@@ -386,16 +386,17 @@ export async function uploadPayload(
     logger.info("Successfully uploaded results");
     return response.data.id as string;
   } catch (e) {
-    if (util.isHTTPError(e)) {
-      switch (e.status) {
+    const httpError = util.asHTTPError(e);
+    if (httpError !== undefined) {
+      switch (httpError.status) {
         case 403:
-          core.warning(e.message || GENERIC_403_MSG);
+          core.warning(httpError.message || GENERIC_403_MSG);
           break;
         case 404:
-          core.warning(e.message || GENERIC_404_MSG);
+          core.warning(httpError.message || GENERIC_404_MSG);
           break;
         default:
-          core.warning(e.message);
+          core.warning(httpError.message);
           break;
       }
     }

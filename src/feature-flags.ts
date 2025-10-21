@@ -657,12 +657,13 @@ class GitHubFeatureFlags {
       this.hasAccessedRemoteFeatureFlags = true;
       return remoteFlags;
     } catch (e) {
-      if (util.isHTTPError(e) && e.status === 403) {
+      const httpError = util.asHTTPError(e);
+      if (httpError?.status === 403) {
         this.logger.warning(
           "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
             "As a result, it will not be opted into any experimental features. " +
             "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`,
+            `please ensure the Action has the 'security-events: write' permission. Details: ${httpError.message}`,
         );
         this.hasAccessedRemoteFeatureFlags = false;
         return {};

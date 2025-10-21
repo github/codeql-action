@@ -693,6 +693,13 @@ export class ConfigurationError extends Error {
 }
 
 export function asHTTPError(arg: any): HTTPError | undefined {
+  if (
+    typeof arg !== "object" ||
+    arg === null ||
+    typeof arg.message !== "string"
+  ) {
+    return undefined;
+  }
   if (Number.isInteger(arg.status)) {
     return new HTTPError(arg.message as string, arg.status as number);
   }

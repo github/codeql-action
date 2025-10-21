@@ -19,6 +19,26 @@ interface UploadSarifExpectedResult {
   expectedFiles?: string[];
 }
 
+function mockPostProcessSarifFiles() {
+  const postProcessSarifFiles = sinon.stub(uploadLib, "postProcessSarifFiles");
+
+  for (const analysisKind of Object.values(AnalysisKind)) {
+    const analysisConfig = getAnalysisConfig(analysisKind);
+    postProcessSarifFiles
+      .withArgs(
+        sinon.match.any,
+        sinon.match.any,
+        sinon.match.any,
+        sinon.match.any,
+        sinon.match.any,
+        analysisConfig,
+      )
+      .resolves({ sarif: { runs: [] }, analysisKey: "", environment: "" });
+  }
+
+  return postProcessSarifFiles;
+}
+
 const uploadSarifMacro = test.macro({
   exec: async (
     t: ExecutionContext<unknown>,
@@ -33,10 +53,7 @@ const uploadSarifMacro = test.macro({
 
       const toFullPath = (filename: string) => path.join(tempDir, filename);
 
-      const postProcessSarifFiles = sinon.stub(
-        uploadLib,
-        "postProcessSarifFiles",
-      );
+      const postProcessSarifFiles = mockPostProcessSarifFiles();
       const uploadProcessedFiles = sinon.stub(
         uploadLib,
         "uploadProcessedFiles",
@@ -44,16 +61,6 @@ const uploadSarifMacro = test.macro({
 
       for (const analysisKind of Object.values(AnalysisKind)) {
         const analysisConfig = getAnalysisConfig(analysisKind);
-        postProcessSarifFiles
-          .withArgs(
-            logger,
-            sinon.match.any,
-            sinon.match.any,
-            sinon.match.any,
-            sinon.match.any,
-            analysisConfig,
-          )
-          .resolves({ sarif: { runs: [] }, analysisKey: "", environment: "" });
         uploadProcessedFiles
           .withArgs(logger, sinon.match.any, analysisConfig, sinon.match.any)
           .resolves(expectedResult[analysisKind as AnalysisKind]?.uploadResult);
@@ -203,25 +210,8 @@ test("uploadSarif doesn't upload if `upload` != `always`", async (t) => {
 
     const toFullPath = (filename: string) => path.join(tempDir, filename);
 
-    const postProcessSarifFiles = sinon.stub(
-      uploadLib,
-      "postProcessSarifFiles",
-    );
+    const postProcessSarifFiles = mockPostProcessSarifFiles();
     const uploadProcessedFiles = sinon.stub(uploadLib, "uploadProcessedFiles");
-
-    for (const analysisKind of Object.values(AnalysisKind)) {
-      const analysisConfig = getAnalysisConfig(analysisKind);
-      postProcessSarifFiles
-        .withArgs(
-          logger,
-          sinon.match.any,
-          sinon.match.any,
-          sinon.match.any,
-          sinon.match.any,
-          analysisConfig,
-        )
-        .resolves({ sarif: { runs: [] }, analysisKey: "", environment: "" });
-    }
 
     fs.writeFileSync(toFullPath("test.sarif"), "");
     fs.writeFileSync(toFullPath("test.quality.sarif"), "");
@@ -231,5 +221,37 @@ test("uploadSarif doesn't upload if `upload` != `always`", async (t) => {
     t.truthy(actual);
     t.assert(postProcessSarifFiles.calledTwice);
     t.assert(uploadProcessedFiles.notCalled);
+  });
+});
+
+test("uploadSarif writes processed SARIF files if output directory is provided", async (t) => {
+  await util.withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+    const features = createFeatures([]);
+
+    const toFullPath = (filename: string) => path.join(tempDir, filename);
+
+    const postProcessSarifFiles = mockPostProcessSarifFiles();
+
+    fs.writeFileSync(toFullPath("test.sarif"), "");
+    fs.writeFileSync(toFullPath("test.quality.sarif"), "");
+
+    const processedOutPath = path.join(tempDir, "processed");
+    const actual = await uploadSarif(
+      logger,
+      features,
+      "never",
+      "",
+      tempDir,
+      "",
+      processedOutPath,
+    );
+
+    t.truthy(actual);
+    t.assert(postProcessSarifFiles.calledTwice);
+    t.assert(fs.existsSync(path.join(processedOutPath, "upload.sarif")));
+    t.assert(
+      fs.existsSync(path.join(processedOutPath, "upload.quality.sarif")),
+    );
   });
 });

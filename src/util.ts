@@ -692,8 +692,22 @@ export class ConfigurationError extends Error {
   }
 }
 
-export function isHTTPError(arg: any): arg is HTTPError {
-  return arg?.status !== undefined && Number.isInteger(arg.status);
+export function asHTTPError(arg: any): HTTPError | undefined {
+  if (
+    typeof arg !== "object" ||
+    arg === null ||
+    typeof arg.message !== "string"
+  ) {
+    return undefined;
+  }
+  if (Number.isInteger(arg.status)) {
+    return new HTTPError(arg.message as string, arg.status as number);
+  }
+  // See https://github.com/actions/toolkit/blob/acb230b99a46ed33a3f04a758cd68b47b9a82908/packages/tool-cache/src/tool-cache.ts#L19
+  if (Number.isInteger(arg.httpStatusCode)) {
+    return new HTTPError(arg.message as string, arg.httpStatusCode as number);
+  }
+  return undefined;
 }
 
 let cachedCodeQlVersion: undefined | VersionInfo = undefined;

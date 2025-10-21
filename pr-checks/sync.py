@@ -117,7 +117,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         steps.extend([
             {
                 'name': 'Install Node.js',
-                'uses': 'actions/setup-node@v5',
+                'uses': 'actions/setup-node@v6',
                 'with': {
                     'node-version': '20.x',
                     'cache': 'npm',
@@ -181,6 +181,26 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             'with': {
                 'java-version': '${{ inputs.java-version || \'' + baseJavaVersionExpr + '\' }}',
                 'distribution': 'temurin'
+            }
+        })
+
+    installPython = is_truthy(checkSpecification.get('installPython', ''))
+
+    if installPython:
+        basePythonVersionExpr = '3.13'
+        workflowInputs['python-version'] = {
+            'type': 'string',
+            'description': 'The version of Python to install',
+            'required': False,
+            'default': basePythonVersionExpr,
+        }
+
+        steps.append({
+            'name': 'Install Python',
+            'if': 'matrix.version != \'nightly-latest\'',
+            'uses': 'actions/setup-python@v6',
+            'with': {
+                'python-version': '${{ inputs.python-version || \'' + basePythonVersionExpr + '\' }}'
             }
         })
 

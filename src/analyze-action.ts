@@ -359,6 +359,7 @@ async function run() {
           checkoutPath,
           outputDir,
           category,
+          actionsUtil.getOptionalInput("post-process-output"),
         );
       } else {
         uploadResults = {};

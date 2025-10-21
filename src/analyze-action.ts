@@ -344,8 +344,10 @@ async function run() {
     }
     core.setOutput("db-locations", dbLocations);
     core.setOutput("sarif-output", path.resolve(outputDir));
-    const uploadInput = actionsUtil.getOptionalInput("upload");
-    if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
+    const uploadKind = actionsUtil.getUploadValue(
+      actionsUtil.getOptionalInput("upload"),
+    );
+    if (runStats) {
       const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
@@ -353,6 +355,7 @@ async function run() {
         uploadResults = await uploadSarif(
           logger,
           features,
+          uploadKind,
           checkoutPath,
           outputDir,
           category,

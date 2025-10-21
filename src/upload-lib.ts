@@ -789,7 +789,7 @@ export async function uploadFiles(
 /**
  * Uploads the given array of SARIF files.
  */
-export async function uploadSpecifiedFiles(
+async function uploadSpecifiedFiles(
   sarifPaths: string[],
   checkoutPath: string,
   category: string | undefined,

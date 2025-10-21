@@ -195,3 +195,41 @@ test(
     },
   },
 );
+
+test("uploadSarif doesn't upload if `upload` != `always`", async (t) => {
+  await util.withTmpDir(async (tempDir) => {
+    const logger = getRunnerLogger(true);
+    const features = createFeatures([]);
+
+    const toFullPath = (filename: string) => path.join(tempDir, filename);
+
+    const postProcessSarifFiles = sinon.stub(
+      uploadLib,
+      "postProcessSarifFiles",
+    );
+    const uploadProcessedFiles = sinon.stub(uploadLib, "uploadProcessedFiles");
+
+    for (const analysisKind of Object.values(AnalysisKind)) {
+      const analysisConfig = getAnalysisConfig(analysisKind);
+      postProcessSarifFiles
+        .withArgs(
+          logger,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match.any,
+          analysisConfig,
+        )
+        .resolves({ sarif: { runs: [] }, analysisKey: "", environment: "" });
+    }
+
+    fs.writeFileSync(toFullPath("test.sarif"), "");
+    fs.writeFileSync(toFullPath("test.quality.sarif"), "");
+
+    const actual = await uploadSarif(logger, features, "never", "", tempDir);
+
+    t.truthy(actual);
+    t.assert(postProcessSarifFiles.calledTwice);
+    t.assert(uploadProcessedFiles.notCalled);
+  });
+});

@@ -760,6 +760,36 @@ export async function postProcessSarifFiles(
 }
 
 /**
+ * Writes the processed SARIF file to disk, if needed based on `pathInput` or the `SARIF_DUMP_DIR`.
+ *
+ * @param logger The logger to use.
+ * @param pathInput The input provided for `post-process-output`.
+ * @param uploadTarget The upload target.
+ * @param processingResults The results of post-processing SARIF files.
+ */
+export async function writeProcessedFiles(
+  logger: Logger,
+  pathInput: string | undefined,
+  uploadTarget: analyses.AnalysisConfig,
+  processingResults: PostProcessingResults,
+) {
+  // If there's an explicit input, use that. Otherwise, use the value from the environment variable.
+  const outputPath = pathInput || process.env[EnvVar.SARIF_DUMP_DIR];
+
+  // If we have an output path, write the SARIF file to it.
+  if (outputPath !== undefined) {
+    dumpSarifFile(
+      JSON.stringify(processingResults.sarif),
+      outputPath,
+      logger,
+      uploadTarget,
+    );
+  } else {
+    logger.debug(`Not writing processed SARIF files.`);
+  }
+}
+
+/**
  * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
  * to.
  */
@@ -841,11 +871,6 @@ export async function uploadProcessedFiles(
   logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
 
-  const dumpDir = process.env[EnvVar.SARIF_DUMP_DIR];
-  if (dumpDir) {
-    dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
-  }
-
   logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = url.pathToFileURL(checkoutPath).href;
@@ -905,14 +930,14 @@ function dumpSarifFile(
     fs.mkdirSync(outputDir, { recursive: true });
   } else if (!fs.lstatSync(outputDir).isDirectory()) {
     throw new ConfigurationError(
-      `The path specified by the ${EnvVar.SARIF_DUMP_DIR} environment variable exists and is not a directory: ${outputDir}`,
+      `The path that processed SARIF files should be written to exists, but is not a directory: ${outputDir}`,
     );
   }
   const outputFile = path.resolve(
     outputDir,
     `upload${uploadTarget.sarifExtension}`,
   );
-  logger.info(`Dumping processed SARIF file to ${outputFile}`);
+  logger.info(`Writing processed SARIF file to ${outputFile}`);
   fs.writeFileSync(outputFile, sarifPayload);
 }
 

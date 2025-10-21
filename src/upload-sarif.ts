@@ -19,6 +19,7 @@ export type UploadSarifResults = Partial<
  * @param checkoutPath The path where the repository was checked out at.
  * @param sarifPath The path to the file or directory to upload.
  * @param category The analysis category.
+ * @param processedOutputPath The path to a directory to which the post-processed SARIF files should be written to.
  *
  * @returns A partial mapping from analysis kinds to the upload results.
  */
@@ -29,6 +30,7 @@ export async function uploadSarif(
   checkoutPath: string,
   sarifPath: string,
   category?: string,
+  processedOutputPath?: string,
 ): Promise<UploadSarifResults> {
   const sarifGroups = await upload_lib.getGroupedSarifFilePaths(
     logger,
@@ -47,6 +49,15 @@ export async function uploadSarif(
       sarifFiles,
       category,
       analysisConfig,
+    );
+
+    // Write the processed SARIF files to disk. This will only write them if needed based on user inputs
+    // or environment variables.
+    await upload_lib.writeProcessedFiles(
+      logger,
+      processedOutputPath,
+      analysisConfig,
+      processingResults,
     );
 
     // Only perform the actual upload of the processed files, if `uploadKind` is `always`.

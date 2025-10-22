@@ -23,7 +23,7 @@ export type UploadSarifResults = Partial<
  *
  * @returns A partial mapping from analysis kinds to the upload results.
  */
-export async function uploadSarif(
+export async function processAndUploadSarif(
   logger: Logger,
   features: FeatureEnablement,
   uploadKind: UploadKind,

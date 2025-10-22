@@ -9,7 +9,6 @@ export enum ToolsFeature {
   ForceOverwrite = "forceOverwrite",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   PythonDefaultIsToNotExtractStdlib = "pythonDefaultIsToNotExtractStdlib",
-  SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
 }
 
 /**

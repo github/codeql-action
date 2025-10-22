@@ -203,7 +203,7 @@ test(
   },
 );
 
-test("uploadSarif doesn't upload if `upload` != `always`", async (t) => {
+test("uploadSarif doesn't upload if upload is disabled", async (t) => {
   await util.withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
     const features = createFeatures([]);

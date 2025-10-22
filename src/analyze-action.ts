@@ -364,8 +364,8 @@ async function run() {
           uploadResults[analyses.AnalysisKind.CodeScanning] =
             await uploadLib.uploadFiles(
               outputDir,
-              actionsUtil.getRequiredInput("checkout_path"),
-              actionsUtil.getOptionalInput("category"),
+              checkoutPath,
+              category,
               features,
               logger,
               analyses.CodeScanning,
@@ -376,8 +376,8 @@ async function run() {
           uploadResults[analyses.AnalysisKind.CodeQuality] =
             await uploadLib.uploadFiles(
               outputDir,
-              actionsUtil.getRequiredInput("checkout_path"),
-              actionsUtil.getOptionalInput("category"),
+              checkoutPath,
+              category,
               features,
               logger,
               analyses.CodeQuality,

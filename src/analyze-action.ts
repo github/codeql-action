@@ -385,14 +385,20 @@ async function run() {
         }
       }
 
-      core.setOutput(
-        "sarif-id",
-        uploadResults[analyses.AnalysisKind.CodeScanning]?.sarifID,
-      );
-      core.setOutput(
-        "quality-sarif-id",
-        uploadResults[analyses.AnalysisKind.CodeQuality]?.sarifID,
-      );
+      // Set the SARIF id outputs only if we have results for them, to avoid
+      // having keys with empty values in the action output.
+      if (uploadResults[analyses.AnalysisKind.CodeScanning] !== undefined) {
+        core.setOutput(
+          "sarif-id",
+          uploadResults[analyses.AnalysisKind.CodeScanning].sarifID,
+        );
+      }
+      if (uploadResults[analyses.AnalysisKind.CodeQuality] !== undefined) {
+        core.setOutput(
+          "quality-sarif-id",
+          uploadResults[analyses.AnalysisKind.CodeQuality].sarifID,
+        );
+      }
     } else {
       logger.info("Not uploading results");
     }
@@ -434,8 +440,7 @@ async function run() {
     if (util.isInTestMode()) {
       logger.debug("In test mode. Waiting for processing is disabled.");
     } else if (
-      uploadResults !== undefined &&
-      uploadResults[analyses.AnalysisKind.CodeScanning] !== undefined &&
+      uploadResults?.[analyses.AnalysisKind.CodeScanning] !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {
       await uploadLib.waitForProcessing(
@@ -479,8 +484,7 @@ async function run() {
 
   if (
     runStats !== undefined &&
-    uploadResults !== undefined &&
-    uploadResults[analyses.AnalysisKind.CodeScanning] !== undefined
+    uploadResults?.[analyses.AnalysisKind.CodeScanning] !== undefined
   ) {
     await sendStatusReport(
       startedAt,

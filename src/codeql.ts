@@ -860,14 +860,6 @@ export async function getCodeQLForCmd(
       } else {
         codeqlArgs.push("--no-sarif-include-diagnostics");
       }
-      if (
-        !isSupportedToolsFeature(
-          await this.getVersion(),
-          ToolsFeature.AnalysisSummaryV2IsDefault,
-        )
-      ) {
-        codeqlArgs.push("--new-analysis-summary");
-      }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {
         codeqlArgs.push(...querySuitePaths);

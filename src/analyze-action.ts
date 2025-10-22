@@ -445,9 +445,9 @@ async function run() {
   }
 
   if (
-    runStats &&
-    uploadResults &&
-    uploadResults[analyses.AnalysisKind.CodeScanning]
+    runStats !== undefined &&
+    uploadResults !== undefined &&
+    uploadResults[analyses.AnalysisKind.CodeScanning] !== undefined
   ) {
     await sendStatusReport(
       startedAt,
@@ -464,7 +464,7 @@ async function run() {
       dependencyCacheResults,
       logger,
     );
-  } else if (runStats) {
+  } else if (runStats !== undefined) {
     await sendStatusReport(
       startedAt,
       config,

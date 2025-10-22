@@ -168,7 +168,7 @@ export function tryGetTagNameFromUrl(
   // assumes less about the structure of the URL.
   const match = matches[matches.length - 1];
 
-  if (match === null || match.length !== 2) {
+  if (match?.length !== 2) {
     logger.debug(
       `Could not determine tag name for URL ${url}. Matched ${JSON.stringify(
         match,

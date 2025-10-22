@@ -943,7 +943,7 @@ async function getRemoteConfig(
   );
   const pieces = format.exec(configFile);
   // 5 = 4 groups + the whole expression
-  if (pieces === null || pieces.groups === undefined || pieces.length < 5) {
+  if (pieces?.groups === undefined || pieces.length < 5) {
     throw new ConfigurationError(
       errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
     );

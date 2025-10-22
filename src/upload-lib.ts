@@ -763,7 +763,7 @@ export async function postProcessSarifFiles(
  * Writes the processed SARIF file to disk, if needed based on `pathInput` or the `SARIF_DUMP_DIR`.
  *
  * @param logger The logger to use.
- * @param pathInput The input provided for `post-process-output`.
+ * @param pathInput The input provided for `processed-sarif-path`.
  * @param uploadTarget The upload target.
  * @param processingResults The results of post-processing SARIF files.
  */

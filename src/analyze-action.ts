@@ -19,7 +19,12 @@ import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
+import {
+  Config,
+  getConfig,
+  isCodeQualityEnabled,
+  isCodeScanningEnabled,
+} from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import {
   DependencyCacheUploadStatusReport,
@@ -344,13 +349,41 @@ async function run() {
       const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
-      uploadResults = await uploadSarif(
-        logger,
-        features,
-        checkoutPath,
-        outputDir,
-        category,
-      );
+      if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
+        uploadResults = await uploadSarif(
+          logger,
+          features,
+          checkoutPath,
+          outputDir,
+          category,
+        );
+      } else {
+        uploadResults = {};
+
+        if (isCodeScanningEnabled(config)) {
+          uploadResults[analyses.AnalysisKind.CodeScanning] =
+            await uploadLib.uploadFiles(
+              outputDir,
+              actionsUtil.getRequiredInput("checkout_path"),
+              actionsUtil.getOptionalInput("category"),
+              features,
+              logger,
+              analyses.CodeScanning,
+            );
+        }
+
+        if (isCodeQualityEnabled(config)) {
+          uploadResults[analyses.AnalysisKind.CodeQuality] =
+            await uploadLib.uploadFiles(
+              outputDir,
+              actionsUtil.getRequiredInput("checkout_path"),
+              actionsUtil.getOptionalInput("category"),
+              features,
+              logger,
+              analyses.CodeQuality,
+            );
+        }
+      }
 
       core.setOutput(
         "sarif-id",

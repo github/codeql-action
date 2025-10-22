@@ -52,6 +52,7 @@ import {
 } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
+import { uploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 interface AnalysisStatusReport
@@ -211,7 +212,9 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
 
 async function run() {
   const startedAt = new Date();
-  let uploadResult: UploadResult | undefined = undefined;
+  let uploadResults:
+    | Partial<Record<analyses.AnalysisKind, UploadResult>>
+    | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
@@ -343,29 +346,58 @@ async function run() {
     core.setOutput("sarif-output", path.resolve(outputDir));
     const uploadInput = actionsUtil.getOptionalInput("upload");
     if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
-      if (isCodeScanningEnabled(config)) {
-        uploadResult = await uploadLib.uploadFiles(
-          outputDir,
-          actionsUtil.getRequiredInput("checkout_path"),
-          actionsUtil.getOptionalInput("category"),
-          features,
+      const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
+      const category = actionsUtil.getOptionalInput("category");
+
+      if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
+        uploadResults = await uploadSarif(
           logger,
-          analyses.CodeScanning,
+          features,
+          checkoutPath,
+          outputDir,
+          category,
         );
-        core.setOutput("sarif-id", uploadResult.sarifID);
+      } else {
+        uploadResults = {};
+
+        if (isCodeScanningEnabled(config)) {
+          uploadResults[analyses.AnalysisKind.CodeScanning] =
+            await uploadLib.uploadFiles(
+              outputDir,
+              checkoutPath,
+              category,
+              features,
+              logger,
+              analyses.CodeScanning,
+            );
+        }
+
+        if (isCodeQualityEnabled(config)) {
+          uploadResults[analyses.AnalysisKind.CodeQuality] =
+            await uploadLib.uploadFiles(
+              outputDir,
+              checkoutPath,
+              category,
+              features,
+              logger,
+              analyses.CodeQuality,
+            );
+        }
       }
 
-      if (isCodeQualityEnabled(config)) {
-        const analysis = analyses.CodeQuality;
-        const qualityUploadResult = await uploadLib.uploadFiles(
-          outputDir,
-          actionsUtil.getRequiredInput("checkout_path"),
-          actionsUtil.getOptionalInput("category"),
-          features,
-          logger,
-          analysis,
+      // Set the SARIF id outputs only if we have results for them, to avoid
+      // having keys with empty values in the action output.
+      if (uploadResults[analyses.AnalysisKind.CodeScanning] !== undefined) {
+        core.setOutput(
+          "sarif-id",
+          uploadResults[analyses.AnalysisKind.CodeScanning].sarifID,
         );
-        core.setOutput("quality-sarif-id", qualityUploadResult.sarifID);
+      }
+      if (uploadResults[analyses.AnalysisKind.CodeQuality] !== undefined) {
+        core.setOutput(
+          "quality-sarif-id",
+          uploadResults[analyses.AnalysisKind.CodeQuality].sarifID,
+        );
       }
     } else {
       logger.info("Not uploading results");
@@ -408,12 +440,12 @@ async function run() {
     if (util.isInTestMode()) {
       logger.debug("In test mode. Waiting for processing is disabled.");
     } else if (
-      uploadResult !== undefined &&
+      uploadResults?.[analyses.AnalysisKind.CodeScanning] !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
     ) {
       await uploadLib.waitForProcessing(
         getRepositoryNwo(),
-        uploadResult.sarifID,
+        uploadResults[analyses.AnalysisKind.CodeScanning].sarifID,
         getActionsLogger(),
       );
     }
@@ -450,13 +482,16 @@ async function run() {
     return;
   }
 
-  if (runStats && uploadResult) {
+  if (
+    runStats !== undefined &&
+    uploadResults?.[analyses.AnalysisKind.CodeScanning] !== undefined
+  ) {
     await sendStatusReport(
       startedAt,
       config,
       {
         ...runStats,
-        ...uploadResult.statusReport,
+        ...uploadResults[analyses.AnalysisKind.CodeScanning].statusReport,
       },
       undefined,
       trapCacheUploadTime,
@@ -466,7 +501,7 @@ async function run() {
       dependencyCacheResults,
       logger,
     );
-  } else if (runStats) {
+  } else if (runStats !== undefined) {
     await sendStatusReport(
       startedAt,
       config,

@@ -36,7 +36,7 @@ steps:
     with:
       output: "${{ runner.temp }}/results"
       upload-database: false
-      post-process-output: "${{ runner.temp }}/processed"
+      processed-sarif-path: "${{ runner.temp }}/processed"
   - name: Upload security SARIF
     if: contains(matrix.analysis-kinds, 'code-scanning')
     uses: actions/upload-artifact@v4

@@ -359,7 +359,7 @@ async function run() {
           checkoutPath,
           outputDir,
           category,
-          actionsUtil.getOptionalInput("post-process-output"),
+          actionsUtil.getOptionalInput("processed-sarif-path"),
         );
       } else {
         uploadResults = {};

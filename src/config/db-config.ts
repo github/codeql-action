@@ -380,10 +380,7 @@ function combineQueries(
   const result: QuerySpec[] = [];
 
   // Query settings obtained from the repository properties have the highest precedence.
-  if (
-    augmentationProperties.repoPropertyQueries &&
-    augmentationProperties.repoPropertyQueries.input
-  ) {
+  if (augmentationProperties.repoPropertyQueries?.input) {
     logger.info(
       `Found query configuration in the repository properties (${RepositoryPropertyName.EXTRA_QUERIES}): ` +
         `${augmentationProperties.repoPropertyQueries.input.map((q) => q.uses).join(", ")}`,

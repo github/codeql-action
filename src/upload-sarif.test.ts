@@ -216,7 +216,13 @@ test("processAndUploadSarif doesn't upload if upload is disabled", async (t) => 
     fs.writeFileSync(toFullPath("test.sarif"), "");
     fs.writeFileSync(toFullPath("test.quality.sarif"), "");
 
-    const actual = await processAndUploadSarif(logger, features, "never", "", tempDir);
+    const actual = await processAndUploadSarif(
+      logger,
+      features,
+      "never",
+      "",
+      tempDir,
+    );
 
     t.truthy(actual);
     t.assert(postProcessSarifFiles.calledTwice);

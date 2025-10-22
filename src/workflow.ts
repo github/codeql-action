@@ -371,7 +371,7 @@ function getInputOrThrow(
       input = input.replace(`\${{matrix.${key}}}`, value);
     }
   }
-  if (input !== undefined && input.includes("${{")) {
+  if (input?.includes("${{")) {
     throw new Error(
       `Could not get ${inputName} input to ${actionName} since it contained an unrecognized dynamic value.`,
     );

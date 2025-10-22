@@ -30,7 +30,7 @@ async function runWrapper() {
       logger,
     );
 
-    if ((config && config.debugMode) || core.isDebug()) {
+    if (config?.debugMode || core.isDebug()) {
       const logFilePath = core.getState("proxy-log-file");
       logger.info(
         "Debug mode is on. Uploading proxy log as Actions debugging artifact...",

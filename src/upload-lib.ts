@@ -845,7 +845,7 @@ async function uploadSpecifiedFiles(
 }
 
 /**
- * Uploads the
+ * Uploads the results of processing SARIF files to the specified upload target.
  *
  * @param logger The logger to use.
  * @param checkoutPath The path at which the repository was checked out.

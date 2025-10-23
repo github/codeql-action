@@ -361,7 +361,7 @@ async function run() {
           category,
           actionsUtil.getOptionalInput("processed-sarif-path"),
         );
-      } else {
+      } else if (uploadKind === "always") {
         uploadResults = {};
 
         if (isCodeScanningEnabled(config)) {
@@ -387,6 +387,9 @@ async function run() {
               analyses.CodeQuality,
             );
         }
+      } else {
+        uploadResults = {};
+        logger.info("Not uploading results");
       }
 
       // Set the SARIF id outputs only if we have results for them, to avoid

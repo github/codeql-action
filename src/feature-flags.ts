@@ -653,7 +653,7 @@ class GitHubFeatureFlags {
       }
 
       this.logger.debug(
-        "Loaded the following default values for the feature flags from the Code Scanning API:",
+        "Loaded the following default values for the feature flags from the CodeQL Action API:",
       );
       for (const [feature, value] of Object.entries(remoteFlags).sort(
         ([nameA], [nameB]) => nameA.localeCompare(nameB),

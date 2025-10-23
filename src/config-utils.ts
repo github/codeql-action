@@ -25,7 +25,7 @@ import {
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { RepositoryProperties } from "./feature-flags/properties";
+import { RepositoryProperties, RepositoryPropertyName } from "./feature-flags/properties";
 import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -656,6 +656,7 @@ export async function getOverlayDatabaseMode(
   sourceRoot: string,
   buildMode: BuildMode | undefined,
   codeScanningConfig: UserConfig,
+  repositoryProperties: RepositoryProperties,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -664,42 +665,48 @@ export async function getOverlayDatabaseMode(
   let overlayDatabaseMode = OverlayDatabaseMode.None;
   let useOverlayDatabaseCaching = false;
 
-  const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
-  // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
-  // treated as if the environment variable was not set.
-  if (
-    modeEnv === OverlayDatabaseMode.Overlay ||
-    modeEnv === OverlayDatabaseMode.OverlayBase ||
-    modeEnv === OverlayDatabaseMode.None
-  ) {
-    overlayDatabaseMode = modeEnv;
-    logger.info(
-      `Setting overlay database mode to ${overlayDatabaseMode} ` +
-        "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
-    );
-  } else if (
-    await isOverlayAnalysisFeatureEnabled(
-      repository,
-      features,
-      codeql,
-      languages,
-      codeScanningConfig,
-    )
-  ) {
-    if (isAnalyzingPullRequest()) {
-      overlayDatabaseMode = OverlayDatabaseMode.Overlay;
-      useOverlayDatabaseCaching = true;
+  const overlayAnalysisDisabled = repositoryProperties[RepositoryPropertyName.DISABLE_OVERLAY_ANALYSIS];
+  if (overlayAnalysisDisabled) {
+    logger.info(`Setting overlay database mode to ${overlayDatabaseMode} ` +
+      `because overlay analysis is disabled by a custom repository property.`);
+  } else {
+    const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
+    // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
+    // treated as if the environment variable was not set.
+    if (
+      modeEnv === OverlayDatabaseMode.Overlay ||
+      modeEnv === OverlayDatabaseMode.OverlayBase ||
+      modeEnv === OverlayDatabaseMode.None
+    ) {
+      overlayDatabaseMode = modeEnv;
       logger.info(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing a pull request.",
+          "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
       );
-    } else if (await isAnalyzingDefaultBranch()) {
-      overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
-      useOverlayDatabaseCaching = true;
-      logger.info(
-        `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing the default branch.",
-      );
+    } else if (
+      await isOverlayAnalysisFeatureEnabled(
+        repository,
+        features,
+        codeql,
+        languages,
+        codeScanningConfig,
+      )
+    ) {
+      if (isAnalyzingPullRequest()) {
+        overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+        useOverlayDatabaseCaching = true;
+        logger.info(
+          `Setting overlay database mode to ${overlayDatabaseMode} ` +
+            "with caching because we are analyzing a pull request.",
+        );
+      } else if (await isAnalyzingDefaultBranch()) {
+        overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+        useOverlayDatabaseCaching = true;
+        logger.info(
+          `Setting overlay database mode to ${overlayDatabaseMode} ` +
+            "with caching because we are analyzing the default branch.",
+        );
+      }
     }
   }
 
@@ -855,6 +862,7 @@ export async function initConfig(
       inputs.sourceRoot,
       config.buildMode,
       config.computedConfig,
+      inputs.repositoryProperties,
       logger,
     );
   logger.info(

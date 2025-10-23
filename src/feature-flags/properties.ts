@@ -8,6 +8,7 @@ import { GitHubVariant, GitHubVersion } from "../util";
  */
 export enum RepositoryPropertyName {
   EXTRA_QUERIES = "github-codeql-extra-queries",
+  DISABLE_OVERLAY_ANALYSIS = "github-codeql-disable-overlay-analysis",
 }
 
 /**

@@ -666,7 +666,7 @@ export async function getOverlayDatabaseMode(
   let useOverlayDatabaseCaching = false;
 
   const overlayAnalysisDisabled = repositoryProperties[RepositoryPropertyName.DISABLE_OVERLAY_ANALYSIS];
-  if (overlayAnalysisDisabled) {
+  if (overlayAnalysisDisabled && overlayAnalysisDisabled === "true") {
     logger.info(`Setting overlay database mode to ${overlayDatabaseMode} ` +
       `because overlay analysis is disabled by a custom repository property.`);
   } else {

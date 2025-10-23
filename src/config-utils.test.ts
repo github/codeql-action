@@ -38,6 +38,7 @@ import {
   withTmpDir,
   BuildMode,
 } from "./util";
+import { RepositoryProperties, RepositoryPropertyName } from "./feature-flags/properties";
 
 setupTests(test);
 
@@ -1005,6 +1006,7 @@ interface OverlayDatabaseModeTestSetup {
   codeqlVersion: string;
   gitRoot: string | undefined;
   codeScanningConfig: configUtils.UserConfig;
+  repositoryProperties?: RepositoryProperties | undefined;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -1092,6 +1094,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           tempDir, // sourceRoot
           setup.buildMode,
           setup.codeScanningConfig,
+          setup.repositoryProperties || {},
           logger,
         );
 
@@ -1182,6 +1185,21 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "Overlay analysis disabled by repository property overrides overlay-base database on default branch when feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isDefaultBranch: true,
+    repositoryProperties: { [RepositoryPropertyName.DISABLE_OVERLAY_ANALYSIS]: "true" },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+)
+
+test(
+  getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when feature enabled with custom analysis",
   {
     languages: [KnownLanguage.javascript],
@@ -1213,6 +1231,24 @@ test(
     useOverlayDatabaseCaching: true,
   },
 );
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis disabled by repository property overrides overlay-base database on default branch when code-scanning feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    repositoryProperties: { [RepositoryPropertyName.DISABLE_OVERLAY_ANALYSIS]: "true" },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+)
 
 test(
   getOverlayDatabaseModeMacro,
@@ -1349,6 +1385,21 @@ test(
     useOverlayDatabaseCaching: true,
   },
 );
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis disabled by repository property overrides overlay analysis on PR when feature enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryProperties: { [RepositoryPropertyName.DISABLE_OVERLAY_ANALYSIS]: "true" },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+)
 
 test(
   getOverlayDatabaseModeMacro,
@@ -1531,6 +1582,34 @@ test(
     useOverlayDatabaseCaching: false,
   },
 );
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis disabled by repository property overrides PR analysis by env for other-org",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryOwner: "other-org",
+    repositoryProperties: { [RepositoryPropertyName.DISABLE_OVERLAY_ANALYSIS]: "true" },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+)
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Disable overlay analysis repository property must be true to disable overlay analysis",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryOwner: "other-org",
+    repositoryProperties: { [RepositoryPropertyName.DISABLE_OVERLAY_ANALYSIS]: "false" },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+)
 
 test(
   getOverlayDatabaseModeMacro,

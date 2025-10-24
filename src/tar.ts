@@ -35,14 +35,14 @@ async function getTarVersion(): Promise<TarVersion> {
   // Return whether this is GNU tar or BSD tar, and the version number
   if (stdout.includes("GNU tar")) {
     const match = stdout.match(/tar \(GNU tar\) ([0-9.]+)/);
-    if (!match || !match[1]) {
+    if (!match?.[1]) {
       throw new Error("Failed to parse output of tar --version.");
     }
 
     return { type: "gnu", version: match[1] };
   } else if (stdout.includes("bsdtar")) {
     const match = stdout.match(/bsdtar ([0-9.]+)/);
-    if (!match || !match[1]) {
+    if (!match?.[1]) {
       throw new Error("Failed to parse output of tar --version.");
     }
 

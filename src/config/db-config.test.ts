@@ -2,7 +2,13 @@ import test, { ExecutionContext } from "ava";
 
 import { RepositoryProperties } from "../feature-flags/properties";
 import { KnownLanguage, Language } from "../languages";
-import { prettyPrintPack } from "../util";
+import { getRunnerLogger } from "../logging";
+import {
+  checkExpectedLogMessages,
+  getRecordingLogger,
+  LoggedMessage,
+} from "../testing-utils";
+import { ConfigurationError, prettyPrintPack } from "../util";
 
 import * as dbConfig from "./db-config";
 
@@ -391,3 +397,111 @@ test(
   {},
   /"a-pack-without-a-scope" is not a valid pack/,
 );
+
+test("parseUserConfig - successfully parses valid YAML", (t) => {
+  const result = dbConfig.parseUserConfig(
+    getRunnerLogger(true),
+    "test",
+    `
+    paths-ignore:
+      - "some/path"
+    queries:
+      - uses: foo
+    some-unknown-option: true
+    `,
+    true,
+  );
+  t.truthy(result);
+  if (t.truthy(result["paths-ignore"])) {
+    t.is(result["paths-ignore"].length, 1);
+    t.is(result["paths-ignore"][0], "some/path");
+  }
+  if (t.truthy(result["queries"])) {
+    t.is(result["queries"].length, 1);
+    t.deepEqual(result["queries"][0], { uses: "foo" });
+  }
+});
+
+test("parseUserConfig - throws a ConfigurationError if the file is not valid YAML", (t) => {
+  t.throws(
+    () =>
+      dbConfig.parseUserConfig(
+        getRunnerLogger(true),
+        "test",
+        `
+        paths-ignore:
+         - "some/path"
+         queries:
+         - foo
+        `,
+        true,
+      ),
+    {
+      instanceOf: ConfigurationError,
+    },
+  );
+});
+
+test("parseUserConfig - validation isn't picky about `query-filters`", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  t.notThrows(() =>
+    dbConfig.parseUserConfig(
+      logger,
+      "test",
+      `
+        query-filters:
+          - something
+          - include: foo
+          - exclude: bar
+        `,
+      true,
+    ),
+  );
+});
+
+test("parseUserConfig - throws a ConfigurationError if validation fails", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  t.throws(
+    () =>
+      dbConfig.parseUserConfig(
+        logger,
+        "test",
+        `
+        paths-ignore:
+         - "some/path"
+        queries: true
+        `,
+        true,
+      ),
+    {
+      instanceOf: ConfigurationError,
+      message:
+        'The configuration file "test" is invalid: instance.queries is not of a type(s) array.',
+    },
+  );
+
+  const expectedMessages = ["instance.queries is not of a type(s) array"];
+  checkExpectedLogMessages(t, loggedMessages, expectedMessages);
+});
+
+test("parseUserConfig - throws no ConfigurationError if validation should fail, but feature is disabled", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  t.notThrows(() =>
+    dbConfig.parseUserConfig(
+      logger,
+      "test",
+      `
+        paths-ignore:
+         - "some/path"
+        queries: true
+        `,
+      false,
+    ),
+  );
+});

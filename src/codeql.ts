@@ -267,7 +267,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.16.6";
+const CODEQL_MINIMUM_VERSION = "2.17.6";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -859,14 +859,6 @@ export async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-include-diagnostics");
       } else {
         codeqlArgs.push("--no-sarif-include-diagnostics");
-      }
-      if (
-        !isSupportedToolsFeature(
-          await this.getVersion(),
-          ToolsFeature.AnalysisSummaryV2IsDefault,
-        )
-      ) {
-        codeqlArgs.push("--new-analysis-summary");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {

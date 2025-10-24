@@ -747,10 +747,10 @@ export async function writePostProcessedFiles(
   postProcessingResults: PostProcessingResults,
 ) {
   // If there's an explicit input, use that. Otherwise, use the value from the environment variable.
-  const outputPath = pathInput || process.env[EnvVar.SARIF_DUMP_DIR];
+  const outputPath = pathInput || util.getOptionalEnvVar(EnvVar.SARIF_DUMP_DIR);
 
   // If we have a non-empty output path, write the SARIF file to it.
-  if (outputPath !== undefined && outputPath.trim() !== "") {
+  if (outputPath !== undefined) {
     dumpSarifFile(
       JSON.stringify(postProcessingResults.sarif),
       outputPath,

@@ -673,6 +673,17 @@ export function getRequiredEnvParam(paramName: string): string {
   return value;
 }
 
+/**
+ * Get an environment variable, but return `undefined` if it is not set or empty.
+ */
+export function getOptionalEnvVar(paramName: string): string | undefined {
+  const value = process.env[paramName];
+  if (value?.trim().length === 0) {
+    return undefined;
+  }
+  return value;
+}
+
 export class HTTPError extends Error {
   public status: number;
 

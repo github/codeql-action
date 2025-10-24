@@ -21,7 +21,6 @@ import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
-import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
   ConfigurationError,
@@ -267,32 +266,6 @@ async function combineSarifFilesUsingCLI(
     );
 
     codeQL = initCodeQLResult.codeql;
-  }
-
-  if (
-    !(await codeQL.supportsFeature(
-      ToolsFeature.SarifMergeRunsFromEqualCategory,
-    ))
-  ) {
-    await throwIfCombineSarifFilesDisabled(sarifObjects, gitHubVersion);
-
-    logger.warning(
-      "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
-    );
-
-    if (
-      await shouldShowCombineSarifFilesDeprecationWarning(
-        sarifObjects,
-        gitHubVersion,
-      )
-    ) {
-      logger.warning(
-        `Uploading multiple CodeQL runs with the same category is deprecated ${deprecationWarningMessage} for CodeQL CLI 2.16.6 and earlier. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. ${deprecationMoreInformationMessage}`,
-      );
-      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
-    }
-
-    return combineSarifFiles(sarifFiles, logger);
   }
 
   const baseTempDir = path.resolve(tempDir, "combined-sarif");

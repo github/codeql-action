@@ -465,7 +465,7 @@ export async function getCacheSaveKey(
     config,
     codeQlVersion,
   );
-  return `${restoreKeyPrefix}${runId}-${attemptId}-${sha}`;
+  return `${restoreKeyPrefix}${sha}-${runId}-${attemptId}`;
 }
 
 /**

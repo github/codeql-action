@@ -276,7 +276,7 @@ test("overlay-base database cache keys remain stable", async (t) => {
 
   const saveKey = await getCacheSaveKey(config, codeQlVersion, "checkout-path");
   const expectedSaveKey =
-    "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-12345-1-abc123def456";
+    "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-abc123def456-12345-1";
   t.is(
     saveKey,
     expectedSaveKey,

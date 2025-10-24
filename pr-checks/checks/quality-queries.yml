@@ -36,7 +36,7 @@ steps:
     with:
       output: "${{ runner.temp }}/results"
       upload-database: false
-      processed-sarif-path: "${{ runner.temp }}/processed"
+      post-processed-sarif-path: "${{ runner.temp }}/post-processed"
   - name: Upload security SARIF
     if: contains(matrix.analysis-kinds, 'code-scanning')
     uses: actions/upload-artifact@v4
@@ -53,12 +53,12 @@ steps:
         quality-queries-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.quality.sarif.json
       path: "${{ runner.temp }}/results/javascript.quality.sarif"
       retention-days: 7
-  - name: Upload processed SARIF
+  - name: Upload post-processed SARIF
     uses: actions/upload-artifact@v4
     with:
       name: |
-        processed-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.sarif.json
-      path: "${{ runner.temp }}/processed"
+        post-processed-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.sarif.json
+      path: "${{ runner.temp }}/post-processed"
       retention-days: 7
       if-no-files-found: error
   - name: Check quality query does not appear in security SARIF

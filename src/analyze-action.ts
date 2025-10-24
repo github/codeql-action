@@ -52,7 +52,7 @@ import {
 } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
-import { processAndUploadSarif } from "./upload-sarif";
+import { postProcessAndUploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 interface AnalysisStatusReport
@@ -352,14 +352,14 @@ async function run() {
       const category = actionsUtil.getOptionalInput("category");
 
       if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
-        uploadResults = await processAndUploadSarif(
+        uploadResults = await postProcessAndUploadSarif(
           logger,
           features,
           uploadKind,
           checkoutPath,
           outputDir,
           category,
-          actionsUtil.getOptionalInput("processed-sarif-path"),
+          actionsUtil.getOptionalInput("post-processed-sarif-path"),
         );
       } else if (uploadKind === "always") {
         uploadResults = {};

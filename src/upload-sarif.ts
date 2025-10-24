@@ -11,7 +11,7 @@ export type UploadSarifResults = Partial<
 >;
 
 /**
- * Finds SARIF files in `sarifPath` and uploads them to the appropriate services.
+ * Finds SARIF files in `sarifPath`, post-processes them, and uploads them to the appropriate services.
  *
  * @param logger The logger to use.
  * @param features Information about enabled features.
@@ -19,18 +19,18 @@ export type UploadSarifResults = Partial<
  * @param checkoutPath The path where the repository was checked out at.
  * @param sarifPath The path to the file or directory to upload.
  * @param category The analysis category.
- * @param processedOutputPath The path to a directory to which the post-processed SARIF files should be written to.
+ * @param postProcessedOutputPath The path to a directory to which the post-processed SARIF files should be written to.
  *
  * @returns A partial mapping from analysis kinds to the upload results.
  */
-export async function processAndUploadSarif(
+export async function postProcessAndUploadSarif(
   logger: Logger,
   features: FeatureEnablement,
   uploadKind: UploadKind,
   checkoutPath: string,
   sarifPath: string,
   category?: string,
-  processedOutputPath?: string,
+  postProcessedOutputPath?: string,
 ): Promise<UploadSarifResults> {
   const sarifGroups = await upload_lib.getGroupedSarifFilePaths(
     logger,
@@ -42,7 +42,7 @@ export async function processAndUploadSarif(
     sarifGroups,
   )) {
     const analysisConfig = analyses.getAnalysisConfig(analysisKind);
-    const processingResults = await upload_lib.postProcessSarifFiles(
+    const postProcessingResults = await upload_lib.postProcessSarifFiles(
       logger,
       features,
       checkoutPath,
@@ -51,22 +51,22 @@ export async function processAndUploadSarif(
       analysisConfig,
     );
 
-    // Write the processed SARIF files to disk. This will only write them if needed based on user inputs
+    // Write the post-processed SARIF files to disk. This will only write them if needed based on user inputs
     // or environment variables.
-    await upload_lib.writeProcessedFiles(
+    await upload_lib.writePostProcessedFiles(
       logger,
-      processedOutputPath,
+      postProcessedOutputPath,
       analysisConfig,
-      processingResults,
+      postProcessingResults,
     );
 
-    // Only perform the actual upload of the processed files, if `uploadKind` is `always`.
+    // Only perform the actual upload of the post-processed files if `uploadKind` is `always`.
     if (uploadKind === "always") {
-      uploadResults[analysisKind] = await upload_lib.uploadProcessedFiles(
+      uploadResults[analysisKind] = await upload_lib.uploadPostProcessedFiles(
         logger,
         checkoutPath,
         analysisConfig,
-        processingResults,
+        postProcessingResults,
       );
     }
   }

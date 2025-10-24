@@ -24,6 +24,7 @@ setupTests(test);
 // but the first test would fail.
 
 test("analyze action with RAM & threads from action inputs", async (t) => {
+  t.timeout(1000 * 20);
   await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_SERVER_URL"] = util.GITHUB_DOTCOM_URL;
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";

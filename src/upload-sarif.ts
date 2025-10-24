@@ -32,6 +32,7 @@ export async function postProcessAndUploadSarif(
   category?: string,
   postProcessedOutputPath?: string,
 ): Promise<UploadSarifResults> {
+  logger.info("XXX at upload-sarif.ts|postProcessAndUploadSarif");
   const sarifGroups = await upload_lib.getGroupedSarifFilePaths(
     logger,
     sarifPath,
@@ -41,6 +42,10 @@ export async function postProcessAndUploadSarif(
   for (const [analysisKind, sarifFiles] of unsafeEntriesInvariant(
     sarifGroups,
   )) {
+    logger.info(
+      `XXX at upload-sarif.ts|postProcessAndUploadSarif loop for analysisKind: ${analysisKind}`,
+    );
+
     const analysisConfig = analyses.getAnalysisConfig(analysisKind);
     const postProcessingResults = await upload_lib.postProcessSarifFiles(
       logger,

@@ -351,7 +351,7 @@ async function run() {
       const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
-      if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
+      if (Math.random() > -1) {
         uploadResults = await postProcessAndUploadSarif(
           logger,
           features,

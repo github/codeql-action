@@ -4,7 +4,12 @@ import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
 
-import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
+import {
+  getRequiredInput,
+  getTemporaryDirectory,
+  getWorkflowRunAttempt,
+  getWorkflowRunID,
+} from "./actions-util";
 import { getAutomationID } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
@@ -453,12 +458,14 @@ export async function getCacheSaveKey(
   codeQlVersion: string,
   checkoutPath: string,
 ): Promise<string> {
+  const runId = getWorkflowRunID();
+  const attemptId = getWorkflowRunAttempt();
   const sha = await getCommitOid(checkoutPath);
   const restoreKeyPrefix = await getCacheRestoreKeyPrefix(
     config,
     codeQlVersion,
   );
-  return `${restoreKeyPrefix}${sha}`;
+  return `${restoreKeyPrefix}${runId}-${attemptId}-${sha}`;
 }
 
 /**

@@ -271,10 +271,12 @@ test("overlay-base database cache keys remain stable", async (t) => {
 
   sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
   sinon.stub(gitUtils, "getCommitOid").resolves(commitOid);
+  sinon.stub(actionsUtil, "getWorkflowRunID").returns(12345);
+  sinon.stub(actionsUtil, "getWorkflowRunAttempt").returns(1);
 
   const saveKey = await getCacheSaveKey(config, codeQlVersion, "checkout-path");
   const expectedSaveKey =
-    "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-abc123def456";
+    "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-12345-1-abc123def456";
   t.is(
     saveKey,
     expectedSaveKey,

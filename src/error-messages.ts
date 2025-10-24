@@ -14,6 +14,22 @@ export function getConfigFileDoesNotExistErrorMessage(
   return `The configuration file "${configFile}" does not exist`;
 }
 
+export function getConfigFileParseErrorMessage(
+  configFile: string,
+  message: string,
+): string {
+  return `Cannot parse "${configFile}": ${message}`;
+}
+
+export function getInvalidConfigFileMessage(
+  configFile: string,
+  messages: string[],
+): string {
+  const andMore =
+    messages.length > 10 ? `, and ${messages.length - 10} more.` : ".";
+  return `The configuration file "${configFile}" is invalid: ${messages.slice(0, 10).join(", ")}${andMore}`;
+}
+
 export function getConfigFileRepoFormatInvalidMessage(
   configFile: string,
 ): string {

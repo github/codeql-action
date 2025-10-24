@@ -1,5 +1,7 @@
 import * as path from "path";
 
+import * as yaml from "js-yaml";
+import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
 import * as errorMessages from "../error-messages";
@@ -378,10 +380,7 @@ function combineQueries(
   const result: QuerySpec[] = [];
 
   // Query settings obtained from the repository properties have the highest precedence.
-  if (
-    augmentationProperties.repoPropertyQueries &&
-    augmentationProperties.repoPropertyQueries.input
-  ) {
+  if (augmentationProperties.repoPropertyQueries?.input) {
     logger.info(
       `Found query configuration in the repository properties (${RepositoryPropertyName.EXTRA_QUERIES}): ` +
         `${augmentationProperties.repoPropertyQueries.input.map((q) => q.uses).join(", ")}`,
@@ -473,4 +472,54 @@ export function generateCodeScanningConfig(
   }
 
   return augmentedConfig;
+}
+
+/**
+ * Attempts to parse `contents` into a `UserConfig` value.
+ *
+ * @param logger The logger to use.
+ * @param pathInput The path to the file where `contents` was obtained from, for use in error messages.
+ * @param contents The string contents of a YAML file to try and parse as a `UserConfig`.
+ * @param validateConfig Whether to validate the configuration file against the schema.
+ * @returns The `UserConfig` corresponding to `contents`, if parsing was successful.
+ * @throws A `ConfigurationError` if parsing failed.
+ */
+export function parseUserConfig(
+  logger: Logger,
+  pathInput: string,
+  contents: string,
+  validateConfig: boolean,
+): UserConfig {
+  try {
+    const schema =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("../../src/db-config-schema.json") as jsonschema.Schema;
+
+    const doc = yaml.load(contents);
+
+    if (validateConfig) {
+      const result = new jsonschema.Validator().validate(doc, schema);
+
+      if (result.errors.length > 0) {
+        for (const error of result.errors) {
+          logger.error(error.stack);
+        }
+        throw new ConfigurationError(
+          errorMessages.getInvalidConfigFileMessage(
+            pathInput,
+            result.errors.map((e) => e.stack),
+          ),
+        );
+      }
+    }
+
+    return doc as UserConfig;
+  } catch (error) {
+    if (error instanceof yaml.YAMLException) {
+      throw new ConfigurationError(
+        errorMessages.getConfigFileParseErrorMessage(pathInput, error.message),
+      );
+    }
+    throw error;
+  }
 }

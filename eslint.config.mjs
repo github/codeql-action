@@ -131,6 +131,7 @@ export default [
       "no-sequences": "error",
       "no-shadow": "off",
       "@typescript-eslint/no-shadow": "error",
+      "@typescript-eslint/prefer-optional-chain": "error",
       "one-var": ["error", "never"],
     },
   },

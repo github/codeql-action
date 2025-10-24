@@ -310,6 +310,20 @@ test("wrapCliConfigurationError - pack cannot be found", (t) => {
   t.true(wrappedError instanceof ConfigurationError);
 });
 
+test("wrapCliConfigurationError - unknown query file", (t) => {
+  const commandError = new CommandInvocationError(
+    "codeql",
+    ["database", "init"],
+    2,
+    "my-query-file is not a .ql file, .qls file, a directory, or a query pack specification. See the logs for more details.",
+  );
+  const cliError = new CliError(commandError);
+
+  const wrappedError = wrapCliConfigurationError(cliError);
+
+  t.true(wrappedError instanceof ConfigurationError);
+});
+
 test("wrapCliConfigurationError - pack missing auth", (t) => {
   const commandError = new CommandInvocationError(
     "codeql",

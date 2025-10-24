@@ -653,7 +653,7 @@ class GitHubFeatureFlags {
       }
 
       this.logger.debug(
-        "Loaded the following default values for the feature flags from the Code Scanning API:",
+        "Loaded the following default values for the feature flags from the CodeQL Action API:",
       );
       for (const [feature, value] of Object.entries(remoteFlags).sort(
         ([nameA], [nameB]) => nameA.localeCompare(nameB),
@@ -666,10 +666,10 @@ class GitHubFeatureFlags {
       const httpError = util.asHTTPError(e);
       if (httpError?.status === 403) {
         this.logger.warning(
-          "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
+          "This run of the CodeQL Action does not have permission to access the CodeQL Action API endpoints. " +
             "As a result, it will not be opted into any experimental features. " +
             "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${httpError.message}`,
+            `please ensure the workflow has at least the 'security-events: read' permission. Details: ${httpError.message}`,
         );
         this.hasAccessedRemoteFeatureFlags = false;
         return {};

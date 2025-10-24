@@ -252,6 +252,35 @@ test("allowed API versions", async (t) => {
   );
 });
 
+test("getRequiredEnvParam - gets environment variables", (t) => {
+  process.env.SOME_UNIT_TEST_VAR = "foo";
+  const result = util.getRequiredEnvParam("SOME_UNIT_TEST_VAR");
+  t.is(result, "foo");
+});
+
+test("getRequiredEnvParam - throws if an environment variable isn't set", (t) => {
+  t.throws(() => util.getRequiredEnvParam("SOME_UNIT_TEST_VAR"));
+});
+
+test("getOptionalEnvVar - gets environment variables", (t) => {
+  process.env.SOME_UNIT_TEST_VAR = "foo";
+  const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
+  t.is(result, "foo");
+});
+
+test("getOptionalEnvVar - gets undefined for empty environment variables", (t) => {
+  process.env.SOME_UNIT_TEST_VAR = "";
+  const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
+  t.is(result, undefined);
+});
+
+test("getOptionalEnvVar - doesn't throw for undefined environment variables", (t) => {
+  t.notThrows(() => {
+    const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
+    t.is(result, undefined);
+  });
+});
+
 test("doesDirectoryExist", async (t) => {
   // Returns false if no file/dir of this name exists
   t.false(util.doesDirectoryExist("non-existent-file.txt"));

@@ -52,7 +52,7 @@ import {
 } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
-import { uploadSarif } from "./upload-sarif";
+import { postProcessAndUploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 interface AnalysisStatusReport
@@ -344,20 +344,24 @@ async function run() {
     }
     core.setOutput("db-locations", dbLocations);
     core.setOutput("sarif-output", path.resolve(outputDir));
-    const uploadInput = actionsUtil.getOptionalInput("upload");
-    if (runStats && actionsUtil.getUploadValue(uploadInput) === "always") {
+    const uploadKind = actionsUtil.getUploadValue(
+      actionsUtil.getOptionalInput("upload"),
+    );
+    if (runStats) {
       const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
       if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
-        uploadResults = await uploadSarif(
+        uploadResults = await postProcessAndUploadSarif(
           logger,
           features,
+          uploadKind,
           checkoutPath,
           outputDir,
           category,
+          actionsUtil.getOptionalInput("post-processed-sarif-path"),
         );
-      } else {
+      } else if (uploadKind === "always") {
         uploadResults = {};
 
         if (isCodeScanningEnabled(config)) {
@@ -383,6 +387,9 @@ async function run() {
               analyses.CodeQuality,
             );
         }
+      } else {
+        uploadResults = {};
+        logger.info("Not uploading results");
       }
 
       // Set the SARIF id outputs only if we have results for them, to avoid

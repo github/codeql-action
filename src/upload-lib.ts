@@ -21,7 +21,6 @@ import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
-import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import {
   ConfigurationError,
@@ -269,32 +268,6 @@ async function combineSarifFilesUsingCLI(
     codeQL = initCodeQLResult.codeql;
   }
 
-  if (
-    !(await codeQL.supportsFeature(
-      ToolsFeature.SarifMergeRunsFromEqualCategory,
-    ))
-  ) {
-    await throwIfCombineSarifFilesDisabled(sarifObjects, gitHubVersion);
-
-    logger.warning(
-      "The CodeQL CLI does not support merging SARIF files. Merging files in the action.",
-    );
-
-    if (
-      await shouldShowCombineSarifFilesDeprecationWarning(
-        sarifObjects,
-        gitHubVersion,
-      )
-    ) {
-      logger.warning(
-        `Uploading multiple CodeQL runs with the same category is deprecated ${deprecationWarningMessage} for CodeQL CLI 2.16.6 and earlier. Please update your CodeQL CLI version or update your workflow to set a distinct category for each CodeQL run. ${deprecationMoreInformationMessage}`,
-      );
-      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
-    }
-
-    return combineSarifFiles(sarifFiles, logger);
-  }
-
   const baseTempDir = path.resolve(tempDir, "combined-sarif");
   fs.mkdirSync(baseTempDir, { recursive: true });
   const outputDirectory = fs.mkdtempSync(path.resolve(baseTempDir, "output-"));
@@ -386,16 +359,17 @@ export async function uploadPayload(
     logger.info("Successfully uploaded results");
     return response.data.id as string;
   } catch (e) {
-    if (util.isHTTPError(e)) {
-      switch (e.status) {
+    const httpError = util.asHTTPError(e);
+    if (httpError !== undefined) {
+      switch (httpError.status) {
         case 403:
-          core.warning(e.message || GENERIC_403_MSG);
+          core.warning(httpError.message || GENERIC_403_MSG);
           break;
         case 404:
-          core.warning(e.message || GENERIC_404_MSG);
+          core.warning(httpError.message || GENERIC_404_MSG);
           break;
         default:
-          core.warning(e.message);
+          core.warning(httpError.message);
           break;
       }
     }
@@ -687,51 +661,39 @@ export function buildPayload(
   return payloadObj;
 }
 
-/**
- * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
- * to.
- */
-export async function uploadFiles(
-  inputSarifPath: string,
-  checkoutPath: string,
-  category: string | undefined,
-  features: FeatureEnablement,
-  logger: Logger,
-  uploadTarget: analyses.AnalysisConfig,
-): Promise<UploadResult> {
-  const sarifPaths = getSarifFilePaths(
-    inputSarifPath,
-    uploadTarget.sarifPredicate,
-  );
-
-  return uploadSpecifiedFiles(
-    sarifPaths,
-    checkoutPath,
-    category,
-    features,
-    logger,
-    uploadTarget,
-  );
+export interface PostProcessingResults {
+  sarif: util.SarifFile;
+  analysisKey: string;
+  environment: string;
 }
 
 /**
- * Uploads the given array of SARIF files.
+ * Performs post-processing of the SARIF files given by `sarifPaths`.
+ *
+ * @param logger The logger to use.
+ * @param features Information about enabled features.
+ * @param checkoutPath The path where the repo was checked out at.
+ * @param sarifPaths The paths of the SARIF files to post-process.
+ * @param category The analysis category.
+ * @param analysis The analysis configuration.
+ *
+ * @returns Returns the results of post-processing the SARIF files,
+ *          including the resulting SARIF file.
  */
-export async function uploadSpecifiedFiles(
-  sarifPaths: string[],
-  checkoutPath: string,
-  category: string | undefined,
-  features: FeatureEnablement,
+export async function postProcessSarifFiles(
   logger: Logger,
-  uploadTarget: analyses.AnalysisConfig,
-): Promise<UploadResult> {
-  logger.startGroup(`Uploading ${uploadTarget.name} results`);
-  logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
+  features: FeatureEnablement,
+  checkoutPath: string,
+  sarifPaths: string[],
+  category: string | undefined,
+  analysis: analyses.AnalysisConfig,
+): Promise<PostProcessingResults> {
+  logger.info(`Post-processing sarif files: ${JSON.stringify(sarifPaths)}`);
 
   const gitHubVersion = await getGitHubVersion();
 
   let sarif: SarifFile;
-  category = uploadTarget.fixCategory(logger, category);
+  category = analysis.fixCategory(logger, category);
 
   if (sarifPaths.length > 1) {
     // Validate that the files we were asked to upload are all valid SARIF files
@@ -767,17 +729,119 @@ export async function uploadSpecifiedFiles(
     environment,
   );
 
+  return { sarif, analysisKey, environment };
+}
+
+/**
+ * Writes the post-processed SARIF file to disk, if needed based on `pathInput` or the `SARIF_DUMP_DIR`.
+ *
+ * @param logger The logger to use.
+ * @param pathInput The input provided for `post-processed-sarif-path`.
+ * @param uploadTarget The upload target.
+ * @param processingResults The results of post-processing SARIF files.
+ */
+export async function writePostProcessedFiles(
+  logger: Logger,
+  pathInput: string | undefined,
+  uploadTarget: analyses.AnalysisConfig,
+  postProcessingResults: PostProcessingResults,
+) {
+  // If there's an explicit input, use that. Otherwise, use the value from the environment variable.
+  const outputPath = pathInput || util.getOptionalEnvVar(EnvVar.SARIF_DUMP_DIR);
+
+  // If we have a non-empty output path, write the SARIF file to it.
+  if (outputPath !== undefined) {
+    dumpSarifFile(
+      JSON.stringify(postProcessingResults.sarif),
+      outputPath,
+      logger,
+      uploadTarget,
+    );
+  } else {
+    logger.debug(`Not writing post-processed SARIF files.`);
+  }
+}
+
+/**
+ * Uploads a single SARIF file or a directory of SARIF files depending on what `inputSarifPath` refers
+ * to.
+ */
+export async function uploadFiles(
+  inputSarifPath: string,
+  checkoutPath: string,
+  category: string | undefined,
+  features: FeatureEnablement,
+  logger: Logger,
+  uploadTarget: analyses.AnalysisConfig,
+): Promise<UploadResult> {
+  const sarifPaths = getSarifFilePaths(
+    inputSarifPath,
+    uploadTarget.sarifPredicate,
+  );
+
+  return uploadSpecifiedFiles(
+    sarifPaths,
+    checkoutPath,
+    category,
+    features,
+    logger,
+    uploadTarget,
+  );
+}
+
+/**
+ * Uploads the given array of SARIF files.
+ */
+async function uploadSpecifiedFiles(
+  sarifPaths: string[],
+  checkoutPath: string,
+  category: string | undefined,
+  features: FeatureEnablement,
+  logger: Logger,
+  uploadTarget: analyses.AnalysisConfig,
+): Promise<UploadResult> {
+  const processingResults: PostProcessingResults = await postProcessSarifFiles(
+    logger,
+    features,
+    checkoutPath,
+    sarifPaths,
+    category,
+    uploadTarget,
+  );
+
+  return uploadPostProcessedFiles(
+    logger,
+    checkoutPath,
+    uploadTarget,
+    processingResults,
+  );
+}
+
+/**
+ * Uploads the results of post-processing SARIF files to the specified upload target.
+ *
+ * @param logger The logger to use.
+ * @param checkoutPath The path at which the repository was checked out.
+ * @param uploadTarget The analysis configuration.
+ * @param postProcessingResults The results of post-processing SARIF files.
+ *
+ * @returns The results of uploading the `postProcessingResults` to `uploadTarget`.
+ */
+export async function uploadPostProcessedFiles(
+  logger: Logger,
+  checkoutPath: string,
+  uploadTarget: analyses.AnalysisConfig,
+  postProcessingResults: PostProcessingResults,
+): Promise<UploadResult> {
+  logger.startGroup(`Uploading ${uploadTarget.name} results`);
+
+  const sarif = postProcessingResults.sarif;
   const toolNames = util.getToolNames(sarif);
 
   logger.debug(`Validating that each SARIF run has a unique category`);
   validateUniqueCategory(sarif, uploadTarget.sentinelPrefix);
   logger.debug(`Serializing SARIF for upload`);
   const sarifPayload = JSON.stringify(sarif);
-
-  const dumpDir = process.env[EnvVar.SARIF_DUMP_DIR];
-  if (dumpDir) {
-    dumpSarifFile(sarifPayload, dumpDir, logger, uploadTarget);
-  }
 
   logger.debug(`Compressing serialized SARIF`);
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
@@ -786,13 +850,13 @@ export async function uploadSpecifiedFiles(
   const payload = buildPayload(
     await gitUtils.getCommitOid(checkoutPath),
     await gitUtils.getRef(),
-    analysisKey,
+    postProcessingResults.analysisKey,
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     zippedSarif,
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getWorkflowRunAttempt(),
     checkoutURI,
-    environment,
+    postProcessingResults.environment,
     toolNames,
     await gitUtils.determineBaseBranchHeadCommitOid(),
   );
@@ -838,14 +902,14 @@ function dumpSarifFile(
     fs.mkdirSync(outputDir, { recursive: true });
   } else if (!fs.lstatSync(outputDir).isDirectory()) {
     throw new ConfigurationError(
-      `The path specified by the ${EnvVar.SARIF_DUMP_DIR} environment variable exists and is not a directory: ${outputDir}`,
+      `The path that processed SARIF files should be written to exists, but is not a directory: ${outputDir}`,
     );
   }
   const outputFile = path.resolve(
     outputDir,
     `upload${uploadTarget.sarifExtension}`,
   );
-  logger.info(`Dumping processed SARIF file to ${outputFile}`);
+  logger.info(`Writing processed SARIF file to ${outputFile}`);
   fs.writeFileSync(outputFile, sarifPayload);
 }
 

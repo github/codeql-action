@@ -2,6 +2,11 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.31.0 - 24 Oct 2025
+
+- Bump minimum CodeQL bundle version to 2.17.6. [#3223](https://github.com/github/codeql-action/pull/3223)
+- When SARIF files are uploaded by the `analyze` or `upload-sarif` actions, the CodeQL Action automatically performs post-processing steps to prepare the data for the upload. Previously, these post-processing steps were only performed before an upload took place. We are now changing this so that the post-processing steps will always be performed, even when the SARIF files are not uploaded. This does not change anything for the `upload-sarif` action. For `analyze`, this may affect Advanced Setup for CodeQL users who specify a value other than `always` for the `upload` input. [#3222](https://github.com/github/codeql-action/pull/3222)
+
 ## 4.30.9 - 17 Oct 2025
 
 - Update default CodeQL bundle version to 2.23.3. [#3205](https://github.com/github/codeql-action/pull/3205)

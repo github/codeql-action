@@ -3,7 +3,6 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
-import { RequestError } from "@octokit/request-error";
 import * as yaml from "js-yaml";
 
 import {
@@ -268,7 +267,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.16.6";
+const CODEQL_MINIMUM_VERSION = "2.17.6";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -371,11 +370,11 @@ export async function setupCodeQL(
       toolsVersion,
       zstdAvailability,
     };
-  } catch (e) {
+  } catch (rawError) {
+    const e = api.wrapApiConfigurationError(rawError);
     const ErrorClass =
       e instanceof util.ConfigurationError ||
-      (e instanceof Error && e.message.includes("ENOSPC")) || // out of disk space
-      (e instanceof RequestError && e.status === 429) // rate limited
+      (e instanceof Error && e.message.includes("ENOSPC")) // out of disk space
         ? util.ConfigurationError
         : Error;
 
@@ -860,14 +859,6 @@ export async function getCodeQLForCmd(
         codeqlArgs.push("--sarif-include-diagnostics");
       } else {
         codeqlArgs.push("--no-sarif-include-diagnostics");
-      }
-      if (
-        !isSupportedToolsFeature(
-          await this.getVersion(),
-          ToolsFeature.AnalysisSummaryV2IsDefault,
-        )
-      ) {
-        codeqlArgs.push("--new-analysis-summary");
       }
       codeqlArgs.push(databasePath);
       if (querySuitePaths) {

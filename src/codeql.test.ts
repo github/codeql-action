@@ -36,7 +36,6 @@ import {
   createTestConfig,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
-import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
 
@@ -869,84 +868,6 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
     t.false(hasQlconfigArg, "should NOT have injected a qlconfig");
   });
 });
-
-const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
-  {
-    codeqlVersion: makeVersionInfo("2.15.0", {
-      [ToolsFeature.AnalysisSummaryV2IsDefault]: true,
-    }),
-    githubVersion: {
-      type: util.GitHubVariant.DOTCOM,
-    },
-    flagPassed: false,
-    negativeFlagPassed: false,
-  },
-  {
-    codeqlVersion: makeVersionInfo("2.15.0"),
-    githubVersion: {
-      type: util.GitHubVariant.DOTCOM,
-    },
-    flagPassed: true,
-    negativeFlagPassed: false,
-  },
-  {
-    codeqlVersion: makeVersionInfo("2.15.0"),
-    githubVersion: {
-      type: util.GitHubVariant.GHES,
-      version: "3.10.0",
-    },
-    flagPassed: true,
-    negativeFlagPassed: false,
-  },
-];
-
-for (const {
-  codeqlVersion,
-  flagPassed,
-  githubVersion,
-  negativeFlagPassed,
-} of NEW_ANALYSIS_SUMMARY_TEST_CASES) {
-  test(`database interpret-results passes ${
-    flagPassed
-      ? "--new-analysis-summary"
-      : negativeFlagPassed
-        ? "--no-new-analysis-summary"
-        : "nothing"
-  } for CodeQL version ${JSON.stringify(codeqlVersion)} and ${
-    util.GitHubVariant[githubVersion.type]
-  } ${githubVersion.version ? ` ${githubVersion.version}` : ""}`, async (t) => {
-    const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(codeqlVersion);
-    // io throws because of the test CodeQL object.
-    sinon.stub(io, "which").resolves("");
-    await codeqlObject.databaseInterpretResults(
-      "",
-      [],
-      "",
-      "",
-      "",
-      "-v",
-      undefined,
-      "",
-      Object.assign({}, stubConfig, { gitHubVersion: githubVersion }),
-      createFeatures([]),
-    );
-    const actualArgs = runnerConstructorStub.firstCall.args[1] as string[];
-    t.is(
-      actualArgs.includes("--new-analysis-summary"),
-      flagPassed,
-      `--new-analysis-summary should${flagPassed ? "" : "n't"} be passed`,
-    );
-    t.is(
-      actualArgs.includes("--no-new-analysis-summary"),
-      negativeFlagPassed,
-      `--no-new-analysis-summary should${
-        negativeFlagPassed ? "" : "n't"
-      } be passed`,
-    );
-  });
-}
 
 test("runTool summarizes several fatal errors", async (t) => {
   const heapError =

@@ -117,7 +117,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         steps.extend([
             {
                 'name': 'Install Node.js',
-                'uses': 'actions/setup-node@v5',
+                'uses': 'actions/setup-node@v6',
                 'with': {
                     'node-version': '20.x',
                     'cache': 'npm',

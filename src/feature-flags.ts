@@ -44,6 +44,7 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   AllowToolcacheInput = "allow_toolcache_input",
+  AnalyzeUseNewUpload = "analyze_use_new_upload",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   DiffInformedQueries = "diff_informed_queries",
@@ -77,6 +78,7 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
   UseRepositoryProperties = "use_repository_properties",
+  ValidateDbConfig = "validate_db_config",
 }
 
 export const featureConfig: Record<
@@ -113,6 +115,11 @@ export const featureConfig: Record<
   [Feature.AllowToolcacheInput]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
+    minimumVersion: undefined,
+  },
+  [Feature.AnalyzeUseNewUpload]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ANALYZE_USE_NEW_UPLOAD",
     minimumVersion: undefined,
   },
   [Feature.CleanupTrapCaches]: {
@@ -286,6 +293,11 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
     minimumVersion: "2.23.0",
+  },
+  [Feature.ValidateDbConfig]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_VALIDATE_DB_CONFIG",
+    minimumVersion: undefined,
   },
 };
 
@@ -641,7 +653,7 @@ class GitHubFeatureFlags {
       }
 
       this.logger.debug(
-        "Loaded the following default values for the feature flags from the Code Scanning API:",
+        "Loaded the following default values for the feature flags from the CodeQL Action API:",
       );
       for (const [feature, value] of Object.entries(remoteFlags).sort(
         ([nameA], [nameB]) => nameA.localeCompare(nameB),
@@ -651,12 +663,13 @@ class GitHubFeatureFlags {
       this.hasAccessedRemoteFeatureFlags = true;
       return remoteFlags;
     } catch (e) {
-      if (util.isHTTPError(e) && e.status === 403) {
+      const httpError = util.asHTTPError(e);
+      if (httpError?.status === 403) {
         this.logger.warning(
-          "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
+          "This run of the CodeQL Action does not have permission to access the CodeQL Action API endpoints. " +
             "As a result, it will not be opted into any experimental features. " +
             "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`,
+            `please ensure the workflow has at least the 'security-events: read' permission. Details: ${httpError.message}`,
         );
         this.hasAccessedRemoteFeatureFlags = false;
         return {};

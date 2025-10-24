@@ -2,7 +2,7 @@ import { TextDecoder } from "node:util";
 import path from "path";
 
 import * as github from "@actions/github";
-import { TestFn } from "ava";
+import { ExecutionContext, TestFn } from "ava";
 import nock from "nock";
 import * as sinon from "sinon";
 
@@ -178,6 +178,23 @@ export function getRecordingLogger(messages: LoggedMessage[]): Logger {
     startGroup: () => undefined,
     endGroup: () => undefined,
   };
+}
+
+export function checkExpectedLogMessages(
+  t: ExecutionContext<any>,
+  messages: LoggedMessage[],
+  expectedMessages: string[],
+) {
+  for (const expectedMessage of expectedMessages) {
+    t.assert(
+      messages.some(
+        (msg) =>
+          typeof msg.message === "string" &&
+          msg.message.includes(expectedMessage),
+      ),
+      `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
+    );
+  }
 }
 
 /** Mock the HTTP request to the feature flags enablement API endpoint. */

@@ -1,6 +1,7 @@
 import * as fs from "fs";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
@@ -19,6 +20,13 @@ export async function uploadDatabases(
 ): Promise<void> {
   if (actionsUtil.getRequiredInput("upload-database") !== "true") {
     logger.debug("Database upload disabled in workflow. Skipping upload.");
+    return;
+  }
+
+  if (!config.analysisKinds.includes(AnalysisKind.CodeScanning)) {
+    logger.debug(
+      `Not uploading database because 'analysis-kinds: ${AnalysisKind.CodeScanning}' is not enabled.`,
+    );
     return;
   }
 

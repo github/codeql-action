@@ -16,6 +16,7 @@ import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
+  getErrorMessage,
   isInTestMode,
   tryGetFolderBytes,
   waitForResultWithTimeLimit,
@@ -276,6 +277,7 @@ export async function uploadOverlayBaseDatabaseToCache(
     config,
     codeQlVersion,
     checkoutPath,
+    logger,
   );
   logger.info(
     `Uploading overlay-base database to Actions cache with key ${cacheSaveKey}`,
@@ -457,9 +459,18 @@ export async function getCacheSaveKey(
   config: Config,
   codeQlVersion: string,
   checkoutPath: string,
+  logger: Logger,
 ): Promise<string> {
-  const runId = getWorkflowRunID();
-  const attemptId = getWorkflowRunAttempt();
+  let runId = 1;
+  let attemptId = 1;
+  try {
+    runId = getWorkflowRunID();
+    attemptId = getWorkflowRunAttempt();
+  } catch (e) {
+    logger.warning(
+      `Failed to get workflow run ID or attempt ID. Reason: ${getErrorMessage(e)}`,
+    );
+  }
   const sha = await getCommitOid(checkoutPath);
   const restoreKeyPrefix = await getCacheRestoreKeyPrefix(
     config,

@@ -16,7 +16,7 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
-import { uploadSarif } from "./upload-sarif";
+import { postProcessAndUploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
   checkActionVersion,
@@ -90,9 +90,10 @@ async function run() {
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
 
-    const uploadResults = await uploadSarif(
+    const uploadResults = await postProcessAndUploadSarif(
       logger,
       features,
+      "always",
       checkoutPath,
       sarifPath,
       category,

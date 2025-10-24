@@ -9,7 +9,7 @@ import { getRunnerLogger } from "./logging";
 import { createFeatures, setupTests } from "./testing-utils";
 import { UploadResult } from "./upload-lib";
 import * as uploadLib from "./upload-lib";
-import { processAndUploadSarif } from "./upload-sarif";
+import { postProcessAndUploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 setupTests(test);
@@ -39,7 +39,7 @@ function mockPostProcessSarifFiles() {
   return postProcessSarifFiles;
 }
 
-const processAndUploadSarifMacro = test.macro({
+const postProcessAndUploadSarifMacro = test.macro({
   exec: async (
     t: ExecutionContext<unknown>,
     sarifFiles: string[],
@@ -54,14 +54,14 @@ const processAndUploadSarifMacro = test.macro({
       const toFullPath = (filename: string) => path.join(tempDir, filename);
 
       const postProcessSarifFiles = mockPostProcessSarifFiles();
-      const uploadProcessedFiles = sinon.stub(
+      const uploadPostProcessedFiles = sinon.stub(
         uploadLib,
-        "uploadProcessedFiles",
+        "uploadPostProcessedFiles",
       );
 
       for (const analysisKind of Object.values(AnalysisKind)) {
         const analysisConfig = getAnalysisConfig(analysisKind);
-        uploadProcessedFiles
+        uploadPostProcessedFiles
           .withArgs(logger, sinon.match.any, analysisConfig, sinon.match.any)
           .resolves(expectedResult[analysisKind as AnalysisKind]?.uploadResult);
       }
@@ -71,7 +71,7 @@ const processAndUploadSarifMacro = test.macro({
         fs.writeFileSync(sarifFile, "");
       }
 
-      const actual = await processAndUploadSarif(
+      const actual = await postProcessAndUploadSarif(
         logger,
         features,
         "always",
@@ -104,7 +104,7 @@ const processAndUploadSarifMacro = test.macro({
           t.is(actual[analysisKind], undefined);
           // Therefore, we also check that the mocked `uploadProcessedFiles` was not called for this analysis kind.
           t.assert(
-            !uploadProcessedFiles.calledWith(
+            !uploadPostProcessedFiles.calledWith(
               logger,
               sinon.match.any,
               getAnalysisConfig(analysisKind),
@@ -121,7 +121,7 @@ const processAndUploadSarifMacro = test.macro({
 
 test(
   "SARIF file",
-  processAndUploadSarifMacro,
+  postProcessAndUploadSarifMacro,
   ["test.sarif"],
   (tempDir) => path.join(tempDir, "test.sarif"),
   {
@@ -136,7 +136,7 @@ test(
 
 test(
   "JSON file",
-  processAndUploadSarifMacro,
+  postProcessAndUploadSarifMacro,
   ["test.json"],
   (tempDir) => path.join(tempDir, "test.json"),
   {
@@ -151,7 +151,7 @@ test(
 
 test(
   "Code Scanning files",
-  processAndUploadSarifMacro,
+  postProcessAndUploadSarifMacro,
   ["test.json", "test.sarif"],
   undefined,
   {
@@ -167,7 +167,7 @@ test(
 
 test(
   "Code Quality file",
-  processAndUploadSarifMacro,
+  postProcessAndUploadSarifMacro,
   ["test.quality.sarif"],
   (tempDir) => path.join(tempDir, "test.quality.sarif"),
   {
@@ -182,7 +182,7 @@ test(
 
 test(
   "Mixed files",
-  processAndUploadSarifMacro,
+  postProcessAndUploadSarifMacro,
   ["test.sarif", "test.quality.sarif"],
   undefined,
   {
@@ -203,7 +203,7 @@ test(
   },
 );
 
-test("processAndUploadSarif doesn't upload if upload is disabled", async (t) => {
+test("postProcessAndUploadSarif doesn't upload if upload is disabled", async (t) => {
   await util.withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
     const features = createFeatures([]);
@@ -211,12 +211,15 @@ test("processAndUploadSarif doesn't upload if upload is disabled", async (t) => 
     const toFullPath = (filename: string) => path.join(tempDir, filename);
 
     const postProcessSarifFiles = mockPostProcessSarifFiles();
-    const uploadProcessedFiles = sinon.stub(uploadLib, "uploadProcessedFiles");
+    const uploadPostProcessedFiles = sinon.stub(
+      uploadLib,
+      "uploadPostProcessedFiles",
+    );
 
     fs.writeFileSync(toFullPath("test.sarif"), "");
     fs.writeFileSync(toFullPath("test.quality.sarif"), "");
 
-    const actual = await processAndUploadSarif(
+    const actual = await postProcessAndUploadSarif(
       logger,
       features,
       "never",
@@ -226,11 +229,11 @@ test("processAndUploadSarif doesn't upload if upload is disabled", async (t) => 
 
     t.truthy(actual);
     t.assert(postProcessSarifFiles.calledTwice);
-    t.assert(uploadProcessedFiles.notCalled);
+    t.assert(uploadPostProcessedFiles.notCalled);
   });
 });
 
-test("processAndUploadSarif writes processed SARIF files if output directory is provided", async (t) => {
+test("postProcessAndUploadSarif writes post-processed SARIF files if output directory is provided", async (t) => {
   await util.withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
     const features = createFeatures([]);
@@ -242,22 +245,22 @@ test("processAndUploadSarif writes processed SARIF files if output directory is 
     fs.writeFileSync(toFullPath("test.sarif"), "");
     fs.writeFileSync(toFullPath("test.quality.sarif"), "");
 
-    const processedOutPath = path.join(tempDir, "processed");
-    const actual = await processAndUploadSarif(
+    const postProcessedOutPath = path.join(tempDir, "post-processed");
+    const actual = await postProcessAndUploadSarif(
       logger,
       features,
       "never",
       "",
       tempDir,
       "",
-      processedOutPath,
+      postProcessedOutPath,
     );
 
     t.truthy(actual);
     t.assert(postProcessSarifFiles.calledTwice);
-    t.assert(fs.existsSync(path.join(processedOutPath, "upload.sarif")));
+    t.assert(fs.existsSync(path.join(postProcessedOutPath, "upload.sarif")));
     t.assert(
-      fs.existsSync(path.join(processedOutPath, "upload.quality.sarif")),
+      fs.existsSync(path.join(postProcessedOutPath, "upload.quality.sarif")),
     );
   });
 });

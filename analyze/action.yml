@@ -70,10 +70,10 @@ inputs:
     description: Whether to upload the resulting CodeQL database
     required: false
     default: "true"
-  processed-sarif-path:
+  post-processed-sarif-path:
     description: >-
       Before uploading the SARIF files produced by the CodeQL CLI, the CodeQL Action may perform some post-processing
-      on them. Ordinarily, these processed SARIF files are not saved to disk. However, if a path is provided as an
+      on them. Ordinarily, these post-processed SARIF files are not saved to disk. However, if a path is provided as an
       argument for this input, they are written to the specified directory.
     required: false
   wait-for-processing:

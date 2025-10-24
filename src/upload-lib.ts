@@ -715,7 +715,7 @@ export async function postProcessSarifFiles(
   category: string | undefined,
   analysis: analyses.AnalysisConfig,
 ): Promise<PostProcessingResults> {
-  logger.info(`Processing sarif files: ${JSON.stringify(sarifPaths)}`);
+  logger.info(`Post-processing sarif files: ${JSON.stringify(sarifPaths)}`);
 
   const gitHubVersion = await getGitHubVersion();
 
@@ -760,18 +760,18 @@ export async function postProcessSarifFiles(
 }
 
 /**
- * Writes the processed SARIF file to disk, if needed based on `pathInput` or the `SARIF_DUMP_DIR`.
+ * Writes the post-processed SARIF file to disk, if needed based on `pathInput` or the `SARIF_DUMP_DIR`.
  *
  * @param logger The logger to use.
- * @param pathInput The input provided for `processed-sarif-path`.
+ * @param pathInput The input provided for `post-processed-sarif-path`.
  * @param uploadTarget The upload target.
  * @param processingResults The results of post-processing SARIF files.
  */
-export async function writeProcessedFiles(
+export async function writePostProcessedFiles(
   logger: Logger,
   pathInput: string | undefined,
   uploadTarget: analyses.AnalysisConfig,
-  processingResults: PostProcessingResults,
+  postProcessingResults: PostProcessingResults,
 ) {
   // If there's an explicit input, use that. Otherwise, use the value from the environment variable.
   const outputPath = pathInput || process.env[EnvVar.SARIF_DUMP_DIR];
@@ -779,13 +779,13 @@ export async function writeProcessedFiles(
   // If we have an output path, write the SARIF file to it.
   if (outputPath !== undefined) {
     dumpSarifFile(
-      JSON.stringify(processingResults.sarif),
+      JSON.stringify(postProcessingResults.sarif),
       outputPath,
       logger,
       uploadTarget,
     );
   } else {
-    logger.debug(`Not writing processed SARIF files.`);
+    logger.debug(`Not writing post-processed SARIF files.`);
   }
 }
 
@@ -836,7 +836,7 @@ async function uploadSpecifiedFiles(
     uploadTarget,
   );
 
-  return uploadProcessedFiles(
+  return uploadPostProcessedFiles(
     logger,
     checkoutPath,
     uploadTarget,
@@ -845,25 +845,24 @@ async function uploadSpecifiedFiles(
 }
 
 /**
- * Uploads the results of processing SARIF files to the specified upload target.
+ * Uploads the results of post-processing SARIF files to the specified upload target.
  *
  * @param logger The logger to use.
  * @param checkoutPath The path at which the repository was checked out.
  * @param uploadTarget The analysis configuration.
- * @param processingResults The results of post-processing SARIF files.
+ * @param postProcessingResults The results of post-processing SARIF files.
  *
- * @returns The results of uploading the `processingResults` to `uploadTarget`.
+ * @returns The results of uploading the `postProcessingResults` to `uploadTarget`.
  */
-export async function uploadProcessedFiles(
+export async function uploadPostProcessedFiles(
   logger: Logger,
   checkoutPath: string,
   uploadTarget: analyses.AnalysisConfig,
-  processingResults: PostProcessingResults,
+  postProcessingResults: PostProcessingResults,
 ): Promise<UploadResult> {
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
 
-  const sarif = processingResults.sarif;
-
+  const sarif = postProcessingResults.sarif;
   const toolNames = util.getToolNames(sarif);
 
   logger.debug(`Validating that each SARIF run has a unique category`);
@@ -878,13 +877,13 @@ export async function uploadProcessedFiles(
   const payload = buildPayload(
     await gitUtils.getCommitOid(checkoutPath),
     await gitUtils.getRef(),
-    processingResults.analysisKey,
+    postProcessingResults.analysisKey,
     util.getRequiredEnvParam("GITHUB_WORKFLOW"),
     zippedSarif,
     actionsUtil.getWorkflowRunID(),
     actionsUtil.getWorkflowRunAttempt(),
     checkoutURI,
-    processingResults.environment,
+    postProcessingResults.environment,
     toolNames,
     await gitUtils.determineBaseBranchHeadCommitOid(),
   );

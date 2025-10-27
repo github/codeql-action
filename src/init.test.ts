@@ -2,22 +2,80 @@ import * as fs from "fs";
 import path from "path";
 
 import test, { ExecutionContext } from "ava";
+import * as sinon from "sinon";
 
 import { createStubCodeQL } from "./codeql";
+import { EnvVar } from "./environment";
 import {
   checkPacksForOverlayCompatibility,
+  checkWorkflow,
   cleanupDatabaseClusterDirectory,
 } from "./init";
 import { KnownLanguage } from "./languages";
 import {
   LoggedMessage,
+  checkExpectedLogMessages,
   createTestConfig,
   getRecordingLogger,
   setupTests,
 } from "./testing-utils";
 import { ConfigurationError, withTmpDir } from "./util";
+import * as workflow from "./workflow";
 
 setupTests(test);
+
+test("checkWorkflow - validates workflow if `SKIP_WORKFLOW_VALIDATION` is not set", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const codeql = createStubCodeQL({});
+
+  const validateWorkflow = sinon.stub(workflow, "validateWorkflow");
+  validateWorkflow.resolves(undefined);
+
+  await checkWorkflow(getRecordingLogger(messages), codeql);
+
+  t.assert(
+    validateWorkflow.calledOnce,
+    "`checkWorkflow` unexpectedly did not call `validateWorkflow`",
+  );
+  checkExpectedLogMessages(t, messages, [
+    "Detected no issues with the code scanning workflow.",
+  ]);
+});
+
+test("checkWorkflow - logs problems with workflow validation", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const codeql = createStubCodeQL({});
+
+  const validateWorkflow = sinon.stub(workflow, "validateWorkflow");
+  validateWorkflow.resolves("problem");
+
+  await checkWorkflow(getRecordingLogger(messages), codeql);
+
+  t.assert(
+    validateWorkflow.calledOnce,
+    "`checkWorkflow` unexpectedly did not call `validateWorkflow`",
+  );
+  checkExpectedLogMessages(t, messages, [
+    "Unable to validate code scanning workflow: problem",
+  ]);
+});
+
+test("checkWorkflow - skips validation if `SKIP_WORKFLOW_VALIDATION` is `true`", async (t) => {
+  process.env[EnvVar.SKIP_WORKFLOW_VALIDATION] = "true";
+
+  const messages: LoggedMessage[] = [];
+  const codeql = createStubCodeQL({});
+
+  const validateWorkflow = sinon.stub(workflow, "validateWorkflow");
+
+  await checkWorkflow(getRecordingLogger(messages), codeql);
+
+  t.assert(
+    validateWorkflow.notCalled,
+    "`checkWorkflow` called `validateWorkflow` unexpectedly",
+  );
+  t.is(messages.length, 0);
+});
 
 test("cleanupDatabaseClusterDirectory cleans up where possible", async (t) => {
   await withTmpDir(async (tmpDir: string) => {

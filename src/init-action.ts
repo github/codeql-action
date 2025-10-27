@@ -288,16 +288,19 @@ async function run() {
     toolsSource = initCodeQLResult.toolsSource;
     zstdAvailability = initCodeQLResult.zstdAvailability;
 
-    core.startGroup("Validating workflow");
-    const validateWorkflowResult = await validateWorkflow(codeql, logger);
-    if (validateWorkflowResult === undefined) {
-      logger.info("Detected no issues with the code scanning workflow.");
-    } else {
-      logger.warning(
-        `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
-      );
+    // Check the workflow for problems, unless `SKIP_WORKFLOW_VALIDATION` is `true`.
+    if (process.env[EnvVar.SKIP_WORKFLOW_VALIDATION] !== "true") {
+      core.startGroup("Validating workflow");
+      const validateWorkflowResult = await validateWorkflow(codeql, logger);
+      if (validateWorkflowResult === undefined) {
+        logger.info("Detected no issues with the code scanning workflow.");
+      } else {
+        logger.warning(
+          `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
+        );
+      }
+      core.endGroup();
     }
-    core.endGroup();
 
     // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if between 2.19.3 (included) and 2.22.1 (excluded)
     // We need to set this environment variable before initializing the config, otherwise Rust

@@ -40,7 +40,6 @@ import { loadPropertiesFromApi } from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
-  checkWorkflow,
   cleanupDatabaseClusterDirectory,
   initCodeQL,
   initConfig,
@@ -87,6 +86,7 @@ import {
   getErrorMessage,
   BuildMode,
 } from "./util";
+import { checkWorkflow } from "./workflow";
 
 /**
  * Sends a status report indicating that the `init` Action is starting.

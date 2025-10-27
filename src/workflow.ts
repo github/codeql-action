@@ -486,7 +486,7 @@ export async function checkWorkflow(logger: Logger, codeql: CodeQL) {
     if (validateWorkflowResult === undefined) {
       logger.info("Detected no issues with the code scanning workflow.");
     } else {
-      logger.warning(
+      logger.debug(
         `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
       );
     }

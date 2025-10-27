@@ -327,7 +327,6 @@ async function run() {
       runStats = await runQueries(
         outputDir,
         memory,
-        util.getAddSnippetsFlag(actionsUtil.getRequiredInput("add-snippets")),
         threads,
         diffRangePackDir,
         actionsUtil.getOptionalInput("category"),

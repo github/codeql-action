@@ -7,13 +7,13 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { CodeQuality, CodeScanning } from "./analyses";
 import {
-  exportedForTesting,
   runQueries,
   defaultSuites,
   resolveQuerySuiteAlias,
   addSarifExtension,
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
+import { exportedForTesting } from "./diff-informed-analysis-utils";
 import { Feature } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";

@@ -4,13 +4,19 @@ import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
 
-import { getRequiredInput, getTemporaryDirectory } from "./actions-util";
+import {
+  getRequiredInput,
+  getTemporaryDirectory,
+  getWorkflowRunAttempt,
+  getWorkflowRunID,
+} from "./actions-util";
 import { getAutomationID } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
+  getErrorMessage,
   isInTestMode,
   tryGetFolderBytes,
   waitForResultWithTimeLimit,
@@ -266,6 +272,7 @@ export async function uploadOverlayBaseDatabaseToCache(
     config,
     codeQlVersion,
     checkoutPath,
+    logger,
   );
   logger.info(
     `Uploading overlay-base database to Actions cache with key ${cacheSaveKey}`,
@@ -443,17 +450,28 @@ export async function downloadOverlayBaseDatabaseFromCache(
  * The key consists of the restore key prefix (which does not include the
  * commit SHA) and the commit SHA of the current checkout.
  */
-async function getCacheSaveKey(
+export async function getCacheSaveKey(
   config: Config,
   codeQlVersion: string,
   checkoutPath: string,
+  logger: Logger,
 ): Promise<string> {
+  let runId = 1;
+  let attemptId = 1;
+  try {
+    runId = getWorkflowRunID();
+    attemptId = getWorkflowRunAttempt();
+  } catch (e) {
+    logger.warning(
+      `Failed to get workflow run ID or attempt ID. Reason: ${getErrorMessage(e)}`,
+    );
+  }
   const sha = await getCommitOid(checkoutPath);
   const restoreKeyPrefix = await getCacheRestoreKeyPrefix(
     config,
     codeQlVersion,
   );
-  return `${restoreKeyPrefix}${sha}`;
+  return `${restoreKeyPrefix}${sha}-${runId}-${attemptId}`;
 }
 
 /**
@@ -470,7 +488,7 @@ async function getCacheSaveKey(
  * not include the commit SHA. This allows us to restore the most recent
  * compatible overlay-base database.
  */
-async function getCacheRestoreKeyPrefix(
+export async function getCacheRestoreKeyPrefix(
   config: Config,
   codeQlVersion: string,
 ): Promise<string> {

@@ -5,8 +5,10 @@ import zlib from "zlib";
 import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
+import { isDynamicWorkflow } from "./actions-util";
 import * as api from "./api-client";
 import { CodeQL } from "./codeql";
+import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import {
   getRequiredEnvParam,
@@ -216,7 +218,7 @@ function hasWorkflowTrigger(triggerName: string, doc: Workflow): boolean {
   return Object.prototype.hasOwnProperty.call(doc.on, triggerName);
 }
 
-export async function validateWorkflow(
+async function validateWorkflow(
   codeql: CodeQL,
   logger: Logger,
 ): Promise<undefined | string> {
@@ -462,3 +464,36 @@ export function getCheckoutPathInputOrThrow(
     ) || getRequiredEnvParam("GITHUB_WORKSPACE") // if unspecified, checkout_path defaults to ${{ github.workspace }}
   );
 }
+
+/**
+ * A wrapper around `validateWorkflow` which reports the outcome.
+ *
+ * @param logger The logger to use.
+ * @param codeql The CodeQL instance.
+ */
+export async function checkWorkflow(logger: Logger, codeql: CodeQL) {
+  // Check the workflow for problems, unless `SKIP_WORKFLOW_VALIDATION` is `true`
+  // or the workflow trigger is `dynamic`.
+  if (
+    !isDynamicWorkflow() &&
+    process.env[EnvVar.SKIP_WORKFLOW_VALIDATION] !== "true"
+  ) {
+    core.startGroup("Validating workflow");
+    const validateWorkflowResult = await internal.validateWorkflow(
+      codeql,
+      logger,
+    );
+    if (validateWorkflowResult === undefined) {
+      logger.info("Detected no issues with the code scanning workflow.");
+    } else {
+      logger.warning(
+        `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
+      );
+    }
+    core.endGroup();
+  }
+}
+
+export const internal = {
+  validateWorkflow,
+};

@@ -4,6 +4,7 @@ import path from "path";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import { createStubCodeQL } from "./codeql";
 import { EnvVar } from "./environment";
 import {
@@ -28,6 +29,7 @@ test("checkWorkflow - validates workflow if `SKIP_WORKFLOW_VALIDATION` is not se
   const messages: LoggedMessage[] = [];
   const codeql = createStubCodeQL({});
 
+  sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
   const validateWorkflow = sinon.stub(workflow, "validateWorkflow");
   validateWorkflow.resolves(undefined);
 
@@ -46,6 +48,7 @@ test("checkWorkflow - logs problems with workflow validation", async (t) => {
   const messages: LoggedMessage[] = [];
   const codeql = createStubCodeQL({});
 
+  sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
   const validateWorkflow = sinon.stub(workflow, "validateWorkflow");
   validateWorkflow.resolves("problem");
 
@@ -66,10 +69,30 @@ test("checkWorkflow - skips validation if `SKIP_WORKFLOW_VALIDATION` is `true`",
   const messages: LoggedMessage[] = [];
   const codeql = createStubCodeQL({});
 
+  sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
   const validateWorkflow = sinon.stub(workflow, "validateWorkflow");
 
   await checkWorkflow(getRecordingLogger(messages), codeql);
 
+  t.assert(
+    validateWorkflow.notCalled,
+    "`checkWorkflow` called `validateWorkflow` unexpectedly",
+  );
+  t.is(messages.length, 0);
+});
+
+test("checkWorkflow - skips validation for `dynamic` workflows", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const codeql = createStubCodeQL({});
+
+  const isDynamicWorkflow = sinon
+    .stub(actionsUtil, "isDynamicWorkflow")
+    .returns(true);
+  const validateWorkflow = sinon.stub(workflow, "validateWorkflow");
+
+  await checkWorkflow(getRecordingLogger(messages), codeql);
+
+  t.assert(isDynamicWorkflow.calledOnce);
   t.assert(
     validateWorkflow.notCalled,
     "`checkWorkflow` called `validateWorkflow` unexpectedly",

@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
@@ -9,6 +10,7 @@ import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
@@ -16,6 +18,29 @@ import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
+import { validateWorkflow } from "./workflow";
+
+/**
+ * A wrapper around `validateWorkflow` which reports the outcome.
+ *
+ * @param logger The logger to use.
+ * @param codeql The CodeQL instance.
+ */
+export async function checkWorkflow(logger: Logger, codeql: CodeQL) {
+  // Check the workflow for problems, unless `SKIP_WORKFLOW_VALIDATION` is `true`.
+  if (process.env[EnvVar.SKIP_WORKFLOW_VALIDATION] !== "true") {
+    core.startGroup("Validating workflow");
+    const validateWorkflowResult = await validateWorkflow(codeql, logger);
+    if (validateWorkflowResult === undefined) {
+      logger.info("Detected no issues with the code scanning workflow.");
+    } else {
+      logger.warning(
+        `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
+      );
+    }
+    core.endGroup();
+  }
+}
 
 export async function initCodeQL(
   toolsInput: string | undefined,

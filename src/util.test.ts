@@ -101,16 +101,6 @@ test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   }
 });
 
-test("getAddSnippetsFlag() should return the correct flag", (t) => {
-  t.deepEqual(util.getAddSnippetsFlag(true), "--sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("true"), "--sarif-add-snippets");
-
-  t.deepEqual(util.getAddSnippetsFlag(false), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag(undefined), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("false"), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("foo bar"), "--no-sarif-add-snippets");
-});
-
 test("getThreadsFlag() should return the correct --threads flag", (t) => {
   const numCpus = os.cpus().length;
 

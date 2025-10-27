@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The `add-snippets` input has been removed from the `analyze` action. This input has been deprecated since CodeQL Action 3.26.4 in August 2024 when this removal was announced.
 
 ## 4.31.0 - 24 Oct 2025
 

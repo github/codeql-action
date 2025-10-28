@@ -5,7 +5,11 @@ import { performance } from "perf_hooks";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
-import { getTemporaryDirectory, PullRequestBranches } from "./actions-util";
+import {
+  getTemporaryDirectory,
+  getRequiredInput,
+  PullRequestBranches,
+} from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -257,14 +261,22 @@ extensions:
 `;
 
   let data = ranges
-    .map(
-      (range) =>
-        // Using yaml.dump() with `forceQuotes: true` ensures that all special
-        // characters are escaped, and that the path is always rendered as a
-        // quoted string on a single line.
-        `      - [${yaml.dump(range.path, { forceQuotes: true }).trim()}, ` +
-        `${range.startLine}, ${range.endLine}]\n`,
-    )
+    .map((range) => {
+      // Diff-informed queries expect the file path to be absolute. CodeQL always
+      // uses forward slashes as the path separator, so on Windows we need to
+      // replace any backslashes with forward slashes.
+      const filename = path
+        .join(getRequiredInput("checkout_path"), range.path)
+        .replaceAll(path.sep, "/");
+
+      // Using yaml.dump() with `forceQuotes: true` ensures that all special
+      // characters are escaped, and that the path is always rendered as a
+      // quoted string on a single line.
+      return (
+        `      - [${yaml.dump(filename, { forceQuotes: true }).trim()}, ` +
+        `${range.startLine}, ${range.endLine}]\n`
+      );
+    })
     .join("");
   if (!data) {
     // Ensure that the data extension is not empty, so that a pull request with

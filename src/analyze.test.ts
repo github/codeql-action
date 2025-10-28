@@ -10,6 +10,7 @@ import {
   defaultSuites,
   resolveQuerySuiteAlias,
   addSarifExtension,
+  diffRangeExtensionPackContents,
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
@@ -157,4 +158,20 @@ test("addSarifExtension", (t) => {
       `${language}.quality.sarif`,
     );
   }
+});
+
+test("diffRangeExtensionPackContents", (t) => {
+  const output = diffRangeExtensionPackContents([
+    {
+      path: "/checkout/path/main.js",
+      startLine: 10,
+      endLine: 20,
+    },
+  ]);
+
+  const expected = fs.readFileSync(
+    `${__dirname}/../src/testdata/pr-diff-range.yml`,
+    "utf8",
+  );
+  t.deepEqual(output, expected);
 });

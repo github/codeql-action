@@ -1142,6 +1142,7 @@ function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
 
   for (const run of sarif.runs) {
     if (run.results) {
+      const preAlertCount = run.results.length;
       run.results = run.results.filter((result) => {
         const locations = [
           ...(result.locations || []).map((loc) => loc.physicalLocation),
@@ -1168,6 +1169,9 @@ function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
           );
         });
       });
+
+      const postAlertCount = run.results.length;
+      logger.info(`Filtered ${preAlertCount - postAlertCount} alerts based on diff range.`);
     }
   }
 

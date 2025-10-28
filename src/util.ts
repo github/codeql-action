@@ -1099,15 +1099,6 @@ export async function checkDiskUsage(
   logger: Logger,
 ): Promise<DiskUsage | undefined> {
   try {
-    // We avoid running the `df` binary under the hood for macOS ARM runners with SIP disabled.
-    if (
-      process.platform === "darwin" &&
-      (process.arch === "arm" || process.arch === "arm64") &&
-      !(await checkSipEnablement(logger))
-    ) {
-      return undefined;
-    }
-
     const diskUsage = await checkDiskSpace(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
     );

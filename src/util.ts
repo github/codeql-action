@@ -1,11 +1,11 @@
 import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
 import * as exec from "@actions/exec/lib/exec";
 import * as io from "@actions/io";
-import checkDiskSpace from "check-disk-space";
 import * as del from "del";
 import getFolderSize from "get-folder-size";
 import * as yaml from "js-yaml";
@@ -1099,24 +1099,17 @@ export async function checkDiskUsage(
   logger: Logger,
 ): Promise<DiskUsage | undefined> {
   try {
-    // We avoid running the `df` binary under the hood for macOS ARM runners with SIP disabled.
-    if (
-      process.platform === "darwin" &&
-      (process.arch === "arm" || process.arch === "arm64") &&
-      !(await checkSipEnablement(logger))
-    ) {
-      return undefined;
-    }
-
-    const diskUsage = await checkDiskSpace(
+    const diskUsage = await fsPromises.statfs(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
     );
-    const mbInBytes = 1024 * 1024;
-    const gbInBytes = 1024 * 1024 * 1024;
-    if (diskUsage.free < 2 * gbInBytes) {
+
+    const blockSizeInBytes = diskUsage.bsize;
+    const numBlocksPerMb = (1024 * 1024) / blockSizeInBytes;
+    const numBlocksPerGb = (1024 * 1024 * 1024) / blockSizeInBytes;
+    if (diskUsage.bavail < 2 * numBlocksPerGb) {
       const message =
         "The Actions runner is running low on disk space " +
-        `(${(diskUsage.free / mbInBytes).toPrecision(4)} MB available).`;
+        `(${(diskUsage.bavail / numBlocksPerMb).toPrecision(4)} MB available).`;
       if (process.env[EnvVar.HAS_WARNED_ABOUT_DISK_SPACE] !== "true") {
         logger.warning(message);
       } else {
@@ -1125,8 +1118,8 @@ export async function checkDiskUsage(
       core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
-      numAvailableBytes: diskUsage.free,
-      numTotalBytes: diskUsage.size,
+      numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
+      numTotalBytes: diskUsage.blocks * blockSizeInBytes,
     };
   } catch (error) {
     logger.warning(

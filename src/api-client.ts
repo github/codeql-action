@@ -1,7 +1,6 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
-import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
 import { Logger } from "./logging";
@@ -50,7 +49,10 @@ function createApiClientWithDetails(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiDetails.apiURL,
       userAgent: `CodeQL-Action/${getActionVersion()}`,
-      log: consoleLogLevel({ level: "debug" }),
+      log: {
+        ...core,
+        warn: core.warning,
+      },
     }),
   );
 }

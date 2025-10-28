@@ -1262,10 +1262,10 @@ export async function checkSipEnablement(
   }
 }
 
-export async function cleanUpGlob(glob: string, name: string, logger: Logger) {
+export async function cleanUpPath(file: string, name: string, logger: Logger) {
   logger.debug(`Cleaning up ${name}.`);
   try {
-    await fs.promises.rm(glob, {
+    await fs.promises.rm(file, {
       force: true,
       recursive: true,
     });

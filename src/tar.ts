@@ -9,7 +9,7 @@ import * as semver from "semver";
 
 import { CommandInvocationError } from "./actions-util";
 import { Logger } from "./logging";
-import { assertNever, cleanUpGlob, isBinaryAccessible } from "./util";
+import { assertNever, cleanUpPath, isBinaryAccessible } from "./util";
 
 const MIN_REQUIRED_BSD_TAR_VERSION = "3.4.3";
 const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
@@ -217,7 +217,7 @@ export async function extractTarZst(
       });
     });
   } catch (e) {
-    await cleanUpGlob(dest, "extraction destination directory", logger);
+    await cleanUpPath(dest, "extraction destination directory", logger);
     throw e;
   }
 }

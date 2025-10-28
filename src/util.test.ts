@@ -538,7 +538,8 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is 
 test("checkDiskUsage succeeds and produces positive numbers", async (t) => {
   process.env["GITHUB_WORKSPACE"] = os.tmpdir();
   const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
-  t.true(diskUsage !== undefined);
-  t.true(diskUsage!.numAvailableBytes > 0);
-  t.true(diskUsage!.numTotalBytes > 0);
+  if (t.truthy(diskUsage)) {
+    t.true(diskUsage.numAvailableBytes > 0);
+    t.true(diskUsage.numTotalBytes > 0);
+  }
 });

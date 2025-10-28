@@ -9,9 +9,6 @@ env:
   GO111MODULE: auto
 on:
   push:
-    branches:
-      - main
-      - releases/v*
   pull_request:
     types:
       - opened
@@ -57,41 +54,7 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            version: stable-v2.17.6
-          - os: ubuntu-latest
-            version: stable-v2.17.6
-          - os: macos-latest
-            version: stable-v2.18.4
-          - os: ubuntu-latest
-            version: stable-v2.18.4
-          - os: macos-latest
-            version: stable-v2.19.4
-          - os: ubuntu-latest
-            version: stable-v2.19.4
-          - os: macos-latest
-            version: stable-v2.20.7
-          - os: ubuntu-latest
-            version: stable-v2.20.7
-          - os: macos-latest
-            version: stable-v2.21.4
-          - os: ubuntu-latest
-            version: stable-v2.21.4
-          - os: macos-latest
-            version: stable-v2.22.4
-          - os: ubuntu-latest
-            version: stable-v2.22.4
-          - os: macos-latest
-            version: default
-          - os: ubuntu-latest
-            version: default
-          - os: macos-latest
             version: linked
-          - os: ubuntu-latest
-            version: linked
-          - os: macos-latest
-            version: nightly-latest
-          - os: ubuntu-latest
-            version: nightly-latest
     name: Multi-language repository
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
@@ -185,6 +148,3 @@ jobs:
             echo "Did not create a database for Swift, or created it in the wrong location."
             exit 1
           fi
-    env:
-      CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
-      CODEQL_ACTION_TEST_MODE: true

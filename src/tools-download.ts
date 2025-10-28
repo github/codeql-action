@@ -12,7 +12,7 @@ import * as semver from "semver";
 
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
-import { cleanUpGlob, getErrorMessage, getRequiredEnvParam } from "./util";
+import { cleanUpPath, getErrorMessage, getRequiredEnvParam } from "./util";
 
 /**
  * High watermark to use when streaming the download and extraction of the CodeQL tools.
@@ -130,7 +130,7 @@ export async function downloadAndExtract(
 
     // If we failed during processing, we want to clean up the destination directory
     // before we try again.
-    await cleanUpGlob(dest, "CodeQL bundle", logger);
+    await cleanUpPath(dest, "CodeQL bundle", logger);
   }
 
   const toolsDownloadStart = performance.now();
@@ -167,7 +167,7 @@ export async function downloadAndExtract(
       )}).`,
     );
   } finally {
-    await cleanUpGlob(archivedBundlePath, "CodeQL bundle archive", logger);
+    await cleanUpPath(archivedBundlePath, "CodeQL bundle archive", logger);
   }
 
   return {

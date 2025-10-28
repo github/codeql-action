@@ -2,6 +2,7 @@ name: "CodeQL action"
 
 on:
   push:
+    branches: [main, releases/v*]
   pull_request:
     branches: [main, releases/v*]
     # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened

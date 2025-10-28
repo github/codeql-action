@@ -6,7 +6,6 @@ import { HTTPError } from "@actions/tool-cache";
 import test from "ava";
 import * as sinon from "sinon";
 
-import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
@@ -972,10 +971,6 @@ function runFilterAlertsByDiffRange(
   input: SarifFile,
   diffRanges: diffUtils.DiffThunkRange[],
 ): SarifFile {
-  sinon
-    .stub(actionsUtil, "getRequiredInput")
-    .withArgs("checkout_path")
-    .returns("/checkout/path");
   sinon.stub(diffUtils, "readDiffRangesJsonFile").returns(diffRanges);
   return uploadLib.filterAlertsByDiffRange(getRunnerLogger(true), input);
 }
@@ -986,7 +981,7 @@ test("filterAlertsByDiffRange filters out alerts outside diff-range", (t) => {
   );
   const actualOutput = runFilterAlertsByDiffRange(input, [
     {
-      path: "/checkout/path/main.js",
+      path: "main.js",
       startLine: 1,
       endLine: 3,
     },

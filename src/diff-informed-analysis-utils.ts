@@ -191,12 +191,7 @@ function getDiffRanges(
   fileDiff: FileDiff,
   logger: Logger,
 ): DiffThunkRange[] | undefined {
-  // Diff-informed queries expect the file path to be absolute. CodeQL always
-  // uses forward slashes as the path separator, so on Windows we need to
-  // replace any backslashes with forward slashes.
-  const filename = path
-    .join(actionsUtil.getRequiredInput("checkout_path"), fileDiff.filename)
-    .replaceAll(path.sep, "/");
+  const filename = fileDiff.filename;
 
   if (fileDiff.patch === undefined) {
     if (fileDiff.changes === 0) {

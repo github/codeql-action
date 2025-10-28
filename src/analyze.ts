@@ -3,7 +3,6 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as io from "@actions/io";
-import * as del from "del";
 import * as yaml from "js-yaml";
 
 import { getTemporaryDirectory, PullRequestBranches } from "./actions-util";
@@ -671,7 +670,7 @@ export async function runFinalize(
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   try {
-    await del.deleteAsync(outputDir, { force: true });
+    await fs.promises.rm(outputDir, { force: true, recursive: true });
   } catch (error: any) {
     if (error?.code !== "ENOENT") {
       throw error;

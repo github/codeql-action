@@ -534,3 +534,12 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is 
     );
   });
 });
+
+test("checkDiskUsage succeeds and produces positive numbers", async (t) => {
+  const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
+  t.true(
+    diskUsage?.numAvailableBytes !== undefined &&
+      diskUsage.numAvailableBytes > 0,
+  );
+  t.true(diskUsage?.numTotalBytes !== undefined && diskUsage.numTotalBytes > 0);
+});

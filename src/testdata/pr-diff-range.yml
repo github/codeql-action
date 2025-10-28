@@ -1,0 +1,8 @@
+
+extensions:
+  - addsTo:
+      pack: codeql/util
+      extensible: restrictAlertsTo
+      checkPresence: false
+    data:
+      - ['/checkout/path/main.js', 10, 20]

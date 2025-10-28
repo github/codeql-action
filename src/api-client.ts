@@ -50,8 +50,10 @@ function createApiClientWithDetails(
       baseUrl: apiDetails.apiURL,
       userAgent: `CodeQL-Action/${getActionVersion()}`,
       log: {
-        ...core,
+        debug: core.debug,
+        info: core.info,
         warn: core.warning,
+        error: core.error,
       },
     }),
   );

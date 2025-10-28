@@ -169,4 +169,39 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
     res,
     new util.ConfigurationError("Resource not accessible by integration"),
   );
+
+  // Enablement errors.
+  const codeSecurityNotEnabledError = new util.HTTPError(
+    "Code Security must be enabled for this repository to use code scanning",
+    403,
+  );
+  res = api.wrapApiConfigurationError(codeSecurityNotEnabledError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError(
+      `Please verify that the necessary features are enabled: ${codeSecurityNotEnabledError.message}`,
+    ),
+  );
+  const advancedSecurityNotEnabledError = new util.HTTPError(
+    "Advanced Security must be enabled for this repository to use code scanning",
+    403,
+  );
+  res = api.wrapApiConfigurationError(advancedSecurityNotEnabledError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError(
+      `Please verify that the necessary features are enabled: ${advancedSecurityNotEnabledError.message}`,
+    ),
+  );
+  const codeScanningNotEnabledError = new util.HTTPError(
+    "Code Scanning is not enabled for this repository. Please enable code scanning in the repository settings.",
+    403,
+  );
+  res = api.wrapApiConfigurationError(codeScanningNotEnabledError);
+  t.deepEqual(
+    res,
+    new util.ConfigurationError(
+      `Please verify that the necessary features are enabled: ${codeScanningNotEnabledError.message}`,
+    ),
+  );
 });

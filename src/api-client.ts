@@ -283,6 +283,14 @@ export async function getRepositoryProperties(repositoryNwo: RepositoryNwo) {
   });
 }
 
+function isEnablementError(msg: string) {
+  return [
+    /Code Security must be enabled/,
+    /Advanced Security must be enabled/,
+    /Code Scanning is not enabled/,
+  ].some((pattern) => pattern.test(msg));
+}
+
 export function wrapApiConfigurationError(e: unknown) {
   const httpError = asHTTPError(e);
   if (httpError !== undefined) {
@@ -302,6 +310,11 @@ export function wrapApiConfigurationError(e: unknown) {
     ) {
       return new ConfigurationError(
         "Please check that your token is valid and has the required permissions: contents: read, security-events: write",
+      );
+    }
+    if (isEnablementError(httpError.message)) {
+      return new ConfigurationError(
+        `Please verify that the necessary features are enabled: ${httpError.message}`,
       );
     }
     if (httpError.status === 429) {

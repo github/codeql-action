@@ -1134,7 +1134,10 @@ export class InvalidSarifUploadError extends Error {
   }
 }
 
-function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
+export function filterAlertsByDiffRange(
+  logger: Logger,
+  sarif: SarifFile,
+): SarifFile {
   const diffRanges = readDiffRangesJsonFile(logger);
   if (!diffRanges?.length) {
     return sarif;

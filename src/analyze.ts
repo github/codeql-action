@@ -244,6 +244,37 @@ export async function setupDiffInformedQueryRun(
   );
 }
 
+export function diffRangeExtensionPackContents(
+  ranges: DiffThunkRange[],
+): string {
+  const header = `
+extensions:
+  - addsTo:
+      pack: codeql/util
+      extensible: restrictAlertsTo
+      checkPresence: false
+    data:
+`;
+
+  let data = ranges
+    .map(
+      (range) =>
+        // Using yaml.dump() with `forceQuotes: true` ensures that all special
+        // characters are escaped, and that the path is always rendered as a
+        // quoted string on a single line.
+        `      - [${yaml.dump(range.path, { forceQuotes: true }).trim()}, ` +
+        `${range.startLine}, ${range.endLine}]\n`,
+    )
+    .join("");
+  if (!data) {
+    // Ensure that the data extension is not empty, so that a pull request with
+    // no edited lines would exclude (instead of accepting) all alerts.
+    data = '      - ["", 0, 0]\n';
+  }
+
+  return header + data;
+}
+
 /**
  * Create an extension pack in the temporary directory that contains the file
  * line ranges that were added or modified in the pull request.
@@ -292,32 +323,7 @@ dataExtensions:
 `,
   );
 
-  const header = `
-extensions:
-  - addsTo:
-      pack: codeql/util
-      extensible: restrictAlertsTo
-      checkPresence: false
-    data:
-`;
-
-  let data = ranges
-    .map(
-      (range) =>
-        // Using yaml.dump() with `forceQuotes: true` ensures that all special
-        // characters are escaped, and that the path is always rendered as a
-        // quoted string on a single line.
-        `      - [${yaml.dump(range.path, { forceQuotes: true }).trim()}, ` +
-        `${range.startLine}, ${range.endLine}]\n`,
-    )
-    .join("");
-  if (!data) {
-    // Ensure that the data extension is not empty, so that a pull request with
-    // no edited lines would exclude (instead of accepting) all alerts.
-    data = '      - ["", 0, 0]\n';
-  }
-
-  const extensionContents = header + data;
+  const extensionContents = diffRangeExtensionPackContents(ranges);
   const extensionFilePath = path.join(diffRangeDir, "pr-diff-range.yml");
   fs.writeFileSync(extensionFilePath, extensionContents);
   logger.debug(

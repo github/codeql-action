@@ -86,7 +86,7 @@ import {
   getErrorMessage,
   BuildMode,
 } from "./util";
-import { validateWorkflow } from "./workflow";
+import { checkWorkflow } from "./workflow";
 
 /**
  * Sends a status report indicating that the `init` Action is starting.
@@ -288,16 +288,9 @@ async function run() {
     toolsSource = initCodeQLResult.toolsSource;
     zstdAvailability = initCodeQLResult.zstdAvailability;
 
-    core.startGroup("Validating workflow");
-    const validateWorkflowResult = await validateWorkflow(codeql, logger);
-    if (validateWorkflowResult === undefined) {
-      logger.info("Detected no issues with the code scanning workflow.");
-    } else {
-      logger.warning(
-        `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
-      );
-    }
-    core.endGroup();
+    // Check the workflow for problems. If there are any problems, they are reported
+    // to the workflow log. No exceptions are thrown.
+    await checkWorkflow(logger, codeql);
 
     // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if between 2.19.3 (included) and 2.22.1 (excluded)
     // We need to set this environment variable before initializing the config, otherwise Rust

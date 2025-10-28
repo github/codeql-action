@@ -83,7 +83,7 @@ jobs:
           post-processed-sarif-path: ${{ runner.temp }}/post-processed
       - name: Upload security SARIF
         if: contains(matrix.analysis-kinds, 'code-scanning')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: |
             quality-queries-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.sarif.json
@@ -91,14 +91,14 @@ jobs:
           retention-days: 7
       - name: Upload quality SARIF
         if: contains(matrix.analysis-kinds, 'code-quality')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: |
             quality-queries-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.quality.sarif.json
           path: ${{ runner.temp }}/results/javascript.quality.sarif
           retention-days: 7
       - name: Upload post-processed SARIF
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: |
             post-processed-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}.sarif.json

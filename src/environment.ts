@@ -137,4 +137,10 @@ export enum EnvVar {
    * This setting is more specific than `CODEQL_ACTION_TEST_MODE`, which implies this option.
    */
   SKIP_SARIF_UPLOAD = "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
+
+  /**
+   * Whether to skip workflow validation. Intended for internal use, where we know that
+   * the workflow is valid and validation is not necessary.
+   */
+  SKIP_WORKFLOW_VALIDATION = "CODEQL_ACTION_SKIP_WORKFLOW_VALIDATION",
 }

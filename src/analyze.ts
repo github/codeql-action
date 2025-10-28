@@ -6,7 +6,11 @@ import * as io from "@actions/io";
 import * as del from "del";
 import * as yaml from "js-yaml";
 
-import { getTemporaryDirectory, PullRequestBranches } from "./actions-util";
+import {
+  getTemporaryDirectory,
+  getRequiredInput,
+  PullRequestBranches,
+} from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -308,6 +312,45 @@ export async function setupDiffInformedQueryRun(
   );
 }
 
+export function diffRangeExtensionPackContents(
+  ranges: DiffThunkRange[],
+): string {
+  const header = `
+extensions:
+  - addsTo:
+      pack: codeql/util
+      extensible: restrictAlertsTo
+      checkPresence: false
+    data:
+`;
+
+  let data = ranges
+    .map((range) => {
+      // Diff-informed queries expect the file path to be absolute. CodeQL always
+      // uses forward slashes as the path separator, so on Windows we need to
+      // replace any backslashes with forward slashes.
+      const filename = path
+        .join(getRequiredInput("checkout_path"), range.path)
+        .replaceAll(path.sep, "/");
+
+      // Using yaml.dump() with `forceQuotes: true` ensures that all special
+      // characters are escaped, and that the path is always rendered as a
+      // quoted string on a single line.
+      return (
+        `      - [${yaml.dump(filename, { forceQuotes: true }).trim()}, ` +
+        `${range.startLine}, ${range.endLine}]\n`
+      );
+    })
+    .join("");
+  if (!data) {
+    // Ensure that the data extension is not empty, so that a pull request with
+    // no edited lines would exclude (instead of accepting) all alerts.
+    data = '      - ["", 0, 0]\n';
+  }
+
+  return header + data;
+}
+
 /**
  * Create an extension pack in the temporary directory that contains the file
  * line ranges that were added or modified in the pull request.
@@ -356,32 +399,7 @@ dataExtensions:
 `,
   );
 
-  const header = `
-extensions:
-  - addsTo:
-      pack: codeql/util
-      extensible: restrictAlertsTo
-      checkPresence: false
-    data:
-`;
-
-  let data = ranges
-    .map(
-      (range) =>
-        // Using yaml.dump() with `forceQuotes: true` ensures that all special
-        // characters are escaped, and that the path is always rendered as a
-        // quoted string on a single line.
-        `      - [${yaml.dump(range.path, { forceQuotes: true }).trim()}, ` +
-        `${range.startLine}, ${range.endLine}]\n`,
-    )
-    .join("");
-  if (!data) {
-    // Ensure that the data extension is not empty, so that a pull request with
-    // no edited lines would exclude (instead of accepting) all alerts.
-    data = '      - ["", 0, 0]\n';
-  }
-
-  const extensionContents = header + data;
+  const extensionContents = diffRangeExtensionPackContents(ranges);
   const extensionFilePath = path.join(diffRangeDir, "pr-diff-range.yml");
   fs.writeFileSync(extensionFilePath, extensionContents);
   logger.debug(

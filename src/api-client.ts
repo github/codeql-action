@@ -291,6 +291,12 @@ function isEnablementError(msg: string) {
   ].some((pattern) => pattern.test(msg));
 }
 
+// TODO: Move to `error-messages.ts` after refactoring import order to avoid cycle
+// since `error-messages.ts` currently depends on this file.
+export function getFeatureEnablementError(message: string): string {
+  return `Please verify that the necessary features are enabled: ${message}`;
+}
+
 export function wrapApiConfigurationError(e: unknown) {
   const httpError = asHTTPError(e);
   if (httpError !== undefined) {
@@ -314,7 +320,7 @@ export function wrapApiConfigurationError(e: unknown) {
     }
     if (isEnablementError(httpError.message)) {
       return new ConfigurationError(
-        `Please verify that the necessary features are enabled: ${httpError.message}`,
+        getFeatureEnablementError(httpError.message),
       );
     }
     if (httpError.status === 429) {

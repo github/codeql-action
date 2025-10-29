@@ -179,7 +179,7 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
   t.deepEqual(
     res,
     new util.ConfigurationError(
-      `Please verify that the necessary features are enabled: ${codeSecurityNotEnabledError.message}`,
+      api.getFeatureEnablementError(codeSecurityNotEnabledError.message),
     ),
   );
   const advancedSecurityNotEnabledError = new util.HTTPError(
@@ -190,7 +190,7 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
   t.deepEqual(
     res,
     new util.ConfigurationError(
-      `Please verify that the necessary features are enabled: ${advancedSecurityNotEnabledError.message}`,
+      api.getFeatureEnablementError(advancedSecurityNotEnabledError.message),
     ),
   );
   const codeScanningNotEnabledError = new util.HTTPError(
@@ -201,7 +201,7 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
   t.deepEqual(
     res,
     new util.ConfigurationError(
-      `Please verify that the necessary features are enabled: ${codeScanningNotEnabledError.message}`,
+      api.getFeatureEnablementError(codeScanningNotEnabledError.message),
     ),
   );
 });

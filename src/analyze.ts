@@ -436,7 +436,6 @@ export function addSarifExtension(
 export async function runQueries(
   sarifFolder: string,
   memoryFlag: string,
-  addSnippetsFlag: string,
   threadsFlag: string,
   diffRangePackDir: string | undefined,
   automationDetailsId: string | undefined,
@@ -626,7 +625,6 @@ export async function runQueries(
       databasePath,
       queries,
       sarifFile,
-      addSnippetsFlag,
       threadsFlag,
       enableDebugLogging ? "-vv" : "-v",
       sarifRunPropertyFlag,

@@ -318,7 +318,7 @@ export function wrapApiConfigurationError(e: unknown) {
         "Please check that your token is valid and has the required permissions: contents: read, security-events: write",
       );
     }
-    if (isEnablementError(httpError.message)) {
+    if (httpError.status === 403 && isEnablementError(httpError.message)) {
       return new ConfigurationError(
         getFeatureEnablementError(httpError.message),
       );

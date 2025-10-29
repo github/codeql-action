@@ -324,6 +324,13 @@ async function run() {
     );
 
     if (actionsUtil.getRequiredInput("skip-queries") !== "true") {
+      // Warn if the removed `add-snippets` input is used.
+      if (actionsUtil.getOptionalInput("add-snippets") !== undefined) {
+        logger.warning(
+          "The `add-snippets` input has been removed and no longer has any effect.",
+        );
+      }
+
       runStats = await runQueries(
         outputDir,
         memory,

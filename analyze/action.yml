@@ -31,6 +31,11 @@ inputs:
       memory available in the system (which for GitHub-hosted runners is 6GB for Linux, 5.5GB for Windows,
       and 13GB for macOS).
     required: false
+  add-snippets:
+    description: Does not have any effect.
+    required: false
+    deprecationMessage: >-
+      The input "add-snippets" is has been removed and no longer has any effect.
   skip-queries:
     description: If this option is set, the CodeQL database will be built but no queries will be run on it. Thus, no results will be produced.
     required: false

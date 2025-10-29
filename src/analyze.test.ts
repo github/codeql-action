@@ -37,7 +37,6 @@ test("status report fields", async (t) => {
     setupActionsVars(tmpDir, tmpDir);
 
     const memoryFlag = "";
-    const addSnippetsFlag = "";
     const threadsFlag = "";
     sinon.stub(uploadLib, "validateSarifFileSchema");
 
@@ -103,7 +102,6 @@ test("status report fields", async (t) => {
       const statusReport = await runQueries(
         tmpDir,
         memoryFlag,
-        addSnippetsFlag,
         threadsFlag,
         undefined,
         undefined,

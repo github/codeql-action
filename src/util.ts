@@ -343,21 +343,6 @@ export function getMemoryFlag(
 }
 
 /**
- * Get the codeql flag to specify whether to add code snippets to the sarif file.
- *
- * @returns string
- */
-export function getAddSnippetsFlag(
-  userInput: string | boolean | undefined,
-): string {
-  if (typeof userInput === "string") {
-    // have to process specifically because any non-empty string is truthy
-    userInput = userInput.toLowerCase() === "true";
-  }
-  return userInput ? "--sarif-add-snippets" : "--no-sarif-add-snippets";
-}
-
-/**
  * Get the value of the codeql `--threads` flag specified for the `threads`
  * input. If no value was specified, all available threads will be used.
  *

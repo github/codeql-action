@@ -35,7 +35,7 @@ inputs:
     description: Does not have any effect.
     required: false
     deprecationMessage: >-
-      The input "add-snippets" is has been removed and no longer has any effect.
+      The input "add-snippets" has been removed and no longer has any effect.
   skip-queries:
     description: If this option is set, the CodeQL database will be built but no queries will be run on it. Thus, no results will be produced.
     required: false

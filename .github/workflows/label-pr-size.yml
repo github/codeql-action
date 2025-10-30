@@ -16,7 +16,7 @@ permissions:
 jobs:
   sizeup:
     name: Label PR with size
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
 
     steps:
       - name: Run sizeup

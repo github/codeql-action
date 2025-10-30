@@ -76,7 +76,15 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         if version == "latest":
             raise ValueError('Did not recognize "version: latest". Did you mean "version: linked"?')
 
-        runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
+        # Check if a specific runner image is specified in the check
+        customRunnerImages = checkSpecification.get('runnerImages')
+        if customRunnerImages:
+            # Use custom runner images specified in the check
+            runnerImages = customRunnerImages
+        else:
+            # Use default runner images based on operating systems
+            runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"]
+
         operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu"])
 
         for operatingSystem in operatingSystems:

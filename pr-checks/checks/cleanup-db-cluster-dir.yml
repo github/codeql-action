@@ -1,6 +1,7 @@
 name: "Clean up database cluster directory"
 description: "The database cluster directory is cleaned up if it is not empty."
 versions: ["linked"]
+runnerImages: ["ubuntu-slim"]
 steps:
   - name: Add a file to the database cluster directory
     run: |

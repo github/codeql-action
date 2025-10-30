@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-slim
             version: linked
     name: Config input
     if: github.triggering_actor != 'dependabot[bot]'

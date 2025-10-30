@@ -171,37 +171,30 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
   );
 
   // Enablement errors.
-  const codeSecurityNotEnabledError = new util.HTTPError(
+  const enablementErrorMessages = [
     "Code Security must be enabled for this repository to use code scanning",
-    403,
-  );
-  res = api.wrapApiConfigurationError(codeSecurityNotEnabledError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError(
-      api.getFeatureEnablementError(codeSecurityNotEnabledError.message),
-    ),
-  );
-  const advancedSecurityNotEnabledError = new util.HTTPError(
     "Advanced Security must be enabled for this repository to use code scanning",
-    403,
-  );
-  res = api.wrapApiConfigurationError(advancedSecurityNotEnabledError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError(
-      api.getFeatureEnablementError(advancedSecurityNotEnabledError.message),
-    ),
-  );
-  const codeScanningNotEnabledError = new util.HTTPError(
     "Code Scanning is not enabled for this repository. Please enable code scanning in the repository settings.",
-    403,
-  );
-  res = api.wrapApiConfigurationError(codeScanningNotEnabledError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError(
-      api.getFeatureEnablementError(codeScanningNotEnabledError.message),
-    ),
-  );
+  ];
+  const transforms = [
+    (msg: string) => msg,
+    (msg: string) => msg.toLowerCase(),
+    (msg: string) => msg.toLocaleUpperCase(),
+  ];
+
+  for (const enablementErrorMessage of enablementErrorMessages) {
+    for (const transform of transforms) {
+      const enablementError = new util.HTTPError(
+        transform(enablementErrorMessage),
+        403,
+      );
+      res = api.wrapApiConfigurationError(enablementError);
+      t.deepEqual(
+        res,
+        new util.ConfigurationError(
+          api.getFeatureEnablementError(enablementError.message),
+        ),
+      );
+    }
+  }
 });

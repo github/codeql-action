@@ -101,16 +101,6 @@ test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   }
 });
 
-test("getAddSnippetsFlag() should return the correct flag", (t) => {
-  t.deepEqual(util.getAddSnippetsFlag(true), "--sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("true"), "--sarif-add-snippets");
-
-  t.deepEqual(util.getAddSnippetsFlag(false), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag(undefined), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("false"), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("foo bar"), "--no-sarif-add-snippets");
-});
-
 test("getThreadsFlag() should return the correct --threads flag", (t) => {
   const numCpus = os.cpus().length;
 
@@ -533,4 +523,13 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is 
       undefined,
     );
   });
+});
+
+test("checkDiskUsage succeeds and produces positive numbers", async (t) => {
+  process.env["GITHUB_WORKSPACE"] = os.tmpdir();
+  const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
+  if (t.truthy(diskUsage)) {
+    t.true(diskUsage.numAvailableBytes > 0);
+    t.true(diskUsage.numTotalBytes > 0);
+  }
 });

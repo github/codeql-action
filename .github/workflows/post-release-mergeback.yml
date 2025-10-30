@@ -24,7 +24,7 @@ defaults:
 
 jobs:
   merge-back:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     environment: Automation
     if: github.repository == 'github/codeql-action'
     env:
@@ -48,6 +48,9 @@ jobs:
         with:
           fetch-depth: 0  # ensure we have all tags and can push commits
       - uses: actions/setup-node@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
 
       - name: Update git config
         run: |

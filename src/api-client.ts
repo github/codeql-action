@@ -1,7 +1,6 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
-import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
 import { Logger } from "./logging";
@@ -50,7 +49,12 @@ function createApiClientWithDetails(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiDetails.apiURL,
       userAgent: `CodeQL-Action/${getActionVersion()}`,
-      log: consoleLogLevel({ level: "debug" }),
+      log: {
+        debug: core.debug,
+        info: core.info,
+        warn: core.warning,
+        error: core.error,
+      },
     }),
   );
 }
@@ -279,6 +283,20 @@ export async function getRepositoryProperties(repositoryNwo: RepositoryNwo) {
   });
 }
 
+function isEnablementError(msg: string) {
+  return [
+    /Code Security must be enabled/,
+    /Advanced Security must be enabled/,
+    /Code Scanning is not enabled/,
+  ].some((pattern) => pattern.test(msg));
+}
+
+// TODO: Move to `error-messages.ts` after refactoring import order to avoid cycle
+// since `error-messages.ts` currently depends on this file.
+export function getFeatureEnablementError(message: string): string {
+  return `Please verify that the necessary features are enabled: ${message}`;
+}
+
 export function wrapApiConfigurationError(e: unknown) {
   const httpError = asHTTPError(e);
   if (httpError !== undefined) {
@@ -298,6 +316,11 @@ export function wrapApiConfigurationError(e: unknown) {
     ) {
       return new ConfigurationError(
         "Please check that your token is valid and has the required permissions: contents: read, security-events: write",
+      );
+    }
+    if (httpError.status === 403 && isEnablementError(httpError.message)) {
+      return new ConfigurationError(
+        getFeatureEnablementError(httpError.message),
       );
     }
     if (httpError.status === 429) {

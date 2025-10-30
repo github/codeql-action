@@ -1,7 +1,7 @@
 name: "Language aliases"
 description: "Tests that language aliases are resolved correctly"
 versions: ["linked"]
-runnerImages: ["ubuntu-slim"]
+runnerSize: "slim"
 steps:
   - uses: ./../action/init
     with:

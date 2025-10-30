@@ -98,6 +98,12 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         if checkSpecification.get('useAllPlatformBundle'):
             useAllPlatformBundle = checkSpecification['useAllPlatformBundle']
 
+    # Store the runner size for use in prepare-test step
+    # This is determined once per check specification
+    finalRunnerSize = checkSpecification.get('runnerSize', 'default')
+    if finalRunnerSize == 'default':
+        finalRunnerSize = 'latest'
+
 
     if 'analysisKinds' in checkSpecification:
         newMatrix = []
@@ -142,9 +148,10 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         'with': {
             'version': '${{ matrix.version }}',
             'use-all-platform-bundle': useAllPlatformBundle,
-            # If the action is being run from a container, then do not setup kotlin.
-            # This is because the kotlin binaries cannot be downloaded from the container.
-            'setup-kotlin': str(not 'container' in checkSpecification).lower(),
+            # If the action is being run from a container or on a slim runner, then do not setup kotlin.
+            # Containers: kotlin binaries cannot be downloaded from the container.
+            # Slim runners: limited resources may cause issues with Kotlin setup.
+            'setup-kotlin': str(not 'container' in checkSpecification and finalRunnerSize != 'slim').lower(),
         }
     })
 

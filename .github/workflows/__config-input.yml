@@ -61,7 +61,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          setup-kotlin: 'false'
       - name: Copy queries into workspace
         run: |
           cp -a ../action/queries .

@@ -20,7 +20,7 @@ defaults:
 jobs:
   update-bundle:
     if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull requests

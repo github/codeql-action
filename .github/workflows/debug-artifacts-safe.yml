@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
       - name: Check expected artifacts exist
         run: |
           VERSIONS="stable-v2.20.3 default linked nightly-latest"

@@ -76,17 +76,19 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
         if version == "latest":
             raise ValueError('Did not recognize "version: latest". Did you mean "version: linked"?')
 
-        # Determine runner size (default is "latest")
-        # "default" maps to "latest" for the runner image name
+        # Determine runner size
+        # "default" is used in check specifications and maps to "latest" for the actual runner image
         runnerSize = checkSpecification.get('runnerSize', 'default')
-        actualRunnerSize = 'latest' if runnerSize == 'default' else runnerSize
+        if runnerSize == 'default':
+            runnerSize = 'latest'
         
         # Build runner images based on runner size and operating systems
         operatingSystems = checkSpecification.get('operatingSystems', ["ubuntu"])
         
         for operatingSystem in operatingSystems:
             # Construct the runner image name: {os}-{size}
-            runnerImage = f"{operatingSystem}-{actualRunnerSize}"
+            # Note: Not all OS types may support all runner sizes (e.g., only ubuntu-slim exists as of now)
+            runnerImage = f"{operatingSystem}-{runnerSize}"
             matrix.append({
                 'os': runnerImage,
                 'version': version

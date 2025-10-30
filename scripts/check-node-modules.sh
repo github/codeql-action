@@ -9,9 +9,15 @@ if [ "$GITHUB_ACTIONS" = "true" ]; then
 fi
 
 # Check if npm install is likely needed before proceeding
-if [ ! -d node_modules ] || [ package-lock.json -nt node_modules/.package-lock.json ]; then
-  echo "Running 'npm install' because 'node_modules/.package-lock.json' appears to be outdated..."
+if [ ! -d node_modules ]; then
+  echo "Running 'npm install' because 'node_modules' directory is missing."
+  npm install
+elif [ package.json -nt package-lock.json ]; then
+  echo "Running 'npm install' because 'package-lock.json' appears to be outdated."
+  npm install
+elif [ package-lock.json -nt node_modules/.package-lock.json ]; then
+  echo "Running 'npm install' because 'node_modules/.package-lock.json' appears to be outdated."
   npm install
 else
-  echo "Skipping 'npm install' because 'node_modules/.package-lock.json' appears to be up-to-date."
+  echo "Skipping 'npm install' because everything appears to be up-to-date."
 fi

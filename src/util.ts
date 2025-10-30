@@ -1,12 +1,11 @@
 import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
 import * as exec from "@actions/exec/lib/exec";
 import * as io from "@actions/io";
-import checkDiskSpace from "check-disk-space";
-import * as del from "del";
 import getFolderSize from "get-folder-size";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
@@ -167,7 +166,7 @@ export async function withTmpDir<T>(
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
   const result = await body(tmpDir);
-  await del.deleteAsync(tmpDir, { force: true });
+  await fs.promises.rm(tmpDir, { force: true, recursive: true });
   return result;
 }
 
@@ -341,21 +340,6 @@ export function getMemoryFlag(
 ): string {
   const megabytes = getMemoryFlagValue(userInput, logger);
   return `--ram=${megabytes}`;
-}
-
-/**
- * Get the codeql flag to specify whether to add code snippets to the sarif file.
- *
- * @returns string
- */
-export function getAddSnippetsFlag(
-  userInput: string | boolean | undefined,
-): string {
-  if (typeof userInput === "string") {
-    // have to process specifically because any non-empty string is truthy
-    userInput = userInput.toLowerCase() === "true";
-  }
-  return userInput ? "--sarif-add-snippets" : "--no-sarif-add-snippets";
 }
 
 /**
@@ -756,7 +740,7 @@ export async function bundleDb(
   // from somewhere else or someone trying to make the action upload a
   // non-database file.
   if (fs.existsSync(databaseBundlePath)) {
-    await del.deleteAsync(databaseBundlePath, { force: true });
+    await fs.promises.rm(databaseBundlePath, { force: true });
   }
   await codeql.databaseBundle(databasePath, databaseBundlePath, dbName);
   return databaseBundlePath;
@@ -1099,24 +1083,17 @@ export async function checkDiskUsage(
   logger: Logger,
 ): Promise<DiskUsage | undefined> {
   try {
-    // We avoid running the `df` binary under the hood for macOS ARM runners with SIP disabled.
-    if (
-      process.platform === "darwin" &&
-      (process.arch === "arm" || process.arch === "arm64") &&
-      !(await checkSipEnablement(logger))
-    ) {
-      return undefined;
-    }
-
-    const diskUsage = await checkDiskSpace(
+    const diskUsage = await fsPromises.statfs(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
     );
-    const mbInBytes = 1024 * 1024;
-    const gbInBytes = 1024 * 1024 * 1024;
-    if (diskUsage.free < 2 * gbInBytes) {
+
+    const blockSizeInBytes = diskUsage.bsize;
+    const numBlocksPerMb = (1024 * 1024) / blockSizeInBytes;
+    const numBlocksPerGb = (1024 * 1024 * 1024) / blockSizeInBytes;
+    if (diskUsage.bavail < 2 * numBlocksPerGb) {
       const message =
         "The Actions runner is running low on disk space " +
-        `(${(diskUsage.free / mbInBytes).toPrecision(4)} MB available).`;
+        `(${(diskUsage.bavail / numBlocksPerMb).toPrecision(4)} MB available).`;
       if (process.env[EnvVar.HAS_WARNED_ABOUT_DISK_SPACE] !== "true") {
         logger.warning(message);
       } else {
@@ -1125,8 +1102,8 @@ export async function checkDiskUsage(
       core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
-      numAvailableBytes: diskUsage.free,
-      numTotalBytes: diskUsage.size,
+      numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
+      numTotalBytes: diskUsage.blocks * blockSizeInBytes,
     };
   } catch (error) {
     logger.warning(
@@ -1263,19 +1240,13 @@ export async function checkSipEnablement(
   }
 }
 
-export async function cleanUpGlob(glob: string, name: string, logger: Logger) {
+export async function cleanUpPath(file: string, name: string, logger: Logger) {
   logger.debug(`Cleaning up ${name}.`);
   try {
-    const deletedPaths = await del.deleteAsync(glob, { force: true });
-    if (deletedPaths.length === 0) {
-      logger.warning(
-        `Failed to clean up ${name}: no files found matching ${glob}.`,
-      );
-    } else if (deletedPaths.length === 1) {
-      logger.debug(`Cleaned up ${name}.`);
-    } else {
-      logger.debug(`Cleaned up ${name} (${deletedPaths.length} files).`);
-    }
+    await fs.promises.rm(file, {
+      force: true,
+      recursive: true,
+    });
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
   }

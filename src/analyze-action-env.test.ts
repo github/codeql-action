@@ -78,7 +78,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     t.deepEqual(runFinalizeStub.firstCall.args[1], "--threads=-1");
     t.deepEqual(runFinalizeStub.firstCall.args[2], "--ram=4992");
     t.assert(runQueriesStub.calledOnce);
-    t.deepEqual(runQueriesStub.firstCall.args[3], "--threads=-1");
+    t.deepEqual(runQueriesStub.firstCall.args[2], "--threads=-1");
     t.deepEqual(runQueriesStub.firstCall.args[1], "--ram=4992");
   });
 });

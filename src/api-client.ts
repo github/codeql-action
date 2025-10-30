@@ -285,9 +285,9 @@ export async function getRepositoryProperties(repositoryNwo: RepositoryNwo) {
 
 function isEnablementError(msg: string) {
   return [
-    /Code Security must be enabled/,
-    /Advanced Security must be enabled/,
-    /Code Scanning is not enabled/,
+    /Code Security must be enabled/i,
+    /Advanced Security must be enabled/i,
+    /Code Scanning is not enabled/i,
   ].some((pattern) => pattern.test(msg));
 }
 

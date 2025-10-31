@@ -1,8 +1,10 @@
 name: 'Publish Immutable Action Version'
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      # Match version tags, but not the major version tags.
+      - 'v[0-9]+.**'
 
 defaults:
   run:
@@ -17,23 +19,9 @@ jobs:
       packages: write
 
     steps:
-      - name: Check release name
-        id: check
-        env:
-          RELEASE_NAME: ${{ github.event.release.name }}
-        run: |
-          echo "Release name: ${{ github.event.release.name }}"
-          if [[ $RELEASE_NAME == v* ]]; then
-            echo "This is a CodeQL Action release. Create an Immutable Action"
-            echo "is-action-release=true" >> $GITHUB_OUTPUT
-          else
-            echo "This is a CodeQL Bundle release. Do not create an Immutable Action"
-            echo "is-action-release=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Checking out
-        if: steps.check.outputs.is-action-release == 'true'
+      - name: Checkout repository
         uses: actions/checkout@v5
-      - name: Publish
-        if: steps.check.outputs.is-action-release == 'true'
+
+      - name: Publish immutable release
         id: publish
         uses: actions/publish-immutable-action@v0.0.4

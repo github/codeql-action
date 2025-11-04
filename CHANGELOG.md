@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- Updated the `init` action to log a warning if the action is v3 but could be v4. This is to help users migrate to v4 of the CodeQL Action.
+- Updated the Action to log a warning if executing v3 but could be executing v4. This is to help users migrate to v4 of the CodeQL Action.
 
 ## 4.31.2 - 30 Oct 2025
 

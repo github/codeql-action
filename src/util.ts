@@ -1114,38 +1114,38 @@ export async function checkDiskUsage(
 }
 
 /**
- * Prompt the customer to upgrade to CodeQL Action v3, if appropriate.
+ * Prompt the customer to upgrade to CodeQL Action v4, if appropriate.
  *
- * Check whether a customer is running v1 or v2. If they are, and we can determine that the GitHub
- * instance supports v3, then log an error prompting the customer to upgrade to v3.
+ * Check whether a customer is running v1, v2, or v3. If they are, and we can determine that the GitHub
+ * instance supports v4, then log an error prompting the customer to upgrade to v4.
  */
 export function checkActionVersion(
   version: string,
   githubVersion: GitHubVersion,
 ) {
   if (
-    !semver.satisfies(version, ">=3") && // do not log error if the customer is already running v3
+    !semver.satisfies(version, ">=4") && // do not log error if the customer is already running v4
     !process.env[EnvVar.LOG_VERSION_DEPRECATION] // do not log error if we have already
   ) {
-    // Only error for versions of GHES that are compatible with CodeQL Action version 3.
+    // Only error for versions of GHES that are compatible with CodeQL Action version 4.
     //
-    // GHES 3.11 shipped without the v3 tag, but it also shipped without this warning message code.
-    // Therefore users who are seeing this warning message code have pulled in a new version of the
-    // Action, and with it the v3 tag.
+    // GHES 3.19 shipped without the v4 tag, but it also shipped without this warning message code.
+    // Therefore, users who are seeing this warning message code have pulled in a new version of the
+    // Action, and with it the v4 tag.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
       githubVersion.type === GitHubVariant.GHE_DOTCOM ||
       (githubVersion.type === GitHubVariant.GHES &&
         semver.satisfies(
           semver.coerce(githubVersion.version) ?? "0.0.0",
-          ">=3.11",
+          ">=3.20",
         ))
     ) {
       core.error(
-        "CodeQL Action major versions v1 and v2 have been deprecated. " +
-          "Please update all occurrences of the CodeQL Action in your workflow files to v3. " +
+        "CodeQL Action major versions v1, v2, and v3 have been deprecated. " +
+          "Please update all occurrences of the CodeQL Action in your workflow files to v4. " +
           "For more information, see " +
-          "https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/",
+          "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
       core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");

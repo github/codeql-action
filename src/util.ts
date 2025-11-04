@@ -1129,9 +1129,9 @@ export function checkActionVersion(
   ) {
     // Only error for versions of GHES that are compatible with CodeQL Action version 4.
     //
-    // GHES 3.19 shipped without the v4 tag, but it also shipped without this warning message code.
-    // Therefore, users who are seeing this warning message code have pulled in a new version of the
-    // Action, and with it the v4 tag.
+    // GHES 3.20 is the first version to ship with the v4 tag and this warning message code.
+    // Therefore, users who are seeing this warning message code are running on GHES 3.20 or newer,
+    // and should update to CodeQL Action v4.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
       githubVersion.type === GitHubVariant.GHE_DOTCOM ||

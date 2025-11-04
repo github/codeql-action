@@ -1142,7 +1142,7 @@ export function checkActionVersion(
         ))
     ) {
       core.error(
-        "CodeQL Action major versions v1, v2, and v3 have been deprecated. " +
+        "CodeQL Action major versions v1, v2, and v3 have either been deprecated or will soon be deprecated. " +
           "Please update all occurrences of the CodeQL Action in your workflow files to v4. " +
           "For more information, see " +
           "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",

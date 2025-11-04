@@ -449,11 +449,19 @@ const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
     ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
     ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, true],
     ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, true],
-    ["3.2.1", { type: util.GitHubVariant.DOTCOM }, false],
-    ["3.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, false],
+    ["3.2.1", { type: util.GitHubVariant.DOTCOM }, true],
+    ["3.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, true],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, false],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.19" }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.20" }, true],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.21" }, true],
+    ["4.2.1", { type: util.GitHubVariant.DOTCOM }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.19" }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.20" }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.21" }, false],
   ];
 
 for (const [
@@ -480,9 +488,7 @@ for (const [
     if (shouldReportError) {
       t.true(
         warningSpy.calledOnceWithExactly(
-          sinon.match(
-            "CodeQL Action major versions v1 and v2 have been deprecated.",
-          ),
+          "CodeQL Action major versions v1, v2, and v3 have either been deprecated or will soon be deprecated. Please update all occurrences of the CodeQL Action in your workflow files to v4. For more information, see https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
         ),
       );
     } else {

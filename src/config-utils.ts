@@ -776,8 +776,7 @@ function userConfigFromActionPath(tempDir: string): string {
 function hasQueryCustomisation(userConfig: UserConfig): boolean {
   return (
     isDefined(userConfig["disable-default-queries"]) ||
-    isDefined(userConfig.queries) ||
-    isDefined(userConfig["query-filters"])
+    isDefined(userConfig.queries)
   );
 }
 
@@ -839,7 +838,6 @@ export async function initConfig(
     // Set the query customisation options for Code Quality only analysis.
     config.computedConfig["disable-default-queries"] = true;
     config.computedConfig.queries = queries;
-    config.computedConfig["query-filters"] = [];
   }
 
   // The choice of overlay database mode depends on the selection of languages

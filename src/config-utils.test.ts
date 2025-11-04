@@ -210,7 +210,6 @@ test("load code quality config", async (t) => {
       computedConfig: {
         "disable-default-queries": true,
         queries: [{ uses: "code-quality" }],
-        "query-filters": [],
       },
       tempDir,
       codeQLCmd: codeql.getPath(),
@@ -256,7 +255,6 @@ test("initActionState doesn't throw if there are queries configured in the repos
     const computedConfig: configUtils.UserConfig = {
       "disable-default-queries": true,
       queries: [{ uses: "code-quality" }],
-      "query-filters": [],
     };
 
     const expectedConfig = createTestConfig({

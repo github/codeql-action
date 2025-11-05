@@ -1,4 +1,3 @@
-import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -11,6 +10,7 @@ import {
   getWorkflowRunID,
 } from "./actions-util";
 import { getAutomationID } from "./api-client";
+import { createCacheKeyHash } from "./caching-utils";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
@@ -513,28 +513,4 @@ export async function getCacheRestoreKeyPrefix(
   // componentsHash, but including them explicitly in the cache key makes it
   // easier to debug and understand the cache key structure.
   return `${CACHE_PREFIX}-${CACHE_VERSION}-${componentsHash}-${languages}-${codeQlVersion}-`;
-}
-
-/**
- * Creates a SHA-256 hash of the cache key components to ensure uniqueness
- * while keeping the cache key length manageable.
- *
- * @param components Object containing all components that should influence cache key uniqueness
- * @returns A short SHA-256 hash (first 16 characters) of the components
- */
-function createCacheKeyHash(components: Record<string, any>): string {
-  // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
-  //
-  // "Properties are visited using the same algorithm as Object.keys(), which
-  // has a well-defined order and is stable across implementations. For example,
-  // JSON.stringify on the same object will always produce the same string, and
-  // JSON.parse(JSON.stringify(obj)) would produce an object with the same key
-  // ordering as the original (assuming the object is completely
-  // JSON-serializable)."
-  const componentsJson = JSON.stringify(components);
-  return crypto
-    .createHash("sha256")
-    .update(componentsJson)
-    .digest("hex")
-    .substring(0, 16);
 }

@@ -488,9 +488,7 @@ for (const [
     if (shouldReportError) {
       t.true(
         warningSpy.calledOnceWithExactly(
-          sinon.match(
-            "CodeQL Action v3 will be deprecated in December 2026.",
-          ),
+          sinon.match("CodeQL Action v3 will be deprecated in December 2026."),
         ),
       );
     } else {

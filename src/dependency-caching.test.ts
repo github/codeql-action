@@ -1,14 +1,103 @@
+import * as fs from "fs";
+import path from "path";
+
 import test from "ava";
+
 // import * as sinon from "sinon";
 
 import { cacheKeyHashLength } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
-import { getFeaturePrefix } from "./dependency-caching";
+import {
+  CacheConfig,
+  checkHashPatterns,
+  getFeaturePrefix,
+  makePatternCheck,
+} from "./dependency-caching";
 import { Feature } from "./feature-flags";
 import { KnownLanguage } from "./languages";
-import { setupTests, createFeatures } from "./testing-utils";
+import {
+  setupTests,
+  createFeatures,
+  getRecordingLogger,
+  checkExpectedLogMessages,
+  LoggedMessage,
+} from "./testing-utils";
+import { withTmpDir } from "./util";
 
 setupTests(test);
+
+function makeAbsolutePatterns(tmpDir: string, patterns: string[]): string[] {
+  return patterns.map((pattern) => path.join(tmpDir, pattern));
+}
+
+test("makePatternCheck - returns undefined if no patterns match", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    fs.writeFileSync(path.join(tmpDir, "test.java"), "");
+    const result = await makePatternCheck(
+      makeAbsolutePatterns(tmpDir, ["**/*.cs"]),
+    );
+    t.is(result, undefined);
+  });
+});
+
+test("makePatternCheck - returns all patterns if any pattern matches", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    fs.writeFileSync(path.join(tmpDir, "test.java"), "");
+    const patterns = makeAbsolutePatterns(tmpDir, ["**/*.cs", "**/*.java"]);
+    const result = await makePatternCheck(patterns);
+    t.deepEqual(result, patterns);
+  });
+});
+
+test("checkHashPatterns - logs when no patterns match", async (t) => {
+  const codeql = createStubCodeQL({});
+  const features = createFeatures([]);
+  const messages: LoggedMessage[] = [];
+  const config: CacheConfig = {
+    getDependencyPaths: () => [],
+    getHashPatterns: async () => undefined,
+  };
+
+  const result = await checkHashPatterns(
+    codeql,
+    features,
+    KnownLanguage.csharp,
+    config,
+    getRecordingLogger(messages),
+  );
+
+  t.is(result, undefined);
+  checkExpectedLogMessages(t, messages, [
+    "Skipping download of dependency cache",
+  ]);
+});
+
+test("checkHashPatterns - returns patterns when patterns match", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const codeql = createStubCodeQL({});
+    const features = createFeatures([]);
+    const messages: LoggedMessage[] = [];
+    const patterns = makeAbsolutePatterns(tmpDir, ["**/*.cs", "**/*.java"]);
+
+    fs.writeFileSync(path.join(tmpDir, "test.java"), "");
+
+    const config: CacheConfig = {
+      getDependencyPaths: () => [],
+      getHashPatterns: async () => makePatternCheck(patterns),
+    };
+
+    const result = await checkHashPatterns(
+      codeql,
+      features,
+      KnownLanguage.csharp,
+      config,
+      getRecordingLogger(messages),
+    );
+
+    t.deepEqual(result, patterns);
+    t.deepEqual(messages, []);
+  });
+});
 
 test("getFeaturePrefix - returns empty string if no features are enabled", async (t) => {
   const codeql = createStubCodeQL({});

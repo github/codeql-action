@@ -489,7 +489,7 @@ for (const [
       t.true(
         warningSpy.calledOnceWithExactly(
           sinon.match(
-            "CodeQL Action major versions below v4 have either been deprecated or will soon be deprecated.",
+            "CodeQL Action v3 will be deprecated in December 2026.",
           ),
         ),
       );

@@ -1116,7 +1116,7 @@ export async function checkDiskUsage(
 /**
  * Prompt the customer to upgrade to CodeQL Action v4, if appropriate.
  *
- * Check whether a customer is running v1, v2, or v3. If they are, and we can determine that the GitHub
+ * Check whether a customer is running v3. If they are, and we can determine that the GitHub
  * instance supports v4, then log an error prompting the customer to upgrade to v4.
  */
 export function checkActionVersion(
@@ -1142,7 +1142,7 @@ export function checkActionVersion(
         ))
     ) {
       core.error(
-        "CodeQL Action major versions below v4 have either been deprecated or will soon be deprecated. " +
+        "CodeQL Action v3 will be deprecated in December 2026. " +
           "Please update all occurrences of the CodeQL Action in your workflow files to v4. " +
           "For more information, see " +
           "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",

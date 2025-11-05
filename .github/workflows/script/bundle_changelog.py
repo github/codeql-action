@@ -6,7 +6,6 @@ pr_number = os.environ['PR_URL'].split('/')[-1]
 changelog_note = f"- Update default CodeQL bundle version to {os.environ['CLI_VERSION']}. [#{pr_number}]({os.environ['PR_URL']})"
 
 # If the "[UNRELEASED]" section starts with "no user facing changes", remove that line.
-# Use perl to avoid having to escape the newline character.
 with open('CHANGELOG.md', 'r') as f:
     changelog = f.read()
 

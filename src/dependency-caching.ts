@@ -6,11 +6,11 @@ import * as glob from "@actions/glob";
 
 import { getTemporaryDirectory } from "./actions-util";
 import { listActionsCaches } from "./api-client";
-import { getTotalCacheSize } from "./caching-utils";
+import { createCacheKeyHash, getTotalCacheSize } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getErrorMessage, getRequiredEnvParam } from "./util";
@@ -443,6 +443,56 @@ async function cacheKey(
 }
 
 /**
+ * If experimental features which the cache contents depend on are enabled for the current language,
+ * this function returns a prefix that uniquely identifies the set of enabled features. The purpose of
+ * this is to avoid restoring caches whose contents depended on experimental features, if those
+ * experimental features are later disabled.
+ *
+ * @param codeql The CodeQL instance.
+ * @param features Information about enabled features.
+ * @param language The language we are creating the key for.
+ *
+ * @returns A cache key prefix identifying the enabled, experimental features that the cache depends on.
+ */
+export async function getFeaturePrefix(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  language: Language,
+): Promise<string> {
+  const enabledFeatures: Feature[] = [];
+
+  const addFeatureIfEnabled = async (feature: Feature) => {
+    if (await features.getValue(feature, codeql)) {
+      enabledFeatures.push(feature);
+    }
+  };
+
+  if (language === KnownLanguage.java) {
+    // To ensure a safe rollout of JAR minimization, we change the key when the feature is enabled.
+    const minimizeJavaJars = await features.getValue(
+      Feature.JavaMinimizeDependencyJars,
+      codeql,
+    );
+
+    // To maintain backwards compatibility with this, we return "minify-" instead of a hash.
+    if (minimizeJavaJars) {
+      return "minify-";
+    }
+  } else if (language === KnownLanguage.csharp) {
+    await addFeatureIfEnabled(Feature.CsharpNewCacheKey);
+  }
+
+  // If any features that affect the cache are enabled, return a feature prefix by
+  // computing a hash of the feature array.
+  if (enabledFeatures.length > 0) {
+    return `${createCacheKeyHash(enabledFeatures)}-`;
+  }
+
+  // No feature prefix.
+  return "";
+}
+
+/**
  * Constructs a prefix for the cache key, comprised of a CodeQL-specific prefix, a version number that
  * can be changed to invalidate old caches, the runner's operating system, and the specified language name.
  *
@@ -464,16 +514,12 @@ async function cachePrefix(
     prefix = `${prefix}-${customPrefix}`;
   }
 
-  // To ensure a safe rollout of JAR minimization, we change the key when the feature is enabled.
-  const minimizeJavaJars = await features.getValue(
-    Feature.JavaMinimizeDependencyJars,
-    codeql,
-  );
-  if (language === KnownLanguage.java && minimizeJavaJars) {
-    prefix = `minify-${prefix}`;
-  }
+  // Calculate the feature prefix for the cache, if any. This is a hash that identifies
+  // experimental features that affect the cache contents.
+  const featurePrefix = await getFeaturePrefix(codeql, features, language);
 
-  return `${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
+  // Assemble the cache key.
+  return `${featurePrefix}${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
 }
 
 /** Represents information about our overall cache usage for CodeQL dependency caches. */

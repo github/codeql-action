@@ -73,6 +73,9 @@ export function getCachingKind(input: string | undefined): CachingKind {
   }
 }
 
+// The length to which `createCacheKeyHash` truncates hash strings.
+export const cacheKeyHashLength = 16;
+
 /**
  * Creates a SHA-256 hash of the cache key components to ensure uniqueness
  * while keeping the cache key length manageable.
@@ -94,7 +97,7 @@ export function createCacheKeyHash(components: Record<string, any>): string {
     .createHash("sha256")
     .update(componentsJson)
     .digest("hex")
-    .substring(0, 16);
+    .substring(0, cacheKeyHashLength);
 }
 
 /** Determines whether dependency caching is enabled. */

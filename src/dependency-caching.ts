@@ -15,29 +15,24 @@ import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getErrorMessage, getRequiredEnvParam } from "./util";
 
-class NoMatchingFilesError extends Error {
-  constructor(msg?: string) {
-    super(msg);
-
-    this.name = "NoMatchingFilesError";
-  }
-}
-
 /**
  * Caching configuration for a particular language.
  */
-interface CacheConfig {
+export interface CacheConfig {
   /** Gets the paths of directories on the runner that should be included in the cache. */
   getDependencyPaths: () => string[];
   /**
    * Gets an array of glob patterns for the paths of files whose contents affect which dependencies are used
-   * by a project. This function also checks whether there are any matching files and throws
-   * a `NoMatchingFilesError` error if no files match.
+   * by a project. This function also checks whether there are any matching files and returns
+   * `undefined` if no files match.
    *
    * The glob patterns are intended to be used for cache keys, where we find all files which match these
    * patterns, calculate a hash for their contents, and use that hash as part of the cache key.
    */
-  getHashPatterns: (codeql: CodeQL, features: Features) => Promise<string[]>;
+  getHashPatterns: (
+    codeql: CodeQL,
+    features: FeatureEnablement,
+  ) => Promise<string[] | undefined>;
 }
 
 const CODEQL_DEPENDENCY_CACHE_PREFIX = "codeql-dependencies";
@@ -73,16 +68,18 @@ export function getJavaDependencyDirs(): string[] {
 
 /**
  * Checks that there are files which match `patterns`. If there are matching files for any of the patterns,
- * this function returns all `patterns`. Otherwise, a `NoMatchingFilesError` is thrown.
+ * this function returns all `patterns`. Otherwise, `undefined` is returned.
  *
  * @param patterns The glob patterns to find matching files for.
- * @returns The array of glob patterns if there are matching files.
+ * @returns The array of glob patterns if there are matching files, or `undefined` otherwise.
  */
-async function makePatternCheck(patterns: string[]): Promise<string[]> {
+export async function makePatternCheck(
+  patterns: string[],
+): Promise<string[] | undefined> {
   const globber = await makeGlobber(patterns);
 
   if ((await globber.glob()).length === 0) {
-    throw new NoMatchingFilesError();
+    return undefined;
   }
 
   return patterns;
@@ -98,8 +95,8 @@ async function makePatternCheck(patterns: string[]): Promise<string[]> {
  */
 async function getCsharpHashPatterns(
   codeql: CodeQL,
-  features: Features,
-): Promise<string[]> {
+  features: FeatureEnablement,
+): Promise<string[] | undefined> {
   // These files contain accurate information about dependencies, including the exact versions
   // that the relevant package manager has determined for the project. Using these gives us
   // stable hashes unless the dependencies change.
@@ -133,7 +130,7 @@ async function getCsharpHashPatterns(
   // If we get to this point, the `basePatterns` didn't find any files,
   // and `Feature.CsharpNewCacheKey` is either not enabled or we didn't
   // find any files using those patterns either.
-  throw new NoMatchingFilesError();
+  return undefined;
 }
 
 /**
@@ -192,8 +189,8 @@ export interface DependencyCacheRestoreStatus {
 export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
 
 /**
- * A wrapper around `cacheConfig.getHashPatterns` which catches `NoMatchingFilesError` errors,
- * and logs that there are no files to calculate a hash for the cache key from.
+ * A wrapper around `cacheConfig.getHashPatterns` which logs when there are no files to calculate
+ * a hash for the cache key from.
  *
  * @param codeql The CodeQL instance to use.
  * @param features Information about which FFs are enabled.
@@ -202,24 +199,22 @@ export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
  * @param logger The logger to write the log message to if there is an error.
  * @returns An array of glob patterns to use for hashing files, or `undefined` if there are no matching files.
  */
-async function checkHashPatterns(
+export async function checkHashPatterns(
   codeql: CodeQL,
-  features: Features,
+  features: FeatureEnablement,
   language: Language,
   cacheConfig: CacheConfig,
   logger: Logger,
 ): Promise<string[] | undefined> {
-  try {
-    return cacheConfig.getHashPatterns(codeql, features);
-  } catch (err) {
-    if (err instanceof NoMatchingFilesError) {
-      logger.info(
-        `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
-      );
-      return undefined;
-    }
-    throw err;
+  const patterns = await cacheConfig.getHashPatterns(codeql, features);
+
+  if (patterns === undefined) {
+    logger.info(
+      `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
+    );
   }
+
+  return patterns;
 }
 
 /**

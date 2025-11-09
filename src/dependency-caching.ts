@@ -10,7 +10,7 @@ import { createCacheKeyHash, getTotalCacheSize } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getErrorMessage, getRequiredEnvParam } from "./util";
@@ -236,7 +236,7 @@ export async function checkHashPatterns(
  */
 export async function downloadDependencyCaches(
   codeql: CodeQL,
-  features: Features,
+  features: FeatureEnablement,
   languages: Language[],
   logger: Logger,
 ): Promise<DependencyCacheRestoreStatusReport> {
@@ -335,7 +335,7 @@ export type DependencyCacheUploadStatusReport = DependencyCacheUploadStatus[];
  */
 export async function uploadDependencyCaches(
   codeql: CodeQL,
-  features: Features,
+  features: FeatureEnablement,
   config: Config,
   logger: Logger,
 ): Promise<DependencyCacheUploadStatusReport> {
@@ -438,9 +438,9 @@ export async function uploadDependencyCaches(
  *
  * @returns A cache key capturing information about the project(s) being analyzed in the specified language.
  */
-async function cacheKey(
+export async function cacheKey(
   codeql: CodeQL,
-  features: Features,
+  features: FeatureEnablement,
   language: Language,
   patterns: string[],
 ): Promise<string> {
@@ -509,7 +509,7 @@ export async function getFeaturePrefix(
  */
 async function cachePrefix(
   codeql: CodeQL,
-  features: Features,
+  features: FeatureEnablement,
   language: Language,
 ): Promise<string> {
   const runnerOs = getRequiredEnvParam("RUNNER_OS");

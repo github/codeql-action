@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import path from "path";
 
+import * as actionsCache from "@actions/cache";
+import * as glob from "@actions/glob";
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -15,6 +17,9 @@ import {
   internal,
   CSHARP_BASE_PATTERNS,
   CSHARP_EXTRA_PATTERNS,
+  downloadDependencyCaches,
+  CacheHitKind,
+  cacheKey,
 } from "./dependency-caching";
 import { Feature } from "./feature-flags";
 import { KnownLanguage } from "./languages";
@@ -166,6 +171,164 @@ test("checkHashPatterns - returns patterns when patterns match", async (t) => {
     t.deepEqual(result, patterns);
     t.deepEqual(messages, []);
   });
+});
+
+type RestoreCacheFunc = (
+  paths: string[],
+  primaryKey: string,
+  restoreKeys: string[] | undefined,
+) => Promise<string | undefined>;
+
+/**
+ * Constructs a function that `actionsCache.restoreCache` can be stubbed with.
+ *
+ * @param mockCacheKeys The keys of caches that we want to exist in the Actions cache.
+ *
+ * @returns Returns a function that `actionsCache.restoreCache` can be stubbed with.
+ */
+function makeMockCacheCheck(mockCacheKeys: string[]): RestoreCacheFunc {
+  return async (
+    _paths: string[],
+    primaryKey: string,
+    restoreKeys: string[] | undefined,
+  ) => {
+    // The behaviour here mirrors what the real `restoreCache` would do:
+    // - Starting with the primary restore key, check all caches for a match:
+    //   even for the primary restore key, this only has to be a prefix match.
+    // - If the primary restore key doesn't prefix-match any cache, then proceed
+    //   in the same way for each restore key in turn.
+    for (const restoreKey of [primaryKey, ...(restoreKeys || [])]) {
+      for (const mockCacheKey of mockCacheKeys) {
+        if (mockCacheKey.startsWith(restoreKey)) {
+          return mockCacheKey;
+        }
+      }
+    }
+    // Only if no restore key matches any cache key prefix, there is no matching
+    // cache and we return `undefined`.
+    return undefined;
+  };
+}
+
+test("downloadDependencyCaches - does not restore caches with feature keys if no features are enabled", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  sinon.stub(glob, "hashFiles").resolves("abcdef");
+
+  const keyWithFeature = await cacheKey(
+    codeql,
+    createFeatures([Feature.CsharpNewCacheKey]),
+    KnownLanguage.csharp,
+    // Patterns don't matter here because we have stubbed `hashFiles` to always return a specific hash above.
+    [],
+  );
+
+  const restoreCacheStub = sinon
+    .stub(actionsCache, "restoreCache")
+    .callsFake(makeMockCacheCheck([keyWithFeature]));
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+  makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
+
+  const results = await downloadDependencyCaches(
+    codeql,
+    createFeatures([]),
+    [KnownLanguage.csharp],
+    logger,
+  );
+  t.is(results.length, 1);
+  t.is(results[0].language, KnownLanguage.csharp);
+  t.is(results[0].hit_kind, CacheHitKind.Miss);
+  t.assert(restoreCacheStub.calledOnce);
+});
+
+test("downloadDependencyCaches - restores caches with feature keys if features are enabled", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([Feature.CsharpNewCacheKey]);
+
+  sinon.stub(glob, "hashFiles").resolves("abcdef");
+
+  const keyWithFeature = await cacheKey(
+    codeql,
+    features,
+    KnownLanguage.csharp,
+    // Patterns don't matter here because we have stubbed `hashFiles` to always return a specific hash above.
+    [],
+  );
+
+  const restoreCacheStub = sinon
+    .stub(actionsCache, "restoreCache")
+    .callsFake(makeMockCacheCheck([keyWithFeature]));
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+  makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
+
+  const results = await downloadDependencyCaches(
+    codeql,
+    features,
+    [KnownLanguage.csharp],
+    logger,
+  );
+  t.is(results.length, 1);
+  t.is(results[0].language, KnownLanguage.csharp);
+  t.is(results[0].hit_kind, CacheHitKind.Exact);
+  t.assert(restoreCacheStub.calledOnce);
+});
+
+test("downloadDependencyCaches - restores caches with feature keys if features are enabled for partial matches", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([Feature.CsharpNewCacheKey]);
+
+  const hashFilesStub = sinon.stub(glob, "hashFiles");
+  hashFilesStub.onFirstCall().resolves("abcdef");
+  hashFilesStub.onSecondCall().resolves("123456");
+
+  const keyWithFeature = await cacheKey(
+    codeql,
+    features,
+    KnownLanguage.csharp,
+    // Patterns don't matter here because we have stubbed `hashFiles` to always return a specific hash above.
+    [],
+  );
+
+  const restoreCacheStub = sinon
+    .stub(actionsCache, "restoreCache")
+    .callsFake(makeMockCacheCheck([keyWithFeature]));
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+  makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
+
+  const results = await downloadDependencyCaches(
+    codeql,
+    features,
+    [KnownLanguage.csharp],
+    logger,
+  );
+  t.is(results.length, 1);
+  t.is(results[0].language, KnownLanguage.csharp);
+  t.is(results[0].hit_kind, CacheHitKind.Partial);
+  t.assert(restoreCacheStub.calledOnce);
 });
 
 test("getFeaturePrefix - returns empty string if no features are enabled", async (t) => {

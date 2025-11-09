@@ -128,8 +128,7 @@ async function getCsharpHashPatterns(
   }
 
   // If we get to this point, the `basePatterns` didn't find any files,
-  // and `Feature.CsharpNewCacheKey` is either not enabled or we didn't
-  // find any files using those patterns either.
+  // and `Feature.CsharpNewCacheKey` is not enabled.
   return undefined;
 }
 

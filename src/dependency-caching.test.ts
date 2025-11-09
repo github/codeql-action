@@ -2,16 +2,19 @@ import * as fs from "fs";
 import path from "path";
 
 import test from "ava";
-
-// import * as sinon from "sinon";
+import * as sinon from "sinon";
 
 import { cacheKeyHashLength } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import {
   CacheConfig,
   checkHashPatterns,
+  getCsharpHashPatterns,
   getFeaturePrefix,
   makePatternCheck,
+  internal,
+  CSHARP_BASE_PATTERNS,
+  CSHARP_EXTRA_PATTERNS,
 } from "./dependency-caching";
 import { Feature } from "./feature-flags";
 import { KnownLanguage } from "./languages";
@@ -46,6 +49,70 @@ test("makePatternCheck - returns all patterns if any pattern matches", async (t)
     const patterns = makeAbsolutePatterns(tmpDir, ["**/*.cs", "**/*.java"]);
     const result = await makePatternCheck(patterns);
     t.deepEqual(result, patterns);
+  });
+});
+
+test("getCsharpHashPatterns - returns base patterns if any pattern matches", async (t) => {
+  const codeql = createStubCodeQL({});
+  const features = createFeatures([]);
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+  makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).rejects();
+
+  await t.notThrowsAsync(async () => {
+    const result = await getCsharpHashPatterns(codeql, features);
+    t.deepEqual(result, CSHARP_BASE_PATTERNS);
+  });
+});
+
+test("getCsharpHashPatterns - returns base patterns if any base pattern matches and CsharpNewCacheKey is enabled", async (t) => {
+  const codeql = createStubCodeQL({});
+  const features = createFeatures([Feature.CsharpNewCacheKey]);
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+  makePatternCheckStub
+    .withArgs(CSHARP_EXTRA_PATTERNS)
+    .resolves(CSHARP_EXTRA_PATTERNS);
+
+  await t.notThrowsAsync(async () => {
+    const result = await getCsharpHashPatterns(codeql, features);
+    t.deepEqual(result, CSHARP_BASE_PATTERNS);
+  });
+});
+
+test("getCsharpHashPatterns - returns extra patterns if any extra pattern matches and CsharpNewCacheKey is enabled", async (t) => {
+  const codeql = createStubCodeQL({});
+  const features = createFeatures([Feature.CsharpNewCacheKey]);
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+
+  makePatternCheckStub.withArgs(CSHARP_BASE_PATTERNS).resolves(undefined);
+  makePatternCheckStub
+    .withArgs(CSHARP_EXTRA_PATTERNS)
+    .resolves(CSHARP_EXTRA_PATTERNS);
+
+  await t.notThrowsAsync(async () => {
+    const result = await getCsharpHashPatterns(codeql, features);
+    t.deepEqual(result, CSHARP_EXTRA_PATTERNS);
+  });
+});
+
+test("getCsharpHashPatterns - returns undefined if neither base nor extra patterns match", async (t) => {
+  const codeql = createStubCodeQL({});
+  const features = createFeatures([Feature.CsharpNewCacheKey]);
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+
+  makePatternCheckStub.withArgs(CSHARP_BASE_PATTERNS).resolves(undefined);
+  makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
+
+  await t.notThrowsAsync(async () => {
+    const result = await getCsharpHashPatterns(codeql, features);
+    t.deepEqual(result, undefined);
   });
 });
 

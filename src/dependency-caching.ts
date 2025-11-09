@@ -85,49 +85,55 @@ export async function makePatternCheck(
   return patterns;
 }
 
+/** These files contain accurate information about dependencies, including the exact versions
+ * that the relevant package manager has determined for the project. Using these gives us
+ * stable hashes unless the dependencies change.
+ */
+export const CSHARP_BASE_PATTERNS = [
+  // NuGet
+  "**/packages.lock.json",
+  // Paket
+  "**/paket.lock",
+];
+
+/** These are less accurate for use in cache key calculations, because they:
+ *
+ * - Don't contain the exact versions used. They may only contain version ranges or none at all.
+ * - They contain information unrelated to dependencies, which we don't care about.
+ *
+ * As a result, the hash we compute from these files may change, even if
+ * the dependencies haven't changed.
+ */
+export const CSHARP_EXTRA_PATTERNS = [
+  "**/*.csproj",
+  "**/packages.config",
+  "**/nuget.config",
+];
+
 /**
  * Returns the list of glob patterns that should be used to calculate the cache key hash
- * for a C# dependency cache.
+ * for a C# dependency cache. This will try to use `CSHARP_BASE_PATTERNS` whenever possible.
+ * As a fallback, it will also use `CSHARP_EXTRA_PATTERNS` if the corresponding FF is enabled.
  *
  * @param codeql The CodeQL instance to use.
  * @param features Information about which FFs are enabled.
  * @returns A list of glob patterns to use for hashing.
  */
-async function getCsharpHashPatterns(
+export async function getCsharpHashPatterns(
   codeql: CodeQL,
   features: FeatureEnablement,
 ): Promise<string[] | undefined> {
-  // These files contain accurate information about dependencies, including the exact versions
-  // that the relevant package manager has determined for the project. Using these gives us
-  // stable hashes unless the dependencies change.
-  const basePatterns = [
-    // NuGet
-    "**/packages.lock.json",
-    // Paket
-    "**/paket.lock",
-  ];
-  const globber = await makeGlobber(basePatterns);
+  const basePatterns = await internal.makePatternCheck(CSHARP_BASE_PATTERNS);
 
-  if ((await globber.glob()).length > 0) {
+  if (basePatterns !== undefined) {
     return basePatterns;
   }
 
   if (await features.getValue(Feature.CsharpNewCacheKey, codeql)) {
-    // These are less accurate for use in cache key calculations, because they:
-    //
-    // - Don't contain the exact versions used. They may only contain version ranges or none at all.
-    // - They contain information unrelated to dependencies, which we don't care about.
-    //
-    // As a result, the hash we compute from these files may change, even if
-    // the dependencies haven't changed.
-    return makePatternCheck([
-      "**/*.csproj",
-      "**/packages.config",
-      "**/nuget.config",
-    ]);
+    return internal.makePatternCheck(CSHARP_EXTRA_PATTERNS);
   }
 
-  // If we get to this point, the `basePatterns` didn't find any files,
+  // If we get to this point, we didn't find any files with `CSHARP_BASE_PATTERNS`,
   // and `Feature.CsharpNewCacheKey` is not enabled.
   return undefined;
 }
@@ -139,7 +145,7 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
   java: {
     getDependencyPaths: getJavaDependencyDirs,
     getHashPatterns: async () =>
-      makePatternCheck([
+      internal.makePatternCheck([
         // Maven
         "**/pom.xml",
         // Gradle
@@ -157,7 +163,7 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
   },
   go: {
     getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],
-    getHashPatterns: async () => makePatternCheck(["**/go.sum"]),
+    getHashPatterns: async () => internal.makePatternCheck(["**/go.sum"]),
   },
 };
 
@@ -547,3 +553,7 @@ export async function getDependencyCacheUsage(
 
   return undefined;
 }
+
+export const internal = {
+  makePatternCheck,
+};

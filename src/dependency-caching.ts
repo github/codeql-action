@@ -357,6 +357,7 @@ export async function uploadDependencyCaches(
       logger,
     );
     if (patterns === undefined) {
+      status.push({ language, result: CacheStoreResult.NoHash });
       continue;
     }
 

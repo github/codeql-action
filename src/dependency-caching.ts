@@ -201,6 +201,7 @@ export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
  * @param features Information about which FFs are enabled.
  * @param language The language the `CacheConfig` is for. For use in the log message.
  * @param cacheConfig The caching configuration to call `getHashPatterns` on.
+ * @param checkType Whether we are checking the patterns for a download or upload.
  * @param logger The logger to write the log message to if there is an error.
  * @returns An array of glob patterns to use for hashing files, or `undefined` if there are no matching files.
  */
@@ -209,13 +210,14 @@ export async function checkHashPatterns(
   features: FeatureEnablement,
   language: Language,
   cacheConfig: CacheConfig,
+  checkType: "download" | "upload",
   logger: Logger,
 ): Promise<string[] | undefined> {
   const patterns = await cacheConfig.getHashPatterns(codeql, features);
 
   if (patterns === undefined) {
     logger.info(
-      `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
+      `Skipping ${checkType} of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
     );
   }
 
@@ -257,6 +259,7 @@ export async function downloadDependencyCaches(
       features,
       language,
       cacheConfig,
+      "download",
       logger,
     );
     if (patterns === undefined) {
@@ -354,6 +357,7 @@ export async function uploadDependencyCaches(
       features,
       language,
       cacheConfig,
+      "upload",
       logger,
     );
     if (patterns === undefined) {

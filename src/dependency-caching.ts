@@ -424,7 +424,8 @@ export async function uploadDependencyCaches(
  * @param codeql The CodeQL instance to use.
  * @param features Information about which FFs are enabled.
  * @param language The language being analyzed.
- * @param cacheConfig The cache configuration for the language.
+ * @param patterns The file patterns to hash.
+ *
  * @returns A cache key capturing information about the project(s) being analyzed in the specified language.
  */
 async function cacheKey(

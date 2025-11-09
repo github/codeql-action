@@ -130,6 +130,7 @@ test("checkHashPatterns - logs when no patterns match", async (t) => {
     features,
     KnownLanguage.csharp,
     config,
+    "download",
     getRecordingLogger(messages),
   );
 
@@ -158,6 +159,7 @@ test("checkHashPatterns - returns patterns when patterns match", async (t) => {
       features,
       KnownLanguage.csharp,
       config,
+      "upload",
       getRecordingLogger(messages),
     );
 

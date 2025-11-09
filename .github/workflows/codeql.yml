@@ -21,9 +21,62 @@ env:
   CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
 
 jobs:
+  determine-targets:
+    runs-on: ubuntu-latest
+    outputs:
+      javascript: ${{ steps.decide.outputs.javascript }}
+      actions: ${{ steps.decide.outputs.actions }}
+      python: ${{ steps.decide.outputs.python }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Detect changed paths
+      id: filter
+      uses: dorny/paths-filter@v3
+      with:
+        filters: |
+          javascript:
+            - 'src/**/*.ts'
+            - 'src/**/*.tsx'
+            - 'src/**/*.js'
+            - 'src/**/*.jsx'
+            - 'lib/**/*.ts'
+            - 'lib/**/*.tsx'
+            - 'lib/**/*.js'
+            - 'lib/**/*.jsx'
+            - 'package.json'
+            - 'package-lock.json'
+            - 'pnpm-lock.yaml'
+            - 'yarn.lock'
+            - 'tsconfig*.json'
+          actions:
+            - '.github/workflows/**'
+            - '.github/actions/**'
+          python:
+            - '**/*.py'
+            - 'requirements*.txt'
+            - 'pip.conf'
+    - name: Decide analysis scope
+      id: decide
+      run: |
+        if [[ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "javascript=true" >> "$GITHUB_OUTPUT"
+          echo "actions=true" >> "$GITHUB_OUTPUT"
+          echo "python=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "javascript=${{ steps.filter.outputs.javascript }}" >> "$GITHUB_OUTPUT"
+          echo "actions=${{ steps.filter.outputs.actions }}" >> "$GITHUB_OUTPUT"
+          echo "python=${{ steps.filter.outputs.python }}" >> "$GITHUB_OUTPUT"
+        fi
+
   # Identify the CodeQL tool versions to use in the analysis job.
   check-codeql-versions:
-    if: github.triggering_actor != 'dependabot[bot]'
+    if: >
+      github.triggering_actor != 'dependabot[bot]' &&
+      (github.event_name == 'schedule' || needs.determine-targets.outputs.javascript == 'true')
+    needs: [determine-targets]
     runs-on: ubuntu-latest
     outputs:
       versions: ${{ steps.compare.outputs.versions }}
@@ -76,8 +129,10 @@ jobs:
         echo "versions=${VERSIONS_JSON}" >> $GITHUB_OUTPUT
 
   analyze-javascript:
-    if: github.triggering_actor != 'dependabot[bot]'
-    needs: [check-codeql-versions]
+    if: >
+      github.triggering_actor != 'dependabot[bot]' &&
+      (github.event_name == 'schedule' || needs.determine-targets.outputs.javascript == 'true')
+    needs: [determine-targets, check-codeql-versions]
     strategy:
       fail-fast: false
       matrix:
@@ -112,7 +167,14 @@ jobs:
         upload: ${{ (matrix.os == 'ubuntu-24.04' && !matrix.tools && 'always') || 'never' }}
 
   analyze-other:
-    if: github.triggering_actor != 'dependabot[bot]'
+    if: >
+      github.triggering_actor != 'dependabot[bot]' &&
+      (
+        github.event_name == 'schedule' ||
+        needs.determine-targets.outputs.actions == 'true' ||
+        needs.determine-targets.outputs.python == 'true'
+      )
+    needs: [determine-targets]
     runs-on: ubuntu-latest
 
     strategy:
@@ -129,8 +191,16 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
+      if: >
+        github.event_name == 'schedule' ||
+        (matrix.language == 'actions' && needs.determine-targets.outputs.actions == 'true') ||
+        (matrix.language == 'python' && needs.determine-targets.outputs.python == 'true')
     - name: Initialize CodeQL
       uses: ./init
+      if: >
+        github.event_name == 'schedule' ||
+        (matrix.language == 'actions' && needs.determine-targets.outputs.actions == 'true') ||
+        (matrix.language == 'python' && needs.determine-targets.outputs.python == 'true')
       with:
         languages: ${{ matrix.language }}
         build-mode: none
@@ -142,5 +212,9 @@ jobs:
             - uses: security-and-quality
     - name: Perform CodeQL Analysis
       uses: ./analyze
+      if: >
+        github.event_name == 'schedule' ||
+        (matrix.language == 'actions' && needs.determine-targets.outputs.actions == 'true') ||
+        (matrix.language == 'python' && needs.determine-targets.outputs.python == 'true')
       with:
         category: "/language:${{ matrix.language }}"

@@ -1071,8 +1071,11 @@ export async function getCodeQLForCmd(
 /**
  * Gets the options for `path` of `options` as an array of extra option strings.
  *
- * @param ignoringOptions Options that should be ignored, for example because they have already
- *                        been passed and it is an error to pass them more than once.
+ * @param paths The CLI command components to get extra options for.
+ * @param args Additional arguments for this function.
+ * @param args.ignoringOptions
+ *   Options that should be ignored, for example because they have already
+ *   been passed and it is an error to pass them more than once.
  */
 function getExtraOptionsFromEnv(
   paths: string[],
@@ -1154,8 +1157,9 @@ async function runCli(
 /**
  * Writes the code scanning configuration that is to be used by the CLI.
  *
- * @param codeql The CodeQL object to use.
- * @param config The CodeQL Action state to use.
+ * @param config The CodeQL Action state to write.
+ * @param logger The logger to use.
+ *
  * @returns The path to the generated user configuration file.
  */
 async function writeCodeScanningConfigFile(

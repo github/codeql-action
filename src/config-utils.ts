@@ -1033,7 +1033,6 @@ export async function getConfig(
  * pack.
  *
  * @param registriesInput The value of the `registries` input.
- * @param codeQL a codeQL object, used only for checking the version of CodeQL.
  * @param tempDir a temporary directory to store the generated qlconfig.yml file.
  * @param logger a logger object.
  * @returns The path to the generated `qlconfig.yml` file and the auth tokens to

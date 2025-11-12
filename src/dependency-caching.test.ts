@@ -126,7 +126,7 @@ test("checkHashPatterns - logs when no patterns match", async (t) => {
   const features = createFeatures([]);
   const messages: LoggedMessage[] = [];
   const config: CacheConfig = {
-    getDependencyPaths: () => [],
+    getDependencyPaths: async () => [],
     getHashPatterns: async () => undefined,
   };
 
@@ -155,7 +155,7 @@ test("checkHashPatterns - returns patterns when patterns match", async (t) => {
     fs.writeFileSync(path.join(tmpDir, "test.java"), "");
 
     const config: CacheConfig = {
-      getDependencyPaths: () => [],
+      getDependencyPaths: async () => [],
       getHashPatterns: async () => makePatternCheck(patterns),
     };
 

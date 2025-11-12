@@ -438,14 +438,11 @@ async function run() {
 
     // Store dependency cache(s) if dependency caching is enabled.
     if (shouldStoreCache(config.dependencyCachingEnabled)) {
-      const minimizeJavaJars = await features.getValue(
-        Feature.JavaMinimizeDependencyJars,
-        codeql,
-      );
       dependencyCacheResults = await uploadDependencyCaches(
+        codeql,
+        features,
         config,
         logger,
-        minimizeJavaJars,
       );
     }
 

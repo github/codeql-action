@@ -6,9 +6,11 @@ import * as glob from "@actions/glob";
 
 import { getTemporaryDirectory } from "./actions-util";
 import { listActionsCaches } from "./api-client";
-import { getTotalCacheSize } from "./caching-utils";
+import { createCacheKeyHash, getTotalCacheSize } from "./caching-utils";
+import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getErrorMessage, getRequiredEnvParam } from "./util";
@@ -16,15 +18,21 @@ import { getErrorMessage, getRequiredEnvParam } from "./util";
 /**
  * Caching configuration for a particular language.
  */
-interface CacheConfig {
-  /** The paths of directories on the runner that should be included in the cache. */
-  paths: string[];
+export interface CacheConfig {
+  /** Gets the paths of directories on the runner that should be included in the cache. */
+  getDependencyPaths: () => string[];
   /**
-   * Patterns for the paths of files whose contents affect which dependencies are used
-   * by a project. We find all files which match these patterns, calculate a hash for
-   * their contents, and use that hash as part of the cache key.
+   * Gets an array of glob patterns for the paths of files whose contents affect which dependencies are used
+   * by a project. This function also checks whether there are any matching files and returns
+   * `undefined` if no files match.
+   *
+   * The glob patterns are intended to be used for cache keys, where we find all files which match these
+   * patterns, calculate a hash for their contents, and use that hash as part of the cache key.
    */
-  hash: string[];
+  getHashPatterns: (
+    codeql: CodeQL,
+    features: FeatureEnablement,
+  ) => Promise<string[] | undefined>;
 }
 
 const CODEQL_DEPENDENCY_CACHE_PREFIX = "codeql-dependencies";
@@ -40,20 +48,104 @@ export function getJavaTempDependencyDir(): string {
 }
 
 /**
+ * Returns an array of paths of directories on the runner that should be included in a dependency cache
+ * for a Java analysis. It is important that this is a function, because we call `getTemporaryDirectory`
+ * which would otherwise fail in tests if we haven't had a chance to initialise `RUNNER_TEMP`.
+ *
+ * @returns The paths of directories on the runner that should be included in a dependency cache
+ * for a Java analysis.
+ */
+export function getJavaDependencyDirs(): string[] {
+  return [
+    // Maven
+    join(os.homedir(), ".m2", "repository"),
+    // Gradle
+    join(os.homedir(), ".gradle", "caches"),
+    // CodeQL Java build-mode: none
+    getJavaTempDependencyDir(),
+  ];
+}
+
+/**
+ * Checks that there are files which match `patterns`. If there are matching files for any of the patterns,
+ * this function returns all `patterns`. Otherwise, `undefined` is returned.
+ *
+ * @param patterns The glob patterns to find matching files for.
+ * @returns The array of glob patterns if there are matching files, or `undefined` otherwise.
+ */
+export async function makePatternCheck(
+  patterns: string[],
+): Promise<string[] | undefined> {
+  const globber = await makeGlobber(patterns);
+
+  if ((await globber.glob()).length === 0) {
+    return undefined;
+  }
+
+  return patterns;
+}
+
+/** These files contain accurate information about dependencies, including the exact versions
+ * that the relevant package manager has determined for the project. Using these gives us
+ * stable hashes unless the dependencies change.
+ */
+export const CSHARP_BASE_PATTERNS = [
+  // NuGet
+  "**/packages.lock.json",
+  // Paket
+  "**/paket.lock",
+];
+
+/** These are less accurate for use in cache key calculations, because they:
+ *
+ * - Don't contain the exact versions used. They may only contain version ranges or none at all.
+ * - They contain information unrelated to dependencies, which we don't care about.
+ *
+ * As a result, the hash we compute from these files may change, even if
+ * the dependencies haven't changed.
+ */
+export const CSHARP_EXTRA_PATTERNS = [
+  "**/*.csproj",
+  "**/packages.config",
+  "**/nuget.config",
+];
+
+/**
+ * Returns the list of glob patterns that should be used to calculate the cache key hash
+ * for a C# dependency cache. This will try to use `CSHARP_BASE_PATTERNS` whenever possible.
+ * As a fallback, it will also use `CSHARP_EXTRA_PATTERNS` if the corresponding FF is enabled.
+ *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
+ * @returns A list of glob patterns to use for hashing.
+ */
+export async function getCsharpHashPatterns(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+): Promise<string[] | undefined> {
+  const basePatterns = await internal.makePatternCheck(CSHARP_BASE_PATTERNS);
+
+  if (basePatterns !== undefined) {
+    return basePatterns;
+  }
+
+  if (await features.getValue(Feature.CsharpNewCacheKey, codeql)) {
+    return internal.makePatternCheck(CSHARP_EXTRA_PATTERNS);
+  }
+
+  // If we get to this point, we didn't find any files with `CSHARP_BASE_PATTERNS`,
+  // and `Feature.CsharpNewCacheKey` is not enabled.
+  return undefined;
+}
+
+/**
  * Default caching configurations per language.
  */
-function getDefaultCacheConfig(): { [language: string]: CacheConfig } {
-  return {
-    java: {
-      paths: [
-        // Maven
-        join(os.homedir(), ".m2", "repository"),
-        // Gradle
-        join(os.homedir(), ".gradle", "caches"),
-        // CodeQL Java build-mode: none
-        getJavaTempDependencyDir(),
-      ],
-      hash: [
+const defaultCacheConfigs: { [language: string]: CacheConfig } = {
+  java: {
+    getDependencyPaths: getJavaDependencyDirs,
+    getHashPatterns: async () =>
+      internal.makePatternCheck([
         // Maven
         "**/pom.xml",
         // Gradle
@@ -63,23 +155,17 @@ function getDefaultCacheConfig(): { [language: string]: CacheConfig } {
         "buildSrc/**/Dependencies.kt",
         "gradle/*.versions.toml",
         "**/versions.properties",
-      ],
-    },
-    csharp: {
-      paths: [join(os.homedir(), ".nuget", "packages")],
-      hash: [
-        // NuGet
-        "**/packages.lock.json",
-        // Paket
-        "**/paket.lock",
-      ],
-    },
-    go: {
-      paths: [join(os.homedir(), "go", "pkg", "mod")],
-      hash: ["**/go.sum"],
-    },
-  };
-}
+      ]),
+  },
+  csharp: {
+    getDependencyPaths: () => [join(os.homedir(), ".nuget", "packages")],
+    getHashPatterns: getCsharpHashPatterns,
+  },
+  go: {
+    getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],
+    getHashPatterns: async () => internal.makePatternCheck(["**/go.sum"]),
+  },
+};
 
 async function makeGlobber(patterns: string[]): Promise<glob.Globber> {
   return glob.create(patterns.join("\n"));
@@ -108,22 +194,56 @@ export interface DependencyCacheRestoreStatus {
 export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
 
 /**
+ * A wrapper around `cacheConfig.getHashPatterns` which logs when there are no files to calculate
+ * a hash for the cache key from.
+ *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
+ * @param language The language the `CacheConfig` is for. For use in the log message.
+ * @param cacheConfig The caching configuration to call `getHashPatterns` on.
+ * @param checkType Whether we are checking the patterns for a download or upload.
+ * @param logger The logger to write the log message to if there is an error.
+ * @returns An array of glob patterns to use for hashing files, or `undefined` if there are no matching files.
+ */
+export async function checkHashPatterns(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  language: Language,
+  cacheConfig: CacheConfig,
+  checkType: "download" | "upload",
+  logger: Logger,
+): Promise<string[] | undefined> {
+  const patterns = await cacheConfig.getHashPatterns(codeql, features);
+
+  if (patterns === undefined) {
+    logger.info(
+      `Skipping ${checkType} of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
+    );
+  }
+
+  return patterns;
+}
+
+/**
  * Attempts to restore dependency caches for the languages being analyzed.
  *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
  * @param languages The languages being analyzed.
  * @param logger A logger to record some informational messages to.
- * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
+ *
  * @returns An array of `DependencyCacheRestoreStatus` objects for each analysed language with a caching configuration.
  */
 export async function downloadDependencyCaches(
+  codeql: CodeQL,
+  features: FeatureEnablement,
   languages: Language[],
   logger: Logger,
-  minimizeJavaJars: boolean,
 ): Promise<DependencyCacheRestoreStatusReport> {
   const status: DependencyCacheRestoreStatusReport = [];
 
   for (const language of languages) {
-    const cacheConfig = getDefaultCacheConfig()[language];
+    const cacheConfig = defaultCacheConfigs[language];
 
     if (cacheConfig === undefined) {
       logger.info(
@@ -134,19 +254,22 @@ export async function downloadDependencyCaches(
 
     // Check that we can find files to calculate the hash for the cache key from, so we don't end up
     // with an empty string.
-    const globber = await makeGlobber(cacheConfig.hash);
-
-    if ((await globber.glob()).length === 0) {
+    const patterns = await checkHashPatterns(
+      codeql,
+      features,
+      language,
+      cacheConfig,
+      "download",
+      logger,
+    );
+    if (patterns === undefined) {
       status.push({ language, hit_kind: CacheHitKind.NoHash });
-      logger.info(
-        `Skipping download of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
-      );
       continue;
     }
 
-    const primaryKey = await cacheKey(language, cacheConfig, minimizeJavaJars);
+    const primaryKey = await cacheKey(codeql, features, language, patterns);
     const restoreKeys: string[] = [
-      await cachePrefix(language, minimizeJavaJars),
+      await cachePrefix(codeql, features, language),
     ];
 
     logger.info(
@@ -157,7 +280,7 @@ export async function downloadDependencyCaches(
 
     const start = performance.now();
     const hitKey = await actionsCache.restoreCache(
-      cacheConfig.paths,
+      cacheConfig.getDependencyPaths(),
       primaryKey,
       restoreKeys,
     );
@@ -203,20 +326,22 @@ export type DependencyCacheUploadStatusReport = DependencyCacheUploadStatus[];
 /**
  * Attempts to store caches for the languages that were analyzed.
  *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
  * @param config The configuration for this workflow.
  * @param logger A logger to record some informational messages to.
- * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
  *
  * @returns An array of `DependencyCacheUploadStatus` objects for each analysed language with a caching configuration.
  */
 export async function uploadDependencyCaches(
+  codeql: CodeQL,
+  features: FeatureEnablement,
   config: Config,
   logger: Logger,
-  minimizeJavaJars: boolean,
 ): Promise<DependencyCacheUploadStatusReport> {
   const status: DependencyCacheUploadStatusReport = [];
   for (const language of config.languages) {
-    const cacheConfig = getDefaultCacheConfig()[language];
+    const cacheConfig = defaultCacheConfigs[language];
 
     if (cacheConfig === undefined) {
       logger.info(
@@ -227,13 +352,16 @@ export async function uploadDependencyCaches(
 
     // Check that we can find files to calculate the hash for the cache key from, so we don't end up
     // with an empty string.
-    const globber = await makeGlobber(cacheConfig.hash);
-
-    if ((await globber.glob()).length === 0) {
+    const patterns = await checkHashPatterns(
+      codeql,
+      features,
+      language,
+      cacheConfig,
+      "upload",
+      logger,
+    );
+    if (patterns === undefined) {
       status.push({ language, result: CacheStoreResult.NoHash });
-      logger.info(
-        `Skipping upload of dependency cache for ${language} as we cannot calculate a hash for the cache key.`,
-      );
       continue;
     }
 
@@ -247,7 +375,11 @@ export async function uploadDependencyCaches(
     //   use the cache quota that we compete with. In that case, we do not wish to use up all of the quota
     //   with the dependency caches. For this, we could use the Cache API to check whether other workflows
     //   are using the quota and how full it is.
-    const size = await getTotalCacheSize(cacheConfig.paths, logger, true);
+    const size = await getTotalCacheSize(
+      cacheConfig.getDependencyPaths(),
+      logger,
+      true,
+    );
 
     // Skip uploading an empty cache.
     if (size === 0) {
@@ -258,7 +390,7 @@ export async function uploadDependencyCaches(
       continue;
     }
 
-    const key = await cacheKey(language, cacheConfig, minimizeJavaJars);
+    const key = await cacheKey(codeql, features, language, patterns);
 
     logger.info(
       `Uploading cache of size ${size} for ${language} with key ${key}...`,
@@ -266,7 +398,7 @@ export async function uploadDependencyCaches(
 
     try {
       const start = performance.now();
-      await actionsCache.saveCache(cacheConfig.paths, key);
+      await actionsCache.saveCache(cacheConfig.getDependencyPaths(), key);
       const upload_duration_ms = Math.round(performance.now() - start);
 
       status.push({
@@ -299,31 +431,86 @@ export async function uploadDependencyCaches(
 /**
  * Computes a cache key for the specified language.
  *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
  * @param language The language being analyzed.
- * @param cacheConfig The cache configuration for the language.
- * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
+ * @param patterns The file patterns to hash.
+ *
  * @returns A cache key capturing information about the project(s) being analyzed in the specified language.
  */
-async function cacheKey(
+export async function cacheKey(
+  codeql: CodeQL,
+  features: FeatureEnablement,
   language: Language,
-  cacheConfig: CacheConfig,
-  minimizeJavaJars: boolean = false,
+  patterns: string[],
 ): Promise<string> {
-  const hash = await glob.hashFiles(cacheConfig.hash.join("\n"));
-  return `${await cachePrefix(language, minimizeJavaJars)}${hash}`;
+  const hash = await glob.hashFiles(patterns.join("\n"));
+  return `${await cachePrefix(codeql, features, language)}${hash}`;
+}
+
+/**
+ * If experimental features which the cache contents depend on are enabled for the current language,
+ * this function returns a prefix that uniquely identifies the set of enabled features. The purpose of
+ * this is to avoid restoring caches whose contents depended on experimental features, if those
+ * experimental features are later disabled.
+ *
+ * @param codeql The CodeQL instance.
+ * @param features Information about enabled features.
+ * @param language The language we are creating the key for.
+ *
+ * @returns A cache key prefix identifying the enabled, experimental features that the cache depends on.
+ */
+export async function getFeaturePrefix(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  language: Language,
+): Promise<string> {
+  const enabledFeatures: Feature[] = [];
+
+  const addFeatureIfEnabled = async (feature: Feature) => {
+    if (await features.getValue(feature, codeql)) {
+      enabledFeatures.push(feature);
+    }
+  };
+
+  if (language === KnownLanguage.java) {
+    // To ensure a safe rollout of JAR minimization, we change the key when the feature is enabled.
+    const minimizeJavaJars = await features.getValue(
+      Feature.JavaMinimizeDependencyJars,
+      codeql,
+    );
+
+    // To maintain backwards compatibility with this, we return "minify-" instead of a hash.
+    if (minimizeJavaJars) {
+      return "minify-";
+    }
+  } else if (language === KnownLanguage.csharp) {
+    await addFeatureIfEnabled(Feature.CsharpNewCacheKey);
+  }
+
+  // If any features that affect the cache are enabled, return a feature prefix by
+  // computing a hash of the feature array.
+  if (enabledFeatures.length > 0) {
+    return `${createCacheKeyHash(enabledFeatures)}-`;
+  }
+
+  // No feature prefix.
+  return "";
 }
 
 /**
  * Constructs a prefix for the cache key, comprised of a CodeQL-specific prefix, a version number that
  * can be changed to invalidate old caches, the runner's operating system, and the specified language name.
  *
+ * @param codeql The CodeQL instance to use.
+ * @param features Information about which FFs are enabled.
  * @param language The language being analyzed.
- * @param minimizeJavaJars Whether the Java extractor should rewrite downloaded JARs to minimize their size.
  * @returns The prefix that identifies what a cache is for.
  */
 async function cachePrefix(
+  codeql: CodeQL,
+  features: FeatureEnablement,
   language: Language,
-  minimizeJavaJars: boolean,
 ): Promise<string> {
   const runnerOs = getRequiredEnvParam("RUNNER_OS");
   const customPrefix = process.env[EnvVar.DEPENDENCY_CACHING_PREFIX];
@@ -333,12 +520,18 @@ async function cachePrefix(
     prefix = `${prefix}-${customPrefix}`;
   }
 
-  // To ensure a safe rollout of JAR minimization, we change the key when the feature is enabled.
-  if (language === KnownLanguage.java && minimizeJavaJars) {
-    prefix = `minify-${prefix}`;
-  }
+  // Calculate the feature prefix for the cache, if any. This is a hash that identifies
+  // experimental features that affect the cache contents.
+  const featurePrefix = await getFeaturePrefix(codeql, features, language);
 
-  return `${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
+  // Assemble the cache key. For backwards compatibility with the JAR minification experiment's existing
+  // feature prefix usage, we add that feature prefix at the start. Other feature prefixes are inserted
+  // after the general CodeQL dependency cache prefix.
+  if (featurePrefix === "minify-") {
+    return `${featurePrefix}${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
+  } else {
+    return `${prefix}-${featurePrefix}${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
+  }
 }
 
 /** Represents information about our overall cache usage for CodeQL dependency caches. */
@@ -371,3 +564,7 @@ export async function getDependencyCacheUsage(
 
   return undefined;
 }
+
+export const internal = {
+  makePatternCheck,
+};

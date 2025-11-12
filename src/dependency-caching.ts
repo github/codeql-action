@@ -67,6 +67,17 @@ export function getJavaDependencyDirs(): string[] {
 }
 
 /**
+ * Returns an array of paths of directories on the runner that should be included in a dependency cache
+ * for a C# analysis.
+ *
+ * @returns The paths of directories on the runner that should be included in a dependency cache
+ * for a C# analysis.
+ */
+export function getCsharpDependencyDirs(): string[] {
+  return [join(os.homedir(), ".nuget", "packages")];
+}
+
+/**
  * Checks that there are files which match `patterns`. If there are matching files for any of the patterns,
  * this function returns all `patterns`. Otherwise, `undefined` is returned.
  *
@@ -158,7 +169,7 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
       ]),
   },
   csharp: {
-    getDependencyPaths: () => [join(os.homedir(), ".nuget", "packages")],
+    getDependencyPaths: getCsharpDependencyDirs,
     getHashPatterns: getCsharpHashPatterns,
   },
   go: {

@@ -20,7 +20,10 @@ import { getErrorMessage, getRequiredEnvParam } from "./util";
  */
 export interface CacheConfig {
   /** Gets the paths of directories on the runner that should be included in the cache. */
-  getDependencyPaths: () => string[];
+  getDependencyPaths: (
+    codeql: CodeQL,
+    features: FeatureEnablement,
+  ) => Promise<string[]>;
   /**
    * Gets an array of glob patterns for the paths of files whose contents affect which dependencies are used
    * by a project. This function also checks whether there are any matching files and returns
@@ -55,7 +58,7 @@ export function getJavaTempDependencyDir(): string {
  * @returns The paths of directories on the runner that should be included in a dependency cache
  * for a Java analysis.
  */
-export function getJavaDependencyDirs(): string[] {
+export async function getJavaDependencyDirs(): Promise<string[]> {
   return [
     // Maven
     join(os.homedir(), ".m2", "repository"),
@@ -67,13 +70,22 @@ export function getJavaDependencyDirs(): string[] {
 }
 
 /**
+ * Returns a path to a directory intended to be used to store dependencies
+ * for the C# `build-mode: none` extractor.
+ * @returns The path to the directory that should be used by the `build-mode: none` extractor.
+ */
+export function getCsharpTempDependencyDir(): string {
+  return join(getTemporaryDirectory(), "codeql_csharp", "repository");
+}
+
+/**
  * Returns an array of paths of directories on the runner that should be included in a dependency cache
  * for a C# analysis.
  *
  * @returns The paths of directories on the runner that should be included in a dependency cache
  * for a C# analysis.
  */
-export function getCsharpDependencyDirs(): string[] {
+export async function getCsharpDependencyDirs(): Promise<string[]> {
   return [join(os.homedir(), ".nuget", "packages")];
 }
 
@@ -173,7 +185,7 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
     getHashPatterns: getCsharpHashPatterns,
   },
   go: {
-    getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],
+    getDependencyPaths: async () => [join(os.homedir(), "go", "pkg", "mod")],
     getHashPatterns: async () => internal.makePatternCheck(["**/go.sum"]),
   },
 };
@@ -291,7 +303,7 @@ export async function downloadDependencyCaches(
 
     const start = performance.now();
     const hitKey = await actionsCache.restoreCache(
-      cacheConfig.getDependencyPaths(),
+      await cacheConfig.getDependencyPaths(codeql, features),
       primaryKey,
       restoreKeys,
     );
@@ -387,7 +399,7 @@ export async function uploadDependencyCaches(
     //   with the dependency caches. For this, we could use the Cache API to check whether other workflows
     //   are using the quota and how full it is.
     const size = await getTotalCacheSize(
-      cacheConfig.getDependencyPaths(),
+      await cacheConfig.getDependencyPaths(codeql, features),
       logger,
       true,
     );
@@ -409,7 +421,10 @@ export async function uploadDependencyCaches(
 
     try {
       const start = performance.now();
-      await actionsCache.saveCache(cacheConfig.getDependencyPaths(), key);
+      await actionsCache.saveCache(
+        await cacheConfig.getDependencyPaths(codeql, features),
+        key,
+      );
       const upload_duration_ms = Math.round(performance.now() - start);
 
       status.push({

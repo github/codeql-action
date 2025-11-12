@@ -35,6 +35,7 @@ jobs:
           pipenv install
           pipenv run ./update.py
           rm --recursive "$ENTERPRISE_RELEASES_PATH"
+          npm ci
           npm run build
         env:
           ENTERPRISE_RELEASES_PATH: ${{ github.workspace }}/enterprise-releases/

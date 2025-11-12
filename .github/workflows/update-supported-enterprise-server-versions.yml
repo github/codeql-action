@@ -52,25 +52,33 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
-      - name: Commit changes and open PR
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit changes
+        id: prepare-commit
         run: |
           if [[ -z $(git status --porcelain) ]]; then
             echo "No changes to commit"
+            echo "committed=false" >> $GITHUB_OUTPUT
           else
             git checkout -b update-supported-enterprise-server-versions
             git add .
             git commit --message "Update supported GitHub Enterprise Server versions"
-            git push origin update-supported-enterprise-server-versions
 
-            body="This PR updates the list of supported GitHub Enterprise Server versions, either because a new "
-            body+="version is about to be feature frozen, or because an old release has been deprecated."
-            body+=$'\n\n'
-            body+="If an old release has been deprecated, please follow the instructions in CONTRIBUTING.md to "
-            body+="deprecate the corresponding version of CodeQL."
-
-            gh pr create --draft \
-              --title "Update supported GitHub Enterprise Server versions" \
-              --body "$body"
+            echo "committed=true" >> $GITHUB_OUTPUT
           fi
+
+      - name: Open PR
+        if: github.event_name != 'pull_request' && steps.prepare-commit.outputs.committed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin update-supported-enterprise-server-versions
+
+          body="This PR updates the list of supported GitHub Enterprise Server versions, either because a new "
+          body+="version is about to be feature frozen, or because an old release has been deprecated."
+          body+=$'\n\n'
+          body+="If an old release has been deprecated, please follow the instructions in CONTRIBUTING.md to "
+          body+="deprecate the corresponding version of CodeQL."
+
+          gh pr create --draft \
+            --title "Update supported GitHub Enterprise Server versions" \
+            --body "$body"

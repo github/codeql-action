@@ -34,6 +34,7 @@ import {
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
+import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
 import {
   GitHubVersion,
@@ -177,12 +178,10 @@ export interface Config {
 
 export async function getSupportedLanguageMap(
   codeql: CodeQL,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Record<string, string>> {
-  const resolveSupportedLanguagesUsingCli = await features.getValue(
-    Feature.ResolveSupportedLanguagesUsingCli,
-    codeql,
+  const resolveSupportedLanguagesUsingCli = await codeql.supportsFeature(
+    ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   );
   const resolveResult = await codeql.betterResolveLanguages({
     filterToLanguagesWithQueries: resolveSupportedLanguagesUsingCli,
@@ -283,7 +282,6 @@ export async function getLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
@@ -294,7 +292,7 @@ export async function getLanguages(
     logger,
   );
 
-  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
+  const languageMap = await getSupportedLanguageMap(codeql, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -431,7 +429,6 @@ export async function initActionState(
     languagesInput,
     repository,
     sourceRoot,
-    features,
     logger,
   );
 
@@ -1036,7 +1033,6 @@ export async function getConfig(
  * pack.
  *
  * @param registriesInput The value of the `registries` input.
- * @param codeQL a codeQL object, used only for checking the version of CodeQL.
  * @param tempDir a temporary directory to store the generated qlconfig.yml file.
  * @param logger a logger object.
  * @returns The path to the generated `qlconfig.yml` file and the auth tokens to

@@ -990,7 +990,6 @@ interface OverlayDatabaseModeTestSetup {
   features: Feature[];
   isPullRequest: boolean;
   isDefaultBranch: boolean;
-  repositoryOwner: string;
   buildMode: BuildMode | undefined;
   languages: Language[];
   codeqlVersion: string;
@@ -1003,7 +1002,6 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   features: [],
   isPullRequest: false,
   isDefaultBranch: false,
-  repositoryOwner: "github",
   buildMode: BuildMode.None,
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
@@ -1049,12 +1047,6 @@ const getOverlayDatabaseModeMacro = test.macro({
           .stub(actionsUtil, "isAnalyzingPullRequest")
           .returns(setup.isPullRequest);
 
-        // Mock repository owner
-        const repository = {
-          owner: setup.repositoryOwner,
-          repo: "test-repo",
-        };
-
         // Set up CodeQL mock
         const codeql = mockCodeQLVersion(setup.codeqlVersion);
 
@@ -1077,7 +1069,6 @@ const getOverlayDatabaseModeMacro = test.macro({
 
         const result = await configUtils.getOverlayDatabaseMode(
           codeql,
-          repository,
           features,
           setup.languages,
           tempDir, // sourceRoot
@@ -1499,10 +1490,9 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
-  "Overlay PR analysis by env for dsp-testing",
+  "Overlay PR analysis by env",
   {
     overlayDatabaseEnvVar: "overlay",
-    repositoryOwner: "dsp-testing",
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
@@ -1512,44 +1502,15 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
-  "Overlay PR analysis by env for other-org",
-  {
-    overlayDatabaseEnvVar: "overlay",
-    repositoryOwner: "other-org",
-  },
-  {
-    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
-    useOverlayDatabaseCaching: false,
-  },
-);
-
-test(
-  getOverlayDatabaseModeMacro,
-  "Overlay PR analysis by feature flag for dsp-testing",
+  "Overlay PR analysis by feature flag",
   {
     languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
-    repositoryOwner: "dsp-testing",
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: true,
-  },
-);
-
-test(
-  getOverlayDatabaseModeMacro,
-  "No overlay PR analysis by feature flag for other-org",
-  {
-    languages: [KnownLanguage.javascript],
-    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
-    isPullRequest: true,
-    repositoryOwner: "other-org",
-  },
-  {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
   },
 );
 

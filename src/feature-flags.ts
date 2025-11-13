@@ -47,6 +47,7 @@ export enum Feature {
   AnalyzeUseNewUpload = "analyze_use_new_upload",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  CsharpNewCacheKey = "csharp_new_cache_key",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -76,7 +77,6 @@ export enum Feature {
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
   UseRepositoryProperties = "use_repository_properties",
   ValidateDbConfig = "validate_db_config",
 }
@@ -133,6 +133,11 @@ export const featureConfig: Record<
     legacyApi: true,
     minimumVersion: "2.15.0",
   },
+  [Feature.CsharpNewCacheKey]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CSHARP_NEW_CACHE_KEY",
+    minimumVersion: undefined,
+  },
   [Feature.DiffInformedQueries]: {
     defaultValue: true,
     envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
@@ -160,12 +165,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
     minimumVersion: undefined,
-  },
-  [Feature.ResolveSupportedLanguagesUsingCli]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI",
-    minimumVersion: undefined,
-    toolsFeature: ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   },
   [Feature.OverlayAnalysis]: {
     defaultValue: false,

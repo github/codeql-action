@@ -3,6 +3,7 @@ description: "Tests that file baseline information is exported when the feature 
 operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["nightly-latest"]
 installGo: true
+installDotNet: true
 env:
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
 steps:

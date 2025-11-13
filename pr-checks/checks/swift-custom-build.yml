@@ -3,6 +3,7 @@ description: "Tests creation of a Swift database using custom build"
 versions: ["linked", "default", "nightly-latest"]
 operatingSystems: ["macos"]
 installGo: true
+installDotNet: true
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:

@@ -38,89 +38,26 @@ export class CodeQLAnalysisError extends Error {
   }
 }
 
-export interface QueriesStatusReport {
-  /**
-   * Time taken in ms to run queries for actions (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_actions_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for cpp (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_cpp_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for csharp (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_csharp_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for go (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_go_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for java (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_java_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for javascript (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_javascript_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for python (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_python_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for ruby (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_ruby_duration_ms?: number;
-  /** Time taken in ms to run queries for swift (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_swift_duration_ms?: number;
+type KnownLanguageKey = keyof typeof KnownLanguage;
 
-  /** Time taken in ms to interpret results for actions (or undefined if this language was not analyzed). */
-  interpret_results_actions_duration_ms?: number;
-  /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
-  interpret_results_cpp_duration_ms?: number;
-  /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
-  interpret_results_csharp_duration_ms?: number;
-  /** Time taken in ms to interpret results for go (or undefined if this language was not analyzed). */
-  interpret_results_go_duration_ms?: number;
-  /** Time taken in ms to interpret results for java (or undefined if this language was not analyzed). */
-  interpret_results_java_duration_ms?: number;
-  /** Time taken in ms to interpret results for javascript (or undefined if this language was not analyzed). */
-  interpret_results_javascript_duration_ms?: number;
-  /** Time taken in ms to interpret results for python (or undefined if this language was not analyzed). */
-  interpret_results_python_duration_ms?: number;
-  /** Time taken in ms to interpret results for ruby (or undefined if this language was not analyzed). */
-  interpret_results_ruby_duration_ms?: number;
-  /** Time taken in ms to interpret results for swift (or undefined if this language was not analyzed). */
-  interpret_results_swift_duration_ms?: number;
+type RunQueriesDurationStatusReport = {
+  /**
+   * Time taken in ms to run queries for the language (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
+  [L in KnownLanguageKey as `analyze_builtin_queries_${L}_duration_ms`]?: number;
+};
 
+type InterpretResultsDurationStatusReport = {
+  /** Time taken in ms to interpret results for the language (or undefined if this language was not analyzed). */
+  [L in KnownLanguageKey as `interpret_results_${L}_duration_ms`]?: number;
+};
+
+export interface QueriesStatusReport
+  extends RunQueriesDurationStatusReport,
+    InterpretResultsDurationStatusReport {
   /**
    * Whether the analysis is diff-informed (in the sense that the action generates a diff-range data
    * extension for the analysis, regardless of whether the data extension is actually used by queries).

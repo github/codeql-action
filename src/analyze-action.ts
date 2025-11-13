@@ -315,6 +315,7 @@ async function run() {
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
     dbCreationTimings = await runFinalize(
+      features,
       outputDir,
       threads,
       memory,

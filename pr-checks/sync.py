@@ -204,6 +204,25 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         })
 
+    installDotNet = is_truthy(checkSpecification.get('installDotNet', ''))
+
+    if installDotNet:
+        baseDotNetVersionExpr = '9.x'
+        workflowInputs['dotnet-version'] = {
+            'type': 'string',
+            'description': 'The version of .NET to install',
+            'required': False,
+            'default': baseDotNetVersionExpr,
+        }
+
+        steps.append({
+            'name': 'Install .NET',
+            'uses': 'actions/setup-dotnet@v5',
+            'with': {
+                'dotnet-version': '${{ inputs.dotnet-version || \'' + baseDotNetVersionExpr + '\' }}'
+            }
+        })
+
     # If container initialisation steps are present in the check specification,
     # make sure to execute them first.
     if 'container' in checkSpecification and 'container-init-steps' in checkSpecification:

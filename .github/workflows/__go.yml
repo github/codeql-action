@@ -18,6 +18,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
 jobs:
   go-custom-queries:
     name: 'Go: Custom queries'
@@ -27,6 +32,7 @@ jobs:
     uses: ./.github/workflows/__go-custom-queries.yml
     with:
       go-version: ${{ inputs.go-version }}
+      dotnet-version: ${{ inputs.dotnet-version }}
   go-indirect-tracing-workaround-diagnostic:
     name: 'Go: diagnostic when Go is changed after init step'
     permissions:

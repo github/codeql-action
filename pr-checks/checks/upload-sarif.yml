@@ -4,6 +4,7 @@ versions: ["default"]
 analysisKinds: ["code-scanning", "code-quality", "code-scanning,code-quality"]
 installGo: true
 installPython: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:

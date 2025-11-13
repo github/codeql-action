@@ -3,6 +3,7 @@ description: "Checks that specifying 'ref' and 'sha' as inputs works"
 versions: ["default"]
 installGo: true
 installPython: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:

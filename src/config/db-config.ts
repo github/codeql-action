@@ -160,7 +160,6 @@ const PACK_IDENTIFIER_PATTERN = (function () {
  * Version and path are optional.
  *
  * @param packStr the package specification to verify.
- * @param configFile Config file to use for error reporting
  */
 export function parsePacksSpecification(packStr: string): Pack {
   if (typeof packStr !== "string") {

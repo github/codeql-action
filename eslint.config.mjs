@@ -12,6 +12,7 @@ import filenames from "eslint-plugin-filenames";
 import github from "eslint-plugin-github";
 import _import from "eslint-plugin-import";
 import noAsyncForeach from "eslint-plugin-no-async-foreach";
+import jsdoc from "eslint-plugin-jsdoc";
 import globals from "globals";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,6 +53,7 @@ export default [
       github: fixupPluginRules(github),
       import: fixupPluginRules(_import),
       "no-async-foreach": noAsyncForeach,
+      "jsdoc": jsdoc,
     },
 
     languageOptions: {
@@ -133,6 +135,16 @@ export default [
       "@typescript-eslint/no-shadow": "error",
       "@typescript-eslint/prefer-optional-chain": "error",
       "one-var": ["error", "never"],
+
+      // Check param names to ensure that we don't have outdated JSDocs.
+      "jsdoc/check-param-names": [
+        "error",
+        {
+          // We don't currently require full JSDoc coverage, so this rule
+          // should not error on missing @param annotations.
+          disableMissingParamChecks: true,
+        }
+      ],
     },
   },
   {

@@ -85,8 +85,20 @@ export function getCsharpTempDependencyDir(): string {
  * @returns The paths of directories on the runner that should be included in a dependency cache
  * for a C# analysis.
  */
-export async function getCsharpDependencyDirs(): Promise<string[]> {
-  return [join(os.homedir(), ".nuget", "packages")];
+export async function getCsharpDependencyDirs(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+): Promise<string[]> {
+  const dirs = [
+    // Nuget
+    join(os.homedir(), ".nuget", "packages"),
+  ];
+
+  if (await features.getValue(Feature.CsharpCacheBuildModeNone, codeql)) {
+    dirs.push(getCsharpTempDependencyDir());
+  }
+
+  return dirs;
 }
 
 /**
@@ -512,6 +524,7 @@ export async function getFeaturePrefix(
     }
   } else if (language === KnownLanguage.csharp) {
     await addFeatureIfEnabled(Feature.CsharpNewCacheKey);
+    await addFeatureIfEnabled(Feature.CsharpCacheBuildModeNone);
   }
 
   // If any features that affect the cache are enabled, return a feature prefix by

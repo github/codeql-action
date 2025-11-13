@@ -43,6 +43,10 @@ jobs:
       with:
         version: ${{ matrix.version }}
         use-all-platform-bundle: true
+    - name: Install .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: '9.x'
     - id: init
       uses: ./../action/init
       with:

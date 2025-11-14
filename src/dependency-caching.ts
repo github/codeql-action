@@ -385,6 +385,18 @@ export async function uploadDependencyCaches(
       continue;
     }
 
+    // Now that we have verified that there are suitable files, compute the hash for the cache key.
+    const key = await cacheKey(codeql, features, language, patterns);
+
+    // Check that we haven't previously restored this exact key. If a cache with this key
+    // already exists in the Actions Cache, performing the next steps is pointless as the cache
+    // will not get overwritten. We can therefore skip the expensive work of measuring the size
+    // of the cache contents and attempting to upload it if we know that the cache already exists.
+    if (config.dependencyCachingRestoredKeys.includes(key)) {
+      status.push({ language, result: CacheStoreResult.Duplicate });
+      continue;
+    }
+
     // Calculate the size of the files that we would store in the cache. We use this to determine whether the
     // cache should be saved or not. For example, if there are no files to store, then we skip creating the
     // cache. In the future, we could also:
@@ -409,8 +421,6 @@ export async function uploadDependencyCaches(
       );
       continue;
     }
-
-    const key = await cacheKey(codeql, features, language, patterns);
 
     logger.info(
       `Uploading cache of size ${size} for ${language} with key ${key}...`,

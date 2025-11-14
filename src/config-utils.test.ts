@@ -200,12 +200,9 @@ test("load code quality config", async (t) => {
     );
 
     // And the config we expect it to result in
-    const expectedConfig: configUtils.Config = {
-      version: actionsUtil.getActionVersion(),
+    const expectedConfig = createTestConfig({
       analysisKinds: [AnalysisKind.CodeQuality],
       languages: [KnownLanguage.actions],
-      buildMode: undefined,
-      originalUserInput: {},
       // This gets set because we only have `AnalysisKind.CodeQuality`
       computedConfig: {
         "disable-default-queries": true,
@@ -219,14 +216,7 @@ test("load code quality config", async (t) => {
       debugMode: false,
       debugArtifactName: "",
       debugDatabaseName: "",
-      trapCaches: {},
-      trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: CachingKind.None,
-      extraQueryExclusions: [],
-      overlayDatabaseMode: OverlayDatabaseMode.None,
-      useOverlayDatabaseCaching: false,
-      repositoryProperties: {},
-    };
+    });
 
     t.deepEqual(config, expectedConfig);
   });
@@ -507,9 +497,7 @@ test("load non-empty input", async (t) => {
     };
 
     // And the config we expect it to parse to
-    const expectedConfig: configUtils.Config = {
-      version: actionsUtil.getActionVersion(),
-      analysisKinds: [AnalysisKind.CodeScanning],
+    const expectedConfig = createTestConfig({
       languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
       originalUserInput: userConfig,
@@ -521,14 +509,7 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      trapCaches: {},
-      trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: CachingKind.None,
-      extraQueryExclusions: [],
-      overlayDatabaseMode: OverlayDatabaseMode.None,
-      useOverlayDatabaseCaching: false,
-      repositoryProperties: {},
-    };
+    });
 
     const languagesInput = "javascript";
     const configFilePath = createConfigFile(inputFileContents, tempDir);

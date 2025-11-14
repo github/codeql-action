@@ -148,6 +148,9 @@ export interface Config {
   /** A value indicating how dependency caching should be used. */
   dependencyCachingEnabled: CachingKind;
 
+  /** The keys of caches that we restored, if any. */
+  dependencyCachingRestoredKeys: string[];
+
   /**
    * Extra query exclusions to append to the config.
    */
@@ -496,6 +499,7 @@ export async function initActionState(
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
+    dependencyCachingRestoredKeys: [],
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,

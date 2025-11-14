@@ -392,6 +392,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,
+      dependencyCachingRestoredKeys: [],
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,

@@ -237,15 +237,17 @@ test("downloadDependencyCaches - does not restore caches with feature keys if no
     .resolves(CSHARP_BASE_PATTERNS);
   makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
 
-  const results = await downloadDependencyCaches(
+  const result = await downloadDependencyCaches(
     codeql,
     createFeatures([]),
     [KnownLanguage.csharp],
     logger,
   );
-  t.is(results.length, 1);
-  t.is(results[0].language, KnownLanguage.csharp);
-  t.is(results[0].hit_kind, CacheHitKind.Miss);
+  const statusReport = result.statusReport;
+  t.is(statusReport.length, 1);
+  t.is(statusReport[0].language, KnownLanguage.csharp);
+  t.is(statusReport[0].hit_kind, CacheHitKind.Miss);
+  t.deepEqual(result.restoredKeys, []);
   t.assert(restoreCacheStub.calledOnce);
 });
 
@@ -257,7 +259,8 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
   const logger = getRecordingLogger(messages);
   const features = createFeatures([Feature.CsharpNewCacheKey]);
 
-  sinon.stub(glob, "hashFiles").resolves("abcdef");
+  const mockHash = "abcdef";
+  sinon.stub(glob, "hashFiles").resolves(mockHash);
 
   const keyWithFeature = await cacheKey(
     codeql,
@@ -277,15 +280,28 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
     .resolves(CSHARP_BASE_PATTERNS);
   makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
 
-  const results = await downloadDependencyCaches(
+  const result = await downloadDependencyCaches(
     codeql,
     features,
     [KnownLanguage.csharp],
     logger,
   );
-  t.is(results.length, 1);
-  t.is(results[0].language, KnownLanguage.csharp);
-  t.is(results[0].hit_kind, CacheHitKind.Exact);
+
+  // Check that the status report for telemetry indicates that one cache was restored with an exact match.
+  const statusReport = result.statusReport;
+  t.is(statusReport.length, 1);
+  t.is(statusReport[0].language, KnownLanguage.csharp);
+  t.is(statusReport[0].hit_kind, CacheHitKind.Exact);
+
+  // Check that the restored key has been returned.
+  const restoredKeys = result.restoredKeys;
+  t.is(restoredKeys.length, 1);
+  t.assert(
+    restoredKeys[0].endsWith(mockHash),
+    "Expected restored key to end with hash returned by `hashFiles`",
+  );
+
+  // `restoreCache` should have been called exactly once.
   t.assert(restoreCacheStub.calledOnce);
 });
 
@@ -297,8 +313,14 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
   const logger = getRecordingLogger(messages);
   const features = createFeatures([Feature.CsharpNewCacheKey]);
 
+  // We expect two calls to `hashFiles`: the first by the call to `cacheKey` below,
+  // and the second by `downloadDependencyCaches`. We use the result of the first
+  // call as part of the cache key that identifies a mock, existing cache. The result
+  // of the second call is for the primary restore key, which we don't want to match
+  // the first key so that we can test the restore keys logic.
+  const restoredHash = "abcdef";
   const hashFilesStub = sinon.stub(glob, "hashFiles");
-  hashFilesStub.onFirstCall().resolves("abcdef");
+  hashFilesStub.onFirstCall().resolves(restoredHash);
   hashFilesStub.onSecondCall().resolves("123456");
 
   const keyWithFeature = await cacheKey(
@@ -319,15 +341,27 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
     .resolves(CSHARP_BASE_PATTERNS);
   makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
 
-  const results = await downloadDependencyCaches(
+  const result = await downloadDependencyCaches(
     codeql,
     features,
     [KnownLanguage.csharp],
     logger,
   );
-  t.is(results.length, 1);
-  t.is(results[0].language, KnownLanguage.csharp);
-  t.is(results[0].hit_kind, CacheHitKind.Partial);
+
+  // Check that the status report for telemetry indicates that one cache was restored with a partial match.
+  const statusReport = result.statusReport;
+  t.is(statusReport.length, 1);
+  t.is(statusReport[0].language, KnownLanguage.csharp);
+  t.is(statusReport[0].hit_kind, CacheHitKind.Partial);
+
+  // Check that the restored key has been returned.
+  const restoredKeys = result.restoredKeys;
+  t.is(restoredKeys.length, 1);
+  t.assert(
+    restoredKeys[0].endsWith(restoredHash),
+    "Expected restored key to end with hash returned by `hashFiles`",
+  );
+
   t.assert(restoreCacheStub.calledOnce);
 });
 

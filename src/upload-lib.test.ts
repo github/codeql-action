@@ -9,10 +9,16 @@ import * as sinon from "sinon";
 import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
+import * as diffUtils from "./diff-informed-analysis-utils";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
-import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
+import {
+  GitHubVariant,
+  initializeEnvironment,
+  SarifFile,
+  withTmpDir,
+} from "./util";
 
 setupTests(test);
 
@@ -960,3 +966,30 @@ for (const analysis of [CodeScanning, CodeQuality]) {
     });
   });
 }
+
+function runFilterAlertsByDiffRange(
+  input: SarifFile,
+  diffRanges: diffUtils.DiffThunkRange[],
+): SarifFile {
+  sinon.stub(diffUtils, "readDiffRangesJsonFile").returns(diffRanges);
+  return uploadLib.filterAlertsByDiffRange(getRunnerLogger(true), input);
+}
+
+test("filterAlertsByDiffRange filters out alerts outside diff-range", (t) => {
+  const input = uploadLib.readSarifFile(
+    `${__dirname}/../src/testdata/valid-sarif.sarif`,
+  );
+  const actualOutput = runFilterAlertsByDiffRange(input, [
+    {
+      path: "main.js",
+      startLine: 1,
+      endLine: 3,
+    },
+  ]);
+
+  const expectedOutput = uploadLib.readSarifFile(
+    `${__dirname}/../src/testdata/valid-sarif-diff-filtered.sarif`,
+  );
+
+  t.deepEqual(actualOutput, expectedOutput);
+});

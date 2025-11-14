@@ -371,7 +371,7 @@ async function run() {
   }
 
   let overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined;
-  let dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined;
+  let dependencyCachingStatus: DependencyCacheRestoreStatusReport | undefined;
   try {
     if (
       config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
@@ -579,12 +579,13 @@ async function run() {
 
     // Restore dependency cache(s), if they exist.
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
-      dependencyCachingResults = await downloadDependencyCaches(
+      const dependencyCachingResult = await downloadDependencyCaches(
         codeql,
         features,
         config.languages,
         logger,
       );
+      dependencyCachingStatus = dependencyCachingResult.statusReport;
     }
 
     // Suppress warnings about disabled Python library extraction.
@@ -732,7 +733,7 @@ async function run() {
       toolsSource,
       toolsVersion,
       overlayBaseDatabaseStats,
-      dependencyCachingResults,
+      dependencyCachingStatus,
       logger,
       error,
     );
@@ -755,7 +756,7 @@ async function run() {
     toolsSource,
     toolsVersion,
     overlayBaseDatabaseStats,
-    dependencyCachingResults,
+    dependencyCachingStatus,
     logger,
   );
 }

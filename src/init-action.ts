@@ -586,6 +586,8 @@ async function run() {
         logger,
       );
       dependencyCachingStatus = dependencyCachingResult.statusReport;
+      config.dependencyCachingRestoredKeys =
+        dependencyCachingResult.restoredKeys;
     }
 
     // Suppress warnings about disabled Python library extraction.

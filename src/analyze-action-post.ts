@@ -12,7 +12,10 @@ import { getGitHubVersion } from "./api-client";
 import { getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
-import { getJavaTempDependencyDir } from "./dependency-caching";
+import {
+  getCsharpTempDependencyDir,
+  getJavaTempDependencyDir,
+} from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { getActionsLogger } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
@@ -42,17 +45,22 @@ async function runWrapper() {
       }
     }
 
-    // If we analysed Java in build-mode: none, we may have downloaded dependencies
+    // If we analysed Java or C# in build-mode: none, we may have downloaded dependencies
     // to the temp directory. Clean these up so they don't persist unnecessarily
     // long on self-hosted runners.
-    const javaTempDependencyDir = getJavaTempDependencyDir();
-    if (fs.existsSync(javaTempDependencyDir)) {
-      try {
-        fs.rmSync(javaTempDependencyDir, { recursive: true });
-      } catch (error) {
-        logger.info(
-          `Failed to remove temporary Java dependencies directory: ${getErrorMessage(error)}`,
-        );
+    const tempDependencyDirs = [
+      getJavaTempDependencyDir(),
+      getCsharpTempDependencyDir(),
+    ];
+    for (const tempDependencyDir of tempDependencyDirs) {
+      if (fs.existsSync(tempDependencyDir)) {
+        try {
+          fs.rmSync(tempDependencyDir, { recursive: true });
+        } catch (error) {
+          logger.info(
+            `Failed to remove temporary dependencies directory: ${getErrorMessage(error)}`,
+          );
+        }
       }
     }
   } catch (error) {

@@ -476,7 +476,7 @@ for (const [
     githubVersion,
   )}`;
   test(`checkActionVersion ${reportErrorDescription} for ${versionsDescription}`, async (t) => {
-    const warningSpy = sinon.spy(core, "error");
+    const warningSpy = sinon.spy(core, "warning");
     const versionStub = sinon
       .stub(api, "getGitHubVersion")
       .resolves(githubVersion);

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Downgraded the severity of the "v3 deprecation" notice from "error" to "warning", since the deprecation notice is meant to _warn_ users in advance.
 
 ## 4.31.3 - 13 Nov 2025
 

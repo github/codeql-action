@@ -10,7 +10,10 @@ import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { getJavaTempDependencyDir } from "./dependency-caching";
+import {
+  getCsharpTempDependencyDir,
+  getJavaTempDependencyDir,
+} from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
@@ -98,6 +101,7 @@ async function setupPythonExtractor(logger: Logger) {
 
 export async function runExtraction(
   codeql: CodeQL,
+  features: FeatureEnablement,
   config: configUtils.Config,
   logger: Logger,
 ) {
@@ -122,7 +126,7 @@ export async function runExtraction(
           await setupCppAutobuild(codeql, logger);
         }
 
-        // The Java `build-mode: none` extractor places dependencies (.jar files) in the
+        // The Java and C# `build-mode: none` extractors place dependencies in the
         // database scratch directory by default. For dependency caching purposes, we want
         // a stable path that caches can be restored into and that we can cache at the
         // end of the workflow (i.e. that does not get removed when the scratch directory is).
@@ -132,6 +136,15 @@ export async function runExtraction(
         ) {
           process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
             getJavaTempDependencyDir();
+        }
+        if (
+          language === KnownLanguage.csharp &&
+          config.buildMode === BuildMode.None &&
+          (await features.getValue(Feature.CsharpCacheBuildModeNone))
+        ) {
+          process.env[
+            "CODEQL_EXTRACTOR_CSHARP_OPTION_BUILDLESS_DEPENDENCY_DIR"
+          ] = getCsharpTempDependencyDir();
         }
 
         await codeql.extractUsingBuildMode(config, language);
@@ -177,13 +190,14 @@ export function dbIsFinalized(
 
 async function finalizeDatabaseCreation(
   codeql: CodeQL,
+  features: FeatureEnablement,
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   const extractionStart = performance.now();
-  await runExtraction(codeql, config, logger);
+  await runExtraction(codeql, features, config, logger);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -597,6 +611,7 @@ export async function runQueries(
 }
 
 export async function runFinalize(
+  features: FeatureEnablement,
   outputDir: string,
   threadsFlag: string,
   memoryFlag: string,
@@ -615,6 +630,7 @@ export async function runFinalize(
 
   const timings = await finalizeDatabaseCreation(
     codeql,
+    features,
     config,
     threadsFlag,
     memoryFlag,

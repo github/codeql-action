@@ -15,6 +15,7 @@ import * as gitUtils from "./git-utils";
 import { KnownLanguage } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
+  createFeatures,
   createTestConfig,
   getRecordingLogger,
   LoggedMessage,
@@ -96,6 +97,7 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -129,6 +131,7 @@ test("Abort database upload if 'analysis-kinds: code-scanning' is not enabled", 
         analysisKinds: [AnalysisKind.CodeQuality],
       },
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -160,6 +163,7 @@ test("Abort database upload if running against GHES", async (t) => {
       getCodeQL(),
       config,
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -188,6 +192,7 @@ test("Abort database upload if not analyzing default branch", async (t) => {
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -217,6 +222,7 @@ test("Don't crash if uploading a database fails", async (t) => {
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
 
@@ -248,6 +254,7 @@ test("Successfully uploading a database to github.com", async (t) => {
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -281,6 +288,7 @@ test("Successfully uploading a database to GHEC-DR", async (t) => {
         url: "https://tenant.ghe.com",
         apiURL: undefined,
       },
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(

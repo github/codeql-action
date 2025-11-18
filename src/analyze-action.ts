@@ -429,6 +429,7 @@ async function run() {
       codeql,
       config,
       apiDetails,
+      features,
       logger,
     );
 

@@ -35,7 +35,7 @@ import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, getErrorMessage } from "./util";
+import { BuildMode, CleanupLevel, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -141,7 +141,10 @@ export interface CodeQL {
   /**
    * Clean up all the databases within a database cluster.
    */
-  databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
+  databaseCleanupCluster(
+    config: Config,
+    cleanupLevel: CleanupLevel,
+  ): Promise<void>;
   /**
    * Run 'codeql database bundle'.
    */
@@ -878,7 +881,7 @@ export async function getCodeQLForCmd(
     },
     async databaseCleanupCluster(
       config: Config,
-      cleanupLevel: string,
+      cleanupLevel: CleanupLevel,
     ): Promise<void> {
       const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
         this,

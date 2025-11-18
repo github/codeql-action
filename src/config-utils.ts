@@ -579,17 +579,11 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
 };
 
 async function isOverlayAnalysisFeatureEnabled(
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   codeql: CodeQL,
   languages: Language[],
   codeScanningConfig: UserConfig,
 ): Promise<boolean> {
-  // TODO: Remove the repository owner check once support for overlay analysis
-  // stabilizes, and no more backward-incompatible changes are expected.
-  if (!["github", "dsp-testing"].includes(repository.owner)) {
-    return false;
-  }
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
     return false;
   }
@@ -647,7 +641,6 @@ async function isOverlayAnalysisFeatureEnabled(
  */
 export async function getOverlayDatabaseMode(
   codeql: CodeQL,
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   languages: Language[],
   sourceRoot: string,
@@ -676,7 +669,6 @@ export async function getOverlayDatabaseMode(
     );
   } else if (
     await isOverlayAnalysisFeatureEnabled(
-      repository,
       features,
       codeql,
       languages,
@@ -846,7 +838,6 @@ export async function initConfig(
   const { overlayDatabaseMode, useOverlayDatabaseCaching } =
     await getOverlayDatabaseMode(
       inputs.codeql,
-      inputs.repository,
       inputs.features,
       config.languages,
       inputs.sourceRoot,

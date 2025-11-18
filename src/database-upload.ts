@@ -11,7 +11,7 @@ import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 import { bundleDb, parseGitHubUrl } from "./util";
 
-export async function uploadDatabases(
+export async function cleanupAndUploadDatabases(
   repositoryNwo: RepositoryNwo,
   codeql: CodeQL,
   config: Config,

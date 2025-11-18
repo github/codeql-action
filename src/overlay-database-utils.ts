@@ -204,7 +204,7 @@ export function checkOverlayBaseDatabase(
  * @returns A promise that resolves to true if the upload was performed and
  * successfully completed, or false otherwise
  */
-export async function uploadOverlayBaseDatabaseToCache(
+export async function cleanupAndUploadOverlayBaseDatabaseToCache(
   codeql: CodeQL,
   config: Config,
   logger: Logger,

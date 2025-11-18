@@ -55,7 +55,7 @@ export function getJavaTempDependencyDir(): string {
  * @returns The paths of directories on the runner that should be included in a dependency cache
  * for a Java analysis.
  */
-export function getJavaDependencyDirs(): string[] {
+function getJavaDependencyDirs(): string[] {
   return [
     // Maven
     join(os.homedir(), ".m2", "repository"),

@@ -175,7 +175,7 @@ const MAX_CACHE_OPERATION_MS = 600_000;
  * @param warningPrefix Prefix for the check failure warning message
  * @returns True if the verification succeeded, false otherwise
  */
-export function checkOverlayBaseDatabase(
+function checkOverlayBaseDatabase(
   config: Config,
   logger: Logger,
   warningPrefix: string,

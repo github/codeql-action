@@ -34,7 +34,7 @@ export enum ToolsSource {
   Download = "DOWNLOAD",
 }
 
-export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 const CODEQL_NIGHTLIES_REPOSITORY_OWNER = "dsp-testing";
 const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
@@ -178,17 +178,6 @@ export function tryGetTagNameFromUrl(
   }
 
   return match[1];
-}
-
-export function tryGetBundleVersionFromUrl(
-  url: string,
-  logger: Logger,
-): string | undefined {
-  const tagName = tryGetTagNameFromUrl(url, logger);
-  if (tagName === undefined) {
-    return undefined;
-  }
-  return tryGetBundleVersionFromTagName(tagName, logger);
 }
 
 export function convertToSemVer(version: string, logger: Logger): string {
@@ -580,7 +569,7 @@ export async function getCodeQLSource(
  * Gets a fallback version number to use when looking for CodeQL in the toolcache if we didn't find
  * the `x.y.z` version. This is to support old versions of the toolcache.
  */
-export async function tryGetFallbackToolcacheVersion(
+async function tryGetFallbackToolcacheVersion(
   cliVersion: string | undefined,
   tagName: string,
   logger: Logger,
@@ -727,14 +716,6 @@ function getCanonicalToolcacheVersion(
   // Bundles are now semantically versioned and can be looked up based on just the CLI version
   // number, so we can version them in the toolcache using just the CLI version number.
   return cliVersion;
-}
-
-export interface SetupCodeQLResult {
-  codeqlFolder: string;
-  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
-  toolsSource: ToolsSource;
-  toolsVersion: string;
-  zstdAvailability: tar.ZstdAvailability;
 }
 
 /**

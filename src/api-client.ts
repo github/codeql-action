@@ -18,11 +18,6 @@ import {
 
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 
-export enum DisallowedAPIVersionReason {
-  ACTION_TOO_OLD,
-  ACTION_TOO_NEW,
-}
-
 export type GitHubApiCombinedDetails = GitHubApiDetails &
   GitHubApiExternalRepoDetails;
 

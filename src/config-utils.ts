@@ -179,7 +179,7 @@ export interface Config {
   repositoryProperties: RepositoryProperties;
 }
 
-export async function getSupportedLanguageMap(
+async function getSupportedLanguageMap(
   codeql: CodeQL,
   logger: Logger,
 ): Promise<Record<string, string>> {
@@ -242,7 +242,7 @@ export function hasActionsWorkflows(sourceRoot: string): boolean {
 /**
  * Gets the set of languages in the current repository.
  */
-export async function getRawLanguagesInRepo(
+async function getRawLanguagesInRepo(
   repository: RepositoryNwo,
   sourceRoot: string,
   logger: Logger,
@@ -351,7 +351,7 @@ export function getRawLanguagesNoAutodetect(
  * @returns A tuple containing a list of languages in this repository that might be
  * analyzable and whether or not this list was determined automatically.
  */
-export async function getRawLanguages(
+async function getRawLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
@@ -1230,7 +1230,7 @@ export function isCodeQualityEnabled(config: Config): boolean {
  * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
  * otherwise `AnalysisKind.CodeQuality`.
  */
-export function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+function getPrimaryAnalysisKind(config: Config): AnalysisKind {
   return isCodeScanningEnabled(config)
     ? AnalysisKind.CodeScanning
     : AnalysisKind.CodeQuality;

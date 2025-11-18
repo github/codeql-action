@@ -16,6 +16,7 @@ import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
+  CleanupLevel,
   getErrorMessage,
   isInTestMode,
   tryGetFolderBytes,
@@ -242,7 +243,7 @@ export async function cleanupAndUploadOverlayBaseDatabaseToCache(
 
   // Clean up the database using the overlay cleanup level.
   await withGroupAsync("Cleaning up databases", async () => {
-    await codeql.databaseCleanupCluster(config, "overlay");
+    await codeql.databaseCleanupCluster(config, CleanupLevel.Overlay);
   });
 
   const dbLocation = config.dbLocation;

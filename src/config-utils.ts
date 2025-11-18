@@ -55,7 +55,7 @@ export * from "./config/db-config";
  * analysis unless overlay analysis has been explicitly enabled via environment
  * variable.
  */
-const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 15000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
 

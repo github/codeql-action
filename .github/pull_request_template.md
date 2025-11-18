@@ -18,14 +18,25 @@ For internal use only. Please select the risk level of this change:
 
 #### Which use cases does this change impact?
 
-<!-- Delete options that don't apply. -->
+<!-- Delete options that don't apply. If in doubt, do not delete an option. -->
 
-- **Advanced setup** - Impacts users who have custom workflows.
-- **Default setup** - Impacts users who use default setup.
-- **Code Scanning** - Impacts Code Scanning (i.e. `analysis-kinds: code-scanning`).
-- **Code Quality** - Impacts Code Quality (i.e. `analysis-kinds: code-quality`).
-- **Third-party analyses** - Impacts third-party analyses (i.e. `upload-sarif`).
-- **GHES** - Impacts GitHub Enterprise Server.
+Workflow types:
+
+- **Advanced setup** - Impacts users who have custom CodeQL workflows.
+- **Managed** - Impacts users with `dynamic` workflows (Default Setup, CCR, ...).
+
+Products:
+
+- **Code Scanning** - The changes impact analyses when `analysis-kinds: code-scanning`.
+- **Code Quality** - The changes impact analyses when `analysis-kinds: code-quality`.
+- **CCR** - The changes impact analyses for Copilot Code Reviews.
+- **Third-party analyses** - The changes affect the `upload-sarif` action.
+
+Environments:
+
+- **Dotcom** - Impacts CodeQL workflows on `github.com`.
+- **GHES** - Impacts CodeQL workflows on GitHub Enterprise Server.
+- **Testing/None** - This change does not impact any CodeQL workflows in production.
 
 #### How did/will you validate this change?
 
@@ -53,6 +64,15 @@ For internal use only. Please select the risk level of this change:
     - **Dashboards** - I will watch relevant dashboards for issues after the release. Consider whether this requires this change to be released at a particular time rather than as part of a regular release.
     - **Alerts** - New or existing monitors will trip if something goes wrong with this change.
 - **Other** - Please provide details.
+
+#### Are there any special considerations for merging or releasing this change?
+
+<!--
+    Consider whether this change depends on a different change in another repository that should be released first.
+-->
+
+- **No special considerations** - This change can be merged at any time.
+- **Special considerations** - This change should only be merged once certain preconditions are met. Please provide details of those or link to this PR from an internal issue.
 
 ### Merge / deployment checklist
 

@@ -44,7 +44,6 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   AllowToolcacheInput = "allow_toolcache_input",
-  AnalyzeUseNewUpload = "analyze_use_new_upload",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CsharpNewCacheKey = "csharp_new_cache_key",
@@ -115,11 +114,6 @@ export const featureConfig: Record<
   [Feature.AllowToolcacheInput]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
-    minimumVersion: undefined,
-  },
-  [Feature.AnalyzeUseNewUpload]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ANALYZE_USE_NEW_UPLOAD",
     minimumVersion: undefined,
   },
   [Feature.CleanupTrapCaches]: {

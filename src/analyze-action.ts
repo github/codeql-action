@@ -19,12 +19,7 @@ import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
-import {
-  Config,
-  getConfig,
-  isCodeQualityEnabled,
-  isCodeScanningEnabled,
-} from "./config-utils";
+import { Config, getConfig } from "./config-utils";
 import { uploadDatabases } from "./database-upload";
 import {
   DependencyCacheUploadStatusReport,
@@ -32,7 +27,7 @@ import {
 } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { uploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
@@ -357,46 +352,15 @@ async function run() {
       const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
-      if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
-        uploadResults = await postProcessAndUploadSarif(
-          logger,
-          features,
-          uploadKind,
-          checkoutPath,
-          outputDir,
-          category,
-          actionsUtil.getOptionalInput("post-processed-sarif-path"),
-        );
-      } else if (uploadKind === "always") {
-        uploadResults = {};
-
-        if (isCodeScanningEnabled(config)) {
-          uploadResults[analyses.AnalysisKind.CodeScanning] =
-            await uploadLib.uploadFiles(
-              outputDir,
-              checkoutPath,
-              category,
-              features,
-              logger,
-              analyses.CodeScanning,
-            );
-        }
-
-        if (isCodeQualityEnabled(config)) {
-          uploadResults[analyses.AnalysisKind.CodeQuality] =
-            await uploadLib.uploadFiles(
-              outputDir,
-              checkoutPath,
-              category,
-              features,
-              logger,
-              analyses.CodeQuality,
-            );
-        }
-      } else {
-        uploadResults = {};
-        logger.info("Not uploading results");
-      }
+      uploadResults = await postProcessAndUploadSarif(
+        logger,
+        features,
+        uploadKind,
+        checkoutPath,
+        outputDir,
+        category,
+        actionsUtil.getOptionalInput("post-processed-sarif-path"),
+      );
 
       // Set the SARIF id outputs only if we have results for them, to avoid
       // having keys with empty values in the action output.

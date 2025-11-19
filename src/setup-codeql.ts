@@ -718,6 +718,14 @@ function getCanonicalToolcacheVersion(
   return cliVersion;
 }
 
+interface SetupCodeQLResult {
+  codeqlFolder: string;
+  toolsDownloadStatusReport?: ToolsDownloadStatusReport;
+  toolsSource: ToolsSource;
+  toolsVersion: string;
+  zstdAvailability: tar.ZstdAvailability;
+}
+
 /**
  * Obtains the CodeQL bundle, installs it in the toolcache if appropriate, and extracts it.
  *
@@ -731,7 +739,7 @@ export async function setupCodeQLBundle(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   features: FeatureEnablement,
   logger: Logger,
-) {
+): Promise<SetupCodeQLResult> {
   if (!(await util.isBinaryAccessible("tar", logger))) {
     throw new util.ConfigurationError(
       "Could not find tar in PATH, so unable to extract CodeQL bundle.",

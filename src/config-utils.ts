@@ -693,7 +693,9 @@ export async function getOverlayDatabaseMode(
       diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
     ) {
       const diskSpaceMb =
-        diskUsage === undefined ? 0 : diskUsage.numAvailableBytes / 1_000_000;
+        diskUsage === undefined
+          ? 0
+          : Math.round(diskUsage.numAvailableBytes / 1_000_000);
       overlayDatabaseMode = OverlayDatabaseMode.None;
       useOverlayDatabaseCaching = false;
       logger.info(

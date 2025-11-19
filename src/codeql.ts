@@ -516,7 +516,7 @@ export async function getCodeQLForTesting(
  *        version requirement. Must be set to true outside tests.
  * @returns A new CodeQL object
  */
-export async function getCodeQLForCmd(
+async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean,
 ): Promise<CodeQL> {
@@ -1225,7 +1225,7 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-export function getGeneratedCodeScanningConfigPath(config: Config): string {
+function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
 }
 

@@ -16,6 +16,7 @@ import { type Config } from "./config-utils";
 import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
+  CleanupLevel,
   getErrorMessage,
   isInTestMode,
   tryGetFolderBytes,
@@ -28,7 +29,7 @@ export enum OverlayDatabaseMode {
   None = "none",
 }
 
-export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.22.4";
+export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.23.5";
 
 /**
  * The maximum (uncompressed) size of the overlay base database that we will
@@ -204,7 +205,7 @@ function checkOverlayBaseDatabase(
  * @returns A promise that resolves to true if the upload was performed and
  * successfully completed, or false otherwise
  */
-export async function uploadOverlayBaseDatabaseToCache(
+export async function cleanupAndUploadOverlayBaseDatabaseToCache(
   codeql: CodeQL,
   config: Config,
   logger: Logger,
@@ -242,7 +243,7 @@ export async function uploadOverlayBaseDatabaseToCache(
 
   // Clean up the database using the overlay cleanup level.
   await withGroupAsync("Cleaning up databases", async () => {
-    await codeql.databaseCleanupCluster(config, "overlay");
+    await codeql.databaseCleanupCluster(config, CleanupLevel.Overlay);
   });
 
   const dbLocation = config.dbLocation;

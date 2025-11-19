@@ -1,3 +1,5 @@
+import * as os from "os";
+
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
@@ -407,4 +409,35 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   }
 
   return currentRef === defaultBranch;
+}
+
+export async function listFiles(workingDirectory: string): Promise<string[]> {
+  const stdout = await runGitCommand(
+    workingDirectory,
+    ["ls-files"],
+    "Unable to list tracked files.",
+  );
+  return stdout.split(os.EOL);
+}
+
+export async function getGeneratedFiles(
+  workingDirectory: string,
+): Promise<string[]> {
+  const files = await listFiles(workingDirectory);
+  const stdout = await runGitCommand(
+    workingDirectory,
+    ["check-attr", "linguist-generated", "--", ...files],
+    "Unable to check attributes of files.",
+  );
+
+  const generatedFiles: string[] = [];
+  const regex = /^([^:]+): linguist-generated: true$/;
+  for (const result of stdout.split(os.EOL)) {
+    const match = result.match(regex);
+    if (match) {
+      generatedFiles.push(match[1]);
+    }
+  }
+
+  return generatedFiles;
 }

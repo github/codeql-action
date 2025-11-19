@@ -679,7 +679,14 @@ export async function getOverlayDatabaseMode(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
-  } else {
+  } else if (
+    await isOverlayAnalysisFeatureEnabled(
+      features,
+      codeql,
+      languages,
+      codeScanningConfig,
+    )
+  ) {
     const diskUsage = await checkDiskUsage(logger);
     if (
       diskUsage === undefined ||
@@ -693,14 +700,7 @@ export async function getOverlayDatabaseMode(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
           `due to insufficient disk space (${diskSpaceMb} MB).`,
       );
-    } else if (
-      await isOverlayAnalysisFeatureEnabled(
-        features,
-        codeql,
-        languages,
-        codeScanningConfig,
-      )
-    ) {
+    } else {
       if (isAnalyzingPullRequest()) {
         overlayDatabaseMode = OverlayDatabaseMode.Overlay;
         useOverlayDatabaseCaching = true;

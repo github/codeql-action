@@ -1231,3 +1231,8 @@ export function unsafeEntriesInvariant<T extends Record<string, any>>(
     ([_, val]) => val !== undefined,
   ) as Array<[keyof T, Exclude<T[keyof T], undefined>]>;
 }
+
+export enum CleanupLevel {
+  Clear = "clear",
+  Overlay = "overlay",
+}

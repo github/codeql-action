@@ -37,7 +37,9 @@ import {
   ConfigurationError,
   withTmpDir,
   BuildMode,
+  DiskUsage,
 } from "./util";
+import * as util from "./util";
 
 setupTests(test);
 
@@ -976,6 +978,7 @@ interface OverlayDatabaseModeTestSetup {
   codeqlVersion: string;
   gitRoot: string | undefined;
   codeScanningConfig: configUtils.UserConfig;
+  diskUsage: DiskUsage | undefined;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -988,6 +991,10 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
   codeScanningConfig: {},
+  diskUsage: {
+    numAvailableBytes: 50_000_000_000,
+    numTotalBytes: 100_000_000_000,
+  },
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1019,6 +1026,8 @@ const getOverlayDatabaseModeMacro = test.macro({
           process.env.CODEQL_OVERLAY_DATABASE_MODE =
             setup.overlayDatabaseEnvVar;
         }
+
+        sinon.stub(util, "checkDiskUsage").resolves(setup.diskUsage);
 
         // Mock feature flags
         const features = createFeatures(setup.features);
@@ -1174,6 +1183,45 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
     useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if we can't determine runner disk space",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
   },
 );
 
@@ -1349,6 +1397,45 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR if runner disk space is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR if we can't determine runner disk space",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    diskUsage: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1474,6 +1561,19 @@ test(
   "Overlay PR analysis by env",
   {
     overlayDatabaseEnvVar: "overlay",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay PR analysis by env on a runner with low disk space",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    diskUsage: { numAvailableBytes: 0, numTotalBytes: 100_000_000_000 },
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,

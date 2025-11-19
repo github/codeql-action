@@ -43,9 +43,21 @@ import {
   codeQlVersionAtLeast,
   cloneObject,
   isDefined,
+  checkDiskUsage,
 } from "./util";
 
 export * from "./config/db-config";
+
+/**
+ * The minimum available disk space (in MB) required to perform overlay analysis.
+ * If the available disk space on the runner is below the threshold when deciding
+ * whether to perform overlay analysis, then the action will not perform overlay
+ * analysis unless overlay analysis has been explicitly enabled via environment
+ * variable.
+ */
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
+  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -679,20 +691,37 @@ export async function getOverlayDatabaseMode(
       codeScanningConfig,
     )
   ) {
-    if (isAnalyzingPullRequest()) {
-      overlayDatabaseMode = OverlayDatabaseMode.Overlay;
-      useOverlayDatabaseCaching = true;
+    const diskUsage = await checkDiskUsage(logger);
+    if (
+      diskUsage === undefined ||
+      diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+    ) {
+      const diskSpaceMb =
+        diskUsage === undefined
+          ? 0
+          : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+      useOverlayDatabaseCaching = false;
       logger.info(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing a pull request.",
+          `due to insufficient disk space (${diskSpaceMb} MB).`,
       );
-    } else if (await isAnalyzingDefaultBranch()) {
-      overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
-      useOverlayDatabaseCaching = true;
-      logger.info(
-        `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing the default branch.",
-      );
+    } else {
+      if (isAnalyzingPullRequest()) {
+        overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+        useOverlayDatabaseCaching = true;
+        logger.info(
+          `Setting overlay database mode to ${overlayDatabaseMode} ` +
+            "with caching because we are analyzing a pull request.",
+        );
+      } else if (await isAnalyzingDefaultBranch()) {
+        overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+        useOverlayDatabaseCaching = true;
+        logger.info(
+          `Setting overlay database mode to ${overlayDatabaseMode} ` +
+            "with caching because we are analyzing the default branch.",
+        );
+      }
     }
   }
 

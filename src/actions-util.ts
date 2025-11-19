@@ -254,7 +254,18 @@ export function isDynamicWorkflow(): boolean {
 
 /** Determines whether we are running in default setup. */
 export function isDefaultSetup(): boolean {
-  return isDynamicWorkflow();
+  return isDynamicWorkflow() && !isCCR();
+}
+
+/** Determines whether we are running in CCR. */
+export function isCCR(): boolean {
+  return (
+    (isDynamicWorkflow() &&
+      process.env["CODEQL_ACTION_ANALYSIS_KEY"]?.startsWith(
+        "dynamic/copilot-pull-request-reviewer",
+      )) ||
+    false
+  );
 }
 
 export function prettyPrintInvocation(cmd: string, args: string[]): string {

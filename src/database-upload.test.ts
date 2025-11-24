@@ -10,11 +10,12 @@ import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
 import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { uploadDatabases } from "./database-upload";
+import { cleanupAndUploadDatabases } from "./database-upload";
 import * as gitUtils from "./git-utils";
 import { KnownLanguage } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
+  createFeatures,
   createTestConfig,
   getRecordingLogger,
   LoggedMessage,
@@ -91,11 +92,12 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
     const loggedMessages = [];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -121,7 +123,7 @@ test("Abort database upload if 'analysis-kinds: code-scanning' is not enabled", 
     await mockHttpRequests(201);
 
     const loggedMessages = [];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
       getCodeQL(),
       {
@@ -129,6 +131,7 @@ test("Abort database upload if 'analysis-kinds: code-scanning' is not enabled", 
         analysisKinds: [AnalysisKind.CodeQuality],
       },
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -155,11 +158,12 @@ test("Abort database upload if running against GHES", async (t) => {
     config.gitHubVersion = { type: GitHubVariant.GHES, version: "3.0" };
 
     const loggedMessages = [];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
       getCodeQL(),
       config,
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -183,11 +187,12 @@ test("Abort database upload if not analyzing default branch", async (t) => {
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
 
     const loggedMessages = [];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -212,11 +217,12 @@ test("Don't crash if uploading a database fails", async (t) => {
     await mockHttpRequests(500);
 
     const loggedMessages = [] as LoggedMessage[];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
 
@@ -243,11 +249,12 @@ test("Successfully uploading a database to github.com", async (t) => {
     await mockHttpRequests(201);
 
     const loggedMessages = [] as LoggedMessage[];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -272,7 +279,7 @@ test("Successfully uploading a database to GHEC-DR", async (t) => {
     const databaseUploadSpy = await mockHttpRequests(201);
 
     const loggedMessages = [] as LoggedMessage[];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
@@ -281,6 +288,7 @@ test("Successfully uploading a database to GHEC-DR", async (t) => {
         url: "https://tenant.ghe.com",
         apiURL: undefined,
       },
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(

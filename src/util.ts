@@ -4,7 +4,6 @@ import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as exec from "@actions/exec/lib/exec";
 import * as io from "@actions/io";
 import getFolderSize from "get-folder-size";
 import * as yaml from "js-yaml";
@@ -1026,34 +1025,6 @@ export function fixInvalidNotifications(
   return newSarif;
 }
 
-/**
- * Removes duplicates from the sarif file.
- *
- * When `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX` is set to true, this will
- * simply rename the input file to the output file. Otherwise, it will parse the
- * input file as JSON, remove duplicate locations from the SARIF notification
- * objects, and write the result to the output file.
- *
- * For context, see documentation of:
- * `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX`. */
-export function fixInvalidNotificationsInFile(
-  inputPath: string,
-  outputPath: string,
-  logger: Logger,
-): void {
-  if (process.env[EnvVar.DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
-    logger.info(
-      "SARIF notification object duplicate location fix disabled by the " +
-        `${EnvVar.DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`,
-    );
-    fs.renameSync(inputPath, outputPath);
-  } else {
-    let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
-    sarif = fixInvalidNotifications(sarif, logger);
-    fs.writeFileSync(outputPath, JSON.stringify(sarif));
-  }
-}
-
 export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -1197,49 +1168,6 @@ export function cloneObject<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
 
-// The first time this function is called, it runs `csrutil status` to determine
-// whether System Integrity Protection is enabled; and saves the result in an
-// environment variable. Afterwards, simply return the value of the environment
-// variable.
-export async function checkSipEnablement(
-  logger: Logger,
-): Promise<boolean | undefined> {
-  if (
-    process.env[EnvVar.IS_SIP_ENABLED] !== undefined &&
-    ["true", "false"].includes(process.env[EnvVar.IS_SIP_ENABLED])
-  ) {
-    return process.env[EnvVar.IS_SIP_ENABLED] === "true";
-  }
-
-  try {
-    const sipStatusOutput = await exec.getExecOutput("csrutil status");
-    if (sipStatusOutput.exitCode === 0) {
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: enabled.",
-        )
-      ) {
-        core.exportVariable(EnvVar.IS_SIP_ENABLED, "true");
-        return true;
-      }
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: disabled.",
-        )
-      ) {
-        core.exportVariable(EnvVar.IS_SIP_ENABLED, "false");
-        return false;
-      }
-    }
-    return undefined;
-  } catch (e) {
-    logger.warning(
-      `Failed to determine if System Integrity Protection was enabled: ${e}`,
-    );
-    return undefined;
-  }
-}
-
 export async function cleanUpPath(file: string, name: string, logger: Logger) {
   logger.debug(`Cleaning up ${name}.`);
   try {
@@ -1291,17 +1219,6 @@ export function isDefined<T>(value: T | null | undefined): value is T {
   return value !== undefined && value !== null;
 }
 
-/** Like `Object.keys`, but typed so that the elements of the resulting array have the
- * same type as the keys of the input object. Note that this may not be sound if the input
- * object has been cast to `T` from a subtype of `T` and contains additional keys that
- * are not represented by `keyof T`.
- */
-export function unsafeKeysInvariant<T extends Record<string, any>>(
-  object: T,
-): Array<keyof T> {
-  return Object.keys(object) as Array<keyof T>;
-}
-
 /** Like `Object.entries`, but typed so that the key elements of the result have the
  * same type as the keys of the input object. Note that this may not be sound if the input
  * object has been cast to `T` from a subtype of `T` and contains additional keys that
@@ -1313,4 +1230,9 @@ export function unsafeEntriesInvariant<T extends Record<string, any>>(
   return Object.entries(object).filter(
     ([_, val]) => val !== undefined,
   ) as Array<[keyof T, Exclude<T[keyof T], undefined>]>;
+}
+
+export enum CleanupLevel {
+  Clear = "clear",
+  Overlay = "overlay",
 }

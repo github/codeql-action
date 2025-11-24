@@ -54,7 +54,7 @@ export enum ActionName {
  * considered to be a third party analysis and is treated differently when calculating SLOs. To ensure
  * misconfigured workflows are not treated as third party, only the upload-sarif action can return false.
  */
-export function isFirstPartyAnalysis(actionName: ActionName): boolean {
+function isFirstPartyAnalysis(actionName: ActionName): boolean {
   if (actionName !== ActionName.UploadSarif) {
     return true;
   }

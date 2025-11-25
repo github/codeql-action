@@ -107,7 +107,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
     steps = [
         {
             'name': 'Check out repository',
-            'uses': 'actions/checkout@v5'
+            'uses': 'actions/checkout@v6'
         },
     ]
 

@@ -43,9 +43,21 @@ import {
   codeQlVersionAtLeast,
   cloneObject,
   isDefined,
+  checkDiskUsage,
 } from "./util";
 
 export * from "./config/db-config";
+
+/**
+ * The minimum available disk space (in MB) required to perform overlay analysis.
+ * If the available disk space on the runner is below the threshold when deciding
+ * whether to perform overlay analysis, then the action will not perform overlay
+ * analysis unless overlay analysis has been explicitly enabled via environment
+ * variable.
+ */
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
+  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -148,6 +160,9 @@ export interface Config {
   /** A value indicating how dependency caching should be used. */
   dependencyCachingEnabled: CachingKind;
 
+  /** The keys of caches that we restored, if any. */
+  dependencyCachingRestoredKeys: string[];
+
   /**
    * Extra query exclusions to append to the config.
    */
@@ -176,7 +191,7 @@ export interface Config {
   repositoryProperties: RepositoryProperties;
 }
 
-export async function getSupportedLanguageMap(
+async function getSupportedLanguageMap(
   codeql: CodeQL,
   logger: Logger,
 ): Promise<Record<string, string>> {
@@ -239,7 +254,7 @@ export function hasActionsWorkflows(sourceRoot: string): boolean {
 /**
  * Gets the set of languages in the current repository.
  */
-export async function getRawLanguagesInRepo(
+async function getRawLanguagesInRepo(
   repository: RepositoryNwo,
   sourceRoot: string,
   logger: Logger,
@@ -348,7 +363,7 @@ export function getRawLanguagesNoAutodetect(
  * @returns A tuple containing a list of languages in this repository that might be
  * analyzable and whether or not this list was determined automatically.
  */
-export async function getRawLanguages(
+async function getRawLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
@@ -496,6 +511,7 @@ export async function initActionState(
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
+    dependencyCachingRestoredKeys: [],
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
@@ -579,17 +595,11 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
 };
 
 async function isOverlayAnalysisFeatureEnabled(
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   codeql: CodeQL,
   languages: Language[],
   codeScanningConfig: UserConfig,
 ): Promise<boolean> {
-  // TODO: Remove the repository owner check once support for overlay analysis
-  // stabilizes, and no more backward-incompatible changes are expected.
-  if (!["github", "dsp-testing"].includes(repository.owner)) {
-    return false;
-  }
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
     return false;
   }
@@ -647,7 +657,6 @@ async function isOverlayAnalysisFeatureEnabled(
  */
 export async function getOverlayDatabaseMode(
   codeql: CodeQL,
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   languages: Language[],
   sourceRoot: string,
@@ -676,27 +685,43 @@ export async function getOverlayDatabaseMode(
     );
   } else if (
     await isOverlayAnalysisFeatureEnabled(
-      repository,
       features,
       codeql,
       languages,
       codeScanningConfig,
     )
   ) {
-    if (isAnalyzingPullRequest()) {
-      overlayDatabaseMode = OverlayDatabaseMode.Overlay;
-      useOverlayDatabaseCaching = true;
+    const diskUsage = await checkDiskUsage(logger);
+    if (
+      diskUsage === undefined ||
+      diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+    ) {
+      const diskSpaceMb =
+        diskUsage === undefined
+          ? 0
+          : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+      useOverlayDatabaseCaching = false;
       logger.info(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing a pull request.",
+          `due to insufficient disk space (${diskSpaceMb} MB).`,
       );
-    } else if (await isAnalyzingDefaultBranch()) {
-      overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
-      useOverlayDatabaseCaching = true;
-      logger.info(
-        `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing the default branch.",
-      );
+    } else {
+      if (isAnalyzingPullRequest()) {
+        overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+        useOverlayDatabaseCaching = true;
+        logger.info(
+          `Setting overlay database mode to ${overlayDatabaseMode} ` +
+            "with caching because we are analyzing a pull request.",
+        );
+      } else if (await isAnalyzingDefaultBranch()) {
+        overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+        useOverlayDatabaseCaching = true;
+        logger.info(
+          `Setting overlay database mode to ${overlayDatabaseMode} ` +
+            "with caching because we are analyzing the default branch.",
+        );
+      }
     }
   }
 
@@ -846,7 +871,6 @@ export async function initConfig(
   const { overlayDatabaseMode, useOverlayDatabaseCaching } =
     await getOverlayDatabaseMode(
       inputs.codeql,
-      inputs.repository,
       inputs.features,
       config.languages,
       inputs.sourceRoot,
@@ -1235,7 +1259,7 @@ export function isCodeQualityEnabled(config: Config): boolean {
  * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
  * otherwise `AnalysisKind.CodeQuality`.
  */
-export function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+function getPrimaryAnalysisKind(config: Config): AnalysisKind {
   return isCodeScanningEnabled(config)
     ? AnalysisKind.CodeScanning
     : AnalysisKind.CodeQuality;

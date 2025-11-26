@@ -107,7 +107,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
     steps = [
         {
             'name': 'Check out repository',
-            'uses': 'actions/checkout@v5'
+            'uses': 'actions/checkout@v6'
         },
     ]
 
@@ -201,6 +201,25 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             'uses': 'actions/setup-python@v6',
             'with': {
                 'python-version': '${{ inputs.python-version || \'' + basePythonVersionExpr + '\' }}'
+            }
+        })
+
+    installDotNet = is_truthy(checkSpecification.get('installDotNet', ''))
+
+    if installDotNet:
+        baseDotNetVersionExpr = '9.x'
+        workflowInputs['dotnet-version'] = {
+            'type': 'string',
+            'description': 'The version of .NET to install',
+            'required': False,
+            'default': baseDotNetVersionExpr,
+        }
+
+        steps.append({
+            'name': 'Install .NET',
+            'uses': 'actions/setup-dotnet@v5',
+            'with': {
+                'dotnet-version': '${{ inputs.dotnet-version || \'' + baseDotNetVersionExpr + '\' }}'
             }
         })
 

@@ -32,6 +32,11 @@ on:
         description: The version of Python to install
         required: false
         default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
   workflow_call:
     inputs:
       go-version:
@@ -44,6 +49,11 @@ on:
         description: The version of Python to install
         required: false
         default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
 defaults:
   run:
     shell: bash
@@ -74,7 +84,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -92,6 +102,10 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version || '3.13' }}
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}

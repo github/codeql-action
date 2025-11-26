@@ -228,6 +228,14 @@ export interface DependencyCacheRestoreStatus {
 /** An array of `DependencyCacheRestoreStatus` objects for each analysed language with a caching configuration. */
 export type DependencyCacheRestoreStatusReport = DependencyCacheRestoreStatus[];
 
+/** Represents the results of `downloadDependencyCaches`. */
+export interface DownloadDependencyCachesResult {
+  /** The status report for telemetry */
+  statusReport: DependencyCacheRestoreStatusReport;
+  /** An array of cache keys that we have restored and therefore know to exist. */
+  restoredKeys: string[];
+}
+
 /**
  * A wrapper around `cacheConfig.getHashPatterns` which logs when there are no files to calculate
  * a hash for the cache key from.
@@ -274,8 +282,9 @@ export async function downloadDependencyCaches(
   features: FeatureEnablement,
   languages: Language[],
   logger: Logger,
-): Promise<DependencyCacheRestoreStatusReport> {
+): Promise<DownloadDependencyCachesResult> {
   const status: DependencyCacheRestoreStatusReport = [];
+  const restoredKeys: string[] = [];
 
   for (const language of languages) {
     const cacheConfig = defaultCacheConfigs[language];
@@ -323,16 +332,27 @@ export async function downloadDependencyCaches(
 
     if (hitKey !== undefined) {
       logger.info(`Cache hit on key ${hitKey} for ${language}.`);
-      const hit_kind =
-        hitKey === primaryKey ? CacheHitKind.Exact : CacheHitKind.Partial;
-      status.push({ language, hit_kind, download_duration_ms });
+
+      // We have a partial cache hit, unless the key of the restored cache matches the
+      // primary restore key.
+      let hit_kind = CacheHitKind.Partial;
+      if (hitKey === primaryKey) {
+        hit_kind = CacheHitKind.Exact;
+      }
+
+      status.push({
+        language,
+        hit_kind,
+        download_duration_ms,
+      });
+      restoredKeys.push(hitKey);
     } else {
       status.push({ language, hit_kind: CacheHitKind.Miss });
       logger.info(`No suitable cache found for ${language}.`);
     }
   }
 
-  return status;
+  return { statusReport: status, restoredKeys };
 }
 
 /** Enumerates possible outcomes for storing caches. */
@@ -400,6 +420,18 @@ export async function uploadDependencyCaches(
       continue;
     }
 
+    // Now that we have verified that there are suitable files, compute the hash for the cache key.
+    const key = await cacheKey(codeql, features, language, patterns);
+
+    // Check that we haven't previously restored this exact key. If a cache with this key
+    // already exists in the Actions Cache, performing the next steps is pointless as the cache
+    // will not get overwritten. We can therefore skip the expensive work of measuring the size
+    // of the cache contents and attempting to upload it if we know that the cache already exists.
+    if (config.dependencyCachingRestoredKeys.includes(key)) {
+      status.push({ language, result: CacheStoreResult.Duplicate });
+      continue;
+    }
+
     // Calculate the size of the files that we would store in the cache. We use this to determine whether the
     // cache should be saved or not. For example, if there are no files to store, then we skip creating the
     // cache. In the future, we could also:
@@ -424,8 +456,6 @@ export async function uploadDependencyCaches(
       );
       continue;
     }
-
-    const key = await cacheKey(codeql, features, language, patterns);
 
     logger.info(
       `Uploading cache of size ${size} for ${language} with key ${key}...`,

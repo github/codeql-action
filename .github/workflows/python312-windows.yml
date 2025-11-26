@@ -31,7 +31,7 @@ jobs:
       with:
         python-version: 3.12
 
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
     - name: Prepare test
       uses: ./.github/actions/prepare-test

@@ -7,6 +7,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import { cacheKeyHashLength } from "./caching-utils";
+import * as cachingUtils from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import {
   CacheConfig,
@@ -22,6 +23,8 @@ import {
   cacheKey,
   getCsharpDependencyDirs,
   getCsharpTempDependencyDir,
+  uploadDependencyCaches,
+  CacheStoreResult,
 } from "./dependency-caching";
 import { Feature } from "./feature-flags";
 import { KnownLanguage } from "./languages";
@@ -31,6 +34,7 @@ import {
   getRecordingLogger,
   checkExpectedLogMessages,
   LoggedMessage,
+  createTestConfig,
 } from "./testing-utils";
 import { withTmpDir } from "./util";
 
@@ -261,15 +265,17 @@ test("downloadDependencyCaches - does not restore caches with feature keys if no
     .resolves(CSHARP_BASE_PATTERNS);
   makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
 
-  const results = await downloadDependencyCaches(
+  const result = await downloadDependencyCaches(
     codeql,
     createFeatures([]),
     [KnownLanguage.csharp],
     logger,
   );
-  t.is(results.length, 1);
-  t.is(results[0].language, KnownLanguage.csharp);
-  t.is(results[0].hit_kind, CacheHitKind.Miss);
+  const statusReport = result.statusReport;
+  t.is(statusReport.length, 1);
+  t.is(statusReport[0].language, KnownLanguage.csharp);
+  t.is(statusReport[0].hit_kind, CacheHitKind.Miss);
+  t.deepEqual(result.restoredKeys, []);
   t.assert(restoreCacheStub.calledOnce);
 });
 
@@ -281,7 +287,8 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
   const logger = getRecordingLogger(messages);
   const features = createFeatures([Feature.CsharpNewCacheKey]);
 
-  sinon.stub(glob, "hashFiles").resolves("abcdef");
+  const mockHash = "abcdef";
+  sinon.stub(glob, "hashFiles").resolves(mockHash);
 
   const keyWithFeature = await cacheKey(
     codeql,
@@ -301,15 +308,28 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
     .resolves(CSHARP_BASE_PATTERNS);
   makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
 
-  const results = await downloadDependencyCaches(
+  const result = await downloadDependencyCaches(
     codeql,
     features,
     [KnownLanguage.csharp],
     logger,
   );
-  t.is(results.length, 1);
-  t.is(results[0].language, KnownLanguage.csharp);
-  t.is(results[0].hit_kind, CacheHitKind.Exact);
+
+  // Check that the status report for telemetry indicates that one cache was restored with an exact match.
+  const statusReport = result.statusReport;
+  t.is(statusReport.length, 1);
+  t.is(statusReport[0].language, KnownLanguage.csharp);
+  t.is(statusReport[0].hit_kind, CacheHitKind.Exact);
+
+  // Check that the restored key has been returned.
+  const restoredKeys = result.restoredKeys;
+  t.is(restoredKeys.length, 1);
+  t.assert(
+    restoredKeys[0].endsWith(mockHash),
+    "Expected restored key to end with hash returned by `hashFiles`",
+  );
+
+  // `restoreCache` should have been called exactly once.
   t.assert(restoreCacheStub.calledOnce);
 });
 
@@ -321,8 +341,14 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
   const logger = getRecordingLogger(messages);
   const features = createFeatures([Feature.CsharpNewCacheKey]);
 
+  // We expect two calls to `hashFiles`: the first by the call to `cacheKey` below,
+  // and the second by `downloadDependencyCaches`. We use the result of the first
+  // call as part of the cache key that identifies a mock, existing cache. The result
+  // of the second call is for the primary restore key, which we don't want to match
+  // the first key so that we can test the restore keys logic.
+  const restoredHash = "abcdef";
   const hashFilesStub = sinon.stub(glob, "hashFiles");
-  hashFilesStub.onFirstCall().resolves("abcdef");
+  hashFilesStub.onFirstCall().resolves(restoredHash);
   hashFilesStub.onSecondCall().resolves("123456");
 
   const keyWithFeature = await cacheKey(
@@ -343,16 +369,228 @@ test("downloadDependencyCaches - restores caches with feature keys if features a
     .resolves(CSHARP_BASE_PATTERNS);
   makePatternCheckStub.withArgs(CSHARP_EXTRA_PATTERNS).resolves(undefined);
 
-  const results = await downloadDependencyCaches(
+  const result = await downloadDependencyCaches(
     codeql,
     features,
     [KnownLanguage.csharp],
     logger,
   );
-  t.is(results.length, 1);
-  t.is(results[0].language, KnownLanguage.csharp);
-  t.is(results[0].hit_kind, CacheHitKind.Partial);
+
+  // Check that the status report for telemetry indicates that one cache was restored with a partial match.
+  const statusReport = result.statusReport;
+  t.is(statusReport.length, 1);
+  t.is(statusReport[0].language, KnownLanguage.csharp);
+  t.is(statusReport[0].hit_kind, CacheHitKind.Partial);
+
+  // Check that the restored key has been returned.
+  const restoredKeys = result.restoredKeys;
+  t.is(restoredKeys.length, 1);
+  t.assert(
+    restoredKeys[0].endsWith(restoredHash),
+    "Expected restored key to end with hash returned by `hashFiles`",
+  );
+
   t.assert(restoreCacheStub.calledOnce);
+});
+
+test("uploadDependencyCaches - skips upload for a language with no cache config", async (t) => {
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([]);
+  const config = createTestConfig({
+    languages: [KnownLanguage.actions],
+  });
+
+  const result = await uploadDependencyCaches(codeql, features, config, logger);
+  t.is(result.length, 0);
+  checkExpectedLogMessages(t, messages, [
+    "Skipping upload of dependency cache for actions",
+  ]);
+});
+
+test("uploadDependencyCaches - skips upload if no files for the hash exist", async (t) => {
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([]);
+  const config = createTestConfig({
+    languages: [KnownLanguage.go],
+  });
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub.resolves(undefined);
+
+  const result = await uploadDependencyCaches(codeql, features, config, logger);
+  t.is(result.length, 1);
+  t.is(result[0].language, KnownLanguage.go);
+  t.is(result[0].result, CacheStoreResult.NoHash);
+});
+
+test("uploadDependencyCaches - skips upload if we know the cache already exists", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([]);
+
+  const mockHash = "abcdef";
+  sinon.stub(glob, "hashFiles").resolves(mockHash);
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+
+  const primaryCacheKey = await cacheKey(
+    codeql,
+    features,
+    KnownLanguage.csharp,
+    CSHARP_BASE_PATTERNS,
+  );
+
+  const config = createTestConfig({
+    languages: [KnownLanguage.csharp],
+    dependencyCachingRestoredKeys: [primaryCacheKey],
+  });
+
+  const result = await uploadDependencyCaches(codeql, features, config, logger);
+  t.is(result.length, 1);
+  t.is(result[0].language, KnownLanguage.csharp);
+  t.is(result[0].result, CacheStoreResult.Duplicate);
+});
+
+test("uploadDependencyCaches - skips upload if cache size is 0", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([]);
+
+  const mockHash = "abcdef";
+  sinon.stub(glob, "hashFiles").resolves(mockHash);
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+
+  sinon.stub(cachingUtils, "getTotalCacheSize").resolves(0);
+
+  const config = createTestConfig({
+    languages: [KnownLanguage.csharp],
+  });
+
+  const result = await uploadDependencyCaches(codeql, features, config, logger);
+  t.is(result.length, 1);
+  t.is(result[0].language, KnownLanguage.csharp);
+  t.is(result[0].result, CacheStoreResult.Empty);
+
+  checkExpectedLogMessages(t, messages, [
+    "Skipping upload of dependency cache",
+  ]);
+});
+
+test("uploadDependencyCaches - uploads caches when all requirements are met", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([]);
+
+  const mockHash = "abcdef";
+  sinon.stub(glob, "hashFiles").resolves(mockHash);
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+
+  sinon.stub(cachingUtils, "getTotalCacheSize").resolves(1024);
+  sinon.stub(actionsCache, "saveCache").resolves();
+
+  const config = createTestConfig({
+    languages: [KnownLanguage.csharp],
+  });
+
+  const result = await uploadDependencyCaches(codeql, features, config, logger);
+  t.is(result.length, 1);
+  t.is(result[0].language, KnownLanguage.csharp);
+  t.is(result[0].result, CacheStoreResult.Stored);
+  t.is(result[0].upload_size_bytes, 1024);
+
+  checkExpectedLogMessages(t, messages, ["Uploading cache of size"]);
+});
+
+test("uploadDependencyCaches - catches `ReserveCacheError` exceptions", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([]);
+
+  const mockHash = "abcdef";
+  sinon.stub(glob, "hashFiles").resolves(mockHash);
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+
+  sinon.stub(cachingUtils, "getTotalCacheSize").resolves(1024);
+  sinon
+    .stub(actionsCache, "saveCache")
+    .throws(new actionsCache.ReserveCacheError("Already in use"));
+
+  const config = createTestConfig({
+    languages: [KnownLanguage.csharp],
+  });
+
+  await t.notThrowsAsync(async () => {
+    const result = await uploadDependencyCaches(
+      codeql,
+      features,
+      config,
+      logger,
+    );
+    t.is(result.length, 1);
+    t.is(result[0].language, KnownLanguage.csharp);
+    t.is(result[0].result, CacheStoreResult.Duplicate);
+
+    checkExpectedLogMessages(t, messages, ["Not uploading cache for"]);
+  });
+});
+
+test("uploadDependencyCaches - throws other exceptions", async (t) => {
+  process.env["RUNNER_OS"] = "Linux";
+
+  const codeql = createStubCodeQL({});
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+  const features = createFeatures([]);
+
+  const mockHash = "abcdef";
+  sinon.stub(glob, "hashFiles").resolves(mockHash);
+
+  const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
+  makePatternCheckStub
+    .withArgs(CSHARP_BASE_PATTERNS)
+    .resolves(CSHARP_BASE_PATTERNS);
+
+  sinon.stub(cachingUtils, "getTotalCacheSize").resolves(1024);
+  sinon.stub(actionsCache, "saveCache").throws();
+
+  const config = createTestConfig({
+    languages: [KnownLanguage.csharp],
+  });
+
+  await t.throwsAsync(async () => {
+    await uploadDependencyCaches(codeql, features, config, logger);
+  });
 });
 
 test("getFeaturePrefix - returns empty string if no features are enabled", async (t) => {

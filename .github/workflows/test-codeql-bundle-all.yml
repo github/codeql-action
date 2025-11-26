@@ -36,13 +36,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Prepare test
       id: prepare-test
       uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
         use-all-platform-bundle: true
+    - name: Install .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: '9.x'
     - id: init
       uses: ./../action/init
       with:

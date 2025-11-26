@@ -4,7 +4,11 @@ import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
 
-import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
+import {
+  getActionVersion,
+  isAnalyzingPullRequest,
+  isCCR,
+} from "./actions-util";
 import {
   AnalysisConfig,
   AnalysisKind,
@@ -26,7 +30,11 @@ import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-util
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
-import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
+import {
+  getGeneratedFiles,
+  getGitRoot,
+  isAnalyzingDefaultBranch,
+} from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -44,6 +52,7 @@ import {
   cloneObject,
   isDefined,
   checkDiskUsage,
+  getErrorMessage,
 } from "./util";
 
 export * from "./config/db-config";
@@ -844,6 +853,19 @@ export async function initConfig(
   }
 
   const config = await initActionState(inputs, userConfig);
+
+  // If we are in CCR or the corresponding FF is enabled, try to determine
+  // which files in the repository are marked as generated and add them to
+  // the `paths-ignore` configuration.
+  if ((await features.getValue(Feature.IgnoreGeneratedFiles)) || isCCR()) {
+    try {
+      const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
+      config.computedConfig["paths-ignore"] ??= [];
+      config.computedConfig["paths-ignore"].push(...generatedFiles);
+    } catch (error) {
+      logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);
+    }
+  }
 
   // If Code Quality analysis is the only enabled analysis kind, then we will initialise
   // the database for Code Quality. That entails disabling the default queries and only

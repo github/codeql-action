@@ -8,9 +8,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
 on:
-  push:
-    paths:
-      - .github/workflows/__go.yml
   workflow_dispatch:
     inputs:
       go-version:

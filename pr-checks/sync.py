@@ -356,11 +356,6 @@ for collection_name in collections:
                 'GO111MODULE': 'auto'
             },
             'on': {
-                'push': {
-                    'paths': [
-                        f'.github/workflows/__{collection_name}.yml'
-                    ]
-                },
                 'workflow_dispatch': {
                     'inputs': combinedInputs
                 },

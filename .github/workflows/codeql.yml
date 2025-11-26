@@ -32,7 +32,7 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Init with default CodeQL bundle from the VM image
       id: init-default
       uses: ./init
@@ -91,7 +91,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Initialize CodeQL
       uses: ./init
       id: init
@@ -128,7 +128,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Initialize CodeQL
       uses: ./init
       with:

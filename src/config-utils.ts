@@ -706,22 +706,20 @@ export async function getOverlayDatabaseMode(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
           `due to insufficient disk space (${diskSpaceMb} MB).`,
       );
-    } else {
-      if (isAnalyzingPullRequest()) {
-        overlayDatabaseMode = OverlayDatabaseMode.Overlay;
-        useOverlayDatabaseCaching = true;
-        logger.info(
-          `Setting overlay database mode to ${overlayDatabaseMode} ` +
-            "with caching because we are analyzing a pull request.",
-        );
-      } else if (await isAnalyzingDefaultBranch()) {
-        overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
-        useOverlayDatabaseCaching = true;
-        logger.info(
-          `Setting overlay database mode to ${overlayDatabaseMode} ` +
-            "with caching because we are analyzing the default branch.",
-        );
-      }
+    } else if (isAnalyzingPullRequest()) {
+      overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+      useOverlayDatabaseCaching = true;
+      logger.info(
+        `Setting overlay database mode to ${overlayDatabaseMode} ` +
+          "with caching because we are analyzing a pull request.",
+      );
+    } else if (await isAnalyzingDefaultBranch()) {
+      overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+      useOverlayDatabaseCaching = true;
+      logger.info(
+        `Setting overlay database mode to ${overlayDatabaseMode} ` +
+          "with caching because we are analyzing the default branch.",
+      );
     }
   }
 

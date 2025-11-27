@@ -324,6 +324,7 @@ async function run() {
       queriesInput: getOptionalInput("queries"),
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
+      ramInput: getOptionalInput("ram"),
       configFile,
       dbLocation: getOptionalInput("db-location"),
       configInput: getOptionalInput("config"),

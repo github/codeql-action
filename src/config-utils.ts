@@ -644,6 +644,10 @@ async function isOverlayAnalysisFeatureEnabled(
   return true;
 }
 
+/**
+ * Checks if the runner supports overlay analysis based on available disk space
+ * and the maximum memory CodeQL will be allowed to use.
+ */
 async function runnerSupportsOverlayAnalysis(
   ramInput: string | undefined,
   logger: Logger,

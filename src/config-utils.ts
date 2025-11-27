@@ -44,7 +44,7 @@ import {
   cloneObject,
   isDefined,
   checkDiskUsage,
-  getMemoryFlagValue,
+  getCodeQLMemoryLimit,
 } from "./util";
 
 export * from "./config/db-config";
@@ -664,7 +664,7 @@ async function runnerSupportsOverlayAnalysis(
     return false;
   }
 
-  const memoryFlagValue = getMemoryFlagValue(ramInput, logger);
+  const memoryFlagValue = getCodeQLMemoryLimit(ramInput, logger);
   if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +

@@ -1233,6 +1233,28 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if runner disk space is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch if memory flag is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1246,6 +1268,25 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
   },
 );
 
@@ -1442,6 +1483,28 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if runner disk space is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isPullRequest: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "No overlay analysis on PR if we can't determine runner disk space",
   {
     languages: [KnownLanguage.javascript],
@@ -1473,6 +1536,25 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if memory flag is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
   },
 );
 

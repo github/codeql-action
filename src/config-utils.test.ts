@@ -59,6 +59,7 @@ function createTestInitConfigInputs(
       dbLocation: undefined,
       configInput: undefined,
       buildModeInput: undefined,
+      ramInput: undefined,
       trapCachingEnabled: false,
       dependencyCachingEnabled: CachingKind.None,
       debugMode: false,
@@ -979,6 +980,7 @@ interface OverlayDatabaseModeTestSetup {
   gitRoot: string | undefined;
   codeScanningConfig: configUtils.UserConfig;
   diskUsage: DiskUsage | undefined;
+  memoryFlagValue: number;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -995,6 +997,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
     numAvailableBytes: 50_000_000_000,
     numTotalBytes: 100_000_000_000,
   },
+  memoryFlagValue: 6920,
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1037,6 +1040,8 @@ const getOverlayDatabaseModeMacro = test.macro({
           .stub(actionsUtil, "isAnalyzingPullRequest")
           .returns(setup.isPullRequest);
 
+        sinon.stub(util, "getMemoryFlagValue").returns(setup.memoryFlagValue);
+
         // Set up CodeQL mock
         const codeql = mockCodeQLVersion(setup.codeqlVersion);
 
@@ -1063,6 +1068,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           setup.languages,
           tempDir, // sourceRoot
           setup.buildMode,
+          undefined,
           setup.codeScanningConfig,
           logger,
         );
@@ -1218,6 +1224,24 @@ test(
     ],
     isDefaultBranch: true,
     diskUsage: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if memory flag is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
@@ -1427,6 +1451,24 @@ test(
     ],
     isPullRequest: true,
     diskUsage: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR if memory flag is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,

@@ -636,6 +636,38 @@ async function isOverlayAnalysisFeatureEnabled(
   return true;
 }
 
+async function runnerSupportsOverlayAnalysis(
+  ramInput: string | undefined,
+  logger: Logger,
+): Promise<boolean> {
+  const diskUsage = await checkDiskUsage(logger);
+  if (
+    diskUsage === undefined ||
+    diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+  ) {
+    const diskSpaceMb =
+      diskUsage === undefined
+        ? 0
+        : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient disk space (${diskSpaceMb} MB).`,
+    );
+    return false;
+  }
+
+  const memoryFlagValue = getMemoryFlagValue(ramInput, logger);
+  if (memoryFlagValue < 5 * 1024) {
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB).`,
+    );
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Calculate and validate the overlay database mode and caching to use.
  *
@@ -694,29 +726,15 @@ export async function getOverlayDatabaseMode(
       codeScanningConfig,
     )
   ) {
-    const diskUsage = await checkDiskUsage(logger);
-    const memoryFlagValue = getMemoryFlagValue(ramInput, logger);
+    const performResourceChecks = !(await features.getValue(
+      Feature.OverlayAnalysisSkipResourceChecks,
+      codeql,
+    ));
     if (
-      diskUsage === undefined ||
-      diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+      performResourceChecks &&
+      !(await runnerSupportsOverlayAnalysis(ramInput, logger))
     ) {
-      const diskSpaceMb =
-        diskUsage === undefined
-          ? 0
-          : Math.round(diskUsage.numAvailableBytes / 1_000_000);
       overlayDatabaseMode = OverlayDatabaseMode.None;
-      useOverlayDatabaseCaching = false;
-      logger.info(
-        `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          `due to insufficient disk space (${diskSpaceMb} MB).`,
-      );
-    } else if (memoryFlagValue < 5 * 1024) {
-      overlayDatabaseMode = OverlayDatabaseMode.None;
-      useOverlayDatabaseCaching = false;
-      logger.info(
-        `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB).`,
-      );
     } else if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
       useOverlayDatabaseCaching = true;

@@ -76,6 +76,7 @@ export enum Feature {
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
   OverlayAnalysisSwift = "overlay_analysis_swift",
+  OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
@@ -281,6 +282,11 @@ export const featureConfig: Record<
   [Feature.OverlayAnalysisSwift]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SWIFT",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisSkipResourceChecks]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
     minimumVersion: undefined,
   },
   [Feature.PythonDefaultIsToNotExtractStdlib]: {

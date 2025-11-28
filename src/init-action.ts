@@ -75,7 +75,7 @@ import {
   codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
-  getMemoryFlagValue,
+  getCodeQLMemoryLimit,
   getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,
@@ -538,7 +538,7 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        getMemoryFlagValue(getOptionalInput("ram"), logger).toString(),
+        getCodeQLMemoryLimit(getOptionalInput("ram"), logger).toString(),
     );
     core.exportVariable(
       "CODEQL_THREADS",

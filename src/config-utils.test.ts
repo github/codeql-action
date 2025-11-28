@@ -1040,7 +1040,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           .stub(actionsUtil, "isAnalyzingPullRequest")
           .returns(setup.isPullRequest);
 
-        sinon.stub(util, "getMemoryFlagValue").returns(setup.memoryFlagValue);
+        sinon.stub(util, "getCodeQLMemoryLimit").returns(setup.memoryFlagValue);
 
         // Set up CodeQL mock
         const codeql = mockCodeQLVersion(setup.codeqlVersion);

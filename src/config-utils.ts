@@ -44,7 +44,7 @@ import {
   cloneObject,
   isDefined,
   checkDiskUsage,
-  getMemoryFlagValue,
+  getCodeQLMemoryLimit,
 } from "./util";
 
 export * from "./config/db-config";
@@ -59,6 +59,14 @@ export * from "./config/db-config";
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
+
+/**
+ * The minimum memory (in MB) that must be available for CodeQL to perform overlay
+ * analysis. If CodeQL will be given less memory than this threshold, then the
+ * action will not perform overlay analysis unless overlay analysis has been
+ * explicitly enabled via environment variable.
+ */
+const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -636,6 +644,10 @@ async function isOverlayAnalysisFeatureEnabled(
   return true;
 }
 
+/**
+ * Checks if the runner supports overlay analysis based on available disk space
+ * and the maximum memory CodeQL will be allowed to use.
+ */
 async function runnerSupportsOverlayAnalysis(
   ramInput: string | undefined,
   logger: Logger,
@@ -656,8 +668,8 @@ async function runnerSupportsOverlayAnalysis(
     return false;
   }
 
-  const memoryFlagValue = getMemoryFlagValue(ramInput, logger);
-  if (memoryFlagValue < 5 * 1024) {
+  const memoryFlagValue = getCodeQLMemoryLimit(ramInput, logger);
+  if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
         `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB).`,

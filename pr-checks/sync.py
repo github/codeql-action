@@ -107,7 +107,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
     steps = [
         {
             'name': 'Check out repository',
-            'uses': 'actions/checkout@v5'
+            'uses': 'actions/checkout@v6'
         },
     ]
 
@@ -356,11 +356,6 @@ for collection_name in collections:
                 'GO111MODULE': 'auto'
             },
             'on': {
-                'push': {
-                    'paths': [
-                        f'.github/workflows/__{collection_name}.yml'
-                    ]
-                },
                 'workflow_dispatch': {
                     'inputs': combinedInputs
                 },

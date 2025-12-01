@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Need full history for calculation of diffs
 
@@ -137,7 +137,7 @@ jobs:
 
       - name: Generate token
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/create-github-app-token@v2.1.4
+        uses: actions/create-github-app-token@v2.2.0
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}

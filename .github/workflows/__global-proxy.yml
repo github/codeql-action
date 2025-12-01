@@ -61,7 +61,7 @@ jobs:
           apt install -y gh
         env: {}
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

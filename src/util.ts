@@ -309,13 +309,13 @@ function getCgroupMemoryLimitBytes(
 }
 
 /**
- * Get the value of the codeql `--ram` flag as configured by the `ram` input.
- * If no value was specified, the total available memory will be used minus a
+ * Get the maximum amount of memory CodeQL is allowed to use. If no limit has been
+ * configured by the user, then the total available memory will be used minus a
  * threshold reserved for the OS.
  *
- * @returns {number} the amount of RAM to use, in megabytes
+ * @returns {number} the amount of RAM CodeQL is allowed to use, in megabytes
  */
-export function getMemoryFlagValue(
+export function getCodeQLMemoryLimit(
   userInput: string | undefined,
   logger: Logger,
 ): number {
@@ -337,7 +337,7 @@ export function getMemoryFlag(
   userInput: string | undefined,
   logger: Logger,
 ): string {
-  const megabytes = getMemoryFlagValue(userInput, logger);
+  const megabytes = getCodeQLMemoryLimit(userInput, logger);
   return `--ram=${megabytes}`;
 }
 

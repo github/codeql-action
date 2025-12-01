@@ -2,9 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## 3.31.6 - 01 Dec 2025
+## [UNRELEASED]
 
 No user facing changes.
+
+## v3.31.6 - 01 Dec 2025
+
+This release rolls back 4.31.6 due to issues with that release. It is identical to 0.0.0.
 
 ## 3.31.5 - 24 Nov 2025
 
@@ -1079,3 +1083,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

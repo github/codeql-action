@@ -50,7 +50,7 @@
   "devDependencies": {
     "@ava/typescript": "6.0.0",
     "@eslint/compat": "^2.0.0",
-    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.1",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@octokit/types": "^16.0.0",

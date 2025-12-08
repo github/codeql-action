@@ -27,6 +27,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
   workflow_call:
     inputs:
       go-version:
@@ -34,6 +39,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
 defaults:
   run:
     shell: bash
@@ -61,7 +71,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
@@ -81,6 +91,10 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
           config-file: .github/codeql/codeql-config-packaging2.yml

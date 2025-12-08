@@ -5,17 +5,20 @@ import { AnalysisKind } from "./analyses";
 import { getApiClient, GitHubApiDetails } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
-import { bundleDb, parseGitHubUrl } from "./util";
+import { bundleDb, CleanupLevel, parseGitHubUrl } from "./util";
 
-export async function uploadDatabases(
+export async function cleanupAndUploadDatabases(
   repositoryNwo: RepositoryNwo,
   codeql: CodeQL,
   config: Config,
   apiDetails: GitHubApiDetails,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<void> {
   if (actionsUtil.getRequiredInput("upload-database") !== "true") {
@@ -50,10 +53,16 @@ export async function uploadDatabases(
     return;
   }
 
+  const cleanupLevel =
+    config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
+    (await features.getValue(Feature.UploadOverlayDbToApi))
+      ? CleanupLevel.Overlay
+      : CleanupLevel.Clear;
+
   // Clean up the database, since intermediate results may still be written to the
   // database if there is high RAM pressure.
   await withGroupAsync("Cleaning up databases", async () => {
-    await codeql.databaseCleanupCluster(config, "clear");
+    await codeql.databaseCleanupCluster(config, cleanupLevel);
   });
 
   const client = getApiClient();

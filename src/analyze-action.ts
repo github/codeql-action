@@ -25,7 +25,7 @@ import {
   isCodeQualityEnabled,
   isCodeScanningEnabled,
 } from "./config-utils";
-import { uploadDatabases } from "./database-upload";
+import { cleanupAndUploadDatabases } from "./database-upload";
 import {
   DependencyCacheUploadStatusReport,
   uploadDependencyCaches,
@@ -35,7 +35,7 @@ import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { uploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
+import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
@@ -315,6 +315,7 @@ async function run() {
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
     dbCreationTimings = await runFinalize(
+      features,
       outputDir,
       threads,
       memory,
@@ -417,12 +418,21 @@ async function run() {
     }
 
     // Possibly upload the overlay-base database to actions cache.
-    // If databases are to be uploaded, they will first be cleaned up at the overlay level.
-    await uploadOverlayBaseDatabaseToCache(codeql, config, logger);
+    // Note: Take care with the ordering of this call since databases may be cleaned up
+    // at the `overlay` level.
+    await cleanupAndUploadOverlayBaseDatabaseToCache(codeql, config, logger);
 
     // Possibly upload the database bundles for remote queries.
-    // If databases are to be uploaded, they will first be cleaned up at the clear level.
-    await uploadDatabases(repositoryNwo, codeql, config, apiDetails, logger);
+    // Note: Take care with the ordering of this call since databases may be cleaned up
+    // at the `overlay` or `clear` level.
+    await cleanupAndUploadDatabases(
+      repositoryNwo,
+      codeql,
+      config,
+      apiDetails,
+      features,
+      logger,
+    );
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();
@@ -438,14 +448,11 @@ async function run() {
 
     // Store dependency cache(s) if dependency caching is enabled.
     if (shouldStoreCache(config.dependencyCachingEnabled)) {
-      const minimizeJavaJars = await features.getValue(
-        Feature.JavaMinimizeDependencyJars,
-        codeql,
-      );
       dependencyCacheResults = await uploadDependencyCaches(
+        codeql,
+        features,
         config,
         logger,
-        minimizeJavaJars,
       );
     }
 

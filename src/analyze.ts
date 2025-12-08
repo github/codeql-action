@@ -10,7 +10,10 @@ import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { getJavaTempDependencyDir } from "./dependency-caching";
+import {
+  getCsharpTempDependencyDir,
+  getJavaTempDependencyDir,
+} from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
@@ -38,89 +41,26 @@ export class CodeQLAnalysisError extends Error {
   }
 }
 
-export interface QueriesStatusReport {
-  /**
-   * Time taken in ms to run queries for actions (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_actions_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for cpp (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_cpp_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for csharp (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_csharp_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for go (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_go_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for java (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_java_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for javascript (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_javascript_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for python (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_python_duration_ms?: number;
-  /**
-   * Time taken in ms to run queries for ruby (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_ruby_duration_ms?: number;
-  /** Time taken in ms to run queries for swift (or undefined if this language was not analyzed).
-   *
-   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
-   * taken to run _all_ the queries.
-   */
-  analyze_builtin_queries_swift_duration_ms?: number;
+type KnownLanguageKey = keyof typeof KnownLanguage;
 
-  /** Time taken in ms to interpret results for actions (or undefined if this language was not analyzed). */
-  interpret_results_actions_duration_ms?: number;
-  /** Time taken in ms to interpret results for cpp (or undefined if this language was not analyzed). */
-  interpret_results_cpp_duration_ms?: number;
-  /** Time taken in ms to interpret results for csharp (or undefined if this language was not analyzed). */
-  interpret_results_csharp_duration_ms?: number;
-  /** Time taken in ms to interpret results for go (or undefined if this language was not analyzed). */
-  interpret_results_go_duration_ms?: number;
-  /** Time taken in ms to interpret results for java (or undefined if this language was not analyzed). */
-  interpret_results_java_duration_ms?: number;
-  /** Time taken in ms to interpret results for javascript (or undefined if this language was not analyzed). */
-  interpret_results_javascript_duration_ms?: number;
-  /** Time taken in ms to interpret results for python (or undefined if this language was not analyzed). */
-  interpret_results_python_duration_ms?: number;
-  /** Time taken in ms to interpret results for ruby (or undefined if this language was not analyzed). */
-  interpret_results_ruby_duration_ms?: number;
-  /** Time taken in ms to interpret results for swift (or undefined if this language was not analyzed). */
-  interpret_results_swift_duration_ms?: number;
+type RunQueriesDurationStatusReport = {
+  /**
+   * Time taken in ms to run queries for the language (or undefined if this language was not analyzed).
+   *
+   * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
+   * taken to run _all_ the queries.
+   */
+  [L in KnownLanguageKey as `analyze_builtin_queries_${L}_duration_ms`]?: number;
+};
 
+type InterpretResultsDurationStatusReport = {
+  /** Time taken in ms to interpret results for the language (or undefined if this language was not analyzed). */
+  [L in KnownLanguageKey as `interpret_results_${L}_duration_ms`]?: number;
+};
+
+export interface QueriesStatusReport
+  extends RunQueriesDurationStatusReport,
+    InterpretResultsDurationStatusReport {
   /**
    * Whether the analysis is diff-informed (in the sense that the action generates a diff-range data
    * extension for the analysis, regardless of whether the data extension is actually used by queries).
@@ -161,6 +101,7 @@ async function setupPythonExtractor(logger: Logger) {
 
 export async function runExtraction(
   codeql: CodeQL,
+  features: FeatureEnablement,
   config: configUtils.Config,
   logger: Logger,
 ) {
@@ -185,7 +126,7 @@ export async function runExtraction(
           await setupCppAutobuild(codeql, logger);
         }
 
-        // The Java `build-mode: none` extractor places dependencies (.jar files) in the
+        // The Java and C# `build-mode: none` extractors place dependencies in the
         // database scratch directory by default. For dependency caching purposes, we want
         // a stable path that caches can be restored into and that we can cache at the
         // end of the workflow (i.e. that does not get removed when the scratch directory is).
@@ -195,6 +136,15 @@ export async function runExtraction(
         ) {
           process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
             getJavaTempDependencyDir();
+        }
+        if (
+          language === KnownLanguage.csharp &&
+          config.buildMode === BuildMode.None &&
+          (await features.getValue(Feature.CsharpCacheBuildModeNone))
+        ) {
+          process.env[
+            "CODEQL_EXTRACTOR_CSHARP_OPTION_BUILDLESS_DEPENDENCY_DIR"
+          ] = getCsharpTempDependencyDir();
         }
 
         await codeql.extractUsingBuildMode(config, language);
@@ -240,13 +190,14 @@ export function dbIsFinalized(
 
 async function finalizeDatabaseCreation(
   codeql: CodeQL,
+  features: FeatureEnablement,
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   const extractionStart = performance.now();
-  await runExtraction(codeql, config, logger);
+  await runExtraction(codeql, features, config, logger);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -660,6 +611,7 @@ export async function runQueries(
 }
 
 export async function runFinalize(
+  features: FeatureEnablement,
   outputDir: string,
   threadsFlag: string,
   memoryFlag: string,
@@ -678,6 +630,7 @@ export async function runFinalize(
 
   const timings = await finalizeDatabaseCreation(
     codeql,
+    features,
     config,
     threadsFlag,
     memoryFlag,

@@ -412,7 +412,7 @@ export function findSarifFilesInDir(
   return sarifFiles;
 }
 
-export function getSarifFilePaths(
+function getSarifFilePaths(
   sarifPath: string,
   isSarif: (name: string) => boolean,
 ) {
@@ -738,7 +738,7 @@ export async function postProcessSarifFiles(
  * @param logger The logger to use.
  * @param pathInput The input provided for `post-processed-sarif-path`.
  * @param uploadTarget The upload target.
- * @param processingResults The results of post-processing SARIF files.
+ * @param postProcessingResults The results of post-processing SARIF files.
  */
 export async function writePostProcessedFiles(
   logger: Logger,

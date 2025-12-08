@@ -34,6 +34,7 @@ import {
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
+import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
 import {
   GitHubVersion,
@@ -42,9 +43,30 @@ import {
   codeQlVersionAtLeast,
   cloneObject,
   isDefined,
+  checkDiskUsage,
+  getCodeQLMemoryLimit,
 } from "./util";
 
 export * from "./config/db-config";
+
+/**
+ * The minimum available disk space (in MB) required to perform overlay analysis.
+ * If the available disk space on the runner is below the threshold when deciding
+ * whether to perform overlay analysis, then the action will not perform overlay
+ * analysis unless overlay analysis has been explicitly enabled via environment
+ * variable.
+ */
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
+  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
+
+/**
+ * The minimum memory (in MB) that must be available for CodeQL to perform overlay
+ * analysis. If CodeQL will be given less memory than this threshold, then the
+ * action will not perform overlay analysis unless overlay analysis has been
+ * explicitly enabled via environment variable.
+ */
+const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -147,6 +169,9 @@ export interface Config {
   /** A value indicating how dependency caching should be used. */
   dependencyCachingEnabled: CachingKind;
 
+  /** The keys of caches that we restored, if any. */
+  dependencyCachingRestoredKeys: string[];
+
   /**
    * Extra query exclusions to append to the config.
    */
@@ -175,14 +200,12 @@ export interface Config {
   repositoryProperties: RepositoryProperties;
 }
 
-export async function getSupportedLanguageMap(
+async function getSupportedLanguageMap(
   codeql: CodeQL,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Record<string, string>> {
-  const resolveSupportedLanguagesUsingCli = await features.getValue(
-    Feature.ResolveSupportedLanguagesUsingCli,
-    codeql,
+  const resolveSupportedLanguagesUsingCli = await codeql.supportsFeature(
+    ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   );
   const resolveResult = await codeql.betterResolveLanguages({
     filterToLanguagesWithQueries: resolveSupportedLanguagesUsingCli,
@@ -240,7 +263,7 @@ export function hasActionsWorkflows(sourceRoot: string): boolean {
 /**
  * Gets the set of languages in the current repository.
  */
-export async function getRawLanguagesInRepo(
+async function getRawLanguagesInRepo(
   repository: RepositoryNwo,
   sourceRoot: string,
   logger: Logger,
@@ -283,7 +306,6 @@ export async function getLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Language[]> {
   // Obtain languages without filtering them.
@@ -294,7 +316,7 @@ export async function getLanguages(
     logger,
   );
 
-  const languageMap = await getSupportedLanguageMap(codeql, features, logger);
+  const languageMap = await getSupportedLanguageMap(codeql, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -350,7 +372,7 @@ export function getRawLanguagesNoAutodetect(
  * @returns A tuple containing a list of languages in this repository that might be
  * analyzable and whether or not this list was determined automatically.
  */
-export async function getRawLanguages(
+async function getRawLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
@@ -380,6 +402,7 @@ export interface InitConfigInputs {
   dbLocation: string | undefined;
   configInput: string | undefined;
   buildModeInput: string | undefined;
+  ramInput: string | undefined;
   trapCachingEnabled: boolean;
   dependencyCachingEnabled: string | undefined;
   debugMode: boolean;
@@ -431,7 +454,6 @@ export async function initActionState(
     languagesInput,
     repository,
     sourceRoot,
-    features,
     logger,
   );
 
@@ -499,6 +521,7 @@ export async function initActionState(
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
+    dependencyCachingRestoredKeys: [],
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
@@ -582,17 +605,11 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
 };
 
 async function isOverlayAnalysisFeatureEnabled(
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   codeql: CodeQL,
   languages: Language[],
   codeScanningConfig: UserConfig,
 ): Promise<boolean> {
-  // TODO: Remove the repository owner check once support for overlay analysis
-  // stabilizes, and no more backward-incompatible changes are expected.
-  if (!["github", "dsp-testing"].includes(repository.owner)) {
-    return false;
-  }
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
     return false;
   }
@@ -628,6 +645,42 @@ async function isOverlayAnalysisFeatureEnabled(
 }
 
 /**
+ * Checks if the runner supports overlay analysis based on available disk space
+ * and the maximum memory CodeQL will be allowed to use.
+ */
+async function runnerSupportsOverlayAnalysis(
+  ramInput: string | undefined,
+  logger: Logger,
+): Promise<boolean> {
+  const diskUsage = await checkDiskUsage(logger);
+  if (
+    diskUsage === undefined ||
+    diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+  ) {
+    const diskSpaceMb =
+      diskUsage === undefined
+        ? 0
+        : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient disk space (${diskSpaceMb} MB).`,
+    );
+    return false;
+  }
+
+  const memoryFlagValue = getCodeQLMemoryLimit(ramInput, logger);
+  if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB).`,
+    );
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Calculate and validate the overlay database mode and caching to use.
  *
  * - If the environment variable `CODEQL_OVERLAY_DATABASE_MODE` is set, use it.
@@ -650,11 +703,11 @@ async function isOverlayAnalysisFeatureEnabled(
  */
 export async function getOverlayDatabaseMode(
   codeql: CodeQL,
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   languages: Language[],
   sourceRoot: string,
   buildMode: BuildMode | undefined,
+  ramInput: string | undefined,
   codeScanningConfig: UserConfig,
   logger: Logger,
 ): Promise<{
@@ -679,14 +732,22 @@ export async function getOverlayDatabaseMode(
     );
   } else if (
     await isOverlayAnalysisFeatureEnabled(
-      repository,
       features,
       codeql,
       languages,
       codeScanningConfig,
     )
   ) {
-    if (isAnalyzingPullRequest()) {
+    const performResourceChecks = !(await features.getValue(
+      Feature.OverlayAnalysisSkipResourceChecks,
+      codeql,
+    ));
+    if (
+      performResourceChecks &&
+      !(await runnerSupportsOverlayAnalysis(ramInput, logger))
+    ) {
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+    } else if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
       useOverlayDatabaseCaching = true;
       logger.info(
@@ -849,11 +910,11 @@ export async function initConfig(
   const { overlayDatabaseMode, useOverlayDatabaseCaching } =
     await getOverlayDatabaseMode(
       inputs.codeql,
-      inputs.repository,
       inputs.features,
       config.languages,
       inputs.sourceRoot,
       config.buildMode,
+      inputs.ramInput,
       config.computedConfig,
       logger,
     );
@@ -1036,7 +1097,6 @@ export async function getConfig(
  * pack.
  *
  * @param registriesInput The value of the `registries` input.
- * @param codeQL a codeQL object, used only for checking the version of CodeQL.
  * @param tempDir a temporary directory to store the generated qlconfig.yml file.
  * @param logger a logger object.
  * @returns The path to the generated `qlconfig.yml` file and the auth tokens to
@@ -1239,7 +1299,7 @@ export function isCodeQualityEnabled(config: Config): boolean {
  * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
  * otherwise `AnalysisKind.CodeQuality`.
  */
-export function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+function getPrimaryAnalysisKind(config: Config): AnalysisKind {
   return isCodeScanningEnabled(config)
     ? AnalysisKind.CodeScanning
     : AnalysisKind.CodeQuality;

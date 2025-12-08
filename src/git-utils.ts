@@ -123,67 +123,6 @@ export const determineBaseBranchHeadCommitOid = async function (
 };
 
 /**
- * Deepen the git history of HEAD by one level. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const deepenGitHistory = async function () {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      [
-        "fetch",
-        "origin",
-        "HEAD",
-        "--no-tags",
-        "--no-recurse-submodules",
-        "--deepen=1",
-      ],
-      "Cannot deepen the shallow repository.",
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
-  }
-};
-
-/**
- * Fetch the given remote branch. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const gitFetch = async function (branch: string, extraFlags: string[]) {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      ["fetch", "--no-tags", ...extraFlags, "origin", `${branch}:${branch}`],
-      `Cannot fetch ${branch}.`,
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
-  }
-};
-
-/**
- * Repack the git repository, using with the given flags. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const gitRepack = async function (flags: string[]) {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      ["repack", ...flags],
-      "Cannot repack the repository.",
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
-  }
-};
-
-/**
  * Decode, if necessary, a file path produced by Git. See
  * https://git-scm.com/docs/git-config#Documentation/git-config.txt-corequotePath
  * for details on how Git encodes file paths with special characters.

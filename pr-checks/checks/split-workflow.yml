@@ -3,6 +3,7 @@ description: "Tests a split-up workflow in which we first build a database and l
 operatingSystems: ["ubuntu", "macos"]
 versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
 installGo: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:

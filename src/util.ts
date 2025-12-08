@@ -4,7 +4,6 @@ import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as exec from "@actions/exec/lib/exec";
 import * as io from "@actions/io";
 import getFolderSize from "get-folder-size";
 import * as yaml from "js-yaml";
@@ -310,13 +309,13 @@ function getCgroupMemoryLimitBytes(
 }
 
 /**
- * Get the value of the codeql `--ram` flag as configured by the `ram` input.
- * If no value was specified, the total available memory will be used minus a
+ * Get the maximum amount of memory CodeQL is allowed to use. If no limit has been
+ * configured by the user, then the total available memory will be used minus a
  * threshold reserved for the OS.
  *
- * @returns {number} the amount of RAM to use, in megabytes
+ * @returns {number} the amount of RAM CodeQL is allowed to use, in megabytes
  */
-export function getMemoryFlagValue(
+export function getCodeQLMemoryLimit(
   userInput: string | undefined,
   logger: Logger,
 ): number {
@@ -338,7 +337,7 @@ export function getMemoryFlag(
   userInput: string | undefined,
   logger: Logger,
 ): string {
-  const megabytes = getMemoryFlagValue(userInput, logger);
+  const megabytes = getCodeQLMemoryLimit(userInput, logger);
   return `--ram=${megabytes}`;
 }
 
@@ -1026,34 +1025,6 @@ export function fixInvalidNotifications(
   return newSarif;
 }
 
-/**
- * Removes duplicates from the sarif file.
- *
- * When `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX` is set to true, this will
- * simply rename the input file to the output file. Otherwise, it will parse the
- * input file as JSON, remove duplicate locations from the SARIF notification
- * objects, and write the result to the output file.
- *
- * For context, see documentation of:
- * `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX`. */
-export function fixInvalidNotificationsInFile(
-  inputPath: string,
-  outputPath: string,
-  logger: Logger,
-): void {
-  if (process.env[EnvVar.DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
-    logger.info(
-      "SARIF notification object duplicate location fix disabled by the " +
-        `${EnvVar.DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`,
-    );
-    fs.renameSync(inputPath, outputPath);
-  } else {
-    let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
-    sarif = fixInvalidNotifications(sarif, logger);
-    fs.writeFileSync(outputPath, JSON.stringify(sarif));
-  }
-}
-
 export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -1114,38 +1085,38 @@ export async function checkDiskUsage(
 }
 
 /**
- * Prompt the customer to upgrade to CodeQL Action v3, if appropriate.
+ * Prompt the customer to upgrade to CodeQL Action v4, if appropriate.
  *
- * Check whether a customer is running v1 or v2. If they are, and we can determine that the GitHub
- * instance supports v3, then log an error prompting the customer to upgrade to v3.
+ * Check whether a customer is running v3. If they are, and we can determine that the GitHub
+ * instance supports v4, then log an error prompting the customer to upgrade to v4.
  */
 export function checkActionVersion(
   version: string,
   githubVersion: GitHubVersion,
 ) {
   if (
-    !semver.satisfies(version, ">=3") && // do not log error if the customer is already running v3
+    !semver.satisfies(version, ">=4") && // do not log error if the customer is already running v4
     !process.env[EnvVar.LOG_VERSION_DEPRECATION] // do not log error if we have already
   ) {
-    // Only error for versions of GHES that are compatible with CodeQL Action version 3.
+    // Only error for versions of GHES that are compatible with CodeQL Action version 4.
     //
-    // GHES 3.11 shipped without the v3 tag, but it also shipped without this warning message code.
-    // Therefore users who are seeing this warning message code have pulled in a new version of the
-    // Action, and with it the v3 tag.
+    // GHES 3.20 is the first version to ship with the v4 tag and this warning message code.
+    // Therefore, users who are seeing this warning message code are running on GHES 3.20 or newer,
+    // and should update to CodeQL Action v4.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
       githubVersion.type === GitHubVariant.GHE_DOTCOM ||
       (githubVersion.type === GitHubVariant.GHES &&
         semver.satisfies(
           semver.coerce(githubVersion.version) ?? "0.0.0",
-          ">=3.11",
+          ">=3.20",
         ))
     ) {
-      core.error(
-        "CodeQL Action major versions v1 and v2 have been deprecated. " +
-          "Please update all occurrences of the CodeQL Action in your workflow files to v3. " +
+      core.warning(
+        "CodeQL Action v3 will be deprecated in December 2026. " +
+          "Please update all occurrences of the CodeQL Action in your workflow files to v4. " +
           "For more information, see " +
-          "https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/",
+          "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
       core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
@@ -1195,49 +1166,6 @@ export enum BuildMode {
 
 export function cloneObject<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
-}
-
-// The first time this function is called, it runs `csrutil status` to determine
-// whether System Integrity Protection is enabled; and saves the result in an
-// environment variable. Afterwards, simply return the value of the environment
-// variable.
-export async function checkSipEnablement(
-  logger: Logger,
-): Promise<boolean | undefined> {
-  if (
-    process.env[EnvVar.IS_SIP_ENABLED] !== undefined &&
-    ["true", "false"].includes(process.env[EnvVar.IS_SIP_ENABLED])
-  ) {
-    return process.env[EnvVar.IS_SIP_ENABLED] === "true";
-  }
-
-  try {
-    const sipStatusOutput = await exec.getExecOutput("csrutil status");
-    if (sipStatusOutput.exitCode === 0) {
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: enabled.",
-        )
-      ) {
-        core.exportVariable(EnvVar.IS_SIP_ENABLED, "true");
-        return true;
-      }
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: disabled.",
-        )
-      ) {
-        core.exportVariable(EnvVar.IS_SIP_ENABLED, "false");
-        return false;
-      }
-    }
-    return undefined;
-  } catch (e) {
-    logger.warning(
-      `Failed to determine if System Integrity Protection was enabled: ${e}`,
-    );
-    return undefined;
-  }
 }
 
 export async function cleanUpPath(file: string, name: string, logger: Logger) {
@@ -1291,17 +1219,6 @@ export function isDefined<T>(value: T | null | undefined): value is T {
   return value !== undefined && value !== null;
 }
 
-/** Like `Object.keys`, but typed so that the elements of the resulting array have the
- * same type as the keys of the input object. Note that this may not be sound if the input
- * object has been cast to `T` from a subtype of `T` and contains additional keys that
- * are not represented by `keyof T`.
- */
-export function unsafeKeysInvariant<T extends Record<string, any>>(
-  object: T,
-): Array<keyof T> {
-  return Object.keys(object) as Array<keyof T>;
-}
-
 /** Like `Object.entries`, but typed so that the key elements of the result have the
  * same type as the keys of the input object. Note that this may not be sound if the input
  * object has been cast to `T` from a subtype of `T` and contains additional keys that
@@ -1313,4 +1230,9 @@ export function unsafeEntriesInvariant<T extends Record<string, any>>(
   return Object.entries(object).filter(
     ([_, val]) => val !== undefined,
   ) as Array<[keyof T, Exclude<T[keyof T], undefined>]>;
+}
+
+export enum CleanupLevel {
+  Clear = "clear",
+  Overlay = "overlay",
 }

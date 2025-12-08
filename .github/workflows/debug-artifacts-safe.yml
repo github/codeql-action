@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -50,6 +50,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ^1.13.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.x'
       - uses: ./../action/init
         id: init
         with:

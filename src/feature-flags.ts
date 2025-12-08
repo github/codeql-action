@@ -47,6 +47,8 @@ export enum Feature {
   AnalyzeUseNewUpload = "analyze_use_new_upload",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  CsharpCacheBuildModeNone = "csharp_cache_bmn",
+  CsharpNewCacheKey = "csharp_new_cache_key",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
@@ -73,10 +75,11 @@ export enum Feature {
   OverlayAnalysisPython = "overlay_analysis_python",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
+  OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ResolveSupportedLanguagesUsingCli = "resolve_supported_languages_using_cli",
+  UploadOverlayDbToApi = "upload_overlay_db_to_api",
   UseRepositoryProperties = "use_repository_properties",
   ValidateDbConfig = "validate_db_config",
 }
@@ -133,6 +136,16 @@ export const featureConfig: Record<
     legacyApi: true,
     minimumVersion: "2.15.0",
   },
+  [Feature.CsharpCacheBuildModeNone]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CSHARP_CACHE_BMN",
+    minimumVersion: undefined,
+  },
+  [Feature.CsharpNewCacheKey]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CSHARP_NEW_CACHE_KEY",
+    minimumVersion: undefined,
+  },
   [Feature.DiffInformedQueries]: {
     defaultValue: true,
     envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
@@ -161,11 +174,10 @@ export const featureConfig: Record<
     legacyApi: true,
     minimumVersion: undefined,
   },
-  [Feature.ResolveSupportedLanguagesUsingCli]: {
+  [Feature.JavaMinimizeDependencyJars]: {
     defaultValue: false,
-    envVar: "CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI",
-    minimumVersion: undefined,
-    toolsFeature: ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
+    envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
+    minimumVersion: "2.23.0",
   },
   [Feature.OverlayAnalysis]: {
     defaultValue: false,
@@ -267,6 +279,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RUST",
     minimumVersion: undefined,
   },
+  [Feature.OverlayAnalysisSkipResourceChecks]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
+    minimumVersion: undefined,
+  },
   [Feature.OverlayAnalysisSwift]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SWIFT",
@@ -278,21 +295,21 @@ export const featureConfig: Record<
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
   },
-  [Feature.UseRepositoryProperties]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_USE_REPOSITORY_PROPERTIES",
-    minimumVersion: undefined,
-  },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
     minimumVersion: undefined,
   },
-  [Feature.JavaMinimizeDependencyJars]: {
+  [Feature.UploadOverlayDbToApi]: {
     defaultValue: false,
-    envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
-    minimumVersion: "2.23.0",
+    envVar: "CODEQL_ACTION_UPLOAD_OVERLAY_DB_TO_API",
+    minimumVersion: undefined,
+  },
+  [Feature.UseRepositoryProperties]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_USE_REPOSITORY_PROPERTIES",
+    minimumVersion: undefined,
   },
   [Feature.ValidateDbConfig]: {
     defaultValue: false,

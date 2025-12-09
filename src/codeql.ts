@@ -232,7 +232,7 @@ export interface VersionInfo {
 }
 
 export interface ResolveDatabaseOutput {
-  [key: string]: string | [string];
+  overlayBaseSpecifier?: string;
 }
 
 export interface ResolveLanguagesOutput {

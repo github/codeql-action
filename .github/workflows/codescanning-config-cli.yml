@@ -70,10 +70,30 @@ jobs:
       with:
         version: ${{ matrix.version }}
 
-    - name: Empty file
+    # On PRs, overlay analysis may change the config that is passed to the CLI.
+    # Therefore, we have two variants of the following test, one for PRs and one for other events.
+    - name: Empty file (non-PR)
+      if: github.event_name != 'pull_request'
       uses: ./../action/.github/actions/check-codescanning-config
       with:
         expected-config-file-contents: "{}"
+        languages: javascript
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Empty file (PR)
+      if: github.event_name == 'pull_request'
+      uses: ./../action/.github/actions/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "query-filters": [
+              {
+                "exclude": {
+                  "tags": "exclude-from-incremental"
+                }
+              }
+            ]
+          }
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
 

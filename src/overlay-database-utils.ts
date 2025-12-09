@@ -203,7 +203,7 @@ async function checkOverlayBaseDatabase(
         logger.info(`${warningPrefix}: no overlayBaseSpecifier defined`);
         return false;
       } else {
-        logger.info(
+        logger.debug(
           `Overlay base specifier for ${language} overlay-base database found: ` +
             `${resolveDatabaseOutput.overlayBaseSpecifier}`,
         );

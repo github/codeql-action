@@ -558,11 +558,11 @@ let hasBeenWarnedAboutVersion = false;
 export enum GitHubVariant {
   DOTCOM = "GitHub.com",
   GHES = "GHES",
-  GHE_DOTCOM = "GHEC-DR",
+  GHEC_DR = "GHEC-DR",
 }
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
-  | { type: GitHubVariant.GHE_DOTCOM }
+  | { type: GitHubVariant.GHEC_DR }
   | { type: GitHubVariant.GHES; version: string };
 
 export function checkGitHubVersionInRange(
@@ -1105,7 +1105,7 @@ export function checkActionVersion(
     // and should update to CodeQL Action v4.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
-      githubVersion.type === GitHubVariant.GHE_DOTCOM ||
+      githubVersion.type === GitHubVariant.GHEC_DR ||
       (githubVersion.type === GitHubVariant.GHES &&
         semver.satisfies(
           semver.coerce(githubVersion.version) ?? "0.0.0",

@@ -691,6 +691,6 @@ class GitHubFeatureFlags {
 function supportsFeatureFlags(githubVariant: util.GitHubVariant): boolean {
   return (
     githubVariant === util.GitHubVariant.DOTCOM ||
-    githubVariant === util.GitHubVariant.GHE_DOTCOM
+    githubVariant === util.GitHubVariant.GHEC_DR
   );
 }

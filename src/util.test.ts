@@ -434,7 +434,7 @@ function formatGitHubVersion(version: util.GitHubVersion): string {
     case util.GitHubVariant.DOTCOM:
       return "dotcom";
     case util.GitHubVariant.GHE_DOTCOM:
-      return "GHE dotcom";
+      return "GHEC-DR";
     case util.GitHubVariant.GHES:
       return `GHES ${version.version}`;
     default:

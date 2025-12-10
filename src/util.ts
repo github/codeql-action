@@ -556,9 +556,9 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
 let hasBeenWarnedAboutVersion = false;
 
 export enum GitHubVariant {
-  DOTCOM,
-  GHES,
-  GHE_DOTCOM,
+  DOTCOM = "GitHub.com",
+  GHES = "GHES",
+  GHE_DOTCOM = "GHEC-DR",
 }
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }

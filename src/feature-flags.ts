@@ -486,8 +486,8 @@ class GitHubFeatureFlags {
   async getDefaultCliVersion(
     variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
-    if (variant === util.GitHubVariant.DOTCOM) {
-      return await this.getDefaultDotcomCliVersion();
+    if (supportsFeatureFlags(variant)) {
+      return await this.getDefaultCliVersionFromFlags();
     }
     return {
       cliVersion: defaults.cliVersion,
@@ -495,7 +495,7 @@ class GitHubFeatureFlags {
     };
   }
 
-  async getDefaultDotcomCliVersion(): Promise<CodeQLDefaultVersionInfo> {
+  async getDefaultCliVersionFromFlags(): Promise<CodeQLDefaultVersionInfo> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
@@ -621,10 +621,7 @@ class GitHubFeatureFlags {
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
-    if (
-      this.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
-      this.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
-    ) {
+    if (!supportsFeatureFlags(this.gitHubVersion.type)) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features.",
       );
@@ -689,4 +686,11 @@ class GitHubFeatureFlags {
       }
     }
   }
+}
+
+function supportsFeatureFlags(githubVariant: util.GitHubVariant): boolean {
+  return (
+    githubVariant === util.GitHubVariant.DOTCOM ||
+    githubVariant === util.GitHubVariant.GHE_DOTCOM
+  );
 }

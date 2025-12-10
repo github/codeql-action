@@ -62,13 +62,13 @@ test(`All features are disabled if running against GHES`, async (t) => {
   });
 });
 
-test(`Feature flags are requested in Proxima`, async (t) => {
+test(`Feature flags are requested in GHEC-DR`, async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages = [];
     const features = setUpFeatureFlagTests(
       tmpDir,
       getRecordingLogger(loggedMessages),
-      { type: GitHubVariant.GHE_DOTCOM },
+      { type: GitHubVariant.GHEC_DR },
     );
 
     mockFeatureFlagApiEndpoint(200, initializeFeatures(true));
@@ -436,7 +436,7 @@ test(`selects CLI from defaults.json on GHES`, async (t) => {
   });
 });
 
-for (const variant of [GitHubVariant.DOTCOM, GitHubVariant.GHE_DOTCOM]) {
+for (const variant of [GitHubVariant.DOTCOM, GitHubVariant.GHEC_DR]) {
   test(`selects CLI v2.20.1 on ${variant} when feature flags enable v2.20.0 and v2.20.1`, async (t) => {
     await withTmpDir(async (tmpDir) => {
       const features = setUpFeatureFlagTests(tmpDir);

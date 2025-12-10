@@ -41,7 +41,7 @@ export async function cleanupAndUploadDatabases(
   // Do nothing when not running against github.com
   if (
     config.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
-    config.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
+    config.gitHubVersion.type !== util.GitHubVariant.GHEC_DR
   ) {
     logger.debug("Not running against github.com or GHEC-DR. Skipping upload.");
     return;

@@ -13,8 +13,8 @@ import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 import { bundleDb, CleanupLevel, parseGitHubUrl } from "./util";
 
-/** Status report for a database upload. */
-interface DatabaseUploadReport {
+/** Information about a database upload. */
+export interface DatabaseUploadResult {
   /** Language of the database. */
   language: string;
   /** Size of the zipped database in bytes. */
@@ -34,7 +34,7 @@ export async function cleanupAndUploadDatabases(
   apiDetails: GitHubApiDetails,
   features: FeatureEnablement,
   logger: Logger,
-): Promise<DatabaseUploadReport[]> {
+): Promise<DatabaseUploadResult[]> {
   if (actionsUtil.getRequiredInput("upload-database") !== "true") {
     logger.debug("Database upload disabled in workflow. Skipping upload.");
     return [];
@@ -93,7 +93,7 @@ export async function cleanupAndUploadDatabases(
     uploadsBaseUrl = uploadsBaseUrl.slice(0, -1);
   }
 
-  const reports: DatabaseUploadReport[] = [];
+  const reports: DatabaseUploadResult[] = [];
   for (const language of config.languages) {
     try {
       // Upload the database bundle.

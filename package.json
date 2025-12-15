@@ -27,7 +27,7 @@
     "@actions/artifact": "^4.0.0",
     "@actions/artifact-legacy": "npm:@actions/artifact@^1.1.2",
     "@actions/cache": "^4.1.0",
-    "@actions/core": "^1.11.1",
+    "@actions/core": "^2.0.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0",
     "@actions/glob": "^0.5.0",

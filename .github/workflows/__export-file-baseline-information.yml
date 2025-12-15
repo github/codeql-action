@@ -99,7 +99,7 @@ jobs:
         with:
           output: ${{ runner.temp }}/results
       - name: Upload SARIF
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
           path: ${{ runner.temp }}/results/javascript.sarif

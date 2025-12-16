@@ -16,6 +16,11 @@ updates:
       - dependency-name: "eslint-plugin-import"
         versions: [">=2.30.0"]
     groups:
+      npm-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
       npm-minor:
         patterns:
           - "*"
@@ -31,6 +36,11 @@ updates:
     labels:
       - Rebuild
     groups:
+      actions-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
       actions-minor:
         patterns:
           - "*"

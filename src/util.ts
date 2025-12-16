@@ -556,13 +556,17 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
 let hasBeenWarnedAboutVersion = false;
 
 export enum GitHubVariant {
-  DOTCOM,
-  GHES,
-  GHE_DOTCOM,
+  /** [GitHub.com](https://github.com) */
+  DOTCOM = "GitHub.com",
+  /** [GitHub Enterprise Server](https://docs.github.com/en/enterprise-server@latest/admin/overview/about-github-enterprise-server) */
+  GHES = "GitHub Enterprise Server",
+  /** [GitHub Enterprise Cloud with data residency](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency) */
+  GHEC_DR = "GitHub Enterprise Cloud with data residency",
 }
+
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
-  | { type: GitHubVariant.GHE_DOTCOM }
+  | { type: GitHubVariant.GHEC_DR }
   | { type: GitHubVariant.GHES; version: string };
 
 export function checkGitHubVersionInRange(
@@ -1105,7 +1109,7 @@ export function checkActionVersion(
     // and should update to CodeQL Action v4.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
-      githubVersion.type === GitHubVariant.GHE_DOTCOM ||
+      githubVersion.type === GitHubVariant.GHEC_DR ||
       (githubVersion.type === GitHubVariant.GHES &&
         semver.satisfies(
           semver.coerce(githubVersion.version) ?? "0.0.0",

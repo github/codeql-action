@@ -511,7 +511,7 @@ export async function getCodeQLSource(
   // different version to save download time if the version hasn't been
   // specified explicitly (in which case we always honor it).
   if (
-    variant !== util.GitHubVariant.DOTCOM &&
+    variant === util.GitHubVariant.GHES &&
     !forceShippedTools &&
     !toolsInput
   ) {

@@ -556,10 +556,14 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
 let hasBeenWarnedAboutVersion = false;
 
 export enum GitHubVariant {
+  /** [GitHub.com](https://github.com) */
   DOTCOM = "GitHub.com",
-  GHES = "GHES",
-  GHEC_DR = "GHEC-DR",
+  /** [GitHub Enterprise Server](https://docs.github.com/en/enterprise-server@latest/admin/overview/about-github-enterprise-server) */
+  GHES = "GitHub Enterprise Server",
+  /** [GitHub Enterprise Cloud with data residency](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency) */
+  GHEC_DR = "GitHub Enterprise Cloud with data residency",
 }
+
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
   | { type: GitHubVariant.GHEC_DR }

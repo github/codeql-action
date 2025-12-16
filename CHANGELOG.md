@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Update `@actions/*` npm packages to their latest versions. [#3366](https://github.com/github/codeql-action/pull/3366)
 
 ## 4.31.8 - 11 Dec 2025
 

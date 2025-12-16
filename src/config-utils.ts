@@ -26,7 +26,12 @@ import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-util
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
-import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
+import {
+  getGitRoot,
+  GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  gitVersionAtLeast,
+  isAnalyzingDefaultBranch,
+} from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -807,6 +812,14 @@ export async function getOverlayDatabaseMode(
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the source root "${sourceRoot}" is not inside a git repository. ` +
+        "Falling back to creating a normal full database instead.",
+    );
+    return nonOverlayAnalysis;
+  }
+  if (!(await gitVersionAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY, logger))) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
         "Falling back to creating a normal full database instead.",
     );
     return nonOverlayAnalysis;

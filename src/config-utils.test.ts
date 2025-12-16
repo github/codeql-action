@@ -978,6 +978,7 @@ interface OverlayDatabaseModeTestSetup {
   languages: Language[];
   codeqlVersion: string;
   gitRoot: string | undefined;
+  gitVersion: string | undefined;
   codeScanningConfig: configUtils.UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
@@ -992,6 +993,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
+  gitVersion: "2.40.0", // Default to a version that supports overlay analysis
   codeScanningConfig: {},
   diskUsage: {
     numAvailableBytes: 50_000_000_000,
@@ -1055,6 +1057,20 @@ const getOverlayDatabaseModeMacro = test.macro({
         // Mock git root detection
         if (setup.gitRoot !== undefined) {
           sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
+        }
+
+        // Mock git version detection - stub gitVersionAtLeast directly
+        // since internal calls to getGitVersion won't be stubbed
+        if (setup.gitVersion !== undefined) {
+          sinon
+            .stub(gitUtils, "gitVersionAtLeast")
+            .callsFake(async (requiredVersion: string) => {
+              const semver = await import("semver");
+              return semver.gte(setup.gitVersion!, requiredVersion);
+            });
+        } else {
+          // When git version is undefined, gitVersionAtLeast should return false
+          sinon.stub(gitUtils, "gitVersionAtLeast").resolves(false);
         }
 
         // Mock default branch detection
@@ -1766,6 +1782,32 @@ test(
   {
     overlayDatabaseEnvVar: "overlay",
     gitRoot: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to old git version",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: "2.30.0", // Version below required 2.38.0
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback when git version cannot be determined",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: undefined,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,

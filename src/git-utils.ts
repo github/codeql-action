@@ -1,13 +1,66 @@
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
+import * as semver from "semver";
 
 import {
   getOptionalInput,
   getWorkflowEvent,
   getWorkflowEventName,
 } from "./actions-util";
+import { Logger } from "./logging";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
+
+/**
+ * Minimum Git version required for overlay analysis. The `git ls-files --format`
+ * option, which is used by `getFileOidsUnderPath`, was introduced in Git 2.38.0.
+ */
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
+
+/**
+ * Gets the version of Git installed on the system.
+ *
+ * @returns The Git version string (e.g., "2.40.0"), or undefined if the
+ *          version could not be determined.
+ */
+export async function getGitVersion(): Promise<string | undefined> {
+  try {
+    const stdout = await runGitCommand(
+      undefined,
+      ["--version"],
+      "Failed to get git version.",
+    );
+    // Expected output format: "git version 2.40.0"
+    const match = stdout.match(/git version (\d+\.\d+\.\d+)/);
+    if (match?.[1]) {
+      return match[1];
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Checks if the installed Git version is at least the given required version.
+ *
+ * @param requiredVersion The minimum required Git version.
+ * @param logger A logger to use for logging.
+ * @returns `true` if the installed Git version is at least the required version,
+ *          `false` otherwise.
+ */
+export async function gitVersionAtLeast(
+  requiredVersion: string,
+  logger: Logger,
+): Promise<boolean> {
+  const version = await getGitVersion();
+  if (version === undefined) {
+    logger.debug("Could not determine Git version.");
+    return false;
+  }
+  logger.debug(`Installed Git version is ${version}.`);
+  return semver.gte(version, requiredVersion);
+}
 
 export const runGitCommand = async function (
   workingDirectory: string | undefined,

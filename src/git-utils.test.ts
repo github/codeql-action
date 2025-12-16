@@ -398,39 +398,46 @@ test("getFileOidsUnderPath throws on unexpected output format", async (t) => {
   }
 });
 
-test("getGitVersion returns version for valid git output", async (t) => {
+test("getGitVersionOrThrow returns version for valid git output", async (t) => {
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves("git version 2.40.0\n");
 
   try {
-    const version = await gitUtils.getGitVersion();
+    const version = await gitUtils.getGitVersionOrThrow();
     t.is(version, "2.40.0");
   } finally {
     runGitCommandStub.restore();
   }
 });
 
-test("getGitVersion returns undefined for invalid git output", async (t) => {
+test("getGitVersionOrThrow throws for invalid git output", async (t) => {
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves("invalid output");
 
   try {
-    const version = await gitUtils.getGitVersion();
-    t.is(version, undefined);
+    await t.throwsAsync(
+      async () => {
+        await gitUtils.getGitVersionOrThrow();
+      },
+      {
+        instanceOf: Error,
+        message: "Could not parse Git version from output: invalid output",
+      },
+    );
   } finally {
     runGitCommandStub.restore();
   }
 });
 
-test("getGitVersion handles Windows-style git output", async (t) => {
+test("getGitVersionOrThrow handles Windows-style git output", async (t) => {
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves("git version 2.40.0.windows.1\n");
 
   try {
-    const version = await gitUtils.getGitVersion();
+    const version = await gitUtils.getGitVersionOrThrow();
     // Should extract just the major.minor.patch portion
     t.is(version, "2.40.0");
   } finally {
@@ -438,20 +445,79 @@ test("getGitVersion handles Windows-style git output", async (t) => {
   }
 });
 
-test("getGitVersion returns undefined when git command fails", async (t) => {
+test("getGitVersionOrThrow throws when git command fails", async (t) => {
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")
     .rejects(new Error("git not found"));
 
   try {
-    const version = await gitUtils.getGitVersion();
-    t.is(version, undefined);
+    await t.throwsAsync(
+      async () => {
+        await gitUtils.getGitVersionOrThrow();
+      },
+      {
+        instanceOf: Error,
+        message: "git not found",
+      },
+    );
   } finally {
     runGitCommandStub.restore();
   }
 });
 
+test("getGitVersion returns version and caches it", async (t) => {
+  gitUtils.resetCachedGitVersion();
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves("git version 2.40.0\n");
+
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  try {
+    // First call should fetch and cache
+    const version1 = await gitUtils.getGitVersion(logger);
+    t.is(version1, "2.40.0");
+    t.is(runGitCommandStub.callCount, 1);
+
+    // Second call should use cache
+    const version2 = await gitUtils.getGitVersion(logger);
+    t.is(version2, "2.40.0");
+    t.is(runGitCommandStub.callCount, 1); // Should still be 1
+  } finally {
+    runGitCommandStub.restore();
+    gitUtils.resetCachedGitVersion();
+  }
+});
+
+test("getGitVersion returns undefined when version cannot be determined", async (t) => {
+  gitUtils.resetCachedGitVersion();
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .rejects(new Error("git not found"));
+
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  try {
+    const version = await gitUtils.getGitVersion(logger);
+    t.is(version, undefined);
+    t.true(
+      messages.some(
+        (m) =>
+          m.type === "debug" &&
+          typeof m.message === "string" &&
+          m.message.includes("Could not determine Git version"),
+      ),
+    );
+  } finally {
+    runGitCommandStub.restore();
+    gitUtils.resetCachedGitVersion();
+  }
+});
+
 test("gitVersionAtLeast returns true for version meeting requirement", async (t) => {
+  gitUtils.resetCachedGitVersion();
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves("git version 2.40.0\n");
@@ -471,10 +537,12 @@ test("gitVersionAtLeast returns true for version meeting requirement", async (t)
     );
   } finally {
     runGitCommandStub.restore();
+    gitUtils.resetCachedGitVersion();
   }
 });
 
 test("gitVersionAtLeast returns false for version not meeting requirement", async (t) => {
+  gitUtils.resetCachedGitVersion();
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves("git version 2.30.0\n");
@@ -487,10 +555,12 @@ test("gitVersionAtLeast returns false for version not meeting requirement", asyn
     t.false(result);
   } finally {
     runGitCommandStub.restore();
+    gitUtils.resetCachedGitVersion();
   }
 });
 
 test("gitVersionAtLeast returns false when version cannot be determined", async (t) => {
+  gitUtils.resetCachedGitVersion();
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")
     .rejects(new Error("git not found"));
@@ -505,10 +575,12 @@ test("gitVersionAtLeast returns false when version cannot be determined", async 
       messages.some(
         (m) =>
           m.type === "debug" &&
-          m.message === "Could not determine Git version.",
+          typeof m.message === "string" &&
+          m.message.includes("Could not determine Git version"),
       ),
     );
   } finally {
     runGitCommandStub.restore();
+    gitUtils.resetCachedGitVersion();
   }
 });

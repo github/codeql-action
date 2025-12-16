@@ -37,6 +37,7 @@ import {
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
 import { loadPropertiesFromApi } from "./feature-flags/properties";
+import { logGitVersionTelemetry } from "./git-utils";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -432,6 +433,9 @@ async function run() {
         ),
       );
     }
+
+    // Log Git version telemetry
+    await logGitVersionTelemetry(config, logger);
 
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];

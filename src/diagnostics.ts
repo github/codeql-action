@@ -185,3 +185,28 @@ export function flushDiagnostics(config: Config) {
   // Reset the unwritten diagnostics array.
   unwrittenDiagnostics = [];
 }
+
+/**
+ * Creates a telemetry-only diagnostic message. This is a convenience function
+ * for creating diagnostics that should only be sent to telemetry and not
+ * displayed on the status page or CLI summary table.
+ *
+ * @param id An identifier under which it makes sense to group this diagnostic message.
+ * @param name Display name for the ID.
+ * @param attributes Structured metadata about the diagnostic message.
+ * @returns Returns the new telemetry diagnostic message.
+ */
+export function makeTelemetryDiagnostic(
+  id: string,
+  name: string,
+  attributes: { [key: string]: any },
+): DiagnosticMessage {
+  return makeDiagnostic(id, name, {
+    attributes,
+    visibility: {
+      cliSummaryTable: false,
+      statusPage: false,
+      telemetry: true,
+    },
+  });
+}

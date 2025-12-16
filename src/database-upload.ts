@@ -138,7 +138,9 @@ export async function cleanupAndUploadDatabases(
       }
     } catch (e) {
       // Log a warning but don't fail the workflow
-      logger.warning(`Failed to upload database for ${language}: ${e}`);
+      logger.warning(
+        `Failed to upload database for ${language}: ${util.getErrorMessage(e)}`,
+      );
       reports.push({
         language,
         error: util.getErrorMessage(e),

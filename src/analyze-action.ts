@@ -20,7 +20,10 @@ import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
-import { cleanupAndUploadDatabases } from "./database-upload";
+import {
+  cleanupAndUploadDatabases,
+  DatabaseUploadResult,
+} from "./database-upload";
 import {
   DependencyCacheUploadStatusReport,
   uploadDependencyCaches,
@@ -54,15 +57,13 @@ interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
     QueriesStatusReport {}
 
-interface DependencyCachingUploadStatusReport {
-  dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
-}
-
 interface FinishStatusReport
   extends StatusReportBase,
     DatabaseCreationTimings,
-    AnalysisStatusReport,
-    DependencyCachingUploadStatusReport {}
+    AnalysisStatusReport {
+  dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
+  database_upload_results: DatabaseUploadResult[];
+}
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   /** Size of TRAP caches that we uploaded, in bytes. */
@@ -81,6 +82,7 @@ async function sendStatusReport(
   didUploadTrapCaches: boolean,
   trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   dependencyCacheResults: DependencyCacheUploadStatusReport | undefined,
+  databaseUploadResults: DatabaseUploadResult[],
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
@@ -101,6 +103,7 @@ async function sendStatusReport(
       ...(dbCreationTimings || {}),
       ...(trapCacheCleanup || {}),
       dependency_caching_upload_results: dependencyCacheResults,
+      database_upload_results: databaseUploadResults,
     };
     if (config && didUploadTrapCaches) {
       const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
@@ -218,6 +221,7 @@ async function run() {
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
   let dependencyCacheResults: DependencyCacheUploadStatusReport | undefined;
+  let databaseUploadResults: DatabaseUploadResult[] = [];
   util.initializeEnvironment(actionsUtil.getActionVersion());
 
   // Make inputs accessible in the `post` step, details at
@@ -389,7 +393,7 @@ async function run() {
     // Possibly upload the database bundles for remote queries.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
-    await cleanupAndUploadDatabases(
+    databaseUploadResults = await cleanupAndUploadDatabases(
       repositoryNwo,
       codeql,
       config,
@@ -461,6 +465,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
     return;
@@ -483,6 +488,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   } else if (runStats !== undefined) {
@@ -496,6 +502,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   } else {
@@ -509,6 +516,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   }

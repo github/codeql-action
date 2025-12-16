@@ -44,9 +44,9 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   AllowToolcacheInput = "allow_toolcache_input",
-  AnalyzeUseNewUpload = "analyze_use_new_upload",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  CsharpCacheBuildModeNone = "csharp_cache_bmn",
   CsharpNewCacheKey = "csharp_new_cache_key",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
@@ -74,6 +74,7 @@ export enum Feature {
   OverlayAnalysisPython = "overlay_analysis_python",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
+  OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
@@ -118,11 +119,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
     minimumVersion: undefined,
   },
-  [Feature.AnalyzeUseNewUpload]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ANALYZE_USE_NEW_UPLOAD",
-    minimumVersion: undefined,
-  },
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
@@ -133,6 +129,11 @@ export const featureConfig: Record<
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     legacyApi: true,
     minimumVersion: "2.15.0",
+  },
+  [Feature.CsharpCacheBuildModeNone]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CSHARP_CACHE_BMN",
+    minimumVersion: undefined,
   },
   [Feature.CsharpNewCacheKey]: {
     defaultValue: false,
@@ -270,6 +271,11 @@ export const featureConfig: Record<
   [Feature.OverlayAnalysisRust]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RUST",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisSkipResourceChecks]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisSwift]: {
@@ -486,8 +492,8 @@ class GitHubFeatureFlags {
   async getDefaultCliVersion(
     variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
-    if (variant === util.GitHubVariant.DOTCOM) {
-      return await this.getDefaultDotcomCliVersion();
+    if (supportsFeatureFlags(variant)) {
+      return await this.getDefaultCliVersionFromFlags();
     }
     return {
       cliVersion: defaults.cliVersion,
@@ -495,7 +501,7 @@ class GitHubFeatureFlags {
     };
   }
 
-  async getDefaultDotcomCliVersion(): Promise<CodeQLDefaultVersionInfo> {
+  async getDefaultCliVersionFromFlags(): Promise<CodeQLDefaultVersionInfo> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
@@ -621,10 +627,7 @@ class GitHubFeatureFlags {
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
-    if (
-      this.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
-      this.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
-    ) {
+    if (!supportsFeatureFlags(this.gitHubVersion.type)) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features.",
       );
@@ -689,4 +692,11 @@ class GitHubFeatureFlags {
       }
     }
   }
+}
+
+function supportsFeatureFlags(githubVariant: util.GitHubVariant): boolean {
+  return (
+    githubVariant === util.GitHubVariant.DOTCOM ||
+    githubVariant === util.GitHubVariant.GHEC_DR
+  );
 }

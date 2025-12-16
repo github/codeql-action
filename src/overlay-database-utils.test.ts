@@ -7,7 +7,9 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
+import { ResolveDatabaseOutput } from "./codeql";
 import * as gitUtils from "./git-utils";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -95,6 +97,7 @@ interface DownloadOverlayBaseDatabaseTestCase {
   hasBaseDatabaseOidsFile: boolean;
   tryGetFolderBytesSucceeds: boolean;
   codeQLVersion: string;
+  resolveDatabaseOutput: ResolveDatabaseOutput | Error;
 }
 
 const defaultDownloadTestCase: DownloadOverlayBaseDatabaseTestCase = {
@@ -105,6 +108,7 @@ const defaultDownloadTestCase: DownloadOverlayBaseDatabaseTestCase = {
   hasBaseDatabaseOidsFile: true,
   tryGetFolderBytesSucceeds: true,
   codeQLVersion: "2.20.5",
+  resolveDatabaseOutput: { overlayBaseSpecifier: "20250626:XXX" },
 };
 
 const testDownloadOverlayBaseDatabaseFromCache = test.macro({
@@ -119,9 +123,11 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
       await fs.promises.mkdir(dbLocation, { recursive: true });
 
       const logger = getRunnerLogger(true);
-      const config = createTestConfig({ dbLocation });
-
       const testCase = { ...defaultDownloadTestCase, ...partialTestCase };
+      const config = createTestConfig({
+        dbLocation,
+        languages: [KnownLanguage.java],
+      });
 
       config.overlayDatabaseMode = testCase.overlayDatabaseMode;
       config.useOverlayDatabaseCaching = testCase.useOverlayDatabaseCaching;
@@ -163,9 +169,23 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
         .resolves(testCase.tryGetFolderBytesSucceeds ? 1024 * 1024 : undefined);
       stubs.push(tryGetFolderBytesStub);
 
+      const codeql = mockCodeQLVersion(testCase.codeQLVersion);
+
+      if (testCase.resolveDatabaseOutput instanceof Error) {
+        const resolveDatabaseStub = sinon
+          .stub(codeql, "resolveDatabase")
+          .rejects(testCase.resolveDatabaseOutput);
+        stubs.push(resolveDatabaseStub);
+      } else {
+        const resolveDatabaseStub = sinon
+          .stub(codeql, "resolveDatabase")
+          .resolves(testCase.resolveDatabaseOutput);
+        stubs.push(resolveDatabaseStub);
+      }
+
       try {
         const result = await downloadOverlayBaseDatabaseFromCache(
-          mockCodeQLVersion(testCase.codeQLVersion),
+          codeql,
           config,
           logger,
         );
@@ -251,6 +271,24 @@ test(
   "returns undefined when downloaded database is invalid",
   {
     hasBaseDatabaseOidsFile: false,
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when downloaded database doesn't have an overlayBaseSpecifier",
+  {
+    resolveDatabaseOutput: {},
+  },
+  false,
+);
+
+test(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when resolving database metadata fails",
+  {
+    resolveDatabaseOutput: new Error("Failed to resolve database metadata"),
   },
   false,
 );

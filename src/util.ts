@@ -309,13 +309,13 @@ function getCgroupMemoryLimitBytes(
 }
 
 /**
- * Get the value of the codeql `--ram` flag as configured by the `ram` input.
- * If no value was specified, the total available memory will be used minus a
+ * Get the maximum amount of memory CodeQL is allowed to use. If no limit has been
+ * configured by the user, then the total available memory will be used minus a
  * threshold reserved for the OS.
  *
- * @returns {number} the amount of RAM to use, in megabytes
+ * @returns {number} the amount of RAM CodeQL is allowed to use, in megabytes
  */
-export function getMemoryFlagValue(
+export function getCodeQLMemoryLimit(
   userInput: string | undefined,
   logger: Logger,
 ): number {
@@ -337,7 +337,7 @@ export function getMemoryFlag(
   userInput: string | undefined,
   logger: Logger,
 ): string {
-  const megabytes = getMemoryFlagValue(userInput, logger);
+  const megabytes = getCodeQLMemoryLimit(userInput, logger);
   return `--ram=${megabytes}`;
 }
 
@@ -556,13 +556,17 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
 let hasBeenWarnedAboutVersion = false;
 
 export enum GitHubVariant {
-  DOTCOM,
-  GHES,
-  GHE_DOTCOM,
+  /** [GitHub.com](https://github.com) */
+  DOTCOM = "GitHub.com",
+  /** [GitHub Enterprise Server](https://docs.github.com/en/enterprise-server@latest/admin/overview/about-github-enterprise-server) */
+  GHES = "GitHub Enterprise Server",
+  /** [GitHub Enterprise Cloud with data residency](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency) */
+  GHEC_DR = "GitHub Enterprise Cloud with data residency",
 }
+
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
-  | { type: GitHubVariant.GHE_DOTCOM }
+  | { type: GitHubVariant.GHEC_DR }
   | { type: GitHubVariant.GHES; version: string };
 
 export function checkGitHubVersionInRange(
@@ -1105,7 +1109,7 @@ export function checkActionVersion(
     // and should update to CodeQL Action v4.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
-      githubVersion.type === GitHubVariant.GHE_DOTCOM ||
+      githubVersion.type === GitHubVariant.GHEC_DR ||
       (githubVersion.type === GitHubVariant.GHES &&
         semver.satisfies(
           semver.coerce(githubVersion.version) ?? "0.0.0",

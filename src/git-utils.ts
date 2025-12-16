@@ -88,9 +88,11 @@ export async function logGitVersionTelemetry(
   logger: Logger,
 ): Promise<void> {
   const version = await getGitVersion(logger);
-  if (version !== undefined) {
+  if (version !== undefined && config.languages.length > 0) {
     addDiagnostic(
       config,
+      // Arbitrarily choose the first language. We could also choose all languages, but that
+      // increases the risk of misinterpreting the data.
       config.languages[0],
       makeTelemetryDiagnostic(
         "codeql-action/git-version-telemetry",

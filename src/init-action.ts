@@ -89,6 +89,13 @@ import {
 import { checkWorkflow } from "./workflow";
 
 /**
+ * First version of CodeQL where the Java extractor safely supports the option to minimize
+ * dependency jars. Note: some earlier versions of the extractor will respond to the corresponding
+ * option, but may rewrite jars in ways that lead to extraction errors.
+ */
+export const CODEQL_VERSION_JAR_MINIMIZATION = "2.23.0";
+
+/**
  * Sends a status report indicating that the `init` Action is starting.
  *
  * @param startedAt
@@ -651,7 +658,7 @@ async function run() {
         `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
       );
     } else if (
-      (await codeQlVersionAtLeast(codeql, "2.23.0")) && // First version of the extractor to safely support this option
+      (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
       config.languages.includes(KnownLanguage.java)

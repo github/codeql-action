@@ -424,6 +424,20 @@ test("getGitVersion returns undefined for invalid git output", async (t) => {
   }
 });
 
+test("getGitVersion handles Windows-style git output", async (t) => {
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves("git version 2.40.0.windows.1\n");
+
+  try {
+    const version = await gitUtils.getGitVersion();
+    // Should extract just the major.minor.patch portion
+    t.is(version, "2.40.0");
+  } finally {
+    runGitCommandStub.restore();
+  }
+});
+
 test("getGitVersion returns undefined when git command fails", async (t) => {
   const runGitCommandStub = sinon
     .stub(gitUtils as any, "runGitCommand")

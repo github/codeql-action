@@ -30,7 +30,8 @@ export async function getGitVersion(): Promise<string | undefined> {
       ["--version"],
       "Failed to get git version.",
     );
-    // Expected output format: "git version 2.40.0"
+    // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
+    // We capture just the major.minor.patch portion to ensure semver compatibility.
     const match = stdout.match(/git version (\d+\.\d+\.\d+)/);
     if (match?.[1]) {
       return match[1];

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
+import * as semver from "semver";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
@@ -1065,7 +1066,6 @@ const getOverlayDatabaseModeMacro = test.macro({
           sinon
             .stub(gitUtils, "gitVersionAtLeast")
             .callsFake(async (requiredVersion: string) => {
-              const semver = await import("semver");
               return semver.gte(setup.gitVersion!, requiredVersion);
             });
         } else {

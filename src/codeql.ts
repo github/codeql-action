@@ -206,6 +206,7 @@ export interface CodeQL {
    * Run 'codeql resolve queries --format=startingpacks'.
    */
   resolveQueriesStartingPacks(queries: string[]): Promise<string[]>;
+  resolveDatabase(databasePath: string): Promise<ResolveDatabaseOutput>;
   /**
    * Run 'codeql github merge-results'.
    */
@@ -228,6 +229,10 @@ export interface VersionInfo {
    * we need to revert to non-overlay analysis.
    */
   overlayVersion?: number;
+}
+
+export interface ResolveDatabaseOutput {
+  overlayBaseSpecifier?: string;
 }
 
 export interface ResolveLanguagesOutput {
@@ -493,6 +498,7 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "resolveQueriesStartingPacks",
     ),
+    resolveDatabase: resolveFunction(partialCodeql, "resolveDatabase"),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
 }
@@ -1000,6 +1006,26 @@ async function getCodeQLForCmd(
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve queries --format=startingpacks: ${e}`,
+        );
+      }
+    },
+    async resolveDatabase(
+      databasePath: string,
+    ): Promise<ResolveDatabaseOutput> {
+      const codeqlArgs = [
+        "resolve",
+        "database",
+        databasePath,
+        "--format=json",
+        ...getExtraOptionsFromEnv(["resolve", "database"]),
+      ];
+      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+
+      try {
+        return JSON.parse(output) as ResolveDatabaseOutput;
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve database --format=json: ${e}`,
         );
       }
     },

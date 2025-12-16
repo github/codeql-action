@@ -8,8 +8,14 @@ import {
   getWorkflowEvent,
   getWorkflowEventName,
 } from "./actions-util";
+import type { Config } from "./config-utils";
+import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
 import { Logger } from "./logging";
-import { ConfigurationError, getRequiredEnvParam } from "./util";
+import {
+  ConfigurationError,
+  getErrorMessage,
+  getRequiredEnvParam,
+} from "./util";
 
 /**
  * Minimum Git version required for overlay analysis. The `git ls-files --format`
@@ -17,28 +23,81 @@ import { ConfigurationError, getRequiredEnvParam } from "./util";
  */
 export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
 
+/** Cached git version to avoid recomputing it multiple times. */
+let cachedGitVersion: string | undefined;
+
 /**
- * Gets the version of Git installed on the system.
- *
- * @returns The Git version string (e.g., "2.40.0"), or undefined if the
- *          version could not be determined.
+ * Resets the cached git version. This is intended for use in tests only.
  */
-export async function getGitVersion(): Promise<string | undefined> {
+export function resetCachedGitVersion(): void {
+  cachedGitVersion = undefined;
+}
+
+/**
+ * Gets the version of Git installed on the system and throws an error if
+ * the version cannot be determined.
+ *
+ * @returns The Git version string (e.g., "2.40.0").
+ * @throws {Error} if the version could not be determined.
+ */
+export async function getGitVersionOrThrow(): Promise<string> {
+  const stdout = await runGitCommand(
+    undefined,
+    ["--version"],
+    "Failed to get git version.",
+  );
+  // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
+  // We capture just the major.minor.patch portion to ensure semver compatibility.
+  const match = stdout.match(/git version (\d+\.\d+\.\d+)/);
+  if (match?.[1]) {
+    return match[1];
+  }
+  throw new Error(`Could not parse Git version from output: ${stdout.trim()}`);
+}
+
+/**
+ * Gets the cached Git version, or fetches and caches it if not yet cached.
+ *
+ * @param logger A logger to use for logging errors.
+ * @returns The cached Git version, or undefined if the version could not be determined.
+ */
+export async function getGitVersion(
+  logger: Logger,
+): Promise<string | undefined> {
+  if (cachedGitVersion !== undefined) {
+    return cachedGitVersion;
+  }
   try {
-    const stdout = await runGitCommand(
-      undefined,
-      ["--version"],
-      "Failed to get git version.",
+    cachedGitVersion = await getGitVersionOrThrow();
+    return cachedGitVersion;
+  } catch (e) {
+    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
+    return undefined;
+  }
+}
+
+/**
+ * Logs the Git version as a telemetry diagnostic. Should be called once during
+ * initialization after the config is available.
+ *
+ * @param config The configuration that tells us where to store the diagnostic.
+ * @param logger A logger to use for logging errors.
+ */
+export async function logGitVersionTelemetry(
+  config: Config,
+  logger: Logger,
+): Promise<void> {
+  const version = await getGitVersion(logger);
+  if (version !== undefined) {
+    addDiagnostic(
+      config,
+      config.languages[0],
+      makeTelemetryDiagnostic(
+        "codeql-action/git-version-telemetry",
+        "Git version telemetry",
+        { gitVersion: version },
+      ),
     );
-    // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
-    // We capture just the major.minor.patch portion to ensure semver compatibility.
-    const match = stdout.match(/git version (\d+\.\d+\.\d+)/);
-    if (match?.[1]) {
-      return match[1];
-    }
-    return undefined;
-  } catch {
-    return undefined;
   }
 }
 
@@ -54,9 +113,8 @@ export async function gitVersionAtLeast(
   requiredVersion: string,
   logger: Logger,
 ): Promise<boolean> {
-  const version = await getGitVersion();
+  const version = await getGitVersion(logger);
   if (version === undefined) {
-    logger.debug("Could not determine Git version.");
     return false;
   }
   logger.debug(`Installed Git version is ${version}.`);

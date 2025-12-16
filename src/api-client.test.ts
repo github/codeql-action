@@ -95,14 +95,14 @@ test("getGitHubVersion for different domain", async (t) => {
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });
 
-test("getGitHubVersion for GHE_DOTCOM", async (t) => {
+test("getGitHubVersion for GHEC-DR", async (t) => {
   mockGetMetaVersionHeader("ghe.com");
   const gheDotcom = await api.getGitHubVersionFromApi(api.getApiClient(), {
     auth: "",
     url: "https://foo.ghe.com",
     apiURL: undefined,
   });
-  t.deepEqual({ type: util.GitHubVariant.GHE_DOTCOM }, gheDotcom);
+  t.deepEqual({ type: util.GitHubVariant.GHEC_DR }, gheDotcom);
 });
 
 test("wrapApiConfigurationError correctly wraps specific configuration errors", (t) => {

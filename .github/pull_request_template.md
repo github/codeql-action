@@ -34,7 +34,7 @@ Products:
 
 Environments:
 
-- **Dotcom** - Impacts CodeQL workflows on `github.com`.
+- **Dotcom** - Impacts CodeQL workflows on `github.com` and/or GitHub Enterprise Cloud with Data Residency.
 - **GHES** - Impacts CodeQL workflows on GitHub Enterprise Server.
 - **Testing/None** - This change does not impact any CodeQL workflows in production.
 

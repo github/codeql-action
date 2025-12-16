@@ -107,7 +107,7 @@ export async function cleanupAndUploadDatabases(
         actionsUtil.getRequiredInput("checkout_path"),
       );
       try {
-        const startTime = Date.now();
+        const startTime = performance.now();
         await client.request(
           `POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
           {
@@ -125,7 +125,7 @@ export async function cleanupAndUploadDatabases(
             },
           },
         );
-        const endTime = Date.now();
+        const endTime = performance.now();
         reports.push({
           language,
           zipped_upload_size_bytes: bundledDbSize,

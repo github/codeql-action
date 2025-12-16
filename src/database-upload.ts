@@ -68,10 +68,10 @@ export async function cleanupAndUploadDatabases(
   }
 
   // If config.overlayDatabaseMode is OverlayBase, then we have overlay base databases for all languages.
-  const isOverlayBase =
+  const shouldUploadOverlayBase =
     config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
     (await features.getValue(Feature.UploadOverlayDbToApi));
-  const cleanupLevel = isOverlayBase
+  const cleanupLevel = shouldUploadOverlayBase
     ? CleanupLevel.Overlay
     : CleanupLevel.Clear;
 
@@ -129,7 +129,7 @@ export async function cleanupAndUploadDatabases(
         reports.push({
           language,
           zipped_upload_size_bytes: bundledDbSize,
-          is_overlay_base: isOverlayBase,
+          is_overlay_base: shouldUploadOverlayBase,
           upload_duration_ms: endTime - startTime,
         });
         logger.debug(`Successfully uploaded database for ${language}`);

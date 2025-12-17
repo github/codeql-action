@@ -4,7 +4,6 @@ import * as path from "path";
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
-import * as semver from "semver";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
@@ -994,7 +993,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
-  gitVersion: "2.40.0", // Default to a version that supports overlay analysis
+  gitVersion: gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
   codeScanningConfig: {},
   diskUsage: {
     numAvailableBytes: 50_000_000_000,
@@ -1060,19 +1059,6 @@ const getOverlayDatabaseModeMacro = test.macro({
           sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
         }
 
-        // Mock git version detection - stub gitVersionAtLeast directly
-        // since internal calls to getGitVersion won't be stubbed
-        if (setup.gitVersion !== undefined) {
-          sinon
-            .stub(gitUtils, "gitVersionAtLeast")
-            .callsFake(async (requiredVersion: string) => {
-              return semver.gte(setup.gitVersion!, requiredVersion);
-            });
-        } else {
-          // When git version is undefined, gitVersionAtLeast should return false
-          sinon.stub(gitUtils, "gitVersionAtLeast").resolves(false);
-        }
-
         // Mock default branch detection
         sinon
           .stub(gitUtils, "isAnalyzingDefaultBranch")
@@ -1086,6 +1072,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           setup.buildMode,
           undefined,
           setup.codeScanningConfig,
+          setup.gitVersion,
           logger,
         );
 

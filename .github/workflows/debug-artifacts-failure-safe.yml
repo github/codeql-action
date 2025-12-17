@@ -58,6 +58,8 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '9.x'
+      - name: Assert best-effort artifact scan completed
+        uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -73,14 +75,6 @@ jobs:
           CODEQL_ACTION_EXTRA_OPTIONS: '{ "database": { "finalize": ["--invalid-option"] } }'
         with:
           expect-error: true
-      - name: Verify artifact scan ran
-        shell: bash
-        run: |
-          if [[ "$CODEQL_ACTION_ARTIFACT_SCAN_FINISHED" != "true" ]]; then
-            echo "Error: Best effort artifact scan did not run"
-            exit 1
-          fi
-          echo "✓ Best effort artifact scan completed successfully"
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
     if: github.triggering_actor != 'dependabot[bot]'

@@ -603,28 +603,6 @@ test("getFeaturePrefix - returns empty string if no features are enabled", async
   }
 });
 
-test("getFeaturePrefix - Java - returns 'minify-' if JavaMinimizeDependencyJars is enabled", async (t) => {
-  const codeql = createStubCodeQL({});
-  const features = createFeatures([Feature.JavaMinimizeDependencyJars]);
-
-  const result = await getFeaturePrefix(codeql, features, KnownLanguage.java);
-  t.deepEqual(result, "minify-");
-});
-
-test("getFeaturePrefix - non-Java - returns '' if JavaMinimizeDependencyJars is enabled", async (t) => {
-  const codeql = createStubCodeQL({});
-  const features = createFeatures([Feature.JavaMinimizeDependencyJars]);
-
-  for (const knownLanguage of Object.values(KnownLanguage)) {
-    // Skip Java since we expect a result for it, which is tested in the previous test.
-    if (knownLanguage === KnownLanguage.java) {
-      continue;
-    }
-    const result = await getFeaturePrefix(codeql, features, knownLanguage);
-    t.deepEqual(result, "", `Expected no feature prefix for ${knownLanguage}`);
-  }
-});
-
 test("getFeaturePrefix - C# - returns prefix if CsharpNewCacheKey is enabled", async (t) => {
   const codeql = createStubCodeQL({});
   const features = createFeatures([Feature.CsharpNewCacheKey]);

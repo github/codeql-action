@@ -91,6 +91,13 @@ import {
 import { checkWorkflow } from "./workflow";
 
 /**
+ * First version of CodeQL where the Java extractor safely supports the option to minimize
+ * dependency jars. Note: some earlier versions of the extractor will respond to the corresponding
+ * option, but may rewrite jars in ways that lead to extraction errors.
+ */
+export const CODEQL_VERSION_JAR_MINIMIZATION = "2.23.0";
+
+/**
  * Sends a status report indicating that the `init` Action is starting.
  *
  * @param startedAt
@@ -636,18 +643,20 @@ async function run() {
       }
     }
 
-    // If the feature flag to minimize Java dependency jars is enabled, and we are doing a Java
-    // `build-mode: none` analysis (i.e. the flag is relevant), then set the environment variable
-    // that enables the corresponding option in the Java extractor. We also only do this if
-    // dependency caching is enabled, since the option is intended to reduce the size of
-    // dependency caches, but the jar-rewriting does have a performance cost that we'd like to avoid
-    // when caching is not being used.
+    // If we are doing a Java `build-mode: none` analysis, then set the environment variable that
+    // enables the option in the Java extractor to minimize dependency jars. We also only do this if
+    // dependency caching is enabled, since the option is intended to reduce the size of dependency
+    // caches, but the jar-rewriting does have a performance cost that we'd like to avoid when
+    // caching is not being used.
+    // TODO: Remove this language-specific mechanism and replace it with a more general one that
+    // tells extractors when dependency caching is enabled, and then the Java extractor can make its
+    // own decision about whether to rewrite jars.
     if (process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]) {
       logger.debug(
         `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
       );
     } else if (
-      (await features.getValue(Feature.JavaMinimizeDependencyJars, codeql)) &&
+      (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
       config.languages.includes(KnownLanguage.java)

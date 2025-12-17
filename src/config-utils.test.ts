@@ -15,6 +15,7 @@ import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
+import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
@@ -978,7 +979,7 @@ interface OverlayDatabaseModeTestSetup {
   languages: Language[];
   codeqlVersion: string;
   gitRoot: string | undefined;
-  gitVersion: string | undefined;
+  gitVersion: GitVersionInfo | undefined;
   codeScanningConfig: configUtils.UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
@@ -993,7 +994,10 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
-  gitVersion: gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  gitVersion: new GitVersionInfo(
+    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
+    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  ),
   codeScanningConfig: {},
   diskUsage: {
     numAvailableBytes: 50_000_000_000,
@@ -1781,7 +1785,7 @@ test(
   "Fallback due to old git version",
   {
     overlayDatabaseEnvVar: "overlay",
-    gitVersion: "2.30.0", // Version below required 2.38.0
+    gitVersion: new GitVersionInfo("2.30.0", "2.30.0"), // Version below required 2.38.0
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,

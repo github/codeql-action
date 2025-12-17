@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
-import * as core from "@actions/core";
 import * as exec from "@actions/exec";
 
 import { Logger } from "./logging";
@@ -64,31 +63,6 @@ function scanFileForTokens(
 ): TokenFinding[] {
   const findings: TokenFinding[] = [];
   try {
-    // Skip binary files that are unlikely to contain tokens
-    const ext = path.extname(filePath).toLowerCase();
-    const binaryExtensions = [
-      ".zip",
-      ".tar",
-      ".gz",
-      ".bz2",
-      ".xz",
-      ".db",
-      ".sqlite",
-      ".bin",
-      ".exe",
-      ".dll",
-      ".so",
-      ".dylib",
-      ".jpg",
-      ".jpeg",
-      ".png",
-      ".gif",
-      ".pdf",
-    ];
-    if (binaryExtensions.includes(ext)) {
-      return [];
-    }
-
     const content = fs.readFileSync(filePath, "utf8");
 
     for (const { name, pattern } of GITHUB_TOKEN_PATTERNS) {
@@ -130,13 +104,9 @@ async function scanZipFile(
 ): Promise<ScanResult> {
   const MAX_DEPTH = 10; // Prevent infinite recursion
   if (depth > MAX_DEPTH) {
-    logger.warning(
+    throw new Error(
       `Maximum zip extraction depth (${MAX_DEPTH}) reached for ${zipPath}`,
     );
-    return {
-      scannedFiles: 0,
-      findings: [],
-    };
   }
 
   const result: ScanResult = {
@@ -237,38 +207,32 @@ async function scanDirectory(
     findings: [],
   };
 
-  try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-      const relativePath = path.join(baseRelativePath, entry.name);
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    const relativePath = path.join(baseRelativePath, entry.name);
 
-      if (entry.isDirectory()) {
-        const subResult = await scanDirectory(
-          fullPath,
-          relativePath,
-          logger,
-          depth,
-        );
-        result.scannedFiles += subResult.scannedFiles;
-        result.findings.push(...subResult.findings);
-      } else if (entry.isFile()) {
-        const fileResult = await scanFile(
-          fullPath,
-          relativePath,
-          path.dirname(fullPath),
-          logger,
-          depth,
-        );
-        result.scannedFiles += fileResult.scannedFiles;
-        result.findings.push(...fileResult.findings);
-      }
+    if (entry.isDirectory()) {
+      const subResult = await scanDirectory(
+        fullPath,
+        relativePath,
+        logger,
+        depth,
+      );
+      result.scannedFiles += subResult.scannedFiles;
+      result.findings.push(...subResult.findings);
+    } else if (entry.isFile()) {
+      const fileResult = await scanFile(
+        fullPath,
+        relativePath,
+        path.dirname(fullPath),
+        logger,
+        depth,
+      );
+      result.scannedFiles += fileResult.scannedFiles;
+      result.findings.push(...fileResult.findings);
     }
-  } catch (e) {
-    logger.warning(
-      `Error scanning directory ${dirPath}: ${getErrorMessage(e)}`,
-    );
   }
 
   return result;
@@ -285,8 +249,10 @@ async function scanDirectory(
 export async function scanArtifactsForTokens(
   filesToScan: string[],
   logger: Logger,
-): Promise<ScanResult> {
-  logger.info("Starting security scan for GitHub tokens in debug artifacts...");
+): Promise<void> {
+  logger.info(
+    "Starting best-effort check for potential GitHub tokens in debug artifacts (for testing purposes only)...",
+  );
 
   const result: ScanResult = {
     scannedFiles: 0,
@@ -298,26 +264,22 @@ export async function scanArtifactsForTokens(
 
   try {
     for (const filePath of filesToScan) {
-      try {
-        const stats = fs.statSync(filePath);
-        const fileName = path.basename(filePath);
+      const stats = fs.statSync(filePath);
+      const fileName = path.basename(filePath);
 
-        if (stats.isDirectory()) {
-          const dirResult = await scanDirectory(filePath, fileName, logger);
-          result.scannedFiles += dirResult.scannedFiles;
-          result.findings.push(...dirResult.findings);
-        } else if (stats.isFile()) {
-          const fileResult = await scanFile(
-            filePath,
-            fileName,
-            tempScanDir,
-            logger,
-          );
-          result.scannedFiles += fileResult.scannedFiles;
-          result.findings.push(...fileResult.findings);
-        }
-      } catch (e) {
-        logger.warning(`Error scanning ${filePath}: ${getErrorMessage(e)}`);
+      if (stats.isDirectory()) {
+        const dirResult = await scanDirectory(filePath, fileName, logger);
+        result.scannedFiles += dirResult.scannedFiles;
+        result.findings.push(...dirResult.findings);
+      } else if (stats.isFile()) {
+        const fileResult = await scanFile(
+          filePath,
+          fileName,
+          tempScanDir,
+          logger,
+        );
+        result.scannedFiles += fileResult.scannedFiles;
+        result.findings.push(...fileResult.findings);
       }
     }
 
@@ -341,12 +303,12 @@ export async function scanArtifactsForTokens(
       ? `${baseSummary} (${tokenTypesSummary})`
       : baseSummary;
 
-    logger.info(`Security scan complete: ${summaryWithTypes}`);
+    logger.info(`Artifact check complete: ${summaryWithTypes}`);
 
     if (result.findings.length > 0) {
       const fileList = Array.from(filesWithTokens).join(", ");
-      core.warning(
-        `Found ${result.findings.length} potential GitHub token(s) (${tokenTypesSummary}) in debug artifacts at: ${fileList}. This may indicate a security issue. Please review the artifacts before sharing.`,
+      throw new Error(
+        `Found ${result.findings.length} potential GitHub token(s) (${tokenTypesSummary}) in debug artifacts at: ${fileList}. This is a best-effort check for testing purposes only.`,
       );
     }
   } finally {
@@ -359,6 +321,4 @@ export async function scanArtifactsForTokens(
       );
     }
   }
-
-  return result;
 }

@@ -934,7 +934,7 @@ export async function initConfig(
     logger.info(`Using Git version ${gitVersion.fullVersion}`);
     await logGitVersionTelemetry(config, gitVersion);
   } catch (e) {
-    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
+    logger.warning(`Could not determine Git version: ${getErrorMessage(e)}`);
   }
 
   // The choice of overlay database mode depends on the selection of languages

@@ -541,18 +541,7 @@ export async function getFeaturePrefix(
     }
   };
 
-  if (language === KnownLanguage.java) {
-    // To ensure a safe rollout of JAR minimization, we change the key when the feature is enabled.
-    const minimizeJavaJars = await features.getValue(
-      Feature.JavaMinimizeDependencyJars,
-      codeql,
-    );
-
-    // To maintain backwards compatibility with this, we return "minify-" instead of a hash.
-    if (minimizeJavaJars) {
-      return "minify-";
-    }
-  } else if (language === KnownLanguage.csharp) {
+  if (language === KnownLanguage.csharp) {
     await addFeatureIfEnabled(Feature.CsharpNewCacheKey);
     await addFeatureIfEnabled(Feature.CsharpCacheBuildModeNone);
   }
@@ -593,14 +582,8 @@ async function cachePrefix(
   // experimental features that affect the cache contents.
   const featurePrefix = await getFeaturePrefix(codeql, features, language);
 
-  // Assemble the cache key. For backwards compatibility with the JAR minification experiment's existing
-  // feature prefix usage, we add that feature prefix at the start. Other feature prefixes are inserted
-  // after the general CodeQL dependency cache prefix.
-  if (featurePrefix === "minify-") {
-    return `${featurePrefix}${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
-  } else {
-    return `${prefix}-${featurePrefix}${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
-  }
+  // Assemble the cache key.
+  return `${prefix}-${featurePrefix}${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
 }
 
 /** Represents information about our overall cache usage for CodeQL dependency caches. */

@@ -59,7 +59,7 @@ test("scanArtifactsForTokens handles files without tokens", async (t) => {
 test("scanArtifactsForTokens finds token in debug artifacts", async (t) => {
   t.timeout(10000); // 10 seconds
   const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages);
+  const logger = getRecordingLogger(messages, { logToConsole: false });
   // The zip here is a regression test based on
   // https://github.com/github/codeql-action/security/advisories/GHSA-vqf5-2xx6-9wfm
   const testZip = path.join(

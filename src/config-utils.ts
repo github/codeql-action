@@ -3,6 +3,7 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
+import * as semver from "semver";
 
 import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
 import {
@@ -22,14 +23,15 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
+import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
 import {
   getGitRoot,
+  getGitVersionOrThrow,
   GIT_MINIMUM_VERSION_FOR_OVERLAY,
-  gitVersionAtLeast,
   isAnalyzingDefaultBranch,
 } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -50,6 +52,7 @@ import {
   isDefined,
   checkDiskUsage,
   getCodeQLMemoryLimit,
+  getErrorMessage,
 } from "./util";
 
 export * from "./config/db-config";
@@ -714,6 +717,7 @@ export async function getOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   ramInput: string | undefined,
   codeScanningConfig: UserConfig,
+  gitVersion: string | undefined,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -816,7 +820,15 @@ export async function getOverlayDatabaseMode(
     );
     return nonOverlayAnalysis;
   }
-  if (!(await gitVersionAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY, logger))) {
+  if (gitVersion === undefined) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        "the Git version could not be determined. " +
+        "Falling back to creating a normal full database instead.",
+    );
+    return nonOverlayAnalysis;
+  }
+  if (!semver.gte(gitVersion, GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
@@ -916,6 +928,15 @@ export async function initConfig(
     config.computedConfig["query-filters"] = [];
   }
 
+  let gitVersion: string | undefined = undefined;
+  try {
+    gitVersion = await getGitVersionOrThrow();
+    logger.info(`Using Git version ${gitVersion}`);
+    await logGitVersionTelemetry(config, gitVersion);
+  } catch (e) {
+    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
+  }
+
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
@@ -929,6 +950,7 @@ export async function initConfig(
       config.buildMode,
       inputs.ramInput,
       config.computedConfig,
+      gitVersion,
       logger,
     );
   logger.info(
@@ -1328,4 +1350,24 @@ export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
   return getPrimaryAnalysisKind(config) === AnalysisKind.CodeScanning
     ? CodeScanning
     : CodeQuality;
+}
+
+/** Logs the Git version as a telemetry diagnostic. */
+async function logGitVersionTelemetry(
+  config: Config,
+  gitVersion: string,
+): Promise<void> {
+  if (config.languages.length > 0) {
+    addDiagnostic(
+      config,
+      // Arbitrarily choose the first language. We could also choose all languages, but that
+      // increases the risk of misinterpreting the data.
+      config.languages[0],
+      makeTelemetryDiagnostic(
+        "codeql-action/git-version-telemetry",
+        "Git version telemetry",
+        { gitVersion },
+      ),
+    );
+  }
 }

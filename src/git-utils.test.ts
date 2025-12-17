@@ -7,12 +7,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as gitUtils from "./git-utils";
-import {
-  getRecordingLogger,
-  LoggedMessage,
-  setupActionsVars,
-  setupTests,
-} from "./testing-utils";
+import { setupActionsVars, setupTests } from "./testing-utils";
 import { withTmpDir } from "./util";
 
 setupTests(test);
@@ -459,69 +454,6 @@ test("getGitVersionOrThrow throws when git command fails", async (t) => {
         instanceOf: Error,
         message: "git not found",
       },
-    );
-  } finally {
-    runGitCommandStub.restore();
-  }
-});
-
-test("gitVersionAtLeast returns true for version meeting requirement", async (t) => {
-  const runGitCommandStub = sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .resolves("git version 2.40.0\n");
-
-  const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages);
-
-  try {
-    const result = await gitUtils.gitVersionAtLeast("2.38.0", logger);
-    t.true(result);
-    t.true(
-      messages.some(
-        (m) =>
-          m.type === "debug" &&
-          m.message === "Installed Git version is 2.40.0.",
-      ),
-    );
-  } finally {
-    runGitCommandStub.restore();
-  }
-});
-
-test("gitVersionAtLeast returns false for version not meeting requirement", async (t) => {
-  const runGitCommandStub = sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .resolves("git version 2.30.0\n");
-
-  const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages);
-
-  try {
-    const result = await gitUtils.gitVersionAtLeast("2.38.0", logger);
-    t.false(result);
-  } finally {
-    runGitCommandStub.restore();
-  }
-});
-
-test("gitVersionAtLeast returns false when version cannot be determined", async (t) => {
-  const runGitCommandStub = sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .rejects(new Error("git not found"));
-
-  const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages);
-
-  try {
-    const result = await gitUtils.gitVersionAtLeast("2.38.0", logger);
-    t.false(result);
-    t.true(
-      messages.some(
-        (m) =>
-          m.type === "debug" &&
-          typeof m.message === "string" &&
-          m.message.includes("Could not determine Git version"),
-      ),
     );
   } finally {
     runGitCommandStub.restore();

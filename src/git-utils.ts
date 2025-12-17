@@ -1,21 +1,13 @@
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
-import * as semver from "semver";
 
 import {
   getOptionalInput,
   getWorkflowEvent,
   getWorkflowEventName,
 } from "./actions-util";
-import type { Config } from "./config-utils";
-import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
-import { Logger } from "./logging";
-import {
-  ConfigurationError,
-  getErrorMessage,
-  getRequiredEnvParam,
-} from "./util";
+import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 /**
  * Minimum Git version required for overlay analysis. The `git ls-files --format`
@@ -43,59 +35,6 @@ export async function getGitVersionOrThrow(): Promise<string> {
     return match[1];
   }
   throw new Error(`Could not parse Git version from output: ${stdout.trim()}`);
-}
-
-/**
- * Logs the Git version as a telemetry diagnostic. Should be called once during
- * initialization after the config is available.
- *
- * @param config The configuration that tells us where to store the diagnostic.
- * @param logger A logger to use for logging errors.
- */
-export async function logGitVersionTelemetry(
-  config: Config,
-  logger: Logger,
-): Promise<void> {
-  try {
-    const version = await getGitVersionOrThrow();
-    if (config.languages.length > 0) {
-      addDiagnostic(
-        config,
-        // Arbitrarily choose the first language. We could also choose all languages, but that
-        // increases the risk of misinterpreting the data.
-        config.languages[0],
-        makeTelemetryDiagnostic(
-          "codeql-action/git-version-telemetry",
-          "Git version telemetry",
-          { gitVersion: version },
-        ),
-      );
-    }
-  } catch (e) {
-    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
-  }
-}
-
-/**
- * Checks if the installed Git version is at least the given required version.
- *
- * @param requiredVersion The minimum required Git version.
- * @param logger A logger to use for logging.
- * @returns `true` if the installed Git version is at least the required version,
- *          `false` otherwise.
- */
-export async function gitVersionAtLeast(
-  requiredVersion: string,
-  logger: Logger,
-): Promise<boolean> {
-  try {
-    const version = await getGitVersionOrThrow();
-    logger.debug(`Installed Git version is ${version}.`);
-    return semver.gte(version, requiredVersion);
-  } catch (e) {
-    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
-    return false;
-  }
 }
 
 export const runGitCommand = async function (

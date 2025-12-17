@@ -231,7 +231,7 @@ test("Don't crash if uploading a database fails", async (t) => {
         (v) =>
           v.type === "warning" &&
           v.message ===
-            "Failed to upload database for javascript: Error: some error message",
+            "Failed to upload database for javascript: some error message",
       ) !== undefined,
     );
   });

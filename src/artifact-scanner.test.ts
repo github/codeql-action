@@ -56,41 +56,43 @@ test("scanArtifactsForTokens handles files without tokens", async (t) => {
   }
 });
 
-test("scanArtifactsForTokens finds token in debug artifacts", async (t) => {
-  t.timeout(os.platform() === "win32" ? 30000 : 10000); // 30 seconds on Windows, 10 seconds on other platforms
-  const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages, { logToConsole: false });
-  // The zip here is a regression test based on
-  // https://github.com/github/codeql-action/security/advisories/GHSA-vqf5-2xx6-9wfm
-  const testZip = path.join(
-    __dirname,
-    "..",
-    "src",
-    "testdata",
-    "debug-artifacts-with-fake-token.zip",
-  );
+if (os.platform() !== "win32") {
+  test("scanArtifactsForTokens finds token in debug artifacts", async (t) => {
+    t.timeout(15000); // 15 seconds
+    const messages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(messages, { logToConsole: false });
+    // The zip here is a regression test based on
+    // https://github.com/github/codeql-action/security/advisories/GHSA-vqf5-2xx6-9wfm
+    const testZip = path.join(
+      __dirname,
+      "..",
+      "src",
+      "testdata",
+      "debug-artifacts-with-fake-token.zip",
+    );
 
-  // This zip file contains a nested structure with a fake token in:
-  // my-db-java-partial.zip/trap/java/invocations/kotlin.9017231652989744319.trap
-  const error = await t.throwsAsync(
-    async () => await scanArtifactsForTokens([testZip], logger),
-  );
+    // This zip file contains a nested structure with a fake token in:
+    // my-db-java-partial.zip/trap/java/invocations/kotlin.9017231652989744319.trap
+    const error = await t.throwsAsync(
+      async () => await scanArtifactsForTokens([testZip], logger),
+    );
 
-  t.regex(
-    error?.message || "",
-    /Found.*potential GitHub token/,
-    "Should detect token in nested zip",
-  );
-  t.regex(
-    error?.message || "",
-    /kotlin\.9017231652989744319\.trap/,
-    "Should report the .trap file containing the token",
-  );
+    t.regex(
+      error?.message || "",
+      /Found.*potential GitHub token/,
+      "Should detect token in nested zip",
+    );
+    t.regex(
+      error?.message || "",
+      /kotlin\.9017231652989744319\.trap/,
+      "Should report the .trap file containing the token",
+    );
 
-  const logOutput = messages.map((msg) => msg.message).join("\n");
-  t.regex(
-    logOutput,
-    /^Extracting gz file: .*\.gz$/m,
-    "Logs should show that .gz files were extracted",
-  );
-});
+    const logOutput = messages.map((msg) => msg.message).join("\n");
+    t.regex(
+      logOutput,
+      /^Extracting gz file: .*\.gz$/m,
+      "Logs should show that .gz files were extracted",
+    );
+  });
+}

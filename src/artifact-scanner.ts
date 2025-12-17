@@ -124,7 +124,9 @@ async function scanArchiveFile(
     if (fileName.endsWith(".tar.gz") || fileName.endsWith(".tgz")) {
       // Extract tar.gz files
       logger.debug(`Extracting tar.gz file: ${archivePath}`);
-      await exec.exec("tar", ["-xzf", archivePath, "-C", tempExtractDir]);
+      await exec.exec("tar", ["-xzf", archivePath, "-C", tempExtractDir], {
+        silent: true,
+      });
     } else if (fileName.endsWith(".gz")) {
       // Extract .gz files (single file compression)
       logger.debug(`Extracting gz file: ${archivePath}`);
@@ -134,11 +136,18 @@ async function scanArchiveFile(
       );
       await exec.exec("gunzip", ["-c", archivePath], {
         outStream: fs.createWriteStream(outputFile),
+        silent: true,
       });
     } else if (fileName.endsWith(".zip")) {
       // Extract zip files
       logger.debug(`Extracting zip file: ${archivePath}`);
-      await exec.exec("unzip", ["-q", "-o", archivePath, "-d", tempExtractDir]);
+      await exec.exec(
+        "unzip",
+        ["-q", "-o", archivePath, "-d", tempExtractDir],
+        {
+          silent: true,
+        },
+      );
     }
 
     // Scan the extracted contents

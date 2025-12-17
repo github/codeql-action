@@ -376,10 +376,11 @@ test("getFileOidsUnderPath throws on unexpected output format", async (t) => {
 });
 
 test("getGitVersionOrThrow returns version for valid git output", async (t) => {
-  sinon.stub(gitUtils as any, "runGitCommand").resolves("git version 2.40.0\n");
+  sinon.stub(gitUtils as any, "runGitCommand").resolves("git version 2.40.0");
 
   const version = await gitUtils.getGitVersionOrThrow();
-  t.is(version, "2.40.0");
+  t.is(version.truncatedVersion, "2.40.0");
+  t.is(version.fullVersion, "2.40.0");
 });
 
 test("getGitVersionOrThrow throws for invalid git output", async (t) => {
@@ -399,11 +400,12 @@ test("getGitVersionOrThrow throws for invalid git output", async (t) => {
 test("getGitVersionOrThrow handles Windows-style git output", async (t) => {
   sinon
     .stub(gitUtils as any, "runGitCommand")
-    .resolves("git version 2.40.0.windows.1\n");
+    .resolves("git version 2.40.0.windows.1");
 
   const version = await gitUtils.getGitVersionOrThrow();
   // Should extract just the major.minor.patch portion
-  t.is(version, "2.40.0");
+  t.is(version.truncatedVersion, "2.40.0");
+  t.is(version.fullVersion, "2.40.0.windows.1");
 });
 
 test("getGitVersionOrThrow throws when git command fails", async (t) => {
@@ -420,4 +422,13 @@ test("getGitVersionOrThrow throws when git command fails", async (t) => {
       message: "git not found",
     },
   );
+});
+
+test("GitVersionInfo.isAtLeast correctly compares versions", async (t) => {
+  const version = new gitUtils.GitVersionInfo("2.40.0", "2.40.0");
+
+  t.true(version.isAtLeast("2.38.0"));
+  t.true(version.isAtLeast("2.40.0"));
+  t.false(version.isAtLeast("2.41.0"));
+  t.false(version.isAtLeast("3.0.0"));
 });

@@ -3,7 +3,6 @@ import * as path from "path";
 import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
-import * as semver from "semver";
 
 import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
 import {
@@ -32,6 +31,7 @@ import {
   getGitRoot,
   getGitVersionOrThrow,
   GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  GitVersionInfo,
   isAnalyzingDefaultBranch,
 } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -717,7 +717,7 @@ export async function getOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   ramInput: string | undefined,
   codeScanningConfig: UserConfig,
-  gitVersion: string | undefined,
+  gitVersion: GitVersionInfo | undefined,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -828,7 +828,7 @@ export async function getOverlayDatabaseMode(
     );
     return nonOverlayAnalysis;
   }
-  if (!semver.gte(gitVersion, GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
+  if (!gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
@@ -928,10 +928,10 @@ export async function initConfig(
     config.computedConfig["query-filters"] = [];
   }
 
-  let gitVersion: string | undefined = undefined;
+  let gitVersion: GitVersionInfo | undefined = undefined;
   try {
     gitVersion = await getGitVersionOrThrow();
-    logger.info(`Using Git version ${gitVersion}`);
+    logger.info(`Using Git version ${gitVersion.fullVersion}`);
     await logGitVersionTelemetry(config, gitVersion);
   } catch (e) {
     logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
@@ -1355,7 +1355,7 @@ export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
 /** Logs the Git version as a telemetry diagnostic. */
 async function logGitVersionTelemetry(
   config: Config,
-  gitVersion: string,
+  gitVersion: GitVersionInfo,
 ): Promise<void> {
   if (config.languages.length > 0) {
     addDiagnostic(
@@ -1366,7 +1366,10 @@ async function logGitVersionTelemetry(
       makeTelemetryDiagnostic(
         "codeql-action/git-version-telemetry",
         "Git version telemetry",
-        { gitVersion },
+        {
+          fullVersion: gitVersion.fullVersion,
+          truncatedVersion: gitVersion.truncatedVersion,
+        },
       ),
     );
   }

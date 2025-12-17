@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
+import * as semver from "semver";
 
 import {
   getOptionalInput,
@@ -16,13 +17,34 @@ import { ConfigurationError, getRequiredEnvParam } from "./util";
 export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
 
 /**
+ * Git version information
+ *
+ * The full version string as reported by `git --version` may not be
+ * semver-compatible (e.g., "2.40.0.windows.1"). This class captures both
+ * the full version string and a truncated semver-compatible version string
+ * (e.g., "2.40.0").
+ */
+export class GitVersionInfo {
+  constructor(
+    /** Truncated semver-compatible version */
+    public truncatedVersion: string,
+    /** Full version string as reported by `git --version` */
+    public fullVersion: string,
+  ) {}
+
+  isAtLeast(minVersion: string): boolean {
+    return semver.gte(this.truncatedVersion, minVersion);
+  }
+}
+
+/**
  * Gets the version of Git installed on the system and throws an error if
  * the version cannot be determined.
  *
  * @returns The Git version string (e.g., "2.40.0").
  * @throws {Error} if the version could not be determined.
  */
-export async function getGitVersionOrThrow(): Promise<string> {
+export async function getGitVersionOrThrow(): Promise<GitVersionInfo> {
   const stdout = await runGitCommand(
     undefined,
     ["--version"],
@@ -30,9 +52,9 @@ export async function getGitVersionOrThrow(): Promise<string> {
   );
   // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
   // We capture just the major.minor.patch portion to ensure semver compatibility.
-  const match = stdout.match(/git version (\d+\.\d+\.\d+)/);
+  const match = stdout.match(/^git version ((\d+\.\d+\.\d+).*)$/);
   if (match?.[1]) {
-    return match[1];
+    return new GitVersionInfo(match[2], match[1]);
   }
   throw new Error(`Could not parse Git version from output: ${stdout.trim()}`);
 }

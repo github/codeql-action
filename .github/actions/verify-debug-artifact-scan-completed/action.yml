@@ -1,6 +1,6 @@
 name: Verify that the best-effort debug artifact scan completed
 description: Verifies that the best-effort debug artifact scan completed successfully during tests
 runs:
-  using: node20
+  using: node24
   main: index.js
   post: post.js

@@ -23,16 +23,6 @@ import {
  */
 export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
 
-/** Cached git version to avoid recomputing it multiple times. */
-let cachedGitVersion: string | undefined;
-
-/**
- * Resets the cached git version. This is intended for use in tests only.
- */
-export function resetCachedGitVersion(): void {
-  cachedGitVersion = undefined;
-}
-
 /**
  * Gets the version of Git installed on the system and throws an error if
  * the version cannot be determined.
@@ -56,27 +46,6 @@ export async function getGitVersionOrThrow(): Promise<string> {
 }
 
 /**
- * Gets the cached Git version, or fetches and caches it if not yet cached.
- *
- * @param logger A logger to use for logging errors.
- * @returns The cached Git version, or undefined if the version could not be determined.
- */
-export async function getGitVersion(
-  logger: Logger,
-): Promise<string | undefined> {
-  if (cachedGitVersion !== undefined) {
-    return cachedGitVersion;
-  }
-  try {
-    cachedGitVersion = await getGitVersionOrThrow();
-    return cachedGitVersion;
-  } catch (e) {
-    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
-    return undefined;
-  }
-}
-
-/**
  * Logs the Git version as a telemetry diagnostic. Should be called once during
  * initialization after the config is available.
  *
@@ -87,19 +56,23 @@ export async function logGitVersionTelemetry(
   config: Config,
   logger: Logger,
 ): Promise<void> {
-  const version = await getGitVersion(logger);
-  if (version !== undefined && config.languages.length > 0) {
-    addDiagnostic(
-      config,
-      // Arbitrarily choose the first language. We could also choose all languages, but that
-      // increases the risk of misinterpreting the data.
-      config.languages[0],
-      makeTelemetryDiagnostic(
-        "codeql-action/git-version-telemetry",
-        "Git version telemetry",
-        { gitVersion: version },
-      ),
-    );
+  try {
+    const version = await getGitVersionOrThrow();
+    if (config.languages.length > 0) {
+      addDiagnostic(
+        config,
+        // Arbitrarily choose the first language. We could also choose all languages, but that
+        // increases the risk of misinterpreting the data.
+        config.languages[0],
+        makeTelemetryDiagnostic(
+          "codeql-action/git-version-telemetry",
+          "Git version telemetry",
+          { gitVersion: version },
+        ),
+      );
+    }
+  } catch (e) {
+    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
   }
 }
 
@@ -115,12 +88,14 @@ export async function gitVersionAtLeast(
   requiredVersion: string,
   logger: Logger,
 ): Promise<boolean> {
-  const version = await getGitVersion(logger);
-  if (version === undefined) {
+  try {
+    const version = await getGitVersionOrThrow();
+    logger.debug(`Installed Git version is ${version}.`);
+    return semver.gte(version, requiredVersion);
+  } catch (e) {
+    logger.debug(`Could not determine Git version: ${getErrorMessage(e)}`);
     return false;
   }
-  logger.debug(`Installed Git version is ${version}.`);
-  return semver.gte(version, requiredVersion);
 }
 
 export const runGitCommand = async function (

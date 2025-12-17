@@ -95,13 +95,14 @@ export async function cleanupAndUploadDatabases(
 
   const reports: DatabaseUploadResult[] = [];
   for (const language of config.languages) {
+    let bundledDbSize: number | undefined = undefined;
     try {
       // Upload the database bundle.
       // Although we are uploading arbitrary file contents to the API, it's worth
       // noting that it's the API's job to validate that the contents is acceptable.
       // This API method is available to anyone with write access to the repo.
       const bundledDb = await bundleDb(config, language, codeql, language);
-      const bundledDbSize = fs.statSync(bundledDb).size;
+      bundledDbSize = fs.statSync(bundledDb).size;
       const bundledDbReadStream = fs.createReadStream(bundledDb);
       const commitOid = await gitUtils.getCommitOid(
         actionsUtil.getRequiredInput("checkout_path"),
@@ -144,6 +145,7 @@ export async function cleanupAndUploadDatabases(
       reports.push({
         language,
         error: util.getErrorMessage(e),
+        ...(bundledDbSize ? { zipped_upload_size_bytes: bundledDbSize } : {}),
       });
     }
   }

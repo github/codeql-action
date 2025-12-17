@@ -1,0 +1,364 @@
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+
+import * as core from "@actions/core";
+import * as exec from "@actions/exec";
+
+import { Logger } from "./logging";
+import { getErrorMessage } from "./util";
+
+/**
+ * GitHub token patterns to scan for.
+ * These patterns match various GitHub token formats.
+ */
+const GITHUB_TOKEN_PATTERNS = [
+  {
+    name: "Personal Access Token",
+    pattern: /\bghp_[a-zA-Z0-9]{36}\b/g,
+  },
+  {
+    name: "OAuth Access Token",
+    pattern: /\bgho_[a-zA-Z0-9]{36}\b/g,
+  },
+  {
+    name: "User-to-Server Token",
+    pattern: /\bghu_[a-zA-Z0-9]{36}\b/g,
+  },
+  {
+    name: "Server-to-Server Token",
+    pattern: /\bghs_[a-zA-Z0-9]{36}\b/g,
+  },
+  {
+    name: "Refresh Token",
+    pattern: /\bghr_[a-zA-Z0-9]{36}\b/g,
+  },
+  {
+    name: "App Installation Access Token",
+    pattern: /\bghs_[a-zA-Z0-9]{255}\b/g,
+  },
+];
+
+interface TokenFinding {
+  tokenType: string;
+  filePath: string;
+}
+
+interface ScanResult {
+  scannedFiles: number;
+  findings: TokenFinding[];
+}
+
+/**
+ * Scans a file for GitHub tokens.
+ *
+ * @param filePath Path to the file to scan
+ * @param relativePath Relative path for display purposes
+ * @param logger Logger instance
+ * @returns Array of token findings in the file
+ */
+function scanFileForTokens(
+  filePath: string,
+  relativePath: string,
+  logger: Logger,
+): TokenFinding[] {
+  const findings: TokenFinding[] = [];
+  try {
+    // Skip binary files that are unlikely to contain tokens
+    const ext = path.extname(filePath).toLowerCase();
+    const binaryExtensions = [
+      ".zip",
+      ".tar",
+      ".gz",
+      ".bz2",
+      ".xz",
+      ".db",
+      ".sqlite",
+      ".bin",
+      ".exe",
+      ".dll",
+      ".so",
+      ".dylib",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".pdf",
+    ];
+    if (binaryExtensions.includes(ext)) {
+      return [];
+    }
+
+    const content = fs.readFileSync(filePath, "utf8");
+
+    for (const { name, pattern } of GITHUB_TOKEN_PATTERNS) {
+      const matches = content.match(pattern);
+      if (matches) {
+        for (let i = 0; i < matches.length; i++) {
+          findings.push({ tokenType: name, filePath: relativePath });
+        }
+        logger.debug(`Found ${matches.length} ${name}(s) in ${relativePath}`);
+      }
+    }
+
+    return findings;
+  } catch (e) {
+    // If we can't read the file as text, it's likely binary or inaccessible
+    logger.debug(
+      `Could not scan file ${filePath} for tokens: ${getErrorMessage(e)}`,
+    );
+    return [];
+  }
+}
+
+/**
+ * Recursively extracts and scans zip files.
+ *
+ * @param zipPath Path to the zip file
+ * @param relativeZipPath Relative path of the zip for display
+ * @param extractDir Directory to extract to
+ * @param logger Logger instance
+ * @param depth Current recursion depth (to prevent infinite loops)
+ * @returns Scan results
+ */
+async function scanZipFile(
+  zipPath: string,
+  relativeZipPath: string,
+  extractDir: string,
+  logger: Logger,
+  depth: number = 0,
+): Promise<ScanResult> {
+  const MAX_DEPTH = 10; // Prevent infinite recursion
+  if (depth > MAX_DEPTH) {
+    logger.warning(
+      `Maximum zip extraction depth (${MAX_DEPTH}) reached for ${zipPath}`,
+    );
+    return {
+      scannedFiles: 0,
+      findings: [],
+    };
+  }
+
+  const result: ScanResult = {
+    scannedFiles: 0,
+    findings: [],
+  };
+
+  try {
+    logger.debug(`Extracting zip file: ${zipPath}`);
+    const tempExtractDir = fs.mkdtempSync(
+      path.join(extractDir, `extract-${depth}-`),
+    );
+
+    // Use unzip command available on GitHub-hosted Linux runners
+    await exec.exec("unzip", ["-q", "-o", zipPath, "-d", tempExtractDir]);
+
+    // Scan the extracted contents
+    const scanResult = await scanDirectory(
+      tempExtractDir,
+      relativeZipPath,
+      logger,
+      depth + 1,
+    );
+    result.scannedFiles += scanResult.scannedFiles;
+    result.findings.push(...scanResult.findings);
+
+    // Clean up extracted files
+    fs.rmSync(tempExtractDir, { recursive: true, force: true });
+  } catch (e) {
+    logger.debug(
+      `Could not extract or scan zip file ${zipPath}: ${getErrorMessage(e)}`,
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Scans a single file, including recursive zip extraction if applicable.
+ *
+ * @param fullPath Full path to the file
+ * @param relativePath Relative path for display
+ * @param extractDir Directory to use for extraction (for zip files)
+ * @param logger Logger instance
+ * @param depth Current recursion depth
+ * @returns Scan results
+ */
+async function scanFile(
+  fullPath: string,
+  relativePath: string,
+  extractDir: string,
+  logger: Logger,
+  depth: number = 0,
+): Promise<ScanResult> {
+  const result: ScanResult = {
+    scannedFiles: 1,
+    findings: [],
+  };
+
+  // Check if it's a zip file and recursively scan it
+  const ext = path.extname(fullPath).toLowerCase();
+  if (ext === ".zip") {
+    const zipResult = await scanZipFile(
+      fullPath,
+      relativePath,
+      extractDir,
+      logger,
+      depth,
+    );
+    result.scannedFiles += zipResult.scannedFiles;
+    result.findings.push(...zipResult.findings);
+  }
+
+  // Scan the file itself for tokens
+  const fileFindings = scanFileForTokens(fullPath, relativePath, logger);
+  result.findings.push(...fileFindings);
+
+  return result;
+}
+
+/**
+ * Recursively scans a directory for GitHub tokens.
+ *
+ * @param dirPath Directory path to scan
+ * @param baseRelativePath Base relative path for computing display paths
+ * @param logger Logger instance
+ * @param depth Current recursion depth
+ * @returns Scan results
+ */
+async function scanDirectory(
+  dirPath: string,
+  baseRelativePath: string,
+  logger: Logger,
+  depth: number = 0,
+): Promise<ScanResult> {
+  const result: ScanResult = {
+    scannedFiles: 0,
+    findings: [],
+  };
+
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      const relativePath = path.join(baseRelativePath, entry.name);
+
+      if (entry.isDirectory()) {
+        const subResult = await scanDirectory(
+          fullPath,
+          relativePath,
+          logger,
+          depth,
+        );
+        result.scannedFiles += subResult.scannedFiles;
+        result.findings.push(...subResult.findings);
+      } else if (entry.isFile()) {
+        const fileResult = await scanFile(
+          fullPath,
+          relativePath,
+          path.dirname(fullPath),
+          logger,
+          depth,
+        );
+        result.scannedFiles += fileResult.scannedFiles;
+        result.findings.push(...fileResult.findings);
+      }
+    }
+  } catch (e) {
+    logger.warning(
+      `Error scanning directory ${dirPath}: ${getErrorMessage(e)}`,
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Scans a list of files and directories for GitHub tokens.
+ * Recursively extracts and scans zip files.
+ *
+ * @param filesToScan List of file paths to scan
+ * @param logger Logger instance
+ * @returns Scan results
+ */
+export async function scanArtifactsForTokens(
+  filesToScan: string[],
+  logger: Logger,
+): Promise<ScanResult> {
+  logger.info("Starting security scan for GitHub tokens in debug artifacts...");
+
+  const result: ScanResult = {
+    scannedFiles: 0,
+    findings: [],
+  };
+
+  // Create a temporary directory for extraction
+  const tempScanDir = fs.mkdtempSync(path.join(os.tmpdir(), "artifact-scan-"));
+
+  try {
+    for (const filePath of filesToScan) {
+      try {
+        const stats = fs.statSync(filePath);
+        const fileName = path.basename(filePath);
+
+        if (stats.isDirectory()) {
+          const dirResult = await scanDirectory(filePath, fileName, logger);
+          result.scannedFiles += dirResult.scannedFiles;
+          result.findings.push(...dirResult.findings);
+        } else if (stats.isFile()) {
+          const fileResult = await scanFile(
+            filePath,
+            fileName,
+            tempScanDir,
+            logger,
+          );
+          result.scannedFiles += fileResult.scannedFiles;
+          result.findings.push(...fileResult.findings);
+        }
+      } catch (e) {
+        logger.warning(`Error scanning ${filePath}: ${getErrorMessage(e)}`);
+      }
+    }
+
+    // Compute statistics from findings
+    const tokenTypesCounts = new Map<string, number>();
+    const filesWithTokens = new Set<string>();
+    for (const finding of result.findings) {
+      tokenTypesCounts.set(
+        finding.tokenType,
+        (tokenTypesCounts.get(finding.tokenType) || 0) + 1,
+      );
+      filesWithTokens.add(finding.filePath);
+    }
+
+    const tokenTypesSummary = Array.from(tokenTypesCounts.entries())
+      .map(([type, count]) => `${count} ${type}${count > 1 ? "s" : ""}`)
+      .join(", ");
+
+    const baseSummary = `scanned ${result.scannedFiles} files, found ${result.findings.length} potential token(s) in ${filesWithTokens.size} file(s)`;
+    const summaryWithTypes = tokenTypesSummary
+      ? `${baseSummary} (${tokenTypesSummary})`
+      : baseSummary;
+
+    logger.info(`Security scan complete: ${summaryWithTypes}`);
+
+    if (result.findings.length > 0) {
+      const fileList = Array.from(filesWithTokens).join(", ");
+      core.warning(
+        `Found ${result.findings.length} potential GitHub token(s) (${tokenTypesSummary}) in debug artifacts at: ${fileList}. This may indicate a security issue. Please review the artifacts before sharing.`,
+      );
+    }
+  } finally {
+    // Clean up temporary directory
+    try {
+      fs.rmSync(tempScanDir, { recursive: true, force: true });
+    } catch (e) {
+      logger.debug(
+        `Could not clean up temporary scan directory: ${getErrorMessage(e)}`,
+      );
+    }
+  }
+
+  return result;
+}

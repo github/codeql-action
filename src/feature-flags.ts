@@ -44,7 +44,6 @@ export interface FeatureEnablement {
  */
 export enum Feature {
   AllowToolcacheInput = "allow_toolcache_input",
-  AnalyzeUseNewUpload = "analyze_use_new_upload",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CsharpCacheBuildModeNone = "csharp_cache_bmn",
@@ -54,7 +53,6 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
-  JavaMinimizeDependencyJars = "java_minimize_dependency_jars",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -120,11 +118,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
     minimumVersion: undefined,
   },
-  [Feature.AnalyzeUseNewUpload]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ANALYZE_USE_NEW_UPLOAD",
-    minimumVersion: undefined,
-  },
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
@@ -173,11 +166,6 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
     minimumVersion: undefined,
-  },
-  [Feature.JavaMinimizeDependencyJars]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_JAVA_MINIMIZE_DEPENDENCY_JARS",
-    minimumVersion: "2.23.0",
   },
   [Feature.OverlayAnalysis]: {
     defaultValue: false,
@@ -498,8 +486,8 @@ class GitHubFeatureFlags {
   async getDefaultCliVersion(
     variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
-    if (variant === util.GitHubVariant.DOTCOM) {
-      return await this.getDefaultDotcomCliVersion();
+    if (supportsFeatureFlags(variant)) {
+      return await this.getDefaultCliVersionFromFlags();
     }
     return {
       cliVersion: defaults.cliVersion,
@@ -507,7 +495,7 @@ class GitHubFeatureFlags {
     };
   }
 
-  async getDefaultDotcomCliVersion(): Promise<CodeQLDefaultVersionInfo> {
+  async getDefaultCliVersionFromFlags(): Promise<CodeQLDefaultVersionInfo> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
@@ -633,10 +621,7 @@ class GitHubFeatureFlags {
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
     // Do nothing when not running against github.com
-    if (
-      this.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
-      this.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
-    ) {
+    if (!supportsFeatureFlags(this.gitHubVersion.type)) {
       this.logger.debug(
         "Not running against github.com. Disabling all toggleable features.",
       );
@@ -701,4 +686,11 @@ class GitHubFeatureFlags {
       }
     }
   }
+}
+
+function supportsFeatureFlags(githubVariant: util.GitHubVariant): boolean {
+  return (
+    githubVariant === util.GitHubVariant.DOTCOM ||
+    githubVariant === util.GitHubVariant.GHEC_DR
+  );
 }

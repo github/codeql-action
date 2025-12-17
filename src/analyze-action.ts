@@ -19,20 +19,18 @@ import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
+import { Config, getConfig } from "./config-utils";
 import {
-  Config,
-  getConfig,
-  isCodeQualityEnabled,
-  isCodeScanningEnabled,
-} from "./config-utils";
-import { cleanupAndUploadDatabases } from "./database-upload";
+  cleanupAndUploadDatabases,
+  DatabaseUploadResult,
+} from "./database-upload";
 import {
   DependencyCacheUploadStatusReport,
   uploadDependencyCaches,
 } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
@@ -59,15 +57,13 @@ interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
     QueriesStatusReport {}
 
-interface DependencyCachingUploadStatusReport {
-  dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
-}
-
 interface FinishStatusReport
   extends StatusReportBase,
     DatabaseCreationTimings,
-    AnalysisStatusReport,
-    DependencyCachingUploadStatusReport {}
+    AnalysisStatusReport {
+  dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
+  database_upload_results: DatabaseUploadResult[];
+}
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   /** Size of TRAP caches that we uploaded, in bytes. */
@@ -86,6 +82,7 @@ async function sendStatusReport(
   didUploadTrapCaches: boolean,
   trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   dependencyCacheResults: DependencyCacheUploadStatusReport | undefined,
+  databaseUploadResults: DatabaseUploadResult[],
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
@@ -106,6 +103,7 @@ async function sendStatusReport(
       ...(dbCreationTimings || {}),
       ...(trapCacheCleanup || {}),
       dependency_caching_upload_results: dependencyCacheResults,
+      database_upload_results: databaseUploadResults,
     };
     if (config && didUploadTrapCaches) {
       const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
@@ -223,6 +221,7 @@ async function run() {
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
   let dependencyCacheResults: DependencyCacheUploadStatusReport | undefined;
+  let databaseUploadResults: DatabaseUploadResult[] = [];
   util.initializeEnvironment(actionsUtil.getActionVersion());
 
   // Make inputs accessible in the `post` step, details at
@@ -358,46 +357,15 @@ async function run() {
       const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
-      if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
-        uploadResults = await postProcessAndUploadSarif(
-          logger,
-          features,
-          uploadKind,
-          checkoutPath,
-          outputDir,
-          category,
-          actionsUtil.getOptionalInput("post-processed-sarif-path"),
-        );
-      } else if (uploadKind === "always") {
-        uploadResults = {};
-
-        if (isCodeScanningEnabled(config)) {
-          uploadResults[analyses.AnalysisKind.CodeScanning] =
-            await uploadLib.uploadFiles(
-              outputDir,
-              checkoutPath,
-              category,
-              features,
-              logger,
-              analyses.CodeScanning,
-            );
-        }
-
-        if (isCodeQualityEnabled(config)) {
-          uploadResults[analyses.AnalysisKind.CodeQuality] =
-            await uploadLib.uploadFiles(
-              outputDir,
-              checkoutPath,
-              category,
-              features,
-              logger,
-              analyses.CodeQuality,
-            );
-        }
-      } else {
-        uploadResults = {};
-        logger.info("Not uploading results");
-      }
+      uploadResults = await postProcessAndUploadSarif(
+        logger,
+        features,
+        uploadKind,
+        checkoutPath,
+        outputDir,
+        category,
+        actionsUtil.getOptionalInput("post-processed-sarif-path"),
+      );
 
       // Set the SARIF id outputs only if we have results for them, to avoid
       // having keys with empty values in the action output.
@@ -425,7 +393,7 @@ async function run() {
     // Possibly upload the database bundles for remote queries.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
-    await cleanupAndUploadDatabases(
+    databaseUploadResults = await cleanupAndUploadDatabases(
       repositoryNwo,
       codeql,
       config,
@@ -497,6 +465,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
     return;
@@ -519,6 +488,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   } else if (runStats !== undefined) {
@@ -532,6 +502,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   } else {
@@ -545,6 +516,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   }

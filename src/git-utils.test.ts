@@ -315,27 +315,23 @@ test("getFileOidsUnderPath returns correct file mapping", async (t) => {
         "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_src/git-utils.ts",
     );
 
-  try {
-    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
 
-    t.deepEqual(result, {
-      "lib/git-utils.js": "30d998ded095371488be3a729eb61d86ed721a18",
-      "lib/git-utils.js.map": "d89514599a9a99f22b4085766d40af7b99974827",
-      "src/git-utils.ts": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
-    });
+  t.deepEqual(result, {
+    "lib/git-utils.js": "30d998ded095371488be3a729eb61d86ed721a18",
+    "lib/git-utils.js.map": "d89514599a9a99f22b4085766d40af7b99974827",
+    "src/git-utils.ts": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+  });
 
-    t.deepEqual(runGitCommandStub.firstCall.args, [
-      "/fake/path",
-      ["ls-files", "--recurse-submodules", "--format=%(objectname)_%(path)"],
-      "Cannot list Git OIDs of tracked files.",
-    ]);
-  } finally {
-    runGitCommandStub.restore();
-  }
+  t.deepEqual(runGitCommandStub.firstCall.args, [
+    "/fake/path",
+    ["ls-files", "--recurse-submodules", "--format=%(objectname)_%(path)"],
+    "Cannot list Git OIDs of tracked files.",
+  ]);
 });
 
 test("getFileOidsUnderPath handles quoted paths", async (t) => {
-  const runGitCommandStub = sinon
+  sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves(
       "30d998ded095371488be3a729eb61d86ed721a18_lib/normal-file.js\n" +
@@ -343,34 +339,24 @@ test("getFileOidsUnderPath handles quoted paths", async (t) => {
         'a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_"lib/file\\twith\\ttabs.js"',
     );
 
-  try {
-    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
 
-    t.deepEqual(result, {
-      "lib/normal-file.js": "30d998ded095371488be3a729eb61d86ed721a18",
-      "lib/file with spaces.js": "d89514599a9a99f22b4085766d40af7b99974827",
-      "lib/file\twith\ttabs.js": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
-    });
-  } finally {
-    runGitCommandStub.restore();
-  }
+  t.deepEqual(result, {
+    "lib/normal-file.js": "30d998ded095371488be3a729eb61d86ed721a18",
+    "lib/file with spaces.js": "d89514599a9a99f22b4085766d40af7b99974827",
+    "lib/file\twith\ttabs.js": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+  });
 });
 
 test("getFileOidsUnderPath handles empty output", async (t) => {
-  const runGitCommandStub = sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .resolves("");
+  sinon.stub(gitUtils as any, "runGitCommand").resolves("");
 
-  try {
-    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
-    t.deepEqual(result, {});
-  } finally {
-    runGitCommandStub.restore();
-  }
+  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+  t.deepEqual(result, {});
 });
 
 test("getFileOidsUnderPath throws on unexpected output format", async (t) => {
-  const runGitCommandStub = sinon
+  sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves(
       "30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js\n" +
@@ -378,84 +364,60 @@ test("getFileOidsUnderPath throws on unexpected output format", async (t) => {
         "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_src/git-utils.ts",
     );
 
-  try {
-    await t.throwsAsync(
-      async () => {
-        await gitUtils.getFileOidsUnderPath("/fake/path");
-      },
-      {
-        instanceOf: Error,
-        message: 'Unexpected "git ls-files" output: invalid-line-format',
-      },
-    );
-  } finally {
-    runGitCommandStub.restore();
-  }
+  await t.throwsAsync(
+    async () => {
+      await gitUtils.getFileOidsUnderPath("/fake/path");
+    },
+    {
+      instanceOf: Error,
+      message: 'Unexpected "git ls-files" output: invalid-line-format',
+    },
+  );
 });
 
 test("getGitVersionOrThrow returns version for valid git output", async (t) => {
-  const runGitCommandStub = sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .resolves("git version 2.40.0\n");
+  sinon.stub(gitUtils as any, "runGitCommand").resolves("git version 2.40.0\n");
 
-  try {
-    const version = await gitUtils.getGitVersionOrThrow();
-    t.is(version, "2.40.0");
-  } finally {
-    runGitCommandStub.restore();
-  }
+  const version = await gitUtils.getGitVersionOrThrow();
+  t.is(version, "2.40.0");
 });
 
 test("getGitVersionOrThrow throws for invalid git output", async (t) => {
-  const runGitCommandStub = sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .resolves("invalid output");
+  sinon.stub(gitUtils as any, "runGitCommand").resolves("invalid output");
 
-  try {
-    await t.throwsAsync(
-      async () => {
-        await gitUtils.getGitVersionOrThrow();
-      },
-      {
-        instanceOf: Error,
-        message: "Could not parse Git version from output: invalid output",
-      },
-    );
-  } finally {
-    runGitCommandStub.restore();
-  }
+  await t.throwsAsync(
+    async () => {
+      await gitUtils.getGitVersionOrThrow();
+    },
+    {
+      instanceOf: Error,
+      message: "Could not parse Git version from output: invalid output",
+    },
+  );
 });
 
 test("getGitVersionOrThrow handles Windows-style git output", async (t) => {
-  const runGitCommandStub = sinon
+  sinon
     .stub(gitUtils as any, "runGitCommand")
     .resolves("git version 2.40.0.windows.1\n");
 
-  try {
-    const version = await gitUtils.getGitVersionOrThrow();
-    // Should extract just the major.minor.patch portion
-    t.is(version, "2.40.0");
-  } finally {
-    runGitCommandStub.restore();
-  }
+  const version = await gitUtils.getGitVersionOrThrow();
+  // Should extract just the major.minor.patch portion
+  t.is(version, "2.40.0");
 });
 
 test("getGitVersionOrThrow throws when git command fails", async (t) => {
-  const runGitCommandStub = sinon
+  sinon
     .stub(gitUtils as any, "runGitCommand")
     .rejects(new Error("git not found"));
 
-  try {
-    await t.throwsAsync(
-      async () => {
-        await gitUtils.getGitVersionOrThrow();
-      },
-      {
-        instanceOf: Error,
-        message: "git not found",
-      },
-    );
-  } finally {
-    runGitCommandStub.restore();
-  }
+  await t.throwsAsync(
+    async () => {
+      await gitUtils.getGitVersionOrThrow();
+    },
+    {
+      instanceOf: Error,
+      message: "git not found",
+    },
+  );
 });

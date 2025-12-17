@@ -145,7 +145,9 @@ export async function cleanupAndUploadDatabases(
       reports.push({
         language,
         error: util.getErrorMessage(e),
-        ...(bundledDbSize ? { zipped_upload_size_bytes: bundledDbSize } : {}),
+        ...(bundledDbSize !== undefined
+          ? { zipped_upload_size_bytes: bundledDbSize }
+          : {}),
       });
     }
   }

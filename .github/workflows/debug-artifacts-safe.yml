@@ -67,6 +67,14 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
+      - name: Verify artifact scan ran
+        shell: bash
+        run: |
+          if [[ "$CODEQL_ACTION_ARTIFACT_SCAN_FINISHED" != "true" ]]; then
+            echo "Error: Best effort artifact scan did not run"
+            exit 1
+          fi
+          echo "✓ Best effort artifact scan completed successfully"
   download-and-check-artifacts:
     name: Download and check debug artifacts
     if: github.triggering_actor != 'dependabot[bot]'

@@ -191,10 +191,9 @@ export function flushDiagnostics(config: Config) {
  * for creating diagnostics that should only be sent to telemetry and not
  * displayed on the status page or CLI summary table.
  *
- * @param id An identifier under which it makes sense to group this diagnostic message.
- * @param name Display name for the ID.
- * @param attributes Structured metadata about the diagnostic message.
- * @returns Returns the new telemetry diagnostic message.
+ * @param id An identifier under which it makes sense to group this diagnostic message
+ * @param name Display name
+ * @param attributes Structured metadata
  */
 export function makeTelemetryDiagnostic(
   id: string,

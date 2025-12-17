@@ -293,6 +293,7 @@ export const featureConfig: Record<
     defaultValue: false,
     envVar: "CODEQL_ACTION_UPLOAD_OVERLAY_DB_TO_API",
     minimumVersion: undefined,
+    toolsFeature: ToolsFeature.BundleSupportsOverlay,
   },
   [Feature.UseRepositoryProperties]: {
     defaultValue: false,

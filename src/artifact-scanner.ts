@@ -86,18 +86,18 @@ function scanFileForTokens(
 }
 
 /**
- * Recursively extracts and scans zip files.
+ * Recursively extracts and scans archive files (.zip, .gz, .tar.gz).
  *
- * @param zipPath Path to the zip file
- * @param relativeZipPath Relative path of the zip for display
+ * @param archivePath Path to the archive file
+ * @param relativeArchivePath Relative path of the archive for display
  * @param extractDir Directory to extract to
  * @param logger Logger instance
  * @param depth Current recursion depth (to prevent infinite loops)
  * @returns Scan results
  */
-async function scanZipFile(
-  zipPath: string,
-  relativeZipPath: string,
+async function scanArchiveFile(
+  archivePath: string,
+  relativeArchivePath: string,
   extractDir: string,
   logger: Logger,
   depth: number = 0,
@@ -105,7 +105,7 @@ async function scanZipFile(
   const MAX_DEPTH = 10; // Prevent infinite recursion
   if (depth > MAX_DEPTH) {
     throw new Error(
-      `Maximum zip extraction depth (${MAX_DEPTH}) reached for ${zipPath}`,
+      `Maximum archive extraction depth (${MAX_DEPTH}) reached for ${archivePath}`,
     );
   }
 
@@ -115,18 +115,36 @@ async function scanZipFile(
   };
 
   try {
-    logger.debug(`Extracting zip file: ${zipPath}`);
     const tempExtractDir = fs.mkdtempSync(
       path.join(extractDir, `extract-${depth}-`),
     );
 
-    // Use unzip command available on GitHub-hosted Linux runners
-    await exec.exec("unzip", ["-q", "-o", zipPath, "-d", tempExtractDir]);
+    // Determine archive type and extract accordingly
+    const fileName = path.basename(archivePath).toLowerCase();
+    if (fileName.endsWith(".tar.gz") || fileName.endsWith(".tgz")) {
+      // Extract tar.gz files
+      logger.debug(`Extracting tar.gz file: ${archivePath}`);
+      await exec.exec("tar", ["-xzf", archivePath, "-C", tempExtractDir]);
+    } else if (fileName.endsWith(".gz")) {
+      // Extract .gz files (single file compression)
+      logger.debug(`Extracting gz file: ${archivePath}`);
+      const outputFile = path.join(
+        tempExtractDir,
+        path.basename(archivePath, ".gz"),
+      );
+      await exec.exec("gunzip", ["-c", archivePath], {
+        outStream: fs.createWriteStream(outputFile),
+      });
+    } else if (fileName.endsWith(".zip")) {
+      // Extract zip files
+      logger.debug(`Extracting zip file: ${archivePath}`);
+      await exec.exec("unzip", ["-q", "-o", archivePath, "-d", tempExtractDir]);
+    }
 
     // Scan the extracted contents
     const scanResult = await scanDirectory(
       tempExtractDir,
-      relativeZipPath,
+      relativeArchivePath,
       logger,
       depth + 1,
     );
@@ -137,7 +155,7 @@ async function scanZipFile(
     fs.rmSync(tempExtractDir, { recursive: true, force: true });
   } catch (e) {
     logger.debug(
-      `Could not extract or scan zip file ${zipPath}: ${getErrorMessage(e)}`,
+      `Could not extract or scan archive file ${archivePath}: ${getErrorMessage(e)}`,
     );
   }
 
@@ -145,11 +163,11 @@ async function scanZipFile(
 }
 
 /**
- * Scans a single file, including recursive zip extraction if applicable.
+ * Scans a single file, including recursive archive extraction if applicable.
  *
  * @param fullPath Full path to the file
  * @param relativePath Relative path for display
- * @param extractDir Directory to use for extraction (for zip files)
+ * @param extractDir Directory to use for extraction (for archive files)
  * @param logger Logger instance
  * @param depth Current recursion depth
  * @returns Scan results
@@ -166,21 +184,27 @@ async function scanFile(
     findings: [],
   };
 
-  // Check if it's a zip file and recursively scan it
-  const ext = path.extname(fullPath).toLowerCase();
-  if (ext === ".zip") {
-    const zipResult = await scanZipFile(
+  // Check if it's an archive file and recursively scan it
+  const fileName = path.basename(fullPath).toLowerCase();
+  const isArchive =
+    fileName.endsWith(".zip") ||
+    fileName.endsWith(".tar.gz") ||
+    fileName.endsWith(".tgz") ||
+    fileName.endsWith(".gz");
+
+  if (isArchive) {
+    const archiveResult = await scanArchiveFile(
       fullPath,
       relativePath,
       extractDir,
       logger,
       depth,
     );
-    result.scannedFiles += zipResult.scannedFiles;
-    result.findings.push(...zipResult.findings);
+    result.scannedFiles += archiveResult.scannedFiles;
+    result.findings.push(...archiveResult.findings);
   }
 
-  // Scan the file itself for tokens
+  // Scan the file itself for tokens (unless it's a pure binary archive format)
   const fileFindings = scanFileForTokens(fullPath, relativePath, logger);
   result.findings.push(...fileFindings);
 
@@ -240,7 +264,7 @@ async function scanDirectory(
 
 /**
  * Scans a list of files and directories for GitHub tokens.
- * Recursively extracts and scans zip files.
+ * Recursively extracts and scans archive files (.zip, .gz, .tar.gz).
  *
  * @param filesToScan List of file paths to scan
  * @param logger Logger instance

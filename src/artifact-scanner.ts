@@ -127,6 +127,26 @@ async function scanArchiveFile(
       await exec.exec("tar", ["-xzf", archivePath, "-C", tempExtractDir], {
         silent: true,
       });
+    } else if (fileName.endsWith(".tar.zst")) {
+      // Extract tar.zst files
+      logger.debug(`Extracting tar.zst file: ${archivePath}`);
+      await exec.exec(
+        "tar",
+        ["--zstd", "-xf", archivePath, "-C", tempExtractDir],
+        {
+          silent: true,
+        },
+      );
+    } else if (fileName.endsWith(".zst")) {
+      // Extract .zst files (single file compression)
+      logger.debug(`Extracting zst file: ${archivePath}`);
+      const outputFile = path.join(
+        tempExtractDir,
+        path.basename(archivePath, ".zst"),
+      );
+      await exec.exec("zstd", ["-d", archivePath, "-o", outputFile], {
+        silent: true,
+      });
     } else if (fileName.endsWith(".gz")) {
       // Extract .gz files (single file compression)
       logger.debug(`Extracting gz file: ${archivePath}`);
@@ -199,6 +219,8 @@ async function scanFile(
     fileName.endsWith(".zip") ||
     fileName.endsWith(".tar.gz") ||
     fileName.endsWith(".tgz") ||
+    fileName.endsWith(".tar.zst") ||
+    fileName.endsWith(".zst") ||
     fileName.endsWith(".gz");
 
   if (isArchive) {

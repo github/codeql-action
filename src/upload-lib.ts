@@ -1134,13 +1134,14 @@ export class InvalidSarifUploadError extends Error {
   }
 }
 
-function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
+export function filterAlertsByDiffRange(
+  logger: Logger,
+  sarif: SarifFile,
+): SarifFile {
   const diffRanges = readDiffRangesJsonFile(logger);
   if (!diffRanges?.length) {
     return sarif;
   }
-
-  const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
 
   for (const run of sarif.runs) {
     if (run.results) {
@@ -1156,11 +1157,6 @@ function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
           if (!locationUri || locationStartLine === undefined) {
             return false;
           }
-          // CodeQL always uses forward slashes as the path separator, so on Windows we
-          // need to replace any backslashes with forward slashes.
-          const locationPath = path
-            .join(checkoutPath, locationUri)
-            .replaceAll(path.sep, "/");
           // Alert filtering here replicates the same behavior as the restrictAlertsTo
           // extensible predicate in CodeQL. See the restrictAlertsTo documentation
           // https://codeql.github.com/codeql-standard-libraries/csharp/codeql/util/AlertFiltering.qll/predicate.AlertFiltering$restrictAlertsTo.3.html
@@ -1168,7 +1164,7 @@ function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
           // of an alert location.
           return diffRanges.some(
             (range) =>
-              range.path === locationPath &&
+              range.path === locationUri &&
               ((range.startLine <= locationStartLine &&
                 range.endLine >= locationStartLine) ||
                 (range.startLine === 0 && range.endLine === 0)),

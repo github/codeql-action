@@ -4,12 +4,14 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import { CodeQuality, CodeScanning } from "./analyses";
 import {
   runQueries,
   defaultSuites,
   resolveQuerySuiteAlias,
   addSarifExtension,
+  diffRangeExtensionPackContents,
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
@@ -157,4 +159,24 @@ test("addSarifExtension", (t) => {
       `${language}.quality.sarif`,
     );
   }
+});
+
+test("diffRangeExtensionPackContents", (t) => {
+  sinon
+    .stub(actionsUtil, "getRequiredInput")
+    .withArgs("checkout_path")
+    .returns("/checkout/path");
+  const output = diffRangeExtensionPackContents([
+    {
+      path: "main.js",
+      startLine: 10,
+      endLine: 20,
+    },
+  ]);
+
+  const expected = fs.readFileSync(
+    `${__dirname}/../src/testdata/pr-diff-range.yml`,
+    "utf8",
+  );
+  t.deepEqual(output, expected);
 });

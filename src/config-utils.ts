@@ -24,6 +24,7 @@ import {
 } from "./config/db-config";
 import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
@@ -55,7 +56,6 @@ import {
   getErrorMessage,
   isInTestMode,
 } from "./util";
-import { EnvVar } from "./environment";
 
 export * from "./config/db-config";
 

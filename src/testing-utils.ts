@@ -152,27 +152,38 @@ export interface LoggedMessage {
   message: string | Error;
 }
 
-export function getRecordingLogger(messages: LoggedMessage[]): Logger {
+export function getRecordingLogger(
+  messages: LoggedMessage[],
+  { logToConsole }: { logToConsole?: boolean } = { logToConsole: true },
+): Logger {
   return {
     debug: (message: string) => {
       messages.push({ type: "debug", message });
-      // eslint-disable-next-line no-console
-      console.debug(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.debug(message);
+      }
     },
     info: (message: string) => {
       messages.push({ type: "info", message });
-      // eslint-disable-next-line no-console
-      console.info(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.info(message);
+      }
     },
     warning: (message: string | Error) => {
       messages.push({ type: "warning", message });
-      // eslint-disable-next-line no-console
-      console.warn(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.warn(message);
+      }
     },
     error: (message: string | Error) => {
       messages.push({ type: "error", message });
-      // eslint-disable-next-line no-console
-      console.error(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.error(message);
+      }
     },
     isDebug: () => true,
     startGroup: () => undefined,

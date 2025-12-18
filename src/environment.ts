@@ -129,4 +129,10 @@ export enum EnvVar {
    * the workflow is valid and validation is not necessary.
    */
   SKIP_WORKFLOW_VALIDATION = "CODEQL_ACTION_SKIP_WORKFLOW_VALIDATION",
+
+  /**
+   * Whether to tolerate failure to determine the git version (only applicable in test mode).
+   * Intended for use in environments where git may not be installed, such as Docker containers.
+   */
+  TOLERATE_MISSING_GIT_VERSION = "CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION",
 }

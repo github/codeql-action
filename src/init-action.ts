@@ -33,6 +33,7 @@ import {
   flushDiagnostics,
   logUnwrittenDiagnostics,
   makeDiagnostic,
+  makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
@@ -425,17 +426,10 @@ async function run() {
         // Arbitrarily choose the first language. We could also choose all languages, but that
         // increases the risk of misinterpreting the data.
         config.languages[0],
-        makeDiagnostic(
+        makeTelemetryDiagnostic(
           "codeql-action/bundle-download-telemetry",
           "CodeQL bundle download telemetry",
-          {
-            attributes: toolsDownloadStatusReport,
-            visibility: {
-              cliSummaryTable: false,
-              statusPage: false,
-              telemetry: true,
-            },
-          },
+          toolsDownloadStatusReport,
         ),
       );
     }
@@ -794,17 +788,10 @@ async function recordZstdAvailability(
     // Arbitrarily choose the first language. We could also choose all languages, but that
     // increases the risk of misinterpreting the data.
     config.languages[0],
-    makeDiagnostic(
+    makeTelemetryDiagnostic(
       "codeql-action/zstd-availability",
       "Zstandard availability",
-      {
-        attributes: zstdAvailability,
-        visibility: {
-          cliSummaryTable: false,
-          statusPage: false,
-          telemetry: true,
-        },
-      },
+      zstdAvailability,
     ),
   );
 }

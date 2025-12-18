@@ -55,6 +55,7 @@ import {
   getErrorMessage,
   isInTestMode,
 } from "./util";
+import { EnvVar } from "./environment";
 
 export * from "./config/db-config";
 
@@ -941,7 +942,7 @@ export async function initConfig(
     // Docker container where git may not be available.
     if (
       isInTestMode() &&
-      process.env.CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION !== "true"
+      process.env[EnvVar.TOLERATE_MISSING_GIT_VERSION] !== "true"
     ) {
       throw e;
     }

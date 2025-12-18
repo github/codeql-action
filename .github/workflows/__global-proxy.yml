@@ -76,6 +76,7 @@ jobs:
       - uses: ./../action/analyze
     env:
       https_proxy: http://squid-proxy:3128
+      CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION: true
       CODEQL_ACTION_TEST_MODE: true
     container:
       image: ubuntu:22.04

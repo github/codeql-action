@@ -40,9 +40,6 @@ export class GitVersionInfo {
 /**
  * Gets the version of Git installed on the system and throws an error if
  * the version cannot be determined.
- *
- * @returns The Git version string (e.g., "2.40.0").
- * @throws {Error} if the version could not be determined.
  */
 export async function getGitVersionOrThrow(): Promise<GitVersionInfo> {
   const stdout = await runGitCommand(

@@ -53,6 +53,7 @@ import {
   checkDiskUsage,
   getCodeQLMemoryLimit,
   getErrorMessage,
+  isInTestMode,
 } from "./util";
 
 export * from "./config/db-config";
@@ -935,6 +936,10 @@ export async function initConfig(
     await logGitVersionTelemetry(config, gitVersion);
   } catch (e) {
     logger.warning(`Could not determine Git version: ${getErrorMessage(e)}`);
+    // Throw the error in test mode so it's more visible.
+    if (isInTestMode()) {
+      throw e;
+    }
   }
 
   // The choice of overlay database mode depends on the selection of languages

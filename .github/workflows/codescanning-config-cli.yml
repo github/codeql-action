@@ -6,6 +6,9 @@ env:
   # Diff informed queries add an additional query filter which is not yet
   # taken into account by these tests.
   CODEQL_ACTION_DIFF_INFORMED_QUERIES: false
+  # Enable overlay to ensure stability around the exclude-from-incremental query filter.
+  CODEQL_ACTION_OVERLAY_ANALYSIS: true
+  CODEQL_ACTION_OVERLAY_ANALYSIS_JAVASCRIPT: true
 
 on:
   push:

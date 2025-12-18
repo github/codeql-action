@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
@@ -376,7 +377,9 @@ test("getFileOidsUnderPath throws on unexpected output format", async (t) => {
 });
 
 test("getGitVersionOrThrow returns version for valid git output", async (t) => {
-  sinon.stub(gitUtils as any, "runGitCommand").resolves("git version 2.40.0");
+  sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(`git version 2.40.0${os.EOL}`);
 
   const version = await gitUtils.getGitVersionOrThrow();
   t.is(version.truncatedVersion, "2.40.0");
@@ -403,7 +406,7 @@ test("getGitVersionOrThrow handles Windows-style git output", async (t) => {
     .resolves("git version 2.40.0.windows.1");
 
   const version = await gitUtils.getGitVersionOrThrow();
-  // Should extract just the major.minor.patch portion
+  // The truncated version should contain just the major.minor.patch portion
   t.is(version.truncatedVersion, "2.40.0");
   t.is(version.fullVersion, "2.40.0.windows.1");
 });

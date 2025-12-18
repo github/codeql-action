@@ -6,9 +6,11 @@ env:
   # Diff informed queries add an additional query filter which is not yet
   # taken into account by these tests.
   CODEQL_ACTION_DIFF_INFORMED_QUERIES: false
-  # Enable overlay to ensure stability around the exclude-from-incremental query filter.
+  # Specify overlay enablement manually to ensure stability around the exclude-from-incremental
+  # query filter. Here we only enable for the default code scanning suite.
   CODEQL_ACTION_OVERLAY_ANALYSIS: true
-  CODEQL_ACTION_OVERLAY_ANALYSIS_JAVASCRIPT: true
+  CODEQL_ACTION_OVERLAY_ANALYSIS_JAVASCRIPT: false
+  CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_JAVASCRIPT: true
 
 on:
   push:

@@ -54,6 +54,7 @@ import {
   getCodeQLMemoryLimit,
   getErrorMessage,
   isInTestMode,
+  isBinaryAccessible,
 } from "./util";
 
 export * from "./config/db-config";
@@ -936,8 +937,10 @@ export async function initConfig(
     await logGitVersionTelemetry(config, gitVersion);
   } catch (e) {
     logger.warning(`Could not determine Git version: ${getErrorMessage(e)}`);
-    // Throw the error in test mode so it's more visible.
-    if (isInTestMode()) {
+    // Throw the error in test mode so it's more visible, but tolerate cases
+    // where the git binary is not present, for example because we're running
+    // in a Docker container.
+    if (isInTestMode() && (await isBinaryAccessible("git", logger))) {
       throw e;
     }
   }

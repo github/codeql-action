@@ -53,7 +53,7 @@ export async function getGitVersionOrThrow(): Promise<GitVersionInfo> {
   // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
   // We capture just the major.minor.patch portion to ensure semver compatibility.
   const match = stdout.match(/^git version ((\d+\.\d+\.\d+).*)$/);
-  if (match?.[1]) {
+  if (match?.[1] && match?.[2]) {
     return new GitVersionInfo(match[2], match[1]);
   }
   throw new Error(`Could not parse Git version from output: ${stdout.trim()}`);

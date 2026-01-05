@@ -26,16 +26,8 @@ export interface CodeQLDefaultVersionInfo {
   toolsFeatureFlagsValid?: boolean;
 }
 
-export interface FeatureEnablement {
-  /** Gets the default version of the CodeQL tools. */
-  getDefaultCliVersion(
-    variant: util.GitHubVariant,
-  ): Promise<CodeQLDefaultVersionInfo>;
-  getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
-}
-
 /**
- * Feature enablement as returned by the GitHub API endpoint.
+ * Features as named by the GitHub API endpoint.
  *
  * Do not include the `codeql_action_` prefix as this is stripped by the API
  * endpoint.
@@ -82,37 +74,36 @@ export enum Feature {
   ValidateDbConfig = "validate_db_config",
 }
 
-export const featureConfig: Record<
-  Feature,
-  {
-    /**
-     * Default value in environments where the feature flags API is not available,
-     * such as GitHub Enterprise Server.
-     */
-    defaultValue: boolean;
-    /**
-     * Environment variable for explicitly enabling or disabling the feature.
-     *
-     * This overrides enablement status from the feature flags API.
-     */
-    envVar: string;
-    /**
-     * Whether the feature flag is part of the legacy feature flags API (defaults to false).
-     *
-     * These feature flags are included by default in the API response and do not need to be
-     * explicitly requested.
-     */
-    legacyApi?: boolean;
-    /**
-     * Minimum version of the CLI, if applicable.
-     *
-     * Prefer using `ToolsFeature`s for future flags.
-     */
-    minimumVersion: string | undefined;
-    /** Required tools feature, if applicable. */
-    toolsFeature?: ToolsFeature;
-  }
-> = {
+export type FeatureConfig = {
+  /**
+   * Default value in environments where the feature flags API is not available,
+   * such as GitHub Enterprise Server.
+   */
+  defaultValue: boolean;
+  /**
+   * Environment variable for explicitly enabling or disabling the feature.
+   *
+   * This overrides enablement status from the feature flags API.
+   */
+  envVar: string;
+  /**
+   * Whether the feature flag is part of the legacy feature flags API (defaults to false).
+   *
+   * These feature flags are included by default in the API response and do not need to be
+   * explicitly requested.
+   */
+  legacyApi?: boolean;
+  /**
+   * Minimum version of the CLI, if applicable.
+   *
+   * Prefer using `ToolsFeature`s for future flags.
+   */
+  minimumVersion: string | undefined;
+  /** Required tools feature, if applicable. */
+  toolsFeature?: ToolsFeature;
+};
+
+export const featureConfig = {
   [Feature.AllowToolcacheInput]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
@@ -305,7 +296,29 @@ export const featureConfig: Record<
     envVar: "CODEQL_ACTION_VALIDATE_DB_CONFIG",
     minimumVersion: undefined,
   },
-};
+} satisfies Record<Feature, FeatureConfig>;
+
+/** A feature whose enablement does not depend on the version of the CodeQL CLI. */
+export type FeatureWithoutCLI = {
+  [K in Feature]: (typeof featureConfig)[K] extends
+    | {
+        minimumVersion: string;
+      }
+    | {
+        toolsFeature: ToolsFeature;
+      }
+    ? never
+    : K;
+}[keyof typeof featureConfig];
+
+export interface FeatureEnablement {
+  /** Gets the default version of the CodeQL tools. */
+  getDefaultCliVersion(
+    variant: util.GitHubVariant,
+  ): Promise<CodeQLDefaultVersionInfo>;
+  getValue(feature: FeatureWithoutCLI): Promise<boolean>;
+  getValue(feature: Feature, codeql: CodeQL): Promise<boolean>;
+}
 
 /**
  * A response from the GitHub API that contains feature flag enablement information for the CodeQL
@@ -358,31 +371,35 @@ export class Features implements FeatureEnablement {
    * @throws if a `minimumVersion` is specified for the feature, and `codeql` is not provided.
    */
   async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
-    if (!codeql && featureConfig[feature].minimumVersion) {
+    // Narrow the type to FeatureConfig to avoid type errors. To avoid unsafe use of `as`, we
+    // check that the required properties exist using `satisfies`.
+    const config = featureConfig[
+      feature
+    ] satisfies FeatureConfig as FeatureConfig;
+
+    if (!codeql && config.minimumVersion) {
       throw new Error(
         `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`,
       );
     }
-    if (!codeql && featureConfig[feature].toolsFeature) {
+    if (!codeql && config.toolsFeature) {
       throw new Error(
         `Internal error: A required tools feature is specified for feature ${feature}, but no instance of CodeQL was provided.`,
       );
     }
 
-    const envVar = (
-      process.env[featureConfig[feature].envVar] || ""
-    ).toLocaleLowerCase();
+    const envVar = (process.env[config.envVar] || "").toLocaleLowerCase();
 
     // Do not use this feature if user explicitly disables it via an environment variable.
     if (envVar === "false") {
       this.logger.debug(
-        `Feature ${feature} is disabled via the environment variable ${featureConfig[feature].envVar}.`,
+        `Feature ${feature} is disabled via the environment variable ${config.envVar}.`,
       );
       return false;
     }
 
     // Never use this feature if the CLI version explicitly can't support it.
-    const minimumVersion = featureConfig[feature].minimumVersion;
+    const minimumVersion = config.minimumVersion;
     if (codeql && minimumVersion) {
       if (!(await util.codeQlVersionAtLeast(codeql, minimumVersion))) {
         this.logger.debug(
@@ -399,7 +416,7 @@ export class Features implements FeatureEnablement {
         );
       }
     }
-    const toolsFeature = featureConfig[feature].toolsFeature;
+    const toolsFeature = config.toolsFeature;
     if (codeql && toolsFeature) {
       if (!(await codeql.supportsFeature(toolsFeature))) {
         this.logger.debug(
@@ -419,7 +436,7 @@ export class Features implements FeatureEnablement {
     // Use this feature if user explicitly enables it via an environment variable.
     if (envVar === "true") {
       this.logger.debug(
-        `Feature ${feature} is enabled via the environment variable ${featureConfig[feature].envVar}.`,
+        `Feature ${feature} is enabled via the environment variable ${config.envVar}.`,
       );
       return true;
     }
@@ -435,7 +452,7 @@ export class Features implements FeatureEnablement {
       return apiValue;
     }
 
-    const defaultValue = featureConfig[feature].defaultValue;
+    const defaultValue = config.defaultValue;
     this.logger.debug(
       `Feature ${feature} is ${
         defaultValue ? "enabled" : "disabled"
@@ -631,7 +648,10 @@ class GitHubFeatureFlags {
     }
     try {
       const featuresToRequest = Object.entries(featureConfig)
-        .filter(([, config]) => !config.legacyApi)
+        .filter(
+          ([, config]) =>
+            !(config satisfies FeatureConfig as FeatureConfig).legacyApi,
+        )
         .map(([f]) => f);
 
       const FEATURES_PER_REQUEST = 25;

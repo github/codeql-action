@@ -96,6 +96,15 @@ export const getCommitOid = async function (
   checkoutPath: string,
   ref = "HEAD",
 ): Promise<string> {
+  // If the user explicitly provides a SHA via the action input, use that.
+  // This is important when the checkout path contains a different repository
+  // than the one where results should be uploaded (e.g., when cloning another
+  // repo for analysis).
+  const shaInput = getOptionalInput("sha");
+  if (shaInput) {
+    return shaInput;
+  }
+
   // Try to use git to get the current commit SHA. If that fails then
   // log but otherwise silently fall back to using the SHA from the environment.
   // The only time these two values will differ is during analysis of a PR when
@@ -107,11 +116,11 @@ export const getCommitOid = async function (
     const stdout = await runGitCommand(
       checkoutPath,
       ["rev-parse", ref],
-      "Continuing with commit SHA from user input or environment.",
+      "Continuing with commit SHA from environment.",
     );
     return stdout.trim();
   } catch {
-    return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
+    return getRequiredEnvParam("GITHUB_SHA");
   }
 };
 

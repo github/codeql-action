@@ -316,7 +316,7 @@ export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
       throw new Error("not implemented");
     },
     getValue: async (feature) => {
-      return enabledFeatures.includes(feature);
+      return enabledFeatures.includes(feature as Feature);
     },
   };
 }

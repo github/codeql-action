@@ -257,8 +257,11 @@ for (const feature of Object.keys(featureConfig)) {
         const expectedFeatureEnablement = initializeFeatures(true);
         mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
+        // The type system should prevent this happening, but test that if we
+        // bypass it we get the expected error.
         await t.throwsAsync(
-          async () => features.getValue(feature as FeatureWithoutCLI),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          async () => features.getValue(feature as any),
           {
             message: `Internal error: A ${
               featureConfig[feature].minimumVersion !== undefined

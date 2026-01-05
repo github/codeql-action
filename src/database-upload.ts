@@ -70,7 +70,7 @@ export async function cleanupAndUploadDatabases(
   // If config.overlayDatabaseMode is OverlayBase, then we have overlay base databases for all languages.
   const shouldUploadOverlayBase =
     config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
-    (await features.getValue(Feature.UploadOverlayDbToApi));
+    (await features.getValue(Feature.UploadOverlayDbToApi, codeql));
   const cleanupLevel = shouldUploadOverlayBase
     ? CleanupLevel.Overlay
     : CleanupLevel.Clear;

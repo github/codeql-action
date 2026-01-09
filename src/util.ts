@@ -755,9 +755,23 @@ export async function bundleDb(
   if (fs.existsSync(databaseBundlePath)) {
     await fs.promises.rm(databaseBundlePath, { force: true });
   }
-  await codeql.databaseBundle(databasePath, databaseBundlePath, dbName, [
-    BASE_DATABASE_OIDS_FILE_NAME,
-  ]);
+  // Copy the base database OIDs file into the database location if it exists
+  const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
+  const additionalFiles: string[] = [];
+  if (fs.existsSync(baseDatabaseOidsFilePath)) {
+    await fsPromises.copyFile(
+      baseDatabaseOidsFilePath,
+      path.join(databasePath, BASE_DATABASE_OIDS_FILE_NAME),
+    );
+    additionalFiles.push(BASE_DATABASE_OIDS_FILE_NAME);
+  }
+  // Create the bundle, including the base database OIDs file if it exists
+  await codeql.databaseBundle(
+    databasePath,
+    databaseBundlePath,
+    dbName,
+    additionalFiles,
+  );
   return databaseBundlePath;
 }
 

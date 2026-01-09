@@ -17,6 +17,7 @@ import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
   CleanupLevel,
+  getBaseDatabaseOidsFilePath,
   getCodeQLDatabasePath,
   getErrorMessage,
   isInTestMode,
@@ -96,10 +97,6 @@ async function readBaseDatabaseOidsFile(
     );
     throw e;
   }
-}
-
-function getBaseDatabaseOidsFilePath(config: Config): string {
-  return path.join(config.dbLocation, "base-database-oids.json");
 }
 
 /**

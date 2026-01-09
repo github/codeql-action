@@ -147,11 +147,19 @@ export interface CodeQL {
   ): Promise<void>;
   /**
    * Run 'codeql database bundle'.
+   *
+   * @param tryAlsoIncludeRelativePaths Additional paths that should be included in the bundle if possible.
+   *
+   * These paths are relative to the database root.
+   *
+   * Older versions of the CodeQL CLI do not support including additional paths in the bundle.
+   * In those cases, this parameter will be ignored.
    */
   databaseBundle(
     databasePath: string,
     outputFilePath: string,
     dbName: string,
+    tryAlsoIncludeRelativePaths: string[],
   ): Promise<void>;
   /**
    * Run 'codeql database run-queries'. If no `queries` are specified, then the CLI
@@ -911,6 +919,7 @@ async function getCodeQLForCmd(
       databasePath: string,
       outputFilePath: string,
       databaseName: string,
+      tryAlsoIncludeRelativePaths: string[],
     ): Promise<void> {
       const args = [
         "database",
@@ -920,6 +929,16 @@ async function getCodeQLForCmd(
         `--name=${databaseName}`,
         ...getExtraOptionsFromEnv(["database", "bundle"]),
       ];
+      if (
+        await this.supportsFeature(ToolsFeature.BundleSupportsIncludeOption)
+      ) {
+        args.push(
+          ...tryAlsoIncludeRelativePaths.flatMap((relativePath) => [
+            "--include",
+            relativePath,
+          ]),
+        );
+      }
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
     async databaseExportDiagnostics(

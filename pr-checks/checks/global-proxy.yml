@@ -23,6 +23,7 @@ services:
       - 3128:3128
 env:
   https_proxy: http://squid-proxy:3128
+  CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION: true
 steps:
   - uses: ./../action/init
     with:

@@ -22,11 +22,19 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
+import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
-import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
+import {
+  getGitRoot,
+  getGitVersionOrThrow,
+  GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  GitVersionInfo,
+  isAnalyzingDefaultBranch,
+} from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -45,6 +53,8 @@ import {
   isDefined,
   checkDiskUsage,
   getCodeQLMemoryLimit,
+  getErrorMessage,
+  isInTestMode,
 } from "./util";
 
 export * from "./config/db-config";
@@ -709,6 +719,7 @@ export async function getOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   ramInput: string | undefined,
   codeScanningConfig: UserConfig,
+  gitVersion: GitVersionInfo | undefined,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -811,6 +822,22 @@ export async function getOverlayDatabaseMode(
     );
     return nonOverlayAnalysis;
   }
+  if (gitVersion === undefined) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        "the Git version could not be determined. " +
+        "Falling back to creating a normal full database instead.",
+    );
+    return nonOverlayAnalysis;
+  }
+  if (!gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
+        "Falling back to creating a normal full database instead.",
+    );
+    return nonOverlayAnalysis;
+  }
 
   return {
     overlayDatabaseMode,
@@ -903,6 +930,24 @@ export async function initConfig(
     config.computedConfig["query-filters"] = [];
   }
 
+  let gitVersion: GitVersionInfo | undefined = undefined;
+  try {
+    gitVersion = await getGitVersionOrThrow();
+    logger.info(`Using Git version ${gitVersion.fullVersion}`);
+    await logGitVersionTelemetry(config, gitVersion);
+  } catch (e) {
+    logger.warning(`Could not determine Git version: ${getErrorMessage(e)}`);
+    // Throw the error in test mode so it's more visible, unless the environment
+    // variable is set to tolerate this, for example because we're running in a
+    // Docker container where git may not be available.
+    if (
+      isInTestMode() &&
+      process.env[EnvVar.TOLERATE_MISSING_GIT_VERSION] !== "true"
+    ) {
+      throw e;
+    }
+  }
+
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
@@ -916,6 +961,7 @@ export async function initConfig(
       config.buildMode,
       inputs.ramInput,
       config.computedConfig,
+      gitVersion,
       logger,
     );
   logger.info(
@@ -1315,4 +1361,27 @@ export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
   return getPrimaryAnalysisKind(config) === AnalysisKind.CodeScanning
     ? CodeScanning
     : CodeQuality;
+}
+
+/** Logs the Git version as a telemetry diagnostic. */
+async function logGitVersionTelemetry(
+  config: Config,
+  gitVersion: GitVersionInfo,
+): Promise<void> {
+  if (config.languages.length > 0) {
+    addDiagnostic(
+      config,
+      // Arbitrarily choose the first language. We could also choose all languages, but that
+      // increases the risk of misinterpreting the data.
+      config.languages[0],
+      makeTelemetryDiagnostic(
+        "codeql-action/git-version-telemetry",
+        "Git version telemetry",
+        {
+          fullVersion: gitVersion.fullVersion,
+          truncatedVersion: gitVersion.truncatedVersion,
+        },
+      ),
+    );
+  }
 }

@@ -54,6 +54,8 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '9.x'
+      - name: Assert best-effort artifact scan completed
+        uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init
         id: init
         with:

@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
+import * as semver from "semver";
 
 import {
   getOptionalInput,
@@ -8,6 +9,52 @@ import {
   getWorkflowEventName,
 } from "./actions-util";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
+
+/**
+ * Minimum Git version required for overlay analysis. The `git ls-files --format`
+ * option, which is used by `getFileOidsUnderPath`, was introduced in Git 2.38.0.
+ */
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
+
+/**
+ * Git version information
+ *
+ * The full version string as reported by `git --version` may not be
+ * semver-compatible (e.g., "2.40.0.windows.1"). This class captures both
+ * the full version string and a truncated semver-compatible version string
+ * (e.g., "2.40.0").
+ */
+export class GitVersionInfo {
+  constructor(
+    /** Truncated semver-compatible version */
+    public truncatedVersion: string,
+    /** Full version string as reported by `git --version` */
+    public fullVersion: string,
+  ) {}
+
+  isAtLeast(minVersion: string): boolean {
+    return semver.gte(this.truncatedVersion, minVersion);
+  }
+}
+
+/**
+ * Gets the version of Git installed on the system and throws an error if
+ * the version cannot be determined.
+ */
+export async function getGitVersionOrThrow(): Promise<GitVersionInfo> {
+  const stdout = await runGitCommand(
+    undefined,
+    ["--version"],
+    "Failed to get git version.",
+  );
+  // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
+  // We capture just the major.minor.patch portion to ensure semver compatibility.
+  const match = stdout.trim().match(/^git version ((\d+\.\d+\.\d+).*)$/);
+  if (match?.[1] && match?.[2]) {
+    return new GitVersionInfo(match[2], match[1]);
+  }
+  throw new Error(`Could not parse Git version from output: ${stdout.trim()}`);
+}
 
 export const runGitCommand = async function (
   workingDirectory: string | undefined,

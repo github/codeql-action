@@ -916,27 +916,6 @@ export async function initConfig(
 
   const config = await initActionState(inputs, userConfig);
 
-  // If we are in CCR or the corresponding FF is enabled, try to determine
-  // which files in the repository are marked as generated and add them to
-  // the `paths-ignore` configuration.
-  if ((await features.getValue(Feature.IgnoreGeneratedFiles)) && isCCR()) {
-    try {
-      const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
-
-      if (generatedFiles.length > 0) {
-        config.computedConfig["paths-ignore"] ??= [];
-        config.computedConfig["paths-ignore"].push(...generatedFiles);
-        logger.info(
-          `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${generatedFiles.join(", ")}`,
-        );
-      }
-    } catch (error) {
-      logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);
-    }
-  } else {
-    logger.debug(`Skipping check for generated files.`);
-  }
-
   // If Code Quality analysis is the only enabled analysis kind, then we will initialise
   // the database for Code Quality. That entails disabling the default queries and only
   // running quality queries. We do not currently support query customisations in that case.
@@ -972,6 +951,27 @@ export async function initConfig(
     ) {
       throw e;
     }
+  }
+
+  // If we are in CCR or the corresponding FF is enabled, try to determine
+  // which files in the repository are marked as generated and add them to
+  // the `paths-ignore` configuration.
+  if ((await features.getValue(Feature.IgnoreGeneratedFiles)) && isCCR()) {
+    try {
+      const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
+
+      if (generatedFiles.length > 0) {
+        config.computedConfig["paths-ignore"] ??= [];
+        config.computedConfig["paths-ignore"].push(...generatedFiles);
+        logger.info(
+          `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${generatedFiles.join(", ")}`,
+        );
+      }
+    } catch (error) {
+      logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);
+    }
+  } else {
+    logger.debug(`Skipping check for generated files.`);
   }
 
   // The choice of overlay database mode depends on the selection of languages

@@ -5,7 +5,7 @@ import re
 cli_version = os.environ['CLI_VERSION']
 
 # Link the GitHub Release corresponding to the new bundle version.
-bundle_release_url = f"https://github.com/github/codeql-action/releases/codeql-bundle-v{cli_version}"
+bundle_release_url = f"https://github.com/github/codeql-action/releases/tag/codeql-bundle-v{cli_version}"
 bundle_note = f"To learn more about the relevant changes to the CodeQL CLI and language packs, see the [bundle release]({bundle_release_url})."
 
 # Get the PR number from the PR URL.

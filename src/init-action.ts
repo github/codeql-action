@@ -33,6 +33,7 @@ import {
   flushDiagnostics,
   logUnwrittenDiagnostics,
   makeDiagnostic,
+  makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, Features } from "./feature-flags";
@@ -75,7 +76,7 @@ import {
   codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
-  getMemoryFlagValue,
+  getCodeQLMemoryLimit,
   getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,
@@ -87,6 +88,13 @@ import {
   BuildMode,
 } from "./util";
 import { checkWorkflow } from "./workflow";
+
+/**
+ * First version of CodeQL where the Java extractor safely supports the option to minimize
+ * dependency jars. Note: some earlier versions of the extractor will respond to the corresponding
+ * option, but may rewrite jars in ways that lead to extraction errors.
+ */
+export const CODEQL_VERSION_JAR_MINIMIZATION = "2.23.0";
 
 /**
  * Sends a status report indicating that the `init` Action is starting.
@@ -324,6 +332,7 @@ async function run() {
       queriesInput: getOptionalInput("queries"),
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
+      ramInput: getOptionalInput("ram"),
       configFile,
       dbLocation: getOptionalInput("db-location"),
       configInput: getOptionalInput("config"),
@@ -417,17 +426,10 @@ async function run() {
         // Arbitrarily choose the first language. We could also choose all languages, but that
         // increases the risk of misinterpreting the data.
         config.languages[0],
-        makeDiagnostic(
+        makeTelemetryDiagnostic(
           "codeql-action/bundle-download-telemetry",
           "CodeQL bundle download telemetry",
-          {
-            attributes: toolsDownloadStatusReport,
-            visibility: {
-              cliSummaryTable: false,
-              statusPage: false,
-              telemetry: true,
-            },
-          },
+          toolsDownloadStatusReport,
         ),
       );
     }
@@ -537,7 +539,7 @@ async function run() {
     core.exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
-        getMemoryFlagValue(getOptionalInput("ram"), logger).toString(),
+        getCodeQLMemoryLimit(getOptionalInput("ram"), logger).toString(),
     );
     core.exportVariable(
       "CODEQL_THREADS",
@@ -637,18 +639,20 @@ async function run() {
       }
     }
 
-    // If the feature flag to minimize Java dependency jars is enabled, and we are doing a Java
-    // `build-mode: none` analysis (i.e. the flag is relevant), then set the environment variable
-    // that enables the corresponding option in the Java extractor. We also only do this if
-    // dependency caching is enabled, since the option is intended to reduce the size of
-    // dependency caches, but the jar-rewriting does have a performance cost that we'd like to avoid
-    // when caching is not being used.
+    // If we are doing a Java `build-mode: none` analysis, then set the environment variable that
+    // enables the option in the Java extractor to minimize dependency jars. We also only do this if
+    // dependency caching is enabled, since the option is intended to reduce the size of dependency
+    // caches, but the jar-rewriting does have a performance cost that we'd like to avoid when
+    // caching is not being used.
+    // TODO: Remove this language-specific mechanism and replace it with a more general one that
+    // tells extractors when dependency caching is enabled, and then the Java extractor can make its
+    // own decision about whether to rewrite jars.
     if (process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]) {
       logger.debug(
         `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
       );
     } else if (
-      (await features.getValue(Feature.JavaMinimizeDependencyJars, codeql)) &&
+      (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
       config.languages.includes(KnownLanguage.java)
@@ -784,17 +788,10 @@ async function recordZstdAvailability(
     // Arbitrarily choose the first language. We could also choose all languages, but that
     // increases the risk of misinterpreting the data.
     config.languages[0],
-    makeDiagnostic(
+    makeTelemetryDiagnostic(
       "codeql-action/zstd-availability",
       "Zstandard availability",
-      {
-        attributes: zstdAvailability,
-        visibility: {
-          cliSummaryTable: false,
-          statusPage: false,
-          telemetry: true,
-        },
-      },
+      zstdAvailability,
     ),
   );
 }

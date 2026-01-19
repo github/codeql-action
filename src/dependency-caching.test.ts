@@ -21,6 +21,8 @@ import {
   downloadDependencyCaches,
   CacheHitKind,
   cacheKey,
+  getCsharpDependencyDirs,
+  getCsharpTempDependencyDir,
   uploadDependencyCaches,
   CacheStoreResult,
 } from "./dependency-caching";
@@ -41,6 +43,28 @@ setupTests(test);
 function makeAbsolutePatterns(tmpDir: string, patterns: string[]): string[] {
   return patterns.map((pattern) => path.join(tmpDir, pattern));
 }
+
+test("getCsharpDependencyDirs - does not include BMN dir if FF is enabled", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    process.env["RUNNER_TEMP"] = tmpDir;
+    const codeql = createStubCodeQL({});
+    const features = createFeatures([]);
+
+    const results = await getCsharpDependencyDirs(codeql, features);
+    t.false(results.includes(getCsharpTempDependencyDir()));
+  });
+});
+
+test("getCsharpDependencyDirs - includes BMN dir if FF is enabled", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    process.env["RUNNER_TEMP"] = tmpDir;
+    const codeql = createStubCodeQL({});
+    const features = createFeatures([Feature.CsharpCacheBuildModeNone]);
+
+    const results = await getCsharpDependencyDirs(codeql, features);
+    t.assert(results.includes(getCsharpTempDependencyDir()));
+  });
+});
 
 test("makePatternCheck - returns undefined if no patterns match", async (t) => {
   await withTmpDir(async (tmpDir) => {
@@ -130,7 +154,7 @@ test("checkHashPatterns - logs when no patterns match", async (t) => {
   const features = createFeatures([]);
   const messages: LoggedMessage[] = [];
   const config: CacheConfig = {
-    getDependencyPaths: () => [],
+    getDependencyPaths: async () => [],
     getHashPatterns: async () => undefined,
   };
 
@@ -159,7 +183,7 @@ test("checkHashPatterns - returns patterns when patterns match", async (t) => {
     fs.writeFileSync(path.join(tmpDir, "test.java"), "");
 
     const config: CacheConfig = {
-      getDependencyPaths: () => [],
+      getDependencyPaths: async () => [],
       getHashPatterns: async () => makePatternCheck(patterns),
     };
 
@@ -579,28 +603,6 @@ test("getFeaturePrefix - returns empty string if no features are enabled", async
   }
 });
 
-test("getFeaturePrefix - Java - returns 'minify-' if JavaMinimizeDependencyJars is enabled", async (t) => {
-  const codeql = createStubCodeQL({});
-  const features = createFeatures([Feature.JavaMinimizeDependencyJars]);
-
-  const result = await getFeaturePrefix(codeql, features, KnownLanguage.java);
-  t.deepEqual(result, "minify-");
-});
-
-test("getFeaturePrefix - non-Java - returns '' if JavaMinimizeDependencyJars is enabled", async (t) => {
-  const codeql = createStubCodeQL({});
-  const features = createFeatures([Feature.JavaMinimizeDependencyJars]);
-
-  for (const knownLanguage of Object.values(KnownLanguage)) {
-    // Skip Java since we expect a result for it, which is tested in the previous test.
-    if (knownLanguage === KnownLanguage.java) {
-      continue;
-    }
-    const result = await getFeaturePrefix(codeql, features, knownLanguage);
-    t.deepEqual(result, "", `Expected no feature prefix for ${knownLanguage}`);
-  }
-});
-
 test("getFeaturePrefix - C# - returns prefix if CsharpNewCacheKey is enabled", async (t) => {
   const codeql = createStubCodeQL({});
   const features = createFeatures([Feature.CsharpNewCacheKey]);
@@ -615,6 +617,31 @@ test("getFeaturePrefix - C# - returns prefix if CsharpNewCacheKey is enabled", a
 test("getFeaturePrefix - non-C# - returns '' if CsharpNewCacheKey is enabled", async (t) => {
   const codeql = createStubCodeQL({});
   const features = createFeatures([Feature.CsharpNewCacheKey]);
+
+  for (const knownLanguage of Object.values(KnownLanguage)) {
+    // Skip C# since we expect a result for it, which is tested in the previous test.
+    if (knownLanguage === KnownLanguage.csharp) {
+      continue;
+    }
+    const result = await getFeaturePrefix(codeql, features, knownLanguage);
+    t.deepEqual(result, "", `Expected no feature prefix for ${knownLanguage}`);
+  }
+});
+
+test("getFeaturePrefix - C# - returns prefix if CsharpCacheBuildModeNone is enabled", async (t) => {
+  const codeql = createStubCodeQL({});
+  const features = createFeatures([Feature.CsharpCacheBuildModeNone]);
+
+  const result = await getFeaturePrefix(codeql, features, KnownLanguage.csharp);
+  t.notDeepEqual(result, "");
+  t.assert(result.endsWith("-"));
+  // Check the length of the prefix, which should correspond to `cacheKeyHashLength` + 1 for the trailing `-`.
+  t.is(result.length, cacheKeyHashLength + 1);
+});
+
+test("getFeaturePrefix - non-C# - returns '' if CsharpCacheBuildModeNone is enabled", async (t) => {
+  const codeql = createStubCodeQL({});
+  const features = createFeatures([Feature.CsharpCacheBuildModeNone]);
 
   for (const knownLanguage of Object.values(KnownLanguage)) {
     // Skip C# since we expect a result for it, which is tested in the previous test.

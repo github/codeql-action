@@ -15,6 +15,7 @@ import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
+import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
@@ -59,6 +60,7 @@ function createTestInitConfigInputs(
       dbLocation: undefined,
       configInput: undefined,
       buildModeInput: undefined,
+      ramInput: undefined,
       trapCachingEnabled: false,
       dependencyCachingEnabled: CachingKind.None,
       debugMode: false,
@@ -977,8 +979,10 @@ interface OverlayDatabaseModeTestSetup {
   languages: Language[];
   codeqlVersion: string;
   gitRoot: string | undefined;
+  gitVersion: GitVersionInfo | undefined;
   codeScanningConfig: configUtils.UserConfig;
   diskUsage: DiskUsage | undefined;
+  memoryFlagValue: number;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -990,11 +994,16 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
+  gitVersion: new GitVersionInfo(
+    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
+    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  ),
   codeScanningConfig: {},
   diskUsage: {
     numAvailableBytes: 50_000_000_000,
     numTotalBytes: 100_000_000_000,
   },
+  memoryFlagValue: 6920,
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1037,6 +1046,8 @@ const getOverlayDatabaseModeMacro = test.macro({
           .stub(actionsUtil, "isAnalyzingPullRequest")
           .returns(setup.isPullRequest);
 
+        sinon.stub(util, "getCodeQLMemoryLimit").returns(setup.memoryFlagValue);
+
         // Set up CodeQL mock
         const codeql = mockCodeQLVersion(setup.codeqlVersion);
 
@@ -1063,7 +1074,9 @@ const getOverlayDatabaseModeMacro = test.macro({
           setup.languages,
           tempDir, // sourceRoot
           setup.buildMode,
+          undefined,
           setup.codeScanningConfig,
+          setup.gitVersion,
           logger,
         );
 
@@ -1222,6 +1235,65 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if runner disk space is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if memory flag is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
   },
 );
 
@@ -1418,6 +1490,28 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if runner disk space is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isPullRequest: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "No overlay analysis on PR if we can't determine runner disk space",
   {
     languages: [KnownLanguage.javascript],
@@ -1431,6 +1525,43 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR if memory flag is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if memory flag is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
   },
 );
 
@@ -1642,6 +1773,32 @@ test(
   {
     overlayDatabaseEnvVar: "overlay",
     gitRoot: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to old git version",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: new GitVersionInfo("2.30.0", "2.30.0"), // Version below required 2.38.0
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Fallback when git version cannot be determined",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: undefined,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,

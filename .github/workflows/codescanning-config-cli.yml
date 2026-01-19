@@ -6,6 +6,11 @@ env:
   # Diff informed queries add an additional query filter which is not yet
   # taken into account by these tests.
   CODEQL_ACTION_DIFF_INFORMED_QUERIES: false
+  # Specify overlay enablement manually to ensure stability around the exclude-from-incremental
+  # query filter. Here we only enable for the default code scanning suite.
+  CODEQL_ACTION_OVERLAY_ANALYSIS: true
+  CODEQL_ACTION_OVERLAY_ANALYSIS_JAVASCRIPT: false
+  CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_JAVASCRIPT: true
 
 on:
   push:
@@ -53,7 +58,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Set up Node.js
       uses: actions/setup-node@v6
@@ -70,10 +75,30 @@ jobs:
       with:
         version: ${{ matrix.version }}
 
-    - name: Empty file
+    # On PRs, overlay analysis may change the config that is passed to the CLI.
+    # Therefore, we have two variants of the following test, one for PRs and one for other events.
+    - name: Empty file (non-PR)
+      if: github.event_name != 'pull_request'
       uses: ./../action/.github/actions/check-codescanning-config
       with:
         expected-config-file-contents: "{}"
+        languages: javascript
+        tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+    - name: Empty file (PR)
+      if: github.event_name == 'pull_request'
+      uses: ./../action/.github/actions/check-codescanning-config
+      with:
+        expected-config-file-contents: |
+          {
+            "query-filters": [
+              {
+                "exclude": {
+                  "tags": "exclude-from-incremental"
+                }
+              }
+            ]
+          }
         languages: javascript
         tools: ${{ steps.prepare-test.outputs.tools-url }}
 

@@ -52,7 +52,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -60,7 +60,7 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: ./init
         with:
           languages: javascript

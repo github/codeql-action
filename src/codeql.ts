@@ -206,6 +206,7 @@ export interface CodeQL {
    * Run 'codeql resolve queries --format=startingpacks'.
    */
   resolveQueriesStartingPacks(queries: string[]): Promise<string[]>;
+  resolveDatabase(databasePath: string): Promise<ResolveDatabaseOutput>;
   /**
    * Run 'codeql github merge-results'.
    */
@@ -228,6 +229,10 @@ export interface VersionInfo {
    * we need to revert to non-overlay analysis.
    */
   overlayVersion?: number;
+}
+
+export interface ResolveDatabaseOutput {
+  overlayBaseSpecifier?: string;
 }
 
 export interface ResolveLanguagesOutput {
@@ -493,6 +498,7 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "resolveQueriesStartingPacks",
     ),
+    resolveDatabase: resolveFunction(partialCodeql, "resolveDatabase"),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
 }
@@ -516,7 +522,7 @@ export async function getCodeQLForTesting(
  *        version requirement. Must be set to true outside tests.
  * @returns A new CodeQL object
  */
-export async function getCodeQLForCmd(
+async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean,
 ): Promise<CodeQL> {
@@ -1003,6 +1009,26 @@ export async function getCodeQLForCmd(
         );
       }
     },
+    async resolveDatabase(
+      databasePath: string,
+    ): Promise<ResolveDatabaseOutput> {
+      const codeqlArgs = [
+        "resolve",
+        "database",
+        databasePath,
+        "--format=json",
+        ...getExtraOptionsFromEnv(["resolve", "database"]),
+      ];
+      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+
+      try {
+        return JSON.parse(output) as ResolveDatabaseOutput;
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve database --format=json: ${e}`,
+        );
+      }
+    },
     async mergeResults(
       sarifFiles: string[],
       outputFile: string,
@@ -1225,7 +1251,7 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-export function getGeneratedCodeScanningConfigPath(config: Config): string {
+function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
 }
 

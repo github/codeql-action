@@ -44,7 +44,7 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "${GITHUB_CONTEXT}"
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0  # ensure we have all tags and can push commits
       - uses: actions/setup-node@v6
@@ -131,18 +131,8 @@ jobs:
           cat $PARTIAL_CHANGELOG
           echo "::endgroup::"
 
-      - name: Create mergeback branch and PR
-        if: ${{ steps.check.outputs.exists != 'true' && endsWith(github.ref_name, steps.getVersion.outputs.latest_release_branch) }}
-        uses: ./.github/actions/prepare-mergeback-branch
-        with:
-          base: "${{ env.BASE_BRANCH }}"
-          head: "${{ env.HEAD_BRANCH }}"
-          branch: "${{ steps.getVersion.outputs.newBranch }}"
-          version: "${{ steps.getVersion.outputs.version }}"
-          token: "${{ secrets.GITHUB_TOKEN }}"
-
       - name: Generate token
-        uses: actions/create-github-app-token@v2.1.4
+        uses: actions/create-github-app-token@v2.2.1
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}
@@ -161,3 +151,13 @@ jobs:
             --latest=false \
             --title "$VERSION" \
             --notes-file "$PARTIAL_CHANGELOG"
+
+      - name: Create mergeback branch and PR
+        if: ${{ endsWith(github.ref_name, steps.getVersion.outputs.latest_release_branch) }}
+        uses: ./.github/actions/prepare-mergeback-branch
+        with:
+          base: "${{ env.BASE_BRANCH }}"
+          head: "${{ env.HEAD_BRANCH }}"
+          branch: "${{ steps.getVersion.outputs.newBranch }}"
+          version: "${{ steps.getVersion.outputs.version }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"

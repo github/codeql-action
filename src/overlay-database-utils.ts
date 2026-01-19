@@ -17,6 +17,7 @@ import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
 import {
   CleanupLevel,
+  getCodeQLDatabasePath,
   getErrorMessage,
   isInTestMode,
   tryGetFolderBytes,
@@ -29,7 +30,7 @@ export enum OverlayDatabaseMode {
   None = "none",
 }
 
-export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.23.5";
+export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.23.8";
 
 /**
  * The maximum (uncompressed) size of the overlay base database that we will
@@ -176,11 +177,12 @@ const MAX_CACHE_OPERATION_MS = 600_000;
  * @param warningPrefix Prefix for the check failure warning message
  * @returns True if the verification succeeded, false otherwise
  */
-export function checkOverlayBaseDatabase(
+async function checkOverlayBaseDatabase(
+  codeql: CodeQL,
   config: Config,
   logger: Logger,
   warningPrefix: string,
-): boolean {
+): Promise<boolean> {
   // An overlay-base database should contain the base database OIDs file.
   const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
   if (!fs.existsSync(baseDatabaseOidsFilePath)) {
@@ -189,6 +191,29 @@ export function checkOverlayBaseDatabase(
     );
     return false;
   }
+
+  for (const language of config.languages) {
+    const dbPath = getCodeQLDatabasePath(config, language);
+    try {
+      const resolveDatabaseOutput = await codeql.resolveDatabase(dbPath);
+      if (
+        resolveDatabaseOutput === undefined ||
+        !("overlayBaseSpecifier" in resolveDatabaseOutput)
+      ) {
+        logger.info(`${warningPrefix}: no overlayBaseSpecifier defined`);
+        return false;
+      } else {
+        logger.debug(
+          `Overlay base specifier for ${language} overlay-base database found: ` +
+            `${resolveDatabaseOutput.overlayBaseSpecifier}`,
+        );
+      }
+    } catch (e) {
+      logger.warning(`${warningPrefix}: failed to resolve database: ${e}`);
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -232,7 +257,8 @@ export async function cleanupAndUploadOverlayBaseDatabaseToCache(
     return false;
   }
 
-  const databaseIsValid = checkOverlayBaseDatabase(
+  const databaseIsValid = await checkOverlayBaseDatabase(
+    codeql,
     config,
     logger,
     "Abort uploading overlay-base database to cache",
@@ -415,7 +441,8 @@ export async function downloadOverlayBaseDatabaseFromCache(
     return undefined;
   }
 
-  const databaseIsValid = checkOverlayBaseDatabase(
+  const databaseIsValid = await checkOverlayBaseDatabase(
+    codeql,
     config,
     logger,
     "Downloaded overlay-base database is invalid",

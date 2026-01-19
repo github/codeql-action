@@ -412,7 +412,7 @@ export function findSarifFilesInDir(
   return sarifFiles;
 }
 
-export function getSarifFilePaths(
+function getSarifFilePaths(
   sarifPath: string,
   isSarif: (name: string) => boolean,
 ) {

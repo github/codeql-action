@@ -21,12 +21,6 @@ export enum EnvVar {
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
 
   /**
-   * Whether to disable the SARIF post-processing in the Action that removes duplicate locations from
-   * notifications in the `run[].invocations[].toolExecutionNotifications` SARIF property.
-   */
-  DISABLE_DUPLICATE_LOCATION_FIX = "CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX",
-
-  /**
    * Whether the CodeQL Action is using its own deprecated and non-standard way of scanning for
    * multiple languages.
    */
@@ -56,19 +50,11 @@ export enum EnvVar {
   /** Whether the error for a deprecated version of the CodeQL Action was logged. */
   LOG_VERSION_DEPRECATION = "CODEQL_ACTION_DID_LOG_VERSION_DEPRECATION",
 
-  /**
-   * For macOS. Result of `csrutil status` to determine whether System Integrity
-   * Protection is enabled.
-   */
-  IS_SIP_ENABLED = "CODEQL_ACTION_IS_SIP_ENABLED",
-
   /** UUID representing the current job run. */
   JOB_RUN_UUID = "JOB_RUN_UUID",
 
   /** Status for the entire job, submitted to the status report in `init-post` */
   JOB_STATUS = "CODEQL_ACTION_JOB_STATUS",
-
-  ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 
   /** The value of the `output` input for the analyze action. */
   SARIF_RESULTS_OUTPUT_DIR = "CODEQL_ACTION_SARIF_RESULTS_OUTPUT_DIR",
@@ -143,4 +129,10 @@ export enum EnvVar {
    * the workflow is valid and validation is not necessary.
    */
   SKIP_WORKFLOW_VALIDATION = "CODEQL_ACTION_SKIP_WORKFLOW_VALIDATION",
+
+  /**
+   * Whether to tolerate failure to determine the git version (only applicable in test mode).
+   * Intended for use in environments where git may not be installed, such as Docker containers.
+   */
+  TOLERATE_MISSING_GIT_VERSION = "CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION",
 }

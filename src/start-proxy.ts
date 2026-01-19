@@ -8,7 +8,7 @@ import { ConfigurationError, getErrorMessage, isDefined } from "./util";
 
 export const UPDATEJOB_PROXY = "update-job-proxy";
 export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
-export const UPDATEJOB_PROXY_URL_PREFIX =
+const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 
 export type Credential = {
@@ -202,7 +202,7 @@ export function getFallbackUrl(proxyPackage: string): string {
  *
  * @returns The response from the GitHub API.
  */
-export async function getLinkedRelease() {
+async function getLinkedRelease() {
   return getApiClient().rest.repos.getReleaseByTag({
     owner: "github",
     repo: "codeql-action",

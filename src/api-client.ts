@@ -18,11 +18,6 @@ import {
 
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 
-export enum DisallowedAPIVersionReason {
-  ACTION_TOO_OLD,
-  ACTION_TOO_NEW,
-}
-
 export type GitHubApiCombinedDetails = GitHubApiDetails &
   GitHubApiExternalRepoDetails;
 
@@ -130,7 +125,7 @@ export async function getGitHubVersionFromApi(
   }
 
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
-    return { type: GitHubVariant.GHE_DOTCOM };
+    return { type: GitHubVariant.GHEC_DR };
   }
 
   const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;

@@ -98,7 +98,7 @@ export async function getAnalysisKinds(
 export const codeQualityQueries: string[] = ["code-quality"];
 
 // Enumerates API endpoints that accept SARIF files.
-export enum SARIF_UPLOAD_ENDPOINT {
+enum SARIF_UPLOAD_ENDPOINT {
   CODE_SCANNING = "PUT /repos/:owner/:repo/code-scanning/analysis",
   CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
 }

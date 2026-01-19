@@ -8,6 +8,7 @@ import archiver from "archiver";
 
 import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
+import { scanArtifactsForTokens } from "./artifact-scanner";
 import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
@@ -23,6 +24,7 @@ import {
   getCodeQLDatabasePath,
   getErrorMessage,
   GitHubVariant,
+  isInTestMode,
   listFolder,
 } from "./util";
 
@@ -267,6 +269,14 @@ export async function uploadDebugArtifacts(
       `Skipping debug artifact upload because the current CLI does not support safe upload. Please upgrade to CLI v${SafeArtifactUploadVersion} or later.`,
     );
     return "upload-not-supported";
+  }
+
+  // When running in test mode, perform a best effort scan of the debug artifacts. The artifact
+  // scanner is basic and not reliable or fast enough for production use, but it can help catch
+  // some issues early.
+  if (isInTestMode()) {
+    await scanArtifactsForTokens(toUpload, logger);
+    core.exportVariable("CODEQL_ACTION_ARTIFACT_SCAN_FINISHED", "true");
   }
 
   let suffix = "";

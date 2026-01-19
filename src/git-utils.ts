@@ -3,6 +3,7 @@ import * as os from "os";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
+import * as semver from "semver";
 
 import {
   getOptionalInput,
@@ -10,6 +11,52 @@ import {
   getWorkflowEventName,
 } from "./actions-util";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
+
+/**
+ * Minimum Git version required for overlay analysis. The `git ls-files --format`
+ * option, which is used by `getFileOidsUnderPath`, was introduced in Git 2.38.0.
+ */
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
+
+/**
+ * Git version information
+ *
+ * The full version string as reported by `git --version` may not be
+ * semver-compatible (e.g., "2.40.0.windows.1"). This class captures both
+ * the full version string and a truncated semver-compatible version string
+ * (e.g., "2.40.0").
+ */
+export class GitVersionInfo {
+  constructor(
+    /** Truncated semver-compatible version */
+    public truncatedVersion: string,
+    /** Full version string as reported by `git --version` */
+    public fullVersion: string,
+  ) {}
+
+  isAtLeast(minVersion: string): boolean {
+    return semver.gte(this.truncatedVersion, minVersion);
+  }
+}
+
+/**
+ * Gets the version of Git installed on the system and throws an error if
+ * the version cannot be determined.
+ */
+export async function getGitVersionOrThrow(): Promise<GitVersionInfo> {
+  const stdout = await runGitCommand(
+    undefined,
+    ["--version"],
+    "Failed to get git version.",
+  );
+  // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
+  // We capture just the major.minor.patch portion to ensure semver compatibility.
+  const match = stdout.trim().match(/^git version ((\d+\.\d+\.\d+).*)$/);
+  if (match?.[1] && match?.[2]) {
+    return new GitVersionInfo(match[2], match[1]);
+  }
+  throw new Error(`Could not parse Git version from output: ${stdout.trim()}`);
+}
 
 export const runGitCommand = async function (
   workingDirectory: string | undefined,
@@ -121,67 +168,6 @@ export const determineBaseBranchHeadCommitOid = async function (
     return undefined;
   } catch {
     return undefined;
-  }
-};
-
-/**
- * Deepen the git history of HEAD by one level. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const deepenGitHistory = async function () {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      [
-        "fetch",
-        "origin",
-        "HEAD",
-        "--no-tags",
-        "--no-recurse-submodules",
-        "--deepen=1",
-      ],
-      "Cannot deepen the shallow repository.",
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
-  }
-};
-
-/**
- * Fetch the given remote branch. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const gitFetch = async function (branch: string, extraFlags: string[]) {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      ["fetch", "--no-tags", ...extraFlags, "origin", `${branch}:${branch}`],
-      `Cannot fetch ${branch}.`,
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
-  }
-};
-
-/**
- * Repack the git repository, using with the given flags. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const gitRepack = async function (flags: string[]) {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      ["repack", ...flags],
-      "Cannot repack the repository.",
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
   }
 };
 

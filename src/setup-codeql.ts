@@ -34,7 +34,7 @@ export enum ToolsSource {
   Download = "DOWNLOAD",
 }
 
-export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 const CODEQL_NIGHTLIES_REPOSITORY_OWNER = "dsp-testing";
 const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
@@ -178,17 +178,6 @@ export function tryGetTagNameFromUrl(
   }
 
   return match[1];
-}
-
-export function tryGetBundleVersionFromUrl(
-  url: string,
-  logger: Logger,
-): string | undefined {
-  const tagName = tryGetTagNameFromUrl(url, logger);
-  if (tagName === undefined) {
-    return undefined;
-  }
-  return tryGetBundleVersionFromTagName(tagName, logger);
 }
 
 export function convertToSemVer(version: string, logger: Logger): string {
@@ -522,7 +511,7 @@ export async function getCodeQLSource(
   // different version to save download time if the version hasn't been
   // specified explicitly (in which case we always honor it).
   if (
-    variant !== util.GitHubVariant.DOTCOM &&
+    variant === util.GitHubVariant.GHES &&
     !forceShippedTools &&
     !toolsInput
   ) {
@@ -580,7 +569,7 @@ export async function getCodeQLSource(
  * Gets a fallback version number to use when looking for CodeQL in the toolcache if we didn't find
  * the `x.y.z` version. This is to support old versions of the toolcache.
  */
-export async function tryGetFallbackToolcacheVersion(
+async function tryGetFallbackToolcacheVersion(
   cliVersion: string | undefined,
   tagName: string,
   logger: Logger,
@@ -729,7 +718,7 @@ function getCanonicalToolcacheVersion(
   return cliVersion;
 }
 
-export interface SetupCodeQLResult {
+interface SetupCodeQLResult {
   codeqlFolder: string;
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
@@ -750,7 +739,7 @@ export async function setupCodeQLBundle(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   features: FeatureEnablement,
   logger: Logger,
-) {
+): Promise<SetupCodeQLResult> {
   if (!(await util.isBinaryAccessible("tar", logger))) {
     throw new util.ConfigurationError(
       "Could not find tar in PATH, so unable to extract CodeQL bundle.",

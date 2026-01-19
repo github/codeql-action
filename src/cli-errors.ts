@@ -159,10 +159,7 @@ type CliErrorConfiguration = {
  * All of our caught CLI error messages that we handle specially: ie. if we
  * would like to categorize an error as a configuration error or not.
  */
-export const cliErrorsConfig: Record<
-  CliConfigErrorCategory,
-  CliErrorConfiguration
-> = {
+const cliErrorsConfig: Record<CliConfigErrorCategory, CliErrorConfiguration> = {
   [CliConfigErrorCategory.AutobuildError]: {
     cliErrorMessageCandidates: [
       new RegExp("We were unable to automatically build your code"),

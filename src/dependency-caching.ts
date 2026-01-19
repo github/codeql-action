@@ -20,7 +20,10 @@ import { getErrorMessage, getRequiredEnvParam } from "./util";
  */
 export interface CacheConfig {
   /** Gets the paths of directories on the runner that should be included in the cache. */
-  getDependencyPaths: () => string[];
+  getDependencyPaths: (
+    codeql: CodeQL,
+    features: FeatureEnablement,
+  ) => Promise<string[]>;
   /**
    * Gets an array of glob patterns for the paths of files whose contents affect which dependencies are used
    * by a project. This function also checks whether there are any matching files and returns
@@ -55,7 +58,7 @@ export function getJavaTempDependencyDir(): string {
  * @returns The paths of directories on the runner that should be included in a dependency cache
  * for a Java analysis.
  */
-export function getJavaDependencyDirs(): string[] {
+export async function getJavaDependencyDirs(): Promise<string[]> {
   return [
     // Maven
     join(os.homedir(), ".m2", "repository"),
@@ -64,6 +67,38 @@ export function getJavaDependencyDirs(): string[] {
     // CodeQL Java build-mode: none
     getJavaTempDependencyDir(),
   ];
+}
+
+/**
+ * Returns a path to a directory intended to be used to store dependencies
+ * for the C# `build-mode: none` extractor.
+ * @returns The path to the directory that should be used by the `build-mode: none` extractor.
+ */
+export function getCsharpTempDependencyDir(): string {
+  return join(getTemporaryDirectory(), "codeql_csharp", "repository");
+}
+
+/**
+ * Returns an array of paths of directories on the runner that should be included in a dependency cache
+ * for a C# analysis.
+ *
+ * @returns The paths of directories on the runner that should be included in a dependency cache
+ * for a C# analysis.
+ */
+export async function getCsharpDependencyDirs(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+): Promise<string[]> {
+  const dirs = [
+    // Nuget
+    join(os.homedir(), ".nuget", "packages"),
+  ];
+
+  if (await features.getValue(Feature.CsharpCacheBuildModeNone, codeql)) {
+    dirs.push(getCsharpTempDependencyDir());
+  }
+
+  return dirs;
 }
 
 /**
@@ -158,11 +193,11 @@ const defaultCacheConfigs: { [language: string]: CacheConfig } = {
       ]),
   },
   csharp: {
-    getDependencyPaths: () => [join(os.homedir(), ".nuget", "packages")],
+    getDependencyPaths: getCsharpDependencyDirs,
     getHashPatterns: getCsharpHashPatterns,
   },
   go: {
-    getDependencyPaths: () => [join(os.homedir(), "go", "pkg", "mod")],
+    getDependencyPaths: async () => [join(os.homedir(), "go", "pkg", "mod")],
     getHashPatterns: async () => internal.makePatternCheck(["**/go.sum"]),
   },
 };
@@ -289,7 +324,7 @@ export async function downloadDependencyCaches(
 
     const start = performance.now();
     const hitKey = await actionsCache.restoreCache(
-      cacheConfig.getDependencyPaths(),
+      await cacheConfig.getDependencyPaths(codeql, features),
       primaryKey,
       restoreKeys,
     );
@@ -408,7 +443,7 @@ export async function uploadDependencyCaches(
     //   with the dependency caches. For this, we could use the Cache API to check whether other workflows
     //   are using the quota and how full it is.
     const size = await getTotalCacheSize(
-      cacheConfig.getDependencyPaths(),
+      await cacheConfig.getDependencyPaths(codeql, features),
       logger,
       true,
     );
@@ -428,7 +463,10 @@ export async function uploadDependencyCaches(
 
     try {
       const start = performance.now();
-      await actionsCache.saveCache(cacheConfig.getDependencyPaths(), key);
+      await actionsCache.saveCache(
+        await cacheConfig.getDependencyPaths(codeql, features),
+        key,
+      );
       const upload_duration_ms = Math.round(performance.now() - start);
 
       status.push({
@@ -503,19 +541,9 @@ export async function getFeaturePrefix(
     }
   };
 
-  if (language === KnownLanguage.java) {
-    // To ensure a safe rollout of JAR minimization, we change the key when the feature is enabled.
-    const minimizeJavaJars = await features.getValue(
-      Feature.JavaMinimizeDependencyJars,
-      codeql,
-    );
-
-    // To maintain backwards compatibility with this, we return "minify-" instead of a hash.
-    if (minimizeJavaJars) {
-      return "minify-";
-    }
-  } else if (language === KnownLanguage.csharp) {
+  if (language === KnownLanguage.csharp) {
     await addFeatureIfEnabled(Feature.CsharpNewCacheKey);
+    await addFeatureIfEnabled(Feature.CsharpCacheBuildModeNone);
   }
 
   // If any features that affect the cache are enabled, return a feature prefix by
@@ -554,14 +582,8 @@ async function cachePrefix(
   // experimental features that affect the cache contents.
   const featurePrefix = await getFeaturePrefix(codeql, features, language);
 
-  // Assemble the cache key. For backwards compatibility with the JAR minification experiment's existing
-  // feature prefix usage, we add that feature prefix at the start. Other feature prefixes are inserted
-  // after the general CodeQL dependency cache prefix.
-  if (featurePrefix === "minify-") {
-    return `${featurePrefix}${prefix}-${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
-  } else {
-    return `${prefix}-${featurePrefix}${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
-  }
+  // Assemble the cache key.
+  return `${prefix}-${featurePrefix}${CODEQL_DEPENDENCY_CACHE_VERSION}-${runnerOs}-${language}-`;
 }
 
 /** Represents information about our overall cache usage for CodeQL dependency caches. */

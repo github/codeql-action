@@ -26,13 +26,18 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
+import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
 import {
   getGeneratedFiles,
   getGitRoot,
+  getGitVersionOrThrow,
+  GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  GitVersionInfo,
   isAnalyzingDefaultBranch,
 } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -52,7 +57,9 @@ import {
   cloneObject,
   isDefined,
   checkDiskUsage,
+  getCodeQLMemoryLimit,
   getErrorMessage,
+  isInTestMode,
 } from "./util";
 
 export * from "./config/db-config";
@@ -67,6 +74,14 @@ export * from "./config/db-config";
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
+
+/**
+ * The minimum memory (in MB) that must be available for CodeQL to perform overlay
+ * analysis. If CodeQL will be given less memory than this threshold, then the
+ * action will not perform overlay analysis unless overlay analysis has been
+ * explicitly enabled via environment variable.
+ */
+const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -200,7 +215,7 @@ export interface Config {
   repositoryProperties: RepositoryProperties;
 }
 
-export async function getSupportedLanguageMap(
+async function getSupportedLanguageMap(
   codeql: CodeQL,
   logger: Logger,
 ): Promise<Record<string, string>> {
@@ -263,7 +278,7 @@ export function hasActionsWorkflows(sourceRoot: string): boolean {
 /**
  * Gets the set of languages in the current repository.
  */
-export async function getRawLanguagesInRepo(
+async function getRawLanguagesInRepo(
   repository: RepositoryNwo,
   sourceRoot: string,
   logger: Logger,
@@ -372,7 +387,7 @@ export function getRawLanguagesNoAutodetect(
  * @returns A tuple containing a list of languages in this repository that might be
  * analyzable and whether or not this list was determined automatically.
  */
-export async function getRawLanguages(
+async function getRawLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
@@ -402,6 +417,7 @@ export interface InitConfigInputs {
   dbLocation: string | undefined;
   configInput: string | undefined;
   buildModeInput: string | undefined;
+  ramInput: string | undefined;
   trapCachingEnabled: boolean;
   dependencyCachingEnabled: string | undefined;
   debugMode: boolean;
@@ -644,6 +660,42 @@ async function isOverlayAnalysisFeatureEnabled(
 }
 
 /**
+ * Checks if the runner supports overlay analysis based on available disk space
+ * and the maximum memory CodeQL will be allowed to use.
+ */
+async function runnerSupportsOverlayAnalysis(
+  ramInput: string | undefined,
+  logger: Logger,
+): Promise<boolean> {
+  const diskUsage = await checkDiskUsage(logger);
+  if (
+    diskUsage === undefined ||
+    diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+  ) {
+    const diskSpaceMb =
+      diskUsage === undefined
+        ? 0
+        : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient disk space (${diskSpaceMb} MB).`,
+    );
+    return false;
+  }
+
+  const memoryFlagValue = getCodeQLMemoryLimit(ramInput, logger);
+  if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB).`,
+    );
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Calculate and validate the overlay database mode and caching to use.
  *
  * - If the environment variable `CODEQL_OVERLAY_DATABASE_MODE` is set, use it.
@@ -670,7 +722,9 @@ export async function getOverlayDatabaseMode(
   languages: Language[],
   sourceRoot: string,
   buildMode: BuildMode | undefined,
+  ramInput: string | undefined,
   codeScanningConfig: UserConfig,
+  gitVersion: GitVersionInfo | undefined,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -700,37 +754,29 @@ export async function getOverlayDatabaseMode(
       codeScanningConfig,
     )
   ) {
-    const diskUsage = await checkDiskUsage(logger);
+    const performResourceChecks = !(await features.getValue(
+      Feature.OverlayAnalysisSkipResourceChecks,
+      codeql,
+    ));
     if (
-      diskUsage === undefined ||
-      diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+      performResourceChecks &&
+      !(await runnerSupportsOverlayAnalysis(ramInput, logger))
     ) {
-      const diskSpaceMb =
-        diskUsage === undefined
-          ? 0
-          : Math.round(diskUsage.numAvailableBytes / 1_000_000);
       overlayDatabaseMode = OverlayDatabaseMode.None;
-      useOverlayDatabaseCaching = false;
+    } else if (isAnalyzingPullRequest()) {
+      overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+      useOverlayDatabaseCaching = true;
       logger.info(
         `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          `due to insufficient disk space (${diskSpaceMb} MB).`,
+          "with caching because we are analyzing a pull request.",
       );
-    } else {
-      if (isAnalyzingPullRequest()) {
-        overlayDatabaseMode = OverlayDatabaseMode.Overlay;
-        useOverlayDatabaseCaching = true;
-        logger.info(
-          `Setting overlay database mode to ${overlayDatabaseMode} ` +
-            "with caching because we are analyzing a pull request.",
-        );
-      } else if (await isAnalyzingDefaultBranch()) {
-        overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
-        useOverlayDatabaseCaching = true;
-        logger.info(
-          `Setting overlay database mode to ${overlayDatabaseMode} ` +
-            "with caching because we are analyzing the default branch.",
-        );
-      }
+    } else if (await isAnalyzingDefaultBranch()) {
+      overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+      useOverlayDatabaseCaching = true;
+      logger.info(
+        `Setting overlay database mode to ${overlayDatabaseMode} ` +
+          "with caching because we are analyzing the default branch.",
+      );
     }
   }
 
@@ -777,6 +823,22 @@ export async function getOverlayDatabaseMode(
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the source root "${sourceRoot}" is not inside a git repository. ` +
+        "Falling back to creating a normal full database instead.",
+    );
+    return nonOverlayAnalysis;
+  }
+  if (gitVersion === undefined) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        "the Git version could not be determined. " +
+        "Falling back to creating a normal full database instead.",
+    );
+    return nonOverlayAnalysis;
+  }
+  if (!gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
         "Falling back to creating a normal full database instead.",
     );
     return nonOverlayAnalysis;
@@ -886,6 +948,24 @@ export async function initConfig(
     config.computedConfig["query-filters"] = [];
   }
 
+  let gitVersion: GitVersionInfo | undefined = undefined;
+  try {
+    gitVersion = await getGitVersionOrThrow();
+    logger.info(`Using Git version ${gitVersion.fullVersion}`);
+    await logGitVersionTelemetry(config, gitVersion);
+  } catch (e) {
+    logger.warning(`Could not determine Git version: ${getErrorMessage(e)}`);
+    // Throw the error in test mode so it's more visible, unless the environment
+    // variable is set to tolerate this, for example because we're running in a
+    // Docker container where git may not be available.
+    if (
+      isInTestMode() &&
+      process.env[EnvVar.TOLERATE_MISSING_GIT_VERSION] !== "true"
+    ) {
+      throw e;
+    }
+  }
+
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
@@ -897,7 +977,9 @@ export async function initConfig(
       config.languages,
       inputs.sourceRoot,
       config.buildMode,
+      inputs.ramInput,
       config.computedConfig,
+      gitVersion,
       logger,
     );
   logger.info(
@@ -1281,7 +1363,7 @@ export function isCodeQualityEnabled(config: Config): boolean {
  * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
  * otherwise `AnalysisKind.CodeQuality`.
  */
-export function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+function getPrimaryAnalysisKind(config: Config): AnalysisKind {
   return isCodeScanningEnabled(config)
     ? AnalysisKind.CodeScanning
     : AnalysisKind.CodeQuality;
@@ -1297,4 +1379,27 @@ export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
   return getPrimaryAnalysisKind(config) === AnalysisKind.CodeScanning
     ? CodeScanning
     : CodeQuality;
+}
+
+/** Logs the Git version as a telemetry diagnostic. */
+async function logGitVersionTelemetry(
+  config: Config,
+  gitVersion: GitVersionInfo,
+): Promise<void> {
+  if (config.languages.length > 0) {
+    addDiagnostic(
+      config,
+      // Arbitrarily choose the first language. We could also choose all languages, but that
+      // increases the risk of misinterpreting the data.
+      config.languages[0],
+      makeTelemetryDiagnostic(
+        "codeql-action/git-version-telemetry",
+        "Git version telemetry",
+        {
+          fullVersion: gitVersion.fullVersion,
+          truncatedVersion: gitVersion.truncatedVersion,
+        },
+      ),
+    );
+  }
 }

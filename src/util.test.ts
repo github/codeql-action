@@ -433,8 +433,8 @@ function formatGitHubVersion(version: util.GitHubVersion): string {
   switch (version.type) {
     case util.GitHubVariant.DOTCOM:
       return "dotcom";
-    case util.GitHubVariant.GHE_DOTCOM:
-      return "GHE dotcom";
+    case util.GitHubVariant.GHEC_DR:
+      return "GHEC-DR";
     case util.GitHubVariant.GHES:
       return `GHES ${version.version}`;
     default:
@@ -445,12 +445,12 @@ function formatGitHubVersion(version: util.GitHubVersion): string {
 const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
   [
     ["2.2.1", { type: util.GitHubVariant.DOTCOM }, true],
-    ["2.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, true],
+    ["2.2.1", { type: util.GitHubVariant.GHEC_DR }, true],
     ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
     ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, false],
     ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, false],
     ["3.2.1", { type: util.GitHubVariant.DOTCOM }, true],
-    ["3.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, true],
+    ["3.2.1", { type: util.GitHubVariant.GHEC_DR }, true],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, false],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, false],
@@ -458,7 +458,7 @@ const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.20" }, true],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.21" }, true],
     ["4.2.1", { type: util.GitHubVariant.DOTCOM }, false],
-    ["4.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHEC_DR }, false],
     ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.19" }, false],
     ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.20" }, false],
     ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.21" }, false],

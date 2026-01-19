@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: language-aliases-${{ github.ref }}
+  group: language-aliases-${{github.ref}}
 jobs:
   language-aliases:
     strategy:

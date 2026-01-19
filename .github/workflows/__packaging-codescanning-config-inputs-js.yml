@@ -59,7 +59,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: packaging-codescanning-config-inputs-js-${{ github.ref }}
+  group:
+    packaging-codescanning-config-inputs-js-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   packaging-codescanning-config-inputs-js:
     strategy:

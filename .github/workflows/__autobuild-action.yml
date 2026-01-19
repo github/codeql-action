@@ -39,7 +39,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: autobuild-action-${{ github.ref }}
+  group: autobuild-action-${{github.ref}}-${{inputs.dotnet-version}}
 jobs:
   autobuild-action:
     strategy:

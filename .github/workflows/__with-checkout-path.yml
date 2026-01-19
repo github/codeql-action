@@ -59,7 +59,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: with-checkout-path-${{ github.ref }}
+  group:
+    with-checkout-path-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   with-checkout-path:
     strategy:

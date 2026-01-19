@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: cpp-deptrace-enabled-${{ github.ref }}
+  group: cpp-deptrace-enabled-${{github.ref}}
 jobs:
   cpp-deptrace-enabled:
     strategy:

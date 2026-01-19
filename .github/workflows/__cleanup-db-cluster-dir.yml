@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: cleanup-db-cluster-dir-${{ github.ref }}
+  group: cleanup-db-cluster-dir-${{github.ref}}
 jobs:
   cleanup-db-cluster-dir:
     strategy:

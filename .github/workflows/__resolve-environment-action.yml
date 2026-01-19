@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: resolve-environment-action-${{ github.ref }}
+  group: resolve-environment-action-${{github.ref}}
 jobs:
   resolve-environment-action:
     strategy:

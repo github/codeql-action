@@ -39,7 +39,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: go-tracing-legacy-workflow-${{ github.ref }}
+  group: go-tracing-legacy-workflow-${{github.ref}}-${{inputs.go-version}}
 jobs:
   go-tracing-legacy-workflow:
     strategy:

@@ -49,7 +49,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: build-mode-manual-${{ github.ref }}
+  group:
+    build-mode-manual-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   build-mode-manual:
     strategy:

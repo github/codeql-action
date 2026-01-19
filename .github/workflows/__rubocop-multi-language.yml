@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: rubocop-multi-language-${{ github.ref }}
+  group: rubocop-multi-language-${{github.ref}}
 jobs:
   rubocop-multi-language:
     strategy:

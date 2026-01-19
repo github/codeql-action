@@ -39,7 +39,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: autobuild-direct-tracing-with-working-dir-${{ github.ref }}
+  group:
+    autobuild-direct-tracing-with-working-dir-${{github.ref}}-${{inputs.java-version}}
 jobs:
   autobuild-direct-tracing-with-working-dir:
     strategy:

@@ -49,7 +49,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: split-workflow-${{ github.ref }}
+  group: split-workflow-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   split-workflow:
     strategy:

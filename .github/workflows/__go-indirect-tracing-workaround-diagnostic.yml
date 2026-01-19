@@ -39,7 +39,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: go-indirect-tracing-workaround-diagnostic-${{ github.ref }}
+  group: go-indirect-tracing-workaround-diagnostic-${{github.ref}}-${{inputs.go-version}}
 jobs:
   go-indirect-tracing-workaround-diagnostic:
     strategy:

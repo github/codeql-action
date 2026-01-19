@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: submit-sarif-failure-${{ github.ref }}
+  group: submit-sarif-failure-${{github.ref}}
 jobs:
   submit-sarif-failure:
     strategy:

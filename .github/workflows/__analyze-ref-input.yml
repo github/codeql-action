@@ -59,7 +59,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: analyze-ref-input-${{ github.ref }}
+  group:
+    analyze-ref-input-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   analyze-ref-input:
     strategy:

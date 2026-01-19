@@ -49,7 +49,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: swift-custom-build-${{ github.ref }}
+  group:
+    swift-custom-build-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   swift-custom-build:
     strategy:

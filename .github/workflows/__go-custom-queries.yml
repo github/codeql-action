@@ -49,7 +49,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: go-custom-queries-${{ github.ref }}
+  group:
+    go-custom-queries-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   go-custom-queries:
     strategy:

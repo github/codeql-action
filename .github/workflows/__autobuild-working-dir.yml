@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: autobuild-working-dir-${{ github.ref }}
+  group: autobuild-working-dir-${{github.ref}}
 jobs:
   autobuild-working-dir:
     strategy:

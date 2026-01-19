@@ -39,7 +39,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: go-tracing-autobuilder-${{ github.ref }}
+  group: go-tracing-autobuilder-${{github.ref}}-${{inputs.go-version}}
 jobs:
   go-tracing-autobuilder:
     strategy:

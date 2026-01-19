@@ -271,6 +271,10 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
 
     raw_file = this_dir.parent / ".github" / "workflows" / f"__{checkName}.yml.raw"
     with open(raw_file, 'w', newline='\n') as output_stream:
+        extraGroupName = ""
+        for inputName in workflowInputs.keys():
+            extraGroupName += "-${{inputs." + inputName + "}}"
+
         writeHeader(output_stream)
         yaml.dump({
             'name': f"PR Check - {checkSpecification['name']}",
@@ -307,7 +311,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 # consequently the number of concurrent API requests.
                 'cancel-in-progress': "${{ github.event_name == 'pull_request' || false }}",
                 # The group is determined by the workflow name + the ref
-                'group': checkName + "-${{ github.ref }}"
+                'group': checkName + "-${{github.ref}}" + extraGroupName
             },
             'jobs': {
                 checkName: checkJob

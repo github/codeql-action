@@ -16,7 +16,7 @@ def extract_changelog_snippet(changelog_file, version_tag):
     with open(changelog_file, 'r') as f:
       lines = f.readlines()
 
-      # Include everything up to, but excluding the second heading
+      # Include only the contents of the first section
       found_first_section = False
       for line in lines:
         if line.startswith('## '):

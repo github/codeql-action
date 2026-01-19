@@ -307,7 +307,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 # consequently the number of concurrent API requests.
                 'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
                 # The group is determined by the workflow name + the ref
-                'group': "${{ github.workflow }}-${{ github.ref }}"
+                'group': checkName + "-${{ github.ref }}"
             },
             'jobs': {
                 checkName: checkJob

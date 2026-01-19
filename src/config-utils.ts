@@ -922,11 +922,19 @@ export async function initConfig(
   if ((await features.getValue(Feature.IgnoreGeneratedFiles)) && isCCR()) {
     try {
       const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
-      config.computedConfig["paths-ignore"] ??= [];
-      config.computedConfig["paths-ignore"].push(...generatedFiles);
+
+      if (generatedFiles.length > 0) {
+        config.computedConfig["paths-ignore"] ??= [];
+        config.computedConfig["paths-ignore"].push(...generatedFiles);
+        logger.info(
+          `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${generatedFiles.join(", ")}`,
+        );
+      }
     } catch (error) {
       logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);
     }
+  } else {
+    logger.debug(`Skipping check for generated files.`);
   }
 
   // If Code Quality analysis is the only enabled analysis kind, then we will initialise

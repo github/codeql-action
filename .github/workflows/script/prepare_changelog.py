@@ -18,16 +18,15 @@ def extract_changelog_snippet(changelog_file, version_tag):
 
       # Include everything up to, but excluding the second heading
       found_first_section = False
-      for i, line in enumerate(lines):
+      for line in lines:
         if line.startswith('## '):
           if found_first_section:
             break
           found_first_section = True
-        output += line
+        elif found_first_section:
+          output += line
 
-  output += f"See the full [CHANGELOG.md](https://github.com/github/codeql-action/blob/{version_tag}/CHANGELOG.md) for more information."
-
-  return output
+  return output.strip()
 
 
 if len(sys.argv) < 3:

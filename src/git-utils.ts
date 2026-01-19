@@ -1,6 +1,7 @@
 import * as os from "os";
 
 import * as core from "@actions/core";
+import { ExecOptions } from "@actions/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 import * as semver from "semver";
@@ -62,6 +63,7 @@ export const runGitCommand = async function (
   workingDirectory: string | undefined,
   args: string[],
   customErrorMessage: string,
+  options?: ExecOptions,
 ): Promise<string> {
   let stdout = "";
   let stderr = "";
@@ -78,6 +80,7 @@ export const runGitCommand = async function (
         },
       },
       cwd: workingDirectory,
+      ...options,
     }).exec();
     return stdout;
   } catch (error) {
@@ -412,8 +415,9 @@ export async function getGeneratedFiles(
   const files = await listFiles(workingDirectory);
   const stdout = await runGitCommand(
     workingDirectory,
-    ["check-attr", "linguist-generated", "--", ...files],
+    ["check-attr", "linguist-generated", "--stdin"],
     "Unable to check attributes of files.",
+    { input: Buffer.from(files.join(" ")) },
   );
 
   const generatedFiles: string[] = [];

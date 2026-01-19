@@ -3,6 +3,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
+import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -189,7 +190,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
  * the GitHub API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  const analysisKeyEnvVar = "CODEQL_ACTION_ANALYSIS_KEY";
+  const analysisKeyEnvVar = EnvVar.ANALYSIS_KEY;
 
   let analysisKey = process.env[analysisKeyEnvVar];
   if (analysisKey !== undefined) {

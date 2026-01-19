@@ -919,7 +919,7 @@ export async function initConfig(
   // If we are in CCR or the corresponding FF is enabled, try to determine
   // which files in the repository are marked as generated and add them to
   // the `paths-ignore` configuration.
-  if ((await features.getValue(Feature.IgnoreGeneratedFiles)) || isCCR()) {
+  if ((await features.getValue(Feature.IgnoreGeneratedFiles)) && isCCR()) {
     try {
       const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
       config.computedConfig["paths-ignore"] ??= [];

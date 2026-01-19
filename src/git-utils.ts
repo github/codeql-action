@@ -400,6 +400,11 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   return currentRef === defaultBranch;
 }
 
+/**
+ * Gets a list of all tracked files in the repository.
+ *
+ * @param workingDirectory The working directory, which is part of a Git repository.
+ */
 export async function listFiles(workingDirectory: string): Promise<string[]> {
   const stdout = await runGitCommand(
     workingDirectory,
@@ -409,6 +414,11 @@ export async function listFiles(workingDirectory: string): Promise<string[]> {
   return stdout.split(os.EOL);
 }
 
+/**
+ * Gets a list of files that have the `linguist-generated: true` attribute.
+ *
+ * @param workingDirectory The working directory, which is part of a Git repository.
+ */
 export async function getGeneratedFiles(
   workingDirectory: string,
 ): Promise<string[]> {

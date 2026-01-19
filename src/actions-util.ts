@@ -8,6 +8,7 @@ import * as io from "@actions/io";
 import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import type { Config } from "./config-utils";
+import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import {
   doesDirectoryExist,
@@ -261,7 +262,7 @@ export function isDefaultSetup(): boolean {
 export function isCCR(): boolean {
   return (
     (isDynamicWorkflow() &&
-      process.env["CODEQL_ACTION_ANALYSIS_KEY"]?.startsWith(
+      process.env[EnvVar.ANALYSIS_KEY]?.startsWith(
         "dynamic/copilot-pull-request-reviewer",
       )) ||
     false

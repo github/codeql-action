@@ -58,7 +58,7 @@ defaults:
   run:
     shell: bash
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
   group: upload-sarif-${{ github.ref }}
 jobs:
   upload-sarif:

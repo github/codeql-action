@@ -305,7 +305,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 # For other events, the new workflows should wait until earlier ones have finished.
                 # This should help reduce the number of concurrent workflows on the repo, and
                 # consequently the number of concurrent API requests.
-                'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+                'cancel-in-progress': "${{ github.event_name == 'pull_request' || false }}",
                 # The group is determined by the workflow name + the ref
                 'group': checkName + "-${{ github.ref }}"
             },

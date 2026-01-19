@@ -427,7 +427,7 @@ export async function getGeneratedFiles(
     workingDirectory,
     ["check-attr", "linguist-generated", "--stdin"],
     "Unable to check attributes of files.",
-    { input: Buffer.from(files.join(" ")) },
+    { input: Buffer.from(files.join(os.EOL)) },
   );
 
   const generatedFiles: string[] = [];

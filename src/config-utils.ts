@@ -966,6 +966,8 @@ export async function initConfig(
         logger.info(
           `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${generatedFiles.join(", ")}`,
         );
+      } else {
+        logger.info(`Found no generated files.`);
       }
     } catch (error) {
       logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);

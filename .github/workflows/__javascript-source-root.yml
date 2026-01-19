@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: javascript-source-root-${{ github.ref }}
 jobs:
   javascript-source-root:
     strategy:

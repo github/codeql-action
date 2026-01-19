@@ -49,7 +49,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: build-mode-manual-${{ github.ref }}
 jobs:
   build-mode-manual:
     strategy:

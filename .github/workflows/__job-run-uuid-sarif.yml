@@ -29,7 +29,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: job-run-uuid-sarif-${{ github.ref }}
 jobs:
   job-run-uuid-sarif:
     strategy:

@@ -49,7 +49,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: go-custom-queries-${{ github.ref }}
 jobs:
   go-custom-queries:
     strategy:

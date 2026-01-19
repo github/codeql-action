@@ -39,7 +39,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: go-tracing-custom-build-steps-${{ github.ref }}
 jobs:
   go-tracing-custom-build-steps:
     strategy:

@@ -7,7 +7,7 @@ EMPTY_CHANGELOG = 'No changes.\n\n'
 # Prepare the changelog for the new release
 # This function will extract the part of the changelog that
 # we want to include in the new release.
-def extract_changelog_snippet(changelog_file, version_tag):
+def extract_changelog_snippet(changelog_file):
   output = ''
   if (not os.path.exists(changelog_file)):
     output = EMPTY_CHANGELOG
@@ -29,9 +29,7 @@ def extract_changelog_snippet(changelog_file, version_tag):
   return output.strip()
 
 
-if len(sys.argv) < 3:
-  raise Exception('Expecting argument: changelog_file version_tag')
+if len(sys.argv) < 2:
+  raise Exception('Expecting argument: changelog_file')
 changelog_file = sys.argv[1]
-version_tag = sys.argv[2]
-
-print(extract_changelog_snippet(changelog_file, version_tag))
+print(extract_changelog_snippet(changelog_file))

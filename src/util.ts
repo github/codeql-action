@@ -755,7 +755,11 @@ export async function bundleDb(
   if (fs.existsSync(databaseBundlePath)) {
     await fs.promises.rm(databaseBundlePath, { force: true });
   }
-  // Copy the base database OIDs file into the database location if it exists
+  // When overlay is enabled, the base database OIDs file is included at the
+  // root of the database cluster. However when we bundle a database, we only
+  // include the per-language database. So, to ensure the base database OIDs
+  // file is included in the database bundle, we copy it from the cluster into
+  // the individual database location before bundling.
   const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
   const additionalFiles: string[] = [];
   if (fs.existsSync(baseDatabaseOidsFilePath)) {

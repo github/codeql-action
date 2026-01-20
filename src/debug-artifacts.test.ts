@@ -24,6 +24,29 @@ test("sanitizeArtifactName", (t) => {
   );
 });
 
+test("getArtifactSuffix", (t) => {
+  // No suffix if there's no `matrix` input, it is invalid, or has no keys.
+  t.is(debugArtifacts.getArtifactSuffix(undefined), "");
+  t.is(debugArtifacts.getArtifactSuffix(""), "");
+  t.is(debugArtifacts.getArtifactSuffix("invalid json"), "");
+  t.is(debugArtifacts.getArtifactSuffix("{}"), "");
+
+  // Suffixes for non-empty, valid `matrix` inputs.
+  const testMatrices = [
+    { language: "go" },
+    { language: "javascript", "build-mode": "none" },
+  ];
+
+  for (const testMatrix of testMatrices) {
+    const suffix = debugArtifacts.getArtifactSuffix(JSON.stringify(testMatrix));
+    t.not(suffix, "");
+
+    for (const key of Object.keys(testMatrix)) {
+      t.assert(suffix.includes(testMatrix[key] as string));
+    }
+  }
+});
+
 // These next tests check the correctness of the logic to determine whether or not
 // artifacts are uploaded in debug mode. Since it's not easy to mock the actual
 // call to upload an artifact, we just check that we get an "upload-failed" result,

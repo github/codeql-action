@@ -36,17 +36,22 @@ test("getArtifactSuffix", (t) => {
 
   // Suffixes for non-empty, valid `matrix` inputs.
   const testMatrices = [
-    { language: "go" },
-    { language: "javascript", "build-mode": "none" },
+    { matrix: { language: "go" }, expected: "-go" },
+    {
+      matrix: { language: "javascript", "build-mode": "none" },
+      expected: "-none-javascript",
+    },
+    {
+      matrix: { "build-mode": "none", language: "javascript" },
+      expected: "-none-javascript",
+    },
   ];
 
   for (const testMatrix of testMatrices) {
-    const suffix = debugArtifacts.getArtifactSuffix(JSON.stringify(testMatrix));
-    t.not(suffix, "");
-
-    for (const key of Object.keys(testMatrix)) {
-      t.assert(suffix.includes(testMatrix[key] as string));
-    }
+    const suffix = debugArtifacts.getArtifactSuffix(
+      JSON.stringify(testMatrix.matrix),
+    );
+    t.is(suffix, testMatrix.expected);
   }
 });
 

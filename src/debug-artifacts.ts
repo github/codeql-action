@@ -260,10 +260,9 @@ export function getArtifactSuffix(matrix: string | undefined): string {
   let suffix = "";
   if (matrix) {
     try {
-      for (const [, matrixVal] of Object.entries(
-        JSON.parse(matrix) as any[][],
-      ).sort())
-        suffix += `-${matrixVal}`;
+      const matrixObject = JSON.parse(matrix) as any[][];
+      for (const matrixKey of Object.keys(matrixObject).sort())
+        suffix += `-${matrixObject[matrixKey]}`;
     } catch {
       core.info(
         "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",

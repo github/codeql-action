@@ -264,7 +264,7 @@ export function getArtifactSuffix(matrix: string | undefined): string {
       for (const matrixKey of Object.keys(matrixObject).sort())
         suffix += `-${matrixObject[matrixKey]}`;
     } catch {
-      core.info(
+      core.warning(
         "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",
       );
     }

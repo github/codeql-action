@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
 import os
 import re
 
+cli_version = os.environ['CLI_VERSION']
+
+# The GitHub Release for the new bundle version.
+bundle_release_url = f"https://github.com/github/codeql-action/releases/tag/codeql-bundle-v{cli_version}"
 # Get the PR number from the PR URL.
 pr_number = os.environ['PR_URL'].split('/')[-1]
-changelog_note = f"- Update default CodeQL bundle version to {os.environ['CLI_VERSION']}. [#{pr_number}]({os.environ['PR_URL']})"
+changelog_note = f"- Update default CodeQL bundle version to [{cli_version}]({bundle_release_url}). [#{pr_number}]({os.environ['PR_URL']})"
 
 # If the "[UNRELEASED]" section starts with "no user facing changes", remove that line.
 with open('CHANGELOG.md', 'r') as f:

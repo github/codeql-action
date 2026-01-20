@@ -127,9 +127,8 @@ jobs:
         env:
           NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
-          VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG "$VERSION" > $PARTIAL_CHANGELOG
+          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG > $PARTIAL_CHANGELOG
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG

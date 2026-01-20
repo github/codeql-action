@@ -30,6 +30,9 @@ test("getArtifactSuffix", (t) => {
   t.is(debugArtifacts.getArtifactSuffix(""), "");
   t.is(debugArtifacts.getArtifactSuffix("invalid json"), "");
   t.is(debugArtifacts.getArtifactSuffix("{}"), "");
+  t.is(debugArtifacts.getArtifactSuffix("null"), "");
+  t.is(debugArtifacts.getArtifactSuffix("123"), "");
+  t.is(debugArtifacts.getArtifactSuffix('"string"'), "");
 
   // Suffixes for non-empty, valid `matrix` inputs.
   const testMatrices = [

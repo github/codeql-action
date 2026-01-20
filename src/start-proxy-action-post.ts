@@ -8,7 +8,7 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as configUtils from "./config-utils";
-import { getArtifactUploaderClient } from "./debug-artifacts";
+import { uploadArtifacts } from "./debug-artifacts";
 import { getActionsLogger } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
@@ -44,19 +44,12 @@ async function runWrapper() {
       const gitHubVersion = await getGitHubVersion();
       checkGitHubVersionInRange(gitHubVersion, logger);
 
-      const artifactUploader = await getArtifactUploaderClient(
+      await uploadArtifacts(
         logger,
-        gitHubVersion.type,
-      );
-
-      await artifactUploader.uploadArtifact(
-        "proxy-log-file",
         [logFilePath],
         actionsUtil.getTemporaryDirectory(),
-        {
-          // ensure we don't keep the debug artifacts around for too long since they can be large.
-          retentionDays: 7,
-        },
+        "proxy-log-file",
+        gitHubVersion.type,
       );
     }
   } catch (error) {

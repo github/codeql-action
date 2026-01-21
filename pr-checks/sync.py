@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import ruamel.yaml
-from ruamel.yaml.scalarstring import SingleQuotedScalarString
+from ruamel.yaml.scalarstring import SingleQuotedScalarString, FoldedScalarString, LiteralScalarString
 import pathlib
 import os
 
@@ -286,7 +286,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
     with open(raw_file, 'w', newline='\n') as output_stream:
         extraGroupName = ""
         for inputName in workflowInputs.keys():
-            extraGroupName += "-${{inputs." + inputName + "}}"
+            extraGroupName += "-${{ inputs." + inputName + " }}"
 
         writeHeader(output_stream)
         yaml.dump({
@@ -330,7 +330,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 # a `workflow_call` event (where `github.workflow` would be the name of the caller).
                 # The input values are added, since they may result in different behaviour for a
                 # given workflow on the same ref.
-                'group': checkName + "-${{github.ref}}" + extraGroupName
+                'group': LiteralScalarString(checkName + "-${{ github.ref }}" + extraGroupName)
             },
             'jobs': {
                 checkName: checkJob

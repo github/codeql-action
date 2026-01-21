@@ -39,7 +39,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: build-mode-autobuild-${{github.ref}}-${{inputs.java-version}}
+  group: |-
+    build-mode-autobuild-${{ github.ref }}-${{ inputs.java-version }}
 jobs:
   build-mode-autobuild:
     strategy:

@@ -29,7 +29,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: ruby-${{github.ref}}
+  group: |-
+    ruby-${{ github.ref }}
 jobs:
   ruby:
     strategy:

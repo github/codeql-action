@@ -959,7 +959,11 @@ export async function initConfig(
   // the `paths-ignore` configuration.
   if ((await features.getValue(Feature.IgnoreGeneratedFiles)) && isCCR()) {
     try {
+      const generatedFilesCheckStartedAt = performance.now();
       const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
+      const generatedFilesDuration = Math.round(
+        performance.now() - generatedFilesCheckStartedAt,
+      );
 
       if (generatedFiles.length > 0) {
         config.computedConfig["paths-ignore"] ??= [];
@@ -970,6 +974,12 @@ export async function initConfig(
       } else {
         logger.info(`Found no generated files.`);
       }
+
+      await logGeneratedFilesTelemetry(
+        config,
+        generatedFilesDuration,
+        generatedFiles.length,
+      );
     } catch (error) {
       logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);
     }
@@ -1413,4 +1423,33 @@ async function logGitVersionTelemetry(
       ),
     );
   }
+}
+
+/**
+ * Logs the time it took to identify generated files and how many were discovered as
+ * a telemetry diagnostic.
+ * */
+async function logGeneratedFilesTelemetry(
+  config: Config,
+  duration: number,
+  generatedFilesCount: number,
+): Promise<void> {
+  if (config.languages.length < 1) {
+    return;
+  }
+
+  addDiagnostic(
+    config,
+    // Arbitrarily choose the first language. We could also choose all languages, but that
+    // increases the risk of misinterpreting the data.
+    config.languages[0],
+    makeTelemetryDiagnostic(
+      "codeql-action/generated-files-telemetry",
+      "Generated files telemetry",
+      {
+        duration,
+        generatedFilesCount,
+      },
+    ),
+  );
 }

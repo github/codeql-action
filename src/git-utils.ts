@@ -411,7 +411,7 @@ export async function listFiles(workingDirectory: string): Promise<string[]> {
     ["ls-files"],
     "Unable to list tracked files.",
   );
-  return stdout.split(os.EOL);
+  return stdout.split(os.EOL).filter((line) => line.trim().length > 0);
 }
 
 /**
@@ -434,8 +434,8 @@ export async function getGeneratedFiles(
   const regex = /^([^:]+): linguist-generated: true$/;
   for (const result of stdout.split(os.EOL)) {
     const match = result.match(regex);
-    if (match) {
-      generatedFiles.push(match[1]);
+    if (match && match[1].trim().length > 0) {
+      generatedFiles.push(match[1].trim());
     }
   }
 

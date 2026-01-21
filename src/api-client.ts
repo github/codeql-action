@@ -190,9 +190,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
  * the GitHub API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  const analysisKeyEnvVar = EnvVar.ANALYSIS_KEY;
-
-  let analysisKey = process.env[analysisKeyEnvVar];
+  let analysisKey = process.env[EnvVar.ANALYSIS_KEY];
   if (analysisKey !== undefined) {
     return analysisKey;
   }
@@ -201,7 +199,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
-  core.exportVariable(analysisKeyEnvVar, analysisKey);
+  core.exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
   return analysisKey;
 }
 

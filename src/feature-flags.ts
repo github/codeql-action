@@ -45,6 +45,7 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  IgnoreGeneratedFiles = "ignore_generated_files",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -156,6 +157,11 @@ export const featureConfig = {
     defaultValue: true,
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.IgnoreGeneratedFiles]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_IGNORE_GENERATED_FILES",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

@@ -27,7 +27,7 @@ setupTests(test);
 function setupEnvironmentAndStub(tmpDir: string) {
   setupActionsVars(tmpDir, tmpDir);
 
-  process.env["CODEQL_ACTION_ANALYSIS_KEY"] = "analysis-key";
+  process.env[EnvVar.ANALYSIS_KEY] = "analysis-key";
   process.env["GITHUB_EVENT_NAME"] = "dynamic";
   process.env["GITHUB_REF"] = "refs/heads/main";
   process.env["GITHUB_REPOSITORY"] = "octocat/HelloWorld";

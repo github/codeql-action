@@ -4,7 +4,11 @@ import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
 
-import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
+import {
+  getActionVersion,
+  isAnalyzingPullRequest,
+  isCCR,
+} from "./actions-util";
 import {
   AnalysisConfig,
   AnalysisKind,
@@ -29,6 +33,7 @@ import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
 import {
+  getGeneratedFiles,
   getGitRoot,
   getGitVersionOrThrow,
   GIT_MINIMUM_VERSION_FOR_OVERLAY,
@@ -55,6 +60,7 @@ import {
   getCodeQLMemoryLimit,
   getErrorMessage,
   isInTestMode,
+  joinAtMost,
 } from "./util";
 
 export * from "./config/db-config";
@@ -948,6 +954,39 @@ export async function initConfig(
     }
   }
 
+  // If we are in CCR or the corresponding FF is enabled, try to determine
+  // which files in the repository are marked as generated and add them to
+  // the `paths-ignore` configuration.
+  if ((await features.getValue(Feature.IgnoreGeneratedFiles)) && isCCR()) {
+    try {
+      const generatedFilesCheckStartedAt = performance.now();
+      const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
+      const generatedFilesDuration = Math.round(
+        performance.now() - generatedFilesCheckStartedAt,
+      );
+
+      if (generatedFiles.length > 0) {
+        config.computedConfig["paths-ignore"] ??= [];
+        config.computedConfig["paths-ignore"].push(...generatedFiles);
+        logger.info(
+          `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${joinAtMost(generatedFiles, ", ", 10)}`,
+        );
+      } else {
+        logger.info(`Found no generated files.`);
+      }
+
+      await logGeneratedFilesTelemetry(
+        config,
+        generatedFilesDuration,
+        generatedFiles.length,
+      );
+    } catch (error) {
+      logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);
+    }
+  } else {
+    logger.debug(`Skipping check for generated files.`);
+  }
+
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
@@ -1384,4 +1423,33 @@ async function logGitVersionTelemetry(
       ),
     );
   }
+}
+
+/**
+ * Logs the time it took to identify generated files and how many were discovered as
+ * a telemetry diagnostic.
+ * */
+async function logGeneratedFilesTelemetry(
+  config: Config,
+  duration: number,
+  generatedFilesCount: number,
+): Promise<void> {
+  if (config.languages.length < 1) {
+    return;
+  }
+
+  addDiagnostic(
+    config,
+    // Arbitrarily choose the first language. We could also choose all languages, but that
+    // increases the risk of misinterpreting the data.
+    config.languages[0],
+    makeTelemetryDiagnostic(
+      "codeql-action/generated-files-telemetry",
+      "Generated files telemetry",
+      {
+        duration,
+        generatedFilesCount,
+      },
+    ),
+  );
 }

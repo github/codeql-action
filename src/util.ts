@@ -1270,3 +1270,25 @@ export enum CleanupLevel {
   Clear = "clear",
   Overlay = "overlay",
 }
+
+/**
+ * Like `join`, but limits the number of elements that are joined together to `limit`
+ * and appends `...` if the limit is exceeded.
+ *
+ * @param array The array to join.
+ * @param separator The separator to join the array with.
+ * @param limit The maximum number of elements from `array` to join.
+ * @returns The result of joining at most `limit`-many elements from `array`.
+ */
+export function joinAtMost(
+  array: string[],
+  separator: string,
+  limit: number,
+): string {
+  if (limit > 0 && array.length > limit) {
+    array = array.slice(0, limit);
+    array.push("...");
+  }
+
+  return array.join(separator);
+}

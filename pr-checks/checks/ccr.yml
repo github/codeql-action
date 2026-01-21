@@ -1,5 +1,7 @@
 name: "CCR"
 description: "A standard analysis in CCR mode"
+testDirectories: ["tests/multi-language-repo", "tests/empty-repo"]
+versions: ["linked"]
 env:
   CODEQL_ACTION_ANALYSIS_KEY: "dynamic/copilot-pull-request-reviewer/codeql-action-test"
 steps:

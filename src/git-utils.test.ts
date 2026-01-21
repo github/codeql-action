@@ -439,7 +439,7 @@ test("GitVersionInfo.isAtLeast correctly compares versions", async (t) => {
 test("listFiles returns array of file paths", async (t) => {
   sinon
     .stub(gitUtils, "runGitCommand")
-    .resolves(["dir/file.txt", "README.txt"].join(os.EOL));
+    .resolves(["dir/file.txt", "README.txt", ""].join(os.EOL));
 
   await t.notThrowsAsync(async () => {
     const result = await gitUtils.listFiles("/some/path");
@@ -453,7 +453,7 @@ test("getGeneratedFiles returns generated files only", async (t) => {
 
   runGitCommandStub
     .onFirstCall()
-    .resolves(["dir/file.txt", "test.json", "README.txt"].join(os.EOL));
+    .resolves(["dir/file.txt", "test.json", "README.txt", ""].join(os.EOL));
   runGitCommandStub
     .onSecondCall()
     .resolves(
@@ -461,6 +461,7 @@ test("getGeneratedFiles returns generated files only", async (t) => {
         "dir/file.txt: linguist-generated: unspecified",
         "test.json: linguist-generated: true",
         "README.txt: linguist-generated: false",
+        "",
       ].join(os.EOL),
     );
 

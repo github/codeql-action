@@ -28,8 +28,8 @@ defaults:
   run:
     shell: bash
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: bundle-from-toolcache-${{github.ref}}
 jobs:
   bundle-from-toolcache:
     strategy:

@@ -309,8 +309,14 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 # For other events, the new workflows should wait until earlier ones have finished.
                 # This should help reduce the number of concurrent workflows on the repo, and
                 # consequently the number of concurrent API requests.
+                # Note, the `|| false` is intentional to rule out that this somehow ends up being
+                # `true` since we observed workflows for non-`pull_request` events getting cancelled.
                 'cancel-in-progress': "${{ github.event_name == 'pull_request' || false }}",
-                # The group is determined by the workflow name + the ref
+                # The group is determined by the workflow name, the ref, and the input values.
+                # The base name is hard-coded to avoid issues when the workflow is triggered by
+                # a `workflow_call` event (where `github.workflow` would be the name of the caller).
+                # The input values are added, since they may result in different behaviour for a
+                # given workflow on the same ref.
                 'group': checkName + "-${{github.ref}}" + extraGroupName
             },
             'jobs': {

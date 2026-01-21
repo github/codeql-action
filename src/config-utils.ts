@@ -60,6 +60,7 @@ import {
   getCodeQLMemoryLimit,
   getErrorMessage,
   isInTestMode,
+  joinAtMost,
 } from "./util";
 
 export * from "./config/db-config";
@@ -964,7 +965,7 @@ export async function initConfig(
         config.computedConfig["paths-ignore"] ??= [];
         config.computedConfig["paths-ignore"].push(...generatedFiles);
         logger.info(
-          `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${generatedFiles.join(", ")}`,
+          `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${joinAtMost(generatedFiles, ", ", 10)}`,
         );
       } else {
         logger.info(`Found no generated files.`);

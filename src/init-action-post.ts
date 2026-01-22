@@ -42,6 +42,9 @@ interface InitPostStatusReport
     initActionPostHelper.DependencyCachingUsageReport {}
 
 async function runWrapper() {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
   const startedAt = new Date();
   let config: Config | undefined;

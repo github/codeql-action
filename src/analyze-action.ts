@@ -209,6 +209,9 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
 }
 
 async function run() {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const startedAt = new Date();
   let uploadResults:
     | Partial<Record<analyses.AnalysisKind, UploadResult>>

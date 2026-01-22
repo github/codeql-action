@@ -30,6 +30,9 @@ import {
 const ENVIRONMENT_OUTPUT_NAME = "environment";
 
 async function run() {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const startedAt = new Date();
   const logger = getActionsLogger();
 

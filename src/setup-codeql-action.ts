@@ -86,6 +86,9 @@ async function sendCompletedStatusReport(
 
 /** The main behaviour of this action. */
 async function run(): Promise<void> {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const startedAt = new Date();
   const logger = getActionsLogger();
 

@@ -10,6 +10,7 @@ import { getRepositoryNwo } from "./repository";
 import {
   createStatusReportBase,
   sendStatusReport,
+  sendUnexpectedErrorStatusReport,
   StatusReportBase,
   getActionsStatus,
   ActionName,
@@ -53,11 +54,10 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function run() {
+async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
-  const startedAt = new Date();
   const logger = getActionsLogger();
 
   try {
@@ -165,11 +165,19 @@ async function run() {
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(
       `codeql/upload-sarif action failed: ${getErrorMessage(error)}`,
+    );
+    await sendUnexpectedErrorStatusReport(
+      ActionName.UploadSarif,
+      startedAt,
+      error,
+      logger,
     );
   }
 }

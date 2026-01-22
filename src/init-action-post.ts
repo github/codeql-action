@@ -28,6 +28,7 @@ import { getRepositoryNwo } from "./repository";
 import {
   StatusReportBase,
   sendStatusReport,
+  sendUnexpectedErrorStatusReport,
   createStatusReportBase,
   getActionsStatus,
   ActionName,
@@ -41,12 +42,11 @@ interface InitPostStatusReport
     initActionPostHelper.JobStatusReport,
     initActionPostHelper.DependencyCachingUsageReport {}
 
-async function runWrapper() {
+async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
-  const startedAt = new Date();
   let config: Config | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
@@ -136,6 +136,22 @@ async function runWrapper() {
     logger.info("Sending status report for init-post step.");
     await sendStatusReport(statusReport);
     logger.info("Status report sent for init-post step.");
+  }
+}
+
+async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
+  try {
+    await run(startedAt);
+  } catch (error) {
+    core.setFailed(`init post action failed: ${wrapError(error).message}`);
+    await sendUnexpectedErrorStatusReport(
+      ActionName.InitPost,
+      startedAt,
+      error,
+      logger,
+    );
   }
 }
 

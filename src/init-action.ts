@@ -64,6 +64,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
+  sendUnexpectedErrorStatusReport,
 } from "./status-report";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -191,11 +192,10 @@ async function sendCompletedStatusReport(
   }
 }
 
-async function run() {
+async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
-  const startedAt = new Date();
   const logger = getActionsLogger();
 
   let apiDetails: GitHubApiCombinedDetails;
@@ -805,10 +805,18 @@ async function recordZstdAvailability(
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(`init action failed: ${getErrorMessage(error)}`);
+    await sendUnexpectedErrorStatusReport(
+      ActionName.Init,
+      startedAt,
+      error,
+      logger,
+    );
   }
   await checkForTimeout();
 }

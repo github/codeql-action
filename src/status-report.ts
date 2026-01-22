@@ -606,3 +606,30 @@ export async function createInitWithConfigStatusReport(
     ),
   };
 }
+
+export async function sendUnexpectedErrorStatusReport(
+  actionName: ActionName,
+  actionStartedAt: Date,
+  error: unknown,
+  logger: Logger,
+): Promise<void> {
+  try {
+    const statusReport = await createStatusReportBase(
+      actionName,
+      "failure",
+      actionStartedAt,
+      undefined,
+      undefined,
+      logger,
+      undefined,
+      getErrorMessage(error),
+    );
+    if (statusReport !== undefined) {
+      await sendStatusReport(statusReport);
+    }
+  } catch (e) {
+    logger.warning(
+      `Caught an exception while sending the error status report: ${e}.`,
+    );
+  }
+}

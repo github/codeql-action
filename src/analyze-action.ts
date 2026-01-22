@@ -41,6 +41,7 @@ import {
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
+  sendUnexpectedErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import {
@@ -208,11 +209,10 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, KnownLanguage.go, logger);
 }
 
-async function run() {
+async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
-  const startedAt = new Date();
   let uploadResults:
     | Partial<Record<analyses.AnalysisKind, UploadResult>>
     | undefined = undefined;
@@ -526,13 +526,22 @@ async function run() {
   }
 }
 
-export const runPromise = run();
+// Module-level startedAt so it can be accessed by runWrapper for error reporting
+const startedAt = new Date();
+export const runPromise = run(startedAt);
 
 async function runWrapper() {
+  const logger = getActionsLogger();
   try {
     await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
+    await sendUnexpectedErrorStatusReport(
+      ActionName.Analyze,
+      startedAt,
+      error,
+      logger,
+    );
   }
   await util.checkForTimeout();
 }

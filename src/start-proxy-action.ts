@@ -22,6 +22,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
+  sendUnexpectedErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import * as util from "./util";
@@ -122,11 +123,9 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function runWrapper() {
+async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
-
-  const startedAt = new Date();
 
   const logger = getActionsLogger();
   let language: KnownLanguage | undefined;
@@ -200,6 +199,23 @@ async function runWrapper() {
     if (errorStatusReportBase !== undefined) {
       await sendStatusReport(errorStatusReportBase);
     }
+  }
+}
+
+async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
+
+  try {
+    await run(startedAt);
+  } catch (error) {
+    core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
+    await sendUnexpectedErrorStatusReport(
+      ActionName.StartProxy,
+      startedAt,
+      error,
+      logger,
+    );
   }
 }
 

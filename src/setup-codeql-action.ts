@@ -22,6 +22,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
+  sendUnexpectedErrorStatusReport,
 } from "./status-report";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import {
@@ -85,11 +86,10 @@ async function sendCompletedStatusReport(
 }
 
 /** The main behaviour of this action. */
-async function run(): Promise<void> {
+async function run(startedAt: Date): Promise<void> {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
-  const startedAt = new Date();
   const logger = getActionsLogger();
 
   let codeql: CodeQL;
@@ -189,10 +189,18 @@ async function run(): Promise<void> {
 
 /** Run the action and catch any unhandled errors. */
 async function runWrapper(): Promise<void> {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(`setup-codeql action failed: ${getErrorMessage(error)}`);
+    await sendUnexpectedErrorStatusReport(
+      ActionName.SetupCodeQL,
+      startedAt,
+      error,
+      logger,
+    );
   }
   await checkForTimeout();
 }

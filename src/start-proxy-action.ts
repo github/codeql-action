@@ -125,13 +125,13 @@ async function sendSuccessStatusReport(
 async function runWrapper() {
   const startedAt = new Date();
 
-  // Make inputs accessible in the `post` step.
-  actionsUtil.persistInputs();
-
   const logger = getActionsLogger();
   let language: KnownLanguage | undefined;
 
   try {
+    // Make inputs accessible in the `post` step.
+    actionsUtil.persistInputs();
+
     // Setup logging for the proxy
     const tempDir = actionsUtil.getTemporaryDirectory();
     const proxyLogFilePath = path.resolve(tempDir, "proxy.log");

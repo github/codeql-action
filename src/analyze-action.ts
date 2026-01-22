@@ -222,14 +222,15 @@ async function run() {
   let didUploadTrapCaches = false;
   let dependencyCacheResults: DependencyCacheUploadStatusReport | undefined;
   let databaseUploadResults: DatabaseUploadResult[] = [];
-  util.initializeEnvironment(actionsUtil.getActionVersion());
-
-  // Make inputs accessible in the `post` step, details at
-  // https://github.com/github/codeql-action/issues/2553
-  actionsUtil.persistInputs();
-
   const logger = getActionsLogger();
+
   try {
+    util.initializeEnvironment(actionsUtil.getActionVersion());
+
+    // Make inputs accessible in the `post` step, details at
+    // https://github.com/github/codeql-action/issues/2553
+    actionsUtil.persistInputs();
+
     const statusReportBase = await createStatusReportBase(
       ActionName.Analyze,
       "starting",

@@ -730,6 +730,12 @@ async function run() {
     // did not exist until now.
     flushDiagnostics(config);
 
+    // We save the config here instead of at the end of `initConfig` because we
+    // may have updated the config returned from `initConfig`, e.g. to revert to
+    // `OverlayDatabaseMode.None` if we failed to download an overlay-base
+    // database.
+    await configUtils.saveConfig(config, logger);
+
     core.setOutput("codeql-path", config.codeQLCmd);
     core.setOutput("codeql-version", (await codeql.getVersion()).version);
   } catch (unwrappedError) {
@@ -752,12 +758,6 @@ async function run() {
   } finally {
     logUnwrittenDiagnostics();
   }
-
-  // We save the config here instead of at the end of `initConfig` because we
-  // may have updated the config returned from `initConfig`, e.g. to revert to
-  // `OverlayDatabaseMode.None` if we failed to download an overlay-base
-  // database.
-  await configUtils.saveConfig(config, logger);
   await sendCompletedStatusReport(
     startedAt,
     config,

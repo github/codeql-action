@@ -539,3 +539,27 @@ test("checkDiskUsage succeeds and produces positive numbers", async (t) => {
     t.true(diskUsage.numTotalBytes > 0);
   }
 });
+
+test("joinAtMost - behaves like join if limit is <= 0", (t) => {
+  const sep = ", ";
+  const array: string[] = new Array(10).fill("test");
+  t.is(util.joinAtMost(array, sep, 0), array.join(sep));
+  t.is(util.joinAtMost(array, sep, -1), array.join(sep));
+});
+
+test("joinAtMost - behaves like join if limit is >= the size of the array", (t) => {
+  const sep = ", ";
+  const array: string[] = new Array(10).fill("test");
+  t.is(util.joinAtMost(array, sep, 10), array.join(sep));
+  t.is(util.joinAtMost(array, sep, 11), array.join(sep));
+});
+
+test("joinAtMost - truncates list if array is > than limit", (t) => {
+  const sep = ", ";
+  const array: string[] = Array.from(new Array(10), (_, i) => `test${i + 1}`);
+  const result = util.joinAtMost(array, sep, 5);
+  t.not(result, array.join(sep));
+  t.assert(result.endsWith(", ..."));
+  t.assert(result.includes("test5"));
+  t.false(result.includes("test6"));
+});

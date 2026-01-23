@@ -435,3 +435,42 @@ test("GitVersionInfo.isAtLeast correctly compares versions", async (t) => {
   t.false(version.isAtLeast("2.41.0"));
   t.false(version.isAtLeast("3.0.0"));
 });
+
+test("listFiles returns array of file paths", async (t) => {
+  sinon
+    .stub(gitUtils, "runGitCommand")
+    .resolves(["dir/file.txt", "README.txt", ""].join(os.EOL));
+
+  await t.notThrowsAsync(async () => {
+    const result = await gitUtils.listFiles("/some/path");
+    t.is(result.length, 2);
+    t.is(result[0], "dir/file.txt");
+  });
+});
+
+test("getGeneratedFiles returns generated files only", async (t) => {
+  const runGitCommandStub = sinon.stub(gitUtils, "runGitCommand");
+
+  runGitCommandStub
+    .onFirstCall()
+    .resolves(["dir/file.txt", "test.json", "README.txt", ""].join(os.EOL));
+  runGitCommandStub
+    .onSecondCall()
+    .resolves(
+      [
+        "dir/file.txt: linguist-generated: unspecified",
+        "test.json: linguist-generated: true",
+        "README.txt: linguist-generated: false",
+        "",
+      ].join(os.EOL),
+    );
+
+  await t.notThrowsAsync(async () => {
+    const result = await gitUtils.getGeneratedFiles("/some/path");
+
+    t.assert(runGitCommandStub.calledTwice);
+
+    t.is(result.length, 1);
+    t.is(result[0], "test.json");
+  });
+});

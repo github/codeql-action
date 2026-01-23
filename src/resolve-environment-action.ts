@@ -13,6 +13,7 @@ import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
 import {
   sendStatusReport,
+  sendUnhandledErrorStatusReport,
   createStatusReportBase,
   getActionsStatus,
   ActionName,
@@ -29,8 +30,10 @@ import {
 
 const ENVIRONMENT_OUTPUT_NAME = "environment";
 
-async function run() {
-  const startedAt = new Date();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
 
   let config: Config | undefined;
@@ -115,13 +118,21 @@ async function run() {
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(
       `${ActionName.ResolveEnvironment} action failed: ${getErrorMessage(
         error,
       )}`,
+    );
+    await sendUnhandledErrorStatusReport(
+      ActionName.ResolveEnvironment,
+      startedAt,
+      error,
+      logger,
     );
   }
   await checkForTimeout();

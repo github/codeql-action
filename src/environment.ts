@@ -135,4 +135,10 @@ export enum EnvVar {
    * Intended for use in environments where git may not be installed, such as Docker containers.
    */
   TOLERATE_MISSING_GIT_VERSION = "CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION",
+
+  /**
+   * Used to store the analysis key used by the CodeQL Action. This is normally populated by
+   * `getAnalysisKey`, but can also be set manually for testing and non-standard applications.
+   */
+  ANALYSIS_KEY = "CODEQL_ACTION_ANALYSIS_KEY",
 }

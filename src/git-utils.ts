@@ -1,4 +1,7 @@
+import * as os from "os";
+
 import * as core from "@actions/core";
+import { ExecOptions } from "@actions/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 import * as semver from "semver";
@@ -60,6 +63,7 @@ export const runGitCommand = async function (
   workingDirectory: string | undefined,
   args: string[],
   customErrorMessage: string,
+  options?: ExecOptions,
 ): Promise<string> {
   let stdout = "";
   let stderr = "";
@@ -76,6 +80,7 @@ export const runGitCommand = async function (
         },
       },
       cwd: workingDirectory,
+      ...options,
     }).exec();
     return stdout;
   } catch (error) {
@@ -393,4 +398,46 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   }
 
   return currentRef === defaultBranch;
+}
+
+/**
+ * Gets a list of all tracked files in the repository.
+ *
+ * @param workingDirectory The working directory, which is part of a Git repository.
+ */
+export async function listFiles(workingDirectory: string): Promise<string[]> {
+  const stdout = await runGitCommand(
+    workingDirectory,
+    ["ls-files"],
+    "Unable to list tracked files.",
+  );
+  return stdout.split(os.EOL).filter((line) => line.trim().length > 0);
+}
+
+/**
+ * Gets a list of files that have the `linguist-generated: true` attribute.
+ *
+ * @param workingDirectory The working directory, which is part of a Git repository.
+ */
+export async function getGeneratedFiles(
+  workingDirectory: string,
+): Promise<string[]> {
+  const files = await listFiles(workingDirectory);
+  const stdout = await runGitCommand(
+    workingDirectory,
+    ["check-attr", "linguist-generated", "--stdin"],
+    "Unable to check attributes of files.",
+    { input: Buffer.from(files.join(os.EOL)) },
+  );
+
+  const generatedFiles: string[] = [];
+  const regex = /^([^:]+): linguist-generated: true$/;
+  for (const result of stdout.split(os.EOL)) {
+    const match = result.match(regex);
+    if (match && match[1].trim().length > 0) {
+      generatedFiles.push(match[1].trim());
+    }
+  }
+
+  return generatedFiles;
 }

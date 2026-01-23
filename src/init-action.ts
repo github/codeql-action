@@ -16,7 +16,7 @@ import {
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, GitHubApiCombinedDetails } from "./api-client";
 import {
   getDependencyCachingEnabled,
   getTotalCacheSize,
@@ -64,6 +64,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
+  sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -191,68 +192,75 @@ async function sendCompletedStatusReport(
   }
 }
 
-async function run() {
-  const startedAt = new Date();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
-  initializeEnvironment(getActionVersion());
 
-  // Make inputs accessible in the `post` step.
-  persistInputs();
-
+  let apiDetails: GitHubApiCombinedDetails;
   let config: configUtils.Config | undefined;
+  let configFile: string | undefined;
   let codeql: CodeQL;
+  let features: Features;
+  let sourceRoot: string;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
   let zstdAvailability: ZstdAvailability | undefined;
 
-  const apiDetails = {
-    auth: getRequiredInput("token"),
-    externalRepoAuth: getOptionalInput("external-repository-token"),
-    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-  };
-
-  const gitHubVersion = await getGitHubVersion();
-  checkGitHubVersionInRange(gitHubVersion, logger);
-  checkActionVersion(getActionVersion(), gitHubVersion);
-
-  const repositoryNwo = getRepositoryNwo();
-
-  const features = new Features(
-    gitHubVersion,
-    repositoryNwo,
-    getTemporaryDirectory(),
-    logger,
-  );
-
-  // Fetch the values of known repository properties that affect us.
-  const enableRepoProps = await features.getValue(
-    Feature.UseRepositoryProperties,
-  );
-  const repositoryProperties = enableRepoProps
-    ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
-    : {};
-
-  // Create a unique identifier for this run.
-  const jobRunUuid = uuidV4();
-  logger.info(`Job run UUID is ${jobRunUuid}.`);
-  core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
-
-  core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
-
-  const configFile = getOptionalInput("config-file");
-
-  // path.resolve() respects the intended semantics of source-root. If
-  // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
-  // source-root is absolute, it is used as given.
-  const sourceRoot = path.resolve(
-    getRequiredEnvParam("GITHUB_WORKSPACE"),
-    getOptionalInput("source-root") || "",
-  );
-
   try {
+    initializeEnvironment(getActionVersion());
+
+    // Make inputs accessible in the `post` step.
+    persistInputs();
+
+    apiDetails = {
+      auth: getRequiredInput("token"),
+      externalRepoAuth: getOptionalInput("external-repository-token"),
+      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+    };
+
+    const gitHubVersion = await getGitHubVersion();
+    checkGitHubVersionInRange(gitHubVersion, logger);
+    checkActionVersion(getActionVersion(), gitHubVersion);
+
+    const repositoryNwo = getRepositoryNwo();
+
+    features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger,
+    );
+
+    // Fetch the values of known repository properties that affect us.
+    const enableRepoProps = await features.getValue(
+      Feature.UseRepositoryProperties,
+    );
+    const repositoryProperties = enableRepoProps
+      ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
+      : {};
+
+    // Create a unique identifier for this run.
+    const jobRunUuid = uuidV4();
+    logger.info(`Job run UUID is ${jobRunUuid}.`);
+    core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+
+    core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
+
+    configFile = getOptionalInput("config-file");
+
+    // path.resolve() respects the intended semantics of source-root. If
+    // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
+    // source-root is absolute, it is used as given.
+    sourceRoot = path.resolve(
+      getRequiredEnvParam("GITHUB_WORKSPACE"),
+      getOptionalInput("source-root") || "",
+    );
+
     // Parsing the `analysis-kinds` input may throw a `ConfigurationError`, which we don't want before
     // we have called `sendStartingStatusReport` below. However, we want the analysis kinds for that status
     // report. To work around this, we ignore exceptions that are thrown here and then call `getAnalysisKinds`
@@ -725,6 +733,12 @@ async function run() {
     // did not exist until now.
     flushDiagnostics(config);
 
+    // We save the config here instead of at the end of `initConfig` because we
+    // may have updated the config returned from `initConfig`, e.g. to revert to
+    // `OverlayDatabaseMode.None` if we failed to download an overlay-base
+    // database.
+    await configUtils.saveConfig(config, logger);
+
     core.setOutput("codeql-path", config.codeQLCmd);
     core.setOutput("codeql-version", (await codeql.getVersion()).version);
   } catch (unwrappedError) {
@@ -747,12 +761,6 @@ async function run() {
   } finally {
     logUnwrittenDiagnostics();
   }
-
-  // We save the config here instead of at the end of `initConfig` because we
-  // may have updated the config returned from `initConfig`, e.g. to revert to
-  // `OverlayDatabaseMode.None` if we failed to download an overlay-base
-  // database.
-  await configUtils.saveConfig(config, logger);
   await sendCompletedStatusReport(
     startedAt,
     config,
@@ -797,10 +805,18 @@ async function recordZstdAvailability(
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(`init action failed: ${getErrorMessage(error)}`);
+    await sendUnhandledErrorStatusReport(
+      ActionName.Init,
+      startedAt,
+      error,
+      logger,
+    );
   }
   await checkForTimeout();
 }

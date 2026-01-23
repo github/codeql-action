@@ -17,6 +17,12 @@ import { Language } from "./languages";
 import { Logger } from "./logging";
 
 /**
+ * The name of the file containing the base database OIDs, as stored in the
+ * root of the database location.
+ */
+const BASE_DATABASE_OIDS_FILE_NAME = "base-database-oids.json";
+
+/**
  * Specifies bundle versions that are known to be broken
  * and will not be used if found in the toolcache.
  */
@@ -728,6 +734,10 @@ export async function codeQlVersionAtLeast(
   return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
+export function getBaseDatabaseOidsFilePath(config: Config): string {
+  return path.join(config.dbLocation, BASE_DATABASE_OIDS_FILE_NAME);
+}
+
 // Create a bundle for the given DB, if it doesn't already exist
 export async function bundleDb(
   config: Config,
@@ -745,7 +755,27 @@ export async function bundleDb(
   if (fs.existsSync(databaseBundlePath)) {
     await fs.promises.rm(databaseBundlePath, { force: true });
   }
-  await codeql.databaseBundle(databasePath, databaseBundlePath, dbName);
+  // When overlay is enabled, the base database OIDs file is included at the
+  // root of the database cluster. However when we bundle a database, we only
+  // include the per-language database. So, to ensure the base database OIDs
+  // file is included in the database bundle, we copy it from the cluster into
+  // the individual database location before bundling.
+  const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
+  const additionalFiles: string[] = [];
+  if (fs.existsSync(baseDatabaseOidsFilePath)) {
+    await fsPromises.copyFile(
+      baseDatabaseOidsFilePath,
+      path.join(databasePath, BASE_DATABASE_OIDS_FILE_NAME),
+    );
+    additionalFiles.push(BASE_DATABASE_OIDS_FILE_NAME);
+  }
+  // Create the bundle, including the base database OIDs file if it exists
+  await codeql.databaseBundle(
+    databasePath,
+    databaseBundlePath,
+    dbName,
+    additionalFiles,
+  );
   return databaseBundlePath;
 }
 
@@ -1239,4 +1269,26 @@ export function unsafeEntriesInvariant<T extends Record<string, any>>(
 export enum CleanupLevel {
   Clear = "clear",
   Overlay = "overlay",
+}
+
+/**
+ * Like `join`, but limits the number of elements that are joined together to `limit`
+ * and appends `...` if the limit is exceeded.
+ *
+ * @param array The array to join.
+ * @param separator The separator to join the array with.
+ * @param limit The maximum number of elements from `array` to join.
+ * @returns The result of joining at most `limit`-many elements from `array`.
+ */
+export function joinAtMost(
+  array: string[],
+  separator: string,
+  limit: number,
+): string {
+  if (limit > 0 && array.length > limit) {
+    array = array.slice(0, limit);
+    array.push("...");
+  }
+
+  return array.join(separator);
 }

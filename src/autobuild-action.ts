@@ -17,6 +17,7 @@ import {
   getActionsStatus,
   createStatusReportBase,
   sendStatusReport,
+  sendUnhandledErrorStatusReport,
   ActionName,
 } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
@@ -68,8 +69,10 @@ async function sendCompletedStatusReport(
   }
 }
 
-async function run() {
-  const startedAt = new Date();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
   let config: Config | undefined;
   let currentLanguage: Language | undefined;
@@ -140,10 +143,18 @@ async function run() {
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(`autobuild action failed. ${getErrorMessage(error)}`);
+    await sendUnhandledErrorStatusReport(
+      ActionName.Autobuild,
+      startedAt,
+      error,
+      logger,
+    );
   }
 }
 

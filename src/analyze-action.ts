@@ -41,6 +41,7 @@ import {
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
+  sendUnhandledErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import {
@@ -208,8 +209,10 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, KnownLanguage.go, logger);
 }
 
-async function run() {
-  const startedAt = new Date();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   let uploadResults:
     | Partial<Record<analyses.AnalysisKind, UploadResult>>
     | undefined = undefined;
@@ -222,14 +225,15 @@ async function run() {
   let didUploadTrapCaches = false;
   let dependencyCacheResults: DependencyCacheUploadStatusReport | undefined;
   let databaseUploadResults: DatabaseUploadResult[] = [];
-  util.initializeEnvironment(actionsUtil.getActionVersion());
-
-  // Make inputs accessible in the `post` step, details at
-  // https://github.com/github/codeql-action/issues/2553
-  actionsUtil.persistInputs();
-
   const logger = getActionsLogger();
+
   try {
+    util.initializeEnvironment(actionsUtil.getActionVersion());
+
+    // Make inputs accessible in the `post` step, details at
+    // https://github.com/github/codeql-action/issues/2553
+    actionsUtil.persistInputs();
+
     const statusReportBase = await createStatusReportBase(
       ActionName.Analyze,
       "starting",
@@ -522,13 +526,22 @@ async function run() {
   }
 }
 
-export const runPromise = run();
+// Module-level startedAt so it can be accessed by runWrapper for error reporting
+const startedAt = new Date();
+export const runPromise = run(startedAt);
 
 async function runWrapper() {
+  const logger = getActionsLogger();
   try {
     await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
+    await sendUnhandledErrorStatusReport(
+      ActionName.Analyze,
+      startedAt,
+      error,
+      logger,
+    );
   }
   await util.checkForTimeout();
 }

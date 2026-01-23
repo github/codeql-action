@@ -10,8 +10,10 @@ import {
   restoreInputs,
   getTemporaryDirectory,
   printDebugLogs,
+  getWorkflowRunID,
+  getWorkflowRunAttempt,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getApiClient, getGitHubVersion } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
@@ -42,6 +44,68 @@ interface InitPostStatusReport
     initActionPostHelper.JobStatusReport,
     initActionPostHelper.DependencyCachingUsageReport {}
 
+/**
+ * TEMPORARY: Test function to check if the GitHub API can detect workflow cancellation.
+ * This queries the Jobs API to see the current job's status and step conclusions.
+ */
+async function testCancellationDetection(): Promise<void> {
+  const logger = getActionsLogger();
+  try {
+    const apiClient = getApiClient();
+    const runId = getWorkflowRunID();
+    const attemptNumber = getWorkflowRunAttempt();
+    const jobName = process.env["GITHUB_JOB"] || "";
+    const repositoryNwo = getRepositoryNwo();
+
+    logger.info(
+      `[Cancellation Test] Querying jobs API for run ${runId}, attempt ${attemptNumber}, job "${jobName}"`,
+    );
+
+    const response = await apiClient.rest.actions.listJobsForWorkflowRunAttempt(
+      {
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
+        run_id: runId,
+        attempt_number: attemptNumber,
+      },
+    );
+
+    const currentJob = response.data.jobs.find((j) => j.name === jobName);
+
+    if (currentJob) {
+      logger.info(
+        `[Cancellation Test] Current job status: ${currentJob.status}, conclusion: ${currentJob.conclusion}`,
+      );
+
+      // Log each step's status
+      for (const step of currentJob.steps || []) {
+        logger.info(
+          `[Cancellation Test]   Step "${step.name}": status=${step.status}, conclusion=${step.conclusion}`,
+        );
+      }
+
+      // Check if any step shows cancelled
+      const hasCancelledStep = currentJob.steps?.some(
+        (step) => step.conclusion === "cancelled",
+      );
+      logger.info(
+        `[Cancellation Test] Has cancelled step: ${hasCancelledStep}`,
+      );
+    } else {
+      logger.warning(
+        `[Cancellation Test] Could not find job with name "${jobName}" in API response`,
+      );
+      logger.info(
+        `[Cancellation Test] Available jobs: ${response.data.jobs.map((j) => j.name).join(", ")}`,
+      );
+    }
+  } catch (error) {
+    logger.warning(
+      `[Cancellation Test] Failed to query API: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
@@ -53,6 +117,9 @@ async function run(startedAt: Date) {
     | undefined;
   let dependencyCachingUsage: DependencyCachingUsageReport | undefined;
   try {
+    // TEMPORARY: Test cancellation detection via API
+    await testCancellationDetection();
+
     // Restore inputs from `init` Action.
     restoreInputs();
 

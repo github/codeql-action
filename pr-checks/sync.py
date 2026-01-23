@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import ruamel.yaml
-from ruamel.yaml.scalarstring import SingleQuotedScalarString
+from ruamel.yaml.scalarstring import SingleQuotedScalarString, FoldedScalarString, LiteralScalarString
 import pathlib
 import os
 
@@ -83,10 +83,18 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             runnerImagesForOs = [image for image in runnerImages if image.startswith(operatingSystem)]
 
             for runnerImage in runnerImagesForOs:
-                matrix.append({
-                    'os': runnerImage,
-                    'version': version
-                })
+                if 'testDirectories' in checkSpecification:
+                    for testDirectory in checkSpecification.get('testDirectories'):
+                        matrix.append({
+                            'os': runnerImage,
+                            'version': version,
+                            'test-directory': testDirectory
+                        })
+                else:
+                    matrix.append({
+                        'os': runnerImage,
+                        'version': version
+                    })
 
         useAllPlatformBundle = "false" # Default to false
         if checkSpecification.get('useAllPlatformBundle'):
@@ -129,17 +137,22 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             },
         ])
 
+    prepareWith = {
+        'version': '${{ matrix.version }}',
+        'use-all-platform-bundle': useAllPlatformBundle,
+        # If the action is being run from a container, then do not setup kotlin.
+        # This is because the kotlin binaries cannot be downloaded from the container.
+        'setup-kotlin': str(not 'container' in checkSpecification).lower(),
+    }
+
+    if 'testDirectories' in checkSpecification:
+        prepareWith['test-directory'] = '${{ matrix.test-directory }}'
+
     steps.append({
         'name': 'Prepare test',
         'id': 'prepare-test',
         'uses': './.github/actions/prepare-test',
-        'with': {
-            'version': '${{ matrix.version }}',
-            'use-all-platform-bundle': useAllPlatformBundle,
-            # If the action is being run from a container, then do not setup kotlin.
-            # This is because the kotlin binaries cannot be downloaded from the container.
-            'setup-kotlin': str(not 'container' in checkSpecification).lower(),
-        }
+        'with': prepareWith,
     })
 
     installGo = is_truthy(checkSpecification.get('installGo', ''))
@@ -273,7 +286,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
     with open(raw_file, 'w', newline='\n') as output_stream:
         extraGroupName = ""
         for inputName in workflowInputs.keys():
-            extraGroupName += "-${{inputs." + inputName + "}}"
+            extraGroupName += "-${{ inputs." + inputName + " }}"
 
         writeHeader(output_stream)
         yaml.dump({
@@ -317,7 +330,7 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 # a `workflow_call` event (where `github.workflow` would be the name of the caller).
                 # The input values are added, since they may result in different behaviour for a
                 # given workflow on the same ref.
-                'group': checkName + "-${{github.ref}}" + extraGroupName
+                'group': LiteralScalarString(checkName + "-${{ github.ref }}" + extraGroupName)
             },
             'jobs': {
                 checkName: checkJob

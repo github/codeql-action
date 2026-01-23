@@ -59,8 +59,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group:
-    remote-config-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: |-
+    remote-config-${{ github.ref }}-${{ inputs.go-version }}-${{ inputs.python-version }}-${{ inputs.dotnet-version }}
 jobs:
   remote-config:
     strategy:

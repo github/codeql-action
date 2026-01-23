@@ -29,7 +29,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: global-proxy-${{github.ref}}
+  group: |-
+    global-proxy-${{ github.ref }}
 jobs:
   global-proxy:
     strategy:

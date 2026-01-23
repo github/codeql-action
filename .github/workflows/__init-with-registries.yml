@@ -29,7 +29,8 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: init-with-registries-${{github.ref}}
+  group: |-
+    init-with-registries-${{ github.ref }}
 jobs:
   init-with-registries:
     strategy:

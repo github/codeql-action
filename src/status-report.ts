@@ -630,10 +630,17 @@ export async function sendUnhandledErrorStatusReport(
     );
     if (statusReport !== undefined) {
       await sendStatusReport(statusReport);
+    } else if (isInTestMode()) {
+      throw new Error(
+        "Failed to create status report for unhandled error in test mode.",
+      );
     }
   } catch (e) {
     logger.warning(
       `Failed to send the error status report: ${getErrorMessage(e)}.`,
     );
+    if (isInTestMode()) {
+      throw e;
+    }
   }
 }

@@ -28,7 +28,7 @@ import { getRepositoryNwo } from "./repository";
 import {
   StatusReportBase,
   sendStatusReport,
-  sendUnexpectedErrorStatusReport,
+  sendUnhandledErrorStatusReport,
   createStatusReportBase,
   getActionsStatus,
   ActionName,
@@ -146,7 +146,7 @@ async function runWrapper() {
     await run(startedAt);
   } catch (error) {
     core.setFailed(`init post action failed: ${wrapError(error).message}`);
-    await sendUnexpectedErrorStatusReport(
+    await sendUnhandledErrorStatusReport(
       ActionName.InitPost,
       startedAt,
       error,

@@ -10,7 +10,7 @@ import { getRepositoryNwo } from "./repository";
 import {
   createStatusReportBase,
   sendStatusReport,
-  sendUnexpectedErrorStatusReport,
+  sendUnhandledErrorStatusReport,
   StatusReportBase,
   getActionsStatus,
   ActionName,
@@ -173,7 +173,7 @@ async function runWrapper() {
     core.setFailed(
       `codeql/upload-sarif action failed: ${getErrorMessage(error)}`,
     );
-    await sendUnexpectedErrorStatusReport(
+    await sendUnhandledErrorStatusReport(
       ActionName.UploadSarif,
       startedAt,
       error,

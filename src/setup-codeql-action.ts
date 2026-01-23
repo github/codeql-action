@@ -22,7 +22,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
-  sendUnexpectedErrorStatusReport,
+  sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import {
@@ -195,7 +195,7 @@ async function runWrapper(): Promise<void> {
     await run(startedAt);
   } catch (error) {
     core.setFailed(`setup-codeql action failed: ${getErrorMessage(error)}`);
-    await sendUnexpectedErrorStatusReport(
+    await sendUnhandledErrorStatusReport(
       ActionName.SetupCodeQL,
       startedAt,
       error,

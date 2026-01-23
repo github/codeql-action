@@ -41,7 +41,7 @@ import {
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
-  sendUnexpectedErrorStatusReport,
+  sendUnhandledErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import {
@@ -536,7 +536,7 @@ async function runWrapper() {
     await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
-    await sendUnexpectedErrorStatusReport(
+    await sendUnhandledErrorStatusReport(
       ActionName.Analyze,
       startedAt,
       error,

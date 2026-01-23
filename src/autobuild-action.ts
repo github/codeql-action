@@ -17,7 +17,7 @@ import {
   getActionsStatus,
   createStatusReportBase,
   sendStatusReport,
-  sendUnexpectedErrorStatusReport,
+  sendUnhandledErrorStatusReport,
   ActionName,
 } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
@@ -149,7 +149,7 @@ async function runWrapper() {
     await run(startedAt);
   } catch (error) {
     core.setFailed(`autobuild action failed. ${getErrorMessage(error)}`);
-    await sendUnexpectedErrorStatusReport(
+    await sendUnhandledErrorStatusReport(
       ActionName.Autobuild,
       startedAt,
       error,

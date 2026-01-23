@@ -64,7 +64,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
-  sendUnexpectedErrorStatusReport,
+  sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -811,7 +811,7 @@ async function runWrapper() {
     await run(startedAt);
   } catch (error) {
     core.setFailed(`init action failed: ${getErrorMessage(error)}`);
-    await sendUnexpectedErrorStatusReport(
+    await sendUnhandledErrorStatusReport(
       ActionName.Init,
       startedAt,
       error,

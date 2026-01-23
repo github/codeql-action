@@ -21,6 +21,9 @@ import { getActionsLogger } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
 async function runWrapper() {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   try {
     actionsUtil.restoreInputs();
     const logger = getActionsLogger();

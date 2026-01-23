@@ -10,6 +10,7 @@ import { getRepositoryNwo } from "./repository";
 import {
   createStatusReportBase,
   sendStatusReport,
+  sendUnhandledErrorStatusReport,
   StatusReportBase,
   getActionsStatus,
   ActionName,
@@ -53,38 +54,41 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function run() {
-  const startedAt = new Date();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
-  initializeEnvironment(getActionVersion());
-
-  const gitHubVersion = await getGitHubVersion();
-  checkActionVersion(getActionVersion(), gitHubVersion);
-
-  // Make inputs accessible in the `post` step.
-  actionsUtil.persistInputs();
-
-  const repositoryNwo = getRepositoryNwo();
-  const features = new Features(
-    gitHubVersion,
-    repositoryNwo,
-    getTemporaryDirectory(),
-    logger,
-  );
-
-  const startingStatusReportBase = await createStatusReportBase(
-    ActionName.UploadSarif,
-    "starting",
-    startedAt,
-    undefined,
-    await checkDiskUsage(logger),
-    logger,
-  );
-  if (startingStatusReportBase !== undefined) {
-    await sendStatusReport(startingStatusReportBase);
-  }
 
   try {
+    initializeEnvironment(getActionVersion());
+
+    const gitHubVersion = await getGitHubVersion();
+    checkActionVersion(getActionVersion(), gitHubVersion);
+
+    // Make inputs accessible in the `post` step.
+    actionsUtil.persistInputs();
+
+    const repositoryNwo = getRepositoryNwo();
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger,
+    );
+
+    const startingStatusReportBase = await createStatusReportBase(
+      ActionName.UploadSarif,
+      "starting",
+      startedAt,
+      undefined,
+      await checkDiskUsage(logger),
+      logger,
+    );
+    if (startingStatusReportBase !== undefined) {
+      await sendStatusReport(startingStatusReportBase);
+    }
+
     // `sarifPath` can either be a path to a single file, or a path to a directory.
     const sarifPath = actionsUtil.getRequiredInput("sarif_file");
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
@@ -161,11 +165,19 @@ async function run() {
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(
       `codeql/upload-sarif action failed: ${getErrorMessage(error)}`,
+    );
+    await sendUnhandledErrorStatusReport(
+      ActionName.UploadSarif,
+      startedAt,
+      error,
+      logger,
     );
   }
 }

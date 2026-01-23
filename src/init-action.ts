@@ -251,6 +251,9 @@ async function run(startedAt: Date) {
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
+    // wait 5 minutes for testing
+    await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
+
     configFile = getOptionalInput("config-file");
 
     // path.resolve() respects the intended semantics of source-root. If

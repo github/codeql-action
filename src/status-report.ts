@@ -616,6 +616,8 @@ export async function sendUnhandledErrorStatusReport(
   logger: Logger,
 ): Promise<void> {
   try {
+    // In the future, we may want to add a specific field for unhandled errors so we can
+    // create a dedicated monitor for them.
     const statusReport = await createStatusReportBase(
       actionName,
       "failure",
@@ -623,8 +625,8 @@ export async function sendUnhandledErrorStatusReport(
       undefined,
       undefined,
       logger,
-      undefined,
-      getErrorMessage(error),
+      `Unhandled error: ${getErrorMessage(error)}`,
+      error instanceof Error ? error.stack : undefined,
     );
     if (statusReport !== undefined) {
       await sendStatusReport(statusReport);

@@ -36,8 +36,11 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
-import { loadPropertiesFromApi } from "./feature-flags/properties";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import {
+  loadPropertiesFromApi,
+  RepositoryProperties,
+} from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -53,7 +56,7 @@ import {
   OverlayBaseDatabaseDownloadStats,
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
-import { getRepositoryNwo } from "./repository";
+import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -87,6 +90,8 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
+  GitHubVersion,
+  Result,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -237,16 +242,12 @@ async function run(startedAt: Date) {
     );
 
     // Fetch the values of known repository properties that affect us.
-    const repositoryOwnerType = getOptionalInput("repository-owner-type");
-    logger.debug(
-      `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
+    const repositoryProperties = await loadRepositoryProperties(
+      repositoryNwo,
+      gitHubVersion,
+      features,
+      logger,
     );
-    const enableRepoProps =
-      repositoryOwnerType === "Organization" &&
-      (await features.getValue(Feature.UseRepositoryProperties));
-    const repositoryProperties = enableRepoProps
-      ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
-      : {};
 
     // Create a unique identifier for this run.
     const jobRunUuid = uuidV4();
@@ -367,9 +368,25 @@ async function run(startedAt: Date) {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
-      repositoryProperties,
+      repositoryProperties: repositoryProperties.orElse({}),
       logger,
     });
+
+    if (repositoryProperties.isError()) {
+      addDiagnostic(
+        config,
+        // Arbitrarily choose the first language. We could also choose all languages, but that
+        // increases the risk of misinterpreting the data.
+        config.languages[0],
+        makeTelemetryDiagnostic(
+          "codeql-action/repository-properties-load-failure",
+          "Failed to load repository properties",
+          {
+            error: getErrorMessage(repositoryProperties.value),
+          },
+        ),
+      );
+    }
 
     await checkInstallPython311(config.languages, codeql);
   } catch (unwrappedError) {
@@ -777,6 +794,41 @@ async function run(startedAt: Date) {
     dependencyCachingStatus,
     logger,
   );
+}
+
+async function loadRepositoryProperties(
+  repositoryNwo: RepositoryNwo,
+  gitHubVersion: GitHubVersion,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<Result<RepositoryProperties, unknown>> {
+  const repositoryOwnerType = getOptionalInput("repository-owner-type");
+  if (repositoryOwnerType === "User") {
+    // Users cannot have repository properties, so skip the API call.
+    logger.debug(
+      "Skipping loading repository properties because the repository is owned by a user and " +
+        "therefore cannot have repository properties.",
+    );
+    return Result.ok({});
+  }
+
+  if (!(await features.getValue(Feature.UseRepositoryProperties))) {
+    logger.debug(
+      "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
+    );
+    return Result.ok({});
+  }
+
+  try {
+    return Result.ok(
+      await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
+    );
+  } catch (error) {
+    logger.warning(
+      `Failed to load repository properties: ${getErrorMessage(error)}`,
+    );
+    return Result.error(error);
+  }
 }
 
 function getTrapCachingEnabled(): boolean {

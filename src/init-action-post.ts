@@ -54,11 +54,19 @@ async function testCancellationDetection(): Promise<void> {
     const apiClient = getApiClient();
     const runId = getWorkflowRunID();
     const attemptNumber = getWorkflowRunAttempt();
-    const jobName = process.env["GITHUB_JOB"] || "";
+    const checkRunIdInput = process.env["INPUT_CHECK-RUN-ID"] || "";
     const repositoryNwo = getRepositoryNwo();
 
+    if (!checkRunIdInput) {
+      logger.warning(
+        "[Cancellation Test] check-run-id input not provided, skipping",
+      );
+      return;
+    }
+
+    const checkRunId = parseInt(checkRunIdInput, 10);
     logger.info(
-      `[Cancellation Test] Querying jobs API for run ${runId}, attempt ${attemptNumber}, job "${jobName}"`,
+      `[Cancellation Test] Querying jobs API for run ${runId}, attempt ${attemptNumber}, check_run_id ${checkRunId}`,
     );
 
     const response = await apiClient.rest.actions.listJobsForWorkflowRunAttempt(
@@ -70,7 +78,8 @@ async function testCancellationDetection(): Promise<void> {
       },
     );
 
-    const currentJob = response.data.jobs.find((j) => j.name === jobName);
+    const jobs = response.data.jobs;
+    const currentJob = jobs.find((j) => j.id === checkRunId);
 
     if (currentJob) {
       logger.info(
@@ -78,14 +87,15 @@ async function testCancellationDetection(): Promise<void> {
       );
 
       // Log each step's status
-      for (const step of currentJob.steps || []) {
+      const steps = currentJob.steps || [];
+      for (const step of steps) {
         logger.info(
           `[Cancellation Test]   Step "${step.name}": status=${step.status}, conclusion=${step.conclusion}`,
         );
       }
 
       // Check if any step shows cancelled
-      const hasCancelledStep = currentJob.steps?.some(
+      const hasCancelledStep = steps.some(
         (step) => step.conclusion === "cancelled",
       );
       logger.info(
@@ -93,10 +103,10 @@ async function testCancellationDetection(): Promise<void> {
       );
     } else {
       logger.warning(
-        `[Cancellation Test] Could not find job with name "${jobName}" in API response`,
+        `[Cancellation Test] Could not find job with check_run_id ${checkRunId} in API response`,
       );
       logger.info(
-        `[Cancellation Test] Available jobs: ${response.data.jobs.map((j) => j.name).join(", ")}`,
+        `[Cancellation Test] Available jobs: ${jobs.map((j) => `${j.id} (${j.name})`).join(", ")}`,
       );
     }
   } catch (error) {

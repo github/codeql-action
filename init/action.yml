@@ -159,6 +159,12 @@ inputs:
     description: >-
       Explicitly enable or disable caching of project build dependencies.
     required: false
+  check-run-id:
+    description: >-
+      TEMPORARY: The check run ID of the current job (from job.check_run_id context).
+      Used for testing cancellation detection via the API.
+    required: false
+    default: ${{ job.check_run_id }}
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

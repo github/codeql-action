@@ -408,6 +408,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
       repositoryProperties: {},
+      enableFileCoverageInformation: true,
     } satisfies Config,
     overrides,
   );

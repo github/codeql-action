@@ -22,6 +22,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
+  sendUnhandledErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import * as util from "./util";
@@ -122,16 +123,17 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function runWrapper() {
-  const startedAt = new Date();
-
-  // Make inputs accessible in the `post` step.
-  actionsUtil.persistInputs();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
   let language: KnownLanguage | undefined;
 
   try {
+    // Make inputs accessible in the `post` step.
+    actionsUtil.persistInputs();
+
     // Setup logging for the proxy
     const tempDir = actionsUtil.getTemporaryDirectory();
     const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
@@ -193,10 +195,28 @@ async function runWrapper() {
       },
       await util.checkDiskUsage(logger),
       logger,
+      "Error from start-proxy Action omitted",
     );
     if (errorStatusReportBase !== undefined) {
       await sendStatusReport(errorStatusReportBase);
     }
+  }
+}
+
+async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
+
+  try {
+    await run(startedAt);
+  } catch (error) {
+    core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
+    await sendUnhandledErrorStatusReport(
+      ActionName.StartProxy,
+      startedAt,
+      new Error("Error from start-proxy Action omitted"),
+      logger,
+    );
   }
 }
 

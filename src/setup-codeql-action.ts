@@ -22,6 +22,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
+  sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import {
@@ -85,10 +86,11 @@ async function sendCompletedStatusReport(
 }
 
 /** The main behaviour of this action. */
-async function run(): Promise<void> {
-  const startedAt = new Date();
+async function run(startedAt: Date): Promise<void> {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
-  initializeEnvironment(getActionVersion());
 
   let codeql: CodeQL;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
@@ -96,31 +98,33 @@ async function run(): Promise<void> {
   let toolsSource: ToolsSource;
   let toolsVersion: string;
 
-  const apiDetails = {
-    auth: getRequiredInput("token"),
-    externalRepoAuth: getOptionalInput("external-repository-token"),
-    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-  };
-
-  const gitHubVersion = await getGitHubVersion();
-  checkGitHubVersionInRange(gitHubVersion, logger);
-  checkActionVersion(getActionVersion(), gitHubVersion);
-
-  const repositoryNwo = getRepositoryNwo();
-
-  const features = new Features(
-    gitHubVersion,
-    repositoryNwo,
-    getTemporaryDirectory(),
-    logger,
-  );
-
-  const jobRunUuid = uuidV4();
-  logger.info(`Job run UUID is ${jobRunUuid}.`);
-  core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
-
   try {
+    initializeEnvironment(getActionVersion());
+
+    const apiDetails = {
+      auth: getRequiredInput("token"),
+      externalRepoAuth: getOptionalInput("external-repository-token"),
+      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+    };
+
+    const gitHubVersion = await getGitHubVersion();
+    checkGitHubVersionInRange(gitHubVersion, logger);
+    checkActionVersion(getActionVersion(), gitHubVersion);
+
+    const repositoryNwo = getRepositoryNwo();
+
+    const features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger,
+    );
+
+    const jobRunUuid = uuidV4();
+    logger.info(`Job run UUID is ${jobRunUuid}.`);
+    core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,
       "starting",
@@ -185,10 +189,18 @@ async function run(): Promise<void> {
 
 /** Run the action and catch any unhandled errors. */
 async function runWrapper(): Promise<void> {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(`setup-codeql action failed: ${getErrorMessage(error)}`);
+    await sendUnhandledErrorStatusReport(
+      ActionName.SetupCodeQL,
+      startedAt,
+      error,
+      logger,
+    );
   }
   await checkForTimeout();
 }

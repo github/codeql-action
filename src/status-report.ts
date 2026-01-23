@@ -625,19 +625,15 @@ export async function sendUnhandledErrorStatusReport(
       undefined,
       undefined,
       logger,
-      `Unhandled error: ${getErrorMessage(error)}`,
+      `Unhandled CodeQL Action error: ${getErrorMessage(error)}`,
       error instanceof Error ? error.stack : undefined,
     );
     if (statusReport !== undefined) {
       await sendStatusReport(statusReport);
-    } else if (isInTestMode()) {
-      throw new Error(
-        "Failed to create status report for unhandled error in test mode.",
-      );
     }
   } catch (e) {
     logger.warning(
-      `Failed to send the error status report: ${getErrorMessage(e)}.`,
+      `Failed to send the unhandled error status report: ${getErrorMessage(e)}.`,
     );
     if (isInTestMode()) {
       throw e;

@@ -2,6 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.31.11 - 23 Jan 2026
+
+- When running a Default Setup workflow with [Actions debugging enabled](https://docs.github.com/en/actions/how-tos/monitor-workflows/enable-debug-logging), the CodeQL Action will now use more unique names when uploading logs from the Dependabot authentication proxy as workflow artifacts. This ensures that the artifact names do not clash between multiple jobs in a build matrix. [#3409](https://github.com/github/codeql-action/pull/3409)
+- Improved error handling throughout the CodeQL Action. [#3415](https://github.com/github/codeql-action/pull/3415)
+- Added experimental support for automatically excluding [generated files](https://docs.github.com/en/repositories/working-with-files/managing-files/customizing-how-changed-files-appear-on-github) from the analysis. This feature is not currently enabled for any analysis. In the future, it may be enabled by default for some GitHub-managed analyses. [#3318](https://github.com/github/codeql-action/pull/3318)
+- The changelog extracts that are included with releases of the CodeQL Action are now shorter to avoid duplicated information from appearing in Dependabot PRs. [#3403](https://github.com/github/codeql-action/pull/3403)
+
 ## 3.31.10 - 12 Jan 2026
 
 - Update default CodeQL bundle version to 2.23.9. [#3393](https://github.com/github/codeql-action/pull/3393)

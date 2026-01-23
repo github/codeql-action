@@ -246,6 +246,42 @@ export async function tryUploadAllAvailableDebugArtifacts(
   }
 }
 
+/**
+ * When a build matrix is used, multiple different jobs arising from the matrix may attempt to upload
+ * workflow artifacts with the same base name. In that case, only one of the uploads will succeed and
+ * the others will fail. This function inspects the matrix object to compute a suffix for the artifact
+ * name that uniquely identifies the matrix values of the current job to avoid name clashes.
+ *
+ * @param matrix A stringified JSON value, usually the value of the `matrix` input.
+ * @returns A suffix that uniquely identifies the `matrix` value for the current job, or `""` if there
+ * is no matrix value.
+ */
+export function getArtifactSuffix(matrix: string | undefined): string {
+  let suffix = "";
+  if (matrix) {
+    try {
+      const matrixObject = JSON.parse(matrix);
+      if (matrixObject !== null && typeof matrixObject === "object") {
+        for (const matrixKey of Object.keys(matrixObject as object).sort())
+          suffix += `-${matrixObject[matrixKey]}`;
+      } else {
+        core.warning("User-specified `matrix` input is not an object.");
+      }
+    } catch {
+      core.warning(
+        "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",
+      );
+    }
+  }
+  return suffix;
+}
+
+// Enumerates different, possible outcomes for artifact uploads.
+export type UploadArtifactsResult =
+  | "no-artifacts-to-upload"
+  | "upload-successful"
+  | "upload-failed";
+
 export async function uploadDebugArtifacts(
   logger: Logger,
   toUpload: string[],
@@ -253,15 +289,7 @@ export async function uploadDebugArtifacts(
   artifactName: string,
   ghVariant: GitHubVariant,
   codeQlVersion: string | undefined,
-): Promise<
-  | "no-artifacts-to-upload"
-  | "upload-successful"
-  | "upload-failed"
-  | "upload-not-supported"
-> {
-  if (toUpload.length === 0) {
-    return "no-artifacts-to-upload";
-  }
+): Promise<UploadArtifactsResult | "upload-not-supported"> {
   const uploadSupported = isSafeArtifactUpload(codeQlVersion);
 
   if (!uploadSupported) {
@@ -269,6 +297,31 @@ export async function uploadDebugArtifacts(
       `Skipping debug artifact upload because the current CLI does not support safe upload. Please upgrade to CLI v${SafeArtifactUploadVersion} or later.`,
     );
     return "upload-not-supported";
+  }
+
+  return uploadArtifacts(logger, toUpload, rootDir, artifactName, ghVariant);
+}
+
+/**
+ * Uploads the specified files as a single workflow artifact.
+ *
+ * @param logger The logger to use.
+ * @param toUpload The list of paths to include in the artifact.
+ * @param rootDir The root directory of the paths to include.
+ * @param artifactName The base name for the artifact.
+ * @param ghVariant The GitHub variant.
+ *
+ * @returns The outcome of the attempt to create and upload the artifact.
+ */
+export async function uploadArtifacts(
+  logger: Logger,
+  toUpload: string[],
+  rootDir: string,
+  artifactName: string,
+  ghVariant: GitHubVariant,
+): Promise<UploadArtifactsResult> {
+  if (toUpload.length === 0) {
+    return "no-artifacts-to-upload";
   }
 
   // When running in test mode, perform a best effort scan of the debug artifacts. The artifact
@@ -279,21 +332,7 @@ export async function uploadDebugArtifacts(
     core.exportVariable("CODEQL_ACTION_ARTIFACT_SCAN_FINISHED", "true");
   }
 
-  let suffix = "";
-  const matrix = getOptionalInput("matrix");
-  if (matrix) {
-    try {
-      for (const [, matrixVal] of Object.entries(
-        JSON.parse(matrix) as any[][],
-      ).sort())
-        suffix += `-${matrixVal}`;
-    } catch {
-      core.info(
-        "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",
-      );
-    }
-  }
-
+  const suffix = getArtifactSuffix(getOptionalInput("matrix"));
   const artifactUploader = await getArtifactUploaderClient(logger, ghVariant);
 
   try {

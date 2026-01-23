@@ -159,6 +159,9 @@ inputs:
     description: >-
       Explicitly enable or disable caching of project build dependencies.
     required: false
+  repository-owner-type:
+    default: ${{ github.event.repository.owner.type }}
+    required: false
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

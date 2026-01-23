@@ -237,9 +237,13 @@ async function run(startedAt: Date) {
     );
 
     // Fetch the values of known repository properties that affect us.
-    const enableRepoProps = await features.getValue(
-      Feature.UseRepositoryProperties,
+    const repositoryOwnerType = getOptionalInput("repository-owner-type");
+    logger.debug(
+      `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
     );
+    const enableRepoProps =
+      repositoryOwnerType === "Organization" &&
+      (await features.getValue(Feature.UseRepositoryProperties));
     const repositoryProperties = enableRepoProps
       ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
       : {};

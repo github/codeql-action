@@ -321,7 +321,9 @@ export async function createStatusReportBase(
     try {
       statusReport.actions_event_name = getWorkflowEventName();
     } catch (e) {
-      logger.warning(`Could not determine the workflow event name: ${e}.`);
+      logger.warning(
+        `Could not determine the workflow event name: ${getErrorMessage(e)}.`,
+      );
     }
 
     if (config) {
@@ -374,7 +376,7 @@ export async function createStatusReportBase(
     return statusReport;
   } catch (e) {
     logger.warning(
-      `Caught an exception while gathering information for telemetry: ${e}. Will skip sending status report.`,
+      `Failed to gather information for telemetry: ${getErrorMessage(e)}. Will skip sending status report.`,
     );
 
     // Re-throw the exception in test mode. While testing, we want to know if something goes wrong here.
@@ -629,7 +631,7 @@ export async function sendUnhandledErrorStatusReport(
     }
   } catch (e) {
     logger.warning(
-      `Caught an exception while sending the error status report: ${e}.`,
+      `Failed to send the error status report: ${getErrorMessage(e)}.`,
     );
   }
 }

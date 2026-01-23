@@ -1292,3 +1292,33 @@ export function joinAtMost(
 
   return array.join(separator);
 }
+
+type Success<T> = Result<T, never>;
+type Failure<E> = Result<never, E>;
+
+export class Result<T, E> {
+  private constructor(
+    private readonly _ok: boolean,
+    public readonly value: T | E,
+  ) {}
+
+  static ok<T>(value: T): Success<T> {
+    return new Result(true, value) as Success<T>;
+  }
+
+  static error<E>(error: E): Failure<E> {
+    return new Result(false, error) as Failure<E>;
+  }
+
+  isOk(): this is Success<T> {
+    return this._ok;
+  }
+
+  isError(): this is Failure<E> {
+    return !this._ok;
+  }
+
+  orElse(defaultValue: T): T {
+    return this._ok ? (this.value as T) : defaultValue;
+  }
+}

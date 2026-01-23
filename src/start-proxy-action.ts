@@ -22,7 +22,7 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
-  sendUnexpectedErrorStatusReport,
+  sendUnhandledErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import * as util from "./util";
@@ -210,7 +210,7 @@ async function runWrapper() {
     await run(startedAt);
   } catch (error) {
     core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
-    await sendUnexpectedErrorStatusReport(
+    await sendUnhandledErrorStatusReport(
       ActionName.StartProxy,
       startedAt,
       error,

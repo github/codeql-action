@@ -607,7 +607,7 @@ export async function createInitWithConfigStatusReport(
   };
 }
 
-export async function sendUnexpectedErrorStatusReport(
+export async function sendUnhandledErrorStatusReport(
   actionName: ActionName,
   actionStartedAt: Date,
   error: unknown,

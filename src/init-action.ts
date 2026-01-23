@@ -13,6 +13,7 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
+  isAnalyzingPullRequest,
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
@@ -334,6 +335,7 @@ async function run(startedAt: Date) {
     }
 
     analysisKinds = await getAnalysisKinds(logger);
+    const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
     config = await initConfig(features, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
@@ -350,7 +352,7 @@ async function run(startedAt: Date) {
       // - The `init` Action is passed `debug: true`.
       // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
       //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-      debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+      debugMode,
       debugArtifactName:
         getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName:
@@ -364,6 +366,16 @@ async function run(startedAt: Date) {
       apiDetails,
       features,
       repositoryProperties,
+      enableFileCoverageInformation:
+        // Always enable file coverage information in debug mode
+        debugMode ||
+        // We're most interested in speeding up PRs, and we want to keep
+        // submitting file coverage information for the default branch since
+        // it is used to populate the status page.
+        !isAnalyzingPullRequest() ||
+        // For now, restrict this feature to the GitHub org
+        repositoryNwo.owner !== "github" ||
+        !(await features.getValue(Feature.SkipFileCoverageOnPrs)),
       logger,
     });
 

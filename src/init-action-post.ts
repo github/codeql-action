@@ -64,6 +64,9 @@ async function testCancellationDetection(): Promise<void> {
       return;
     }
 
+    // Wait 15 seconds to ensure that the API has caught up with the job status
+    await new Promise((resolve) => setTimeout(resolve, 15000));
+
     const checkRunId = parseInt(checkRunIdInput, 10);
     logger.info(
       `[Cancellation Test] Querying jobs API for run ${runId}, attempt ${attemptNumber}, check_run_id ${checkRunId}`,
@@ -127,11 +130,11 @@ async function run(startedAt: Date) {
     | undefined;
   let dependencyCachingUsage: DependencyCachingUsageReport | undefined;
   try {
-    // TEMPORARY: Test cancellation detection via API
-    await testCancellationDetection();
-
     // Restore inputs from `init` Action.
     restoreInputs();
+
+    // TEMPORARY: Test cancellation detection via API
+    await testCancellationDetection();
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);

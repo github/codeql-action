@@ -195,6 +195,7 @@ async function run(startedAt: Date) {
       },
       await util.checkDiskUsage(logger),
       logger,
+      "Error from start-proxy Action omitted",
     );
     if (errorStatusReportBase !== undefined) {
       await sendStatusReport(errorStatusReportBase);
@@ -213,7 +214,7 @@ async function runWrapper() {
     await sendUnhandledErrorStatusReport(
       ActionName.StartProxy,
       startedAt,
-      error,
+      new Error("Error from start-proxy Action omitted"),
       logger,
     );
   }

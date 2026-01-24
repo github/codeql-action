@@ -26,19 +26,25 @@ export interface TokenPattern {
   pattern: RegExp;
 }
 
+/** The pattern for PATs (Classic) */
+export const GITHUB_PAT_CLASSIC_PATTERN: TokenPattern = {
+  type: TokenType.PersonalAccessClassic,
+  pattern: /\bghp_[a-zA-Z0-9]{36}\b/g,
+};
+
+/** The pattern for PATs (Fine-grained) */
+export const GITHUB_PAT_FINE_GRAINED_PATTERN: TokenPattern = {
+  type: TokenType.PersonalAccessFineGrained,
+  pattern: /\bgithub_pat_[a-zA-Z0-9_]+\b/g,
+};
+
 /**
  * GitHub token patterns to scan for.
  * These patterns match various GitHub token formats.
  */
 const GITHUB_TOKEN_PATTERNS: TokenPattern[] = [
-  {
-    type: TokenType.PersonalAccessClassic,
-    pattern: /\bghp_[a-zA-Z0-9]{36}\b/g,
-  },
-  {
-    type: TokenType.PersonalAccessFineGrained,
-    pattern: /\bgithub_pat_[a-zA-Z0-9_]+\b/g,
-  },
+  GITHUB_PAT_CLASSIC_PATTERN,
+  GITHUB_PAT_FINE_GRAINED_PATTERN,
   {
     type: TokenType.OAuth,
     pattern: /\bgho_[a-zA-Z0-9]{36}\b/g,
@@ -69,6 +75,24 @@ interface TokenFinding {
 interface ScanResult {
   scannedFiles: number;
   findings: TokenFinding[];
+}
+
+/**
+ * Checks whether `value` matches any token `patterns`.
+ * @param value The value to match against.
+ * @param patterns The patterns to check.
+ * @returns The type of the first matching pattern, or `undefined` if none match.
+ */
+export function isAuthToken(
+  value: string,
+  patterns: TokenPattern[] = GITHUB_TOKEN_PATTERNS,
+) {
+  for (const { type, pattern } of patterns) {
+    if (pattern.test(value)) {
+      return type;
+    }
+  }
+  return undefined;
 }
 
 /**

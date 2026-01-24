@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import ruamel.yaml
-from ruamel.yaml.scalarstring import SingleQuotedScalarString
+from ruamel.yaml.scalarstring import SingleQuotedScalarString, LiteralScalarString
 import pathlib
 import os
 
@@ -227,22 +227,15 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
 
     if installYq:
         steps.append({
-            'name': "Restore choco cache",
-            'if': "runner.os == 'Windows'",
-            'uses': 'actions/cache@v5',
-            'with': {
-                'key': 'windows-choco-cache',
-                'path': '${{ runner.temp }}/windows-choco-cache'
-            }
-        })
-        steps.append({
             'name': 'Install yq',
             'if': "runner.os == 'Windows'",
-            'shell': 'pwsh',
             'env': {
-                'CACHE_DIR': '${{ runner.temp }}/windows-choco-cache'
+                'YQ_PATH': '${{ runner.temp }}/yq'
             },
-            'run': 'choco install yq -y --stoponfirstfailure --cache-location=${env:CACHE_DIR}',
+            'run': LiteralScalarString(
+                'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" v4.50.1 -O "$YQ_PATH/yq.exe"\n'
+                'echo "$YQ_PATH" >> "$GITHUB_PATH"'
+            ),
         })
 
     # If container initialisation steps are present in the check specification,

@@ -76,18 +76,13 @@ jobs:
         with:
           java-version: ${{ inputs.java-version || '17' }}
           distribution: temurin
-      - name: Restore choco cache
-        if: runner.os == 'Windows'
-        uses: actions/cache@v5
-        with:
-          key: windows-choco-cache
-          path: ${{ runner.temp }}/windows-choco-cache
       - name: Install yq
         if: runner.os == 'Windows'
-        shell: pwsh
         env:
-          CACHE_DIR: ${{ runner.temp }}/windows-choco-cache
-        run: choco install yq -y --stoponfirstfailure --cache-location=${env:CACHE_DIR}
+          YQ_PATH: ${{ runner.temp }}/yq
+        run: |-
+          gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" v4.50.1 -O "$YQ_PATH/yq.exe"
+          echo "$YQ_PATH" >> "$GITHUB_PATH"
       - name: Set up Java test repo configuration
         run: |
           mv * .github ../action/tests/multi-language-repo/

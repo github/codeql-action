@@ -13,8 +13,12 @@ import { getErrorMessage } from "./util";
  */
 const GITHUB_TOKEN_PATTERNS = [
   {
-    name: "Personal Access Token",
+    name: "Personal Access Token (Classic)",
     pattern: /\bghp_[a-zA-Z0-9]{36}\b/g,
+  },
+  {
+    name: "Personal Access Token (Fine-grained)",
+    pattern: /\bgithub_pat_[a-zA-Z0-9_]+\b/g,
   },
   {
     name: "OAuth Access Token",

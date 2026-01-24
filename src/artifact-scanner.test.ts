@@ -4,7 +4,12 @@ import * as path from "path";
 
 import test from "ava";
 
-import { scanArtifactsForTokens, TokenType } from "./artifact-scanner";
+import {
+  GITHUB_PAT_CLASSIC_PATTERN,
+  isAuthToken,
+  scanArtifactsForTokens,
+  TokenType,
+} from "./artifact-scanner";
 import { getRunnerLogger } from "./logging";
 import {
   checkExpectedLogMessages,
@@ -21,6 +26,36 @@ function makeTestToken(length: number = 36) {
 test("makeTestToken", (t) => {
   t.is(makeTestToken().length, 36);
   t.is(makeTestToken(255).length, 255);
+});
+
+test("isAuthToken", (t) => {
+  // Undefined for strings that aren't tokens
+  t.is(isAuthToken("some string"), undefined);
+  t.is(isAuthToken("ghp_"), undefined);
+  t.is(isAuthToken("ghp_123"), undefined);
+
+  // Token types for strings that are tokens.
+  t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
+  t.is(
+    isAuthToken(`ghs_${makeTestToken(255)}`),
+    TokenType.AppInstallationAccess,
+  );
+  t.is(
+    isAuthToken(`github_pat_${makeTestToken(22)}_${makeTestToken(59)}`),
+    TokenType.PersonalAccessFineGrained,
+  );
+
+  // With a custom pattern set
+  t.is(
+    isAuthToken(`ghp_${makeTestToken()}`, [GITHUB_PAT_CLASSIC_PATTERN]),
+    TokenType.PersonalAccessClassic,
+  );
+  t.is(
+    isAuthToken(`github_pat_${makeTestToken(22)}_${makeTestToken(59)}`, [
+      GITHUB_PAT_CLASSIC_PATTERN,
+    ]),
+    undefined,
+  );
 });
 
 const testTokens = [

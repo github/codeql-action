@@ -223,6 +223,28 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             }
         })
 
+    installYq = is_truthy(checkSpecification.get('installYq', ''))
+
+    if installYq:
+        steps.append({
+            'name': "Restore choco cache",
+            'if': "runner.os == 'Windows'",
+            'uses': 'actions/cache@v5',
+            'with': {
+                'key': 'windows-choco-cache',
+                'path': '${{ runner.temp }}/windows-choco-cache'
+            }
+        })
+        steps.append({
+            'name': 'Install yq',
+            'if': "runner.os == 'Windows'",
+            'shell': 'pwsh',
+            'env': {
+                'CACHE_DIR': '${{ runner.temp }}/windows-choco-cache'
+            },
+            'run': 'choco install yq -y --stoponfirstfailure --cache-location=${env:CACHE_DIR}',
+        })
+
     # If container initialisation steps are present in the check specification,
     # make sure to execute them first.
     if 'container' in checkSpecification and 'container-init-steps' in checkSpecification:

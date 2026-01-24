@@ -15,13 +15,8 @@ import {
   checkExpectedLogMessages,
   getRecordingLogger,
   LoggedMessage,
+  makeTestToken,
 } from "./testing-utils";
-
-function makeTestToken(length: number = 36) {
-  const chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  return chars.repeat(Math.ceil(length / chars.length)).slice(0, length);
-}
 
 test("makeTestToken", (t) => {
   t.is(makeTestToken().length, 36);

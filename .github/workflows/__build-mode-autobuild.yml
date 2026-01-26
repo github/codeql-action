@@ -80,8 +80,9 @@ jobs:
         if: runner.os == 'Windows'
         env:
           YQ_PATH: ${{ runner.temp }}/yq
+          YQ_VERSION: v4.50.1
         run: |-
-          gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" v4.50.1 -O "$YQ_PATH/yq.exe"
+          gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"
           echo "$YQ_PATH" >> "$GITHUB_PATH"
       - name: Set up Java test repo configuration
         run: |

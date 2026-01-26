@@ -230,10 +230,14 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
             'name': 'Install yq',
             'if': "runner.os == 'Windows'",
             'env': {
-                'YQ_PATH': '${{ runner.temp }}/yq'
+                'YQ_PATH': '${{ runner.temp }}/yq',
+                # This is essentially an arbitrary version of `yq`, which happened to be the one that
+                # `choco` fetched when we moved away from using that here.
+                # See https://github.com/github/codeql-action/pull/3423
+                'YQ_VERSION': 'v4.50.1'
             },
             'run': LiteralScalarString(
-                'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" v4.50.1 -O "$YQ_PATH/yq.exe"\n'
+                'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n'
                 'echo "$YQ_PATH" >> "$GITHUB_PATH"'
             ),
         })

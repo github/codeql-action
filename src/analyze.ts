@@ -503,8 +503,8 @@ export async function runQueries(
       }
       if (!config.enableFileCoverageInformation) {
         logger.info(
-          "File coverage information is disabled for this PR analysis for performance reasons. " +
-            "It will still be enabled for analyses triggered by a push or a schedule.",
+          "To speed up pull request analysis, file coverage information is only enabled when analyzing " +
+            "the default branch and protected branches.",
         );
       }
 

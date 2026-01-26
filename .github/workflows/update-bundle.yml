@@ -57,17 +57,21 @@ jobs:
       - name: Update bundle
         uses: ./.github/actions/update-bundle
 
-      - name: Bump action minor version for new CodeQL minor version series
+      - name: Bump Action minor version if new CodeQL minor version series
         id: bump-action-version
         run: |
+          prior_cli_version=$(jq -r '.priorCliVersion' src/defaults.json)
           cli_version=$(jq -r '.cliVersion' src/defaults.json)
-          # Check if this is a new minor version series (patch version is 0)
-          if [[ "$cli_version" =~ ^[0-9]+\.[0-9]+\.0$ ]]; then
-            echo "New CodeQL minor version series detected ($cli_version), bumping action minor version"
+
+          prior_minor=$(echo "$prior_cli_version" | cut -d. -f2)
+          current_minor=$(echo "$cli_version" | cut -d. -f2)
+
+          if [[ "$current_minor" != "$prior_minor" ]]; then
+            echo "New CodeQL minor version series ($prior_cli_version -> $cli_version), bumping Action minor version"
             npm version minor --no-git-tag-version
             echo "bumped=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Not a new minor version series ($cli_version), skipping action version bump"
+            echo "Same minor version series ($prior_cli_version -> $cli_version), skipping Action version bump"
             echo "bumped=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -92,9 +96,7 @@ jobs:
 
           pr_body="This pull request updates the default CodeQL bundle, as used with \`tools: linked\` and on GHES, to $cli_version."
           if [[ "$ACTION_VERSION_BUMPED" == "true" ]]; then
-            pr_body="$pr_body
-
-          Since this is a new CodeQL minor version series, this PR also bumps the Action version to $action_version."
+            pr_body+=$'\n\n'"Since this is a new CodeQL minor version series, this PR also bumps the Action version to $action_version."
           fi
 
           pr_url=$(gh pr create \

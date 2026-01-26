@@ -70,6 +70,7 @@ export enum Feature {
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   UseRepositoryProperties = "use_repository_properties",

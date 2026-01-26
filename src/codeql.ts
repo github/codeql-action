@@ -620,6 +620,13 @@ async function getCodeQLForCmd(
         extraArgs.push("--overlay-base");
       }
 
+      const baselineFilesOptions = config.enableFileCoverageInformation
+        ? [
+            "--calculate-language-specific-baseline",
+            "--sublanguage-file-coverage",
+          ]
+        : ["--no-calculate-baseline"];
+
       await runCli(
         cmd,
         [
@@ -631,12 +638,11 @@ async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
-          "--calculate-language-specific-baseline",
+          ...baselineFilesOptions,
           "--extractor-include-aliases",
-          "--sublanguage-file-coverage",
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"], {
-            ignoringOptions: ["--overwrite"],
+            ignoringOptions: ["--overwrite", ...baselineFilesOptions],
           }),
         ],
         { stdin: externalRepositoryToken },

@@ -3,6 +3,7 @@ description: "An end-to-end integration test of a Java repository built using 'b
 operatingSystems: ["ubuntu", "windows"]
 versions: ["linked", "nightly-latest"]
 installJava: "true"
+installYq: "true"
 steps:
   - name: Set up Java test repo configuration
     run: |
@@ -17,11 +18,6 @@ steps:
       db-location: "${{ runner.temp }}/customDbLocation"
       languages: java
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-
-  - name: Install yq
-    if: runner.os == 'Windows'
-    run: |
-      choco install yq -y
 
   - name: Validate database build mode
     run: |

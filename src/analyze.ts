@@ -501,6 +501,12 @@ export async function runQueries(
       if (qualityAnalysisSummary?.trim()) {
         logger.info(qualityAnalysisSummary);
       }
+      if (!config.enableFileCoverageInformation) {
+        logger.info(
+          "File coverage information is disabled for this PR analysis for performance reasons. " +
+            "It will still be enabled for analyses triggered by a push or a schedule.",
+        );
+      }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
         // Note: QA adds the `code-quality` query suite to the `queries` input,

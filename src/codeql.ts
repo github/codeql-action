@@ -187,10 +187,6 @@ export interface CodeQL {
     features: FeatureEnablement,
   ): Promise<string>;
   /**
-   * Run 'codeql database print-baseline'.
-   */
-  databasePrintBaseline(databasePath: string): Promise<string>;
-  /**
    * Run 'codeql database export-diagnostics'
    *
    * Note that the "--sarif-include-diagnostics" option is always used, as the command should
@@ -492,10 +488,6 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     databaseInterpretResults: resolveFunction(
       partialCodeql,
       "databaseInterpretResults",
-    ),
-    databasePrintBaseline: resolveFunction(
-      partialCodeql,
-      "databasePrintBaseline",
     ),
     databaseExportDiagnostics: resolveFunction(
       partialCodeql,
@@ -884,15 +876,6 @@ async function getCodeQLForCmd(
       return await runCli(cmd, codeqlArgs, {
         noStreamStdout: true,
       });
-    },
-    async databasePrintBaseline(databasePath: string): Promise<string> {
-      const codeqlArgs = [
-        "database",
-        "print-baseline",
-        ...getExtraOptionsFromEnv(["database", "print-baseline"]),
-        databasePath,
-      ];
-      return await runCli(cmd, codeqlArgs);
     },
     async databaseCleanupCluster(
       config: Config,

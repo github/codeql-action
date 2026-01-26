@@ -495,8 +495,10 @@ export async function runQueries(
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
 
-      logger.info(analysisSummary);
-      if (qualityAnalysisSummary) {
+      if (analysisSummary.trim()) {
+        logger.info(analysisSummary);
+      }
+      if (qualityAnalysisSummary?.trim()) {
         logger.info(qualityAnalysisSummary);
       }
 

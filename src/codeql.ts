@@ -642,6 +642,9 @@ async function getCodeQLForCmd(
           "--extractor-include-aliases",
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"], {
+            // Some user configs specify `--no-calculate-baseline` as an additional
+            // argument to `codeql database init`. Therefore ignore the baseline file
+            // options here to avoid specifying the same argument twice and erroring.
             ignoringOptions: ["--overwrite", ...baselineFilesOptions],
           }),
         ],

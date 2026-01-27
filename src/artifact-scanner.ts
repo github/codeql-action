@@ -88,7 +88,7 @@ export function isAuthToken(
   patterns: TokenPattern[] = GITHUB_TOKEN_PATTERNS,
 ) {
   for (const { type, pattern } of patterns) {
-    if (pattern.test(value)) {
+    if (value.match(pattern)) {
       return type;
     }
   }

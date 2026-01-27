@@ -31,6 +31,7 @@ test("isAuthToken", (t) => {
 
   // Token types for strings that are tokens.
   t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
+  t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
   t.is(
     isAuthToken(`ghs_${makeTestToken(255)}`),
     TokenType.AppInstallationAccess,

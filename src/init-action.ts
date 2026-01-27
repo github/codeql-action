@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
+import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -802,7 +803,7 @@ async function loadRepositoryProperties(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<Result<RepositoryProperties, unknown>> {
-  const repositoryOwnerType = getOptionalInput("repository-owner-type");
+  const repositoryOwnerType = github.context.payload.repository?.owner.type;
   if (repositoryOwnerType === "User") {
     // Users cannot have repository properties, so skip the API call.
     logger.debug(

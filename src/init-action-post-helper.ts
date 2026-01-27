@@ -1,6 +1,5 @@
 import * as fs from "fs";
 
-import * as core from "@actions/core";
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
@@ -129,47 +128,30 @@ export async function tryUploadSarifIfRunFailed(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
-  if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
-    // If analyze didn't complete successfully and the job status hasn't
-    // already been set to Failure/ConfigurationError previously, this
-    // means that something along the way failed in a step that is not
-    // owned by the Action, for example a manual build step. We
-    // consider this a configuration error.
-    core.exportVariable(
-      EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
-    );
-
-    // If the only enabled analysis kind is `code-quality`, then we shouldn't
-    // upload the failed SARIF to Code Scanning.
-    if (!isCodeScanningEnabled(config)) {
-      return {
-        upload_failed_run_skipped_because: "Code Scanning is not enabled.",
-      };
-    }
-
-    try {
-      return await maybeUploadFailedSarif(
-        config,
-        repositoryNwo,
-        features,
-        logger,
-      );
-    } catch (e) {
-      logger.debug(
-        `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`,
-      );
-      return createFailedUploadFailedSarifResult(e);
-    }
-  } else {
-    core.exportVariable(
-      EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.SuccessStatus,
-    );
+  // Only upload the failed SARIF to Code scanning if Code scanning is enabled.
+  if (!isCodeScanningEnabled(config)) {
+    return {
+      upload_failed_run_skipped_because: "Code Scanning is not enabled.",
+    };
+  }
+  if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true") {
     return {
       upload_failed_run_skipped_because:
         "Analyze Action completed successfully",
     };
+  }
+  try {
+    return await maybeUploadFailedSarif(
+      config,
+      repositoryNwo,
+      features,
+      logger,
+    );
+  } catch (e) {
+    logger.debug(
+      `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`,
+    );
+    return createFailedUploadFailedSarifResult(e);
   }
 }
 
@@ -334,21 +316,4 @@ async function removeUploadedSarif(
       "Could not delete the uploaded SARIF analysis because a SARIF ID wasn't provided by the API when uploading the SARIF file.",
     );
   }
-}
-
-/**
- * Returns the final job status sent in the `init-post` Action, based on the
- * current value of the JOB_STATUS environment variable. If the variable is
- * unset, or if its value is not one of the JobStatus enum values, returns
- * Unknown. Otherwise it returns the status set in the environment variable.
- */
-export function getFinalJobStatus(): JobStatus {
-  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
-  if (
-    !jobStatusFromEnvironment ||
-    !Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
-  ) {
-    return JobStatus.UnknownStatus;
-  }
-  return jobStatusFromEnvironment as JobStatus;
 }

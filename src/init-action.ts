@@ -47,6 +47,7 @@ import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
+  getFileCoverageInformationEnabled,
   initCodeQL,
   initConfig,
   runDatabaseInitCluster,
@@ -341,6 +342,7 @@ async function run(startedAt: Date) {
     }
 
     analysisKinds = await getAnalysisKinds(logger);
+    const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
     config = await initConfig(features, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
@@ -357,7 +359,7 @@ async function run(startedAt: Date) {
       // - The `init` Action is passed `debug: true`.
       // - Actions step debugging is enabled (e.g. by [enabling debug logging for a rerun](https://docs.github.com/en/actions/managing-workflow-runs/re-running-workflows-and-jobs#re-running-all-the-jobs-in-a-workflow),
       //   or by setting the `ACTIONS_STEP_DEBUG` secret to `true`).
-      debugMode: getOptionalInput("debug") === "true" || core.isDebug(),
+      debugMode,
       debugArtifactName:
         getOptionalInput("debug-artifact-name") || DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName:
@@ -371,6 +373,11 @@ async function run(startedAt: Date) {
       apiDetails,
       features,
       repositoryProperties: repositoryPropertiesResult.orElse({}),
+      enableFileCoverageInformation: await getFileCoverageInformationEnabled(
+        debugMode,
+        repositoryNwo,
+        features,
+      ),
       logger,
     });
 

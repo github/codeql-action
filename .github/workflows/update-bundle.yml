@@ -57,6 +57,24 @@ jobs:
       - name: Update bundle
         uses: ./.github/actions/update-bundle
 
+      - name: Bump Action minor version if new CodeQL minor version series
+        id: bump-action-version
+        run: |
+          prior_cli_version=$(jq -r '.priorCliVersion' src/defaults.json)
+          cli_version=$(jq -r '.cliVersion' src/defaults.json)
+
+          prior_minor=$(echo "$prior_cli_version" | cut -d. -f2)
+          current_minor=$(echo "$cli_version" | cut -d. -f2)
+
+          if [[ "$current_minor" != "$prior_minor" ]]; then
+            echo "New CodeQL minor version series ($prior_cli_version -> $cli_version), bumping Action minor version"
+            npm version minor --no-git-tag-version
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Same minor version series ($prior_cli_version -> $cli_version), skipping Action version bump"
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Rebuild Action
         run: npm run build
 
@@ -71,11 +89,19 @@ jobs:
       - name: Open pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTION_VERSION_BUMPED: ${{ steps.bump-action-version.outputs.bumped }}
         run: |
           cli_version=$(jq -r '.cliVersion' src/defaults.json)
+          action_version=$(jq -r '.version' package.json)
+
+          pr_body="This pull request updates the default CodeQL bundle, as used with \`tools: linked\` and on GHES, to $cli_version."
+          if [[ "$ACTION_VERSION_BUMPED" == "true" ]]; then
+            pr_body+=$'\n\n'"Since this is a new CodeQL minor version series, this PR also bumps the Action version to $action_version."
+          fi
+
           pr_url=$(gh pr create \
             --title "Update default bundle to $cli_version" \
-            --body "This pull request updates the default CodeQL bundle, as used with \`tools: linked\` and on GHES, to $cli_version." \
+            --body "$pr_body" \
             --assignee "$GITHUB_ACTOR" \
             --draft \
           )

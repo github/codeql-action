@@ -1319,6 +1319,6 @@ export class Result<T, E> {
   }
 
   orElse(defaultValue: T): T {
-    return this._ok ? (this.value as T) : defaultValue;
+    return this.isOk() ? this.value : defaultValue;
   }
 }

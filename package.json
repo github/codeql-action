@@ -34,7 +34,7 @@
     "@actions/http-client": "^3.0.0",
     "@actions/io": "^2.0.0",
     "@actions/tool-cache": "^3.0.0",
-    "@octokit/plugin-retry": "^6.0.0",
+    "@octokit/plugin-retry": "^8.0.0",
     "@schemastore/package": "0.0.10",
     "archiver": "^7.0.1",
     "fast-deep-equal": "^3.1.3",

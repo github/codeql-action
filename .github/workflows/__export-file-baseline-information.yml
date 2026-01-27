@@ -125,5 +125,6 @@ jobs:
             fi
           done
     env:
+      CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
       CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
       CODEQL_ACTION_TEST_MODE: true

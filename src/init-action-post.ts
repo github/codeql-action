@@ -141,17 +141,17 @@ async function run(startedAt: Date) {
   }
 }
 
+/**
+ * Determine the final job status to be reported in the status report.
+ *
+ * If the job status has already been set by another step, we use that.
+ * Otherwise, we determine the job status based on whether the analyze step
+ * completed successfully and whether we have a valid CodeQL config.
+ */
 function getFinalJobStatus(config: Config | undefined): JobStatus {
-  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
-
-  if (jobStatusFromEnvironment !== undefined) {
-    // Validate the job status from the environment. If it is invalid, return unknown.
-    if (
-      Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
-    ) {
-      return jobStatusFromEnvironment as JobStatus;
-    }
-    return JobStatus.UnknownStatus;
+  const existingJobStatus = getJobStatusFromEnvironment();
+  if (existingJobStatus !== undefined) {
+    return existingJobStatus;
   }
 
   let jobStatus: JobStatus;
@@ -184,6 +184,27 @@ function getFinalJobStatus(config: Config | undefined): JobStatus {
   // `init` post step, ensure the job status is consistent between them.
   core.exportVariable(EnvVar.JOB_STATUS, jobStatus);
   return jobStatus;
+}
+
+/**
+ * Get the job status from the environment variable, if it has been set.
+ *
+ * If the job status is invalid, return `UnknownStatus`.
+ */
+function getJobStatusFromEnvironment(): JobStatus | undefined {
+  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
+
+  if (jobStatusFromEnvironment !== undefined) {
+    // Validate the job status from the environment. If it is invalid, return unknown.
+    if (
+      Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
+    ) {
+      return jobStatusFromEnvironment as JobStatus;
+    }
+    return JobStatus.UnknownStatus;
+  }
+
+  return undefined;
 }
 
 async function runWrapper() {

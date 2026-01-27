@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.31.11",
+  "version": "4.32.1",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -29,12 +29,12 @@
     "@actions/cache": "^5.0.3",
     "@actions/core": "^2.0.2",
     "@actions/exec": "^2.0.0",
-    "@actions/github": "^7.0.0",
+    "@actions/github": "^8.0.0",
     "@actions/glob": "^0.5.0",
     "@actions/http-client": "^3.0.0",
     "@actions/io": "^2.0.0",
     "@actions/tool-cache": "^3.0.0",
-    "@octokit/plugin-retry": "^6.0.0",
+    "@octokit/plugin-retry": "^8.0.0",
     "@schemastore/package": "0.0.10",
     "archiver": "^7.0.1",
     "fast-deep-equal": "^3.1.3",

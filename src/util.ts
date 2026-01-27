@@ -1328,7 +1328,7 @@ export class Result<T, E> {
   }
 
   /** Get the value if this is a success, or return the default value if this is a failure. */
-  orElse(defaultValue: T): T {
+  orElse<U>(defaultValue: U): T | U {
     return this.isSuccess() ? this.value : defaultValue;
   }
 }

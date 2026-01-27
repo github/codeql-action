@@ -797,15 +797,20 @@ async function run(startedAt: Date) {
   );
 }
 
+/**
+ * Loads [repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) if applicable.
+ */
 async function loadRepositoryProperties(
   repositoryNwo: RepositoryNwo,
   gitHubVersion: GitHubVersion,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<Result<RepositoryProperties, unknown>> {
+  // See if we can skip loading repository properties early. In particular,
+  // repositories owned by users cannot have repository properties, so we can
+  // skip the API call entirely in that case.
   const repositoryOwnerType = github.context.payload.repository?.owner.type;
   if (repositoryOwnerType === "User") {
-    // Users cannot have repository properties, so skip the API call.
     logger.debug(
       "Skipping loading repository properties because the repository is owned by a user and " +
         "therefore cannot have repository properties.",

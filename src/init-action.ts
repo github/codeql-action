@@ -373,7 +373,7 @@ async function run(startedAt: Date) {
       logger,
     });
 
-    if (repositoryProperties.isError()) {
+    if (repositoryProperties.isFailure()) {
       addDiagnostic(
         config,
         // Arbitrarily choose the first language. We could also choose all languages, but that
@@ -810,25 +810,25 @@ async function loadRepositoryProperties(
       "Skipping loading repository properties because the repository is owned by a user and " +
         "therefore cannot have repository properties.",
     );
-    return Result.ok({});
+    return Result.success({});
   }
 
   if (!(await features.getValue(Feature.UseRepositoryProperties))) {
     logger.debug(
       "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
     );
-    return Result.ok({});
+    return Result.success({});
   }
 
   try {
-    return Result.ok(
+    return Result.success(
       await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
     );
   } catch (error) {
     logger.warning(
       `Failed to load repository properties: ${getErrorMessage(error)}`,
     );
-    return Result.error(error);
+    return Result.failure(error);
   }
 }
 

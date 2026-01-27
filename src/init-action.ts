@@ -243,7 +243,7 @@ async function run(startedAt: Date) {
     );
 
     // Fetch the values of known repository properties that affect us.
-    const repositoryProperties = await loadRepositoryProperties(
+    const repositoryPropertiesResult = await loadRepositoryProperties(
       repositoryNwo,
       gitHubVersion,
       features,
@@ -369,11 +369,11 @@ async function run(startedAt: Date) {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
-      repositoryProperties: repositoryProperties.orElse({}),
+      repositoryProperties: repositoryPropertiesResult.orElse({}),
       logger,
     });
 
-    if (repositoryProperties.isFailure()) {
+    if (repositoryPropertiesResult.isFailure()) {
       addDiagnostic(
         config,
         // Arbitrarily choose the first language. We could also choose all languages, but that
@@ -383,7 +383,7 @@ async function run(startedAt: Date) {
           "codeql-action/repository-properties-load-failure",
           "Failed to load repository properties",
           {
-            error: getErrorMessage(repositoryProperties.value),
+            error: getErrorMessage(repositoryPropertiesResult.value),
           },
         ),
       );

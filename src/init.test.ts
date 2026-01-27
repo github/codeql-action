@@ -2,14 +2,20 @@ import * as fs from "fs";
 import path from "path";
 
 import test, { ExecutionContext } from "ava";
+import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import { createStubCodeQL } from "./codeql";
+import { Feature } from "./feature-flags";
 import {
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
+  getFileCoverageInformationEnabled,
 } from "./init";
 import { KnownLanguage } from "./languages";
+import { parseRepositoryNwo } from "./repository";
 import {
+  createFeatures,
   LoggedMessage,
   createTestConfig,
   getRecordingLogger,
@@ -442,3 +448,61 @@ test(
     expectedResult: true,
   },
 );
+
+test("file coverage information enabled when debugMode is true", async (t) => {
+  t.true(
+    await getFileCoverageInformationEnabled(
+      true, // debugMode
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+    ),
+  );
+});
+
+test("file coverage information enabled when not analyzing a pull request", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(false);
+
+  t.true(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+    ),
+  );
+});
+
+test("file coverage information enabled when owner is not 'github'", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+  t.true(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("other-org/some-repo"),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+    ),
+  );
+});
+
+test("file coverage information enabled when feature flag is not enabled", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+  t.true(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([]),
+    ),
+  );
+});
+
+test("file coverage information disabled when all conditions for skipping are met", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+  t.false(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+    ),
+  );
+});

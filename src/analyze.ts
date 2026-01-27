@@ -495,9 +495,17 @@ export async function runQueries(
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
 
-      logger.info(analysisSummary);
-      if (qualityAnalysisSummary) {
+      if (analysisSummary.trim()) {
+        logger.info(analysisSummary);
+      }
+      if (qualityAnalysisSummary?.trim()) {
         logger.info(qualityAnalysisSummary);
+      }
+      if (!config.enableFileCoverageInformation) {
+        logger.info(
+          "To speed up pull request analysis, file coverage information is only enabled when analyzing " +
+            "the default branch and protected branches.",
+        );
       }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {

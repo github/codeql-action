@@ -7,7 +7,12 @@ import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import * as startProxyExports from "./start-proxy";
 import { parseLanguage } from "./start-proxy";
-import { setupTests } from "./testing-utils";
+import {
+  checkExpectedLogMessages,
+  getRecordingLogger,
+  makeTestToken,
+  setupTests,
+} from "./testing-utils";
 
 setupTests(test);
 
@@ -172,6 +177,37 @@ test("getCredentials throws an error when non-printable characters are used", as
       },
     );
   }
+});
+
+test("getCredentials logs a warning when a PAT is used without a username", async (t) => {
+  const loggedMessages = [];
+  const logger = getRecordingLogger(loggedMessages);
+  const likelyWrongCredentials = toEncodedJSON([
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      password: `ghp_${makeTestToken()}`,
+    },
+  ]);
+
+  const results = startProxyExports.getCredentials(
+    logger,
+    undefined,
+    likelyWrongCredentials,
+    undefined,
+  );
+
+  // The configuration should be accepted, despite the likely problem.
+  t.assert(results);
+  t.is(results.length, 1);
+  t.is(results[0].type, "git_server");
+  t.is(results[0].host, "https://github.com/");
+  t.assert(results[0].password?.startsWith("ghp_"));
+
+  // A warning should have been logged.
+  checkExpectedLogMessages(t, loggedMessages, [
+    "using a GitHub Personal Access Token (PAT), but no username was provided",
+  ]);
 });
 
 test("parseLanguage", async (t) => {

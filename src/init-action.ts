@@ -13,7 +13,6 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  isAnalyzingPullRequest,
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
@@ -37,12 +36,13 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import { Feature, Features } from "./feature-flags";
 import { loadPropertiesFromApi } from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
+  getFileCoverageInformationEnabled,
   initCodeQL,
   initConfig,
   runDatabaseInitCluster,
@@ -54,7 +54,7 @@ import {
   OverlayBaseDatabaseDownloadStats,
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
-import { getRepositoryNwo, RepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -792,24 +792,6 @@ function getTrapCachingEnabled(): boolean {
 
   // On hosted runners, enable TRAP caching by default
   return true;
-}
-
-async function getFileCoverageInformationEnabled(
-  debugMode: boolean,
-  repositoryNwo: RepositoryNwo,
-  features: FeatureEnablement,
-): Promise<boolean> {
-  return (
-    // Always enable file coverage information in debug mode
-    debugMode ||
-    // We're most interested in speeding up PRs, and we want to keep
-    // submitting file coverage information for the default branch since
-    // it is used to populate the status page.
-    !isAnalyzingPullRequest() ||
-    // For now, restrict this feature to the GitHub org
-    repositoryNwo.owner !== "github" ||
-    !(await features.getValue(Feature.SkipFileCoverageOnPrs))
-  );
 }
 
 async function recordZstdAvailability(

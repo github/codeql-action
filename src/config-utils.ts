@@ -214,6 +214,11 @@ export interface Config {
    * A partial mapping from repository properties that affect us to their values.
    */
   repositoryProperties: RepositoryProperties;
+
+  /**
+   * Whether to enable file coverage information.
+   */
+  enableFileCoverageInformation: boolean;
 }
 
 async function getSupportedLanguageMap(
@@ -433,6 +438,7 @@ export interface InitConfigInputs {
   apiDetails: api.GitHubApiCombinedDetails;
   features: FeatureEnablement;
   repositoryProperties: RepositoryProperties;
+  enableFileCoverageInformation: boolean;
   analysisKinds: AnalysisKind[];
   logger: Logger;
 }
@@ -462,6 +468,7 @@ export async function initActionState(
     repositoryProperties,
     analysisKinds,
     logger,
+    enableFileCoverageInformation,
   }: InitConfigInputs,
   userConfig: UserConfig,
 ): Promise<Config> {
@@ -542,6 +549,7 @@ export async function initActionState(
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
     repositoryProperties,
+    enableFileCoverageInformation,
   };
 }
 

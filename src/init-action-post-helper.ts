@@ -128,8 +128,7 @@ export async function tryUploadSarifIfRunFailed(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
-  // If the only enabled analysis kind is `code-quality`, then we shouldn't
-  // upload the failed SARIF to Code Scanning.
+  // Only upload the failed SARIF to Code scanning if Code scanning is enabled.
   if (!isCodeScanningEnabled(config)) {
     return {
       upload_failed_run_skipped_because: "Code Scanning is not enabled.",

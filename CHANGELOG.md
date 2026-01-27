@@ -6,6 +6,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 No user facing changes.
 
+## 4.32.0 - 26 Jan 2026
+
+- Update default CodeQL bundle version to [2.24.0](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.0). [#3425](https://github.com/github/codeql-action/pull/3425)
+
 ## 4.31.11 - 23 Jan 2026
 
 - When running a Default Setup workflow with [Actions debugging enabled](https://docs.github.com/en/actions/how-tos/monitor-workflows/enable-debug-logging), the CodeQL Action will now use more unique names when uploading logs from the Dependabot authentication proxy as workflow artifacts. This ensures that the artifact names do not clash between multiple jobs in a build matrix. [#3409](https://github.com/github/codeql-action/pull/3409)

@@ -220,6 +220,15 @@ async function runWrapper() {
   }
 }
 
+/**
+ * Starts the proxy process with the binary at `binPath` using `config` on a random
+ * port (but always starting with 49152).
+ *
+ * @param binPath The path to the proxy binary.
+ * @param config The configuration for the proxy.
+ * @param logFilePath The path for the proxy log file.
+ * @param logger The logger to use.
+ */
 async function startProxy(
   binPath: string,
   config: ProxyConfig,
@@ -232,6 +241,7 @@ async function startProxy(
   let tries = 5;
   let subprocessError: Error | undefined = undefined;
   while (tries-- > 0 && !subprocess && !subprocessError) {
+    logger.info(`Attempting to start proxy on ${host}:${port}...`);
     subprocess = spawn(
       binPath,
       ["-addr", `${host}:${port}`, "-config", "-", "-logfile", logFilePath],

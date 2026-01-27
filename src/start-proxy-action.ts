@@ -14,6 +14,7 @@ import {
   Credential,
   getCredentials,
   getDownloadUrl,
+  installProxyCertificate,
   parseLanguage,
   UPDATEJOB_PROXY,
 } from "./start-proxy";
@@ -285,6 +286,8 @@ async function startProxy(
       url: credential.url,
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
+
+  await installProxyCertificate(logger, config.ca.cert);
 }
 
 async function getProxyBinaryPath(logger: Logger): Promise<string> {

@@ -1,5 +1,9 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import * as core from "@actions/core";
 
+import { isSelfHostedRunner, runTool } from "./actions-util";
 import { getApiClient } from "./api-client";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
@@ -255,4 +259,50 @@ export async function getDownloadUrl(
     url: getFallbackUrl(proxyPackage),
     version: UPDATEJOB_PROXY_VERSION,
   };
+}
+
+// The standard path for certificates on Ubuntu.
+const certPath = "/usr/local/share/ca-certificates/";
+
+/**
+ * If we are running on a GitHub-hosted Ubuntu runner, this function attempts to
+ * install the `cert` into the system-wide certificate store.
+ *
+ * This function does nothing on other platforms.
+ *
+ * @param logger The logger to use.
+ * @param cert The certificate to install.
+ */
+export async function installProxyCertificate(logger: Logger, cert: string) {
+  // On GitHub-hosted linux runners, install the certificate system-wide.
+  if (process.platform === "linux" && !isSelfHostedRunner()) {
+    try {
+      // Don't continue if the certificate path doesn't already exist in the expected location.
+      if (!fs.existsSync(certPath)) {
+        logger.debug(
+          "Certificate path does not exist in the expected location.",
+        );
+        return;
+      }
+
+      // Create a sub-directory for our certificates.
+      const certSubPath = path.join(certPath, "codeql-action");
+      fs.mkdirSync(certSubPath);
+
+      // Write the certificate
+      const certFilePath = path.join(certSubPath, "proxy.crt");
+      fs.writeFileSync(certFilePath, cert);
+
+      // Update the certificates.
+      await runTool("sudo", ["update-ca-certificates"]);
+
+      logger.info(
+        `Successfully installed proxy certificate to ${certFilePath}`,
+      );
+    } catch (e) {
+      logger.info(
+        `Unable to install proxy certificate system-wide: ${getErrorMessage(e)}`,
+      );
+    }
+  }
 }

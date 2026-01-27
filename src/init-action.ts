@@ -31,6 +31,7 @@ import {
 } from "./dependency-caching";
 import {
   addDiagnostic,
+  addNoLanguageDiagnostic,
   flushDiagnostics,
   logUnwrittenDiagnostics,
   makeDiagnostic,
@@ -374,11 +375,8 @@ async function run(startedAt: Date) {
     });
 
     if (repositoryPropertiesResult.isFailure()) {
-      addDiagnostic(
+      addNoLanguageDiagnostic(
         config,
-        // Arbitrarily choose the first language. We could also choose all languages, but that
-        // increases the risk of misinterpreting the data.
-        config.languages[0],
         makeTelemetryDiagnostic(
           "codeql-action/repository-properties-load-failure",
           "Failed to load repository properties",
@@ -451,11 +449,8 @@ async function run(startedAt: Date) {
 
     // Log CodeQL download telemetry, if appropriate
     if (toolsDownloadStatusReport) {
-      addDiagnostic(
+      addNoLanguageDiagnostic(
         config,
-        // Arbitrarily choose the first language. We could also choose all languages, but that
-        // increases the risk of misinterpreting the data.
-        config.languages[0],
         makeTelemetryDiagnostic(
           "codeql-action/bundle-download-telemetry",
           "CodeQL bundle download telemetry",
@@ -853,11 +848,8 @@ async function recordZstdAvailability(
   config: configUtils.Config,
   zstdAvailability: ZstdAvailability,
 ) {
-  addDiagnostic(
+  addNoLanguageDiagnostic(
     config,
-    // Arbitrarily choose the first language. We could also choose all languages, but that
-    // increases the risk of misinterpreting the data.
-    config.languages[0],
     makeTelemetryDiagnostic(
       "codeql-action/zstd-availability",
       "Zstandard availability",

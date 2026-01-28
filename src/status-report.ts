@@ -537,7 +537,7 @@ export interface InitWithConfigStatusReport extends InitStatusReport {
   /** Stringified JSON array of registry configuration objects, from the 'registries' config field
   or workflow input. **/
   registries: string;
-  /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
+  /** Stringified JSON object representing query-filters, from the 'query-filters' config field. **/
   query_filters: string;
   /** Path to the specified code scanning config file, from the 'config-file' config field. */
   config_file: string;

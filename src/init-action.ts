@@ -812,6 +812,9 @@ async function loadRepositoryProperties(
   // repositories owned by users cannot have repository properties, so we can
   // skip the API call entirely in that case.
   const repositoryOwnerType = github.context.payload.repository?.owner.type;
+  logger.debug(
+    `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
+  );
   if (repositoryOwnerType === "User") {
     logger.debug(
       "Skipping loading repository properties because the repository is owned by a user and " +

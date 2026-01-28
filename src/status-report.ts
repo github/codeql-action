@@ -308,9 +308,12 @@ export async function createStatusReportBase(
     const isSteadyStateDefaultSetupRun =
       process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";
 
-    const featureFlags: QueriedFeatureStatusReport[] = Object.entries(
-      queriedFeatures || {},
-    ).map(([feature, outcome]) => ({ feature, ...outcome }));
+    let featureFlags: QueriedFeatureStatusReport[] | undefined = undefined;
+    if (queriedFeatures) {
+      featureFlags = Object.entries(queriedFeatures).map(
+        ([feature, outcome]) => ({ feature, ...outcome }),
+      );
+    }
 
     const statusReport: StatusReportBase = {
       action_name: actionName,

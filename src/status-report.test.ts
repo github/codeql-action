@@ -48,7 +48,7 @@ test("createStatusReportBase", async (t) => {
     setupEnvironmentAndStub(tmpDir);
 
     const features: QueriedFeatures = Object.fromEntries(
-      Object.keys(Feature).map((key) => [key, { value: true }]),
+      Object.values(Feature).map((key) => [key, { value: true }]),
     );
 
     const statusReport = await createStatusReportBase(

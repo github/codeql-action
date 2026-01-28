@@ -249,7 +249,6 @@ function mockGetReleaseByTag(assets?: Array<{ name: string; url?: string }>) {
           url: "GET /repos/:owner/:repo/releases/tags/:tag",
         });
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   mockClient.returns({
     rest: {
       repos: {

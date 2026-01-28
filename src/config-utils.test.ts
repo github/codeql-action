@@ -115,7 +115,7 @@ function mockGetContents(
   };
   const spyGetContents = sinon
     .stub(client.rest.repos, "getContent")
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   sinon.stub(api, "getApiClientWithExternalAuth").value(() => client);
@@ -131,7 +131,7 @@ function mockListLanguages(languages: string[]) {
   for (const language of languages) {
     response.data[language] = 123;
   }
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
   sinon.stub(client.rest.repos, "listLanguages").resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
 }

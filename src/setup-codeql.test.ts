@@ -34,7 +34,6 @@ const expectedFeatureEnablement: FeatureEnablement = initializeFeatures(
   true,
 ) as FeatureEnablement;
 expectedFeatureEnablement.getValue = function (feature: Feature) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return expectedFeatureEnablement[feature];
 };
 test.beforeEach(() => {

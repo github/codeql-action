@@ -52,7 +52,7 @@ function mockGetMetaVersionHeader(
   };
   const spyGetContents = sinon
     .stub(client.rest.meta, "get")
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   return spyGetContents;

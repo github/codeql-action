@@ -27,6 +27,9 @@
     /* Module Resolution Options */
     "esModuleInterop": true,                  /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
     "resolveJsonModule": true,
+    "paths": {
+      "@octokit/core/types": ["./node_modules/@octokit/core/dist-types/types.d.ts"]
+    },
   },
   "exclude": ["node_modules"]
 }

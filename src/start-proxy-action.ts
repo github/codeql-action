@@ -5,8 +5,11 @@ import * as core from "@actions/core";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
+import { getGitHubVersion } from "./api-client";
+import { Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import { getRepositoryNwo } from "./repository";
 import {
   Credential,
   credentialToStr,
@@ -92,6 +95,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  let features: Features | undefined;
   let language: KnownLanguage | undefined;
 
   try {
@@ -103,9 +107,22 @@ async function run(startedAt: Date) {
     const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
     core.saveState("proxy-log-file", proxyLogFilePath);
 
-    // Get the configuration options
+    // Initialise FFs, but only load them from disk if they are already available.
+    const repositoryNwo = getRepositoryNwo();
+    const gitHubVersion = await getGitHubVersion();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      actionsUtil.getTemporaryDirectory(),
+      logger,
+    );
+
+    // Get the language input.
     const languageInput = actionsUtil.getOptionalInput("language");
     language = languageInput ? parseLanguage(languageInput) : undefined;
+
+    // Get the registry configurations from one of the inputs.
     const credentials = getCredentials(
       logger,
       actionsUtil.getOptionalInput("registry_secrets"),

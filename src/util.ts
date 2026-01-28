@@ -1307,12 +1307,12 @@ export class Result<T, E> {
     public readonly value: T | E,
   ) {}
 
-  /** A success result. */
+  /** Creates a success result. */
   static success<T>(value: T): Success<T> {
     return new Result(true, value) as Success<T>;
   }
 
-  /** A failure result. */
+  /** Creates a failure result. */
   static failure<E>(value: E): Failure<E> {
     return new Result(false, value) as Failure<E>;
   }

@@ -52,7 +52,6 @@ function mockGetMetaVersionHeader(
   };
   const spyGetContents = sinon
     .stub(client.rest.meta, "get")
-
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   return spyGetContents;

@@ -116,7 +116,6 @@ export async function getGitHubVersionFromApi(
 
   // Doesn't strictly have to be the meta endpoint as we're only
   // using the response headers which are available on every request.
-
   const response = await apiClient.rest.meta.get();
 
   // This happens on dotcom, although we expect to have already returned in that

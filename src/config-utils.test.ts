@@ -115,7 +115,6 @@ function mockGetContents(
   };
   const spyGetContents = sinon
     .stub(client.rest.repos, "getContent")
-
     .resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
   sinon.stub(api, "getApiClientWithExternalAuth").value(() => client);
@@ -131,7 +130,6 @@ function mockListLanguages(languages: string[]) {
   for (const language of languages) {
     response.data[language] = 123;
   }
-
   sinon.stub(client.rest.repos, "listLanguages").resolves(response as any);
   sinon.stub(api, "getApiClient").value(() => client);
 }

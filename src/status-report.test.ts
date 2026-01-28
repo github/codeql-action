@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import { Feature, QueriedFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -46,6 +47,10 @@ test("createStatusReportBase", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupEnvironmentAndStub(tmpDir);
 
+    const features: QueriedFeatures = Object.fromEntries(
+      Object.keys(Feature).map((key) => [key, { value: true }]),
+    );
+
     const statusReport = await createStatusReportBase(
       ActionName.Init,
       "failure",
@@ -54,6 +59,7 @@ test("createStatusReportBase", async (t) => {
         buildMode: BuildMode.None,
         languages: [KnownLanguage.java, KnownLanguage.swift],
       }),
+      features,
       { numAvailableBytes: 100, numTotalBytes: 500 },
       getRunnerLogger(false),
       "failure cause",
@@ -75,6 +81,9 @@ test("createStatusReportBase", async (t) => {
       t.is(statusReport.cause, "failure cause");
       t.is(statusReport.commit_oid, process.env["GITHUB_SHA"]!);
       t.is(statusReport.exception, "exception stack trace");
+      if (t.assert(statusReport.feature_flags)) {
+        t.is(statusReport.feature_flags.length, Object.keys(features).length);
+      }
       t.is(statusReport.job_name, process.env["GITHUB_JOB"] || "");
       t.is(typeof statusReport.job_run_uuid, "string");
       t.is(statusReport.languages, "java,swift");
@@ -101,6 +110,7 @@ test("createStatusReportBase - empty configuration", async (t) => {
       "success",
       new Date("May 19, 2023 05:19:00"),
       {},
+      undefined,
       { numAvailableBytes: 100, numTotalBytes: 500 },
       getRunnerLogger(false),
     );
@@ -123,6 +133,7 @@ test("createStatusReportBase - partial configuration", async (t) => {
       {
         languages: ["go"],
       },
+      undefined,
       { numAvailableBytes: 100, numTotalBytes: 500 },
       getRunnerLogger(false),
     );
@@ -146,6 +157,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
+          undefined,
           { numAvailableBytes: 100, numTotalBytes: 500 },
           getRunnerLogger(false),
           "failure cause",
@@ -162,6 +174,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
+          undefined,
           { numAvailableBytes: 100, numTotalBytes: 500 },
           getRunnerLogger(false),
           "failure cause",
@@ -179,6 +192,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
+          undefined,
           { numAvailableBytes: 100, numTotalBytes: 500 },
           getRunnerLogger(false),
           "failure cause",
@@ -195,6 +209,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
+          undefined,
           { numAvailableBytes: 100, numTotalBytes: 500 },
           getRunnerLogger(false),
           "failure cause",
@@ -212,6 +227,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
+          undefined,
           { numAvailableBytes: 100, numTotalBytes: 500 },
           getRunnerLogger(false),
           "failure cause",
@@ -228,6 +244,7 @@ test("createStatusReportBase_firstParty", async (t) => {
           "failure",
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
+          undefined,
           { numAvailableBytes: 100, numTotalBytes: 500 },
           getRunnerLogger(false),
           "failure cause",
@@ -307,6 +324,7 @@ const testCreateInitWithConfigStatusReport = test.macro({
         "failure",
         new Date("May 19, 2023 05:19:00"),
         config,
+        undefined,
         { numAvailableBytes: 100, numTotalBytes: 500 },
         getRunnerLogger(false),
         "failure cause",

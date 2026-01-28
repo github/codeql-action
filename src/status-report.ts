@@ -16,6 +16,7 @@ import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
 import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
+import { QueriedFeatures, QueriedFeatureStatus } from "./feature-flags";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
 import { OverlayBaseDatabaseDownloadStats } from "./overlay-database-utils";
@@ -83,6 +84,12 @@ export enum JobStatus {
   ConfigErrorStatus = "JOB_STATUS_CONFIGURATION_ERROR",
 }
 
+/** Information about the outcome of a querying a feature flag during this step. */
+export interface QueriedFeatureStatusReport extends QueriedFeatureStatus {
+  // The name of the feature.
+  feature: string;
+}
+
 export interface StatusReportBase {
   /** Name of the action being executed. */
   action_name: ActionName;
@@ -112,6 +119,8 @@ export interface StatusReportBase {
   completed_at?: string;
   /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
+  /** Outcomes of querying feature flags during this step. */
+  feature_flags?: QueriedFeatureStatusReport[];
   /** Whether this is a first-party (CodeQL) run of the action. */
   first_party_analysis: boolean;
   /** Job name from the workflow. */
@@ -253,6 +262,10 @@ export interface EventReport {
  * @param actionName The name of the action, e.g. 'init', 'finish', 'upload-sarif'
  * @param status The status. Must be 'success', 'failure', or 'starting'
  * @param actionStartedAt The time this action started executing.
+ * @param config The configuration for the action, even partially, if any.
+ * @param queriedFeatures Information about queried feature flags, if available.
+ * @param diskInfo Information about disk usage, if available.
+ * @param logger The logger to use.
  * @param cause  Cause of failure (only supply if status is 'failure')
  * @param exception Exception (only supply if status is 'failure')
  * @returns undefined if an exception was thrown.
@@ -262,6 +275,7 @@ export async function createStatusReportBase(
   status: ActionStatus,
   actionStartedAt: Date,
   config: Partial<Config> | undefined,
+  queriedFeatures: QueriedFeatures | undefined,
   diskInfo: DiskUsage | undefined,
   logger: Logger,
   cause?: string,
@@ -294,6 +308,10 @@ export async function createStatusReportBase(
     const isSteadyStateDefaultSetupRun =
       process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";
 
+    const featureFlags: QueriedFeatureStatusReport[] = Object.entries(
+      queriedFeatures || {},
+    ).map(([feature, outcome]) => ({ feature, ...outcome }));
+
     const statusReport: StatusReportBase = {
       action_name: actionName,
       action_oid: "unknown", // TODO decide if it's possible to fill this in
@@ -304,6 +322,7 @@ export async function createStatusReportBase(
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,
+      feature_flags: featureFlags,
       first_party_analysis: isFirstPartyAnalysis(actionName),
       job_name: jobName,
       job_run_uuid: jobRunUUID,
@@ -623,6 +642,7 @@ export async function sendUnhandledErrorStatusReport(
       "failure",
       actionStartedAt,
       undefined,
+      {},
       undefined,
       logger,
       `Unhandled CodeQL Action error: ${getErrorMessage(error)}`,

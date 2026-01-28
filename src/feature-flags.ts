@@ -353,6 +353,9 @@ export interface QueriedFeatureStatus {
   value: boolean;
 }
 
+/** A partial mapping of feature flags to the outcome of querying them. */
+export type QueriedFeatures = Partial<Record<Feature, QueriedFeatureStatus>>;
+
 export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
 
 /**
@@ -364,7 +367,7 @@ export class Features implements FeatureEnablement {
   private gitHubFeatureFlags: GitHubFeatureFlags;
 
   // Tracks features that have been queried at some point and the outcome.
-  private queriedFeatures: Partial<Record<Feature, QueriedFeatureStatus>> = {};
+  private queriedFeatures: QueriedFeatures = {};
 
   constructor(
     gitHubVersion: util.GitHubVersion,

@@ -370,7 +370,7 @@ export class Features implements FeatureEnablement {
   private queriedFeatures: QueriedFeatures = {};
 
   constructor(
-    gitHubVersion: util.GitHubVersion,
+    gitHubVersion: util.GitHubVersion | undefined,
     repositoryNwo: RepositoryNwo,
     tempDir: string,
     private readonly logger: Logger,
@@ -515,7 +515,7 @@ class GitHubFeatureFlags {
   private hasAccessedRemoteFeatureFlags: boolean;
 
   constructor(
-    private readonly gitHubVersion: util.GitHubVersion,
+    private readonly gitHubVersion: util.GitHubVersion | undefined,
     private readonly repositoryNwo: RepositoryNwo,
     private readonly featureFlagsFile: string,
     private readonly logger: Logger,
@@ -683,6 +683,15 @@ class GitHubFeatureFlags {
   }
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
+    // Do nothing if we don't know what GitHub instance we are running on.
+    if (this.gitHubVersion === undefined) {
+      this.logger.debug(
+        "No GitHub version. Disabling all toggleable features.",
+      );
+      this.hasAccessedRemoteFeatureFlags = false;
+      return {};
+    }
+
     // Do nothing when not running against github.com
     if (!supportsFeatureFlags(this.gitHubVersion.type)) {
       this.logger.debug(

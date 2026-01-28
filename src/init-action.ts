@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
+import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -30,14 +31,18 @@ import {
 } from "./dependency-caching";
 import {
   addDiagnostic,
+  addNoLanguageDiagnostic,
   flushDiagnostics,
   logUnwrittenDiagnostics,
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
-import { loadPropertiesFromApi } from "./feature-flags/properties";
+import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import {
+  loadPropertiesFromApi,
+  RepositoryProperties,
+} from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -54,7 +59,7 @@ import {
   OverlayBaseDatabaseDownloadStats,
   OverlayDatabaseMode,
 } from "./overlay-database-utils";
-import { getRepositoryNwo } from "./repository";
+import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -88,6 +93,8 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
+  GitHubVersion,
+  Result,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -238,12 +245,12 @@ async function run(startedAt: Date) {
     );
 
     // Fetch the values of known repository properties that affect us.
-    const enableRepoProps = await features.getValue(
-      Feature.UseRepositoryProperties,
+    const repositoryPropertiesResult = await loadRepositoryProperties(
+      repositoryNwo,
+      gitHubVersion,
+      features,
+      logger,
     );
-    const repositoryProperties = enableRepoProps
-      ? await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo)
-      : {};
 
     // Create a unique identifier for this run.
     const jobRunUuid = uuidV4();
@@ -365,7 +372,7 @@ async function run(startedAt: Date) {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
-      repositoryProperties,
+      repositoryProperties: repositoryPropertiesResult.orElse({}),
       enableFileCoverageInformation: await getFileCoverageInformationEnabled(
         debugMode,
         repositoryNwo,
@@ -373,6 +380,19 @@ async function run(startedAt: Date) {
       ),
       logger,
     });
+
+    if (repositoryPropertiesResult.isFailure()) {
+      addNoLanguageDiagnostic(
+        config,
+        makeTelemetryDiagnostic(
+          "codeql-action/repository-properties-load-failure",
+          "Failed to load repository properties",
+          {
+            error: getErrorMessage(repositoryPropertiesResult.value),
+          },
+        ),
+      );
+    }
 
     await checkInstallPython311(config.languages, codeql);
   } catch (unwrappedError) {
@@ -436,11 +456,8 @@ async function run(startedAt: Date) {
 
     // Log CodeQL download telemetry, if appropriate
     if (toolsDownloadStatusReport) {
-      addDiagnostic(
+      addNoLanguageDiagnostic(
         config,
-        // Arbitrarily choose the first language. We could also choose all languages, but that
-        // increases the risk of misinterpreting the data.
-        config.languages[0],
         makeTelemetryDiagnostic(
           "codeql-action/bundle-download-telemetry",
           "CodeQL bundle download telemetry",
@@ -782,6 +799,49 @@ async function run(startedAt: Date) {
   );
 }
 
+/**
+ * Loads [repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) if applicable.
+ */
+async function loadRepositoryProperties(
+  repositoryNwo: RepositoryNwo,
+  gitHubVersion: GitHubVersion,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<Result<RepositoryProperties, unknown>> {
+  // See if we can skip loading repository properties early. In particular,
+  // repositories owned by users cannot have repository properties, so we can
+  // skip the API call entirely in that case.
+  const repositoryOwnerType = github.context.payload.repository?.owner.type;
+  logger.debug(
+    `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
+  );
+  if (repositoryOwnerType === "User") {
+    logger.debug(
+      "Skipping loading repository properties because the repository is owned by a user and " +
+        "therefore cannot have repository properties.",
+    );
+    return Result.success({});
+  }
+
+  if (!(await features.getValue(Feature.UseRepositoryProperties))) {
+    logger.debug(
+      "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
+    );
+    return Result.success({});
+  }
+
+  try {
+    return Result.success(
+      await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
+    );
+  } catch (error) {
+    logger.warning(
+      `Failed to load repository properties: ${getErrorMessage(error)}`,
+    );
+    return Result.failure(error);
+  }
+}
+
 function getTrapCachingEnabled(): boolean {
   // If the workflow specified something always respect that
   const trapCaching = getOptionalInput("trap-caching");
@@ -798,11 +858,8 @@ async function recordZstdAvailability(
   config: configUtils.Config,
   zstdAvailability: ZstdAvailability,
 ) {
-  addDiagnostic(
+  addNoLanguageDiagnostic(
     config,
-    // Arbitrarily choose the first language. We could also choose all languages, but that
-    // increases the risk of misinterpreting the data.
-    config.languages[0],
     makeTelemetryDiagnostic(
       "codeql-action/zstd-availability",
       "Zstandard availability",

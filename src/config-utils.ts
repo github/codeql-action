@@ -26,7 +26,10 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
-import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
+import {
+  addNoLanguageDiagnostic,
+  makeTelemetryDiagnostic,
+} from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
@@ -1416,11 +1419,8 @@ async function logGitVersionTelemetry(
   gitVersion: GitVersionInfo,
 ): Promise<void> {
   if (config.languages.length > 0) {
-    addDiagnostic(
+    addNoLanguageDiagnostic(
       config,
-      // Arbitrarily choose the first language. We could also choose all languages, but that
-      // increases the risk of misinterpreting the data.
-      config.languages[0],
       makeTelemetryDiagnostic(
         "codeql-action/git-version-telemetry",
         "Git version telemetry",
@@ -1446,11 +1446,8 @@ async function logGeneratedFilesTelemetry(
     return;
   }
 
-  addDiagnostic(
+  addNoLanguageDiagnostic(
     config,
-    // Arbitrarily choose the first language. We could also choose all languages, but that
-    // increases the risk of misinterpreting the data.
-    config.languages[0],
     makeTelemetryDiagnostic(
       "codeql-action/generated-files-telemetry",
       "Generated files telemetry",

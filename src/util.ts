@@ -1292,3 +1292,43 @@ export function joinAtMost(
 
   return array.join(separator);
 }
+
+/** A success result. */
+type Success<T> = Result<T, never>;
+/** A failure result. */
+type Failure<E> = Result<never, E>;
+
+/**
+ * A simple result type representing either a success or a failure.
+ */
+export class Result<T, E> {
+  private constructor(
+    private readonly _ok: boolean,
+    public readonly value: T | E,
+  ) {}
+
+  /** Creates a success result. */
+  static success<T>(value: T): Success<T> {
+    return new Result(true, value) as Success<T>;
+  }
+
+  /** Creates a failure result. */
+  static failure<E>(value: E): Failure<E> {
+    return new Result(false, value) as Failure<E>;
+  }
+
+  /** Whether this result represents a success. */
+  isSuccess(): this is Success<T> {
+    return this._ok;
+  }
+
+  /** Whether this result represents a failure. */
+  isFailure(): this is Failure<E> {
+    return !this._ok;
+  }
+
+  /** Get the value if this is a success, or return the default value if this is a failure. */
+  orElse<U>(defaultValue: U): T | U {
+    return this.isSuccess() ? this.value : defaultValue;
+  }
+}

@@ -50,6 +50,7 @@ async function run(startedAt: Date) {
 
   const logger = getActionsLogger();
   let config: Config | undefined;
+  let features: Features | undefined = undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
@@ -62,7 +63,7 @@ async function run(startedAt: Date) {
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     const repositoryNwo = getRepositoryNwo();
-    const features = new Features(
+    features = new Features(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),
@@ -107,6 +108,7 @@ async function run(startedAt: Date) {
       getActionsStatus(error),
       startedAt,
       config,
+      features?.getQueriedFeatures(),
       await checkDiskUsage(logger),
       logger,
       error.message,
@@ -125,6 +127,7 @@ async function run(startedAt: Date) {
     "success",
     startedAt,
     config,
+    features.getQueriedFeatures(),
     await checkDiskUsage(logger),
     logger,
   );

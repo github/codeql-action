@@ -42,6 +42,7 @@ import {
  */
 async function sendCompletedStatusReport(
   startedAt: Date,
+  features: Features | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -54,6 +55,7 @@ async function sendCompletedStatusReport(
     getActionsStatus(error),
     startedAt,
     undefined,
+    features?.getQueriedFeatures(),
     await checkDiskUsage(logger),
     logger,
     error?.message,
@@ -97,6 +99,7 @@ async function run(startedAt: Date): Promise<void> {
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
+  let features: Features | undefined = undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -114,7 +117,7 @@ async function run(startedAt: Date): Promise<void> {
 
     const repositoryNwo = getRepositoryNwo();
 
-    const features = new Features(
+    features = new Features(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),
@@ -130,6 +133,7 @@ async function run(startedAt: Date): Promise<void> {
       "starting",
       startedAt,
       undefined,
+      features.getQueriedFeatures(),
       await checkDiskUsage(logger),
       logger,
     );
@@ -166,6 +170,7 @@ async function run(startedAt: Date): Promise<void> {
       error instanceof ConfigurationError ? "user-error" : "failure",
       startedAt,
       undefined,
+      features?.getQueriedFeatures(),
       await checkDiskUsage(logger),
       logger,
       error.message,
@@ -179,6 +184,7 @@ async function run(startedAt: Date): Promise<void> {
 
   await sendCompletedStatusReport(
     startedAt,
+    features,
     toolsDownloadStatusReport,
     toolsFeatureFlagsValid,
     toolsSource,

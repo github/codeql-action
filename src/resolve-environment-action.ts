@@ -44,6 +44,7 @@ async function run(startedAt: Date) {
       "starting",
       startedAt,
       config,
+      undefined,
       await checkDiskUsage(logger),
       logger,
     );
@@ -91,6 +92,7 @@ async function run(startedAt: Date) {
         getActionsStatus(error),
         startedAt,
         config,
+        undefined,
         await checkDiskUsage(logger),
         logger,
         error.message,
@@ -109,6 +111,7 @@ async function run(startedAt: Date) {
     "success",
     startedAt,
     config,
+    undefined,
     await checkDiskUsage(logger),
     logger,
   );

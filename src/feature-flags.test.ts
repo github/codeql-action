@@ -92,6 +92,31 @@ test(`Feature flags are requested in GHEC-DR`, async (t) => {
   });
 });
 
+test("Queried feature flags are recorded", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const loggedMessages = [];
+    const features = setUpFeatureFlagTests(
+      tmpDir,
+      getRecordingLogger(loggedMessages),
+      { type: GitHubVariant.DOTCOM },
+    );
+
+    mockFeatureFlagApiEndpoint(200, initializeFeatures(true));
+
+    // No features should have been queried initially.
+    t.is(Object.keys(features.getQueriedFeatures()).length, 0);
+
+    // Query all features.
+    const allFeatures = Object.values(Feature);
+    for (const feature of allFeatures) {
+      await getFeatureIncludingCodeQlIfRequired(features, feature);
+    }
+
+    // All features should have a been queried.
+    t.is(Object.keys(features.getQueriedFeatures()).length, allFeatures.length);
+  });
+});
+
 test("API response missing and features use default value", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
@@ -562,7 +587,7 @@ function setUpFeatureFlagTests(
   tmpDir: string,
   logger = getRunnerLogger(true),
   gitHubVersion = { type: GitHubVariant.DOTCOM } as util.GitHubVersion,
-): FeatureEnablement {
+): Features {
   setupActionsVars(tmpDir, tmpDir);
 
   return new Features(gitHubVersion, testRepositoryNwo, tmpDir, logger);

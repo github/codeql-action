@@ -1,7 +1,13 @@
+import * as path from "path";
+
 import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 
-import { getApiClient } from "./api-client";
+import {
+  getApiClient,
+  getApiDetails,
+  getAuthorizationHeaderFor,
+} from "./api-client";
 import * as artifactScanner from "./artifact-scanner";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
@@ -459,23 +465,57 @@ export async function extractProxy(logger: Logger, archive: string) {
  * Attempts to store the proxy in the toolcache.
  *
  * @param logger The logger to use.
- * @param path The source path to add to the toolcache.
+ * @param source The source path to add to the toolcache.
  * @param filename The filename of the proxy binary.
  * @param version The version of the proxy.
  * @returns The path to the directory in the toolcache.
  */
 export async function cacheProxy(
   logger: Logger,
-  path: string,
+  source: string,
   filename: string,
   version: string,
 ) {
   try {
-    return await toolcache.cacheDir(path, filename, version);
+    return await toolcache.cacheDir(source, filename, version);
   } catch (error) {
     logger.error(
-      `Failed to add proxy archive from ${path} to toolcache: ${getErrorMessage(error)}`,
+      `Failed to add proxy archive from ${source} to toolcache: ${getErrorMessage(error)}`,
     );
     throw new StartProxyError(StartProxyErrorType.CacheFailed);
   }
+}
+
+/**
+ * Gets a path to the proxy binary. If possible, this function will find the proxy in the
+ * runner's tool cache. Otherwise, it downloads and extracts the proxy binary,
+ * and stores it in the tool cache.
+ *
+ * @param logger The logger to use.
+ * @returns The path to the proxy binary.
+ */
+export async function getProxyBinaryPath(logger: Logger): Promise<string> {
+  const proxyFileName =
+    process.platform === "win32" ? `${UPDATEJOB_PROXY}.exe` : UPDATEJOB_PROXY;
+  const proxyInfo = await getDownloadUrl(logger);
+
+  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
+  if (!proxyBin) {
+    const apiDetails = getApiDetails();
+    const authorization = getAuthorizationHeaderFor(
+      logger,
+      apiDetails,
+      proxyInfo.url,
+    );
+    const temp = await downloadProxy(logger, proxyInfo.url, authorization);
+    const extracted = await extractProxy(logger, temp);
+    proxyBin = await cacheProxy(
+      logger,
+      extracted,
+      proxyFileName,
+      proxyInfo.version,
+    );
+  }
+  proxyBin = path.join(proxyBin, proxyFileName);
+  return proxyBin;
 }

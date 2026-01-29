@@ -2,25 +2,19 @@ import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
-import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
-  cacheProxy,
   Credential,
   credentialToStr,
-  downloadProxy,
-  extractProxy,
   getCredentials,
-  getDownloadUrl,
+  getProxyBinaryPath,
   parseLanguage,
   sendFailedStatusReport,
   sendSuccessStatusReport,
-  UPDATEJOB_PROXY,
 } from "./start-proxy";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
@@ -226,32 +220,6 @@ async function startProxy(
       url: credential.url,
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
-}
-
-async function getProxyBinaryPath(logger: Logger): Promise<string> {
-  const proxyFileName =
-    process.platform === "win32" ? `${UPDATEJOB_PROXY}.exe` : UPDATEJOB_PROXY;
-  const proxyInfo = await getDownloadUrl(logger);
-
-  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
-  if (!proxyBin) {
-    const apiDetails = getApiDetails();
-    const authorization = getAuthorizationHeaderFor(
-      logger,
-      apiDetails,
-      proxyInfo.url,
-    );
-    const temp = await downloadProxy(logger, proxyInfo.url, authorization);
-    const extracted = await extractProxy(logger, temp);
-    proxyBin = await cacheProxy(
-      logger,
-      extracted,
-      proxyFileName,
-      proxyInfo.version,
-    );
-  }
-  proxyBin = path.join(proxyBin, proxyFileName);
-  return proxyBin;
 }
 
 void runWrapper();

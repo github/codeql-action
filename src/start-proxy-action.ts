@@ -7,7 +7,6 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
-import { Config } from "./config-utils";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
@@ -16,6 +15,7 @@ import {
   getCredentials,
   getDownloadUrl,
   parseLanguage,
+  sendSuccessStatusReport,
   UPDATEJOB_PROXY,
 } from "./start-proxy";
 import {
@@ -24,7 +24,6 @@ import {
   getActionsStatus,
   sendStatusReport,
   sendUnhandledErrorStatusReport,
-  StatusReportBase,
 } from "./status-report";
 import * as util from "./util";
 
@@ -93,35 +92,6 @@ function generateCertificateAuthority(): CertificateAuthority {
   const pem = pki.certificateToPem(cert);
   const key = pki.privateKeyToPem(keys.privateKey);
   return { cert: pem, key };
-}
-
-interface StartProxyStatus extends StatusReportBase {
-  // A comma-separated list of registry types which are configured for CodeQL.
-  // This only includes registry types we support, not all that are configured.
-  registry_types: string;
-}
-
-async function sendSuccessStatusReport(
-  startedAt: Date,
-  config: Partial<Config>,
-  registry_types: string[],
-  logger: Logger,
-) {
-  const statusReportBase = await createStatusReportBase(
-    ActionName.StartProxy,
-    "success",
-    startedAt,
-    config,
-    await util.checkDiskUsage(logger),
-    logger,
-  );
-  if (statusReportBase !== undefined) {
-    const statusReport: StartProxyStatus = {
-      ...statusReportBase,
-      registry_types: registry_types.join(","),
-    };
-    await sendStatusReport(statusReport);
-  }
 }
 
 async function run(startedAt: Date) {

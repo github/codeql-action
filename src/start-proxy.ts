@@ -2,10 +2,55 @@ import * as core from "@actions/core";
 
 import { getApiClient } from "./api-client";
 import * as artifactScanner from "./artifact-scanner";
+import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
+import {
+  ActionName,
+  createStatusReportBase,
+  sendStatusReport,
+  StatusReportBase,
+} from "./status-report";
+import * as util from "./util";
 import { ConfigurationError, getErrorMessage, isDefined } from "./util";
+
+interface StartProxyStatus extends StatusReportBase {
+  // A comma-separated list of registry types which are configured for CodeQL.
+  // This only includes registry types we support, not all that are configured.
+  registry_types: string;
+}
+
+/**
+ * Sends a status report for the `start-proxy` action indicating a successful outcome.
+ *
+ * @param startedAt When the action was started.
+ * @param config The configuration used.
+ * @param registry_types The types of registries that are configured.
+ * @param logger The logger to use.
+ */
+export async function sendSuccessStatusReport(
+  startedAt: Date,
+  config: Partial<Config>,
+  registry_types: string[],
+  logger: Logger,
+) {
+  const statusReportBase = await createStatusReportBase(
+    ActionName.StartProxy,
+    "success",
+    startedAt,
+    config,
+    await util.checkDiskUsage(logger),
+    logger,
+  );
+  if (statusReportBase !== undefined) {
+    const statusReport: StartProxyStatus = {
+      ...statusReportBase,
+      registry_types: registry_types.join(","),
+    };
+    await sendStatusReport(statusReport);
+  }
+}
 
 export const UPDATEJOB_PROXY = "update-job-proxy";
 export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";

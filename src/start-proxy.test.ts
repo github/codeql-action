@@ -1,3 +1,4 @@
+import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 import test from "ava";
 import sinon from "sinon";
@@ -8,6 +9,7 @@ import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import * as startProxyExports from "./start-proxy";
 import { parseLanguage } from "./start-proxy";
+import * as statusReport from "./status-report";
 import {
   checkExpectedLogMessages,
   getRecordingLogger,
@@ -16,6 +18,51 @@ import {
 } from "./testing-utils";
 
 setupTests(test);
+
+test("sendFailedStatusReport - does not report arbitrary error messages", async (t) => {
+  const loggedMessages = [];
+  const logger = getRecordingLogger(loggedMessages);
+  const error = new Error(startProxyExports.StartProxyErrorType.DownloadFailed);
+  const now = new Date();
+
+  // Override core.setFailed to avoid it setting the program's exit code
+  sinon.stub(core, "setFailed").returns();
+
+  const createStatusReportBase = sinon.stub(
+    statusReport,
+    "createStatusReportBase",
+  );
+  createStatusReportBase.resolves(undefined);
+
+  await startProxyExports.sendFailedStatusReport(logger, now, undefined, error);
+
+  // Check that the stub has been called exactly once, with the expected arguments,
+  // but not with the message from the error.
+  t.assert(createStatusReportBase.calledOnce);
+  t.assert(
+    createStatusReportBase.calledWith(
+      statusReport.ActionName.StartProxy,
+      "failure",
+      now,
+      sinon.match.any,
+      sinon.match.any,
+      sinon.match.any,
+    ),
+    "createStatusReportBase wasn't called with the expected arguments",
+  );
+  t.false(
+    createStatusReportBase.calledWith(
+      statusReport.ActionName.StartProxy,
+      "failure",
+      now,
+      sinon.match.any,
+      sinon.match.any,
+      sinon.match.any,
+      sinon.match((msg: string) => msg.includes(error.message)),
+    ),
+    "createStatusReportBase was called with the error message",
+  );
+});
 
 const toEncodedJSON = (data: any) =>
   Buffer.from(JSON.stringify(data)).toString("base64");

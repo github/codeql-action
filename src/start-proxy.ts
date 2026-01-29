@@ -9,6 +9,7 @@ import { Logger } from "./logging";
 import {
   ActionName,
   createStatusReportBase,
+  getActionsStatus,
   sendStatusReport,
   StatusReportBase,
 } from "./status-report";
@@ -49,6 +50,41 @@ export async function sendSuccessStatusReport(
       registry_types: registry_types.join(","),
     };
     await sendStatusReport(statusReport);
+  }
+}
+
+/**
+ * Sends a status report for the `start-proxy` action indicating a failure.
+ *
+ * @param logger The logger to use.
+ * @param startedAt When the action was started.
+ * @param language The language provided as input, if any.
+ * @param unwrappedError The exception that was thrown.
+ */
+export async function sendFailedStatusReport(
+  logger: Logger,
+  startedAt: Date,
+  language: KnownLanguage | undefined,
+  unwrappedError: unknown,
+) {
+  const error = util.wrapError(unwrappedError);
+  core.setFailed(`start-proxy action failed: ${error.message}`);
+
+  // We skip sending the error message and stack trace here to avoid the possibility
+  // of leaking any sensitive information into the telemetry.
+  const errorStatusReportBase = await createStatusReportBase(
+    ActionName.StartProxy,
+    getActionsStatus(error),
+    startedAt,
+    {
+      languages: language && [language],
+    },
+    await util.checkDiskUsage(logger),
+    logger,
+    "Error from start-proxy Action omitted",
+  );
+  if (errorStatusReportBase !== undefined) {
+    await sendStatusReport(errorStatusReportBase);
   }
 }
 

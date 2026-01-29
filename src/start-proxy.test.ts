@@ -15,6 +15,7 @@ import {
   getRecordingLogger,
   makeTestToken,
   setupTests,
+  withRecordingLoggerAsync,
 } from "./testing-utils";
 
 setupTests(test);
@@ -390,29 +391,29 @@ const wrapFailureTest = test.macro({
     setup: () => void,
     fn: (logger: Logger) => Promise<void>,
   ) => {
-    const loggedMessages = [];
-    const logger = getRecordingLogger(loggedMessages);
-    setup();
+    await withRecordingLoggerAsync(async (logger) => {
+      setup();
 
-    await t.throwsAsync(fn(logger), {
-      instanceOf: startProxyExports.StartProxyError,
+      await t.throwsAsync(fn(logger), {
+        instanceOf: startProxyExports.StartProxyError,
+      });
     });
   },
   title: (providedTitle) => `${providedTitle} - wraps errors on failure`,
 });
 
 test("downloadProxy - returns file path on success", async (t) => {
-  const loggedMessages = [];
-  const logger = getRecordingLogger(loggedMessages);
-  const testPath = "/some/path";
-  sinon.stub(toolcache, "downloadTool").resolves(testPath);
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "downloadTool").resolves(testPath);
 
-  const result = await startProxyExports.downloadProxy(
-    logger,
-    "url",
-    undefined,
-  );
-  t.is(result, testPath);
+    const result = await startProxyExports.downloadProxy(
+      logger,
+      "url",
+      undefined,
+    );
+    t.is(result, testPath);
+  });
 });
 
 test(

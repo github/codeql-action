@@ -473,3 +473,58 @@ test(
     await startProxyExports.cacheProxy(logger, "/other/path", "proxy", "1.0");
   },
 );
+
+test("getProxyBinaryPath - returns path from tool cache if available", async (t) => {
+  mockGetReleaseByTag();
+
+  await withRecordingLoggerAsync(async (logger) => {
+    const toolcachePath = "/path/to/proxy/dir";
+    sinon.stub(toolcache, "find").returns(toolcachePath);
+
+    const path = await startProxyExports.getProxyBinaryPath(logger);
+
+    t.assert(path);
+    t.assert(path.startsWith(toolcachePath));
+  });
+});
+
+test("getProxyBinaryPath - downloads proxy if not in cache", async (t) => {
+  const downloadUrl = "url-we-want";
+  mockGetReleaseByTag([
+    { name: startProxyExports.getProxyPackage(), url: downloadUrl },
+  ]);
+
+  await withRecordingLoggerAsync(async (logger) => {
+    const toolcachePath = "/path/to/proxy/dir";
+    const find = sinon.stub(toolcache, "find").returns("");
+    const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
+      auth: "",
+      url: "",
+      apiURL: "",
+    });
+    const getAuthorizationHeaderFor = sinon
+      .stub(apiClient, "getAuthorizationHeaderFor")
+      .returns(undefined);
+    const archivePath = "/path/to/archive";
+    const downloadTool = sinon
+      .stub(toolcache, "downloadTool")
+      .resolves(archivePath);
+    const extractedPath = "/path/to/extracted";
+    const extractTar = sinon
+      .stub(toolcache, "extractTar")
+      .resolves(extractedPath);
+    const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
+
+    const path = await startProxyExports.getProxyBinaryPath(logger);
+
+    t.assert(find.calledOnce);
+    t.assert(getApiDetails.calledOnce);
+    t.assert(getAuthorizationHeaderFor.calledOnce);
+    t.assert(downloadTool.calledOnceWith(downloadUrl));
+    t.assert(extractTar.calledOnceWith(archivePath));
+    t.assert(cacheDir.calledOnceWith(extractedPath));
+
+    t.assert(path);
+    t.assert(path.startsWith(toolcachePath));
+  });
+});

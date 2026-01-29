@@ -426,3 +426,24 @@ test(
     await startProxyExports.downloadProxy(logger, "url", undefined);
   },
 );
+
+test("extractProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "extractTar").resolves(testPath);
+
+    const result = await startProxyExports.extractProxy(logger, "/other/path");
+    t.is(result, testPath);
+  });
+});
+
+test(
+  "extractProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "extractTar").throws();
+  },
+  async (logger) => {
+    await startProxyExports.extractProxy(logger, "path");
+  },
+);

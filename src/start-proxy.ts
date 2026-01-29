@@ -23,6 +23,7 @@ import { ConfigurationError, getErrorMessage, isDefined } from "./util";
  */
 export enum StartProxyErrorType {
   DownloadFailed = "Failed to download proxy archive.",
+  ExtractionFailed = "Failed to extract proxy archive.",
 }
 
 /**
@@ -413,7 +414,7 @@ export function credentialToStr(c: Credential): string {
 /**
  * Attempts to download a file from `url` into the toolcache.
  *
- * @param logger THe logger to use.
+ * @param logger The logger to use.
  * @param url The URL to download the proxy binary from.
  * @param authorization The authorization information to use.
  * @returns If successful, the path to the downloaded file.
@@ -432,5 +433,23 @@ export async function downloadProxy(
       `Failed to download proxy archive from ${url}: ${getErrorMessage(error)}`,
     );
     throw new StartProxyError(StartProxyErrorType.DownloadFailed);
+  }
+}
+
+/**
+ * Attempts to extract the proxy binary from the `archive`.
+ *
+ * @param logger The logger to use.
+ * @param archive The archive to extract.
+ * @returns The path to the extracted file(s).
+ */
+export async function extractProxy(logger: Logger, archive: string) {
+  try {
+    return await toolcache.extractTar(archive);
+  } catch (error) {
+    logger.error(
+      `Failed to extract proxy archive from ${archive}: ${getErrorMessage(error)}`,
+    );
+    throw new StartProxyError(StartProxyErrorType.ExtractionFailed);
   }
 }

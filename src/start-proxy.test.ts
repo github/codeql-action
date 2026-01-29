@@ -1,3 +1,4 @@
+import * as toolcache from "@actions/tool-cache";
 import test from "ava";
 import sinon from "sinon";
 
@@ -316,5 +317,49 @@ test("credentialToStr - hides passwords/tokens", (t) => {
     startProxyExports
       .credentialToStr({ token: secret, ...credential })
       .includes(secret),
+  );
+});
+
+test("getSafeErrorMessage - returns actual message for `StartProxyError`", (t) => {
+  const error = new startProxyExports.StartProxyError(
+    startProxyExports.StartProxyErrorType.DownloadFailed,
+  );
+  t.is(startProxyExports.getSafeErrorMessage(error), error.message);
+});
+
+test("getSafeErrorMessage - does not return message for arbitrary errors", (t) => {
+  const error = new Error(startProxyExports.StartProxyErrorType.DownloadFailed);
+
+  const message = startProxyExports.getSafeErrorMessage(error);
+
+  t.not(message, error.message);
+  t.assert(message.startsWith("Error from start-proxy Action omitted"));
+  t.assert(message.includes(typeof error));
+});
+
+test("downloadProxy - returns file path on success", async (t) => {
+  const loggedMessages = [];
+  const logger = getRecordingLogger(loggedMessages);
+  const testPath = "/some/path";
+  sinon.stub(toolcache, "downloadTool").resolves(testPath);
+
+  const result = await startProxyExports.downloadProxy(
+    logger,
+    "url",
+    undefined,
+  );
+  t.is(result, testPath);
+});
+
+test("downloadProxy - wraps errors on failure", async (t) => {
+  const loggedMessages = [];
+  const logger = getRecordingLogger(loggedMessages);
+  sinon.stub(toolcache, "downloadTool").throws();
+
+  await t.throwsAsync(
+    startProxyExports.downloadProxy(logger, "url", undefined),
+    {
+      instanceOf: startProxyExports.StartProxyError,
+    },
   );
 });

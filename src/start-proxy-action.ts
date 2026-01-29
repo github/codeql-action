@@ -12,6 +12,7 @@ import {
   credentialToStr,
   getCredentials,
   getProxyBinaryPath,
+  getSafeErrorMessage,
   parseLanguage,
   sendFailedStatusReport,
   sendSuccessStatusReport,
@@ -159,7 +160,7 @@ async function runWrapper() {
     await sendUnhandledErrorStatusReport(
       ActionName.StartProxy,
       startedAt,
-      new Error("Error from start-proxy Action omitted"),
+      getSafeErrorMessage(util.wrapError(error)),
       logger,
     );
   }

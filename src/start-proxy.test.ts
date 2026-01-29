@@ -301,3 +301,20 @@ test("getDownloadUrl returns matching release asset", async (t) => {
   t.is(info.version, defaults.cliVersion);
   t.is(info.url, "url-we-want");
 });
+
+test("credentialToStr - hides passwords/tokens", (t) => {
+  const secret = "password123";
+  const credential = {
+    type: "maven_credential",
+  };
+  t.false(
+    startProxyExports
+      .credentialToStr({ password: secret, ...credential })
+      .includes(secret),
+  );
+  t.false(
+    startProxyExports
+      .credentialToStr({ token: secret, ...credential })
+      .includes(secret),
+  );
+});

@@ -12,6 +12,7 @@ import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
   Credential,
+  credentialToStr,
   getCredentials,
   getDownloadUrl,
   parseLanguage,
@@ -307,12 +308,6 @@ async function getProxyBinaryPath(logger: Logger): Promise<string> {
   }
   proxyBin = path.join(proxyBin, proxyFileName);
   return proxyBin;
-}
-
-function credentialToStr(c: Credential): string {
-  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
-    c.username
-  }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
 }
 
 void runWrapper();

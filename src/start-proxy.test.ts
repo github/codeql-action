@@ -447,3 +447,29 @@ test(
     await startProxyExports.extractProxy(logger, "path");
   },
 );
+
+test("cacheProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "cacheDir").resolves(testPath);
+
+    const result = await startProxyExports.cacheProxy(
+      logger,
+      "/other/path",
+      "proxy",
+      "1.0",
+    );
+    t.is(result, testPath);
+  });
+});
+
+test(
+  "cacheProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "cacheDir").throws();
+  },
+  async (logger) => {
+    await startProxyExports.cacheProxy(logger, "/other/path", "proxy", "1.0");
+  },
+);

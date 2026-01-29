@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import * as toolcache from "@actions/tool-cache";
 
 import { getApiClient } from "./api-client";
 import * as artifactScanner from "./artifact-scanner";
@@ -15,6 +16,26 @@ import {
 } from "./status-report";
 import * as util from "./util";
 import { ConfigurationError, getErrorMessage, isDefined } from "./util";
+
+/**
+ * Enumerates specific error types, along with suitable error messages, for errors
+ * that we want to track in status reports.
+ */
+export enum StartProxyErrorType {
+  DownloadFailed = "Failed to download proxy archive.",
+}
+
+/**
+ * We want to avoid accidentally leaking secrets that may be contained in exception
+ * messages in the `start-proxy` action. Consequently, we don't report the messages
+ * of arbitrary exceptions. This type of error ensures that the message is one from
+ * `StartProxyErrorType` and therefore safe to include in a status report.
+ */
+export class StartProxyError extends Error {
+  constructor(errorType: StartProxyErrorType) {
+    super(errorType);
+  }
+}
 
 interface StartProxyStatus extends StatusReportBase {
   // A comma-separated list of registry types which are configured for CodeQL.
@@ -54,6 +75,23 @@ export async function sendSuccessStatusReport(
 }
 
 /**
+ * Returns an error message for `error` that can safely be reported in a status report,
+ * i.e. that does not contain sensitive information.
+ *
+ * @param error The error for which to get an error message.
+ */
+export function getSafeErrorMessage(error: Error): string {
+  // If the error is a `StartProxyError`, the constructor ensures that the
+  // message comes from `StartProxyErrorType`.
+  if (error instanceof StartProxyError) {
+    return error.message;
+  }
+
+  // Otherwise, omit the actual error message.
+  return `Error from start-proxy Action omitted (${typeof error}).`;
+}
+
+/**
  * Sends a status report for the `start-proxy` action indicating a failure.
  *
  * @param logger The logger to use.
@@ -70,6 +108,8 @@ export async function sendFailedStatusReport(
   const error = util.wrapError(unwrappedError);
   core.setFailed(`start-proxy action failed: ${error.message}`);
 
+  const statusReportMessage = getSafeErrorMessage(error);
+
   // We skip sending the error message and stack trace here to avoid the possibility
   // of leaking any sensitive information into the telemetry.
   const errorStatusReportBase = await createStatusReportBase(
@@ -81,7 +121,7 @@ export async function sendFailedStatusReport(
     },
     await util.checkDiskUsage(logger),
     logger,
-    "Error from start-proxy Action omitted",
+    statusReportMessage,
   );
   if (errorStatusReportBase !== undefined) {
     await sendStatusReport(errorStatusReportBase);
@@ -368,4 +408,29 @@ export function credentialToStr(c: Credential): string {
   return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
     c.username
   }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
+}
+
+/**
+ * Attempts to download a file from `url` into the toolcache.
+ *
+ * @param logger THe logger to use.
+ * @param url The URL to download the proxy binary from.
+ * @param authorization The authorization information to use.
+ * @returns If successful, the path to the downloaded file.
+ */
+export async function downloadProxy(
+  logger: Logger,
+  url: string,
+  authorization: string | undefined,
+) {
+  try {
+    return toolcache.downloadTool(url, undefined, authorization, {
+      accept: "application/octet-stream",
+    });
+  } catch (error) {
+    logger.error(
+      `Failed to download proxy archive from ${url}: ${getErrorMessage(error)}`,
+    );
+    throw new StartProxyError(StartProxyErrorType.DownloadFailed);
+  }
 }

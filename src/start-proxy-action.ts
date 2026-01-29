@@ -12,6 +12,7 @@ import { getActionsLogger, Logger } from "./logging";
 import {
   Credential,
   credentialToStr,
+  downloadProxy,
   getCredentials,
   getDownloadUrl,
   parseLanguage,
@@ -238,14 +239,7 @@ async function getProxyBinaryPath(logger: Logger): Promise<string> {
       apiDetails,
       proxyInfo.url,
     );
-    const temp = await toolcache.downloadTool(
-      proxyInfo.url,
-      undefined,
-      authorization,
-      {
-        accept: "application/octet-stream",
-      },
-    );
+    const temp = await downloadProxy(logger, proxyInfo.url, authorization);
     const extracted = await toolcache.extractTar(temp);
     proxyBin = await toolcache.cacheDir(
       extracted,

@@ -15,16 +15,11 @@ import {
   getCredentials,
   getDownloadUrl,
   parseLanguage,
+  sendFailedStatusReport,
   sendSuccessStatusReport,
   UPDATEJOB_PROXY,
 } from "./start-proxy";
-import {
-  ActionName,
-  createStatusReportBase,
-  getActionsStatus,
-  sendStatusReport,
-  sendUnhandledErrorStatusReport,
-} from "./status-report";
+import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
 
 const KEY_SIZE = 2048;
@@ -152,25 +147,7 @@ async function run(startedAt: Date) {
       logger,
     );
   } catch (unwrappedError) {
-    const error = util.wrapError(unwrappedError);
-    core.setFailed(`start-proxy action failed: ${error.message}`);
-
-    // We skip sending the error message and stack trace here to avoid the possibility
-    // of leaking any sensitive information into the telemetry.
-    const errorStatusReportBase = await createStatusReportBase(
-      ActionName.StartProxy,
-      getActionsStatus(error),
-      startedAt,
-      {
-        languages: language && [language],
-      },
-      await util.checkDiskUsage(logger),
-      logger,
-      "Error from start-proxy Action omitted",
-    );
-    if (errorStatusReportBase !== undefined) {
-      await sendStatusReport(errorStatusReportBase);
-    }
+    await sendFailedStatusReport(logger, startedAt, language, unwrappedError);
   }
 }
 

@@ -1,12 +1,12 @@
 import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
-import test from "ava";
+import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
+import { getRunnerLogger, Logger } from "./logging";
 import * as startProxyExports from "./start-proxy";
 import { parseLanguage } from "./start-proxy";
 import * as statusReport from "./status-report";
@@ -384,6 +384,23 @@ test("getSafeErrorMessage - does not return message for arbitrary errors", (t) =
   t.assert(message.includes(typeof error));
 });
 
+const wrapFailureTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    setup: () => void,
+    fn: (logger: Logger) => Promise<void>,
+  ) => {
+    const loggedMessages = [];
+    const logger = getRecordingLogger(loggedMessages);
+    setup();
+
+    await t.throwsAsync(fn(logger), {
+      instanceOf: startProxyExports.StartProxyError,
+    });
+  },
+  title: (providedTitle) => `${providedTitle} - wraps errors on failure`,
+});
+
 test("downloadProxy - returns file path on success", async (t) => {
   const loggedMessages = [];
   const logger = getRecordingLogger(loggedMessages);
@@ -398,15 +415,13 @@ test("downloadProxy - returns file path on success", async (t) => {
   t.is(result, testPath);
 });
 
-test("downloadProxy - wraps errors on failure", async (t) => {
-  const loggedMessages = [];
-  const logger = getRecordingLogger(loggedMessages);
-  sinon.stub(toolcache, "downloadTool").throws();
-
-  await t.throwsAsync(
-    startProxyExports.downloadProxy(logger, "url", undefined),
-    {
-      instanceOf: startProxyExports.StartProxyError,
-    },
-  );
-});
+test(
+  "downloadProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "downloadTool").throws();
+  },
+  async (logger) => {
+    await startProxyExports.downloadProxy(logger, "url", undefined);
+  },
+);

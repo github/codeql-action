@@ -487,6 +487,15 @@ export async function cacheProxy(
 }
 
 /**
+ * Returns the platform-specific filename of the proxy binary.
+ */
+export function getProxyFilename() {
+  return process.platform === "win32"
+    ? `${UPDATEJOB_PROXY}.exe`
+    : UPDATEJOB_PROXY;
+}
+
+/**
  * Gets a path to the proxy binary. If possible, this function will find the proxy in the
  * runner's tool cache. Otherwise, it downloads and extracts the proxy binary,
  * and stores it in the tool cache.
@@ -495,8 +504,7 @@ export async function cacheProxy(
  * @returns The path to the proxy binary.
  */
 export async function getProxyBinaryPath(logger: Logger): Promise<string> {
-  const proxyFileName =
-    process.platform === "win32" ? `${UPDATEJOB_PROXY}.exe` : UPDATEJOB_PROXY;
+  const proxyFileName = getProxyFilename();
   const proxyInfo = await getDownloadUrl(logger);
 
   let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);

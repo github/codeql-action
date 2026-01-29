@@ -1,3 +1,5 @@
+import * as filepath from "path";
+
 import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 import test, { ExecutionContext } from "ava";
@@ -484,7 +486,10 @@ test("getProxyBinaryPath - returns path from tool cache if available", async (t)
     const path = await startProxyExports.getProxyBinaryPath(logger);
 
     t.assert(path);
-    t.assert(path.startsWith(toolcachePath));
+    t.is(
+      path,
+      filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+    );
   });
 });
 
@@ -525,6 +530,9 @@ test("getProxyBinaryPath - downloads proxy if not in cache", async (t) => {
     t.assert(cacheDir.calledOnceWith(extractedPath));
 
     t.assert(path);
-    t.assert(path.startsWith(toolcachePath));
+    t.is(
+      path,
+      filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+    );
   });
 });

@@ -24,6 +24,7 @@ import { ConfigurationError, getErrorMessage, isDefined } from "./util";
 export enum StartProxyErrorType {
   DownloadFailed = "Failed to download proxy archive.",
   ExtractionFailed = "Failed to extract proxy archive.",
+  CacheFailed = "Failed to add proxy to toolcache",
 }
 
 /**
@@ -451,5 +452,30 @@ export async function extractProxy(logger: Logger, archive: string) {
       `Failed to extract proxy archive from ${archive}: ${getErrorMessage(error)}`,
     );
     throw new StartProxyError(StartProxyErrorType.ExtractionFailed);
+  }
+}
+
+/**
+ * Attempts to store the proxy in the toolcache.
+ *
+ * @param logger The logger to use.
+ * @param path The source path to add to the toolcache.
+ * @param filename The filename of the proxy binary.
+ * @param version The version of the proxy.
+ * @returns The path to the directory in the toolcache.
+ */
+export async function cacheProxy(
+  logger: Logger,
+  path: string,
+  filename: string,
+  version: string,
+) {
+  try {
+    return await toolcache.cacheDir(path, filename, version);
+  } catch (error) {
+    logger.error(
+      `Failed to add proxy archive from ${path} to toolcache: ${getErrorMessage(error)}`,
+    );
+    throw new StartProxyError(StartProxyErrorType.CacheFailed);
   }
 }

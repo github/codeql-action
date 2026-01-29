@@ -10,6 +10,7 @@ import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
+  cacheProxy,
   Credential,
   credentialToStr,
   downloadProxy,
@@ -242,7 +243,8 @@ async function getProxyBinaryPath(logger: Logger): Promise<string> {
     );
     const temp = await downloadProxy(logger, proxyInfo.url, authorization);
     const extracted = await extractProxy(logger, temp);
-    proxyBin = await toolcache.cacheDir(
+    proxyBin = await cacheProxy(
+      logger,
       extracted,
       proxyFileName,
       proxyInfo.version,

@@ -13,6 +13,7 @@ import {
   Credential,
   credentialToStr,
   downloadProxy,
+  extractProxy,
   getCredentials,
   getDownloadUrl,
   parseLanguage,
@@ -240,7 +241,7 @@ async function getProxyBinaryPath(logger: Logger): Promise<string> {
       proxyInfo.url,
     );
     const temp = await downloadProxy(logger, proxyInfo.url, authorization);
-    const extracted = await toolcache.extractTar(temp);
+    const extracted = await extractProxy(logger, temp);
     proxyBin = await toolcache.cacheDir(
       extracted,
       proxyFileName,

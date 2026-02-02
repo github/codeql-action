@@ -187,10 +187,6 @@ export interface CodeQL {
     features: FeatureEnablement,
   ): Promise<string>;
   /**
-   * Run 'codeql database print-baseline'.
-   */
-  databasePrintBaseline(databasePath: string): Promise<string>;
-  /**
    * Run 'codeql database export-diagnostics'
    *
    * Note that the "--sarif-include-diagnostics" option is always used, as the command should
@@ -493,10 +489,6 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "databaseInterpretResults",
     ),
-    databasePrintBaseline: resolveFunction(
-      partialCodeql,
-      "databasePrintBaseline",
-    ),
     databaseExportDiagnostics: resolveFunction(
       partialCodeql,
       "databaseExportDiagnostics",
@@ -628,6 +620,13 @@ async function getCodeQLForCmd(
         extraArgs.push("--overlay-base");
       }
 
+      const baselineFilesOptions = config.enableFileCoverageInformation
+        ? [
+            "--calculate-language-specific-baseline",
+            "--sublanguage-file-coverage",
+          ]
+        : ["--no-calculate-baseline"];
+
       await runCli(
         cmd,
         [
@@ -639,12 +638,14 @@ async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
-          "--calculate-language-specific-baseline",
+          ...baselineFilesOptions,
           "--extractor-include-aliases",
-          "--sublanguage-file-coverage",
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"], {
-            ignoringOptions: ["--overwrite"],
+            // Some user configs specify `--no-calculate-baseline` as an additional
+            // argument to `codeql database init`. Therefore ignore the baseline file
+            // options here to avoid specifying the same argument twice and erroring.
+            ignoringOptions: ["--overwrite", ...baselineFilesOptions],
           }),
         ],
         { stdin: externalRepositoryToken },
@@ -884,15 +885,6 @@ async function getCodeQLForCmd(
       return await runCli(cmd, codeqlArgs, {
         noStreamStdout: true,
       });
-    },
-    async databasePrintBaseline(databasePath: string): Promise<string> {
-      const codeqlArgs = [
-        "database",
-        "print-baseline",
-        ...getExtraOptionsFromEnv(["database", "print-baseline"]),
-        databasePath,
-      ];
-      return await runCli(cmd, codeqlArgs);
     },
     async databaseCleanupCluster(
       config: Config,

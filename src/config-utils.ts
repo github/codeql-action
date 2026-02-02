@@ -26,7 +26,10 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
-import { addDiagnostic, makeTelemetryDiagnostic } from "./diagnostics";
+import {
+  addNoLanguageDiagnostic,
+  makeTelemetryDiagnostic,
+} from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
@@ -214,6 +217,11 @@ export interface Config {
    * A partial mapping from repository properties that affect us to their values.
    */
   repositoryProperties: RepositoryProperties;
+
+  /**
+   * Whether to enable file coverage information.
+   */
+  enableFileCoverageInformation: boolean;
 }
 
 async function getSupportedLanguageMap(
@@ -433,6 +441,7 @@ export interface InitConfigInputs {
   apiDetails: api.GitHubApiCombinedDetails;
   features: FeatureEnablement;
   repositoryProperties: RepositoryProperties;
+  enableFileCoverageInformation: boolean;
   analysisKinds: AnalysisKind[];
   logger: Logger;
 }
@@ -462,6 +471,7 @@ export async function initActionState(
     repositoryProperties,
     analysisKinds,
     logger,
+    enableFileCoverageInformation,
   }: InitConfigInputs,
   userConfig: UserConfig,
 ): Promise<Config> {
@@ -542,6 +552,7 @@ export async function initActionState(
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
     repositoryProperties,
+    enableFileCoverageInformation,
   };
 }
 
@@ -1408,11 +1419,8 @@ async function logGitVersionTelemetry(
   gitVersion: GitVersionInfo,
 ): Promise<void> {
   if (config.languages.length > 0) {
-    addDiagnostic(
+    addNoLanguageDiagnostic(
       config,
-      // Arbitrarily choose the first language. We could also choose all languages, but that
-      // increases the risk of misinterpreting the data.
-      config.languages[0],
       makeTelemetryDiagnostic(
         "codeql-action/git-version-telemetry",
         "Git version telemetry",
@@ -1438,11 +1446,8 @@ async function logGeneratedFilesTelemetry(
     return;
   }
 
-  addDiagnostic(
+  addNoLanguageDiagnostic(
     config,
-    // Arbitrarily choose the first language. We could also choose all languages, but that
-    // increases the risk of misinterpreting the data.
-    config.languages[0],
     makeTelemetryDiagnostic(
       "codeql-action/generated-files-telemetry",
       "Generated files telemetry",

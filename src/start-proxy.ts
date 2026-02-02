@@ -115,7 +115,7 @@ export function getSafeErrorMessage(error: Error): string {
   }
 
   // Otherwise, omit the actual error message.
-  return `Error from start-proxy Action omitted (${typeof error}).`;
+  return `Error from start-proxy Action omitted (${error.constructor.name}).`;
 }
 
 /**

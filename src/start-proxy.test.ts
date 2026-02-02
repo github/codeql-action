@@ -391,20 +391,35 @@ test("getDownloadUrl returns matching release asset", async (t) => {
   t.is(info.url, "url-we-want");
 });
 
-test("credentialToStr - hides passwords/tokens", (t) => {
+test("credentialToStr - hides passwords", (t) => {
   const secret = "password123";
   const credential = {
     type: "maven_credential",
+    password: secret,
   };
-  t.false(
-    startProxyExports
-      .credentialToStr({ password: secret, ...credential })
-      .includes(secret),
+
+  const str = startProxyExports.credentialToStr(credential);
+
+  t.false(str.includes(secret));
+  t.is(
+    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: true; Token: false",
+    str,
   );
-  t.false(
-    startProxyExports
-      .credentialToStr({ token: secret, ...credential })
-      .includes(secret),
+});
+
+test("credentialToStr - hides tokens", (t) => {
+  const secret = "password123";
+  const credential = {
+    type: "maven_credential",
+    token: secret,
+  };
+
+  const str = startProxyExports.credentialToStr(credential);
+
+  t.false(str.includes(secret));
+  t.is(
+    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: false; Token: true",
+    str,
   );
 });
 

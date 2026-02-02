@@ -19,57 +19,91 @@ import {
   setupTests,
   withRecordingLoggerAsync,
 } from "./testing-utils";
+import { ConfigurationError } from "./util";
 
 setupTests(test);
 
-test("sendFailedStatusReport - does not report messages from arbitrary error types", async (t) => {
-  const loggedMessages = [];
-  const logger = getRecordingLogger(loggedMessages);
-  const error = new Error(
+const sendFailedStatusReportTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    err: Error,
+    expectedMessage: string,
+    expectedStatus: statusReport.ActionStatus = "failure",
+  ) => {
+    const now = new Date();
+
+    // Override core.setFailed to avoid it setting the program's exit code
+    sinon.stub(core, "setFailed").returns();
+
+    const createStatusReportBase = sinon.stub(
+      statusReport,
+      "createStatusReportBase",
+    );
+    createStatusReportBase.resolves(undefined);
+
+    await withRecordingLoggerAsync(async (logger) => {
+      await startProxyExports.sendFailedStatusReport(
+        logger,
+        now,
+        undefined,
+        err,
+      );
+
+      // Check that the stub has been called exactly once, with the expected arguments,
+      // but not with the message from the error.
+      sinon.assert.calledOnceWithExactly(
+        createStatusReportBase,
+        statusReport.ActionName.StartProxy,
+        expectedStatus,
+        now,
+        sinon.match.any,
+        sinon.match.any,
+        sinon.match.any,
+        expectedMessage,
+      );
+      t.false(
+        createStatusReportBase.calledWith(
+          statusReport.ActionName.StartProxy,
+          expectedStatus,
+          now,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match((msg: string) => msg.includes(err.message)),
+        ),
+        "createStatusReportBase was called with the error message",
+      );
+    });
+  },
+
+  title: (providedTitle = "") => `sendFailedStatusReport - ${providedTitle}`,
+});
+
+test(
+  "reports generic error message for non-StartProxyError error",
+  sendFailedStatusReportTest,
+  new Error("Something went wrong today"),
+  "Error from start-proxy Action omitted (Error).",
+);
+
+test(
+  "reports generic error message for non-StartProxyError error with safe error message",
+  sendFailedStatusReportTest,
+  new Error(
     startProxyExports.getStartProxyErrorMessage(
       startProxyExports.StartProxyErrorType.DownloadFailed,
     ),
-  );
-  const now = new Date();
+  ),
+  "Error from start-proxy Action omitted (Error).",
+);
 
-  // Override core.setFailed to avoid it setting the program's exit code
-  sinon.stub(core, "setFailed").returns();
-
-  const createStatusReportBase = sinon.stub(
-    statusReport,
-    "createStatusReportBase",
-  );
-  createStatusReportBase.resolves(undefined);
-
-  await startProxyExports.sendFailedStatusReport(logger, now, undefined, error);
-
-  // Check that the stub has been called exactly once, with the expected arguments,
-  // but not with the message from the error.
-  t.assert(createStatusReportBase.calledOnce);
-  t.assert(
-    createStatusReportBase.calledWith(
-      statusReport.ActionName.StartProxy,
-      "failure",
-      now,
-      sinon.match.any,
-      sinon.match.any,
-      sinon.match.any,
-    ),
-    "createStatusReportBase wasn't called with the expected arguments",
-  );
-  t.false(
-    createStatusReportBase.calledWith(
-      statusReport.ActionName.StartProxy,
-      "failure",
-      now,
-      sinon.match.any,
-      sinon.match.any,
-      sinon.match.any,
-      sinon.match((msg: string) => msg.includes(error.message)),
-    ),
-    "createStatusReportBase was called with the error message",
-  );
-});
+test(
+  "reports generic error message for ConfigurationError error",
+  sendFailedStatusReportTest,
+  new ConfigurationError("Something went wrong today"),
+  "Error from start-proxy Action omitted (ConfigurationError).",
+  "user-error",
+);
 
 const toEncodedJSON = (data: any) =>
   Buffer.from(JSON.stringify(data)).toString("base64");
@@ -395,7 +429,7 @@ test("getSafeErrorMessage - does not return message for arbitrary errors", (t) =
 
   t.not(message, error.message);
   t.assert(message.startsWith("Error from start-proxy Action omitted"));
-  t.assert(message.includes(typeof error));
+  t.assert(message.includes(error.name));
 });
 
 const wrapFailureTest = test.macro({

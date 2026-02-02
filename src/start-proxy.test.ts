@@ -22,10 +22,14 @@ import {
 
 setupTests(test);
 
-test("sendFailedStatusReport - does not report arbitrary error messages", async (t) => {
+test("sendFailedStatusReport - does not report messages from arbitrary error types", async (t) => {
   const loggedMessages = [];
   const logger = getRecordingLogger(loggedMessages);
-  const error = new Error(startProxyExports.StartProxyErrorType.DownloadFailed);
+  const error = new Error(
+    startProxyExports.getStartProxyErrorMessage(
+      startProxyExports.StartProxyErrorType.DownloadFailed,
+    ),
+  );
   const now = new Date();
 
   // Override core.setFailed to avoid it setting the program's exit code
@@ -374,11 +378,18 @@ test("getSafeErrorMessage - returns actual message for `StartProxyError`", (t) =
   const error = new startProxyExports.StartProxyError(
     startProxyExports.StartProxyErrorType.DownloadFailed,
   );
-  t.is(startProxyExports.getSafeErrorMessage(error), error.message);
+  t.is(
+    startProxyExports.getSafeErrorMessage(error),
+    startProxyExports.getStartProxyErrorMessage(error.errorType),
+  );
 });
 
 test("getSafeErrorMessage - does not return message for arbitrary errors", (t) => {
-  const error = new Error(startProxyExports.StartProxyErrorType.DownloadFailed);
+  const error = new Error(
+    startProxyExports.getStartProxyErrorMessage(
+      startProxyExports.StartProxyErrorType.DownloadFailed,
+    ),
+  );
 
   const message = startProxyExports.getSafeErrorMessage(error);
 

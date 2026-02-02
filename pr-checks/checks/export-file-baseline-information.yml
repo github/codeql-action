@@ -5,6 +5,7 @@ versions: ["nightly-latest"]
 installGo: true
 installDotNet: true
 env:
+  CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
 steps:
   - uses: ./../action/init

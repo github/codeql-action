@@ -87,7 +87,6 @@ test("status report fields", async (t) => {
           );
           return "";
         },
-        databasePrintBaseline: async () => "",
       });
 
       const config = createTestConfig({

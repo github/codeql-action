@@ -408,7 +408,14 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
       repositoryProperties: {},
+      enableFileCoverageInformation: true,
     } satisfies Config,
     overrides,
   );
+}
+
+export function makeTestToken(length: number = 36) {
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  return chars.repeat(Math.ceil(length / chars.length)).slice(0, length);
 }

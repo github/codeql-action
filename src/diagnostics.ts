@@ -117,6 +117,20 @@ export function addDiagnostic(
   }
 }
 
+/** Adds a diagnostic that is not specific to any language. */
+export function addNoLanguageDiagnostic(
+  config: Config,
+  diagnostic: DiagnosticMessage,
+) {
+  addDiagnostic(
+    config,
+    // Arbitrarily choose the first language. We could also choose all languages, but that
+    // increases the risk of misinterpreting the data.
+    config.languages[0],
+    diagnostic,
+  );
+}
+
 /**
  * Writes the given diagnostic to the database.
  *

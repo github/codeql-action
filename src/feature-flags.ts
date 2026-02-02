@@ -70,6 +70,8 @@ export enum Feature {
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  /** Note that this currently only disables baseline file coverage information. */
+  SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   UseRepositoryProperties = "use_repository_properties",
   ValidateDbConfig = "validate_db_config",
@@ -284,6 +286,15 @@ export const featureConfig = {
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.SkipFileCoverageOnPrs]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS",
+    // For testing, this is not behind a CLI version check yet. However
+    // before rolling this out externally, we should set a minimum version here
+    // since current versions of the CodeQL CLI will log if baseline information
+    // cannot be found when interpreting results.
     minimumVersion: undefined,
   },
   [Feature.UploadOverlayDbToApi]: {

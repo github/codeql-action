@@ -24,13 +24,29 @@ import * as util from "./util";
 import { ConfigurationError, getErrorMessage, isDefined } from "./util";
 
 /**
- * Enumerates specific error types, along with suitable error messages, for errors
- * that we want to track in status reports.
+ * Enumerates specific error types for which we have corresponding error messages that
+ * are safe to include in status reports.
  */
 export enum StartProxyErrorType {
-  DownloadFailed = "Failed to download proxy archive.",
-  ExtractionFailed = "Failed to extract proxy archive.",
-  CacheFailed = "Failed to add proxy to toolcache",
+  DownloadFailed,
+  ExtractionFailed,
+  CacheFailed,
+}
+
+/**
+ * @returns The error message corresponding to the error type.
+ */
+export function getStartProxyErrorMessage(
+  errorType: StartProxyErrorType,
+): string {
+  switch (errorType) {
+    case StartProxyErrorType.DownloadFailed:
+      return "Failed to download proxy archive.";
+    case StartProxyErrorType.ExtractionFailed:
+      return "Failed to extract proxy archive.";
+    case StartProxyErrorType.CacheFailed:
+      return "Failed to add proxy to toolcache";
+  }
 }
 
 /**
@@ -40,8 +56,11 @@ export enum StartProxyErrorType {
  * `StartProxyErrorType` and therefore safe to include in a status report.
  */
 export class StartProxyError extends Error {
+  public readonly errorType: StartProxyErrorType;
+
   constructor(errorType: StartProxyErrorType) {
-    super(errorType);
+    super();
+    this.errorType = errorType;
   }
 }
 
@@ -89,10 +108,10 @@ export async function sendSuccessStatusReport(
  * @param error The error for which to get an error message.
  */
 export function getSafeErrorMessage(error: Error): string {
-  // If the error is a `StartProxyError`, the constructor ensures that the
-  // message comes from `StartProxyErrorType`.
+  // If the error is a `StartProxyError`, resolve the error type to the corresponding
+  // error message.
   if (error instanceof StartProxyError) {
-    return error.message;
+    return getStartProxyErrorMessage(error.errorType);
   }
 
   // Otherwise, omit the actual error message.

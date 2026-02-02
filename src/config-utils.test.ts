@@ -89,6 +89,7 @@ function createTestInitConfigInputs(
       },
       features: createFeatures([]),
       repositoryProperties: {},
+      enableFileCoverageInformation: true,
       logger: getRunnerLogger(true),
     } satisfies configUtils.InitConfigInputs,
     overrides,

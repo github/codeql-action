@@ -78,11 +78,17 @@ export async function loadPropertiesFromApi(
       }
     }
 
-    logger.debug("Loaded the following values for the repository properties:");
-    for (const [property, value] of Object.entries(properties).sort(
-      ([nameA], [nameB]) => nameA.localeCompare(nameB),
-    )) {
-      logger.debug(`  ${property}: ${value}`);
+    if (Object.keys(properties).length === 0) {
+      logger.debug("No known repository properties were found.");
+    } else {
+      logger.debug(
+        "Loaded the following values for the repository properties:",
+      );
+      for (const [property, value] of Object.entries(properties).sort(
+        ([nameA], [nameB]) => nameA.localeCompare(nameB),
+      )) {
+        logger.debug(`  ${property}: ${value}`);
+      }
     }
 
     return properties;

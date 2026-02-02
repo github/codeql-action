@@ -8,32 +8,61 @@ import { Logger } from "./logging";
 import { getErrorMessage } from "./util";
 
 /**
+ * Enumerates known types of GitHub token formats.
+ */
+export enum TokenType {
+  PersonalAccessClassic = "Personal Access Token (Classic)",
+  PersonalAccessFineGrained = "Personal Access Token (Fine-grained)",
+  OAuth = "OAuth Access Token",
+  UserToServer = "User-to-Server Token",
+  ServerToServer = "Server-to-Server Token",
+  Refresh = "Refresh Token",
+  AppInstallationAccess = "App Installation Access Token",
+}
+
+/** A value of this type associates a token type with its pattern. */
+export interface TokenPattern {
+  type: TokenType;
+  pattern: RegExp;
+}
+
+/** The pattern for PATs (Classic) */
+export const GITHUB_PAT_CLASSIC_PATTERN: TokenPattern = {
+  type: TokenType.PersonalAccessClassic,
+  pattern: /\bghp_[a-zA-Z0-9]{36}\b/g,
+};
+
+/** The pattern for PATs (Fine-grained) */
+export const GITHUB_PAT_FINE_GRAINED_PATTERN: TokenPattern = {
+  type: TokenType.PersonalAccessFineGrained,
+  pattern: /\bgithub_pat_[a-zA-Z0-9_]+\b/g,
+};
+
+/**
  * GitHub token patterns to scan for.
  * These patterns match various GitHub token formats.
  */
-const GITHUB_TOKEN_PATTERNS = [
+const GITHUB_TOKEN_PATTERNS: TokenPattern[] = [
+  GITHUB_PAT_CLASSIC_PATTERN,
+  GITHUB_PAT_FINE_GRAINED_PATTERN,
   {
-    name: "Personal Access Token",
-    pattern: /\bghp_[a-zA-Z0-9]{36}\b/g,
-  },
-  {
-    name: "OAuth Access Token",
+    type: TokenType.OAuth,
     pattern: /\bgho_[a-zA-Z0-9]{36}\b/g,
   },
   {
-    name: "User-to-Server Token",
+    type: TokenType.UserToServer,
     pattern: /\bghu_[a-zA-Z0-9]{36}\b/g,
   },
   {
-    name: "Server-to-Server Token",
+    type: TokenType.ServerToServer,
     pattern: /\bghs_[a-zA-Z0-9]{36}\b/g,
   },
   {
-    name: "Refresh Token",
+    type: TokenType.Refresh,
     pattern: /\bghr_[a-zA-Z0-9]{36}\b/g,
   },
   {
-    name: "App Installation Access Token",
+    type: TokenType.AppInstallationAccess,
     pattern: /\bghs_[a-zA-Z0-9]{255}\b/g,
   },
 ];
@@ -46,6 +75,24 @@ interface TokenFinding {
 interface ScanResult {
   scannedFiles: number;
   findings: TokenFinding[];
+}
+
+/**
+ * Checks whether `value` matches any token `patterns`.
+ * @param value The value to match against.
+ * @param patterns The patterns to check.
+ * @returns The type of the first matching pattern, or `undefined` if none match.
+ */
+export function isAuthToken(
+  value: string,
+  patterns: TokenPattern[] = GITHUB_TOKEN_PATTERNS,
+) {
+  for (const { type, pattern } of patterns) {
+    if (value.match(pattern)) {
+      return type;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -65,13 +112,13 @@ function scanFileForTokens(
   try {
     const content = fs.readFileSync(filePath, "utf8");
 
-    for (const { name, pattern } of GITHUB_TOKEN_PATTERNS) {
+    for (const { type, pattern } of GITHUB_TOKEN_PATTERNS) {
       const matches = content.match(pattern);
       if (matches) {
         for (let i = 0; i < matches.length; i++) {
-          findings.push({ tokenType: name, filePath: relativePath });
+          findings.push({ tokenType: type, filePath: relativePath });
         }
-        logger.debug(`Found ${matches.length} ${name}(s) in ${relativePath}`);
+        logger.debug(`Found ${matches.length} ${type}(s) in ${relativePath}`);
       }
     }
 

@@ -116,10 +116,11 @@ export async function sendFailedStatusReport(
   const error = util.wrapError(unwrappedError);
   core.setFailed(`start-proxy action failed: ${error.message}`);
 
+  // To avoid the possibility of leaking sensitive information into the telemetry,
+  // we don't include arbitrary error messages. Instead, `getSafeErrorMessage` will
+  // return a generic message that includes the type of the error, unless it can decide
+  // that the message is safe to include.
   const statusReportMessage = getSafeErrorMessage(error);
-
-  // We skip sending the error message and stack trace here to avoid the possibility
-  // of leaking any sensitive information into the telemetry.
   const errorStatusReportBase = await createStatusReportBase(
     ActionName.StartProxy,
     getActionsStatus(error),
@@ -432,7 +433,9 @@ export async function downloadProxy(
   authorization: string | undefined,
 ) {
   try {
-    return toolcache.downloadTool(url, undefined, authorization, {
+    // Download the proxy archive from `url`. We let `downloadTool` choose where
+    // to store it. The path to the downloaded file will be returned if successful.
+    return toolcache.downloadTool(url, /* dest: */ undefined, authorization, {
       accept: "application/octet-stream",
     });
   } catch (error) {
@@ -524,6 +527,5 @@ export async function getProxyBinaryPath(logger: Logger): Promise<string> {
       proxyInfo.version,
     );
   }
-  proxyBin = path.join(proxyBin, proxyFileName);
-  return proxyBin;
+  return path.join(proxyBin, proxyFileName);
 }

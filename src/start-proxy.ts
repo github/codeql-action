@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 
 import { getApiClient } from "./api-client";
+import * as artifactScanner from "./artifact-scanner";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
@@ -60,6 +61,13 @@ export function parseLanguage(language: string): KnownLanguage | undefined {
   }
 
   return undefined;
+}
+
+function isPAT(value: string) {
+  return artifactScanner.isAuthToken(value, [
+    artifactScanner.GITHUB_PAT_CLASSIC_PATTERN,
+    artifactScanner.GITHUB_PAT_FINE_GRAINED_PATTERN,
+  ]);
 }
 
 const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string[]>> = {
@@ -158,6 +166,19 @@ export function getCredentials(
     ) {
       throw new ConfigurationError(
         "Invalid credentials - fields must contain only printable characters",
+      );
+    }
+
+    // If the password or token looks like a GitHub PAT, warn if no username is configured.
+    if (
+      !isDefined(e.username) &&
+      ((isDefined(e.password) && isPAT(e.password)) ||
+        (isDefined(e.token) && isPAT(e.token)))
+    ) {
+      logger.warning(
+        `A ${e.type} private registry is configured for ${e.host || e.url} using a GitHub Personal Access Token (PAT), but no username was provided. ` +
+          `This may not work correctly. When configuring a private registry using a PAT, select "Username and password" and enter the username of the user ` +
+          `who generated the PAT.`,
       );
     }
 

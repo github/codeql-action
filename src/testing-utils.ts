@@ -208,6 +208,23 @@ export function checkExpectedLogMessages(
   }
 }
 
+/**
+ * Initialises a recording logger and calls `body` with it.
+ *
+ * @param body The test that requires a recording logger.
+ * @returns The logged messages.
+ */
+export async function withRecordingLoggerAsync(
+  body: (logger: Logger) => Promise<void>,
+): Promise<LoggedMessage[]> {
+  const messages = [];
+  const logger = getRecordingLogger(messages);
+
+  await body(logger);
+
+  return messages;
+}
+
 /** Mock the HTTP request to the feature flags enablement API endpoint. */
 export function mockFeatureFlagApiEndpoint(
   responseStatusCode: number,

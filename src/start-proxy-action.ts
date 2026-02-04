@@ -111,6 +111,7 @@ async function sendSuccessStatusReport(
     "success",
     startedAt,
     config,
+    undefined,
     await util.checkDiskUsage(logger),
     logger,
   );
@@ -193,6 +194,7 @@ async function run(startedAt: Date) {
       {
         languages: language && [language],
       },
+      undefined,
       await util.checkDiskUsage(logger),
       logger,
       "Error from start-proxy Action omitted",

@@ -34,6 +34,7 @@ interface UploadSarifStatusReport
 
 async function sendSuccessStatusReport(
   startedAt: Date,
+  features: Features | undefined,
   uploadStats: upload_lib.UploadStatusReport,
   logger: Logger,
 ) {
@@ -42,6 +43,7 @@ async function sendSuccessStatusReport(
     "success",
     startedAt,
     undefined,
+    features?.getQueriedFeatures(),
     await checkDiskUsage(logger),
     logger,
   );
@@ -59,6 +61,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  let features: Features | undefined = undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -70,7 +73,7 @@ async function run(startedAt: Date) {
     actionsUtil.persistInputs();
 
     const repositoryNwo = getRepositoryNwo();
-    const features = new Features(
+    features = new Features(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),
@@ -82,6 +85,7 @@ async function run(startedAt: Date) {
       "starting",
       startedAt,
       undefined,
+      features.getQueriedFeatures(),
       await checkDiskUsage(logger),
       logger,
     );
@@ -135,6 +139,7 @@ async function run(startedAt: Date) {
     }
     await sendSuccessStatusReport(
       startedAt,
+      features,
       codeScanningResult?.statusReport || {},
       logger,
     );
@@ -152,6 +157,7 @@ async function run(startedAt: Date) {
       getActionsStatus(error),
       startedAt,
       undefined,
+      features?.getQueriedFeatures(),
       await checkDiskUsage(logger),
       logger,
       message,

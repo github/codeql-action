@@ -76,6 +76,7 @@ interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
 async function sendStatusReport(
   startedAt: Date,
   config: Config | undefined,
+  features: Features | undefined,
   stats: AnalysisStatusReport | undefined,
   error: Error | undefined,
   trapCacheUploadTime: number | undefined,
@@ -92,6 +93,7 @@ async function sendStatusReport(
     status,
     startedAt,
     config,
+    features?.getQueriedFeatures(),
     await util.checkDiskUsage(logger),
     logger,
     error?.message,
@@ -218,6 +220,7 @@ async function run(startedAt: Date) {
     | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
+  let features: Features | undefined = undefined;
   let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
     undefined;
   let trapCacheUploadTime: number | undefined = undefined;
@@ -239,6 +242,7 @@ async function run(startedAt: Date) {
       "starting",
       startedAt,
       config,
+      undefined,
       await util.checkDiskUsage(logger),
       logger,
     );
@@ -293,7 +297,7 @@ async function run(startedAt: Date) {
 
     util.checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
 
-    const features = new Features(
+    features = new Features(
       gitHubVersion,
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),
@@ -460,6 +464,7 @@ async function run(startedAt: Date) {
     await sendStatusReport(
       startedAt,
       config,
+      features,
       error instanceof CodeQLAnalysisError
         ? error.queriesStatusReport
         : undefined,
@@ -482,6 +487,7 @@ async function run(startedAt: Date) {
     await sendStatusReport(
       startedAt,
       config,
+      features,
       {
         ...runStats,
         ...uploadResults[analyses.AnalysisKind.CodeScanning].statusReport,
@@ -499,6 +505,7 @@ async function run(startedAt: Date) {
     await sendStatusReport(
       startedAt,
       config,
+      features,
       { ...runStats },
       undefined,
       trapCacheUploadTime,
@@ -513,6 +520,7 @@ async function run(startedAt: Date) {
     await sendStatusReport(
       startedAt,
       config,
+      features,
       undefined,
       undefined,
       trapCacheUploadTime,

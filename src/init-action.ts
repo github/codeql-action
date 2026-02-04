@@ -115,6 +115,7 @@ export const CODEQL_VERSION_JAR_MINIMIZATION = "2.23.0";
 async function sendStartingStatusReport(
   startedAt: Date,
   config: Partial<configUtils.Config> | undefined,
+  features: Features | undefined,
   logger: Logger,
 ) {
   const statusReportBase = await createStatusReportBase(
@@ -122,6 +123,7 @@ async function sendStartingStatusReport(
     "starting",
     startedAt,
     config,
+    features?.getQueriedFeatures(),
     await checkDiskUsage(logger),
     logger,
   );
@@ -133,6 +135,7 @@ async function sendStartingStatusReport(
 async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
+  features: Features | undefined,
   configFile: string | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
@@ -148,6 +151,7 @@ async function sendCompletedStatusReport(
     getActionsStatus(error),
     startedAt,
     config,
+    features?.getQueriedFeatures(),
     await checkDiskUsage(logger),
     logger,
     error?.message,
@@ -210,7 +214,7 @@ async function run(startedAt: Date) {
   let config: configUtils.Config | undefined;
   let configFile: string | undefined;
   let codeql: CodeQL;
-  let features: Features;
+  let features: Features | undefined = undefined;
   let sourceRoot: string;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
@@ -284,7 +288,12 @@ async function run(startedAt: Date) {
     }
 
     // Send a status report indicating that an analysis is starting.
-    await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
+    await sendStartingStatusReport(
+      startedAt,
+      { analysisKinds },
+      features,
+      logger,
+    );
 
     // Throw a `ConfigurationError` if the `setup-codeql` action has been run.
     if (process.env[EnvVar.SETUP_CODEQL_ACTION_HAS_RUN] === "true") {
@@ -403,6 +412,7 @@ async function run(startedAt: Date) {
       error instanceof ConfigurationError ? "user-error" : "aborted",
       startedAt,
       config,
+      features?.getQueriedFeatures(),
       await checkDiskUsage(logger),
       logger,
       error.message,
@@ -771,6 +781,7 @@ async function run(startedAt: Date) {
     await sendCompletedStatusReport(
       startedAt,
       config,
+      features,
       undefined, // We only report config info on success.
       toolsDownloadStatusReport,
       toolsFeatureFlagsValid,
@@ -788,6 +799,7 @@ async function run(startedAt: Date) {
   await sendCompletedStatusReport(
     startedAt,
     config,
+    features,
     configFile,
     toolsDownloadStatusReport,
     toolsFeatureFlagsValid,

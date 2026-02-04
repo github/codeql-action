@@ -345,6 +345,17 @@ export interface FeatureEnablement {
  */
 type GitHubFeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 
+// Even though we are currently only tracking the value of queried features, we use an object
+// here rather than just a boolean to keep open the possibility of also tracking the reason
+// for why a particular value was resolved (i.e. because of an environment variable or API result)
+// in the future.
+export interface QueriedFeatureStatus {
+  value: boolean;
+}
+
+/** A partial mapping of feature flags to the outcome of querying them. */
+export type QueriedFeatures = Partial<Record<Feature, QueriedFeatureStatus>>;
+
 export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
 
 /**
@@ -354,6 +365,9 @@ export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
  */
 export class Features implements FeatureEnablement {
   private gitHubFeatureFlags: GitHubFeatureFlags;
+
+  // Tracks features that have been queried at some point and the outcome.
+  private queriedFeatures: QueriedFeatures = {};
 
   constructor(
     gitHubVersion: util.GitHubVersion,
@@ -367,6 +381,11 @@ export class Features implements FeatureEnablement {
       path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
       logger,
     );
+  }
+
+  /** Gets a record of features that were queried and the corresponding outcomes. */
+  public getQueriedFeatures() {
+    return this.queriedFeatures;
   }
 
   async getDefaultCliVersion(
@@ -388,6 +407,15 @@ export class Features implements FeatureEnablement {
    * @throws if a `minimumVersion` is specified for the feature, and `codeql` is not provided.
    */
   async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
+    const value = await this.getValueInternal(feature, codeql);
+    this.queriedFeatures[feature] = { value };
+    return value;
+  }
+
+  private async getValueInternal(
+    feature: Feature,
+    codeql?: CodeQL,
+  ): Promise<boolean> {
     // Narrow the type to FeatureConfig to avoid type errors. To avoid unsafe use of `as`, we
     // check that the required properties exist using `satisfies`.
     const config = featureConfig[

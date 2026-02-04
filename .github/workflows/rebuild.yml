@@ -111,7 +111,7 @@ jobs:
             # Otherwise, just commit the changes.
             if git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
               echo "In progress merge detected, finishing it up."
-              git merge --continue
+              git merge --continue --no-edit
             else
               echo "No in-progress merge detected, committing changes."
               git commit -m "Rebuild"

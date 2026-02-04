@@ -24,7 +24,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/artifact": "^5.0.3",
+    "@actions/artifact": "^6.1.0",
     "@actions/artifact-legacy": "npm:@actions/artifact@^1.1.2",
     "@actions/cache": "^5.0.5",
     "@actions/core": "^2.0.3",

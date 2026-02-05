@@ -1,20 +1,109 @@
-import test from "ava";
+import * as filepath from "path";
+
+import * as core from "@actions/core";
+import * as toolcache from "@actions/tool-cache";
+import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
+import { getRunnerLogger, Logger } from "./logging";
 import * as startProxyExports from "./start-proxy";
 import { parseLanguage } from "./start-proxy";
+import * as statusReport from "./status-report";
 import {
   checkExpectedLogMessages,
   getRecordingLogger,
   makeTestToken,
   setupTests,
+  withRecordingLoggerAsync,
 } from "./testing-utils";
+import { ConfigurationError } from "./util";
 
 setupTests(test);
+
+const sendFailedStatusReportTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    err: Error,
+    expectedMessage: string,
+    expectedStatus: statusReport.ActionStatus = "failure",
+  ) => {
+    const now = new Date();
+
+    // Override core.setFailed to avoid it setting the program's exit code
+    sinon.stub(core, "setFailed").returns();
+
+    const createStatusReportBase = sinon.stub(
+      statusReport,
+      "createStatusReportBase",
+    );
+    createStatusReportBase.resolves(undefined);
+
+    await withRecordingLoggerAsync(async (logger) => {
+      await startProxyExports.sendFailedStatusReport(
+        logger,
+        now,
+        undefined,
+        err,
+      );
+
+      // Check that the stub has been called exactly once, with the expected arguments,
+      // but not with the message from the error.
+      sinon.assert.calledOnceWithExactly(
+        createStatusReportBase,
+        statusReport.ActionName.StartProxy,
+        expectedStatus,
+        now,
+        sinon.match.any,
+        sinon.match.any,
+        sinon.match.any,
+        expectedMessage,
+      );
+      t.false(
+        createStatusReportBase.calledWith(
+          statusReport.ActionName.StartProxy,
+          expectedStatus,
+          now,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match((msg: string) => msg.includes(err.message)),
+        ),
+        "createStatusReportBase was called with the error message",
+      );
+    });
+  },
+
+  title: (providedTitle = "") => `sendFailedStatusReport - ${providedTitle}`,
+});
+
+test(
+  "reports generic error message for non-StartProxyError error",
+  sendFailedStatusReportTest,
+  new Error("Something went wrong today"),
+  "Error from start-proxy Action omitted (Error).",
+);
+
+test(
+  "reports generic error message for non-StartProxyError error with safe error message",
+  sendFailedStatusReportTest,
+  new Error(
+    startProxyExports.getStartProxyErrorMessage(
+      startProxyExports.StartProxyErrorType.DownloadFailed,
+    ),
+  ),
+  "Error from start-proxy Action omitted (Error).",
+);
+
+test(
+  "reports generic error message for ConfigurationError error",
+  sendFailedStatusReportTest,
+  new ConfigurationError("Something went wrong today"),
+  "Error from start-proxy Action omitted (ConfigurationError).",
+  "user-error",
+);
 
 const toEncodedJSON = (data: any) =>
   Buffer.from(JSON.stringify(data)).toString("base64");
@@ -300,4 +389,210 @@ test("getDownloadUrl returns matching release asset", async (t) => {
 
   t.is(info.version, defaults.cliVersion);
   t.is(info.url, "url-we-want");
+});
+
+test("credentialToStr - hides passwords", (t) => {
+  const secret = "password123";
+  const credential = {
+    type: "maven_credential",
+    password: secret,
+  };
+
+  const str = startProxyExports.credentialToStr(credential);
+
+  t.false(str.includes(secret));
+  t.is(
+    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: true; Token: false",
+    str,
+  );
+});
+
+test("credentialToStr - hides tokens", (t) => {
+  const secret = "password123";
+  const credential = {
+    type: "maven_credential",
+    token: secret,
+  };
+
+  const str = startProxyExports.credentialToStr(credential);
+
+  t.false(str.includes(secret));
+  t.is(
+    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: false; Token: true",
+    str,
+  );
+});
+
+test("getSafeErrorMessage - returns actual message for `StartProxyError`", (t) => {
+  const error = new startProxyExports.StartProxyError(
+    startProxyExports.StartProxyErrorType.DownloadFailed,
+  );
+  t.is(
+    startProxyExports.getSafeErrorMessage(error),
+    startProxyExports.getStartProxyErrorMessage(error.errorType),
+  );
+});
+
+test("getSafeErrorMessage - does not return message for arbitrary errors", (t) => {
+  const error = new Error(
+    startProxyExports.getStartProxyErrorMessage(
+      startProxyExports.StartProxyErrorType.DownloadFailed,
+    ),
+  );
+
+  const message = startProxyExports.getSafeErrorMessage(error);
+
+  t.not(message, error.message);
+  t.assert(message.startsWith("Error from start-proxy Action omitted"));
+  t.assert(message.includes(error.name));
+});
+
+const wrapFailureTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    setup: () => void,
+    fn: (logger: Logger) => Promise<void>,
+  ) => {
+    await withRecordingLoggerAsync(async (logger) => {
+      setup();
+
+      await t.throwsAsync(fn(logger), {
+        instanceOf: startProxyExports.StartProxyError,
+      });
+    });
+  },
+  title: (providedTitle) => `${providedTitle} - wraps errors on failure`,
+});
+
+test("downloadProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "downloadTool").resolves(testPath);
+
+    const result = await startProxyExports.downloadProxy(
+      logger,
+      "url",
+      undefined,
+    );
+    t.is(result, testPath);
+  });
+});
+
+test(
+  "downloadProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "downloadTool").throws();
+  },
+  async (logger) => {
+    await startProxyExports.downloadProxy(logger, "url", undefined);
+  },
+);
+
+test("extractProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "extractTar").resolves(testPath);
+
+    const result = await startProxyExports.extractProxy(logger, "/other/path");
+    t.is(result, testPath);
+  });
+});
+
+test(
+  "extractProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "extractTar").throws();
+  },
+  async (logger) => {
+    await startProxyExports.extractProxy(logger, "path");
+  },
+);
+
+test("cacheProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "cacheDir").resolves(testPath);
+
+    const result = await startProxyExports.cacheProxy(
+      logger,
+      "/other/path",
+      "proxy",
+      "1.0",
+    );
+    t.is(result, testPath);
+  });
+});
+
+test(
+  "cacheProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "cacheDir").throws();
+  },
+  async (logger) => {
+    await startProxyExports.cacheProxy(logger, "/other/path", "proxy", "1.0");
+  },
+);
+
+test("getProxyBinaryPath - returns path from tool cache if available", async (t) => {
+  mockGetReleaseByTag();
+
+  await withRecordingLoggerAsync(async (logger) => {
+    const toolcachePath = "/path/to/proxy/dir";
+    sinon.stub(toolcache, "find").returns(toolcachePath);
+
+    const path = await startProxyExports.getProxyBinaryPath(logger);
+
+    t.assert(path);
+    t.is(
+      path,
+      filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+    );
+  });
+});
+
+test("getProxyBinaryPath - downloads proxy if not in cache", async (t) => {
+  const downloadUrl = "url-we-want";
+  mockGetReleaseByTag([
+    { name: startProxyExports.getProxyPackage(), url: downloadUrl },
+  ]);
+
+  await withRecordingLoggerAsync(async (logger) => {
+    const toolcachePath = "/path/to/proxy/dir";
+    const find = sinon.stub(toolcache, "find").returns("");
+    const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
+      auth: "",
+      url: "",
+      apiURL: "",
+    });
+    const getAuthorizationHeaderFor = sinon
+      .stub(apiClient, "getAuthorizationHeaderFor")
+      .returns(undefined);
+    const archivePath = "/path/to/archive";
+    const downloadTool = sinon
+      .stub(toolcache, "downloadTool")
+      .resolves(archivePath);
+    const extractedPath = "/path/to/extracted";
+    const extractTar = sinon
+      .stub(toolcache, "extractTar")
+      .resolves(extractedPath);
+    const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
+
+    const path = await startProxyExports.getProxyBinaryPath(logger);
+
+    t.assert(find.calledOnce);
+    t.assert(getApiDetails.calledOnce);
+    t.assert(getAuthorizationHeaderFor.calledOnce);
+    t.assert(downloadTool.calledOnceWith(downloadUrl));
+    t.assert(extractTar.calledOnceWith(archivePath));
+    t.assert(cacheDir.calledOnceWith(extractedPath));
+
+    t.assert(path);
+    t.is(
+      path,
+      filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+    );
+  });
 });

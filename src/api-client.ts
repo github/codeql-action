@@ -306,7 +306,8 @@ export function wrapApiConfigurationError(e: unknown) {
     }
     if (
       httpError.message.includes("Bad credentials") ||
-      httpError.message.includes("Not Found")
+      httpError.message.includes("Not Found") ||
+      httpError.message.includes("Requires authentication")
     ) {
       return new ConfigurationError(
         "Please check that your token is valid and has the required permissions: contents: read, security-events: write",

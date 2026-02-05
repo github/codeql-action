@@ -2,29 +2,22 @@ import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as toolcache from "@actions/tool-cache";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
-import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
-import { Config } from "./config-utils";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
   Credential,
+  credentialToStr,
   getCredentials,
-  getDownloadUrl,
+  getProxyBinaryPath,
+  getSafeErrorMessage,
   parseLanguage,
-  UPDATEJOB_PROXY,
+  sendFailedStatusReport,
+  sendSuccessStatusReport,
 } from "./start-proxy";
-import {
-  ActionName,
-  createStatusReportBase,
-  getActionsStatus,
-  sendStatusReport,
-  sendUnhandledErrorStatusReport,
-  StatusReportBase,
-} from "./status-report";
+import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
 
 const KEY_SIZE = 2048;
@@ -94,35 +87,6 @@ function generateCertificateAuthority(): CertificateAuthority {
   return { cert: pem, key };
 }
 
-interface StartProxyStatus extends StatusReportBase {
-  // A comma-separated list of registry types which are configured for CodeQL.
-  // This only includes registry types we support, not all that are configured.
-  registry_types: string;
-}
-
-async function sendSuccessStatusReport(
-  startedAt: Date,
-  config: Partial<Config>,
-  registry_types: string[],
-  logger: Logger,
-) {
-  const statusReportBase = await createStatusReportBase(
-    ActionName.StartProxy,
-    "success",
-    startedAt,
-    config,
-    await util.checkDiskUsage(logger),
-    logger,
-  );
-  if (statusReportBase !== undefined) {
-    const statusReport: StartProxyStatus = {
-      ...statusReportBase,
-      registry_types: registry_types.join(","),
-    };
-    await sendStatusReport(statusReport);
-  }
-}
-
 async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
@@ -181,25 +145,7 @@ async function run(startedAt: Date) {
       logger,
     );
   } catch (unwrappedError) {
-    const error = util.wrapError(unwrappedError);
-    core.setFailed(`start-proxy action failed: ${error.message}`);
-
-    // We skip sending the error message and stack trace here to avoid the possibility
-    // of leaking any sensitive information into the telemetry.
-    const errorStatusReportBase = await createStatusReportBase(
-      ActionName.StartProxy,
-      getActionsStatus(error),
-      startedAt,
-      {
-        languages: language && [language],
-      },
-      await util.checkDiskUsage(logger),
-      logger,
-      "Error from start-proxy Action omitted",
-    );
-    if (errorStatusReportBase !== undefined) {
-      await sendStatusReport(errorStatusReportBase);
-    }
+    await sendFailedStatusReport(logger, startedAt, language, unwrappedError);
   }
 }
 
@@ -214,7 +160,7 @@ async function runWrapper() {
     await sendUnhandledErrorStatusReport(
       ActionName.StartProxy,
       startedAt,
-      new Error("Error from start-proxy Action omitted"),
+      getSafeErrorMessage(util.wrapError(error)),
       logger,
     );
   }
@@ -275,44 +221,6 @@ async function startProxy(
       url: credential.url,
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
-}
-
-async function getProxyBinaryPath(logger: Logger): Promise<string> {
-  const proxyFileName =
-    process.platform === "win32" ? `${UPDATEJOB_PROXY}.exe` : UPDATEJOB_PROXY;
-  const proxyInfo = await getDownloadUrl(logger);
-
-  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
-  if (!proxyBin) {
-    const apiDetails = getApiDetails();
-    const authorization = getAuthorizationHeaderFor(
-      logger,
-      apiDetails,
-      proxyInfo.url,
-    );
-    const temp = await toolcache.downloadTool(
-      proxyInfo.url,
-      undefined,
-      authorization,
-      {
-        accept: "application/octet-stream",
-      },
-    );
-    const extracted = await toolcache.extractTar(temp);
-    proxyBin = await toolcache.cacheDir(
-      extracted,
-      proxyFileName,
-      proxyInfo.version,
-    );
-  }
-  proxyBin = path.join(proxyBin, proxyFileName);
-  return proxyBin;
-}
-
-function credentialToStr(c: Credential): string {
-  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
-    c.username
-  }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
 }
 
 void runWrapper();

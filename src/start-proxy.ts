@@ -1,11 +1,160 @@
-import * as core from "@actions/core";
+import * as path from "path";
 
-import { getApiClient } from "./api-client";
+import * as core from "@actions/core";
+import * as toolcache from "@actions/tool-cache";
+
+import {
+  getApiClient,
+  getApiDetails,
+  getAuthorizationHeaderFor,
+} from "./api-client";
 import * as artifactScanner from "./artifact-scanner";
+import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
+import {
+  ActionName,
+  createStatusReportBase,
+  getActionsStatus,
+  sendStatusReport,
+  StatusReportBase,
+} from "./status-report";
+import * as util from "./util";
 import { ConfigurationError, getErrorMessage, isDefined } from "./util";
+
+/**
+ * Enumerates specific error types for which we have corresponding error messages that
+ * are safe to include in status reports.
+ */
+export enum StartProxyErrorType {
+  DownloadFailed,
+  ExtractionFailed,
+  CacheFailed,
+}
+
+/**
+ * @returns The error message corresponding to the error type.
+ */
+export function getStartProxyErrorMessage(
+  errorType: StartProxyErrorType,
+): string {
+  switch (errorType) {
+    case StartProxyErrorType.DownloadFailed:
+      return "Failed to download proxy archive.";
+    case StartProxyErrorType.ExtractionFailed:
+      return "Failed to extract proxy archive.";
+    case StartProxyErrorType.CacheFailed:
+      return "Failed to add proxy to toolcache";
+  }
+}
+
+/**
+ * We want to avoid accidentally leaking secrets that may be contained in exception
+ * messages in the `start-proxy` action. Consequently, we don't report the messages
+ * of arbitrary exceptions. This type of error ensures that the message is one from
+ * `StartProxyErrorType` and therefore safe to include in a status report.
+ */
+export class StartProxyError extends Error {
+  public readonly errorType: StartProxyErrorType;
+
+  constructor(errorType: StartProxyErrorType) {
+    super();
+    this.errorType = errorType;
+  }
+}
+
+interface StartProxyStatus extends StatusReportBase {
+  // A comma-separated list of registry types which are configured for CodeQL.
+  // This only includes registry types we support, not all that are configured.
+  registry_types: string;
+}
+
+/**
+ * Sends a status report for the `start-proxy` action indicating a successful outcome.
+ *
+ * @param startedAt When the action was started.
+ * @param config The configuration used.
+ * @param registry_types The types of registries that are configured.
+ * @param logger The logger to use.
+ */
+export async function sendSuccessStatusReport(
+  startedAt: Date,
+  config: Partial<Config>,
+  registry_types: string[],
+  logger: Logger,
+) {
+  const statusReportBase = await createStatusReportBase(
+    ActionName.StartProxy,
+    "success",
+    startedAt,
+    config,
+    await util.checkDiskUsage(logger),
+    logger,
+  );
+  if (statusReportBase !== undefined) {
+    const statusReport: StartProxyStatus = {
+      ...statusReportBase,
+      registry_types: registry_types.join(","),
+    };
+    await sendStatusReport(statusReport);
+  }
+}
+
+/**
+ * Returns an error message for `error` that can safely be reported in a status report,
+ * i.e. that does not contain sensitive information.
+ *
+ * @param error The error for which to get an error message.
+ */
+export function getSafeErrorMessage(error: Error): string {
+  // If the error is a `StartProxyError`, resolve the error type to the corresponding
+  // error message.
+  if (error instanceof StartProxyError) {
+    return getStartProxyErrorMessage(error.errorType);
+  }
+
+  // Otherwise, omit the actual error message.
+  return `Error from start-proxy Action omitted (${error.constructor.name}).`;
+}
+
+/**
+ * Sends a status report for the `start-proxy` action indicating a failure.
+ *
+ * @param logger The logger to use.
+ * @param startedAt When the action was started.
+ * @param language The language provided as input, if any.
+ * @param unwrappedError The exception that was thrown.
+ */
+export async function sendFailedStatusReport(
+  logger: Logger,
+  startedAt: Date,
+  language: KnownLanguage | undefined,
+  unwrappedError: unknown,
+) {
+  const error = util.wrapError(unwrappedError);
+  core.setFailed(`start-proxy action failed: ${error.message}`);
+
+  // To avoid the possibility of leaking sensitive information into the telemetry,
+  // we don't include arbitrary error messages. Instead, `getSafeErrorMessage` will
+  // return a generic message that includes the type of the error, unless it can decide
+  // that the message is safe to include.
+  const statusReportMessage = getSafeErrorMessage(error);
+  const errorStatusReportBase = await createStatusReportBase(
+    ActionName.StartProxy,
+    getActionsStatus(error),
+    startedAt,
+    {
+      languages: language && [language],
+    },
+    await util.checkDiskUsage(logger),
+    logger,
+    statusReportMessage,
+  );
+  if (errorStatusReportBase !== undefined) {
+    await sendStatusReport(errorStatusReportBase);
+  }
+}
 
 export const UPDATEJOB_PROXY = "update-job-proxy";
 export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
@@ -276,4 +425,126 @@ export async function getDownloadUrl(
     url: getFallbackUrl(proxyPackage),
     version: UPDATEJOB_PROXY_VERSION,
   };
+}
+
+/**
+ * Pretty-prints a `Credential` value to a string, but hides the actual password or token values.
+ *
+ * @param c The credential to convert to a string.
+ */
+export function credentialToStr(c: Credential): string {
+  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
+    c.username
+  }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
+}
+
+/**
+ * Attempts to download a file from `url` into the toolcache.
+ *
+ * @param logger The logger to use.
+ * @param url The URL to download the proxy binary from.
+ * @param authorization The authorization information to use.
+ * @returns If successful, the path to the downloaded file.
+ */
+export async function downloadProxy(
+  logger: Logger,
+  url: string,
+  authorization: string | undefined,
+) {
+  try {
+    // Download the proxy archive from `url`. We let `downloadTool` choose where
+    // to store it. The path to the downloaded file will be returned if successful.
+    return toolcache.downloadTool(url, /* dest: */ undefined, authorization, {
+      accept: "application/octet-stream",
+    });
+  } catch (error) {
+    logger.error(
+      `Failed to download proxy archive from ${url}: ${getErrorMessage(error)}`,
+    );
+    throw new StartProxyError(StartProxyErrorType.DownloadFailed);
+  }
+}
+
+/**
+ * Attempts to extract the proxy binary from the `archive`.
+ *
+ * @param logger The logger to use.
+ * @param archive The archive to extract.
+ * @returns The path to the extracted file(s).
+ */
+export async function extractProxy(logger: Logger, archive: string) {
+  try {
+    return await toolcache.extractTar(archive);
+  } catch (error) {
+    logger.error(
+      `Failed to extract proxy archive from ${archive}: ${getErrorMessage(error)}`,
+    );
+    throw new StartProxyError(StartProxyErrorType.ExtractionFailed);
+  }
+}
+
+/**
+ * Attempts to store the proxy in the toolcache.
+ *
+ * @param logger The logger to use.
+ * @param source The source path to add to the toolcache.
+ * @param filename The filename of the proxy binary.
+ * @param version The version of the proxy.
+ * @returns The path to the directory in the toolcache.
+ */
+export async function cacheProxy(
+  logger: Logger,
+  source: string,
+  filename: string,
+  version: string,
+) {
+  try {
+    return await toolcache.cacheDir(source, filename, version);
+  } catch (error) {
+    logger.error(
+      `Failed to add proxy archive from ${source} to toolcache: ${getErrorMessage(error)}`,
+    );
+    throw new StartProxyError(StartProxyErrorType.CacheFailed);
+  }
+}
+
+/**
+ * Returns the platform-specific filename of the proxy binary.
+ */
+export function getProxyFilename() {
+  return process.platform === "win32"
+    ? `${UPDATEJOB_PROXY}.exe`
+    : UPDATEJOB_PROXY;
+}
+
+/**
+ * Gets a path to the proxy binary. If possible, this function will find the proxy in the
+ * runner's tool cache. Otherwise, it downloads and extracts the proxy binary,
+ * and stores it in the tool cache.
+ *
+ * @param logger The logger to use.
+ * @returns The path to the proxy binary.
+ */
+export async function getProxyBinaryPath(logger: Logger): Promise<string> {
+  const proxyFileName = getProxyFilename();
+  const proxyInfo = await getDownloadUrl(logger);
+
+  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
+  if (!proxyBin) {
+    const apiDetails = getApiDetails();
+    const authorization = getAuthorizationHeaderFor(
+      logger,
+      apiDetails,
+      proxyInfo.url,
+    );
+    const temp = await downloadProxy(logger, proxyInfo.url, authorization);
+    const extracted = await extractProxy(logger, temp);
+    proxyBin = await cacheProxy(
+      logger,
+      extracted,
+      proxyFileName,
+      proxyInfo.version,
+    );
+  }
+  return path.join(proxyBin, proxyFileName);
 }

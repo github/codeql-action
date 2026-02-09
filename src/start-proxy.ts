@@ -13,6 +13,7 @@ import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
+import { Credential } from "./start-proxy/types";
 import {
   ActionName,
   createStatusReportBase,
@@ -22,6 +23,8 @@ import {
 } from "./status-report";
 import * as util from "./util";
 import { ConfigurationError, getErrorMessage, isDefined } from "./util";
+
+export * from "./start-proxy/types";
 
 /**
  * Enumerates specific error types for which we have corresponding error messages that
@@ -160,15 +163,6 @@ export const UPDATEJOB_PROXY = "update-job-proxy";
 export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
-
-export type Credential = {
-  type: string;
-  host?: string;
-  url?: string;
-  username?: string;
-  password?: string;
-  token?: string;
-};
 
 /*
  * Language aliases supported by the start-proxy Action.

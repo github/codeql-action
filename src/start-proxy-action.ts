@@ -88,7 +88,15 @@ function generateCertificateAuthority(): CertificateAuthority {
   cert.setIssuer(CERT_SUBJECT);
   cert.setExtensions([
     { name: "basicConstraints", cA: true },
-    { name: "keyUsage", keyCertSign: true, cRLSign: true },
+    {
+      name: "keyUsage",
+      critical: true,
+      keyCertSign: true,
+      cRLSign: true,
+      digitalSignature: true,
+    },
+    { name: "subjectKeyIdentifier" },
+    { name: "authorityKeyIdentifier", keyIdentifier: true },
   ]);
   cert.sign(keys.privateKey, md.sha256.create());
 

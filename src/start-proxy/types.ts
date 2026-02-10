@@ -9,3 +9,10 @@ export interface Registry {
   host?: string;
   url?: string;
 }
+
+export interface ProxyInfo {
+  host: string;
+  port: number;
+  cert: string;
+  registries: Registry[];
+}

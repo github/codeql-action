@@ -51,7 +51,12 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
     return new Promise((resolve, reject) => {
       const req = https.request(
         getAddressString(registry),
-        { agent: this.agent, method: "HEAD", ca: this.proxy.cert },
+        {
+          agent: this.agent,
+          method: "HEAD",
+          ca: this.proxy.cert,
+          timeout: 5 * 1000, // 5 seconds
+        },
         (res) => {
           res.destroy();
 

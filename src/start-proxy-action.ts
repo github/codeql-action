@@ -11,16 +11,16 @@ import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
-  Credential,
   credentialToStr,
   getCredentials,
   getProxyBinaryPath,
   getSafeErrorMessage,
   parseLanguage,
   ProxyInfo,
-  Registry,
   sendFailedStatusReport,
   sendSuccessStatusReport,
+  ValidCredential,
+  ValidRegistry,
 } from "./start-proxy";
 import { checkConnections } from "./start-proxy/reachability";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
@@ -40,7 +40,7 @@ type BasicAuthCredentials = {
 };
 
 type ProxyConfig = {
-  all_credentials: Credential[];
+  all_credentials: ValidCredential[];
   ca: CertificateAuthority;
   proxy_auth?: BasicAuthCredentials;
 };
@@ -243,7 +243,7 @@ async function startProxy(
   core.setOutput("proxy_port", port.toString());
   core.setOutput("proxy_ca_certificate", config.ca.cert);
 
-  const registry_urls: Registry[] = config.all_credentials
+  const registry_urls: ValidRegistry[] = config.all_credentials
     .filter((credential) => credential.url !== undefined)
     .map((credential) => ({
       type: credential.type,

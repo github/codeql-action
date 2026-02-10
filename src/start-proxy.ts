@@ -13,7 +13,12 @@ import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
-import { Credential } from "./start-proxy/types";
+import {
+  Address,
+  Credential,
+  Registry,
+  ValidCredential,
+} from "./start-proxy/types";
 import {
   ActionName,
   createStatusReportBase,
@@ -223,6 +228,31 @@ const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string[]>> = {
   go: ["goproxy_server", "git_source"],
 } as const;
 
+/**
+ * Extracts an `Address` value from the given `Registry` value by determining whether it has
+ * a `url` value, or no `url` value but a `host` value.
+ *
+ * @throws A `ConfigurationError` if the `Registry` value contains neither a `url` or `host` field.
+ */
+function getRegistryAddress(registry: Registry): Address {
+  if (isDefined(registry.url)) {
+    return {
+      url: registry.url,
+      host: registry.host,
+    };
+  } else if (isDefined(registry.host)) {
+    return {
+      url: undefined,
+      host: registry.host,
+    };
+  } else {
+    // The proxy needs one of these to work. If both are defined, the url has the precedence.
+    throw new ConfigurationError(
+      "Invalid credentials - must specify host or url",
+    );
+  }
+}
+
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
@@ -231,7 +261,7 @@ export function getCredentials(
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
   language: KnownLanguage | undefined,
-): Credential[] {
+): ValidCredential[] {
   const registryTypeForLanguage = language
     ? LANGUAGE_TO_REGISTRY_TYPE[language]
     : undefined;
@@ -265,7 +295,7 @@ export function getCredentials(
     );
   }
 
-  const out: Credential[] = [];
+  const out: ValidCredential[] = [];
   for (const e of parsed) {
     if (e === null || typeof e !== "object") {
       throw new ConfigurationError("Invalid credentials - must be an object");
@@ -279,12 +309,7 @@ export function getCredentials(
       core.setSecret(e.token);
     }
 
-    if (!isDefined(e.url) && !isDefined(e.host)) {
-      // The proxy needs one of these to work. If both are defined, the url has the precedence.
-      throw new ConfigurationError(
-        "Invalid credentials - must specify host or url",
-      );
-    }
+    const address = getRegistryAddress(e);
 
     // Filter credentials based on language if specified. `type` is the registry type.
     // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
@@ -327,11 +352,10 @@ export function getCredentials(
 
     out.push({
       type: e.type,
-      host: e.host,
-      url: e.url,
       username: e.username,
       password: e.password,
       token: e.token,
+      ...address,
     });
   }
   return out;

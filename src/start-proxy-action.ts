@@ -2,7 +2,7 @@ import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import { pki } from "node-forge";
+import { md, pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
@@ -90,7 +90,7 @@ function generateCertificateAuthority(): CertificateAuthority {
     { name: "basicConstraints", cA: true },
     { name: "keyUsage", keyCertSign: true, cRLSign: true },
   ]);
-  cert.sign(keys.privateKey);
+  cert.sign(keys.privateKey, md.sha256.create());
 
   const pem = pki.certificateToPem(cert);
   const key = pki.privateKeyToPem(keys.privateKey);

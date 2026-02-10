@@ -53,7 +53,6 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
         registry.url as string,
         { agent: this.agent, method: "HEAD", ca: this.proxy.cert },
         (res) => {
-          this.logger.info(`Got a response: ${res.statusCode}`);
           res.destroy();
 
           if (res.statusCode !== undefined && res.statusCode < 400) {

@@ -60,7 +60,7 @@ test("checkConnections - excludes failed status codes", async (t) => {
   sinon
     .stub(backend, "checkConnection")
     .onSecondCall()
-    .throws(new ReachabilityError(nugetFeed, 400));
+    .throws(new ReachabilityError(400));
   const messages = await withRecordingLoggerAsync(async (logger) => {
     const reachable = await checkConnections(logger, proxyInfo, backend);
     t.is(reachable.size, 1);

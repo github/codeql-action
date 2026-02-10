@@ -5,7 +5,7 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { Logger } from "../logging";
 import { getErrorMessage } from "../util";
 
-import { ProxyInfo, Registry } from "./types";
+import { getAddressString, ProxyInfo, Registry, ValidRegistry } from "./types";
 
 export class ReachabilityError extends Error {
   constructor(
@@ -34,7 +34,7 @@ export interface ReachabilityBackend {
    * @param registry The registry to try and reach.
    * @returns The successful status code (in the `<400` range).
    */
-  checkConnection: (registry: Registry) => Promise<number>;
+  checkConnection: (registry: ValidRegistry) => Promise<number>;
 }
 
 class NetworkReachabilityBackend implements ReachabilityBackend {
@@ -47,10 +47,10 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
     this.agent = new HttpsProxyAgent(`http://${proxy.host}:${proxy.port}`);
   }
 
-  public async checkConnection(registry: Registry): Promise<number> {
+  public async checkConnection(registry: ValidRegistry): Promise<number> {
     return new Promise((resolve, reject) => {
       const req = https.request(
-        registry.url as string,
+        getAddressString(registry),
         { agent: this.agent, method: "HEAD", ca: this.proxy.cert },
         (res) => {
           res.destroy();
@@ -83,8 +83,8 @@ export async function checkConnections(
   logger: Logger,
   proxy: ProxyInfo,
   backend?: ReachabilityBackend,
-): Promise<Set<Registry>> {
-  const result: Set<Registry> = new Set();
+): Promise<Set<ValidRegistry>> {
+  const result: Set<ValidRegistry> = new Set();
 
   // Don't do anything if there are no registries.
   if (proxy.registries.length === 0) return result;
@@ -96,22 +96,23 @@ export async function checkConnections(
     }
 
     for (const registry of proxy.registries) {
+      const address = getAddressString(registry);
       try {
-        logger.debug(`Testing connection to ${registry.url}...`);
+        logger.debug(`Testing connection to ${address}...`);
         const statusCode = await backend.checkConnection(registry);
 
         logger.info(
-          `Successfully tested connection to ${registry.url} (${statusCode})`,
+          `Successfully tested connection to ${address} (${statusCode})`,
         );
         result.add(registry);
       } catch (e) {
         if (e instanceof ReachabilityError && e.statusCode !== undefined) {
           logger.error(
-            `Connection test to ${registry.url} failed. (${e.statusCode})`,
+            `Connection test to ${address} failed. (${e.statusCode})`,
           );
         } else {
           logger.error(
-            `Connection test to ${registry.url} failed: ${getErrorMessage(e)}`,
+            `Connection test to ${address} failed: ${getErrorMessage(e)}`,
           );
         }
       }

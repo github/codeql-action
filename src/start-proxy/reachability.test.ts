@@ -11,22 +11,22 @@ import {
   ReachabilityBackend,
   ReachabilityError,
 } from "./reachability";
-import { ProxyInfo, Registry } from "./types";
+import { ProxyInfo, ValidRegistry } from "./types";
 
 setupTests(test);
 
 class MockReachabilityBackend implements ReachabilityBackend {
-  public async checkConnection(_registry: Registry): Promise<number> {
+  public async checkConnection(_registry: ValidRegistry): Promise<number> {
     return 200;
   }
 }
 
-const mavenRegistry: Registry = {
+const mavenRegistry: ValidRegistry = {
   type: "maven_registry",
   url: "https://repo.maven.apache.org/maven2/",
 };
 
-const nugetFeed: Registry = {
+const nugetFeed: ValidRegistry = {
   type: "nuget_feed",
   url: "https://api.nuget.org/v3/index.json",
 };

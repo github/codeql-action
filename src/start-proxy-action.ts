@@ -17,6 +17,8 @@ import {
   getProxyBinaryPath,
   getSafeErrorMessage,
   parseLanguage,
+  ProxyInfo,
+  Registry,
   sendFailedStatusReport,
   sendSuccessStatusReport,
 } from "./start-proxy";
@@ -188,7 +190,7 @@ async function startProxy(
   config: ProxyConfig,
   logFilePath: string,
   logger: Logger,
-) {
+): Promise<ProxyInfo> {
   const host = "127.0.0.1";
   let port = 49152;
   let subprocess: ChildProcess | undefined = undefined;
@@ -231,13 +233,15 @@ async function startProxy(
   core.setOutput("proxy_port", port.toString());
   core.setOutput("proxy_ca_certificate", config.ca.cert);
 
-  const registry_urls = config.all_credentials
+  const registry_urls: Registry[] = config.all_credentials
     .filter((credential) => credential.url !== undefined)
     .map((credential) => ({
       type: credential.type,
       url: credential.url,
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
+
+  return { host, port, cert: config.ca.cert, registries: registry_urls };
 }
 
 void runWrapper();

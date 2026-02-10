@@ -86,7 +86,10 @@ function generateCertificateAuthority(): CertificateAuthority {
 
   cert.setSubject(CERT_SUBJECT);
   cert.setIssuer(CERT_SUBJECT);
-  cert.setExtensions([{ name: "basicConstraints", cA: true }]);
+  cert.setExtensions([
+    { name: "basicConstraints", cA: true },
+    { name: "keyUsage", keyCertSign: true, cRLSign: true },
+  ]);
   cert.sign(keys.privateKey);
 
   const pem = pki.certificateToPem(cert);

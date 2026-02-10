@@ -6,7 +6,7 @@ import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { Features } from "./feature-flags";
+import { Feature, Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -22,6 +22,7 @@ import {
   sendFailedStatusReport,
   sendSuccessStatusReport,
 } from "./start-proxy";
+import { checkConnections } from "./start-proxy/reachability";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
 
@@ -112,7 +113,6 @@ async function run(startedAt: Date) {
     // Initialise FFs, but only load them from disk if they are already available.
     const repositoryNwo = getRepositoryNwo();
     const gitHubVersion = await getGitHubVersion();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     features = new Features(
       gitHubVersion,
       repositoryNwo,
@@ -152,7 +152,17 @@ async function run(startedAt: Date) {
 
     // Start the Proxy
     const proxyBin = await getProxyBinaryPath(logger);
-    await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
+    const proxyInfo = await startProxy(
+      proxyBin,
+      proxyConfig,
+      proxyLogFilePath,
+      logger,
+    );
+
+    // Check that the private registries are reachable.
+    if (await features.getValue(Feature.StartProxyConnectionChecks)) {
+      await checkConnections(logger, proxyInfo);
+    }
 
     // Report success if we have reached this point.
     await sendSuccessStatusReport(

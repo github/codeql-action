@@ -109,10 +109,11 @@ export async function checkConnections(
           logger.error(
             `Connection test to ${registry.url} failed. (${e.statusCode})`,
           );
+        } else {
+          logger.error(
+            `Connection test to ${registry.url} failed: ${getErrorMessage(e)}`,
+          );
         }
-        logger.error(
-          `Connection test to ${registry.url} failed: ${getErrorMessage(e)}`,
-        );
       }
     }
 

@@ -5,20 +5,11 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { Logger } from "../logging";
 import { getErrorMessage } from "../util";
 
-import { getAddressString, ProxyInfo, Registry, ValidRegistry } from "./types";
+import { getAddressString, ProxyInfo, ValidRegistry } from "./types";
 
 export class ReachabilityError extends Error {
-  constructor(
-    public readonly registry: Registry,
-    public readonly statusCode?: number | undefined,
-  ) {
-    const statusStr = ReachabilityError.getStatusStr(statusCode);
-    super(`Connection test to ${registry.url} failed.${statusStr}`);
-  }
-
-  private static getStatusStr(statusCode: number | undefined) {
-    if (statusCode === undefined) return "";
-    return ` (${statusCode})`;
+  constructor(public readonly statusCode?: number | undefined) {
+    super();
   }
 }
 
@@ -63,13 +54,12 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
           if (res.statusCode !== undefined && res.statusCode < 400) {
             resolve(res.statusCode);
           } else {
-            reject(new ReachabilityError(registry, res.statusCode));
+            reject(new ReachabilityError(res.statusCode));
           }
         },
       );
       req.on("error", (e) => {
-        this.logger.error(e);
-        reject(new ReachabilityError(registry));
+        reject(e);
       });
       req.end();
     });

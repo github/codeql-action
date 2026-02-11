@@ -1,14 +1,28 @@
-export interface Credential extends Registry {
-  username?: string;
-  password?: string;
-  token?: string;
-}
+/**
+ * After parsing configurations from JSON, we don't know whether all the keys we expect are
+ * present or not. This type is used to represent such values, which we expect to be
+ * `Credential` values, but haven't validated yet.
+ */
+export type RawCredential = Partial<Credential>;
 
-export interface Registry {
+/**
+ * A package registry configuration includes identifying information as well as
+ * authentication credentials.
+ */
+export type Credential = {
+  /** The username needed to authenticate to the package registry, if any. */
+  username?: string;
+  /** The password needed to authenticate to the package registry, if any. */
+  password?: string;
+  /** The token needed to authenticate to the package registry, if any. */
+  token?: string;
+} & Registry;
+
+/** A package registry is identified by its type and address. */
+export type Registry = {
+  /** The type of the package registry. */
   type: string;
-  host?: string;
-  url?: string;
-}
+} & Address;
 
 // If a registry has an `url`, then that takes precedence over the `host` which may or may
 // not be defined.
@@ -39,12 +53,9 @@ export function getAddressString(address: Address): string {
   }
 }
 
-export type ValidRegistry<T extends Registry = Registry> = T & Address;
-export type ValidCredential = ValidRegistry<Credential>;
-
 export interface ProxyInfo {
   host: string;
   port: number;
   cert: string;
-  registries: ValidRegistry[];
+  registries: Registry[];
 }

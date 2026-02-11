@@ -5,7 +5,7 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { Logger } from "../logging";
 import { getErrorMessage } from "../util";
 
-import { getAddressString, ProxyInfo, ValidRegistry } from "./types";
+import { getAddressString, ProxyInfo, Registry } from "./types";
 
 export class ReachabilityError extends Error {
   constructor(public readonly statusCode?: number | undefined) {
@@ -25,7 +25,7 @@ export interface ReachabilityBackend {
    * @param registry The registry to try and reach.
    * @returns The successful status code (in the `<400` range).
    */
-  checkConnection: (registry: ValidRegistry) => Promise<number>;
+  checkConnection: (registry: Registry) => Promise<number>;
 }
 
 class NetworkReachabilityBackend implements ReachabilityBackend {
@@ -38,7 +38,7 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
     this.agent = new HttpsProxyAgent(`http://${proxy.host}:${proxy.port}`);
   }
 
-  public async checkConnection(registry: ValidRegistry): Promise<number> {
+  public async checkConnection(registry: Registry): Promise<number> {
     return new Promise((resolve, reject) => {
       const req = https.request(
         getAddressString(registry),
@@ -78,8 +78,8 @@ export async function checkConnections(
   logger: Logger,
   proxy: ProxyInfo,
   backend?: ReachabilityBackend,
-): Promise<Set<ValidRegistry>> {
-  const result: Set<ValidRegistry> = new Set();
+): Promise<Set<Registry>> {
+  const result: Set<Registry> = new Set();
 
   // Don't do anything if there are no registries.
   if (proxy.registries.length === 0) return result;

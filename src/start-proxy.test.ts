@@ -175,6 +175,27 @@ test("getCredentials throws error when credential is not an object", async (t) =
   }
 });
 
+test("getCredentials throws error when credential is missing type", async (t) => {
+  const testCredentials = [[{ token: "abc", url: "https://localhost" }]].map(
+    toEncodedJSON,
+  );
+
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must have a type",
+      },
+    );
+  }
+});
+
 test("getCredentials throws error when credential missing host and url", async (t) => {
   const testCredentials = [
     [{ type: "npm_registry", token: "abc" }],

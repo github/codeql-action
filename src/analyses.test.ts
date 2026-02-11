@@ -4,7 +4,9 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import {
   AnalysisKind,
+  CodeScanning,
   compatibilityMatrix,
+  getAnalysisConfig,
   getAnalysisKinds,
   parseAnalysisKinds,
   supportedAnalysisKinds,
@@ -12,6 +14,7 @@ import {
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import { ConfigurationError } from "./util";
+import path from "path";
 
 setupTests(test);
 
@@ -101,3 +104,16 @@ for (let i = 0; i < analysisKinds.length; i++) {
     }
   }
 }
+
+test("Code Scanning configuration does not accept other SARIF extensions", (t) => {
+  for (const analysisKind of supportedAnalysisKinds) {
+    if (analysisKind === AnalysisKind.CodeScanning) continue;
+
+    const analysis = getAnalysisConfig(analysisKind);
+    const sarifPath = path.join("path", "to", `file${analysis.sarifExtension}`);
+
+    // The Code Scanning configuration's `sarifPredicate` should not accept a path which
+    // ends in a different configuration's `sarifExtension`.
+    t.false(CodeScanning.sarifPredicate(sarifPath));
+  }
+});

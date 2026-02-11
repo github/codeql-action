@@ -13,3 +13,7 @@ export interface UploadPayload {
   base_ref?: string;
   base_sha?: string;
 }
+
+export interface AssessmentPayload extends UploadPayload {
+  assessment_id: string;
+}

@@ -32,7 +32,7 @@ const CERT_SUBJECT = [
   },
 ];
 
-type Extension = {
+export type Extension = {
   name: string;
   [key: string]: unknown;
 };

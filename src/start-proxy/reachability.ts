@@ -58,6 +58,10 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
       req.on("error", (e) => {
         reject(e);
       });
+      req.on("timeout", () => {
+        req.destroy();
+        reject(new Error("Connection timeout."));
+      });
       req.end();
     });
   }

@@ -9,6 +9,7 @@ import { ConfigurationError } from "./util";
 export enum AnalysisKind {
   CodeScanning = "code-scanning",
   CodeQuality = "code-quality",
+  CSRA = "csra",
 }
 
 // Exported for testing. A set of all known analysis kinds.
@@ -101,6 +102,7 @@ export const codeQualityQueries: string[] = ["code-quality"];
 enum SARIF_UPLOAD_ENDPOINT {
   CODE_SCANNING = "PUT /repos/:owner/:repo/code-scanning/analysis",
   CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
+  CSRA = "PUT /repos/:owner/:repo/code-scanning/risk-assessment",
 }
 
 // Represents configurations for different analysis kinds.
@@ -146,6 +148,16 @@ export const CodeQuality: AnalysisConfig = {
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
 };
 
+export const CSRA: AnalysisConfig = {
+  kind: AnalysisKind.CSRA,
+  name: "csra",
+  target: SARIF_UPLOAD_ENDPOINT.CSRA,
+  sarifExtension: ".csra.sarif",
+  sarifPredicate: (name) => name.endsWith(CSRA.sarifExtension),
+  fixCategory: fixCodeQualityCategory,
+  sentinelPrefix: "CODEQL_UPLOAD_CSRA_SARIF_",
+};
+
 /**
  * Gets the `AnalysisConfig` corresponding to `kind`.
  * @param kind The analysis kind to get the `AnalysisConfig` for.
@@ -160,6 +172,8 @@ export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
       return CodeScanning;
     case AnalysisKind.CodeQuality:
       return CodeQuality;
+    case AnalysisKind.CSRA:
+      return CSRA;
   }
 }
 
@@ -167,4 +181,8 @@ export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
 // we want to scan a folder containing SARIF files in an order that finds the more
 // specific extensions first. This constant defines an array in the order of analyis
 // configurations with more specific extensions to less specific extensions.
-export const SarifScanOrder = [CodeQuality, CodeScanning];
+export const SarifScanOrder: AnalysisConfig[] = [
+  CSRA,
+  CodeQuality,
+  CodeScanning,
+];

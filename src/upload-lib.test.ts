@@ -12,6 +12,7 @@ import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
+import { UploadPayload } from "./upload-lib/types";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
@@ -909,7 +910,15 @@ function createMockSarif(id?: string, tool?: string) {
 
 function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
   const mockData = {
-    payload: { sarif: "base64data", commit_sha: "abc123" },
+    payload: {
+      commit_oid: "abc123",
+      ref: "ref",
+      sarif: "base64data",
+      workflow_run_id: 1,
+      workflow_run_attempt: 1,
+      checkout_uri: "uri",
+      tool_names: ["codeql"],
+    } satisfies UploadPayload,
     owner: "test-owner",
     repo: "test-repo",
     response: {

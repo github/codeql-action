@@ -396,13 +396,14 @@ test("credentialToStr - hides passwords", (t) => {
   const credential = {
     type: "maven_credential",
     password: secret,
+    url: "https://localhost",
   };
 
   const str = startProxyExports.credentialToStr(credential);
 
   t.false(str.includes(secret));
   t.is(
-    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: true; Token: false",
+    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: true; Token: false",
     str,
   );
 });
@@ -412,13 +413,14 @@ test("credentialToStr - hides tokens", (t) => {
   const credential = {
     type: "maven_credential",
     token: secret,
+    url: "https://localhost",
   };
 
   const str = startProxyExports.credentialToStr(credential);
 
   t.false(str.includes(secret));
   t.is(
-    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: false; Token: true",
+    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: false; Token: true",
     str,
   );
 });

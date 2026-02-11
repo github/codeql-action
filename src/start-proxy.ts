@@ -455,7 +455,7 @@ export async function getDownloadUrl(
  *
  * @param c The credential to convert to a string.
  */
-export function credentialToStr(c: RawCredential): string {
+export function credentialToStr(c: Credential): string {
   return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
     c.username
   }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;

@@ -156,7 +156,8 @@ export const CodeScanning: AnalysisConfig = {
   sarifExtension: ".sarif",
   sarifPredicate: (name) =>
     name.endsWith(CodeScanning.sarifExtension) &&
-    !CodeQuality.sarifPredicate(name),
+    !CodeQuality.sarifPredicate(name) &&
+    !CSRA.sarifPredicate(name),
   fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
 };

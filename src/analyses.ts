@@ -4,8 +4,8 @@ import {
   getRequiredInput,
 } from "./actions-util";
 import { Logger } from "./logging";
-import { UploadPayload } from "./upload-lib/types";
-import { ConfigurationError } from "./util";
+import { AssessmentPayload, UploadPayload } from "./upload-lib/types";
+import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 export enum AnalysisKind {
   CodeScanning = "code-scanning",
@@ -178,6 +178,15 @@ export const CodeQuality: AnalysisConfig = {
   transformPayload: (payload) => payload,
 };
 
+/**
+ * Retrieves the CSRA assessment id from an environment variable and adds it to the payload.
+ * @param payload The base payload.
+ */
+function addAssessmentId(payload: UploadPayload): AssessmentPayload {
+  const assessmentId = getRequiredEnvParam("CODEQL_ACTION_CSRA_ASSESSMENT_ID");
+  return { ...payload, assessment_id: assessmentId };
+}
+
 export const CSRA: AnalysisConfig = {
   kind: AnalysisKind.CSRA,
   name: "csra",
@@ -186,7 +195,7 @@ export const CSRA: AnalysisConfig = {
   sarifPredicate: (name) => name.endsWith(CSRA.sarifExtension),
   fixCategory: fixCodeQualityCategory,
   sentinelPrefix: "CODEQL_UPLOAD_CSRA_SARIF_",
-  transformPayload: (payload) => payload,
+  transformPayload: addAssessmentId,
 };
 
 /**

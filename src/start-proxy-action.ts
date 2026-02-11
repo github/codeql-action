@@ -5,18 +5,24 @@ import * as core from "@actions/core";
 import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
+import { getGitHubVersion } from "./api-client";
+import { Feature, Features } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import { getRepositoryNwo } from "./repository";
 import {
-  Credential,
   credentialToStr,
   getCredentials,
   getProxyBinaryPath,
   getSafeErrorMessage,
   parseLanguage,
+  ProxyInfo,
   sendFailedStatusReport,
   sendSuccessStatusReport,
+  Credential,
+  Registry,
 } from "./start-proxy";
+import { checkConnections } from "./start-proxy/reachability";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
 
@@ -34,6 +40,7 @@ type BasicAuthCredentials = {
 };
 
 type ProxyConfig = {
+  /** The validated configurations for the proxy. */
   all_credentials: Credential[];
   ca: CertificateAuthority;
   proxy_auth?: BasicAuthCredentials;
@@ -92,6 +99,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  let features: Features | undefined;
   let language: KnownLanguage | undefined;
 
   try {
@@ -103,9 +111,21 @@ async function run(startedAt: Date) {
     const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
     core.saveState("proxy-log-file", proxyLogFilePath);
 
-    // Get the configuration options
+    // Initialise FFs.
+    const repositoryNwo = getRepositoryNwo();
+    const gitHubVersion = await getGitHubVersion();
+    features = new Features(
+      gitHubVersion,
+      repositoryNwo,
+      actionsUtil.getTemporaryDirectory(),
+      logger,
+    );
+
+    // Get the language input.
     const languageInput = actionsUtil.getOptionalInput("language");
     language = languageInput ? parseLanguage(languageInput) : undefined;
+
+    // Get the registry configurations from one of the inputs.
     const credentials = getCredentials(
       logger,
       actionsUtil.getOptionalInput("registry_secrets"),
@@ -133,7 +153,17 @@ async function run(startedAt: Date) {
 
     // Start the Proxy
     const proxyBin = await getProxyBinaryPath(logger);
-    await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
+    const proxyInfo = await startProxy(
+      proxyBin,
+      proxyConfig,
+      proxyLogFilePath,
+      logger,
+    );
+
+    // Check that the private registries are reachable.
+    if (await features.getValue(Feature.StartProxyConnectionChecks)) {
+      await checkConnections(logger, proxyInfo);
+    }
 
     // Report success if we have reached this point.
     await sendSuccessStatusReport(
@@ -171,7 +201,7 @@ async function startProxy(
   config: ProxyConfig,
   logFilePath: string,
   logger: Logger,
-) {
+): Promise<ProxyInfo> {
   const host = "127.0.0.1";
   let port = 49152;
   let subprocess: ChildProcess | undefined = undefined;
@@ -214,13 +244,15 @@ async function startProxy(
   core.setOutput("proxy_port", port.toString());
   core.setOutput("proxy_ca_certificate", config.ca.cert);
 
-  const registry_urls = config.all_credentials
+  const registry_urls: Registry[] = config.all_credentials
     .filter((credential) => credential.url !== undefined)
     .map((credential) => ({
       type: credential.type,
       url: credential.url,
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
+
+  return { host, port, cert: config.ca.cert, registries: registry_urls };
 }
 
 void runWrapper();

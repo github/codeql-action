@@ -65,7 +65,6 @@ test("checkConnections - excludes failed status codes", async (t) => {
     const reachable = await checkConnections(logger, proxyInfo, backend);
     t.is(reachable.size, 1);
     t.true(reachable.has(mavenRegistry));
-    t.false(reachable.has(nugetFeed));
   });
   checkExpectedLogMessages(t, messages, [
     `Testing connection to ${mavenRegistry.url}`,
@@ -86,7 +85,6 @@ test("checkConnections - handles other exceptions", async (t) => {
     const reachable = await checkConnections(logger, proxyInfo, backend);
     t.is(reachable.size, 1);
     t.true(reachable.has(mavenRegistry));
-    t.false(reachable.has(nugetFeed));
   });
   checkExpectedLogMessages(t, messages, [
     `Testing connection to ${mavenRegistry.url}`,

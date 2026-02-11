@@ -848,18 +848,20 @@ export async function uploadPostProcessedFiles(
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = url.pathToFileURL(checkoutPath).href;
 
-  const payload = buildPayload(
-    await gitUtils.getCommitOid(checkoutPath),
-    await gitUtils.getRef(),
-    postProcessingResults.analysisKey,
-    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    zippedSarif,
-    actionsUtil.getWorkflowRunID(),
-    actionsUtil.getWorkflowRunAttempt(),
-    checkoutURI,
-    postProcessingResults.environment,
-    toolNames,
-    await gitUtils.determineBaseBranchHeadCommitOid(),
+  const payload = uploadTarget.transformPayload(
+    buildPayload(
+      await gitUtils.getCommitOid(checkoutPath),
+      await gitUtils.getRef(),
+      postProcessingResults.analysisKey,
+      util.getRequiredEnvParam("GITHUB_WORKFLOW"),
+      zippedSarif,
+      actionsUtil.getWorkflowRunID(),
+      actionsUtil.getWorkflowRunAttempt(),
+      checkoutURI,
+      postProcessingResults.environment,
+      toolNames,
+      await gitUtils.determineBaseBranchHeadCommitOid(),
+    ),
   );
 
   // Log some useful debug info about the info

@@ -4,6 +4,7 @@ import {
   getRequiredInput,
 } from "./actions-util";
 import { Logger } from "./logging";
+import { UploadPayload } from "./upload-lib/types";
 import { ConfigurationError } from "./util";
 
 export enum AnalysisKind {
@@ -146,6 +147,8 @@ export interface AnalysisConfig {
   fixCategory: (logger: Logger, category?: string) => string | undefined;
   /** A prefix for environment variables used to track the uniqueness of SARIF uploads. */
   sentinelPrefix: string;
+  /** Transforms the upload payload in an analysis-specific way. */
+  transformPayload: (payload: UploadPayload) => UploadPayload;
 }
 
 // Represents the Code Scanning analysis configuration.
@@ -160,6 +163,7 @@ export const CodeScanning: AnalysisConfig = {
     !CSRA.sarifPredicate(name),
   fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
+  transformPayload: (payload) => payload,
 };
 
 // Represents the Code Quality analysis configuration.
@@ -171,6 +175,7 @@ export const CodeQuality: AnalysisConfig = {
   sarifPredicate: (name) => name.endsWith(CodeQuality.sarifExtension),
   fixCategory: fixCodeQualityCategory,
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
+  transformPayload: (payload) => payload,
 };
 
 export const CSRA: AnalysisConfig = {
@@ -181,6 +186,7 @@ export const CSRA: AnalysisConfig = {
   sarifPredicate: (name) => name.endsWith(CSRA.sarifExtension),
   fixCategory: fixCodeQualityCategory,
   sentinelPrefix: "CODEQL_UPLOAD_CSRA_SARIF_",
+  transformPayload: (payload) => payload,
 };
 
 /**

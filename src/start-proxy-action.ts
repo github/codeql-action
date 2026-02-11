@@ -19,8 +19,8 @@ import {
   ProxyInfo,
   sendFailedStatusReport,
   sendSuccessStatusReport,
-  ValidCredential,
-  ValidRegistry,
+  Credential,
+  Registry,
 } from "./start-proxy";
 import { checkConnections } from "./start-proxy/reachability";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
@@ -40,7 +40,8 @@ type BasicAuthCredentials = {
 };
 
 type ProxyConfig = {
-  all_credentials: ValidCredential[];
+  /** The validated configurations for the proxy. */
+  all_credentials: Credential[];
   ca: CertificateAuthority;
   proxy_auth?: BasicAuthCredentials;
 };
@@ -243,7 +244,7 @@ async function startProxy(
   core.setOutput("proxy_port", port.toString());
   core.setOutput("proxy_ca_certificate", config.ca.cert);
 
-  const registry_urls: ValidRegistry[] = config.all_credentials
+  const registry_urls: Registry[] = config.all_credentials
     .filter((credential) => credential.url !== undefined)
     .map((credential) => ({
       type: credential.type,

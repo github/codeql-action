@@ -15,9 +15,9 @@ import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
   Address,
-  Credential,
+  RawCredential,
   Registry,
-  ValidCredential,
+  Credential,
 } from "./start-proxy/types";
 import {
   ActionName,
@@ -234,7 +234,7 @@ const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string[]>> = {
  *
  * @throws A `ConfigurationError` if the `Registry` value contains neither a `url` or `host` field.
  */
-function getRegistryAddress(registry: Registry): Address {
+function getRegistryAddress(registry: Partial<Registry>): Address {
   if (isDefined(registry.url)) {
     return {
       url: registry.url,
@@ -261,7 +261,7 @@ export function getCredentials(
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
   language: KnownLanguage | undefined,
-): ValidCredential[] {
+): Credential[] {
   const registryTypeForLanguage = language
     ? LANGUAGE_TO_REGISTRY_TYPE[language]
     : undefined;
@@ -279,9 +279,9 @@ export function getCredentials(
   }
 
   // Parse and validate the credentials
-  let parsed: Credential[];
+  let parsed: RawCredential[];
   try {
-    parsed = JSON.parse(credentialsStr) as Credential[];
+    parsed = JSON.parse(credentialsStr) as RawCredential[];
   } catch {
     // Don't log the error since it might contain sensitive information.
     logger.error("Failed to parse the credentials data.");
@@ -295,10 +295,15 @@ export function getCredentials(
     );
   }
 
-  const out: ValidCredential[] = [];
+  const out: Credential[] = [];
   for (const e of parsed) {
     if (e === null || typeof e !== "object") {
       throw new ConfigurationError("Invalid credentials - must be an object");
+    }
+
+    // The configuration must have a type.
+    if (!isDefined(e.type)) {
+      throw new ConfigurationError("Invalid credentials - must have a type");
     }
 
     // Mask credentials to reduce chance of accidental leakage in logs.
@@ -450,7 +455,7 @@ export async function getDownloadUrl(
  *
  * @param c The credential to convert to a string.
  */
-export function credentialToStr(c: Credential): string {
+export function credentialToStr(c: RawCredential): string {
   return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
     c.username
   }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;

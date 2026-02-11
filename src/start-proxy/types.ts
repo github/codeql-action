@@ -59,3 +59,23 @@ export interface ProxyInfo {
   cert: string;
   registries: Registry[];
 }
+
+export type CertificateAuthority = {
+  cert: string;
+  key: string;
+};
+
+export type BasicAuthCredentials = {
+  username: string;
+  password: string;
+};
+
+/**
+ * Represents configurations for the authentication proxy.
+ */
+export type ProxyConfig = {
+  /** The validated configurations for the proxy. */
+  all_credentials: Credential[];
+  ca: CertificateAuthority;
+  proxy_auth?: BasicAuthCredentials;
+};

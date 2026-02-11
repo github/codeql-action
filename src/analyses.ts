@@ -12,6 +12,15 @@ export enum AnalysisKind {
   CSRA = "csra",
 }
 
+export type CompatibilityMatrix = Record<AnalysisKind, Set<AnalysisKind>>;
+
+/** A mapping from analysis kinds to other analysis kinds which can be enabled concurrently. */
+export const compatibilityMatrix: CompatibilityMatrix = {
+  [AnalysisKind.CodeScanning]: new Set([AnalysisKind.CodeQuality]),
+  [AnalysisKind.CodeQuality]: new Set([AnalysisKind.CodeScanning]),
+  [AnalysisKind.CSRA]: new Set(),
+};
+
 // Exported for testing. A set of all known analysis kinds.
 export const supportedAnalysisKinds = new Set(Object.values(AnalysisKind));
 
@@ -68,7 +77,7 @@ export async function getAnalysisKinds(
     return cachedAnalysisKinds;
   }
 
-  cachedAnalysisKinds = await parseAnalysisKinds(
+  const analysisKinds = await parseAnalysisKinds(
     getRequiredInput("analysis-kinds"),
   );
 
@@ -86,12 +95,27 @@ export async function getAnalysisKinds(
   // if an input to `quality-queries` was specified. We should remove this once
   // `quality-queries` is no longer used.
   if (
-    !cachedAnalysisKinds.includes(AnalysisKind.CodeQuality) &&
+    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
     qualityQueriesInput !== undefined
   ) {
-    cachedAnalysisKinds.push(AnalysisKind.CodeQuality);
+    analysisKinds.push(AnalysisKind.CodeQuality);
   }
 
+  // Check that all enabled analysis kinds are compatible with each other.
+  for (const analysisKind of analysisKinds) {
+    for (const otherAnalysisKind of analysisKinds) {
+      if (analysisKind === otherAnalysisKind) continue;
+
+      if (!compatibilityMatrix[analysisKind].has(otherAnalysisKind)) {
+        throw new ConfigurationError(
+          `${otherAnalysisKind} cannot be enabled at the same time as ${analysisKind}`,
+        );
+      }
+    }
+  }
+
+  // Cache the analysis kinds and return them.
+  cachedAnalysisKinds = analysisKinds;
   return cachedAnalysisKinds;
 }
 

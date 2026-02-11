@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import {
   AnalysisKind,
+  compatibilityMatrix,
   getAnalysisKinds,
   parseAnalysisKinds,
   supportedAnalysisKinds,
@@ -67,3 +68,36 @@ test("getAnalysisKinds - throws if `analysis-kinds` input is invalid", async (t)
   requiredInputStub.withArgs("analysis-kinds").returns("no-such-thing");
   await t.throwsAsync(getAnalysisKinds(getRunnerLogger(true), true));
 });
+
+// Test the compatibility matrix by looping through all analysis kinds.
+const analysisKinds = Object.values(AnalysisKind);
+for (let i = 0; i < analysisKinds.length; i++) {
+  const analysisKind = analysisKinds[i];
+
+  for (let j = i + 1; j < analysisKinds.length; j++) {
+    const otherAnalysis = analysisKinds[j];
+
+    if (analysisKind === otherAnalysis) continue;
+    if (compatibilityMatrix[analysisKind].has(otherAnalysis)) {
+      test(`getAnalysisKinds - allows ${analysisKind} with ${otherAnalysis}`, async (t) => {
+        const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
+        requiredInputStub
+          .withArgs("analysis-kinds")
+          .returns([analysisKind, otherAnalysis].join(","));
+        const result = await getAnalysisKinds(getRunnerLogger(true), true);
+        t.is(result.length, 2);
+      });
+    } else {
+      test(`getAnalysisKinds - throws if ${analysisKind} is enabled with ${otherAnalysis}`, async (t) => {
+        const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
+        requiredInputStub
+          .withArgs("analysis-kinds")
+          .returns([analysisKind, otherAnalysis].join(","));
+        await t.throwsAsync(getAnalysisKinds(getRunnerLogger(true), true), {
+          instanceOf: ConfigurationError,
+          message: `${otherAnalysis} cannot be enabled at the same time as ${analysisKind}`,
+        });
+      });
+    }
+  }
+}

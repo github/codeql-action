@@ -110,7 +110,7 @@ async function run(startedAt: Date) {
     const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
     core.saveState("proxy-log-file", proxyLogFilePath);
 
-    // Initialise FFs, but only load them from disk if they are already available.
+    // Initialise FFs.
     const repositoryNwo = getRepositoryNwo();
     const gitHubVersion = await getGitHubVersion();
     features = new Features(

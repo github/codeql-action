@@ -7,7 +7,7 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { AnalysisKind } from "./analyses";
+import { AnalysisKind, supportedAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
@@ -1828,4 +1828,23 @@ test("hasActionsWorkflows doesn't throw if workflows folder doesn't exist", asyn
   return withTmpDir(async (tmpDir) => {
     t.notThrows(() => configUtils.hasActionsWorkflows(tmpDir));
   });
+});
+
+test("getPrimaryAnalysisConfig - single analysis kind", (t) => {
+  // If only one analysis kind is configured, we expect to get the matching configuration.
+  for (const analysisKind of supportedAnalysisKinds) {
+    const singleKind = createTestConfig({ analysisKinds: [analysisKind] });
+    t.is(configUtils.getPrimaryAnalysisConfig(singleKind).kind, analysisKind);
+  }
+});
+
+test("getPrimaryAnalysisConfig - Code Scanning + Code Quality", (t) => {
+  // For CS+CQ, we expect to get the Code Scanning configuration.
+  const codeScanningAndCodeQuality = createTestConfig({
+    analysisKinds: [AnalysisKind.CodeScanning, AnalysisKind.CodeQuality],
+  });
+  t.is(
+    configUtils.getPrimaryAnalysisConfig(codeScanningAndCodeQuality).kind,
+    AnalysisKind.CodeScanning,
+  );
 });

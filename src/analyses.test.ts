@@ -1,3 +1,5 @@
+import path from "path";
+
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -14,7 +16,6 @@ import {
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
 import { ConfigurationError } from "./util";
-import path from "path";
 
 setupTests(test);
 

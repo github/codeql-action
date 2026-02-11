@@ -19,13 +19,13 @@ export class ReachabilityError extends Error {
  */
 export interface ReachabilityBackend {
   /**
-   * Performs a test HTTP request to the specified `registry`. Resolves to the status code,
+   * Performs a test HTTP request to the specified `url`. Resolves to the status code,
    * if a successful status code was obtained. Otherwise throws
    *
-   * @param registry The registry to try and reach.
+   * @param url The URL of the registry to try and reach.
    * @returns The successful status code (in the `<400` range).
    */
-  checkConnection: (registry: Registry) => Promise<number>;
+  checkConnection: (url: URL) => Promise<number>;
 }
 
 class NetworkReachabilityBackend implements ReachabilityBackend {
@@ -35,10 +35,10 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
     this.agent = new HttpsProxyAgent(`http://${proxy.host}:${proxy.port}`);
   }
 
-  public async checkConnection(registry: Registry): Promise<number> {
+  public async checkConnection(url: URL): Promise<number> {
     return new Promise((resolve, reject) => {
       const req = https.request(
-        getAddressString(registry),
+        url,
         {
           agent: this.agent,
           method: "HEAD",
@@ -93,22 +93,27 @@ export async function checkConnections(
 
     for (const registry of proxy.registries) {
       const address = getAddressString(registry);
-      try {
-        logger.debug(`Testing connection to ${address}...`);
-        const statusCode = await backend.checkConnection(registry);
+      const url = URL.parse(address);
 
+      if (url === null) {
         logger.info(
-          `Successfully tested connection to ${address} (${statusCode})`,
+          `Skipping check for ${address} since it is not a valid URL.`,
         );
+        continue;
+      }
+
+      try {
+        logger.debug(`Testing connection to ${url}...`);
+        const statusCode = await backend.checkConnection(url);
+
+        logger.info(`Successfully tested connection to ${url} (${statusCode})`);
         result.add(registry);
       } catch (e) {
         if (e instanceof ReachabilityError && e.statusCode !== undefined) {
-          logger.error(
-            `Connection test to ${address} failed. (${e.statusCode})`,
-          );
+          logger.error(`Connection test to ${url} failed. (${e.statusCode})`);
         } else {
           logger.error(
-            `Connection test to ${address} failed: ${getErrorMessage(e)}`,
+            `Connection test to ${url} failed: ${getErrorMessage(e)}`,
           );
         }
       }

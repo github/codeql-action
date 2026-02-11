@@ -16,7 +16,7 @@ import { ProxyInfo, Registry } from "./types";
 setupTests(test);
 
 class MockReachabilityBackend implements ReachabilityBackend {
-  public async checkConnection(_registry: Registry): Promise<number> {
+  public async checkConnection(_url: URL): Promise<number> {
     return 200;
   }
 }
@@ -91,6 +91,30 @@ test("checkConnections - handles other exceptions", async (t) => {
     `Successfully tested connection to ${mavenRegistry.url}`,
     `Testing connection to ${nugetFeed.url}`,
     `Connection test to ${nugetFeed.url} failed: Some generic error`,
+    `Finished testing connections`,
+  ]);
+});
+
+test("checkConnections - handles invalid URLs", async (t) => {
+  const backend = new MockReachabilityBackend();
+  const messages = await withRecordingLoggerAsync(async (logger) => {
+    const reachable = await checkConnections(
+      logger,
+      {
+        ...proxyInfo,
+        registries: [
+          {
+            type: "nuget_feed",
+            url: "localhost",
+          },
+        ],
+      },
+      backend,
+    );
+    t.is(reachable.size, 0);
+  });
+  checkExpectedLogMessages(t, messages, [
+    `Skipping check for localhost since it is not a valid URL.`,
     `Finished testing connections`,
   ]);
 });

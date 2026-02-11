@@ -31,10 +31,7 @@ export interface ReachabilityBackend {
 class NetworkReachabilityBackend implements ReachabilityBackend {
   private agent: https.Agent;
 
-  constructor(
-    private readonly logger: Logger,
-    private readonly proxy: ProxyInfo,
-  ) {
+  constructor(private readonly proxy: ProxyInfo) {
     this.agent = new HttpsProxyAgent(`http://${proxy.host}:${proxy.port}`);
   }
 
@@ -87,7 +84,7 @@ export async function checkConnections(
   try {
     // Initialise a networking backend if no backend was provided.
     if (backend === undefined) {
-      backend = new NetworkReachabilityBackend(logger, proxy);
+      backend = new NetworkReachabilityBackend(proxy);
     }
 
     for (const registry of proxy.registries) {

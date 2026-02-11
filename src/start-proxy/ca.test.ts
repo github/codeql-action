@@ -19,7 +19,7 @@ function checkCertAttributes(
     (attr) => attr.name as string,
   );
   const issuerMap = toMap(
-    cert.subject.attributes,
+    cert.issuer.attributes,
     (attr) => attr.name as string,
   );
 

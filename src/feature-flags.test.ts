@@ -38,7 +38,7 @@ test.beforeEach(() => {
 
 const testRepositoryNwo = parseRepositoryNwo("github/example");
 
-test(`All features are disabled if running against GHES`, async (t) => {
+test(`All features use default values if running against GHES`, async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
     const features = setUpFeatureFlagTests(

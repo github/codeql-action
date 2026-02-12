@@ -4,6 +4,7 @@ import * as path from "path";
 import test, { ExecutionContext } from "ava";
 
 import * as defaults from "./defaults.json";
+import { EnvVar } from "./environment";
 import {
   Feature,
   featureConfig,
@@ -540,6 +541,22 @@ test("non-legacy feature flags should not start with codeql_action_", async (t) 
       );
     }
   }
+});
+
+test("initFeatures returns a `Features` instance by default", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
+    t.is("Features", features.constructor.name);
+  });
+});
+
+test("initFeatures returns an `OfflineFeatures` instance in CCR", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    process.env.GITHUB_EVENT_NAME = "dynamic";
+    process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
+    const features = setUpFeatureFlagTests(tmpDir);
+    t.is("OfflineFeatures", features.constructor.name);
+  });
 });
 
 function assertAllFeaturesUndefinedInApi(

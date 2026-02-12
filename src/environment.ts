@@ -141,4 +141,7 @@ export enum EnvVar {
    * `getAnalysisKey`, but can also be set manually for testing and non-standard applications.
    */
   ANALYSIS_KEY = "CODEQL_ACTION_ANALYSIS_KEY",
+
+  /** Used by CSRA to communicate the assessment ID to the CodeQL Action. */
+  CSRA_ASSESSMENT_ID = "CODEQL_ACTION_CSRA_ASSESSMENT_ID",
 }

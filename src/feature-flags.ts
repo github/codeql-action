@@ -378,7 +378,13 @@ export class Features implements FeatureEnablement {
   async getDefaultCliVersion(
     variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
-    return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
+    if (supportsFeatureFlags(variant)) {
+      return await this.gitHubFeatureFlags.getDefaultCliVersionFromFlags();
+    }
+    return {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+    };
   }
 
   /**
@@ -522,18 +528,6 @@ class GitHubFeatureFlags {
       return undefined;
     }
     return version;
-  }
-
-  async getDefaultCliVersion(
-    variant: util.GitHubVariant,
-  ): Promise<CodeQLDefaultVersionInfo> {
-    if (supportsFeatureFlags(variant)) {
-      return await this.getDefaultCliVersionFromFlags();
-    }
-    return {
-      cliVersion: defaults.cliVersion,
-      tagName: defaults.bundleVersion,
-    };
   }
 
   async getDefaultCliVersionFromFlags(): Promise<CodeQLDefaultVersionInfo> {

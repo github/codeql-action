@@ -1,33 +1,30 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import test, { ExecutionContext } from "ava";
+import test from "ava";
 
 import * as defaults from "./defaults.json";
 import { EnvVar } from "./environment";
 import {
   Feature,
   featureConfig,
-  FeatureEnablement,
   FEATURE_FLAGS_FILE_NAME,
   FeatureConfig,
-  FeatureWithoutCLI,
-  initFeatures,
 } from "./feature-flags";
-import { getRunnerLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
+import {
+  setUpFeatureFlagTests,
+  getFeatureIncludingCodeQlIfRequired,
+  assertAllFeaturesUndefinedInApi,
+} from "./feature-flags/testing-util";
 import {
   getRecordingLogger,
   initializeFeatures,
   LoggedMessage,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
-  setupActionsVars,
   setupTests,
   stubFeatureFlagApiEndpoint,
 } from "./testing-utils";
-import { ToolsFeature } from "./tools-features";
-import * as util from "./util";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
@@ -35,8 +32,6 @@ setupTests(test);
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });
-
-const testRepositoryNwo = parseRepositoryNwo("github/example");
 
 test(`All features are disabled if running against GHES`, async (t) => {
   await withTmpDir(async (tmpDir) => {
@@ -558,56 +553,3 @@ test("initFeatures returns an `OfflineFeatures` instance in CCR", async (t) => {
     t.is("OfflineFeatures", features.constructor.name);
   });
 });
-
-function assertAllFeaturesUndefinedInApi(
-  t: ExecutionContext<unknown>,
-  loggedMessages: LoggedMessage[],
-) {
-  for (const feature of Object.keys(featureConfig)) {
-    t.assert(
-      loggedMessages.find(
-        (v) =>
-          v.type === "debug" &&
-          (v.message as string).includes(feature) &&
-          (v.message as string).includes("undefined in API response"),
-      ) !== undefined,
-    );
-  }
-}
-
-function setUpFeatureFlagTests(
-  tmpDir: string,
-  logger = getRunnerLogger(true),
-  gitHubVersion = { type: GitHubVariant.DOTCOM } as util.GitHubVersion,
-): FeatureEnablement {
-  setupActionsVars(tmpDir, tmpDir);
-
-  return initFeatures(gitHubVersion, testRepositoryNwo, tmpDir, logger);
-}
-
-/**
- * Returns an argument to pass to `getValue` that if required includes a CodeQL object meeting the
- * minimum version or tool feature requirements specified by the feature.
- */
-function getFeatureIncludingCodeQlIfRequired(
-  features: FeatureEnablement,
-  feature: Feature,
-) {
-  const config = featureConfig[
-    feature
-  ] satisfies FeatureConfig as FeatureConfig;
-  if (
-    config.minimumVersion === undefined &&
-    config.toolsFeature === undefined
-  ) {
-    return features.getValue(feature as FeatureWithoutCLI);
-  }
-
-  return features.getValue(
-    feature,
-    mockCodeQLVersion(
-      "9.9.9",
-      Object.fromEntries(Object.values(ToolsFeature).map((v) => [v, true])),
-    ),
-  );
-}

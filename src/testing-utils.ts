@@ -147,9 +147,62 @@ export function setupActionsVars(tempDir: string, toolsDir: string) {
   process.env["GITHUB_WORKSPACE"] = tempDir;
 }
 
+type LogLevel = "debug" | "info" | "warning" | "error";
+
 export interface LoggedMessage {
-  type: "debug" | "info" | "warning" | "error";
+  type: LogLevel;
   message: string | Error;
+}
+
+export class RecordingLogger implements Logger {
+  messages: LoggedMessage[] = [];
+  groups: string[] = [];
+  unfinishedGroups: Set<string> = new Set();
+  private currentGroup: string | undefined = undefined;
+
+  constructor(private readonly logToConsole: boolean = true) {}
+
+  private addMessage(level: LogLevel, message: string | Error): void {
+    this.messages.push({ type: level, message });
+
+    if (this.logToConsole) {
+      // eslint-disable-next-line no-console
+      console.debug(message);
+    }
+  }
+
+  isDebug() {
+    return true;
+  }
+
+  debug(message: string) {
+    this.addMessage("debug", message);
+  }
+
+  info(message: string) {
+    this.addMessage("info", message);
+  }
+
+  warning(message: string | Error) {
+    this.addMessage("warning", message);
+  }
+
+  error(message: string | Error) {
+    this.addMessage("error", message);
+  }
+
+  startGroup(name: string) {
+    this.groups.push(name);
+    this.currentGroup = name;
+    this.unfinishedGroups.add(name);
+  }
+
+  endGroup() {
+    if (this.currentGroup !== undefined) {
+      this.unfinishedGroups.delete(this.currentGroup);
+    }
+    this.currentGroup = undefined;
+  }
 }
 
 export function getRecordingLogger(

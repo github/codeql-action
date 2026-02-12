@@ -950,7 +950,9 @@ function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
   };
 }
 
-for (const analysis of [CodeScanning, CodeQuality]) {
+for (const analysisKind of analyses.supportedAnalysisKinds) {
+  const analysis = analyses.getAnalysisConfig(analysisKind);
+
   test(`uploadPayload on ${analysis.name} uploads successfully`, async (t) => {
     const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
     requestStub

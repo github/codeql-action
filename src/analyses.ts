@@ -4,7 +4,11 @@ import {
   getRequiredInput,
 } from "./actions-util";
 import { Logger } from "./logging";
-import { AssessmentPayload, UploadPayload } from "./upload-lib/types";
+import {
+  AssessmentPayload,
+  BasePayload,
+  UploadPayload,
+} from "./upload-lib/types";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 export enum AnalysisKind {
@@ -148,7 +152,7 @@ export interface AnalysisConfig {
   /** A prefix for environment variables used to track the uniqueness of SARIF uploads. */
   sentinelPrefix: string;
   /** Transforms the upload payload in an analysis-specific way. */
-  transformPayload: (payload: UploadPayload) => UploadPayload;
+  transformPayload: (payload: UploadPayload) => BasePayload;
 }
 
 // Represents the Code Scanning analysis configuration.
@@ -187,7 +191,7 @@ function addAssessmentId(payload: UploadPayload): AssessmentPayload {
     getRequiredEnvParam("CODEQL_ACTION_CSRA_ASSESSMENT_ID"),
     10,
   );
-  return { ...payload, assessment_id: assessmentId };
+  return { sarif: payload.sarif, assessment_id: assessmentId };
 }
 
 export const CSRA: AnalysisConfig = {

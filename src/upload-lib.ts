@@ -21,7 +21,7 @@ import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
-import { UploadPayload } from "./upload-lib/types";
+import { BasePayload, UploadPayload } from "./upload-lib/types";
 import * as util from "./util";
 import {
   ConfigurationError,
@@ -327,7 +327,7 @@ function getAutomationID(
  * This is exported for testing purposes only.
  */
 export async function uploadPayload(
-  payload: UploadPayload,
+  payload: BasePayload,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
   analysis: analyses.AnalysisConfig,

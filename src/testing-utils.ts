@@ -249,14 +249,26 @@ export function checkExpectedLogMessages(
   messages: LoggedMessage[],
   expectedMessages: string[],
 ) {
+  const missingMessages: string[] = [];
+
   for (const expectedMessage of expectedMessages) {
-    t.assert(
-      messages.some(
+    if (
+      !messages.some(
         (msg) =>
           typeof msg.message === "string" &&
           msg.message.includes(expectedMessage),
-      ),
-      `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
+      )
+    ) {
+      missingMessages.push(expectedMessage);
+    }
+  }
+
+  if (missingMessages.length > 0) {
+    const listify = (lines: string[]) =>
+      lines.map((m) => ` - '${m}'`).join("\n");
+
+    t.fail(
+      `Expected\n\n${listify(missingMessages)}\n\nin the logger output, but didn't find it in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
     );
   }
 }

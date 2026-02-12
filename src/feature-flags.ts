@@ -357,7 +357,7 @@ export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
  * Determines the enablement status of a number of features locally without
  * consulting the GitHub API.
  */
-export class OfflineFeatures implements FeatureEnablement {
+class OfflineFeatures implements FeatureEnablement {
   constructor(protected readonly logger: Logger) {}
 
   async getDefaultCliVersion(
@@ -494,7 +494,7 @@ export class OfflineFeatures implements FeatureEnablement {
  * If feature enablement is not able to be determined locally, a request to the
  * GitHub API is made to determine the enablement status.
  */
-export class Features extends OfflineFeatures {
+class Features extends OfflineFeatures {
   private gitHubFeatureFlags: GitHubFeatureFlags;
 
   constructor(
@@ -797,4 +797,17 @@ function supportsFeatureFlags(githubVariant: util.GitHubVariant): boolean {
     githubVariant === util.GitHubVariant.DOTCOM ||
     githubVariant === util.GitHubVariant.GHEC_DR
   );
+}
+
+/**
+ * Initialises an instance of a `FeatureEnablement` implementation. The implementation used
+ * is determined by the environment we are running in.
+ */
+export function initFeatures(
+  gitHubVersion: util.GitHubVersion,
+  repositoryNwo: RepositoryNwo,
+  tempDir: string,
+  logger: Logger,
+): FeatureEnablement {
+  return new Features(gitHubVersion, repositoryNwo, tempDir, logger);
 }

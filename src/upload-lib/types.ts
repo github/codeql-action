@@ -1,9 +1,12 @@
-export interface UploadPayload {
+export interface BasePayload {
+  sarif: string;
+}
+
+export interface UploadPayload extends BasePayload {
   commit_oid: string;
   ref: string;
   analysis_key?: string;
   analysis_name?: string;
-  sarif: string;
   workflow_run_id: number;
   workflow_run_attempt: number;
   checkout_uri: string;
@@ -14,6 +17,6 @@ export interface UploadPayload {
   base_sha?: string;
 }
 
-export interface AssessmentPayload extends UploadPayload {
+export interface AssessmentPayload extends BasePayload {
   assessment_id: number;
 }

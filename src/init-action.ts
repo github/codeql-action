@@ -38,7 +38,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
   loadPropertiesFromApi,
   RepositoryProperties,
@@ -210,7 +210,7 @@ async function run(startedAt: Date) {
   let config: configUtils.Config | undefined;
   let configFile: string | undefined;
   let codeql: CodeQL;
-  let features: Features;
+  let features: FeatureEnablement;
   let sourceRoot: string;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
@@ -237,7 +237,7 @@ async function run(startedAt: Date) {
 
     const repositoryNwo = getRepositoryNwo();
 
-    features = new Features(
+    features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),

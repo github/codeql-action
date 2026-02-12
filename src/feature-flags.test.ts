@@ -8,10 +8,10 @@ import {
   Feature,
   featureConfig,
   FeatureEnablement,
-  Features,
   FEATURE_FLAGS_FILE_NAME,
   FeatureConfig,
   FeatureWithoutCLI,
+  initFeatures,
 } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
@@ -565,7 +565,7 @@ function setUpFeatureFlagTests(
 ): FeatureEnablement {
   setupActionsVars(tmpDir, tmpDir);
 
-  return new Features(gitHubVersion, testRepositoryNwo, tmpDir, logger);
+  return initFeatures(gitHubVersion, testRepositoryNwo, tmpDir, logger);
 }
 
 /**

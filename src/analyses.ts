@@ -209,7 +209,7 @@ export const CSRA: AnalysisConfig = {
   target: SARIF_UPLOAD_ENDPOINT.CSRA,
   sarifExtension: ".csra.sarif",
   sarifPredicate: (name) => name.endsWith(CSRA.sarifExtension),
-  fixCategory: fixCodeQualityCategory,
+  fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_CSRA_SARIF_",
   transformPayload: addAssessmentId,
 };

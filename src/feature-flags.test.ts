@@ -4,7 +4,6 @@ import * as path from "path";
 import test from "ava";
 
 import * as defaults from "./defaults.json";
-import { EnvVar } from "./environment";
 import {
   Feature,
   featureConfig,
@@ -20,6 +19,7 @@ import {
   getRecordingLogger,
   initializeFeatures,
   LoggedMessage,
+  mockCCR,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
   setupTests,
@@ -547,8 +547,8 @@ test("initFeatures returns a `Features` instance by default", async (t) => {
 
 test("initFeatures returns an `OfflineFeatures` instance in CCR", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    process.env.GITHUB_EVENT_NAME = "dynamic";
-    process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
+    mockCCR();
+
     const features = setUpFeatureFlagTests(tmpDir);
     t.is("OfflineFeatures", features.constructor.name);
   });

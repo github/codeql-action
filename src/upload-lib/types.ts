@@ -15,5 +15,5 @@ export interface UploadPayload {
 }
 
 export interface AssessmentPayload extends UploadPayload {
-  assessment_id: string;
+  assessment_id: number;
 }

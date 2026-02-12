@@ -183,7 +183,10 @@ export const CodeQuality: AnalysisConfig = {
  * @param payload The base payload.
  */
 function addAssessmentId(payload: UploadPayload): AssessmentPayload {
-  const assessmentId = getRequiredEnvParam("CODEQL_ACTION_CSRA_ASSESSMENT_ID");
+  const assessmentId = parseInt(
+    getRequiredEnvParam("CODEQL_ACTION_CSRA_ASSESSMENT_ID"),
+    10,
+  );
   return { ...payload, assessment_id: assessmentId };
 }
 

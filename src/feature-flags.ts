@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as semver from "semver";
 
+import { isCCR } from "./actions-util";
 import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
@@ -809,5 +810,9 @@ export function initFeatures(
   tempDir: string,
   logger: Logger,
 ): FeatureEnablement {
-  return new Features(gitHubVersion, repositoryNwo, tempDir, logger);
+  if (isCCR()) {
+    return new OfflineFeatures(logger);
+  } else {
+    return new Features(gitHubVersion, repositoryNwo, tempDir, logger);
+  }
 }

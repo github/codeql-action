@@ -3,6 +3,7 @@ import {
   getOptionalInput,
   getRequiredInput,
 } from "./actions-util";
+import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import {
   AssessmentPayload,
@@ -187,10 +188,18 @@ export const CodeQuality: AnalysisConfig = {
  * @param payload The base payload.
  */
 function addAssessmentId(payload: UploadPayload): AssessmentPayload {
-  const assessmentId = parseInt(
-    getRequiredEnvParam("CODEQL_ACTION_CSRA_ASSESSMENT_ID"),
-    10,
-  );
+  const rawAssessmentId = getRequiredEnvParam(EnvVar.CSRA_ASSESSMENT_ID);
+  const assessmentId = parseInt(rawAssessmentId, 10);
+  if (Number.isNaN(assessmentId)) {
+    throw new Error(
+      `${EnvVar.CSRA_ASSESSMENT_ID} must not be NaN: ${rawAssessmentId}`,
+    );
+  }
+  if (assessmentId < 0) {
+    throw new Error(
+      `${EnvVar.CSRA_ASSESSMENT_ID} must not be negative: ${rawAssessmentId}`,
+    );
+  }
   return { sarif: payload.sarif, assessment_id: assessmentId };
 }
 

@@ -8,13 +8,16 @@ import {
   AnalysisKind,
   CodeScanning,
   compatibilityMatrix,
+  CSRA,
   getAnalysisConfig,
   getAnalysisKinds,
   parseAnalysisKinds,
   supportedAnalysisKinds,
 } from "./analyses";
+import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
 import { setupTests } from "./testing-utils";
+import { AssessmentPayload } from "./upload-lib/types";
 import { ConfigurationError } from "./util";
 
 setupTests(test);
@@ -117,4 +120,62 @@ test("Code Scanning configuration does not accept other SARIF extensions", (t) =
     // ends in a different configuration's `sarifExtension`.
     t.false(CodeScanning.sarifPredicate(sarifPath));
   }
+});
+
+test("CSRA configuration transforms SARIF upload payload", (t) => {
+  process.env[EnvVar.CSRA_ASSESSMENT_ID] = "1";
+  const payload = CSRA.transformPayload({
+    commit_oid: "abc",
+    sarif: "sarif",
+    ref: "ref",
+    workflow_run_attempt: 1,
+    workflow_run_id: 1,
+    checkout_uri: "uri",
+    tool_names: [],
+  }) as AssessmentPayload;
+
+  const expected: AssessmentPayload = { sarif: "sarif", assessment_id: 1 };
+  t.deepEqual(expected, payload);
+});
+
+test("CSRA configuration throws for negative assessment IDs", (t) => {
+  process.env[EnvVar.CSRA_ASSESSMENT_ID] = "-1";
+  t.throws(
+    () =>
+      CSRA.transformPayload({
+        commit_oid: "abc",
+        sarif: "sarif",
+        ref: "ref",
+        workflow_run_attempt: 1,
+        workflow_run_id: 1,
+        checkout_uri: "uri",
+        tool_names: [],
+      }),
+    {
+      instanceOf: Error,
+      message: (msg) =>
+        msg.startsWith(`${EnvVar.CSRA_ASSESSMENT_ID} must not be negative: `),
+    },
+  );
+});
+
+test("CSRA configuration throws for invalid IDs", (t) => {
+  process.env[EnvVar.CSRA_ASSESSMENT_ID] = "foo";
+  t.throws(
+    () =>
+      CSRA.transformPayload({
+        commit_oid: "abc",
+        sarif: "sarif",
+        ref: "ref",
+        workflow_run_attempt: 1,
+        workflow_run_id: 1,
+        checkout_uri: "uri",
+        tool_names: [],
+      }),
+    {
+      instanceOf: Error,
+      message: (msg) =>
+        msg.startsWith(`${EnvVar.CSRA_ASSESSMENT_ID} must not be NaN: `),
+    },
+  );
 });

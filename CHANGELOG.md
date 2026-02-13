@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 4.32.3 - 13 Feb 2026
 
 - Added experimental support for testing connections to [private package registries](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries). This feature is not currently enabled for any analysis. In the future, it may be enabled by default for Default Setup. [#3466](https://github.com/github/codeql-action/pull/3466)

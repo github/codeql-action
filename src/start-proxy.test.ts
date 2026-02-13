@@ -175,6 +175,27 @@ test("getCredentials throws error when credential is not an object", async (t) =
   }
 });
 
+test("getCredentials throws error when credential is missing type", async (t) => {
+  const testCredentials = [[{ token: "abc", url: "https://localhost" }]].map(
+    toEncodedJSON,
+  );
+
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must have a type",
+      },
+    );
+  }
+});
+
 test("getCredentials throws error when credential missing host and url", async (t) => {
   const testCredentials = [
     [{ type: "npm_registry", token: "abc" }],
@@ -396,13 +417,14 @@ test("credentialToStr - hides passwords", (t) => {
   const credential = {
     type: "maven_credential",
     password: secret,
+    url: "https://localhost",
   };
 
   const str = startProxyExports.credentialToStr(credential);
 
   t.false(str.includes(secret));
   t.is(
-    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: true; Token: false",
+    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: true; Token: false",
     str,
   );
 });
@@ -412,13 +434,14 @@ test("credentialToStr - hides tokens", (t) => {
   const credential = {
     type: "maven_credential",
     token: secret,
+    url: "https://localhost",
   };
 
   const str = startProxyExports.credentialToStr(credential);
 
   t.false(str.includes(secret));
   t.is(
-    "Type: maven_credential; Host: undefined; Url: undefined Username: undefined; Password: false; Token: true",
+    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: false; Token: true",
     str,
   );
 });

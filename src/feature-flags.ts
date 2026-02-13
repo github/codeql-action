@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as semver from "semver";
 
+import { isCCR } from "./actions-util";
 import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
@@ -72,6 +73,7 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
+  StartProxyConnectionChecks = "start_proxy_connection_checks",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   UseRepositoryProperties = "use_repository_properties",
   ValidateDbConfig = "validate_db_config",
@@ -295,6 +297,11 @@ export const featureConfig = {
     // before rolling this out externally, we should set a minimum version here
     // since current versions of the CodeQL CLI will log if baseline information
     // cannot be found when interpreting results.
+    minimumVersion: undefined,
+  },
+  [Feature.StartProxyConnectionChecks]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_START_PROXY_CONNECTION_CHECKS",
     minimumVersion: undefined,
   },
   [Feature.UploadOverlayDbToApi]: {
@@ -658,7 +665,14 @@ class GitHubFeatureFlags {
     // Do nothing when not running against github.com
     if (!supportsFeatureFlags(this.gitHubVersion.type)) {
       this.logger.debug(
-        "Not running against github.com. Disabling all toggleable features.",
+        "Not running against github.com. Using default values for all features.",
+      );
+      this.hasAccessedRemoteFeatureFlags = false;
+      return {};
+    }
+    if (isCCR()) {
+      this.logger.debug(
+        "Feature flags are not supported in Copilot Code Review. Using default values for all features.",
       );
       this.hasAccessedRemoteFeatureFlags = false;
       return {};

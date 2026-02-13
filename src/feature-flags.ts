@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as semver from "semver";
 
+import { isCCR } from "./actions-util";
 import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
@@ -664,7 +665,14 @@ class GitHubFeatureFlags {
     // Do nothing when not running against github.com
     if (!supportsFeatureFlags(this.gitHubVersion.type)) {
       this.logger.debug(
-        "Not running against github.com. Disabling all toggleable features.",
+        "Not running against github.com. Using default values for all features.",
+      );
+      this.hasAccessedRemoteFeatureFlags = false;
+      return {};
+    }
+    if (isCCR()) {
+      this.logger.debug(
+        "Feature flags are not supported in Copilot Code Review. Using default values for all features.",
       );
       this.hasAccessedRemoteFeatureFlags = false;
       return {};

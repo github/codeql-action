@@ -51,6 +51,12 @@ function createApiClientWithDetails(
         warn: core.warning,
         error: core.error,
       },
+      retry: {
+        // The default is 400, 401, 403, 404, 410, 422, and 451. We have observed transient errors
+        // with authentication, so we remove 401, 403, and 404 from the default list to ensure that
+        // these errors are retried.
+        doNotRetry: [400, 410, 422, 451],
+      },
     }),
   );
 }

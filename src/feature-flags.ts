@@ -811,6 +811,9 @@ export function initFeatures(
   logger: Logger,
 ): FeatureEnablement {
   if (isCCR()) {
+    logger.debug(
+      "Querying feature flags is not currently supported in Copilot Code Review. Using offline data for all features.",
+    );
     return new OfflineFeatures(logger);
   } else {
     return new Features(gitHubVersion, repositoryNwo, tempDir, logger);

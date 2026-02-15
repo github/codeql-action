@@ -4,7 +4,6 @@ import * as path from "path";
 import test, { ExecutionContext } from "ava";
 
 import * as defaults from "./defaults.json";
-import { EnvVar } from "./environment";
 import {
   Feature,
   featureConfig,
@@ -38,39 +37,29 @@ test.beforeEach(() => {
 
 const testRepositoryNwo = parseRepositoryNwo("github/example");
 
-test(`All features use default values if running against GHES`, async (t) => {
+test(`All features are disabled if running against GHES`, async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const loggedMessages: LoggedMessage[] = [];
+    const loggedMessages = [];
     const features = setUpFeatureFlagTests(
       tmpDir,
       getRecordingLogger(loggedMessages),
       { type: GitHubVariant.GHES, version: "3.0.0" },
     );
 
-    await assertAllFeaturesHaveDefaultValues(t, features);
-    assertLoggedMessage(
-      t,
-      loggedMessages,
-      "Not running against github.com. Using default values for all features.",
-    );
-  });
-});
+    for (const feature of Object.values(Feature)) {
+      t.deepEqual(
+        await getFeatureIncludingCodeQlIfRequired(features, feature),
+        featureConfig[feature].defaultValue,
+      );
+    }
 
-test(`All features use default values if running in CCR`, async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const loggedMessages: LoggedMessage[] = [];
-    const features = setUpFeatureFlagTests(
-      tmpDir,
-      getRecordingLogger(loggedMessages),
-    );
-
-    process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
-
-    await assertAllFeaturesHaveDefaultValues(t, features);
-    assertLoggedMessage(
-      t,
-      loggedMessages,
-      "Feature flags are not supported in Copilot Code Review. Using default values for all features.",
+    t.assert(
+      loggedMessages.find(
+        (v: LoggedMessage) =>
+          v.type === "debug" &&
+          v.message ===
+            "Not running against github.com. Disabling all toggleable features.",
+      ) !== undefined,
     );
   });
 });
@@ -552,30 +541,6 @@ test("non-legacy feature flags should not start with codeql_action_", async (t) 
     }
   }
 });
-
-async function assertAllFeaturesHaveDefaultValues(
-  t: ExecutionContext<unknown>,
-  features: FeatureEnablement,
-) {
-  for (const feature of Object.values(Feature)) {
-    t.deepEqual(
-      await getFeatureIncludingCodeQlIfRequired(features, feature),
-      featureConfig[feature].defaultValue,
-    );
-  }
-}
-
-function assertLoggedMessage(
-  t: ExecutionContext<unknown>,
-  loggedMessages: LoggedMessage[],
-  expectedMessage: string,
-) {
-  t.assert(
-    loggedMessages.find(
-      (v: LoggedMessage) => v.type === "debug" && v.message === expectedMessage,
-    ) !== undefined,
-  );
-}
 
 function assertAllFeaturesUndefinedInApi(
   t: ExecutionContext<unknown>,

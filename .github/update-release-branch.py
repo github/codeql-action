@@ -173,11 +173,8 @@ def get_merger_of_pr(repo, pr):
 def get_pr_author_if_staff(pr):
   if pr.user is None:
     return None
-  try:
-    if getattr(pr.user, 'site_admin', False):
-      return pr.user.login
-  except Exception:
-    pass
+  if getattr(pr.user, 'site_admin', False):
+    return pr.user.login
   return None
 
 def get_current_version():

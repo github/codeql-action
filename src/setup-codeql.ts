@@ -261,6 +261,20 @@ async function findOverridingToolsInCache(
   return undefined;
 }
 
+/**
+ * Determines where the CodeQL CLI we want to use comes from. This can be from a local file,
+ * the Actions toolcache, or a download.
+ *
+ * @param toolsInput The argument provided for the `tools` input, if any.
+ * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
+ * @param apiDetails Information about the GitHub API.
+ * @param variant The GitHub variant we are running on.
+ * @param tarSupportsZstd Whether zstd is supported by `tar`.
+ * @param features Information about enabled features.
+ * @param logger The logger to use.
+ *
+ * @returns
+ */
 export async function getCodeQLSource(
   toolsInput: string | undefined,
   defaultCliVersion: CodeQLDefaultVersionInfo,
@@ -270,6 +284,9 @@ export async function getCodeQLSource(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
+  // If there is an explicit `tools` input, it's not one of the reserved values, and it doesn't appear
+  // to point to a URL, then we assume it is a local path and use the CLI from there.
+  // TODO: This appears to misclassify filenames that happen to start with `http` as URLs.
   if (
     toolsInput &&
     !isReservedToolsValue(toolsInput) &&

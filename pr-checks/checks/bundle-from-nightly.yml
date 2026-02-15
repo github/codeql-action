@@ -1,0 +1,14 @@
+name: "Bundle: From nightly"
+description: "The nightly CodeQL bundle should be used when forced"
+versions:
+  - linked # overruled by the FF set below
+steps:
+  - id: setup-codeql
+    uses: ./../action/setup-codeql
+    env:
+      CODEQL_ACTION_FORCE_NIGHTLY: true
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Fail if the CodeQL version is not a nightly
+    if: "!contains(steps.setup-codeql.outputs.codeql-version, '+')"
+    run: exit 1

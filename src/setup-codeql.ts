@@ -55,7 +55,9 @@ function getCodeQLBundleExtension(
   }
 }
 
-function getCodeQLBundleName(compressionMethod: tar.CompressionMethod): string {
+export function getCodeQLBundleName(
+  compressionMethod: tar.CompressionMethod,
+): string {
   const extension = getCodeQLBundleExtension(compressionMethod);
 
   let platform: string;
@@ -196,7 +198,7 @@ export function convertToSemVer(version: string, logger: Logger): string {
   return s;
 }
 
-type CodeQLToolsSource =
+export type CodeQLToolsSource =
   | {
       codeqlTarPath: string;
       compressionMethod: tar.CompressionMethod;

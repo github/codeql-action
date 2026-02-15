@@ -1,18 +1,22 @@
 import * as path from "path";
 
+import * as github from "@actions/github";
 import * as toolcache from "@actions/tool-cache";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import * as api from "./api-client";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
+import * as tar from "./tar";
 import {
   LINKED_CLI_VERSION,
   LoggedMessage,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
+  checkExpectedLogMessages,
   createFeatures,
   getRecordingLogger,
   initializeFeatures,
@@ -265,6 +269,63 @@ test("setupCodeQLBundle logs the CodeQL CLI version being used when asked to dow
           msg.message.includes(expected_message),
       ),
     );
+  });
+});
+
+test("getCodeQLSource correctly returns nightly CLI version when tools == nightly", async (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+  const features = createFeatures([]);
+
+  const expectedDate = "30260213";
+  const expectedTag = `codeql-bundle-${expectedDate}`;
+
+  // Ensure that we consistently select "zstd" for the test.
+  sinon.stub(process, "platform").value("linux");
+  sinon.stub(tar, "isZstdAvailable").resolves({
+    available: true,
+    foundZstdBinary: true,
+  });
+
+  const client = github.getOctokit("123");
+  const listReleases = sinon.stub(client.rest.repos, "listReleases");
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  listReleases.resolves({
+    data: [{ tag_name: expectedTag }],
+  } as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    const source = await setupCodeql.getCodeQLSource(
+      "nightly",
+      SAMPLE_DEFAULT_CLI_VERSION,
+      SAMPLE_DOTCOM_API_DETAILS,
+      GitHubVariant.DOTCOM,
+      false,
+      features,
+      logger,
+    );
+
+    // Check that the `CodeQLToolsSource` object matches our expectations.
+    const expectedVersion = `0.0.0-${expectedDate}`;
+    const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/${setupCodeql.getCodeQLBundleName("zstd")}`;
+    t.deepEqual(source, {
+      bundleVersion: expectedDate,
+      cliVersion: undefined,
+      codeqlURL: expectedURL,
+      compressionMethod: "zstd",
+      sourceType: "download",
+      toolsVersion: expectedVersion,
+    } satisfies setupCodeql.CodeQLToolsSource);
+
+    // Afterwards, ensure that we see the expected messages in the log.
+    checkExpectedLogMessages(t, loggedMessages, [
+      "Using the latest CodeQL CLI nightly, as requested by 'tools: nightly'.",
+      `Bundle version ${expectedDate} is not in SemVer format. Will treat it as pre-release ${expectedVersion}.`,
+      `Attempting to obtain CodeQL tools. CLI version: unknown, bundle tag name: ${expectedTag}`,
+      `Using CodeQL CLI sourced from ${expectedURL}`,
+    ]);
   });
 });
 

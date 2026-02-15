@@ -47,6 +47,7 @@ export enum Feature {
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   IgnoreGeneratedFiles = "ignore_generated_files",
+  JavaNetworkDebugging = "java_network_debugging",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -166,6 +167,11 @@ export const featureConfig = {
   [Feature.IgnoreGeneratedFiles]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_IGNORE_GENERATED_FILES",
+    minimumVersion: undefined,
+  },
+  [Feature.JavaNetworkDebugging]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_JAVA_NETWORK_DEBUGGING",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

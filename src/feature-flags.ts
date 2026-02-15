@@ -498,16 +498,10 @@ class OfflineFeatures implements FeatureEnablement {
 class Features extends OfflineFeatures {
   private gitHubFeatureFlags: GitHubFeatureFlags;
 
-  constructor(
-    gitHubVersion: util.GitHubVersion,
-    repositoryNwo: RepositoryNwo,
-    tempDir: string,
-    logger: Logger,
-  ) {
+  constructor(repositoryNwo: RepositoryNwo, tempDir: string, logger: Logger) {
     super(logger);
 
     this.gitHubFeatureFlags = new GitHubFeatureFlags(
-      gitHubVersion,
       repositoryNwo,
       path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
       logger,
@@ -566,7 +560,6 @@ class GitHubFeatureFlags {
   private hasAccessedRemoteFeatureFlags: boolean;
 
   constructor(
-    private readonly gitHubVersion: util.GitHubVersion,
     private readonly repositoryNwo: RepositoryNwo,
     private readonly featureFlagsFile: string,
     private readonly logger: Logger,
@@ -722,14 +715,6 @@ class GitHubFeatureFlags {
   }
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
-    // Do nothing when not running against github.com
-    if (!supportsFeatureFlags(this.gitHubVersion.type)) {
-      this.logger.debug(
-        "Not running against github.com. Using default values for all features.",
-      );
-      this.hasAccessedRemoteFeatureFlags = false;
-      return {};
-    }
     try {
       const featuresToRequest = Object.entries(featureConfig)
         .filter(
@@ -810,12 +795,17 @@ export function initFeatures(
   tempDir: string,
   logger: Logger,
 ): FeatureEnablement {
-  if (isCCR()) {
+  if (!supportsFeatureFlags(gitHubVersion.type)) {
+    logger.debug(
+      "Not running against github.com. Using default values for all features.",
+    );
+    return new OfflineFeatures(logger);
+  } else if (isCCR()) {
     logger.debug(
       "Querying feature flags is not currently supported in Copilot Code Review. Using offline data for all features.",
     );
     return new OfflineFeatures(logger);
   } else {
-    return new Features(gitHubVersion, repositoryNwo, tempDir, logger);
+    return new Features(repositoryNwo, tempDir, logger);
   }
 }

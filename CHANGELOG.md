@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The experimental `quality-queries` input that was deprecated in CodeQL Action 3.30.2 has now been removed.
 
 ## 4.32.3 - 13 Feb 2026
 

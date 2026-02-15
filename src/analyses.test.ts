@@ -52,14 +52,15 @@ test("getAnalysisKinds - returns expected analysis kinds for `analysis-kinds` in
   t.assert(result.includes(AnalysisKind.CodeQuality));
 });
 
-test("getAnalysisKinds - includes `code-quality` when deprecated `quality-queries` input is used", async (t) => {
+test("getAnalysisKinds - throws ConfigurationError when deprecated `quality-queries` input is used", async (t) => {
   const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
   requiredInputStub.withArgs("analysis-kinds").returns("code-scanning");
   const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
   optionalInputStub.withArgs("quality-queries").returns("code-quality");
-  const result = await getAnalysisKinds(getRunnerLogger(true), true);
-  t.assert(result.includes(AnalysisKind.CodeScanning));
-  t.assert(result.includes(AnalysisKind.CodeQuality));
+
+  await t.throwsAsync(getAnalysisKinds(getRunnerLogger(true), true), {
+    instanceOf: ConfigurationError,
+  });
 });
 
 test("getAnalysisKinds - throws if `analysis-kinds` input is invalid", async (t) => {

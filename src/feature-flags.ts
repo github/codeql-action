@@ -725,7 +725,7 @@ class GitHubFeatureFlags {
     // Do nothing when not running against github.com
     if (!supportsFeatureFlags(this.gitHubVersion.type)) {
       this.logger.debug(
-        "Not running against github.com. Disabling all toggleable features.",
+        "Not running against github.com. Using default values for all features.",
       );
       this.hasAccessedRemoteFeatureFlags = false;
       return {};

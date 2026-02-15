@@ -14,8 +14,10 @@ import {
   setUpFeatureFlagTests,
   getFeatureIncludingCodeQlIfRequired,
   assertAllFeaturesUndefinedInApi,
+  assertAllFeaturesHaveDefaultValues,
 } from "./feature-flags/testing-util";
 import {
+  checkExpectedLogMessages,
   getRecordingLogger,
   initializeFeatures,
   LoggedMessage,
@@ -33,7 +35,7 @@ test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });
 
-test(`All features are disabled if running against GHES`, async (t) => {
+test(`All features use default values if running against GHES`, async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages = [];
     const features = setUpFeatureFlagTests(
@@ -42,21 +44,10 @@ test(`All features are disabled if running against GHES`, async (t) => {
       { type: GitHubVariant.GHES, version: "3.0.0" },
     );
 
-    for (const feature of Object.values(Feature)) {
-      t.deepEqual(
-        await getFeatureIncludingCodeQlIfRequired(features, feature),
-        featureConfig[feature].defaultValue,
-      );
-    }
-
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "debug" &&
-          v.message ===
-            "Not running against github.com. Disabling all toggleable features.",
-      ) !== undefined,
-    );
+    await assertAllFeaturesHaveDefaultValues(t, features);
+    checkExpectedLogMessages(t, loggedMessages, [
+      "Not running against github.com. Using default values for all features.",
+    ]);
   });
 });
 

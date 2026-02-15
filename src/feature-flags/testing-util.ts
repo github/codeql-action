@@ -21,6 +21,18 @@ import * as util from "../util";
 
 const testRepositoryNwo = parseRepositoryNwo("github/example");
 
+export async function assertAllFeaturesHaveDefaultValues(
+  t: ExecutionContext<unknown>,
+  features: FeatureEnablement,
+) {
+  for (const feature of Object.values(Feature)) {
+    t.deepEqual(
+      await getFeatureIncludingCodeQlIfRequired(features, feature),
+      featureConfig[feature].defaultValue,
+    );
+  }
+}
+
 export function assertAllFeaturesUndefinedInApi(
   t: ExecutionContext<unknown>,
   loggedMessages: LoggedMessage[],

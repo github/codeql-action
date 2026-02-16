@@ -10,6 +10,7 @@ import { v4 as uuidV4 } from "uuid";
 import { isDynamicWorkflow, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
+import { addNoLanguageDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
@@ -337,6 +338,25 @@ export async function getCodeQLSource(
     if (forceNightly) {
       logger.info(
         `Using the latest CodeQL CLI nightly, as forced by the ${Feature.ForceNightly} feature flag.`,
+      );
+      addNoLanguageDiagnostic(
+        undefined,
+        makeDiagnostic(
+          "codeql-action/forced-nightly-cli",
+          "A nightly release of CodeQL was used",
+          {
+            markdownMessage:
+              "GitHub configured this analysis to use a nightly release of CodeQL to allow you to preview changes from an upcoming release.\n\n" +
+              "Nightly releases do not undergo the same validation as regular releases and may lead to analysis instability.\n\n" +
+              "If use of a nightly CodeQL release for this analysis is unexpected, please contact GitHub support.",
+            visibility: {
+              cliSummaryTable: true,
+              statusPage: true,
+              telemetry: true,
+            },
+            severity: "warning",
+          },
+        ),
       );
     } else {
       logger.info(

@@ -2,7 +2,6 @@ import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
@@ -19,80 +18,13 @@ import {
   ProxyInfo,
   sendFailedStatusReport,
   sendSuccessStatusReport,
-  Credential,
   Registry,
+  ProxyConfig,
 } from "./start-proxy";
+import { generateCertificateAuthority } from "./start-proxy/ca";
 import { checkConnections } from "./start-proxy/reachability";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
-
-const KEY_SIZE = 2048;
-const KEY_EXPIRY_YEARS = 2;
-
-type CertificateAuthority = {
-  cert: string;
-  key: string;
-};
-
-type BasicAuthCredentials = {
-  username: string;
-  password: string;
-};
-
-type ProxyConfig = {
-  /** The validated configurations for the proxy. */
-  all_credentials: Credential[];
-  ca: CertificateAuthority;
-  proxy_auth?: BasicAuthCredentials;
-};
-
-const CERT_SUBJECT = [
-  {
-    name: "commonName",
-    value: "Dependabot Internal CA",
-  },
-  {
-    name: "organizationName",
-    value: "GitHub inc.",
-  },
-  {
-    shortName: "OU",
-    value: "Dependabot",
-  },
-  {
-    name: "countryName",
-    value: "US",
-  },
-  {
-    shortName: "ST",
-    value: "California",
-  },
-  {
-    name: "localityName",
-    value: "San Francisco",
-  },
-];
-
-function generateCertificateAuthority(): CertificateAuthority {
-  const keys = pki.rsa.generateKeyPair(KEY_SIZE);
-  const cert = pki.createCertificate();
-  cert.publicKey = keys.publicKey;
-  cert.serialNumber = "01";
-  cert.validity.notBefore = new Date();
-  cert.validity.notAfter = new Date();
-  cert.validity.notAfter.setFullYear(
-    cert.validity.notBefore.getFullYear() + KEY_EXPIRY_YEARS,
-  );
-
-  cert.setSubject(CERT_SUBJECT);
-  cert.setIssuer(CERT_SUBJECT);
-  cert.setExtensions([{ name: "basicConstraints", cA: true }]);
-  cert.sign(keys.privateKey);
-
-  const pem = pki.certificateToPem(cert);
-  const key = pki.privateKeyToPem(keys.privateKey);
-  return { cert: pem, key };
-}
 
 async function run(startedAt: Date) {
   // To capture errors appropriately, keep as much code within the try-catch as
@@ -144,7 +76,9 @@ async function run(startedAt: Date) {
         .join("\n")}`,
     );
 
-    const ca = generateCertificateAuthority();
+    const ca = generateCertificateAuthority(
+      await features.getValue(Feature.ImprovedProxyCertificates),
+    );
 
     const proxyConfig: ProxyConfig = {
       all_credentials: credentials,

@@ -334,8 +334,6 @@ test("getCodeQLSource correctly returns nightly CLI version when forced by FF", 
   const logger = getRecordingLogger(loggedMessages);
   const features = createFeatures([Feature.ForceNightly]);
 
-  process.env["GITHUB_EVENT_NAME"] = "dynamic";
-
   const expectedDate = "30260213";
   const expectedTag = `codeql-bundle-${expectedDate}`;
 
@@ -356,6 +354,8 @@ test("getCodeQLSource correctly returns nightly CLI version when forced by FF", 
 
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
+    process.env["GITHUB_EVENT_NAME"] = "dynamic";
+
     const source = await setupCodeql.getCodeQLSource(
       undefined,
       SAMPLE_DEFAULT_CLI_VERSION,
@@ -393,8 +393,6 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
   const logger = getRecordingLogger(loggedMessages);
   const features = createFeatures([Feature.AllowToolcacheInput]);
 
-  process.env["GITHUB_EVENT_NAME"] = "dynamic";
-
   const latestToolcacheVersion = "3.2.1";
   const latestVersionPath = "/path/to/latest";
   const testVersions = ["2.3.1", latestToolcacheVersion, "1.2.3"];
@@ -408,6 +406,8 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
 
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
+    process.env["GITHUB_EVENT_NAME"] = "dynamic";
+
     const source = await setupCodeql.getCodeQLSource(
       "toolcache",
       SAMPLE_DEFAULT_CLI_VERSION,
@@ -463,16 +463,17 @@ const toolcacheInputFallbackMacro = test.macro({
     const logger = getRecordingLogger(loggedMessages);
     const features = createFeatures(featureList);
 
-    for (const [k, v] of Object.entries(environment)) {
-      process.env[k] = v;
-    }
-
     const findAllVersionsStub = sinon
       .stub(toolcache, "findAllVersions")
       .returns(testVersions);
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+
+      for (const [k, v] of Object.entries(environment)) {
+        process.env[k] = v;
+      }
+
       const source = await setupCodeql.getCodeQLSource(
         "toolcache",
         SAMPLE_DEFAULT_CLI_VERSION,

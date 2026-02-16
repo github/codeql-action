@@ -321,17 +321,19 @@ export async function getCodeQLSource(
    */
   let url: string | undefined;
 
-  // We only allow forcing the nightly CLI via the FF for `dynamic` events (or in test mode).
-  // For advanced workflows, a value from `CODEQL_NIGHTLY_TOOLS_INPUTS` can be specified.
+  // We allow forcing the nightly CLI via the FF for `dynamic` events (or in test mode) where the
+  // `tools` input cannot be adjusted to explicitly request it.
+  const canForceNightlyWithFF = isDynamicWorkflow() || util.isInTestMode();
   const forceNightlyValueFF = await features.getValue(Feature.ForceNightly);
-  const forceNightly =
-    forceNightlyValueFF && (isDynamicWorkflow() || util.isInTestMode());
+  const forceNightly = forceNightlyValueFF && canForceNightlyWithFF;
 
-  if (
-    forceNightly ||
-    (toolsInput !== undefined &&
-      CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput))
-  ) {
+  // For advanced workflows, a value from `CODEQL_NIGHTLY_TOOLS_INPUTS` can be specified explicitly
+  // for the `tools` input in the workflow file.
+  const nightlyRequestedByToolsInput =
+    toolsInput !== undefined &&
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput);
+
+  if (forceNightly || nightlyRequestedByToolsInput) {
     if (forceNightly) {
       logger.info(
         `Using the latest CodeQL CLI nightly, as forced by the ${Feature.ForceNightly} feature flag.`,

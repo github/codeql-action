@@ -46,6 +46,7 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  ForceNightly = "force_nightly",
   IgnoreGeneratedFiles = "ignore_generated_files",
   ImprovedProxyCertificates = "improved_proxy_certificates",
   OverlayAnalysis = "overlay_analysis",
@@ -162,6 +163,11 @@ export const featureConfig = {
     defaultValue: true,
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.ForceNightly]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_FORCE_NIGHTLY",
     minimumVersion: undefined,
   },
   [Feature.IgnoreGeneratedFiles]: {

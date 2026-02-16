@@ -145,6 +145,7 @@ export function setupActionsVars(tempDir: string, toolsDir: string) {
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
   process.env["GITHUB_WORKSPACE"] = tempDir;
+  process.env["GITHUB_EVENT_NAME"] = "push";
 }
 
 export interface LoggedMessage {

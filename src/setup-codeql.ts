@@ -275,7 +275,7 @@ async function findOverridingToolsInCache(
  * @param features Information about enabled features.
  * @param logger The logger to use.
  *
- * @returns
+ * @returns Information about where the CodeQL CLI we want to use comes from.
  */
 export async function getCodeQLSource(
   toolsInput: string | undefined,

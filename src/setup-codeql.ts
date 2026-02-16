@@ -354,7 +354,7 @@ export async function getCodeQLSource(
               statusPage: true,
               telemetry: true,
             },
-            severity: "warning",
+            severity: "note",
           },
         ),
       );

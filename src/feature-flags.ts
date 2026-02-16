@@ -47,6 +47,7 @@ export enum Feature {
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
   IgnoreGeneratedFiles = "ignore_generated_files",
+  ImprovedProxyCertificates = "improved_proxy_certificates",
   JavaNetworkDebugging = "java_network_debugging",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
@@ -167,6 +168,11 @@ export const featureConfig = {
   [Feature.IgnoreGeneratedFiles]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_IGNORE_GENERATED_FILES",
+    minimumVersion: undefined,
+  },
+  [Feature.ImprovedProxyCertificates]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_IMPROVED_PROXY_CERTIFICATES",
     minimumVersion: undefined,
   },
   [Feature.JavaNetworkDebugging]: {

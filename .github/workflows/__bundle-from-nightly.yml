@@ -55,14 +55,15 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - id: setup-codeql
-        uses: ./../action/setup-codeql
+      - id: init
+        uses: ./../action/init
         env:
           CODEQL_ACTION_FORCE_NIGHTLY: true
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: javascript
       - name: Fail if the CodeQL version is not a nightly
-        if: "!contains(steps.setup-codeql.outputs.codeql-version, '+')"
+        if: "!contains(steps.init.outputs.codeql-version, '+')"
         run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

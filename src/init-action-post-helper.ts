@@ -292,8 +292,8 @@ async function recordOverlayStatus(
         "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
           "This may have been due to disk space constraints: using improved incremental analysis can " +
           "require a significant amount of disk space for some repositories. " +
-          "This information has been saved to the Actions cache. " +
-          "You can rerun this job to run CodeQL analysis without improved incremental analysis. " +
+          "This failure has been recorded in the Actions cache, so " +
+          "rerunning this job will run a new CodeQL analysis without improved incremental analysis. " +
           "If you want to enable improved incremental analysis, increase the disk space available to the runner. " +
           "If that doesn't help, contact GitHub Support for further assistance.",
       );

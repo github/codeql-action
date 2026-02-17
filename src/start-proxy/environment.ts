@@ -38,6 +38,17 @@ const javaProperties = [
   "https.proxyPort",
   "http.nonProxyHosts",
   "java.net.useSystemProxies",
+  "javax.net.ssl.trustStore",
+  "javax.net.ssl.trustStoreType",
+  "javax.net.ssl.trustStoreProvider",
+  "jdk.tls.client.protocols",
+  "jdk.tls.disabledAlgorithms",
+  "jdk.security.allowNonCaAnchor",
+  "https.protocols",
+  "com.sun.net.ssl.enableAIAcaIssuers",
+  "com.sun.net.ssl.checkRevocation",
+  "com.sun.security.enableCRLDP",
+  "ocsp.enable",
 ];
 
 /** Java-specific environment variables which may contain information about proxy settings. */

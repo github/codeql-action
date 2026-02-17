@@ -12,6 +12,7 @@ import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
+import { UploadPayload } from "./upload-lib/types";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
@@ -128,11 +129,21 @@ test("finding SARIF files", async (t) => {
       "file",
     );
 
-    // add some `.quality.sarif` files that should be ignored, unless we look for them specifically
-    fs.writeFileSync(path.join(tmpDir, "a.quality.sarif"), "");
-    fs.writeFileSync(path.join(tmpDir, "dir1", "b.quality.sarif"), "");
+    // add some non-Code Scanning files that should be ignored, unless we look for them specifically
+    for (const analysisKind of analyses.supportedAnalysisKinds) {
+      if (analysisKind === AnalysisKind.CodeScanning) continue;
 
-    const expectedSarifFiles = [
+      const analysis = analyses.getAnalysisConfig(analysisKind);
+
+      fs.writeFileSync(path.join(tmpDir, `a${analysis.sarifExtension}`), "");
+      fs.writeFileSync(
+        path.join(tmpDir, "dir1", `b${analysis.sarifExtension}`),
+        "",
+      );
+    }
+
+    const expectedSarifFiles: Partial<Record<AnalysisKind, string[]>> = {};
+    expectedSarifFiles[AnalysisKind.CodeScanning] = [
       path.join(tmpDir, "a.sarif"),
       path.join(tmpDir, "b.sarif"),
       path.join(tmpDir, "dir1", "d.sarif"),
@@ -143,18 +154,24 @@ test("finding SARIF files", async (t) => {
       CodeScanning.sarifPredicate,
     );
 
-    t.deepEqual(sarifFiles, expectedSarifFiles);
+    t.deepEqual(sarifFiles, expectedSarifFiles[AnalysisKind.CodeScanning]);
 
-    const expectedQualitySarifFiles = [
-      path.join(tmpDir, "a.quality.sarif"),
-      path.join(tmpDir, "dir1", "b.quality.sarif"),
-    ];
-    const qualitySarifFiles = uploadLib.findSarifFilesInDir(
-      tmpDir,
-      CodeQuality.sarifPredicate,
-    );
+    for (const analysisKind of analyses.supportedAnalysisKinds) {
+      if (analysisKind === AnalysisKind.CodeScanning) continue;
 
-    t.deepEqual(qualitySarifFiles, expectedQualitySarifFiles);
+      const analysis = analyses.getAnalysisConfig(analysisKind);
+
+      expectedSarifFiles[analysisKind] = [
+        path.join(tmpDir, `a${analysis.sarifExtension}`),
+        path.join(tmpDir, "dir1", `b${analysis.sarifExtension}`),
+      ];
+      const foundSarifFiles = uploadLib.findSarifFilesInDir(
+        tmpDir,
+        analysis.sarifPredicate,
+      );
+
+      t.deepEqual(foundSarifFiles, expectedSarifFiles[analysisKind]);
+    }
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
       getRunnerLogger(true),
@@ -162,16 +179,31 @@ test("finding SARIF files", async (t) => {
     );
 
     t.not(groupedSarifFiles, undefined);
-    t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
-    t.not(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
-    t.deepEqual(
-      groupedSarifFiles[AnalysisKind.CodeScanning],
-      expectedSarifFiles,
+    for (const analysisKind of analyses.supportedAnalysisKinds) {
+      t.not(groupedSarifFiles[analysisKind], undefined);
+      t.deepEqual(
+        groupedSarifFiles[analysisKind],
+        expectedSarifFiles[analysisKind],
+      );
+    }
+  });
+});
+
+test("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.csra.sarif");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
     );
-    t.deepEqual(
-      groupedSarifFiles[AnalysisKind.CodeQuality],
-      expectedQualitySarifFiles,
-    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.not(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.RiskAssessment], [sarifPath]);
   });
 });
 
@@ -188,6 +220,7 @@ test("getGroupedSarifFilePaths - Code Quality file", async (t) => {
     t.not(groupedSarifFiles, undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
     t.not(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
     t.deepEqual(groupedSarifFiles[AnalysisKind.CodeQuality], [sarifPath]);
   });
 });
@@ -205,6 +238,7 @@ test("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
     t.not(groupedSarifFiles, undefined);
     t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
     t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
   });
 });
@@ -222,6 +256,7 @@ test("getGroupedSarifFilePaths - Other file", async (t) => {
     t.not(groupedSarifFiles, undefined);
     t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
     t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
   });
 });
@@ -875,7 +910,15 @@ function createMockSarif(id?: string, tool?: string) {
 
 function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
   const mockData = {
-    payload: { sarif: "base64data", commit_sha: "abc123" },
+    payload: {
+      commit_oid: "abc123",
+      ref: "ref",
+      sarif: "base64data",
+      workflow_run_id: 1,
+      workflow_run_attempt: 1,
+      checkout_uri: "uri",
+      tool_names: ["codeql"],
+    } satisfies UploadPayload,
     owner: "test-owner",
     repo: "test-repo",
     response: {
@@ -907,7 +950,9 @@ function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
   };
 }
 
-for (const analysis of [CodeScanning, CodeQuality]) {
+for (const analysisKind of analyses.supportedAnalysisKinds) {
+  const analysis = analyses.getAnalysisConfig(analysisKind);
+
   test(`uploadPayload on ${analysis.name} uploads successfully`, async (t) => {
     const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
     requestStub

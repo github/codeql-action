@@ -3,13 +3,29 @@ import {
   getOptionalInput,
   getRequiredInput,
 } from "./actions-util";
+import { EnvVar } from "./environment";
 import { Logger } from "./logging";
-import { ConfigurationError } from "./util";
+import {
+  AssessmentPayload,
+  BasePayload,
+  UploadPayload,
+} from "./upload-lib/types";
+import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 export enum AnalysisKind {
   CodeScanning = "code-scanning",
   CodeQuality = "code-quality",
+  RiskAssessment = "risk-assessment",
 }
+
+export type CompatibilityMatrix = Record<AnalysisKind, Set<AnalysisKind>>;
+
+/** A mapping from analysis kinds to other analysis kinds which can be enabled concurrently. */
+export const compatibilityMatrix: CompatibilityMatrix = {
+  [AnalysisKind.CodeScanning]: new Set([AnalysisKind.CodeQuality]),
+  [AnalysisKind.CodeQuality]: new Set([AnalysisKind.CodeScanning]),
+  [AnalysisKind.RiskAssessment]: new Set(),
+};
 
 // Exported for testing. A set of all known analysis kinds.
 export const supportedAnalysisKinds = new Set(Object.values(AnalysisKind));
@@ -67,7 +83,7 @@ export async function getAnalysisKinds(
     return cachedAnalysisKinds;
   }
 
-  cachedAnalysisKinds = await parseAnalysisKinds(
+  const analysisKinds = await parseAnalysisKinds(
     getRequiredInput("analysis-kinds"),
   );
 
@@ -85,12 +101,27 @@ export async function getAnalysisKinds(
   // if an input to `quality-queries` was specified. We should remove this once
   // `quality-queries` is no longer used.
   if (
-    !cachedAnalysisKinds.includes(AnalysisKind.CodeQuality) &&
+    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
     qualityQueriesInput !== undefined
   ) {
-    cachedAnalysisKinds.push(AnalysisKind.CodeQuality);
+    analysisKinds.push(AnalysisKind.CodeQuality);
   }
 
+  // Check that all enabled analysis kinds are compatible with each other.
+  for (const analysisKind of analysisKinds) {
+    for (const otherAnalysisKind of analysisKinds) {
+      if (analysisKind === otherAnalysisKind) continue;
+
+      if (!compatibilityMatrix[analysisKind].has(otherAnalysisKind)) {
+        throw new ConfigurationError(
+          `${analysisKind} and ${otherAnalysisKind} cannot be enabled at the same time`,
+        );
+      }
+    }
+  }
+
+  // Cache the analysis kinds and return them.
+  cachedAnalysisKinds = analysisKinds;
   return cachedAnalysisKinds;
 }
 
@@ -101,6 +132,7 @@ export const codeQualityQueries: string[] = ["code-quality"];
 enum SARIF_UPLOAD_ENDPOINT {
   CODE_SCANNING = "PUT /repos/:owner/:repo/code-scanning/analysis",
   CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
+  RISK_ASSESSMENT = "PUT /repos/:owner/:repo/code-scanning/risk-assessment",
 }
 
 // Represents configurations for different analysis kinds.
@@ -120,6 +152,8 @@ export interface AnalysisConfig {
   fixCategory: (logger: Logger, category?: string) => string | undefined;
   /** A prefix for environment variables used to track the uniqueness of SARIF uploads. */
   sentinelPrefix: string;
+  /** Transforms the upload payload in an analysis-specific way. */
+  transformPayload: (payload: UploadPayload) => BasePayload;
 }
 
 // Represents the Code Scanning analysis configuration.
@@ -130,9 +164,11 @@ export const CodeScanning: AnalysisConfig = {
   sarifExtension: ".sarif",
   sarifPredicate: (name) =>
     name.endsWith(CodeScanning.sarifExtension) &&
-    !CodeQuality.sarifPredicate(name),
+    !CodeQuality.sarifPredicate(name) &&
+    !RiskAssessment.sarifPredicate(name),
   fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
+  transformPayload: (payload) => payload,
 };
 
 // Represents the Code Quality analysis configuration.
@@ -144,6 +180,38 @@ export const CodeQuality: AnalysisConfig = {
   sarifPredicate: (name) => name.endsWith(CodeQuality.sarifExtension),
   fixCategory: fixCodeQualityCategory,
   sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
+  transformPayload: (payload) => payload,
+};
+
+/**
+ * Retrieves the CSRA assessment id from an environment variable and adds it to the payload.
+ * @param payload The base payload.
+ */
+function addAssessmentId(payload: UploadPayload): AssessmentPayload {
+  const rawAssessmentId = getRequiredEnvParam(EnvVar.RISK_ASSESSMENT_ID);
+  const assessmentId = parseInt(rawAssessmentId, 10);
+  if (Number.isNaN(assessmentId)) {
+    throw new Error(
+      `${EnvVar.RISK_ASSESSMENT_ID} must not be NaN: ${rawAssessmentId}`,
+    );
+  }
+  if (assessmentId < 0) {
+    throw new Error(
+      `${EnvVar.RISK_ASSESSMENT_ID} must not be negative: ${rawAssessmentId}`,
+    );
+  }
+  return { sarif: payload.sarif, assessment_id: assessmentId };
+}
+
+export const RiskAssessment: AnalysisConfig = {
+  kind: AnalysisKind.RiskAssessment,
+  name: "code scanning risk assessment",
+  target: SARIF_UPLOAD_ENDPOINT.RISK_ASSESSMENT,
+  sarifExtension: ".csra.sarif",
+  sarifPredicate: (name) => name.endsWith(RiskAssessment.sarifExtension),
+  fixCategory: (_, category) => category,
+  sentinelPrefix: "CODEQL_UPLOAD_CSRA_SARIF_",
+  transformPayload: addAssessmentId,
 };
 
 /**
@@ -160,6 +228,8 @@ export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
       return CodeScanning;
     case AnalysisKind.CodeQuality:
       return CodeQuality;
+    case AnalysisKind.RiskAssessment:
+      return RiskAssessment;
   }
 }
 
@@ -167,4 +237,8 @@ export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
 // we want to scan a folder containing SARIF files in an order that finds the more
 // specific extensions first. This constant defines an array in the order of analyis
 // configurations with more specific extensions to less specific extensions.
-export const SarifScanOrder = [CodeQuality, CodeScanning];
+export const SarifScanOrder: AnalysisConfig[] = [
+  RiskAssessment,
+  CodeQuality,
+  CodeScanning,
+];

@@ -2,7 +2,10 @@ import * as fs from "fs";
 import * as os from "os";
 import path from "path";
 
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
 import test, { ExecutionContext } from "ava";
+import sinon from "sinon";
 
 import { JavaEnvVars, KnownLanguage } from "../languages";
 import {
@@ -24,6 +27,15 @@ import {
 } from "./environment";
 
 setupTests(test);
+
+function stubToolrunner() {
+  sinon.stub(io, "which").throws(new Error("Java not installed"));
+  sinon.stub(toolrunner, "ToolRunner").returns({
+    exec: async () => {
+      return 0;
+    },
+  });
+}
 
 function assertEnvVarLogMessages(
   t: ExecutionContext<any>,
@@ -166,30 +178,36 @@ test("checkProxyEnvVars - credentials are removed from URLs", (t) => {
   );
 });
 
-test("checkProxyEnvironment - includes base checks for all known languages", (t) => {
+test("checkProxyEnvironment - includes base checks for all known languages", async (t) => {
+  stubToolrunner();
+
   for (const language of Object.values(KnownLanguage)) {
     const messages: LoggedMessage[] = [];
     const logger = getRecordingLogger(messages);
 
-    checkProxyEnvironment(logger, language);
+    await checkProxyEnvironment(logger, language);
     assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
   }
 });
 
-test("checkProxyEnvironment - includes Java checks for Java", (t) => {
+test("checkProxyEnvironment - includes Java checks for Java", async (t) => {
   const messages: LoggedMessage[] = [];
   const logger = getRecordingLogger(messages);
 
-  checkProxyEnvironment(logger, KnownLanguage.java);
+  stubToolrunner();
+
+  await checkProxyEnvironment(logger, KnownLanguage.java);
   assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
   assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
 });
 
-test("checkProxyEnvironment - includes language-specific checks if the language is undefined", (t) => {
+test("checkProxyEnvironment - includes language-specific checks if the language is undefined", async (t) => {
   const messages: LoggedMessage[] = [];
   const logger = getRecordingLogger(messages);
 
-  checkProxyEnvironment(logger, undefined);
+  stubToolrunner();
+
+  await checkProxyEnvironment(logger, undefined);
   assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
   assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
 });

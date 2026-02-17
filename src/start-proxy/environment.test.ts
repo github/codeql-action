@@ -29,12 +29,16 @@ function assertEnvVarLogMessages(
   t: ExecutionContext<any>,
   envVars: string[],
   messages: LoggedMessage[],
-  expectSet: boolean,
+  expectSet: boolean | string,
 ) {
-  const template = (envVar: string) =>
-    expectSet
+  const template = (envVar: string) => {
+    if (typeof expectSet === "string") {
+      return `Environment variable '${envVar}' is set to '${expectSet}'`;
+    }
+    return expectSet
       ? `Environment variable '${envVar}' is set to '${envVar}'`
       : `Environment variable '${envVar}' is not set`;
+  };
 
   const expected: string[] = [];
 
@@ -143,6 +147,23 @@ test("checkProxyEnvVars - logs values when variables are set", (t) => {
 
   checkProxyEnvVars(logger);
   assertEnvVarLogMessages(t, Object.values(ProxyEnvVars), messages, true);
+});
+
+test("checkProxyEnvVars - credentials are removed from URLs", (t) => {
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  for (const envVar of Object.values(ProxyEnvVars)) {
+    process.env[envVar] = "https://secret:password@proxy.local";
+  }
+
+  checkProxyEnvVars(logger);
+  assertEnvVarLogMessages(
+    t,
+    Object.values(ProxyEnvVars),
+    messages,
+    "https://proxy.local/",
+  );
 });
 
 test("checkProxyEnvironment - includes base checks for all known languages", (t) => {

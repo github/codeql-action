@@ -42,7 +42,7 @@ export function checkJavaEnvVars(logger: Logger) {
 }
 
 /**
- * Discovers paths to JDK directories based on JAVA_HOME and GHA-specific environement variables.
+ * Discovers paths to JDK directories based on JAVA_HOME and GHA-specific environment variables.
  * @returns A set of JDK paths.
  */
 export function discoverActionsJdks(): Set<string> {

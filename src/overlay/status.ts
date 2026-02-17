@@ -28,6 +28,16 @@ const MAX_CACHE_OPERATION_MS = 30_000;
 /** File name for the serialized overlay status. */
 const STATUS_FILE_NAME = "overlay-status.json";
 
+/** Path to the local overlay status file. */
+function getStatusFilePath(languages: string[]): string {
+  return path.join(
+    getTemporaryDirectory(),
+    "overlay-status",
+    [...languages].sort().join("+"),
+    STATUS_FILE_NAME,
+  );
+}
+
 /** Status of an overlay analysis for a set of languages. */
 export interface OverlayStatus {
   /** Whether the job attempted to build an overlay base database. */
@@ -78,12 +88,7 @@ export async function getOverlayStatus(
   logger: Logger,
 ): Promise<OverlayStatus | undefined> {
   const cacheKey = await getCacheKey(codeql, languages, diskUsage);
-  const statusFile = path.join(
-    getTemporaryDirectory(),
-    "overlay-status",
-    [...languages].sort().join("+"),
-    STATUS_FILE_NAME,
-  );
+  const statusFile = getStatusFilePath(languages);
   await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
 
   try {
@@ -129,12 +134,7 @@ export async function saveOverlayStatus(
   logger: Logger,
 ): Promise<boolean> {
   const cacheKey = await getCacheKey(codeql, languages, diskUsage);
-  const statusFile = path.join(
-    getTemporaryDirectory(),
-    "overlay-status",
-    [...languages].sort().join("+"),
-    STATUS_FILE_NAME,
-  );
+  const statusFile = getStatusFilePath(languages);
   await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
   await fs.promises.writeFile(statusFile, JSON.stringify(status));
 

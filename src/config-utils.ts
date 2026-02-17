@@ -12,9 +12,8 @@ import {
 import {
   AnalysisConfig,
   AnalysisKind,
-  CodeQuality,
   codeQualityQueries,
-  CodeScanning,
+  getAnalysisConfig,
 } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
@@ -1389,28 +1388,27 @@ export function isCodeQualityEnabled(config: Config): boolean {
 }
 
 /**
- * Returns the primary analysis kind that the Action is initialised with. This is
- * always `AnalysisKind.CodeScanning` unless `AnalysisKind.CodeScanning` is not enabled.
+ * Returns the primary analysis kind that the Action is initialised with. If there is only
+ * one analysis kind, then that is returned.
  *
- * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
- * otherwise `AnalysisKind.CodeQuality`.
+ * The special case is Code Scanning + Code Quality, which can be enabled at the same time.
+ * In that case, this function returns Code Scanning.
  */
 function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+  if (config.analysisKinds.length === 1) {
+    return config.analysisKinds[0];
+  }
+
   return isCodeScanningEnabled(config)
     ? AnalysisKind.CodeScanning
     : AnalysisKind.CodeQuality;
 }
 
 /**
- * Returns the primary analysis configuration that the Action is initialised with. This is
- * always `CodeScanning` unless `CodeScanning` is not enabled.
- *
- * @returns Returns `CodeScanning` if `AnalysisKind.CodeScanning` is enabled; otherwise `CodeQuality`.
+ * Returns the primary analysis configuration that the Action is initialised with.
  */
 export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
-  return getPrimaryAnalysisKind(config) === AnalysisKind.CodeScanning
-    ? CodeScanning
-    : CodeQuality;
+  return getAnalysisConfig(getPrimaryAnalysisKind(config));
 }
 
 /** Logs the Git version as a telemetry diagnostic. */

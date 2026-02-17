@@ -82,7 +82,7 @@ async function run(startedAt: Date) {
     // which may affect the operation of our proxy.
     if (core.isDebug() || util.isInTestMode()) {
       try {
-        checkProxyEnvironment(logger, language);
+        await checkProxyEnvironment(logger, language);
       } catch (err) {
         logger.debug(
           `Unable to inspect runner environment: ${util.getErrorMessage(err)}`,

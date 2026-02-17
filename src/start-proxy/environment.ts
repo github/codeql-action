@@ -1,6 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
+
 import { JavaEnvVars, KnownLanguage, Language } from "../languages";
 import { Logger } from "../logging";
 import { getErrorMessage, isDefined } from "../util";
@@ -128,6 +131,36 @@ export function checkJdkSettings(logger: Logger, jdkHome: string) {
   }
 }
 
+/** Invokes `java` to get it to show us the active configuration. */
+async function showJavaSettings(logger: Logger): Promise<void> {
+  try {
+    const java = await io.which("java", true);
+
+    let output = "";
+    await new toolrunner.ToolRunner(
+      java,
+      ["-XshowSettings:all", "-XshowSettings:security:all", "-version"],
+      {
+        silent: true,
+        listeners: {
+          stdout: (data) => {
+            output += String(data);
+          },
+          stderr: (data) => {
+            output += String(data);
+          },
+        },
+      },
+    ).exec();
+
+    logger.startGroup("Java settings");
+    logger.info(output);
+    logger.endGroup();
+  } catch (err) {
+    logger.debug(`Failed to query java settings: ${getErrorMessage(err)}`);
+  }
+}
+
 /** Enumerates environment variable names which may contain information about proxy settings. */
 export enum ProxyEnvVars {
   HTTP_PROXY = "HTTP_PROXY",
@@ -154,10 +187,10 @@ export function checkProxyEnvVars(logger: Logger) {
  * @param logger The logger to use.
  * @param language The enabled language, if known.
  */
-export function checkProxyEnvironment(
+export async function checkProxyEnvironment(
   logger: Logger,
   language: Language | undefined,
-) {
+): Promise<void> {
   // Determine whether there is an existing proxy configured.
   checkProxyEnvVars(logger);
 
@@ -165,6 +198,8 @@ export function checkProxyEnvironment(
   // then we perform all checks.
   if (language === undefined || language === KnownLanguage.java) {
     checkJavaEnvVars(logger);
+
+    await showJavaSettings(logger);
 
     const jdks = discoverActionsJdks();
     for (const jdk of jdks) {

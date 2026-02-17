@@ -27,9 +27,11 @@ import {
 } from "./config/db-config";
 import {
   addNoLanguageDiagnostic,
+  makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -739,9 +741,11 @@ export async function getOverlayDatabaseMode(
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
   useOverlayDatabaseCaching: boolean;
+  skippedDueToCachedStatus: boolean;
 }> {
   let overlayDatabaseMode = OverlayDatabaseMode.None;
   let useOverlayDatabaseCaching = false;
+  let skippedDueToCachedStatus = false;
 
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
@@ -781,6 +785,7 @@ export async function getOverlayDatabaseMode(
           "Consider running CodeQL analysis on a larger runner.",
       );
       overlayDatabaseMode = OverlayDatabaseMode.None;
+      skippedDueToCachedStatus = true;
     } else if (
       performResourceChecks &&
       !(await runnerSupportsOverlayAnalysis(diskUsage, ramInput, logger))
@@ -806,6 +811,7 @@ export async function getOverlayDatabaseMode(
   const nonOverlayAnalysis = {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    skippedDueToCachedStatus,
   };
 
   if (overlayDatabaseMode === OverlayDatabaseMode.None) {
@@ -870,6 +876,7 @@ export async function getOverlayDatabaseMode(
   return {
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
+    skippedDueToCachedStatus,
   };
 }
 
@@ -1013,24 +1020,53 @@ export async function initConfig(
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
   // rest of the config has been populated.
-  const { overlayDatabaseMode, useOverlayDatabaseCaching } =
-    await getOverlayDatabaseMode(
-      inputs.codeql,
-      inputs.features,
-      config.languages,
-      inputs.sourceRoot,
-      config.buildMode,
-      inputs.ramInput,
-      config.computedConfig,
-      gitVersion,
-      logger,
-    );
+  const {
+    overlayDatabaseMode,
+    useOverlayDatabaseCaching,
+    skippedDueToCachedStatus: overlaySkippedDueToCachedStatus,
+  } = await getOverlayDatabaseMode(
+    inputs.codeql,
+    inputs.features,
+    config.languages,
+    inputs.sourceRoot,
+    config.buildMode,
+    inputs.ramInput,
+    config.computedConfig,
+    gitVersion,
+    logger,
+  );
   logger.info(
     `Using overlay database mode: ${overlayDatabaseMode} ` +
       `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
   config.overlayDatabaseMode = overlayDatabaseMode;
   config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+
+  if (overlaySkippedDueToCachedStatus) {
+    addNoLanguageDiagnostic(
+      config,
+      makeDiagnostic(
+        "codeql-action/overlay-skipped-due-to-cached-status",
+        "Overlay analysis skipped due to cached status",
+        {
+          attributes: {
+            languages: config.languages,
+          },
+          markdownMessage:
+            `Overlay analysis was skipped because it failed previously on this runner. ` +
+            "Running CodeQL analysis on a larger runner may allow overlay analysis to run successfully.\n\n" +
+            "Overlay analysis will be automatically retried when the next version of CodeQL is released. " +
+            `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` entries from the Actions cache.`,
+          severity: "note",
+          visibility: {
+            cliSummaryTable: true,
+            statusPage: true,
+            telemetry: true,
+          },
+        },
+      ),
+    );
+  }
 
   if (
     overlayDatabaseMode === OverlayDatabaseMode.Overlay ||

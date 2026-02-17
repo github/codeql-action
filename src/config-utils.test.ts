@@ -1015,6 +1015,7 @@ const getOverlayDatabaseModeMacro = test.macro({
     expected: {
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
+      skippedDueToCachedStatus?: boolean;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1085,7 +1086,10 @@ const getOverlayDatabaseModeMacro = test.macro({
           logger,
         );
 
-        t.deepEqual(result, expected);
+        t.deepEqual(result, {
+          skippedDueToCachedStatus: false,
+          ...expected,
+        });
       } finally {
         // Restore the original environment
         process.env = originalEnv;
@@ -1318,6 +1322,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    skippedDueToCachedStatus: true,
   },
 );
 
@@ -1337,6 +1342,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    skippedDueToCachedStatus: true,
   },
 );
 

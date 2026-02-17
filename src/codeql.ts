@@ -160,6 +160,7 @@ export interface CodeQL {
     databasePath: string,
     outputFilePath: string,
     dbName: string,
+    includeDiagnostics: boolean,
     alsoIncludeRelativePaths: string[],
   ): Promise<void>;
   /**
@@ -912,15 +913,22 @@ async function getCodeQLForCmd(
       databasePath: string,
       outputFilePath: string,
       databaseName: string,
+      includeDiagnostics: boolean,
       alsoIncludeRelativePaths: string[],
     ): Promise<void> {
+      const includeDiagnosticsArgs = includeDiagnostics
+        ? ["--include-diagnostics"]
+        : [];
       const args = [
         "database",
         "bundle",
         databasePath,
         `--output=${outputFilePath}`,
         `--name=${databaseName}`,
-        ...getExtraOptionsFromEnv(["database", "bundle"]),
+        ...includeDiagnosticsArgs,
+        ...getExtraOptionsFromEnv(["database", "bundle"], {
+          ignoringOptions: includeDiagnosticsArgs,
+        }),
       ];
       if (
         await this.supportsFeature(ToolsFeature.BundleSupportsIncludeOption)

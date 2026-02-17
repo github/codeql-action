@@ -15,7 +15,7 @@ import { ConfigurationError, getRequiredEnvParam } from "./util";
 export enum AnalysisKind {
   CodeScanning = "code-scanning",
   CodeQuality = "code-quality",
-  CSRA = "risk-assessment",
+  RiskAssessment = "risk-assessment",
 }
 
 export type CompatibilityMatrix = Record<AnalysisKind, Set<AnalysisKind>>;
@@ -24,7 +24,7 @@ export type CompatibilityMatrix = Record<AnalysisKind, Set<AnalysisKind>>;
 export const compatibilityMatrix: CompatibilityMatrix = {
   [AnalysisKind.CodeScanning]: new Set([AnalysisKind.CodeQuality]),
   [AnalysisKind.CodeQuality]: new Set([AnalysisKind.CodeScanning]),
-  [AnalysisKind.CSRA]: new Set(),
+  [AnalysisKind.RiskAssessment]: new Set(),
 };
 
 // Exported for testing. A set of all known analysis kinds.
@@ -132,7 +132,7 @@ export const codeQualityQueries: string[] = ["code-quality"];
 enum SARIF_UPLOAD_ENDPOINT {
   CODE_SCANNING = "PUT /repos/:owner/:repo/code-scanning/analysis",
   CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
-  CSRA = "PUT /repos/:owner/:repo/code-scanning/risk-assessment",
+  RISK_ASSESSMENT = "PUT /repos/:owner/:repo/code-scanning/risk-assessment",
 }
 
 // Represents configurations for different analysis kinds.
@@ -165,7 +165,7 @@ export const CodeScanning: AnalysisConfig = {
   sarifPredicate: (name) =>
     name.endsWith(CodeScanning.sarifExtension) &&
     !CodeQuality.sarifPredicate(name) &&
-    !CSRA.sarifPredicate(name),
+    !RiskAssessment.sarifPredicate(name),
   fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
   transformPayload: (payload) => payload,
@@ -188,27 +188,27 @@ export const CodeQuality: AnalysisConfig = {
  * @param payload The base payload.
  */
 function addAssessmentId(payload: UploadPayload): AssessmentPayload {
-  const rawAssessmentId = getRequiredEnvParam(EnvVar.CSRA_ASSESSMENT_ID);
+  const rawAssessmentId = getRequiredEnvParam(EnvVar.RISK_ASSESSMENT_ID);
   const assessmentId = parseInt(rawAssessmentId, 10);
   if (Number.isNaN(assessmentId)) {
     throw new Error(
-      `${EnvVar.CSRA_ASSESSMENT_ID} must not be NaN: ${rawAssessmentId}`,
+      `${EnvVar.RISK_ASSESSMENT_ID} must not be NaN: ${rawAssessmentId}`,
     );
   }
   if (assessmentId < 0) {
     throw new Error(
-      `${EnvVar.CSRA_ASSESSMENT_ID} must not be negative: ${rawAssessmentId}`,
+      `${EnvVar.RISK_ASSESSMENT_ID} must not be negative: ${rawAssessmentId}`,
     );
   }
   return { sarif: payload.sarif, assessment_id: assessmentId };
 }
 
-export const CSRA: AnalysisConfig = {
-  kind: AnalysisKind.CSRA,
+export const RiskAssessment: AnalysisConfig = {
+  kind: AnalysisKind.RiskAssessment,
   name: "code scanning risk assessment",
-  target: SARIF_UPLOAD_ENDPOINT.CSRA,
+  target: SARIF_UPLOAD_ENDPOINT.RISK_ASSESSMENT,
   sarifExtension: ".csra.sarif",
-  sarifPredicate: (name) => name.endsWith(CSRA.sarifExtension),
+  sarifPredicate: (name) => name.endsWith(RiskAssessment.sarifExtension),
   fixCategory: (_, category) => category,
   sentinelPrefix: "CODEQL_UPLOAD_CSRA_SARIF_",
   transformPayload: addAssessmentId,
@@ -228,8 +228,8 @@ export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
       return CodeScanning;
     case AnalysisKind.CodeQuality:
       return CodeQuality;
-    case AnalysisKind.CSRA:
-      return CSRA;
+    case AnalysisKind.RiskAssessment:
+      return RiskAssessment;
   }
 }
 
@@ -238,7 +238,7 @@ export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
 // specific extensions first. This constant defines an array in the order of analyis
 // configurations with more specific extensions to less specific extensions.
 export const SarifScanOrder: AnalysisConfig[] = [
-  CSRA,
+  RiskAssessment,
   CodeQuality,
   CodeScanning,
 ];

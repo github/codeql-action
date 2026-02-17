@@ -3,7 +3,7 @@ description: "Tests basic functionality for different `analysis-kinds` inputs."
 versions: ["linked", "nightly-latest"]
 analysisKinds: ["code-scanning", "code-quality", "code-scanning,code-quality", "risk-assessment"]
 env:
-  CODEQL_ACTION_CSRA_ASSESSMENT_ID: 1
+  CODEQL_ACTION_RISK_ASSESSMENT_ID: 1
   CHECK_SCRIPT: |
     const fs = require('fs');
 

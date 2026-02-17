@@ -4,7 +4,7 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import { CodeQuality, CodeScanning, CSRA } from "./analyses";
+import { CodeQuality, CodeScanning, RiskAssessment } from "./analyses";
 import {
   runQueries,
   defaultSuites,
@@ -155,6 +155,6 @@ test("addSarifExtension", (t) => {
       addSarifExtension(CodeQuality, language),
       `${language}.quality.sarif`,
     );
-    t.is(addSarifExtension(CSRA, language), `${language}.csra.sarif`);
+    t.is(addSarifExtension(RiskAssessment, language), `${language}.csra.sarif`);
   }
 });

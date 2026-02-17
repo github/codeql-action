@@ -189,7 +189,7 @@ test("finding SARIF files", async (t) => {
   });
 });
 
-test("getGroupedSarifFilePaths - CSRA", async (t) => {
+test("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const sarifPath = path.join(tmpDir, "a.csra.sarif");
     fs.writeFileSync(sarifPath, "");
@@ -202,8 +202,8 @@ test("getGroupedSarifFilePaths - CSRA", async (t) => {
     t.not(groupedSarifFiles, undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
-    t.not(groupedSarifFiles[AnalysisKind.CSRA], undefined);
-    t.deepEqual(groupedSarifFiles[AnalysisKind.CSRA], [sarifPath]);
+    t.not(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.RiskAssessment], [sarifPath]);
   });
 });
 
@@ -220,7 +220,7 @@ test("getGroupedSarifFilePaths - Code Quality file", async (t) => {
     t.not(groupedSarifFiles, undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
     t.not(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
-    t.is(groupedSarifFiles[AnalysisKind.CSRA], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
     t.deepEqual(groupedSarifFiles[AnalysisKind.CodeQuality], [sarifPath]);
   });
 });
@@ -238,7 +238,7 @@ test("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
     t.not(groupedSarifFiles, undefined);
     t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
-    t.is(groupedSarifFiles[AnalysisKind.CSRA], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
     t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
   });
 });
@@ -256,7 +256,7 @@ test("getGroupedSarifFilePaths - Other file", async (t) => {
     t.not(groupedSarifFiles, undefined);
     t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
     t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
-    t.is(groupedSarifFiles[AnalysisKind.CSRA], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
     t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
   });
 });

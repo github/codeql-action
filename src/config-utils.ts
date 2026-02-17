@@ -781,8 +781,7 @@ export async function getOverlayDatabaseMode(
       logger.info(
         `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
           "because overlay analysis previously failed with this combination of languages, " +
-          "disk space, and CodeQL version. " +
-          "Consider running CodeQL analysis on a larger runner.",
+          "disk space, and CodeQL version.",
       );
       overlayDatabaseMode = OverlayDatabaseMode.None;
       skippedDueToCachedStatus = true;

@@ -52,7 +52,7 @@ import {
   initConfig,
   runDatabaseInitCluster,
 } from "./init";
-import { KnownLanguage } from "./languages";
+import { JavaEnvVars, KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -756,13 +756,13 @@ async function run(startedAt: Date) {
 
     // Enable Java network debugging if the FF is enabled.
     if (await features.getValue(Feature.JavaNetworkDebugging)) {
-      // Get the existing value of `JAVA_OPTS`, if any.
+      // Get the existing value of `JAVA_TOOL_OPTIONS`, if any.
       const existingJavaToolOptions =
-        getOptionalEnvVar("JAVA_TOOL_OPTIONS") || "";
+        getOptionalEnvVar(JavaEnvVars.JAVA_TOOL_OPTIONS) || "";
 
       // Add the network debugging options.
       core.exportVariable(
-        "JAVA_TOOL_OPTIONS",
+        JavaEnvVars.JAVA_TOOL_OPTIONS,
         `${existingJavaToolOptions} -Djavax.net.debug=all`,
       );
     }

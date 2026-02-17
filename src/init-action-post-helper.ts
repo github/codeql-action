@@ -288,7 +288,7 @@ async function recordOverlayStatus(
       logger.debug(
         `Saved overlay status to the Actions cache: ${JSON.stringify(overlayStatus)}`,
       );
-      logger.warning(
+      logger.error(
         "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
           "This may have been due to disk space constraints: using improved incremental analysis can " +
           "require a significant amount of disk space for some repositories. " +

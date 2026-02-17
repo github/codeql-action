@@ -141,4 +141,7 @@ export enum EnvVar {
    * `getAnalysisKey`, but can also be set manually for testing and non-standard applications.
    */
   ANALYSIS_KEY = "CODEQL_ACTION_ANALYSIS_KEY",
+
+  /** Used by Code Scanning Risk Assessment to communicate the assessment ID to the CodeQL Action. */
+  RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }

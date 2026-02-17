@@ -114,7 +114,7 @@ export async function getAnalysisKinds(
 
       if (!compatibilityMatrix[analysisKind].has(otherAnalysisKind)) {
         throw new ConfigurationError(
-          `${otherAnalysisKind} cannot be enabled at the same time as ${analysisKind}`,
+          `${analysisKind} and ${otherAnalysisKind} cannot be enabled at the same time`,
         );
       }
     }

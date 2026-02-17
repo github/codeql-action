@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as os from "os";
 import * as path from "path";
 
 import { JavaEnvVars, KnownLanguage, Language } from "../languages";
@@ -101,11 +100,11 @@ export function checkJdkSettings(logger: Logger, jdkHome: string) {
       if (fs.existsSync(file)) {
         logger.debug(`Found '${file}'.`);
 
-        const lines = String(fs.readFileSync(file)).split(os.EOL);
+        const lines = String(fs.readFileSync(file)).split("\n");
         for (const line of lines) {
           for (const property of properties) {
             if (line.startsWith(`${property}=`)) {
-              logger.info(`Found '${line}' in '${file}'.`);
+              logger.info(`Found '${line.trimEnd()}' in '${file}'.`);
             }
           }
         }

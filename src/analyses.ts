@@ -15,7 +15,7 @@ import { ConfigurationError, getRequiredEnvParam } from "./util";
 export enum AnalysisKind {
   CodeScanning = "code-scanning",
   CodeQuality = "code-quality",
-  CSRA = "csra",
+  CSRA = "risk-assessment",
 }
 
 export type CompatibilityMatrix = Record<AnalysisKind, Set<AnalysisKind>>;
@@ -205,7 +205,7 @@ function addAssessmentId(payload: UploadPayload): AssessmentPayload {
 
 export const CSRA: AnalysisConfig = {
   kind: AnalysisKind.CSRA,
-  name: "csra",
+  name: "code scanning risk assessment",
   target: SARIF_UPLOAD_ENDPOINT.CSRA,
   sarifExtension: ".csra.sarif",
   sarifPredicate: (name) => name.endsWith(CSRA.sarifExtension),

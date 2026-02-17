@@ -30,6 +30,8 @@ const STATUS_FILE_NAME = "overlay-status.json";
 
 /** Status of an overlay analysis for a set of languages. */
 export interface OverlayStatus {
+  /** Whether the job attempted to build an overlay base database. */
+  attemptedToBuildOverlayBaseDatabase: boolean;
   /** Whether the job successfully built an overlay base database. */
   builtOverlayBaseDatabase: boolean;
 }
@@ -48,7 +50,10 @@ export async function shouldSkipOverlayAnalysis(
     logger.debug("No cached overlay status found.");
     return false;
   }
-  if (!status.builtOverlayBaseDatabase) {
+  if (
+    status.attemptedToBuildOverlayBaseDatabase &&
+    !status.builtOverlayBaseDatabase
+  ) {
     logger.info(
       "Cached overlay status indicates that building an overlay base database was unsuccessful, so will skip overlay analysis.",
     );

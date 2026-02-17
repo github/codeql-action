@@ -142,6 +142,6 @@ export enum EnvVar {
    */
   ANALYSIS_KEY = "CODEQL_ACTION_ANALYSIS_KEY",
 
-  /** Used by CSRA to communicate the assessment ID to the CodeQL Action. */
-  CSRA_ASSESSMENT_ID = "CODEQL_ACTION_CSRA_ASSESSMENT_ID",
+  /** Used by Code Scanning Risk Assessment to communicate the assessment ID to the CodeQL Action. */
+  RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }

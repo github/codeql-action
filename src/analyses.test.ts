@@ -8,7 +8,7 @@ import {
   AnalysisKind,
   CodeScanning,
   compatibilityMatrix,
-  CSRA,
+  RiskAssessment,
   getAnalysisConfig,
   getAnalysisKinds,
   parseAnalysisKinds,
@@ -122,9 +122,9 @@ test("Code Scanning configuration does not accept other SARIF extensions", (t) =
   }
 });
 
-test("CSRA configuration transforms SARIF upload payload", (t) => {
-  process.env[EnvVar.CSRA_ASSESSMENT_ID] = "1";
-  const payload = CSRA.transformPayload({
+test("Risk Assessment configuration transforms SARIF upload payload", (t) => {
+  process.env[EnvVar.RISK_ASSESSMENT_ID] = "1";
+  const payload = RiskAssessment.transformPayload({
     commit_oid: "abc",
     sarif: "sarif",
     ref: "ref",
@@ -138,11 +138,11 @@ test("CSRA configuration transforms SARIF upload payload", (t) => {
   t.deepEqual(expected, payload);
 });
 
-test("CSRA configuration throws for negative assessment IDs", (t) => {
-  process.env[EnvVar.CSRA_ASSESSMENT_ID] = "-1";
+test("Risk Assessment configuration throws for negative assessment IDs", (t) => {
+  process.env[EnvVar.RISK_ASSESSMENT_ID] = "-1";
   t.throws(
     () =>
-      CSRA.transformPayload({
+      RiskAssessment.transformPayload({
         commit_oid: "abc",
         sarif: "sarif",
         ref: "ref",
@@ -154,16 +154,16 @@ test("CSRA configuration throws for negative assessment IDs", (t) => {
     {
       instanceOf: Error,
       message: (msg) =>
-        msg.startsWith(`${EnvVar.CSRA_ASSESSMENT_ID} must not be negative: `),
+        msg.startsWith(`${EnvVar.RISK_ASSESSMENT_ID} must not be negative: `),
     },
   );
 });
 
-test("CSRA configuration throws for invalid IDs", (t) => {
-  process.env[EnvVar.CSRA_ASSESSMENT_ID] = "foo";
+test("Risk Assessment configuration throws for invalid IDs", (t) => {
+  process.env[EnvVar.RISK_ASSESSMENT_ID] = "foo";
   t.throws(
     () =>
-      CSRA.transformPayload({
+      RiskAssessment.transformPayload({
         commit_oid: "abc",
         sarif: "sarif",
         ref: "ref",
@@ -175,7 +175,7 @@ test("CSRA configuration throws for invalid IDs", (t) => {
     {
       instanceOf: Error,
       message: (msg) =>
-        msg.startsWith(`${EnvVar.CSRA_ASSESSMENT_ID} must not be NaN: `),
+        msg.startsWith(`${EnvVar.RISK_ASSESSMENT_ID} must not be NaN: `),
     },
   );
 });

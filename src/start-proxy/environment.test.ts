@@ -66,6 +66,13 @@ test("checkJavaEnvironment - logs values when variables are set", (t) => {
 });
 
 test("discoverActionsJdks - discovers JDK paths", (t) => {
+  // Clear GHA variables that may interfere with this test in CI.
+  for (const envVar of Object.keys(process.env)) {
+    if (envVar.startsWith("JAVA_HOME_")) {
+      delete process[envVar];
+    }
+  }
+
   const jdk8 = "/usr/lib/jvm/temurin-8-jdk-amd64";
   const jdk17 = "/usr/lib/jvm/temurin-17-jdk-amd64";
   const jdk21 = "/usr/lib/jvm/temurin-21-jdk-amd64";

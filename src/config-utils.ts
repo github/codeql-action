@@ -45,6 +45,7 @@ import {
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
@@ -60,6 +61,7 @@ import {
   getErrorMessage,
   isInTestMode,
   joinAtMost,
+  DiskUsage,
 } from "./util";
 
 export * from "./config/db-config";
@@ -672,10 +674,10 @@ async function isOverlayAnalysisFeatureEnabled(
  * and the maximum memory CodeQL will be allowed to use.
  */
 async function runnerSupportsOverlayAnalysis(
+  diskUsage: DiskUsage | undefined,
   ramInput: string | undefined,
   logger: Logger,
 ): Promise<boolean> {
-  const diskUsage = await checkDiskUsage(logger);
   if (
     diskUsage === undefined ||
     diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
@@ -762,13 +764,25 @@ export async function getOverlayDatabaseMode(
       codeScanningConfig,
     )
   ) {
+    const diskUsage = await checkDiskUsage(logger);
     const performResourceChecks = !(await features.getValue(
       Feature.OverlayAnalysisSkipResourceChecks,
       codeql,
     ));
     if (
+      diskUsage &&
+      (await shouldSkipOverlayAnalysis(codeql, languages, diskUsage, logger))
+    ) {
+      logger.info(
+        `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+          "because overlay analysis previously failed with this combination of languages, " +
+          "disk space, and CodeQL version. " +
+          "Consider running CodeQL analysis on a larger runner.",
+      );
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+    } else if (
       performResourceChecks &&
-      !(await runnerSupportsOverlayAnalysis(ramInput, logger))
+      !(await runnerSupportsOverlayAnalysis(diskUsage, ramInput, logger))
     ) {
       overlayDatabaseMode = OverlayDatabaseMode.None;
     } else if (isAnalyzingPullRequest()) {

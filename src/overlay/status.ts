@@ -35,6 +35,32 @@ export interface OverlayStatus {
 }
 
 /**
+ * Whether overlay analysis should be skipped, based on the cached status for the given languages and disk usage.
+ */
+export async function shouldSkipOverlayAnalysis(
+  codeql: CodeQL,
+  languages: string[],
+  diskUsage: DiskUsage,
+  logger: Logger,
+): Promise<boolean> {
+  const status = await getOverlayStatus(codeql, languages, diskUsage, logger);
+  if (status === undefined) {
+    logger.debug("No cached overlay status found.");
+    return false;
+  }
+  if (!status.builtOverlayBaseDatabase) {
+    logger.info(
+      "Cached overlay status indicates that building an overlay base database was unsuccessful, so will skip overlay analysis.",
+    );
+    return true;
+  }
+  logger.debug(
+    "Cached overlay status indicates that building an overlay base database was successful.",
+  );
+  return false;
+}
+
+/**
  * Retrieve overlay status from the Actions cache, if available.
  *
  * @returns `undefined` if no status was found in the cache (e.g. first run with
@@ -60,17 +86,17 @@ export async function getOverlayStatus(
       MAX_CACHE_OPERATION_MS,
       actionsCache.restoreCache([statusFile], cacheKey),
       () => {
-        logger.info("Timed out restoring overlay status from cache");
+        logger.info("Timed out restoring overlay status from cache.");
       },
     );
     if (foundKey === undefined) {
-      logger.debug("No overlay status found in Actions cache");
+      logger.debug("No overlay status found in Actions cache.");
       return undefined;
     }
 
     if (!fs.existsSync(statusFile)) {
       logger.debug(
-        "Overlay status cache entry found but status file is missing",
+        "Overlay status cache entry found but status file is missing.",
       );
       return undefined;
     }
@@ -114,7 +140,7 @@ export async function saveOverlayStatus(
       () => {},
     );
     if (cacheId === undefined) {
-      logger.warning("Timed out saving overlay status to cache");
+      logger.warning("Timed out saving overlay status to cache.");
       return false;
     }
     logger.info(`Saved overlay status to Actions cache with key ${cacheKey}`);

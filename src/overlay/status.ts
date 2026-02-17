@@ -81,7 +81,7 @@ export async function getOverlayStatus(
   const statusFile = path.join(
     getTemporaryDirectory(),
     "overlay-status",
-    languages.sort().join("+"),
+    [...languages].sort().join("+"),
     STATUS_FILE_NAME,
   );
   await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
@@ -132,7 +132,7 @@ export async function saveOverlayStatus(
   const statusFile = path.join(
     getTemporaryDirectory(),
     "overlay-status",
-    languages.sort().join("+"),
+    [...languages].sort().join("+"),
     STATUS_FILE_NAME,
   );
   await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
@@ -174,5 +174,5 @@ export async function getCacheKey(
 
   // Include the CodeQL version in the cache key so we will try again to use overlay analysis when
   // new queries and libraries that may be more efficient are released.
-  return `codeql-overlay-status-${languages.sort().join("+")}-${(await codeql.getVersion()).version}-runner-${diskSpaceToNearest10Gb}`;
+  return `codeql-overlay-status-${[...languages].sort().join("+")}-${(await codeql.getVersion()).version}-runner-${diskSpaceToNearest10Gb}`;
 }

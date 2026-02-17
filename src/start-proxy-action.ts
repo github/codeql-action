@@ -22,6 +22,7 @@ import {
   ProxyConfig,
 } from "./start-proxy";
 import { generateCertificateAuthority } from "./start-proxy/ca";
+import { checkProxyEnvironment } from "./start-proxy/environment";
 import { checkConnections } from "./start-proxy/reachability";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
@@ -75,6 +76,9 @@ async function run(startedAt: Date) {
         .map((c) => credentialToStr(c))
         .join("\n")}`,
     );
+
+    // Check the environment for any configurations which may affect the proxy.
+    checkProxyEnvironment(logger, language);
 
     const ca = generateCertificateAuthority(
       await features.getValue(Feature.ImprovedProxyCertificates),

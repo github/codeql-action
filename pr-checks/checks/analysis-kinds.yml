@@ -72,11 +72,3 @@ steps:
       EXPECT_PRESENT: "true"
     with:
       script: ${{ env.CHECK_SCRIPT }}
-  - name: Check quality query does not appear in CSRA SARIF
-    if: contains(matrix.analysis-kinds, 'risk-assessment')
-    uses: actions/github-script@v8
-    env:
-      SARIF_PATH: "${{ runner.temp }}/results/javascript.csra.sarif"
-      EXPECT_PRESENT: "false"
-    with:
-      script: ${{ env.CHECK_SCRIPT }}

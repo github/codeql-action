@@ -149,9 +149,62 @@ export function setupActionsVars(tempDir: string, toolsDir: string) {
   process.env["GITHUB_EVENT_NAME"] = "push";
 }
 
+type LogLevel = "debug" | "info" | "warning" | "error";
+
 export interface LoggedMessage {
-  type: "debug" | "info" | "warning" | "error";
+  type: LogLevel;
   message: string | Error;
+}
+
+export class RecordingLogger implements Logger {
+  messages: LoggedMessage[] = [];
+  groups: string[] = [];
+  unfinishedGroups: Set<string> = new Set();
+  private currentGroup: string | undefined = undefined;
+
+  constructor(private readonly logToConsole: boolean = true) {}
+
+  private addMessage(level: LogLevel, message: string | Error): void {
+    this.messages.push({ type: level, message });
+
+    if (this.logToConsole) {
+      // eslint-disable-next-line no-console
+      console.debug(message);
+    }
+  }
+
+  isDebug() {
+    return true;
+  }
+
+  debug(message: string) {
+    this.addMessage("debug", message);
+  }
+
+  info(message: string) {
+    this.addMessage("info", message);
+  }
+
+  warning(message: string | Error) {
+    this.addMessage("warning", message);
+  }
+
+  error(message: string | Error) {
+    this.addMessage("error", message);
+  }
+
+  startGroup(name: string) {
+    this.groups.push(name);
+    this.currentGroup = name;
+    this.unfinishedGroups.add(name);
+  }
+
+  endGroup() {
+    if (this.currentGroup !== undefined) {
+      this.unfinishedGroups.delete(this.currentGroup);
+    }
+    this.currentGroup = undefined;
+  }
 }
 
 export function getRecordingLogger(
@@ -198,14 +251,26 @@ export function checkExpectedLogMessages(
   messages: LoggedMessage[],
   expectedMessages: string[],
 ) {
+  const missingMessages: string[] = [];
+
   for (const expectedMessage of expectedMessages) {
-    t.assert(
-      messages.some(
+    if (
+      !messages.some(
         (msg) =>
           typeof msg.message === "string" &&
           msg.message.includes(expectedMessage),
-      ),
-      `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
+      )
+    ) {
+      missingMessages.push(expectedMessage);
+    }
+  }
+
+  if (missingMessages.length > 0) {
+    const listify = (lines: string[]) =>
+      lines.map((m) => ` - '${m}'`).join("\n");
+
+    t.fail(
+      `Expected\n\n${listify(missingMessages)}\n\nin the logger output, but didn't find it in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
     );
   }
 }

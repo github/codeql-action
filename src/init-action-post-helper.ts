@@ -172,7 +172,7 @@ export async function run(
   features: FeatureEnablement,
   logger: Logger,
 ) {
-  await recordOverlayStatus(codeql, config, logger);
+  await recordOverlayStatus(codeql, config, features, logger);
 
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
@@ -254,11 +254,13 @@ export async function run(
 async function recordOverlayStatus(
   codeql: CodeQL,
   config: Config,
+  features: FeatureEnablement,
   logger: Logger,
 ) {
   if (
     config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
-    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true"
+    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true" &&
+    (await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
     const overlayStatus = {
       builtOverlayBaseDatabase: false,

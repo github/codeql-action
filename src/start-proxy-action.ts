@@ -80,12 +80,14 @@ async function run(startedAt: Date) {
     // Check the environment for any configurations which may affect the proxy.
     // This is a best effort process to give us insights into potential factors
     // which may affect the operation of our proxy.
-    try {
-      checkProxyEnvironment(logger, language);
-    } catch (err) {
-      logger.debug(
-        `Unable to inspect runner environment: ${util.getErrorMessage(err)}`,
-      );
+    if (core.isDebug() || util.isInTestMode()) {
+      try {
+        checkProxyEnvironment(logger, language);
+      } catch (err) {
+        logger.debug(
+          `Unable to inspect runner environment: ${util.getErrorMessage(err)}`,
+        );
+      }
     }
 
     const ca = generateCertificateAuthority(

@@ -16,7 +16,14 @@ import { getErrorMessage, isDefined } from "../util";
 function checkEnvVar(logger: Logger, name: string): boolean {
   const value = process.env[name];
   if (isDefined(value)) {
-    logger.info(`Environment variable '${name}' is set to '${value}'.`);
+    const url = URL.parse(value);
+    if (isDefined(url)) {
+      url.username = "";
+      url.password = "";
+      logger.info(`Environment variable '${name}' is set to '${url}'.`);
+    } else {
+      logger.info(`Environment variable '${name}' is set to '${value}'.`);
+    }
     return true;
   } else {
     logger.debug(`Environment variable '${name}' is not set.`);

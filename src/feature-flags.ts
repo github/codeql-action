@@ -404,7 +404,7 @@ class OfflineFeatures implements FeatureEnablement {
    * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
    *        feature, the version of the CodeQL CLI will be checked against the minimum version.
    *        If the version is less than the minimum version, the feature will be considered
-   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, the
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, then
    *        this function will throw.
    * @returns true if the feature is enabled, false otherwise.
    *
@@ -541,7 +541,7 @@ class Features extends OfflineFeatures {
    * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
    *        feature, the version of the CodeQL CLI will be checked against the minimum version.
    *        If the version is less than the minimum version, the feature will be considered
-   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, the
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, then
    *        this function will throw.
    * @returns true if the feature is enabled, false otherwise.
    *

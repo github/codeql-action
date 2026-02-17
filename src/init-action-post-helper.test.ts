@@ -5,9 +5,12 @@ import * as actionsUtil from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getRunnerLogger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay";
+import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
@@ -21,7 +24,7 @@ import * as workflow from "./workflow";
 
 setupTests(test);
 
-test("post: init action with debug mode off", async (t) => {
+test("init-post action with debug mode off", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
@@ -55,7 +58,7 @@ test("post: init action with debug mode off", async (t) => {
   });
 });
 
-test("post: init action with debug mode on", async (t) => {
+test("init-post action with debug mode on", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
@@ -306,6 +309,139 @@ test("not uploading failed SARIF when `code-scanning` is not an enabled analysis
     result.upload_failed_run_skipped_because,
     "Code Scanning is not enabled.",
   );
+});
+
+test("saves overlay status when overlay-base analysis did not complete successfully", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    process.env["RUNNER_TEMP"] = tmpDir;
+    // Ensure analyze did not complete successfully.
+    delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+
+    const diskUsage: util.DiskUsage = {
+      numAvailableBytes: 100 * 1024 * 1024 * 1024,
+      numTotalBytes: 200 * 1024 * 1024 * 1024,
+    };
+    sinon.stub(util, "checkDiskUsage").resolves(diskUsage);
+
+    const saveOverlayStatusStub = sinon
+      .stub(overlayStatus, "saveOverlayStatus")
+      .resolves(true);
+
+    const stubCodeQL = codeql.createStubCodeQL({});
+
+    await initActionPostHelper.run(
+      sinon.spy(),
+      sinon.spy(),
+      stubCodeQL,
+      createTestConfig({
+        debugMode: false,
+        languages: ["javascript"],
+        overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+      }),
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([]),
+      getRunnerLogger(true),
+    );
+
+    t.true(
+      saveOverlayStatusStub.calledOnce,
+      "saveOverlayStatus should be called exactly once",
+    );
+    t.deepEqual(
+      saveOverlayStatusStub.firstCall.args[0],
+      stubCodeQL,
+      "first arg should be the CodeQL instance",
+    );
+    t.deepEqual(
+      saveOverlayStatusStub.firstCall.args[1],
+      ["javascript"],
+      "second arg should be the languages",
+    );
+    t.deepEqual(
+      saveOverlayStatusStub.firstCall.args[2],
+      diskUsage,
+      "third arg should be the disk usage",
+    );
+    t.deepEqual(
+      saveOverlayStatusStub.firstCall.args[3],
+      { builtOverlayBaseDatabase: false },
+      "fourth arg should be the overlay status with builtOverlayBaseDatabase: false",
+    );
+  });
+});
+
+test("does not save overlay status when analysis completed successfully", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    process.env["RUNNER_TEMP"] = tmpDir;
+    // Mark analyze as having completed successfully.
+    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "true";
+
+    sinon.stub(util, "checkDiskUsage").resolves({
+      numAvailableBytes: 100 * 1024 * 1024 * 1024,
+      numTotalBytes: 200 * 1024 * 1024 * 1024,
+    });
+
+    const saveOverlayStatusStub = sinon
+      .stub(overlayStatus, "saveOverlayStatus")
+      .resolves(true);
+
+    await initActionPostHelper.run(
+      sinon.spy(),
+      sinon.spy(),
+      codeql.createStubCodeQL({}),
+      createTestConfig({
+        debugMode: false,
+        languages: ["javascript"],
+        overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+      }),
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([]),
+      getRunnerLogger(true),
+    );
+
+    t.true(
+      saveOverlayStatusStub.notCalled,
+      "saveOverlayStatus should not be called when analysis completed successfully",
+    );
+  });
+});
+
+test("does not save overlay status when overlay not enabled", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    process.env["RUNNER_TEMP"] = tmpDir;
+    delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+
+    sinon.stub(util, "checkDiskUsage").resolves({
+      numAvailableBytes: 100 * 1024 * 1024 * 1024,
+      numTotalBytes: 200 * 1024 * 1024 * 1024,
+    });
+
+    const saveOverlayStatusStub = sinon
+      .stub(overlayStatus, "saveOverlayStatus")
+      .resolves(true);
+
+    await initActionPostHelper.run(
+      sinon.spy(),
+      sinon.spy(),
+      codeql.createStubCodeQL({}),
+      createTestConfig({
+        debugMode: false,
+        languages: ["javascript"],
+        overlayDatabaseMode: OverlayDatabaseMode.None,
+      }),
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([]),
+      getRunnerLogger(true),
+    );
+
+    t.true(
+      saveOverlayStatusStub.notCalled,
+      "saveOverlayStatus should not be called when overlay is not enabled",
+    );
+  });
 });
 
 function createTestWorkflow(

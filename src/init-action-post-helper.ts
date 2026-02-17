@@ -11,10 +11,13 @@ import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay";
+import { OverlayStatus, saveOverlayStatus } from "./overlay/status";
 import { RepositoryNwo, getRepositoryNwo } from "./repository";
 import { JobStatus } from "./status-report";
 import * as uploadLib from "./upload-lib";
 import {
+  checkDiskUsage,
   delay,
   getErrorMessage,
   getRequiredEnvParam,
@@ -169,6 +172,8 @@ export async function run(
   features: FeatureEnablement,
   logger: Logger,
 ) {
+  await recordOverlayStatus(codeql, config, logger);
+
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
     repositoryNwo,
@@ -244,6 +249,46 @@ export async function run(
   }
 
   return uploadFailedSarifResult;
+}
+
+async function recordOverlayStatus(
+  codeql: CodeQL,
+  config: Config,
+  logger: Logger,
+) {
+  if (
+    config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
+    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true"
+  ) {
+    const overlayStatus = {
+      builtOverlayBaseDatabase: false,
+    } satisfies OverlayStatus;
+
+    const diskUsage = await checkDiskUsage(logger);
+    if (diskUsage === undefined) {
+      logger.warning(
+        "Failed to determine disk usage, so unable to save overlay status to the Actions cache.",
+      );
+      return;
+    }
+
+    const saved = await saveOverlayStatus(
+      codeql,
+      config.languages,
+      diskUsage,
+      overlayStatus,
+      logger,
+    );
+    if (saved) {
+      logger.debug(
+        `Saved overlay status to the Actions cache: ${JSON.stringify(overlayStatus)}`,
+      );
+    } else {
+      logger.warning(
+        `Failed to save overlay status to the Actions cache. Status was: ${JSON.stringify(overlayStatus)}`,
+      );
+    }
+  }
 }
 
 async function removeUploadedSarif(

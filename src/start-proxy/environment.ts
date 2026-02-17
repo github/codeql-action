@@ -30,6 +30,16 @@ function checkEnvVar(logger: Logger, name: string): boolean {
   }
 }
 
+// The JRE properties that may affect the proxy.
+const javaProperties = [
+  "http.proxyHost",
+  "http.proxyPort",
+  "https.proxyHost",
+  "https.proxyPort",
+  "http.nonProxyHosts",
+  "java.net.useSystemProxies",
+];
+
 /** Java-specific environment variables which may contain information about proxy settings. */
 export const JAVA_PROXY_ENV_VARS: JavaEnvVars[] = [
   JavaEnvVars.JAVA_TOOL_OPTIONS,
@@ -83,16 +93,6 @@ export function checkJdkSettings(logger: Logger, jdkHome: string) {
     path.join("lib", "net.properties"),
   ];
 
-  // The JRE properties that may affect the proxy.
-  const properties = [
-    "http.proxyHost",
-    "http.proxyPort",
-    "https.proxyHost",
-    "https.proxyPort",
-    "http.nonProxyHosts",
-    "java.net.useSystemProxies",
-  ];
-
   for (const fileToCheck of filesToCheck) {
     const file = path.join(jdkHome, fileToCheck);
 
@@ -102,7 +102,7 @@ export function checkJdkSettings(logger: Logger, jdkHome: string) {
 
         const lines = String(fs.readFileSync(file)).split("\n");
         for (const line of lines) {
-          for (const property of properties) {
+          for (const property of javaProperties) {
             if (line.startsWith(`${property}=`)) {
               logger.info(`Found '${line.trimEnd()}' in '${file}'.`);
             }

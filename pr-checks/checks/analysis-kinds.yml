@@ -1,7 +1,7 @@
 name: "Analysis kinds"
 description: "Tests basic functionality for different `analysis-kinds` inputs."
 versions: ["linked", "nightly-latest"]
-analysisKinds: ["code-scanning", "code-quality", "code-scanning,code-quality", "csra"]
+analysisKinds: ["code-scanning", "code-quality", "code-scanning,code-quality", "risk-assessment"]
 env:
   CODEQL_ACTION_CSRA_ASSESSMENT_ID: 1
   CHECK_SCRIPT: |
@@ -73,7 +73,7 @@ steps:
     with:
       script: ${{ env.CHECK_SCRIPT }}
   - name: Check quality query does not appear in CSRA SARIF
-    if: contains(matrix.analysis-kinds, 'csra')
+    if: contains(matrix.analysis-kinds, 'risk-assessment')
     uses: actions/github-script@v8
     env:
       SARIF_PATH: "${{ runner.temp }}/results/javascript.csra.sarif"

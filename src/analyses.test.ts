@@ -102,7 +102,7 @@ for (let i = 0; i < analysisKinds.length; i++) {
           .returns([analysisKind, otherAnalysis].join(","));
         await t.throwsAsync(getAnalysisKinds(getRunnerLogger(true), true), {
           instanceOf: ConfigurationError,
-          message: `${otherAnalysis} cannot be enabled at the same time as ${analysisKind}`,
+          message: `${analysisKind} and ${otherAnalysis} cannot be enabled at the same time`,
         });
       });
     }

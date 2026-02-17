@@ -271,6 +271,8 @@ export function checkExpectedLogMessages(
     t.fail(
       `Expected\n\n${listify(missingMessages)}\n\nin the logger output, but didn't find it in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
     );
+  } else {
+    t.pass();
   }
 }
 

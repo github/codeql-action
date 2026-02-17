@@ -54,8 +54,8 @@ export async function shouldSkipOverlayAnalysis(
     status.attemptedToBuildOverlayBaseDatabase &&
     !status.builtOverlayBaseDatabase
   ) {
-    logger.info(
-      "Cached overlay status indicates that building an overlay base database was unsuccessful, so will skip overlay analysis.",
+    logger.debug(
+      "Cached overlay status indicates that building an overlay base database was unsuccessful.",
     );
     return true;
   }

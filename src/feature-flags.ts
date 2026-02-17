@@ -8,7 +8,7 @@ import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay-database-utils";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";

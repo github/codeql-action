@@ -28,7 +28,7 @@ import {
   OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
-} from "./overlay-database-utils";
+} from "./overlay";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";

@@ -18,7 +18,7 @@ import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
-import { OverlayBaseDatabaseDownloadStats } from "./overlay-database-utils";
+import { OverlayBaseDatabaseDownloadStats } from "./overlay";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {

@@ -365,8 +365,11 @@ test("saves overlay status when overlay-base analysis did not complete successfu
     );
     t.deepEqual(
       saveOverlayStatusStub.firstCall.args[3],
-      { builtOverlayBaseDatabase: false },
-      "fourth arg should be the overlay status with builtOverlayBaseDatabase: false",
+      {
+        attemptedToBuildOverlayBaseDatabase: true,
+        builtOverlayBaseDatabase: false,
+      },
+      "fourth arg should be the overlay status recording an unsuccessful build attempt",
     );
   });
 });
@@ -408,17 +411,18 @@ test("does not save overlay status when OverlayAnalysisStatusSave feature flag i
   });
 });
 
-test("does not save overlay status when analysis completed successfully", async (t) => {
+test("saves overlay status recording successful build when analysis completed successfully", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
     // Mark analyze as having completed successfully.
     process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "true";
 
-    sinon.stub(util, "checkDiskUsage").resolves({
+    const diskUsage: util.DiskUsage = {
       numAvailableBytes: 100 * 1024 * 1024 * 1024,
       numTotalBytes: 200 * 1024 * 1024 * 1024,
-    });
+    };
+    sinon.stub(util, "checkDiskUsage").resolves(diskUsage);
 
     const saveOverlayStatusStub = sinon
       .stub(overlayStatus, "saveOverlayStatus")
@@ -434,13 +438,21 @@ test("does not save overlay status when analysis completed successfully", async 
         overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
       }),
       parseRepositoryNwo("github/codeql-action"),
-      createFeatures([]),
+      createFeatures([Feature.OverlayAnalysisStatusSave]),
       getRunnerLogger(true),
     );
 
     t.true(
-      saveOverlayStatusStub.notCalled,
-      "saveOverlayStatus should not be called when analysis completed successfully",
+      saveOverlayStatusStub.calledOnce,
+      "saveOverlayStatus should be called exactly once",
+    );
+    t.deepEqual(
+      saveOverlayStatusStub.firstCall.args[3],
+      {
+        attemptedToBuildOverlayBaseDatabase: true,
+        builtOverlayBaseDatabase: true,
+      },
+      "fourth arg should be the overlay status recording a successful build attempt",
     );
   });
 });

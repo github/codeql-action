@@ -259,11 +259,12 @@ async function recordOverlayStatus(
 ) {
   if (
     config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
-    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true" &&
     (await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
     const overlayStatus = {
-      builtOverlayBaseDatabase: false,
+      attemptedToBuildOverlayBaseDatabase: true,
+      builtOverlayBaseDatabase:
+        process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true",
     } satisfies OverlayStatus;
 
     const diskUsage = await checkDiskUsage(logger);

@@ -141,10 +141,6 @@ test("checkProxyEnvVars - logs values when variables are set", (t) => {
     process.env[envVar] = envVar;
   }
 
-  for (const envVar of Object.values(ProxyEnvVars)) {
-    process.env[envVar] = envVar;
-  }
-
   checkProxyEnvVars(logger);
   assertEnvVarLogMessages(t, Object.values(ProxyEnvVars), messages, true);
 });

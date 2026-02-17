@@ -46,7 +46,9 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  ForceNightly = "force_nightly",
   IgnoreGeneratedFiles = "ignore_generated_files",
+  ImprovedProxyCertificates = "improved_proxy_certificates",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -163,9 +165,19 @@ export const featureConfig = {
     legacyApi: true,
     minimumVersion: undefined,
   },
+  [Feature.ForceNightly]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_FORCE_NIGHTLY",
+    minimumVersion: undefined,
+  },
   [Feature.IgnoreGeneratedFiles]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_IGNORE_GENERATED_FILES",
+    minimumVersion: undefined,
+  },
+  [Feature.ImprovedProxyCertificates]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_IMPROVED_PROXY_CERTIFICATES",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

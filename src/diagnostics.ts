@@ -67,6 +67,12 @@ interface UnwrittenDiagnostic {
 let unwrittenDiagnostics: UnwrittenDiagnostic[] = [];
 
 /**
+ * A list of diagnostics which have not yet been written to disk,
+ * and where the language does not matter.
+ */
+let unwrittenDefaultLanguageDiagnostics: DiagnosticMessage[] = [];
+
+/**
  * Constructs a new diagnostic message with the specified id and name, as well as optional additional data.
  *
  * @param id An identifier under which it makes sense to group this diagnostic message.
@@ -119,16 +125,20 @@ export function addDiagnostic(
 
 /** Adds a diagnostic that is not specific to any language. */
 export function addNoLanguageDiagnostic(
-  config: Config,
+  config: Config | undefined,
   diagnostic: DiagnosticMessage,
 ) {
-  addDiagnostic(
-    config,
-    // Arbitrarily choose the first language. We could also choose all languages, but that
-    // increases the risk of misinterpreting the data.
-    config.languages[0],
-    diagnostic,
-  );
+  if (config !== undefined) {
+    addDiagnostic(
+      config,
+      // Arbitrarily choose the first language. We could also choose all languages, but that
+      // increases the risk of misinterpreting the data.
+      config.languages[0],
+      diagnostic,
+    );
+  } else {
+    unwrittenDefaultLanguageDiagnostics.push(diagnostic);
+  }
 }
 
 /**
@@ -188,16 +198,21 @@ export function logUnwrittenDiagnostics() {
 /** Writes all unwritten diagnostics to disk. */
 export function flushDiagnostics(config: Config) {
   const logger = getActionsLogger();
-  logger.debug(
-    `Writing ${unwrittenDiagnostics.length} diagnostic(s) to database.`,
-  );
+
+  const diagnosticsCount =
+    unwrittenDiagnostics.length + unwrittenDefaultLanguageDiagnostics.length;
+  logger.debug(`Writing ${diagnosticsCount} diagnostic(s) to database.`);
 
   for (const unwritten of unwrittenDiagnostics) {
     writeDiagnostic(config, unwritten.language, unwritten.diagnostic);
   }
+  for (const unwritten of unwrittenDefaultLanguageDiagnostics) {
+    addNoLanguageDiagnostic(config, unwritten);
+  }
 
-  // Reset the unwritten diagnostics array.
+  // Reset the unwritten diagnostics arrays.
   unwrittenDiagnostics = [];
+  unwrittenDefaultLanguageDiagnostics = [];
 }
 
 /**

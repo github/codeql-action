@@ -60,7 +60,7 @@ export async function shouldSkipOverlayAnalysis(
     return true;
   }
   logger.debug(
-    "Cached overlay status indicates that building an overlay base database was successful.",
+    "Cached overlay status does not indicate a previous unsuccessful attempt to build an overlay base database.",
   );
   return false;
 }

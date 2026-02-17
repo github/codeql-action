@@ -73,7 +73,7 @@ test("discoverActionsJdks - discovers JDK paths", (t) => {
   // Clear GHA variables that may interfere with this test in CI.
   for (const envVar of Object.keys(process.env)) {
     if (envVar.startsWith("JAVA_HOME_")) {
-      delete process[envVar];
+      delete process.env[envVar];
     }
   }
 

@@ -19,6 +19,7 @@ import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -981,6 +982,7 @@ interface OverlayDatabaseModeTestSetup {
   codeScanningConfig: configUtils.UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
+  shouldSkipOverlayAnalysisDueToCachedStatus: boolean;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -1002,6 +1004,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
     numTotalBytes: 100_000_000_000,
   },
   memoryFlagValue: 6920,
+  shouldSkipOverlayAnalysisDueToCachedStatus: false,
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1035,6 +1038,10 @@ const getOverlayDatabaseModeMacro = test.macro({
         }
 
         sinon.stub(util, "checkDiskUsage").resolves(setup.diskUsage);
+
+        sinon
+          .stub(overlayStatus, "shouldSkipOverlayAnalysis")
+          .resolves(setup.shouldSkipOverlayAnalysisDueToCachedStatus);
 
         // Mock feature flags
         const features = createFeatures(setup.features);
@@ -1292,6 +1299,36 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
     useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isDefaultBranch: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
   },
 );
 

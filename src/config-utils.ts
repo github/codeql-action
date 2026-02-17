@@ -1047,15 +1047,17 @@ export async function initConfig(
       config,
       makeDiagnostic(
         "codeql-action/overlay-skipped-due-to-cached-status",
-        "Overlay analysis skipped due to cached status",
+        "Skipped improved incremental analysis because it failed previously on this runner",
         {
           attributes: {
             languages: config.languages,
           },
           markdownMessage:
-            `Overlay analysis was skipped because it failed previously on this runner. ` +
-            "Running CodeQL analysis on a larger runner may allow overlay analysis to run successfully.\n\n" +
-            "Overlay analysis will be automatically retried when the next version of CodeQL is released. " +
+            `Improved incremental analysis was skipped because it failed previously on this runner. ` +
+            "Improved incremental analysis may require a significant amount of disk space on some repositories. " +
+            "If you want to enable improved incremental analysis, increase the disk space available " +
+            "to the runner, and if that doesn't help, contact GitHub Support for further assistance.\n\n" +
+            "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +
             `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` entries from the Actions cache.`,
           severity: "note",
           visibility: {

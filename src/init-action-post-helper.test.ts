@@ -340,7 +340,7 @@ test("saves overlay status when overlay-base analysis did not complete successfu
         overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
       }),
       parseRepositoryNwo("github/codeql-action"),
-      createFeatures([]),
+      createFeatures([Feature.OverlayAnalysisStatusSave]),
       getRunnerLogger(true),
     );
 
@@ -367,6 +367,43 @@ test("saves overlay status when overlay-base analysis did not complete successfu
       saveOverlayStatusStub.firstCall.args[3],
       { builtOverlayBaseDatabase: false },
       "fourth arg should be the overlay status with builtOverlayBaseDatabase: false",
+    );
+  });
+});
+
+test("does not save overlay status when OverlayAnalysisStatusSave feature flag is disabled", async (t) => {
+  return await util.withTmpDir(async (tmpDir) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    process.env["RUNNER_TEMP"] = tmpDir;
+    // Ensure analyze did not complete successfully.
+    delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+
+    sinon.stub(util, "checkDiskUsage").resolves({
+      numAvailableBytes: 100 * 1024 * 1024 * 1024,
+      numTotalBytes: 200 * 1024 * 1024 * 1024,
+    });
+
+    const saveOverlayStatusStub = sinon
+      .stub(overlayStatus, "saveOverlayStatus")
+      .resolves(true);
+
+    await initActionPostHelper.run(
+      sinon.spy(),
+      sinon.spy(),
+      codeql.createStubCodeQL({}),
+      createTestConfig({
+        debugMode: false,
+        languages: ["javascript"],
+        overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+      }),
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([]),
+      getRunnerLogger(true),
+    );
+
+    t.true(
+      saveOverlayStatusStub.notCalled,
+      "saveOverlayStatus should not be called when OverlayAnalysisStatusSave feature flag is disabled",
     );
   });
 });

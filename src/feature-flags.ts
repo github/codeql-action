@@ -64,6 +64,8 @@ export enum Feature {
   OverlayAnalysisCodeScanningSwift = "overlay_analysis_code_scanning_swift",
   OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
+  OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
+  OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
@@ -254,6 +256,16 @@ export const featureConfig = {
   [Feature.OverlayAnalysisCsharp]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CSHARP",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisStatusCheck]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_CHECK",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisStatusSave]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_SAVE",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisGo]: {

@@ -1307,7 +1307,11 @@ test(
   "No overlay-base database on default branch when cached status indicates previous failure",
   {
     languages: [KnownLanguage.javascript],
-    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
     isDefaultBranch: true,
     shouldSkipOverlayAnalysisDueToCachedStatus: true,
   },
@@ -1322,7 +1326,11 @@ test(
   "No overlay analysis on PR when cached status indicates previous failure",
   {
     languages: [KnownLanguage.javascript],
-    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
     isPullRequest: true,
     shouldSkipOverlayAnalysisDueToCachedStatus: true,
   },

@@ -257,14 +257,16 @@ async function recordOverlayStatus(
   features: FeatureEnablement,
   logger: Logger,
 ) {
+  // Currently it is only important to store overlay status if the analysis attempted but failed
+  // to build an overlay base database.
   if (
     config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
+    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true" &&
     (await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
     const overlayStatus = {
       attemptedToBuildOverlayBaseDatabase: true,
-      builtOverlayBaseDatabase:
-        process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true",
+      builtOverlayBaseDatabase: false,
     } satisfies OverlayStatus;
 
     const diskUsage = await checkDiskUsage(logger);

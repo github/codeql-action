@@ -411,18 +411,17 @@ test("does not save overlay status when OverlayAnalysisStatusSave feature flag i
   });
 });
 
-test("saves overlay status recording successful build when analysis completed successfully", async (t) => {
+test("does not save overlay status when build successful", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
     process.env["RUNNER_TEMP"] = tmpDir;
     // Mark analyze as having completed successfully.
     process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "true";
 
-    const diskUsage: util.DiskUsage = {
+    sinon.stub(util, "checkDiskUsage").resolves({
       numAvailableBytes: 100 * 1024 * 1024 * 1024,
       numTotalBytes: 200 * 1024 * 1024 * 1024,
-    };
-    sinon.stub(util, "checkDiskUsage").resolves(diskUsage);
+    });
 
     const saveOverlayStatusStub = sinon
       .stub(overlayStatus, "saveOverlayStatus")
@@ -443,16 +442,8 @@ test("saves overlay status recording successful build when analysis completed su
     );
 
     t.true(
-      saveOverlayStatusStub.calledOnce,
-      "saveOverlayStatus should be called exactly once",
-    );
-    t.deepEqual(
-      saveOverlayStatusStub.firstCall.args[3],
-      {
-        attemptedToBuildOverlayBaseDatabase: true,
-        builtOverlayBaseDatabase: true,
-      },
-      "fourth arg should be the overlay status recording a successful build attempt",
+      saveOverlayStatusStub.notCalled,
+      "saveOverlayStatus should not be called when build completed successfully",
     );
   });
 });

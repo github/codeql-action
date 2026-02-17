@@ -1,3 +1,7 @@
+import * as fs from "fs";
+import * as os from "os";
+import path from "path";
+
 import test, { ExecutionContext } from "ava";
 
 import { JavaEnvVars, KnownLanguage } from "../languages";
@@ -7,11 +11,14 @@ import {
   LoggedMessage,
   setupTests,
 } from "../testing-utils";
+import { withTmpDir } from "../util";
 
 import {
   checkJavaEnvVars,
+  checkJdkSettings,
   checkProxyEnvironment,
   checkProxyEnvVars,
+  discoverActionsJdks,
   JAVA_PROXY_ENV_VARS,
   ProxyEnvVars,
 } from "./environment";
@@ -56,6 +63,59 @@ test("checkJavaEnvironment - logs values when variables are set", (t) => {
 
   checkJavaEnvVars(logger);
   assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, true);
+});
+
+test("discoverActionsJdks - discovers JDK paths", (t) => {
+  const jdk8 = "/usr/lib/jvm/temurin-8-jdk-amd64";
+  const jdk17 = "/usr/lib/jvm/temurin-17-jdk-amd64";
+  const jdk21 = "/usr/lib/jvm/temurin-21-jdk-amd64";
+
+  process.env[JavaEnvVars.JAVA_HOME] = jdk17;
+  process.env["JAVA_HOME_8_X64"] = jdk8;
+  process.env["JAVA_HOME_17_X64"] = jdk17;
+  process.env["JAVA_HOME_21_X64"] = jdk21;
+
+  const results = discoverActionsJdks();
+  t.is(results.size, 3);
+  t.true(results.has(jdk8));
+  t.true(results.has(jdk17));
+  t.true(results.has(jdk21));
+});
+
+test("checkJdkSettings - does not throw for an empty directory", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  await withTmpDir(async (tmpDir) => {
+    t.notThrows(() => checkJdkSettings(logger, tmpDir));
+  });
+});
+
+test("checkJdkSettings - finds files and logs relevant properties", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  await withTmpDir(async (tmpDir) => {
+    const dir = path.join(tmpDir, "conf");
+    fs.mkdirSync(dir);
+
+    const file = path.join(dir, "net.properties");
+    fs.writeFileSync(
+      file,
+      [
+        "irrelevant.property=foo",
+        "http.proxyHost=proxy.example.com",
+        "http.unrelated=bar",
+      ].join(os.EOL),
+      {},
+    );
+    checkJdkSettings(logger, tmpDir);
+
+    checkExpectedLogMessages(t, messages, [
+      `Found '${file}'.`,
+      `Found 'http.proxyHost=proxy.example.com' in '${file}'`,
+    ]);
+  });
 });
 
 test("checkProxyEnvVars - none set", (t) => {

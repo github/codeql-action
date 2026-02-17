@@ -95,6 +95,7 @@ import {
   BuildMode,
   GitHubVersion,
   Result,
+  getOptionalEnvVar,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -751,6 +752,19 @@ async function run(startedAt: Date) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
         core.exportVariable(key, value);
       }
+    }
+
+    // Enable Java network debugging if the FF is enabled.
+    if (await features.getValue(Feature.JavaNetworkDebugging)) {
+      // Get the existing value of `JAVA_OPTS`, if any.
+      const existingJavaToolOptions =
+        getOptionalEnvVar("JAVA_TOOL_OPTIONS") || "";
+
+      // Add the network debugging options.
+      core.exportVariable(
+        "JAVA_TOOL_OPTIONS",
+        `${existingJavaToolOptions} -Djavax.net.debug=all`,
+      );
     }
 
     // Write diagnostics to the database that we previously stored in memory because the database

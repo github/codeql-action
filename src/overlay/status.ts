@@ -28,7 +28,7 @@ const MAX_CACHE_OPERATION_MS = 30_000;
 /** File name for the serialized overlay status. */
 const STATUS_FILE_NAME = "overlay-status.json";
 
-/** Status of an overlay analysis for a particular language. */
+/** Status of an overlay analysis for a set of languages. */
 export interface OverlayStatus {
   /** Whether the job successfully built an overlay base database. */
   builtOverlayBaseDatabase: boolean;
@@ -42,15 +42,15 @@ export interface OverlayStatus {
  */
 export async function getOverlayStatus(
   codeql: CodeQL,
-  language: string,
+  languages: string[],
   diskUsage: DiskUsage,
   logger: Logger,
 ): Promise<OverlayStatus | undefined> {
-  const cacheKey = await getCacheKey(codeql, language, diskUsage);
+  const cacheKey = await getCacheKey(codeql, languages, diskUsage);
   const statusFile = path.join(
     getTemporaryDirectory(),
     "overlay-status",
-    language,
+    languages.sort().join("+"),
     STATUS_FILE_NAME,
   );
   await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
@@ -92,16 +92,16 @@ export async function getOverlayStatus(
  */
 export async function saveOverlayStatus(
   codeql: CodeQL,
-  language: string,
+  languages: string[],
   diskUsage: DiskUsage,
   status: OverlayStatus,
   logger: Logger,
 ): Promise<boolean> {
-  const cacheKey = await getCacheKey(codeql, language, diskUsage);
+  const cacheKey = await getCacheKey(codeql, languages, diskUsage);
   const statusFile = path.join(
     getTemporaryDirectory(),
     "overlay-status",
-    language,
+    languages.sort().join("+"),
     STATUS_FILE_NAME,
   );
   await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
@@ -129,7 +129,7 @@ export async function saveOverlayStatus(
 
 export async function getCacheKey(
   codeql: CodeQL,
-  language: string,
+  languages: string[],
   diskUsage: DiskUsage,
 ): Promise<string> {
   // Total disk space, rounded to the nearest 10 GB. This is included in the cache key so that if a
@@ -143,5 +143,5 @@ export async function getCacheKey(
 
   // Include the CodeQL version in the cache key so we will try again to use overlay analysis when
   // new queries and libraries that may be more efficient are released.
-  return `codeql-overlay-status-${language}-${(await codeql.getVersion()).version}-runner-${diskSpaceToNearest10Gb}`;
+  return `codeql-overlay-status-${languages.sort().join("+")}-${(await codeql.getVersion()).version}-runner-${diskSpaceToNearest10Gb}`;
 }

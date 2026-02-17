@@ -17,35 +17,47 @@ function makeDiskUsage(totalGiB: number): DiskUsage {
 test("getCacheKey incorporates language, CodeQL version, and disk space", async (t) => {
   const codeql = mockCodeQLVersion("2.20.0");
   t.is(
-    await getCacheKey(codeql, "javascript", makeDiskUsage(50)),
+    await getCacheKey(codeql, ["javascript"], makeDiskUsage(50)),
     "codeql-overlay-status-javascript-2.20.0-runner-50GB",
   );
   t.is(
-    await getCacheKey(codeql, "python", makeDiskUsage(50)),
+    await getCacheKey(codeql, ["python"], makeDiskUsage(50)),
     "codeql-overlay-status-python-2.20.0-runner-50GB",
   );
   t.is(
     await getCacheKey(
       mockCodeQLVersion("2.21.0"),
-      "javascript",
+      ["javascript"],
       makeDiskUsage(50),
     ),
     "codeql-overlay-status-javascript-2.21.0-runner-50GB",
   );
   t.is(
-    await getCacheKey(codeql, "javascript", makeDiskUsage(100)),
+    await getCacheKey(codeql, ["javascript"], makeDiskUsage(100)),
     "codeql-overlay-status-javascript-2.20.0-runner-100GB",
+  );
+});
+
+test("getCacheKey sorts and joins multiple languages", async (t) => {
+  const codeql = mockCodeQLVersion("2.20.0");
+  t.is(
+    await getCacheKey(codeql, ["python", "javascript"], makeDiskUsage(50)),
+    "codeql-overlay-status-javascript+python-2.20.0-runner-50GB",
+  );
+  t.is(
+    await getCacheKey(codeql, ["javascript", "python"], makeDiskUsage(50)),
+    "codeql-overlay-status-javascript+python-2.20.0-runner-50GB",
   );
 });
 
 test("getCacheKey rounds disk space down to nearest 10 GiB", async (t) => {
   const codeql = mockCodeQLVersion("2.20.0");
   t.is(
-    await getCacheKey(codeql, "javascript", makeDiskUsage(14)),
+    await getCacheKey(codeql, ["javascript"], makeDiskUsage(14)),
     "codeql-overlay-status-javascript-2.20.0-runner-10GB",
   );
   t.is(
-    await getCacheKey(codeql, "javascript", makeDiskUsage(19)),
+    await getCacheKey(codeql, ["javascript"], makeDiskUsage(19)),
     "codeql-overlay-status-javascript-2.20.0-runner-10GB",
   );
 });

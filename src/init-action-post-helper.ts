@@ -294,8 +294,8 @@ async function recordOverlayStatus(
           "require a significant amount of disk space for some repositories. " +
           "This information has been saved to the Actions cache. " +
           "You can rerun this job to run CodeQL analysis without improved incremental analysis. " +
-          "If you want to enable improved incremental analysis, increase the disk space available to the runner " +
-          "and if that doesn't help, contact GitHub Support for further assistance.",
+          "If you want to enable improved incremental analysis, increase the disk space available to the runner. " +
+          "If that doesn't help, contact GitHub Support for further assistance.",
       );
     } else {
       logger.warning(

@@ -8,7 +8,7 @@ import { Config } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import { OverlayDatabaseMode } from "./overlay";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 import { bundleDb, CleanupLevel, parseGitHubUrl } from "./util";

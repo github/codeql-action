@@ -5,12 +5,20 @@ import * as actionsCache from "@actions/cache";
 import test from "ava";
 import * as sinon from "sinon";
 
-import * as actionsUtil from "./actions-util";
-import * as apiClient from "./api-client";
-import { ResolveDatabaseOutput } from "./codeql";
-import * as gitUtils from "./git-utils";
-import { KnownLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
+import * as actionsUtil from "../actions-util";
+import * as apiClient from "../api-client";
+import { ResolveDatabaseOutput } from "../codeql";
+import * as gitUtils from "../git-utils";
+import { KnownLanguage } from "../languages";
+import { getRunnerLogger } from "../logging";
+import {
+  createTestConfig,
+  mockCodeQLVersion,
+  setupTests,
+} from "../testing-utils";
+import * as utils from "../util";
+import { withTmpDir } from "../util";
+
 import {
   downloadOverlayBaseDatabaseFromCache,
   getCacheRestoreKeyPrefix,
@@ -18,14 +26,7 @@ import {
   OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
-} from "./overlay-database-utils";
-import {
-  createTestConfig,
-  mockCodeQLVersion,
-  setupTests,
-} from "./testing-utils";
-import * as utils from "./util";
-import { withTmpDir } from "./util";
+} from ".";
 
 setupTests(test);
 

@@ -763,7 +763,7 @@ async function run(startedAt: Date) {
       // Add the network debugging options.
       core.exportVariable(
         "JAVA_TOOL_OPTIONS",
-        `${existingJavaToolOptions} -Djavax.net.debug=ssl,handshake,certpath`,
+        `${existingJavaToolOptions} -Djavax.net.debug=all`,
       );
     }
 

@@ -94,7 +94,7 @@ test("shouldSkipOverlayAnalysis returns false when no cached status exists", asy
         (m) =>
           m.type === "debug" &&
           typeof m.message === "string" &&
-          m.message.includes("No cached overlay status found."),
+          m.message.includes("No overlay status found in Actions cache."),
       ),
     );
   });

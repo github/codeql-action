@@ -22,6 +22,8 @@ import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 import * as workflow from "./workflow";
 
+const NUM_BYTES_PER_GIB = 1024 * 1024 * 1024;
+
 setupTests(test);
 
 test("init-post action with debug mode off", async (t) => {
@@ -319,8 +321,8 @@ test("saves overlay status when overlay-base analysis did not complete successfu
     delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
 
     const diskUsage: util.DiskUsage = {
-      numAvailableBytes: 100 * 1024 * 1024 * 1024,
-      numTotalBytes: 200 * 1024 * 1024 * 1024,
+      numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+      numTotalBytes: 200 * NUM_BYTES_PER_GIB,
     };
     sinon.stub(util, "checkDiskUsage").resolves(diskUsage);
 
@@ -382,8 +384,8 @@ test("does not save overlay status when OverlayAnalysisStatusSave feature flag i
     delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
 
     sinon.stub(util, "checkDiskUsage").resolves({
-      numAvailableBytes: 100 * 1024 * 1024 * 1024,
-      numTotalBytes: 200 * 1024 * 1024 * 1024,
+      numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+      numTotalBytes: 200 * NUM_BYTES_PER_GIB,
     });
 
     const saveOverlayStatusStub = sinon
@@ -419,8 +421,8 @@ test("does not save overlay status when build successful", async (t) => {
     process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "true";
 
     sinon.stub(util, "checkDiskUsage").resolves({
-      numAvailableBytes: 100 * 1024 * 1024 * 1024,
-      numTotalBytes: 200 * 1024 * 1024 * 1024,
+      numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+      numTotalBytes: 200 * NUM_BYTES_PER_GIB,
     });
 
     const saveOverlayStatusStub = sinon
@@ -455,8 +457,8 @@ test("does not save overlay status when overlay not enabled", async (t) => {
     delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
 
     sinon.stub(util, "checkDiskUsage").resolves({
-      numAvailableBytes: 100 * 1024 * 1024 * 1024,
-      numTotalBytes: 200 * 1024 * 1024 * 1024,
+      numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+      numTotalBytes: 200 * NUM_BYTES_PER_GIB,
     });
 
     const saveOverlayStatusStub = sinon

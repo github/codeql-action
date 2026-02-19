@@ -768,14 +768,30 @@ export async function getOverlayDatabaseMode(
       codeScanningConfig,
     )
   ) {
-    const diskUsage = await checkDiskUsage(logger);
     const performResourceChecks = !(await features.getValue(
       Feature.OverlayAnalysisSkipResourceChecks,
       codeql,
     ));
+    const checkOverlayStatus = await features.getValue(
+      Feature.OverlayAnalysisStatusCheck,
+    );
+    const diskUsage =
+      performResourceChecks || checkOverlayStatus
+        ? await checkDiskUsage(logger)
+        : undefined;
     if (
+      performResourceChecks &&
+      !(await runnerSupportsOverlayAnalysis(diskUsage, ramInput, logger))
+    ) {
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+    } else if (checkOverlayStatus && diskUsage === undefined) {
+      logger.warning(
+        `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
+      );
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+    } else if (
+      checkOverlayStatus &&
       diskUsage &&
-      (await features.getValue(Feature.OverlayAnalysisStatusCheck)) &&
       (await shouldSkipOverlayAnalysis(codeql, languages, diskUsage, logger))
     ) {
       logger.info(
@@ -785,11 +801,6 @@ export async function getOverlayDatabaseMode(
       );
       overlayDatabaseMode = OverlayDatabaseMode.None;
       skippedDueToCachedStatus = true;
-    } else if (
-      performResourceChecks &&
-      !(await runnerSupportsOverlayAnalysis(diskUsage, ramInput, logger))
-    ) {
-      overlayDatabaseMode = OverlayDatabaseMode.None;
     } else if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
       useOverlayDatabaseCaching = true;
@@ -1046,14 +1057,15 @@ export async function initConfig(
       config,
       makeDiagnostic(
         "codeql-action/overlay-skipped-due-to-cached-status",
-        "Skipped improved incremental analysis because it failed previously on this runner",
+        "Skipped improved incremental analysis because it failed previously with similar hardware resources",
         {
           attributes: {
             languages: config.languages,
           },
           markdownMessage:
-            `Improved incremental analysis was skipped because it failed previously on this runner. ` +
-            "Improved incremental analysis may require a significant amount of disk space on some repositories. " +
+            `Improved incremental analysis was skipped because it previously failed for this repository ` +
+            `with CodeQL version ${(await inputs.codeql.getVersion()).version} on a runner with similar hardware resources. ` +
+            "Improved incremental analysis may require a significant amount of disk space for some repositories. " +
             "If you want to enable improved incremental analysis, increase the disk space available " +
             "to the runner. If that doesn't help, contact GitHub Support for further assistance.\n\n" +
             "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +

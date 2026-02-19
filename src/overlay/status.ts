@@ -38,7 +38,7 @@ function getStatusFilePath(languages: string[]): string {
   );
 }
 
-/** Status of an overlay analysis for a set of languages. */
+/** Status of an overlay analysis for a group of languages. */
 export interface OverlayStatus {
   /** Whether the job attempted to build an overlay base database. */
   attemptedToBuildOverlayBaseDatabase: boolean;
@@ -57,7 +57,6 @@ export async function shouldSkipOverlayAnalysis(
 ): Promise<boolean> {
   const status = await getOverlayStatus(codeql, languages, diskUsage, logger);
   if (status === undefined) {
-    logger.debug("No cached overlay status found.");
     return false;
   }
   if (
@@ -89,14 +88,14 @@ export async function getOverlayStatus(
 ): Promise<OverlayStatus | undefined> {
   const cacheKey = await getCacheKey(codeql, languages, diskUsage);
   const statusFile = getStatusFilePath(languages);
-  await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
 
   try {
+    await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
     const foundKey = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.restoreCache([statusFile], cacheKey),
       () => {
-        logger.info("Timed out restoring overlay status from cache.");
+        logger.warning("Timed out restoring overlay status from cache.");
       },
     );
     if (foundKey === undefined) {
@@ -112,7 +111,19 @@ export async function getOverlayStatus(
     }
 
     const contents = await fs.promises.readFile(statusFile, "utf-8");
-    return JSON.parse(contents) as OverlayStatus;
+    const parsed: unknown = JSON.parse(contents);
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      typeof parsed["attemptedToBuildOverlayBaseDatabase"] !== "boolean" ||
+      typeof parsed["builtOverlayBaseDatabase"] !== "boolean"
+    ) {
+      logger.debug(
+        "Ignoring overlay status cache entry with unexpected format.",
+      );
+      return undefined;
+    }
+    return parsed as OverlayStatus;
   } catch (error) {
     logger.warning(
       `Failed to restore overlay status from cache: ${getErrorMessage(error)}`,
@@ -135,20 +146,21 @@ export async function saveOverlayStatus(
 ): Promise<boolean> {
   const cacheKey = await getCacheKey(codeql, languages, diskUsage);
   const statusFile = getStatusFilePath(languages);
-  await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
-  await fs.promises.writeFile(statusFile, JSON.stringify(status));
 
   try {
+    await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
+    await fs.promises.writeFile(statusFile, JSON.stringify(status));
     const cacheId = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.saveCache([statusFile], cacheKey),
-      () => {},
+      () => {
+        logger.warning("Timed out saving overlay status to cache.");
+      },
     );
     if (cacheId === undefined) {
-      logger.warning("Timed out saving overlay status to cache.");
       return false;
     }
-    logger.info(`Saved overlay status to Actions cache with key ${cacheKey}`);
+    logger.debug(`Saved overlay status to Actions cache with key ${cacheKey}`);
     return true;
   } catch (error) {
     logger.warning(

@@ -78,7 +78,7 @@ export enum Feature {
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyConnectionChecks = "start_proxy_connection_checks",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
-  UseRepositoryProperties = "use_repository_properties",
+  UseRepositoryProperties = "use_repository_properties_v2",
   ValidateDbConfig = "validate_db_config",
 }
 

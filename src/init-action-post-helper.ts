@@ -251,57 +251,68 @@ export async function run(
   return uploadFailedSarifResult;
 }
 
+/**
+ * If overlay base database creation was attempted but the analysis did not complete
+ * successfully, save the failure status to the Actions cache so that subsequent runs
+ * can skip overlay analysis until something changes (e.g. a new CodeQL version).
+ */
 async function recordOverlayStatus(
   codeql: CodeQL,
   config: Config,
   features: FeatureEnablement,
   logger: Logger,
 ) {
-  // Currently it is only important to store overlay status if the analysis attempted but failed
-  // to build an overlay base database.
   if (
-    config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
-    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true" &&
-    (await features.getValue(Feature.OverlayAnalysisStatusSave))
+    config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
+    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true" ||
+    !(await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
-    const overlayStatus = {
-      attemptedToBuildOverlayBaseDatabase: true,
-      builtOverlayBaseDatabase: false,
-    } satisfies OverlayStatus;
+    return;
+  }
 
-    const diskUsage = await checkDiskUsage(logger);
-    if (diskUsage === undefined) {
-      logger.warning(
-        "Failed to determine disk usage, so unable to save overlay status to the Actions cache.",
-      );
-      return;
-    }
+  const overlayStatus: OverlayStatus = {
+    attemptedToBuildOverlayBaseDatabase: true,
+    builtOverlayBaseDatabase: false,
+  };
 
-    const saved = await saveOverlayStatus(
-      codeql,
-      config.languages,
-      diskUsage,
-      overlayStatus,
-      logger,
+  const diskUsage = await checkDiskUsage(logger);
+  if (diskUsage === undefined) {
+    logger.warning(
+      "Unable to save overlay status to the Actions cache because the available disk space could not be determined.",
     );
-    if (saved) {
-      logger.debug(
-        `Saved overlay status to the Actions cache: ${JSON.stringify(overlayStatus)}`,
-      );
-      logger.error(
-        "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
-          "This may have been due to disk space constraints: using improved incremental analysis can " +
-          "require a significant amount of disk space for some repositories. " +
-          "This failure has been recorded in the Actions cache, so " +
-          "rerunning this job will run a new CodeQL analysis without improved incremental analysis. " +
-          "If you want to enable improved incremental analysis, increase the disk space available to the runner. " +
-          "If that doesn't help, contact GitHub Support for further assistance.",
-      );
-    } else {
-      logger.warning(
-        `Failed to save overlay status to the Actions cache. Status was: ${JSON.stringify(overlayStatus)}`,
-      );
-    }
+    return;
+  }
+
+  const saved = await saveOverlayStatus(
+    codeql,
+    config.languages,
+    diskUsage,
+    overlayStatus,
+    logger,
+  );
+
+  const blurb =
+    "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
+    "This may have been due to disk space constraints: using improved incremental analysis can " +
+    "require a significant amount of disk space for some repositories.";
+  const outro =
+    "If you want to enable improved incremental analysis, increase the disk space available to the runner. " +
+    "If that doesn't help, contact GitHub Support for further assistance.";
+
+  if (saved) {
+    logger.error(
+      `${blurb} ` +
+        "This failure has been recorded in the Actions cache, so the next CodeQL analysis will run " +
+        "without improved incremental analysis. " +
+        `${outro}`,
+    );
+  } else {
+    logger.error(
+      `${blurb} ` +
+        "The attempt to save this failure status to the Actions cache failed. The Action will attempt to " +
+        "save this failure status again on the next run, so future runs will skip improved incremental analysis. " +
+        `${outro}`,
+    );
   }
 }
 

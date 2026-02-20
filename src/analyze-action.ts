@@ -30,7 +30,7 @@ import {
 } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
@@ -293,7 +293,7 @@ async function run(startedAt: Date) {
 
     util.checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
 
-    const features = new Features(
+    const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),

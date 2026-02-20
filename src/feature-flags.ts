@@ -373,51 +373,60 @@ type GitHubFeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
 
 /**
- * Determines the enablement status of a number of features.
- * If feature enablement is not able to be determined locally, a request to the
- * GitHub API is made to determine the enablement status.
+ * Determines the enablement status of a number of features locally without
+ * consulting the GitHub API.
  */
-export class Features implements FeatureEnablement {
-  private gitHubFeatureFlags: GitHubFeatureFlags;
-
-  constructor(
-    gitHubVersion: util.GitHubVersion,
-    repositoryNwo: RepositoryNwo,
-    tempDir: string,
-    private readonly logger: Logger,
-  ) {
-    this.gitHubFeatureFlags = new GitHubFeatureFlags(
-      gitHubVersion,
-      repositoryNwo,
-      path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
-      logger,
-    );
-  }
+class OfflineFeatures implements FeatureEnablement {
+  constructor(protected readonly logger: Logger) {}
 
   async getDefaultCliVersion(
-    variant: util.GitHubVariant,
+    _variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
-    return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
+    return {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+    };
   }
 
   /**
+   * Gets the `FeatureConfig` for `feature`.
+   */
+  getFeatureConfig(feature: Feature): FeatureConfig {
+    // Narrow the type to FeatureConfig to avoid type errors. To avoid unsafe use of `as`, we
+    // check that the required properties exist using `satisfies`.
+    return featureConfig[feature] satisfies FeatureConfig as FeatureConfig;
+  }
+
+  /**
+   * Determines whether `feature` is enabled without consulting the GitHub API.
    *
    * @param feature The feature to check.
    * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
    *        feature, the version of the CodeQL CLI will be checked against the minimum version.
    *        If the version is less than the minimum version, the feature will be considered
-   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, the
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, then
    *        this function will throw.
    * @returns true if the feature is enabled, false otherwise.
    *
    * @throws if a `minimumVersion` is specified for the feature, and `codeql` is not provided.
    */
   async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
-    // Narrow the type to FeatureConfig to avoid type errors. To avoid unsafe use of `as`, we
-    // check that the required properties exist using `satisfies`.
-    const config = featureConfig[
-      feature
-    ] satisfies FeatureConfig as FeatureConfig;
+    const offlineValue = await this.getOfflineValue(feature, codeql);
+    if (offlineValue !== undefined) {
+      return offlineValue;
+    }
+
+    return this.getDefaultValue(feature);
+  }
+
+  /**
+   * Determines whether `feature` is enabled using the CLI and environment variables.
+   */
+  protected async getOfflineValue(
+    feature: Feature,
+    codeql?: CodeQL,
+  ): Promise<boolean | undefined> {
+    const config = this.getFeatureConfig(feature);
 
     if (!codeql && config.minimumVersion) {
       throw new Error(
@@ -483,6 +492,68 @@ export class Features implements FeatureEnablement {
       return true;
     }
 
+    return undefined;
+  }
+
+  /** Gets the default value of `feature`. */
+  protected async getDefaultValue(feature: Feature): Promise<boolean> {
+    const config = this.getFeatureConfig(feature);
+    const defaultValue = config.defaultValue;
+    this.logger.debug(
+      `Feature ${feature} is ${
+        defaultValue ? "enabled" : "disabled"
+      } due to its default value.`,
+    );
+    return defaultValue;
+  }
+}
+
+/**
+ * Determines the enablement status of a number of features.
+ * If feature enablement is not able to be determined locally, a request to the
+ * GitHub API is made to determine the enablement status.
+ */
+class Features extends OfflineFeatures {
+  private gitHubFeatureFlags: GitHubFeatureFlags;
+
+  constructor(repositoryNwo: RepositoryNwo, tempDir: string, logger: Logger) {
+    super(logger);
+
+    this.gitHubFeatureFlags = new GitHubFeatureFlags(
+      repositoryNwo,
+      path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
+      logger,
+    );
+  }
+
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant,
+  ): Promise<CodeQLDefaultVersionInfo> {
+    if (supportsFeatureFlags(variant)) {
+      return await this.gitHubFeatureFlags.getDefaultCliVersionFromFlags();
+    }
+    return super.getDefaultCliVersion(variant);
+  }
+
+  /**
+   *
+   * @param feature The feature to check.
+   * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
+   *        feature, the version of the CodeQL CLI will be checked against the minimum version.
+   *        If the version is less than the minimum version, the feature will be considered
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, then
+   *        this function will throw.
+   * @returns true if the feature is enabled, false otherwise.
+   *
+   * @throws if a `minimumVersion` is specified for the feature, and `codeql` is not provided.
+   */
+  async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
+    // Check whether the feature is enabled locally.
+    const offlineValue = await this.getOfflineValue(feature, codeql);
+    if (offlineValue !== undefined) {
+      return offlineValue;
+    }
+
     // Ask the GitHub API if the feature is enabled.
     const apiValue = await this.gitHubFeatureFlags.getValue(feature);
     if (apiValue !== undefined) {
@@ -494,13 +565,8 @@ export class Features implements FeatureEnablement {
       return apiValue;
     }
 
-    const defaultValue = config.defaultValue;
-    this.logger.debug(
-      `Feature ${feature} is ${
-        defaultValue ? "enabled" : "disabled"
-      } due to its default value.`,
-    );
-    return defaultValue;
+    // Return the default value.
+    return this.getDefaultValue(feature);
   }
 }
 
@@ -512,7 +578,6 @@ class GitHubFeatureFlags {
   private hasAccessedRemoteFeatureFlags: boolean;
 
   constructor(
-    private readonly gitHubVersion: util.GitHubVersion,
     private readonly repositoryNwo: RepositoryNwo,
     private readonly featureFlagsFile: string,
     private readonly logger: Logger,
@@ -541,18 +606,6 @@ class GitHubFeatureFlags {
       return undefined;
     }
     return version;
-  }
-
-  async getDefaultCliVersion(
-    variant: util.GitHubVariant,
-  ): Promise<CodeQLDefaultVersionInfo> {
-    if (supportsFeatureFlags(variant)) {
-      return await this.getDefaultCliVersionFromFlags();
-    }
-    return {
-      cliVersion: defaults.cliVersion,
-      tagName: defaults.bundleVersion,
-    };
   }
 
   async getDefaultCliVersionFromFlags(): Promise<CodeQLDefaultVersionInfo> {
@@ -680,21 +733,6 @@ class GitHubFeatureFlags {
   }
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
-    // Do nothing when not running against github.com
-    if (!supportsFeatureFlags(this.gitHubVersion.type)) {
-      this.logger.debug(
-        "Not running against github.com. Using default values for all features.",
-      );
-      this.hasAccessedRemoteFeatureFlags = false;
-      return {};
-    }
-    if (isCCR()) {
-      this.logger.debug(
-        "Feature flags are not supported in Copilot Code Review. Using default values for all features.",
-      );
-      this.hasAccessedRemoteFeatureFlags = false;
-      return {};
-    }
     try {
       const featuresToRequest = Object.entries(featureConfig)
         .filter(
@@ -763,4 +801,29 @@ function supportsFeatureFlags(githubVariant: util.GitHubVariant): boolean {
     githubVariant === util.GitHubVariant.DOTCOM ||
     githubVariant === util.GitHubVariant.GHEC_DR
   );
+}
+
+/**
+ * Initialises an instance of a `FeatureEnablement` implementation. The implementation used
+ * is determined by the environment we are running in.
+ */
+export function initFeatures(
+  gitHubVersion: util.GitHubVersion,
+  repositoryNwo: RepositoryNwo,
+  tempDir: string,
+  logger: Logger,
+): FeatureEnablement {
+  if (!supportsFeatureFlags(gitHubVersion.type)) {
+    logger.debug(
+      "Not running against github.com. Using default values for all features.",
+    );
+    return new OfflineFeatures(logger);
+  } else if (isCCR()) {
+    logger.debug(
+      "Querying feature flags is not currently supported in Copilot Code Review. Using offline data for all features.",
+    );
+    return new OfflineFeatures(logger);
+  } else {
+    return new Features(repositoryNwo, tempDir, logger);
+  }
 }

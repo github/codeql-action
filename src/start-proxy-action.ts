@@ -5,7 +5,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { Feature, Features } from "./feature-flags";
+import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -32,7 +32,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
-  let features: Features | undefined;
+  let features: FeatureEnablement | undefined;
   let language: KnownLanguage | undefined;
 
   try {
@@ -47,7 +47,7 @@ async function run(startedAt: Date) {
     // Initialise FFs.
     const repositoryNwo = getRepositoryNwo();
     const gitHubVersion = await getGitHubVersion();
-    features = new Features(
+    features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),

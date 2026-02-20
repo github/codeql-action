@@ -19,3 +19,11 @@ export enum KnownLanguage {
   rust = "rust",
   swift = "swift",
 }
+
+/** Java-specific environment variable names that we may care about. */
+export enum JavaEnvVars {
+  JAVA_HOME = "JAVA_HOME",
+  JAVA_TOOL_OPTIONS = "JAVA_TOOL_OPTIONS",
+  JDK_JAVA_OPTIONS = "JDK_JAVA_OPTIONS",
+  _JAVA_OPTIONS = "_JAVA_OPTIONS",
+}

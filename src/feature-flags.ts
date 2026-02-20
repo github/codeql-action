@@ -46,7 +46,10 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  ForceNightly = "force_nightly",
   IgnoreGeneratedFiles = "ignore_generated_files",
+  ImprovedProxyCertificates = "improved_proxy_certificates",
+  JavaNetworkDebugging = "java_network_debugging",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisActions = "overlay_analysis_actions",
   OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
@@ -75,7 +78,7 @@ export enum Feature {
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyConnectionChecks = "start_proxy_connection_checks",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
-  UseRepositoryProperties = "use_repository_properties",
+  UseRepositoryProperties = "use_repository_properties_v2",
   ValidateDbConfig = "validate_db_config",
 }
 
@@ -163,9 +166,24 @@ export const featureConfig = {
     legacyApi: true,
     minimumVersion: undefined,
   },
+  [Feature.ForceNightly]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_FORCE_NIGHTLY",
+    minimumVersion: undefined,
+  },
   [Feature.IgnoreGeneratedFiles]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_IGNORE_GENERATED_FILES",
+    minimumVersion: undefined,
+  },
+  [Feature.ImprovedProxyCertificates]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_IMPROVED_PROXY_CERTIFICATES",
+    minimumVersion: undefined,
+  },
+  [Feature.JavaNetworkDebugging]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_JAVA_NETWORK_DEBUGGING",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

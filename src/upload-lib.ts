@@ -942,7 +942,6 @@ export async function waitForProcessing(
     const client = api.getApiClient();
 
     const statusCheckingStarted = Date.now();
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (
         Date.now() >

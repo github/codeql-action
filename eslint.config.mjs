@@ -1,5 +1,7 @@
 import { fixupPluginRules } from "@eslint/compat";
 import github from "eslint-plugin-github";
+import { importX, createNodeResolver } from "eslint-plugin-import-x";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
 import noAsyncForeach from "eslint-plugin-no-async-foreach";
 import jsdoc from "eslint-plugin-jsdoc";
 import tseslint from "typescript-eslint";
@@ -29,8 +31,14 @@ export default [
   // Type-checked rules from typescript-eslint (the github plugin only
   // includes the base recommended rules, not the type-checked ones).
   ...tseslint.configs.recommendedTypeCheckedOnly,
+  // import-x TypeScript settings (parsers, extensions, external-module-folders).
+  // This is needed for import-x rules to properly parse TypeScript files.
+  {
+    settings: importX.flatConfigs.typescript.settings,
+  },
   {
     plugins: {
+      "import-x": importX,
       "no-async-foreach": fixupPluginRules(noAsyncForeach),
       "jsdoc": jsdoc,
     },
@@ -57,6 +65,12 @@ export default [
         typescript: {},
       },
       "import/ignore": ["sinon", "uuid", "@octokit/plugin-retry", "del", "get-folder-size"],
+      "import-x/resolver-next": [
+        createTypeScriptImportResolver(),
+        createNodeResolver({
+          extensions: [".ts", ".js", ".json"],
+        }),
+      ],
     },
 
     rules: {
@@ -72,7 +86,10 @@ export default [
 
       "import/no-amd": "error",
       "import/no-commonjs": "error",
-      "import/no-cycle": "error",
+      // import/no-cycle does not seem to work with ESLint 9.
+      // Use import-x/no-cycle from eslint-plugin-import-x instead.
+      "import/no-cycle": "off",
+      "import-x/no-cycle": "error",
       "import/no-dynamic-require": "error",
 
       "import/no-extraneous-dependencies": [

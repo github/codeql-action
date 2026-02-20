@@ -549,12 +549,9 @@ export async function runQueries(
   ): Promise<{ summary: string; sarifFile: string }> {
     logger.info(`Interpreting ${analysis.name} results for ${language}`);
 
-    // If this is a Code Quality analysis, correct the category to one
-    // accepted by the Code Quality backend.
-    let category = automationDetailsId;
-    if (analysis.kind === analyses.AnalysisKind.CodeQuality) {
-      category = analysis.fixCategory(logger, automationDetailsId);
-    }
+    // Apply the analysis configuration's `fixCategory` function to adjust the category if needed.
+    // This is a no-op for Code Scanning.
+    const category = analysis.fixCategory(logger, automationDetailsId);
 
     const sarifFile = path.join(
       sarifFolder,

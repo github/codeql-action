@@ -21,6 +21,7 @@ import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
+import { BasePayload, UploadPayload } from "./upload-lib/types";
 import * as util from "./util";
 import {
   ConfigurationError,
@@ -326,7 +327,7 @@ function getAutomationID(
  * This is exported for testing purposes only.
  */
 export async function uploadPayload(
-  payload: any,
+  payload: BasePayload,
   repositoryNwo: RepositoryNwo,
   logger: Logger,
   analysis: analyses.AnalysisConfig,
@@ -618,8 +619,8 @@ export function buildPayload(
   environment: string | undefined,
   toolNames: string[],
   mergeBaseCommitOid: string | undefined,
-) {
-  const payloadObj = {
+): UploadPayload {
+  const payloadObj: UploadPayload = {
     commit_oid: commitOid,
     ref,
     analysis_key: analysisKey,
@@ -847,18 +848,20 @@ export async function uploadPostProcessedFiles(
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = url.pathToFileURL(checkoutPath).href;
 
-  const payload = buildPayload(
-    await gitUtils.getCommitOid(checkoutPath),
-    await gitUtils.getRef(),
-    postProcessingResults.analysisKey,
-    util.getRequiredEnvParam("GITHUB_WORKFLOW"),
-    zippedSarif,
-    actionsUtil.getWorkflowRunID(),
-    actionsUtil.getWorkflowRunAttempt(),
-    checkoutURI,
-    postProcessingResults.environment,
-    toolNames,
-    await gitUtils.determineBaseBranchHeadCommitOid(),
+  const payload = uploadTarget.transformPayload(
+    buildPayload(
+      await gitUtils.getCommitOid(checkoutPath),
+      await gitUtils.getRef(),
+      postProcessingResults.analysisKey,
+      util.getRequiredEnvParam("GITHUB_WORKFLOW"),
+      zippedSarif,
+      actionsUtil.getWorkflowRunID(),
+      actionsUtil.getWorkflowRunAttempt(),
+      checkoutURI,
+      postProcessingResults.environment,
+      toolNames,
+      await gitUtils.determineBaseBranchHeadCommitOid(),
+    ),
   );
 
   // Log some useful debug info about the info

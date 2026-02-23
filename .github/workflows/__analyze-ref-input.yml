@@ -1,6 +1,6 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+#     pr-checks/sync.sh
 # to regenerate this file.
 
 name: "PR Check - Analyze: 'ref' and 'sha' from inputs"
@@ -20,7 +20,47 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      python-version:
+        type: string
+        description: The version of Python to install
+        required: false
+        default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+  workflow_call:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      python-version:
+        type: string
+        description: The version of Python to install
+        required: false
+        default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group:
+    analyze-ref-input-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   analyze-ref-input:
     strategy:
@@ -29,11 +69,8 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
     name: "Analyze: 'ref' and 'sha' from inputs"
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -41,7 +78,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -49,6 +86,20 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install Python
+        if: matrix.version != 'nightly-latest'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version || '3.13' }}
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -56,7 +107,6 @@ jobs:
           config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
             github.sha }}
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         with:

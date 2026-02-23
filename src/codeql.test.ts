@@ -5,7 +5,6 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 import * as toolcache from "@actions/tool-cache";
 import test, { ExecutionContext } from "ava";
-import del from "del";
 import * as yaml from "js-yaml";
 import nock from "nock";
 import * as sinon from "sinon";
@@ -14,11 +13,15 @@ import * as actionsUtil from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import { CliError } from "./cli-errors";
 import * as codeql from "./codeql";
-import { AugmentationProperties, Config } from "./config-utils";
+import {
+  AugmentationProperties,
+  Config,
+  defaultAugmentationProperties,
+  generateCodeScanningConfig,
+} from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
-import { FeatureEnablement } from "./feature-flags";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -32,7 +35,6 @@ import {
   createTestConfig,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
-import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
 import { initializeEnvironment } from "./util";
 
@@ -40,13 +42,11 @@ setupTests(test);
 
 let stubConfig: Config;
 
-const NO_FEATURES: FeatureEnablement = createFeatures([]);
-
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 
   stubConfig = createTestConfig({
-    languages: [Language.cpp],
+    languages: [KnownLanguage.cpp],
   });
 });
 
@@ -72,8 +72,8 @@ async function installIntoToolcache({
     cliVersion !== undefined
       ? { cliVersion, tagName }
       : SAMPLE_DEFAULT_CLI_VERSION,
+    createFeatures([]),
     getRunnerLogger(true),
-    NO_FEATURES,
     false,
   );
 }
@@ -110,7 +110,19 @@ function mockApiDetails(apiDetails: GitHubApiDetails) {
   process.env["GITHUB_API_URL"] = apiDetails.apiURL || "";
 }
 
+async function stubCodeql(): Promise<codeql.CodeQL> {
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  sinon
+    .stub(codeqlObject, "isTracedLanguage")
+    .withArgs(KnownLanguage.cpp)
+    .resolves(true);
+  return codeqlObject;
+}
+
 test("downloads and caches explicitly requested bundles that aren't in the toolcache", async (t) => {
+  const features = createFeatures([]);
+
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -129,8 +141,8 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        features,
         getRunnerLogger(true),
-        NO_FEATURES,
         false,
       );
 
@@ -144,6 +156,8 @@ test("downloads and caches explicitly requested bundles that aren't in the toolc
 });
 
 test("caches semantically versioned bundles using their semantic version number", async (t) => {
+  const features = createFeatures([]);
+
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     const url = mockBundleDownloadApi({
@@ -156,8 +170,8 @@ test("caches semantically versioned bundles using their semantic version number"
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      features,
       getRunnerLogger(true),
-      NO_FEATURES,
       false,
     );
 
@@ -172,6 +186,8 @@ test("caches semantically versioned bundles using their semantic version number"
 });
 
 test("downloads an explicitly requested bundle even if a different version is cached", async (t) => {
+  const features = createFeatures([]);
+
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -190,8 +206,8 @@ test("downloads an explicitly requested bundle even if a different version is ca
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      features,
       getRunnerLogger(true),
-      NO_FEATURES,
       false,
     );
     t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
@@ -219,6 +235,8 @@ for (const {
   expectedToolcacheVersion,
 } of EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES) {
   test(`caches explicitly requested bundle ${tagName} as ${expectedToolcacheVersion}`, async (t) => {
+    const features = createFeatures([]);
+
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
 
@@ -235,8 +253,8 @@ for (const {
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        features,
         getRunnerLogger(true),
-        NO_FEATURES,
         false,
       );
       t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
@@ -259,6 +277,8 @@ for (const toolcacheVersion of [
     `uses tools from toolcache when ${SAMPLE_DEFAULT_CLI_VERSION.cliVersion} is requested and ` +
       `${toolcacheVersion} is installed`,
     async (t) => {
+      const features = createFeatures([]);
+
       await util.withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
 
@@ -274,8 +294,8 @@ for (const toolcacheVersion of [
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+          features,
           getRunnerLogger(true),
-          NO_FEATURES,
           false,
         );
         t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
@@ -289,6 +309,8 @@ for (const toolcacheVersion of [
 }
 
 test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
+  const features = createFeatures([]);
+
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -307,8 +329,8 @@ test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
         cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
       },
+      features,
       getRunnerLogger(true),
-      NO_FEATURES,
       false,
     );
     t.deepEqual(result.toolsVersion, "0.0.0-20200601");
@@ -323,6 +345,8 @@ test(`uses a cached bundle when no tools input is given on GHES`, async (t) => {
 });
 
 test(`downloads bundle if only an unpinned version is cached on GHES`, async (t) => {
+  const features = createFeatures([]);
+
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -344,8 +368,8 @@ test(`downloads bundle if only an unpinned version is cached on GHES`, async (t)
         cliVersion: defaults.cliVersion,
         tagName: defaults.bundleVersion,
       },
+      features,
       getRunnerLogger(true),
-      NO_FEATURES,
       false,
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -360,6 +384,8 @@ test(`downloads bundle if only an unpinned version is cached on GHES`, async (t)
 });
 
 test('downloads bundle if "latest" tools specified but not cached', async (t) => {
+  const features = createFeatures([]);
+
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -378,8 +404,8 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      features,
       getRunnerLogger(true),
-      NO_FEATURES,
       false,
     );
     t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -394,6 +420,8 @@ test('downloads bundle if "latest" tools specified but not cached', async (t) =>
 });
 
 test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) => {
+  const features = createFeatures([]);
+
   await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -414,8 +442,8 @@ test("bundle URL from another repo is cached as 0.0.0-bundleVersion", async (t) 
       tmpDir,
       util.GitHubVariant.DOTCOM,
       SAMPLE_DEFAULT_CLI_VERSION,
+      features,
       getRunnerLogger(true),
-      NO_FEATURES,
       false,
     );
 
@@ -494,16 +522,21 @@ const injectedConfigMacro = test.macro({
     expectedConfig: any,
   ) => {
     await util.withTmpDir(async (tempDir) => {
+      sinon.stub(actionsUtil, "isDefaultSetup").resolves(false);
+
       const runnerConstructorStub = stubToolRunnerConstructor();
-      const codeqlObject = await codeql.getCodeQLForTesting();
-      sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("1.0.0"));
+      const codeqlObject = await stubCodeql();
 
       const thisStubConfig: Config = {
         ...stubConfig,
         ...configOverride,
         tempDir,
-        augmentationProperties,
       };
+      thisStubConfig.computedConfig = generateCodeScanningConfig(
+        getRunnerLogger(true),
+        thisStubConfig.originalUserInput,
+        augmentationProperties,
+      );
 
       await codeqlObject.databaseInitCluster(
         thisStubConfig,
@@ -523,7 +556,7 @@ const injectedConfigMacro = test.macro({
       const augmentedConfig = yaml.load(fs.readFileSync(configFile, "utf8"));
       t.deepEqual(augmentedConfig, expectedConfig);
 
-      await del(configFile, { force: true });
+      await fs.promises.rm(configFile, { force: true });
     });
   },
 
@@ -535,8 +568,7 @@ test(
   "basic",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
   },
   {},
   {},
@@ -546,8 +578,7 @@ test(
   "injected packs from input",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
   },
   {},
@@ -560,7 +591,7 @@ test(
   "injected packs from input with existing packs combines",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInputCombines: true,
     packsInput: ["xxx", "yyy"],
   },
@@ -582,8 +613,7 @@ test(
   "injected packs from input with existing packs overrides",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
   },
   {
@@ -603,8 +633,7 @@ test(
   "injected queries from input",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {},
@@ -624,8 +653,7 @@ test(
   "injected queries from input overrides",
   injectedConfigMacro,
   {
-    queriesInputCombines: false,
-    packsInputCombines: false,
+    ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -649,8 +677,8 @@ test(
   "injected queries from input combines",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
-    packsInputCombines: false,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
   },
   {
@@ -661,13 +689,13 @@ test(
   {
     queries: [
       {
-        uses: "zzz",
-      },
-      {
         uses: "xxx",
       },
       {
         uses: "yyy",
+      },
+      {
+        uses: "zzz",
       },
     ],
   },
@@ -677,6 +705,7 @@ test(
   "injected queries from input combines 2",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -698,6 +727,7 @@ test(
   "injected queries and packs, but empty",
   injectedConfigMacro,
   {
+    ...defaultAugmentationProperties,
     queriesInputCombines: true,
     packsInputCombines: true,
     queriesInput: [],
@@ -712,12 +742,88 @@ test(
   {},
 );
 
+test(
+  "repo property queries have the highest precedence",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: false,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [{ uses: "zzz" }, { uses: "aaa" }],
+  },
+);
+
+test(
+  "repo property queries combines with queries input",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: false,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+    ],
+  },
+);
+
+test(
+  "repo property queries combines everything else",
+  injectedConfigMacro,
+  {
+    ...defaultAugmentationProperties,
+    queriesInputCombines: true,
+    queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
+    repoPropertyQueries: {
+      combines: true,
+      input: [{ uses: "zzz" }, { uses: "aaa" }],
+    },
+  },
+  {
+    originalUserInput: {
+      queries: [{ uses: "uu" }, { uses: "vv" }],
+    },
+  },
+  {
+    queries: [
+      { uses: "zzz" },
+      { uses: "aaa" },
+      { uses: "xxx" },
+      { uses: "yyy" },
+      { uses: "uu" },
+      { uses: "vv" },
+    ],
+  },
+);
+
 test("passes a code scanning config AND qlconfig to the CLI", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
-
+    const codeqlObject = await stubCodeql();
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
       "",
@@ -744,8 +850,7 @@ test("passes a code scanning config AND qlconfig to the CLI", async (t: Executio
 test("does not pass a qlconfig to the CLI when it is undefined", async (t: ExecutionContext<unknown>) => {
   await util.withTmpDir(async (tempDir) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+    const codeqlObject = await stubCodeql();
 
     await codeqlObject.databaseInitCluster(
       { ...stubConfig, tempDir },
@@ -763,84 +868,6 @@ test("does not pass a qlconfig to the CLI when it is undefined", async (t: Execu
   });
 });
 
-const NEW_ANALYSIS_SUMMARY_TEST_CASES = [
-  {
-    codeqlVersion: makeVersionInfo("2.15.0", {
-      [ToolsFeature.AnalysisSummaryV2IsDefault]: true,
-    }),
-    githubVersion: {
-      type: util.GitHubVariant.DOTCOM,
-    },
-    flagPassed: false,
-    negativeFlagPassed: false,
-  },
-  {
-    codeqlVersion: makeVersionInfo("2.15.0"),
-    githubVersion: {
-      type: util.GitHubVariant.DOTCOM,
-    },
-    flagPassed: true,
-    negativeFlagPassed: false,
-  },
-  {
-    codeqlVersion: makeVersionInfo("2.15.0"),
-    githubVersion: {
-      type: util.GitHubVariant.GHES,
-      version: "3.10.0",
-    },
-    flagPassed: true,
-    negativeFlagPassed: false,
-  },
-];
-
-for (const {
-  codeqlVersion,
-  flagPassed,
-  githubVersion,
-  negativeFlagPassed,
-} of NEW_ANALYSIS_SUMMARY_TEST_CASES) {
-  test(`database interpret-results passes ${
-    flagPassed
-      ? "--new-analysis-summary"
-      : negativeFlagPassed
-        ? "--no-new-analysis-summary"
-        : "nothing"
-  } for CodeQL version ${JSON.stringify(codeqlVersion)} and ${
-    util.GitHubVariant[githubVersion.type]
-  } ${githubVersion.version ? ` ${githubVersion.version}` : ""}`, async (t) => {
-    const runnerConstructorStub = stubToolRunnerConstructor();
-    const codeqlObject = await codeql.getCodeQLForTesting();
-    sinon.stub(codeqlObject, "getVersion").resolves(codeqlVersion);
-    // io throws because of the test CodeQL object.
-    sinon.stub(io, "which").resolves("");
-    await codeqlObject.databaseInterpretResults(
-      "",
-      [],
-      "",
-      "",
-      "",
-      "-v",
-      undefined,
-      "",
-      Object.assign({}, stubConfig, { gitHubVersion: githubVersion }),
-      createFeatures([]),
-    );
-    const actualArgs = runnerConstructorStub.firstCall.args[1] as string[];
-    t.is(
-      actualArgs.includes("--new-analysis-summary"),
-      flagPassed,
-      `--new-analysis-summary should${flagPassed ? "" : "n't"} be passed`,
-    );
-    t.is(
-      actualArgs.includes("--no-new-analysis-summary"),
-      negativeFlagPassed,
-      `--no-new-analysis-summary should${
-        negativeFlagPassed ? "" : "n't"
-      } be passed`,
-    );
-  });
-}
-
 test("runTool summarizes several fatal errors", async (t) => {
   const heapError =
     "A fatal error occurred: Evaluator heap must be at least 384.00 MiB";
@@ -850,8 +877,7 @@ test("runTool summarizes several fatal errors", async (t) => {
     `Running TRAP import for CodeQL database at /home/runner/work/_temp/codeql_databases/javascript...\n` +
     `${heapError}\n${datasetImportError}.`;
   stubToolRunnerConstructor(32, cliStderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 
@@ -898,7 +924,7 @@ test("runTool summarizes autobuilder errors", async (t) => {
   sinon.stub(io, "which").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
+    async () => await codeqlObject.runAutobuild(stubConfig, KnownLanguage.java),
     {
       instanceOf: util.ConfigurationError,
       message:
@@ -918,14 +944,13 @@ test("runTool truncates long autobuilder errors", async (t) => {
     (_, i) => `[2019-09-18 12:00:00] [autobuild] [ERROR] line${i + 1}`,
   ).join("\n");
   stubToolRunnerConstructor(1, stderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 
   await t.throwsAsync(
-    async () => await codeqlObject.runAutobuild(stubConfig, Language.java),
+    async () => await codeqlObject.runAutobuild(stubConfig, KnownLanguage.java),
     {
       instanceOf: util.ConfigurationError,
       message:
@@ -957,7 +982,7 @@ test("runTool recognizes fatal internal errors", async (t) => {
       await codeqlObject.databaseRunQueries(stubConfig.dbLocation, []),
     {
       instanceOf: CliError,
-      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --expect-discarded-cache --intra-layer-parallelism --min-disk-free=1024 -v". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
+      message: `Encountered a fatal error while running "codeql-for-testing database run-queries  --min-disk-free=1024 -v". Exit code was 1 and error was: Oops! A fatal internal error occurred. Details:
     com.semmle.util.exception.CatastrophicError: An error occurred while evaluating ControlFlowGraph::ControlFlow::Root.isRootOf/1#dispred#f610e6ed/2@86282cc8
     Severe disk cache trouble (corruption or out of space) at /home/runner/work/_temp/codeql_databases/go/db-go/default/cache/pages/28/33.pack: Failed to write item to disk. See the logs for more details.`,
     },
@@ -967,8 +992,7 @@ test("runTool recognizes fatal internal errors", async (t) => {
 test("runTool outputs last line of stderr if fatal error could not be found", async (t) => {
   const cliStderr = "line1\nline2\nline3\nline4\nline5";
   stubToolRunnerConstructor(32, cliStderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 
@@ -992,8 +1016,7 @@ test("runTool outputs last line of stderr if fatal error could not be found", as
 
 test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OPTIONS", async (t) => {
   const runnerConstructorStub = stubToolRunnerConstructor();
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
+  const codeqlObject = await stubCodeql();
   // io throws because of the test CodeQL object.
   sinon.stub(io, "which").resolves("");
 
@@ -1022,7 +1045,7 @@ test("Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OP
   );
   t.truthy(configArg, "Should have injected a codescanning config");
   const configFile = configArg!.split("=")[1];
-  await del(configFile, { force: true });
+  await fs.promises.rm(configFile, { force: true });
 });
 
 export function stubToolRunnerConstructor(

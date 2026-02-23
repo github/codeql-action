@@ -18,8 +18,11 @@ runs:
   using: "composite"
   steps:
     - id: branches
+      env:
+        MAJOR_VERSION: ${{ inputs.major_version }}
+        LATEST_TAG: ${{ inputs.latest_tag }}
       run: |
         python ${{ github.action_path }}/release-branches.py \
-            --major-version ${{ inputs.major_version }} \
-            --latest-tag ${{ inputs.latest_tag }}
+            --major-version "$MAJOR_VERSION" \
+            --latest-tag "$LATEST_TAG"
       shell: bash

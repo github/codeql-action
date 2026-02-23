@@ -1,6 +1,6 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+#     pr-checks/sync.sh
 # to regenerate this file.
 
 name: 'PR Check - Packaging: Download using registries'
@@ -20,7 +20,16 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: init-with-registries-${{github.ref}}
 jobs:
   init-with-registries:
     strategy:
@@ -29,23 +38,12 @@ jobs:
         include:
           - os: ubuntu-latest
             version: default
-          - os: macos-latest
-            version: default
-          - os: windows-latest
-            version: default
           - os: ubuntu-latest
             version: linked
-          - os: macos-latest
-            version: linked
-          - os: windows-latest
-            version: linked
           - os: ubuntu-latest
-            version: nightly-latest
-          - os: macos-latest
-            version: nightly-latest
-          - os: windows-latest
             version: nightly-latest
     name: 'Packaging: Download using registries'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       packages: read
@@ -54,7 +52,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -75,7 +73,6 @@ jobs:
               token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Verify packages installed
-        shell: bash
         run: |
           PRIVATE_PACK="$HOME/.codeql/packages/codeql-testing/private-pack"
           CODEQL_PACK1="$HOME/.codeql/packages/codeql-testing/codeql-pack1"
@@ -97,7 +94,6 @@ jobs:
           fi
 
       - name: Verify qlconfig.yml file was created
-        shell: bash
         run: |
           QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
           echo "Expected qlconfig.yml file to be created at $QLCONFIG_PATH"
@@ -110,9 +106,6 @@ jobs:
           fi
 
       - name: Verify contents of qlconfig.yml
-    # yq is not available on windows
-        if: runner.os != 'Windows'
-        shell: bash
         run: |
           QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
           cat $QLCONFIG_PATH | yq -e '.registries[] | select(.url == "https://ghcr.io/v2/") | select(.packages == "*/*")'

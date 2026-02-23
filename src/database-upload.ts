@@ -1,48 +1,87 @@
 import * as fs from "fs";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import { getApiClient, GitHubApiDetails } from "./api-client";
-import { getCodeQL } from "./codeql";
+import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
-import { Logger } from "./logging";
+import { Logger, withGroupAsync } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
-import { bundleDb, parseGitHubUrl } from "./util";
+import { bundleDb, CleanupLevel, parseGitHubUrl } from "./util";
 
-export async function uploadDatabases(
+/** Information about a database upload. */
+export interface DatabaseUploadResult {
+  /** Language of the database. */
+  language: string;
+  /** Size of the zipped database in bytes. */
+  zipped_upload_size_bytes?: number;
+  /** Whether the uploaded database is an overlay base. */
+  is_overlay_base?: boolean;
+  /** Time taken to upload database in milliseconds. */
+  upload_duration_ms?: number;
+  /** If there was an error during database upload, this is its message. */
+  error?: string;
+}
+
+export async function cleanupAndUploadDatabases(
   repositoryNwo: RepositoryNwo,
+  codeql: CodeQL,
   config: Config,
   apiDetails: GitHubApiDetails,
+  features: FeatureEnablement,
   logger: Logger,
-): Promise<void> {
+): Promise<DatabaseUploadResult[]> {
   if (actionsUtil.getRequiredInput("upload-database") !== "true") {
     logger.debug("Database upload disabled in workflow. Skipping upload.");
-    return;
+    return [];
+  }
+
+  if (!config.analysisKinds.includes(AnalysisKind.CodeScanning)) {
+    logger.debug(
+      `Not uploading database because 'analysis-kinds: ${AnalysisKind.CodeScanning}' is not enabled.`,
+    );
+    return [];
   }
 
   if (util.isInTestMode()) {
     logger.debug("In test mode. Skipping database upload.");
-    return;
+    return [];
   }
 
   // Do nothing when not running against github.com
   if (
     config.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
-    config.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
+    config.gitHubVersion.type !== util.GitHubVariant.GHEC_DR
   ) {
     logger.debug("Not running against github.com or GHEC-DR. Skipping upload.");
-    return;
+    return [];
   }
 
   if (!(await gitUtils.isAnalyzingDefaultBranch())) {
     // We only want to upload a database if we are analyzing the default branch.
     logger.debug("Not analyzing default branch. Skipping upload.");
-    return;
+    return [];
   }
 
+  // If config.overlayDatabaseMode is OverlayBase, then we have overlay base databases for all languages.
+  const shouldUploadOverlayBase =
+    config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
+    (await features.getValue(Feature.UploadOverlayDbToApi, codeql));
+  const cleanupLevel = shouldUploadOverlayBase
+    ? CleanupLevel.Overlay
+    : CleanupLevel.Clear;
+
+  // Clean up the database, since intermediate results may still be written to the
+  // database if there is high RAM pressure.
+  await withGroupAsync("Cleaning up databases", async () => {
+    await codeql.databaseCleanupCluster(config, cleanupLevel);
+  });
+
   const client = getApiClient();
-  const codeql = await getCodeQL(config.codeQLCmd);
 
   const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
   uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;
@@ -54,19 +93,22 @@ export async function uploadDatabases(
     uploadsBaseUrl = uploadsBaseUrl.slice(0, -1);
   }
 
+  const reports: DatabaseUploadResult[] = [];
   for (const language of config.languages) {
+    let bundledDbSize: number | undefined = undefined;
     try {
       // Upload the database bundle.
       // Although we are uploading arbitrary file contents to the API, it's worth
       // noting that it's the API's job to validate that the contents is acceptable.
       // This API method is available to anyone with write access to the repo.
       const bundledDb = await bundleDb(config, language, codeql, language);
-      const bundledDbSize = fs.statSync(bundledDb).size;
+      bundledDbSize = fs.statSync(bundledDb).size;
       const bundledDbReadStream = fs.createReadStream(bundledDb);
       const commitOid = await gitUtils.getCommitOid(
         actionsUtil.getRequiredInput("checkout_path"),
       );
       try {
+        const startTime = performance.now();
         await client.request(
           `POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
           {
@@ -84,13 +126,30 @@ export async function uploadDatabases(
             },
           },
         );
+        const endTime = performance.now();
+        reports.push({
+          language,
+          zipped_upload_size_bytes: bundledDbSize,
+          is_overlay_base: shouldUploadOverlayBase,
+          upload_duration_ms: endTime - startTime,
+        });
         logger.debug(`Successfully uploaded database for ${language}`);
       } finally {
         bundledDbReadStream.close();
       }
     } catch (e) {
       // Log a warning but don't fail the workflow
-      logger.warning(`Failed to upload database for ${language}: ${e}`);
+      logger.warning(
+        `Failed to upload database for ${language}: ${util.getErrorMessage(e)}`,
+      );
+      reports.push({
+        language,
+        error: util.getErrorMessage(e),
+        ...(bundledDbSize !== undefined
+          ? { zipped_upload_size_bytes: bundledDbSize }
+          : {}),
+      });
     }
   }
+  return reports;
 }

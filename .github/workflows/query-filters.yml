@@ -15,16 +15,31 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   query-filters:
     name: Query Filters Tests
+    if: github.triggering_actor != 'dependabot[bot]'
     timeout-minutes: 45
     runs-on: ubuntu-latest
     permissions:
       contents: read # This permission is needed to allow the GitHub Actions workflow to read the contents of the repository.
     steps:
     - name: Check out repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
+
+    - name: Install Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: 24
+        cache: npm
+
+    - name: Install dependencies
+      run: npm ci
+
     - name: Prepare test
       id: prepare-test
       uses: ./.github/actions/prepare-test

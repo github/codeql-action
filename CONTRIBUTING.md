@@ -13,23 +13,22 @@ Please note that this project is released with a [Contributor Code of Conduct][c
 
 ## Development and Testing
 
-Before you start, ensure that you have a recent version of node (16 or higher) installed, along with a recent version of npm (9.2 or higher). You can see which version of node is used by the action in `init/action.yml`.
+Before you start, ensure that you have a recent version of node (24 or higher) installed, along with a recent version of npm (9.2 or higher). You can see which version of node is used by the action in `init/action.yml`.
 
 ### Common tasks
 
 * Transpile the TypeScript to JavaScript: `npm run build`.  Note that the JavaScript files are committed to git.
 * Run tests: `npm run test`.  You’ll need to ensure that the JavaScript files are up-to-date first by running the command above.
 * Run the linter: `npm run lint`.
+* Run tests for a specific path: `npm run ava -- ./src/filename.test.ts` or `npm run ava -- ./src/feature-flags/`
 
 This project also includes configuration to run tests from VSCode (with support for breakpoints) - open the test file you wish to run and choose "Debug AVA test file" from the Run menu in the Run panel.
 
 You may want to run `tsc --watch` from the command line or inside of vscode in order to ensure build artifacts are up to date as you are working.
 
-### Checking in compiled artifacts and `node_modules`
+### Checking in compiled artifacts
 
-Because CodeQL Action users consume the code directly from this repository, and there can be no build step during a GitHub Actions run, this repository contains all compiled artifacts and node modules. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` directory. For all day-to-day development purposes, this folder can be ignored.
-
-Only run `npm install` if you are explicitly changing the set of dependencies in `package.json`. The `node_modules` directory should be up to date when you check out, but if for some reason, there is an inconsistency use `npm ci && npm run removeNPMAbsolutePaths` to ensure the directory is in a state consistent with the `package-lock.json`. Note that due to a macOS-specific dependency, this command should be run on a macOS machine. There is a PR check to ensure the consistency of the `node_modules` directory.
+Because CodeQL Action users consume the code directly from this repository, and there can be no build step during a GitHub Actions run, this repository contains all compiled artifacts. There is a PR check that will fail if any of the compiled artifacts are not up to date. Compiled artifacts are stored in the `lib/` directory. For all day-to-day development purposes, this folder can be ignored.
 
 ### Running the action
 
@@ -41,10 +40,10 @@ As well as the unit tests (see _Common tasks_ above), there are integration test
 
 ## Submitting a pull request
 
-1. [Fork][fork] and clone the repository
-2. Create a new branch: `git checkout -b my-branch-name`
-3. Make your change, add tests, and make sure the tests still pass
-4. Push to your fork and [submit a pull request][pr]
+1. [Fork][fork] and clone the repository.
+2. Create a new branch: `git checkout -b my-branch-name`.
+3. Make your change, add tests, and make sure the tests still pass. Ensure that you have run `npm run build` and committed any changes to the compiled artifacts.
+4. Push to your fork and [submit a pull request][pr].
 5. Pat yourself on the back and wait for your pull request to be reviewed and merged.
 
 If you're a GitHub staff member, you can merge your own PR once it's approved; for external contributors, GitHub staff will merge your PR once it's approved.
@@ -62,7 +61,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
     You can start a release by triggering this workflow via [workflow dispatch](https://github.com/github/codeql-action/actions/workflows/update-release-branch.yml).
 1. The workflow run will open a pull request titled "Merge main into releases/v3". Follow the steps on the checklist in the pull request. Once you've checked off all but the last two of these, approve the PR and automerge it.
-1. When the "Merge main into releases/v3" pull request is merged into the `releases/v3` branch, a mergeback pull request to `main` will be automatically created. This mergeback pull request incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into releases/v3" pull request, and bumps the patch version of the CodeQL Action. 
+1. When the "Merge main into releases/v3" pull request is merged into the `releases/v3` branch, a mergeback pull request to `main` will be automatically created. This mergeback pull request incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into releases/v3" pull request, and bumps the patch version of the CodeQL Action.
 1. If a backport to an older major version is required, a pull request targeting that version's branch will also be automatically created.
 1. Approve the mergeback and backport pull request (if applicable) and automerge them.
 
@@ -70,11 +69,12 @@ Once the mergeback and backport pull request have been merged, the release is co
 
 ## Keeping the PR checks up to date (admin access required)
 
-Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred jobs that need to pass in order for a PR to turn green. You can regenerate the checks automatically by running the [update-required-checks.sh](.github/workflows/script/update-required-checks.sh) script:
+Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred required jobs that need to pass in order for a PR to turn green. It would be too tedious to maintain that list manually. You can regenerate the set of required checks automatically by running the [update-required-checks.sh](.github/workflows/script/update-required-checks.sh) script:
 
-1. By default, this script retrieves the checks from the latest SHA on `main`, so make sure that your `main` branch is up to date.
-2. Run the script. If there's a reason to, you can pass in a different SHA as a CLI argument.
-3. After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v3`, and any other currently supported major versions have been updated.
+- If you run the script without an argument, it will retrieve the set of workflows that ran for the latest commit on `main`. Make sure that your local `main` branch is up to date before running the script.
+- You can specify a commit SHA as argument to retrieve the set of workflows for that commit instead. You will likely want to use this if you have a PR that removes or adds PR checks.
+
+After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v3`, and any other currently supported major versions have been updated.
 
 Note that any updates to checks on `main` need to be backported to all currently supported major version branches, in order to maintain the same set of names for required checks.
 

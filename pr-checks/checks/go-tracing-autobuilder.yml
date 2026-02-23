@@ -1,23 +1,18 @@
 name: "Go: tracing with autobuilder step"
 description: "Checks that Go tracing works when using an autobuilder step"
+collection: go
 operatingSystems: ["ubuntu", "macos"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+installGo: true
 steps:
-  - uses: actions/setup-go@v5
-    with:
-      go-version: "~1.23.0"
-      # to avoid potentially misleading autobuilder results where we expect it to download
-      # dependencies successfully, but they actually come from a warm cache
-      cache: false
   - uses: ./../action/init
     with:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/autobuild
   - uses: ./../action/analyze
-  - shell: bash
-    run: |
+  - run: |
       if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
         echo "Expected the Go autobuilder to be run, but the" \
           "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."

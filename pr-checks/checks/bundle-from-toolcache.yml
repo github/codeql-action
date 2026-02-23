@@ -1,0 +1,31 @@
+name: "Bundle: From toolcache"
+description: "The CodeQL bundle should be cached within the toolcache"
+versions:
+  - toolcache
+steps:
+  - name: Install @actions/tool-cache
+    run: npm install @actions/tool-cache@3
+  - name: Check toolcache contains CodeQL
+    continue-on-error: true
+    uses: actions/github-script@v8
+    with:
+      script: |
+        const toolcache = require('@actions/tool-cache');
+        const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+        if (allCodeqlVersions.length === 0) {
+          throw new Error(`CodeQL could not be found in the toolcache`);
+        }
+  - id: setup-codeql
+    uses: ./../action/setup-codeql
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Check CodeQL is installed within the toolcache
+    uses: actions/github-script@v8
+    with:
+      script: |
+        const toolcache = require('@actions/tool-cache');
+        const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+        console.log(`Found CodeQL versions: ${allCodeqlVersions}`);
+        if (allCodeqlVersions.length === 0) {
+          throw new Error('CodeQL not found in toolcache');
+        }

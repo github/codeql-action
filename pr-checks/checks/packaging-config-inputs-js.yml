@@ -1,6 +1,9 @@
 name: "Packaging: Config and input"
 description: "Checks that specifying packages using a combination of a config file and input to the Action works"
 versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
+installGo: true
+installNode: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:
@@ -9,7 +12,6 @@ steps:
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
-    shell: bash
     run: ./build.sh
   - uses: ./../action/analyze
     with:
@@ -24,7 +26,6 @@ steps:
       queries-not-run: foo,bar
 
   - name: Assert Results
-    shell: bash
     run: |
       cd "$RUNNER_TEMP/results"
       # We should have 4 hits from these rules

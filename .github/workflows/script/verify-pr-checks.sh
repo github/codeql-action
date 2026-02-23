@@ -12,7 +12,7 @@ fi
 rm -rf .github/workflows/__*
 
 # Generate the PR checks
-cd pr-checks && python3 sync.py
+pr-checks/sync.sh
 
 # Check that repo is still clean
 if [ ! -z "$(git status --porcelain)" ]; then
@@ -20,6 +20,14 @@ if [ ! -z "$(git status --porcelain)" ]; then
     git diff
     git status
     >&2 echo "Failed: PR checks are not up to date. Run 'cd pr-checks && python3 sync.py' to update"
+
+    echo "### Generated workflows diff" >> $GITHUB_STEP_SUMMARY
+    echo "" >> $GITHUB_STEP_SUMMARY
+    echo '```diff' >> $GITHUB_STEP_SUMMARY
+    git diff --output="$RUNNER_TEMP/workflows.diff"
+    cat "$RUNNER_TEMP/workflows.diff" >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
+
     exit 1
 fi
 echo "Success: PR checks are up to date"

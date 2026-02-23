@@ -8,11 +8,14 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as configUtils from "./config-utils";
-import { getArtifactUploaderClient } from "./debug-artifacts";
+import { uploadArtifacts } from "./debug-artifacts";
 import { getActionsLogger } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
 async function runWrapper() {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
 
   try {
@@ -30,7 +33,7 @@ async function runWrapper() {
       logger,
     );
 
-    if ((config && config.debugMode) || core.isDebug()) {
+    if (config?.debugMode || core.isDebug()) {
       const logFilePath = core.getState("proxy-log-file");
       logger.info(
         "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
@@ -44,19 +47,12 @@ async function runWrapper() {
       const gitHubVersion = await getGitHubVersion();
       checkGitHubVersionInRange(gitHubVersion, logger);
 
-      const artifactUploader = await getArtifactUploaderClient(
+      await uploadArtifacts(
         logger,
-        gitHubVersion.type,
-      );
-
-      await artifactUploader.uploadArtifact(
-        "proxy-log-file",
         [logFilePath],
         actionsUtil.getTemporaryDirectory(),
-        {
-          // ensure we don't keep the debug artifacts around for too long since they can be large.
-          retentionDays: 7,
-        },
+        "proxy-log-file",
+        gitHubVersion.type,
       );
     }
   } catch (error) {

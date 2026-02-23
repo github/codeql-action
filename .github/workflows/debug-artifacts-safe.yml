@@ -16,8 +16,14 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   upload-artifacts:
+    if: github.triggering_actor != 'dependabot[bot]'
     strategy:
       fail-fast: false
       matrix:
@@ -35,15 +41,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ^1.13.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.x'
+      - name: Assert best-effort artifact scan completed
+        uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init
         id: init
         with:
@@ -54,12 +66,12 @@ jobs:
           # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
           languages: cpp,csharp,go,java,javascript,python,ruby
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
   download-and-check-artifacts:
     name: Download and check debug artifacts
+    if: github.triggering_actor != 'dependabot[bot]'
     needs: upload-artifacts
     timeout-minutes: 45
     permissions:
@@ -67,9 +79,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
       - name: Check expected artifacts exist
-        shell: bash
         run: |
           VERSIONS="stable-v2.20.3 default linked nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"

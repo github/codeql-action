@@ -18,6 +18,41 @@ test("sanitizeArtifactName", (t) => {
     debugArtifacts.sanitizeArtifactName("*m)a&n^y%i££n+v!a:l[i]d"),
     "manyinvalid",
   );
+  t.deepEqual(
+    debugArtifacts.sanitizeArtifactName("\\foo\\bar//baz"),
+    "foobarbaz",
+  );
+});
+
+test("getArtifactSuffix", (t) => {
+  // No suffix if there's no `matrix` input, it is invalid, or has no keys.
+  t.is(debugArtifacts.getArtifactSuffix(undefined), "");
+  t.is(debugArtifacts.getArtifactSuffix(""), "");
+  t.is(debugArtifacts.getArtifactSuffix("invalid json"), "");
+  t.is(debugArtifacts.getArtifactSuffix("{}"), "");
+  t.is(debugArtifacts.getArtifactSuffix("null"), "");
+  t.is(debugArtifacts.getArtifactSuffix("123"), "");
+  t.is(debugArtifacts.getArtifactSuffix('"string"'), "");
+
+  // Suffixes for non-empty, valid `matrix` inputs.
+  const testMatrices = [
+    { matrix: { language: "go" }, expected: "-go" },
+    {
+      matrix: { language: "javascript", "build-mode": "none" },
+      expected: "-none-javascript",
+    },
+    {
+      matrix: { "build-mode": "none", language: "javascript" },
+      expected: "-none-javascript",
+    },
+  ];
+
+  for (const testMatrix of testMatrices) {
+    const suffix = debugArtifacts.getArtifactSuffix(
+      JSON.stringify(testMatrix.matrix),
+    );
+    t.is(suffix, testMatrix.expected);
+  }
 });
 
 // These next tests check the correctness of the logic to determine whether or not

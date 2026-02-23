@@ -1,0 +1,85 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: 'PR Check - Bundle: From toolcache'
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: bundle-from-toolcache-${{github.ref}}
+jobs:
+  bundle-from-toolcache:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: toolcache
+    name: 'Bundle: From toolcache'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Install @actions/tool-cache
+        run: npm install @actions/tool-cache@3
+      - name: Check toolcache contains CodeQL
+        continue-on-error: true
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            if (allCodeqlVersions.length === 0) {
+              throw new Error(`CodeQL could not be found in the toolcache`);
+            }
+      - id: setup-codeql
+        uses: ./../action/setup-codeql
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check CodeQL is installed within the toolcache
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            console.log(`Found CodeQL versions: ${allCodeqlVersions}`);
+            if (allCodeqlVersions.length === 0) {
+              throw new Error('CodeQL not found in toolcache');
+            }
+    env:
+      CODEQL_ACTION_TEST_MODE: true

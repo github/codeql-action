@@ -1,22 +1,17 @@
 name: "Go: tracing with legacy workflow"
 description: "Checks that we run the autobuilder in legacy workflows with neither an autobuild step nor manual build steps"
+collection: go
 operatingSystems: ["ubuntu", "macos"]
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
+installGo: true
 steps:
-  - uses: actions/setup-go@v5
-    with:
-      go-version: "~1.23.0"
-      # to avoid potentially misleading autobuilder results where we expect it to download
-      # dependencies successfully, but they actually come from a warm cache
-      cache: false
   - uses: ./../action/init
     with:
       languages: go
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - uses: ./../action/analyze
-  - shell: bash
-    run: |
+  - run: |
       cd "$RUNNER_TEMP/codeql_databases"
       if [[ ! -d go ]]; then
         echo "Did not find a Go database"

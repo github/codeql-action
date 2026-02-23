@@ -13,10 +13,14 @@ on:
     # to filter pre-release attribute.
     types: [published]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   update-bundle:
     if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull requests
@@ -29,15 +33,47 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "$GITHUB_CONTEXT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Update git config
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Update bundle
         uses: ./.github/actions/update-bundle
+
+      - name: Bump Action minor version if new CodeQL minor version series
+        id: bump-action-version
+        run: |
+          prior_cli_version=$(jq -r '.priorCliVersion' src/defaults.json)
+          cli_version=$(jq -r '.cliVersion' src/defaults.json)
+
+          prior_minor=$(echo "$prior_cli_version" | cut -d. -f2)
+          current_minor=$(echo "$cli_version" | cut -d. -f2)
+
+          if [[ "$current_minor" != "$prior_minor" ]]; then
+            echo "New CodeQL minor version series ($prior_cli_version -> $cli_version), bumping Action minor version"
+            npm version minor --no-git-tag-version
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Same minor version series ($prior_cli_version -> $cli_version), skipping Action version bump"
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Rebuild Action
         run: npm run build
@@ -53,11 +89,19 @@ jobs:
       - name: Open pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTION_VERSION_BUMPED: ${{ steps.bump-action-version.outputs.bumped }}
         run: |
           cli_version=$(jq -r '.cliVersion' src/defaults.json)
+          action_version=$(jq -r '.version' package.json)
+
+          pr_body="This pull request updates the default CodeQL bundle, as used with \`tools: linked\` and on GHES, to $cli_version."
+          if [[ "$ACTION_VERSION_BUMPED" == "true" ]]; then
+            pr_body+=$'\n\n'"Since this is a new CodeQL minor version series, this PR also bumps the Action version to $action_version."
+          fi
+
           pr_url=$(gh pr create \
             --title "Update default bundle to $cli_version" \
-            --body "This pull request updates the default CodeQL bundle, as used with \`tools: linked\` and on GHES, to $cli_version." \
+            --body "$pr_body" \
             --assignee "$GITHUB_ACTOR" \
             --draft \
           )
@@ -65,28 +109,8 @@ jobs:
           echo "PR_URL=$pr_url" | tee -a "$GITHUB_ENV"
 
       - name: Create changelog note
-        shell: python
         run: |
-          import os
-          import re
-
-          # Get the PR number from the PR URL.
-          pr_number = os.environ['PR_URL'].split('/')[-1]
-          changelog_note = f"- Update default CodeQL bundle version to {os.environ['CLI_VERSION']}. [#{pr_number}]({os.environ['PR_URL']})"
-
-          # If the "[UNRELEASED]" section starts with "no user facing changes", remove that line.
-          # Use perl to avoid having to escape the newline character.
-
-          with open('CHANGELOG.md', 'r') as f:
-              changelog = f.read()
-
-          changelog = changelog.replace('## [UNRELEASED]\n\nNo user facing changes.', '## [UNRELEASED]\n')
-
-          # Add the changelog note to the bottom of the "[UNRELEASED]" section.
-          changelog = re.sub(r'\n## (\d+\.\d+\.\d+)', f'{changelog_note}\n\n## \\1', changelog, count=1)
-
-          with open('CHANGELOG.md', 'w') as f:
-              f.write(changelog)
+          python .github/workflows/script/bundle_changelog.py
 
       - name: Push changelog note
         run: |

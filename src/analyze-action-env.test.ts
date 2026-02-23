@@ -24,6 +24,9 @@ setupTests(test);
 // but the first test would fail.
 
 test("analyze action with RAM & threads from environment variables", async (t) => {
+  // This test frequently times out on Windows with the default timeout, so we bump
+  // it a bit to 20s.
+  t.timeout(1000 * 20);
   await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_SERVER_URL"] = util.GITHUB_DOTCOM_URL;
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
@@ -39,6 +42,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     };
     sinon.stub(configUtils, "getConfig").resolves({
       gitHubVersion,
+      augmentationProperties: {},
       languages: [],
       packs: [],
       trapCaches: {},
@@ -46,8 +50,8 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("token").returns("fake-token");
     requiredInputStub.withArgs("upload-database").returns("false");
+    requiredInputStub.withArgs("output").returns("out");
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
-    optionalInputStub.withArgs("cleanup-level").returns("none");
     optionalInputStub.withArgs("expect-error").returns("false");
     sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);
     setupActionsVars(tmpDir, tmpDir);
@@ -70,9 +74,20 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     // wait for the action promise to complete before starting verification.
     await analyzeAction.runPromise;
 
-    t.deepEqual(runFinalizeStub.firstCall.args[1], "--threads=-1");
-    t.deepEqual(runFinalizeStub.firstCall.args[2], "--ram=4992");
-    t.deepEqual(runQueriesStub.firstCall.args[3], "--threads=-1");
-    t.deepEqual(runQueriesStub.firstCall.args[1], "--ram=4992");
+    t.assert(
+      runFinalizeStub.calledOnceWith(
+        sinon.match.any,
+        sinon.match.any,
+        "--threads=-1",
+        "--ram=4992",
+      ),
+    );
+    t.assert(
+      runQueriesStub.calledOnceWith(
+        sinon.match.any,
+        "--ram=4992",
+        "--threads=-1",
+      ),
+    );
   });
 });

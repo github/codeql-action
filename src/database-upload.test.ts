@@ -5,15 +5,17 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
-import { setCodeQL } from "./codeql";
+import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { uploadDatabases } from "./database-upload";
+import { cleanupAndUploadDatabases } from "./database-upload";
 import * as gitUtils from "./git-utils";
-import { Language } from "./languages";
+import { KnownLanguage } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
+  createFeatures,
   createTestConfig,
   getRecordingLogger,
   LoggedMessage,
@@ -42,7 +44,7 @@ const testApiDetails: GitHubApiDetails = {
 
 function getTestConfig(tmpDir: string): Config {
   return createTestConfig({
-    languages: [Language.javascript],
+    languages: [KnownLanguage.javascript],
     dbLocation: tmpDir,
   });
 }
@@ -69,6 +71,17 @@ async function mockHttpRequests(databaseUploadStatusCode: number) {
   return databaseUploadSpy;
 }
 
+function getCodeQL() {
+  return createStubCodeQL({
+    async databaseBundle(_: string, outputFilePath: string) {
+      fs.writeFileSync(outputFilePath, "");
+    },
+    async databaseCleanupCluster() {
+      // Do nothing, as we are not testing cleanup here.
+    },
+  });
+}
+
 test("Abort database upload if 'upload-database' input set to false", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
@@ -79,10 +92,12 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
     const loggedMessages = [];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -91,6 +106,40 @@ test("Abort database upload if 'upload-database' input set to false", async (t) 
           v.type === "debug" &&
           v.message ===
             "Database upload disabled in workflow. Skipping upload.",
+      ) !== undefined,
+    );
+  });
+});
+
+test("Abort database upload if 'analysis-kinds: code-scanning' is not enabled", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    sinon
+      .stub(actionsUtil, "getRequiredInput")
+      .withArgs("upload-database")
+      .returns("true");
+    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
+
+    await mockHttpRequests(201);
+
+    const loggedMessages = [];
+    await cleanupAndUploadDatabases(
+      testRepoName,
+      getCodeQL(),
+      {
+        ...getTestConfig(tmpDir),
+        analysisKinds: [AnalysisKind.CodeQuality],
+      },
+      testApiDetails,
+      createFeatures([]),
+      getRecordingLogger(loggedMessages),
+    );
+    t.assert(
+      loggedMessages.find(
+        (v: LoggedMessage) =>
+          v.type === "debug" &&
+          v.message ===
+            "Not uploading database because 'analysis-kinds: code-scanning' is not enabled.",
       ) !== undefined,
     );
   });
@@ -109,10 +158,12 @@ test("Abort database upload if running against GHES", async (t) => {
     config.gitHubVersion = { type: GitHubVariant.GHES, version: "3.0" };
 
     const loggedMessages = [];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
+      getCodeQL(),
       config,
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -136,10 +187,12 @@ test("Abort database upload if not analyzing default branch", async (t) => {
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
 
     const loggedMessages = [];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -163,17 +216,13 @@ test("Don't crash if uploading a database fails", async (t) => {
 
     await mockHttpRequests(500);
 
-    setCodeQL({
-      async databaseBundle(_: string, outputFilePath: string) {
-        fs.writeFileSync(outputFilePath, "");
-      },
-    });
-
     const loggedMessages = [] as LoggedMessage[];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
 
@@ -182,7 +231,7 @@ test("Don't crash if uploading a database fails", async (t) => {
         (v) =>
           v.type === "warning" &&
           v.message ===
-            "Failed to upload database for javascript: Error: some error message",
+            "Failed to upload database for javascript: some error message",
       ) !== undefined,
     );
   });
@@ -199,17 +248,13 @@ test("Successfully uploading a database to github.com", async (t) => {
 
     await mockHttpRequests(201);
 
-    setCodeQL({
-      async databaseBundle(_: string, outputFilePath: string) {
-        fs.writeFileSync(outputFilePath, "");
-      },
-    });
-
     const loggedMessages = [] as LoggedMessage[];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(
@@ -233,21 +278,17 @@ test("Successfully uploading a database to GHEC-DR", async (t) => {
 
     const databaseUploadSpy = await mockHttpRequests(201);
 
-    setCodeQL({
-      async databaseBundle(_: string, outputFilePath: string) {
-        fs.writeFileSync(outputFilePath, "");
-      },
-    });
-
     const loggedMessages = [] as LoggedMessage[];
-    await uploadDatabases(
+    await cleanupAndUploadDatabases(
       testRepoName,
+      getCodeQL(),
       getTestConfig(tmpDir),
       {
         auth: "1234",
         url: "https://tenant.ghe.com",
         apiURL: undefined,
       },
+      createFeatures([]),
       getRecordingLogger(loggedMessages),
     );
     t.assert(

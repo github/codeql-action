@@ -21,12 +21,6 @@ export enum EnvVar {
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
 
   /**
-   * Whether to disable the SARIF post-processing in the Action that removes duplicate locations from
-   * notifications in the `run[].invocations[].toolExecutionNotifications` SARIF property.
-   */
-  DISABLE_DUPLICATE_LOCATION_FIX = "CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX",
-
-  /**
    * Whether the CodeQL Action is using its own deprecated and non-standard way of scanning for
    * multiple languages.
    */
@@ -47,25 +41,20 @@ export enum EnvVar {
   /** Whether the CodeQL Action has already warned the user about low disk space. */
   HAS_WARNED_ABOUT_DISK_SPACE = "CODEQL_ACTION_HAS_WARNED_ABOUT_DISK_SPACE",
 
+  /** Whether the `setup-codeql` action has been run. */
+  SETUP_CODEQL_ACTION_HAS_RUN = "CODEQL_ACTION_SETUP_CODEQL_HAS_RUN",
+
   /** Whether the init action has been run. */
   INIT_ACTION_HAS_RUN = "CODEQL_ACTION_INIT_HAS_RUN",
 
   /** Whether the error for a deprecated version of the CodeQL Action was logged. */
   LOG_VERSION_DEPRECATION = "CODEQL_ACTION_DID_LOG_VERSION_DEPRECATION",
 
-  /**
-   * For macOS. Result of `csrutil status` to determine whether System Integrity
-   * Protection is enabled.
-   */
-  IS_SIP_ENABLED = "CODEQL_ACTION_IS_SIP_ENABLED",
-
   /** UUID representing the current job run. */
   JOB_RUN_UUID = "JOB_RUN_UUID",
 
   /** Status for the entire job, submitted to the status report in `init-post` */
   JOB_STATUS = "CODEQL_ACTION_JOB_STATUS",
-
-  ODASA_TRACER_CONFIGURATION = "ODASA_TRACER_CONFIGURATION",
 
   /** The value of the `output` input for the analyze action. */
   SARIF_RESULTS_OUTPUT_DIR = "CODEQL_ACTION_SARIF_RESULTS_OUTPUT_DIR",
@@ -114,4 +103,45 @@ export enum EnvVar {
    * Useful for testing purposes where multiple caches may be stored in the same repository.
    */
   DEPENDENCY_CACHING_PREFIX = "CODEQL_ACTION_DEPENDENCY_CACHE_PREFIX",
+
+  /** Used by the Java extractor option to enable minimizing dependency JARs. */
+  JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS = "CODEQL_EXTRACTOR_JAVA_OPTION_MINIMIZE_DEPENDENCY_JARS",
+
+  /**
+   * Whether to enable experimental extractors for CodeQL.
+   */
+  EXPERIMENTAL_FEATURES = "CODEQL_ENABLE_EXPERIMENTAL_FEATURES",
+
+  /**
+   * Whether and where to dump the processed SARIF file that would be uploaded, regardless of
+   * whether the upload is disabled. This is intended for testing and debugging purposes.
+   */
+  SARIF_DUMP_DIR = "CODEQL_ACTION_SARIF_DUMP_DIR",
+
+  /**
+   * Whether to skip uploading SARIF results to GitHub. Intended for testing purposes.
+   * This setting is more specific than `CODEQL_ACTION_TEST_MODE`, which implies this option.
+   */
+  SKIP_SARIF_UPLOAD = "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
+
+  /**
+   * Whether to skip workflow validation. Intended for internal use, where we know that
+   * the workflow is valid and validation is not necessary.
+   */
+  SKIP_WORKFLOW_VALIDATION = "CODEQL_ACTION_SKIP_WORKFLOW_VALIDATION",
+
+  /**
+   * Whether to tolerate failure to determine the git version (only applicable in test mode).
+   * Intended for use in environments where git may not be installed, such as Docker containers.
+   */
+  TOLERATE_MISSING_GIT_VERSION = "CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION",
+
+  /**
+   * Used to store the analysis key used by the CodeQL Action. This is normally populated by
+   * `getAnalysisKey`, but can also be set manually for testing and non-standard applications.
+   */
+  ANALYSIS_KEY = "CODEQL_ACTION_ANALYSIS_KEY",
+
+  /** Used by Code Scanning Risk Assessment to communicate the assessment ID to the CodeQL Action. */
+  RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }

@@ -1,6 +1,6 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+#     pr-checks/sync.sh
 # to regenerate this file.
 
 name: PR Check - Swift analysis using a custom build command
@@ -20,7 +20,37 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+  workflow_call:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group:
+    swift-custom-build-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   swift-custom-build:
     strategy:
@@ -34,6 +64,7 @@ jobs:
           - os: macos-latest
             version: nightly-latest
     name: Swift analysis using a custom build command
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -41,7 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -49,26 +80,32 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Use Xcode 16
+        if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+        run: sudo xcode-select -s "/Applications/Xcode_16.app"
       - uses: ./../action/init
         id: init
         with:
           languages: swift
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: ./../action/.github/actions/setup-swift
-        with:
-          codeql-path: ${{steps.init.outputs.codeql-path}}
       - name: Check working directory
-        shell: bash
         run: pwd
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
         with:
           upload-database: false
       - name: Check database
-        shell: bash
         run: |
           SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
           if [[ ! -d "$SWIFT_DB" ]]; then

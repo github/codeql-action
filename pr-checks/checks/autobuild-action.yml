@@ -1,6 +1,8 @@
 name: "autobuild-action"
 description: "Tests that the C# autobuild action works"
+operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["linked"]
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:
@@ -17,7 +19,6 @@ steps:
       CORECLR_PROFILER_PATH_64: ""
   - uses: ./../action/analyze
   - name: Check database
-    shell: bash
     run: |
       cd "$RUNNER_TEMP/codeql_databases"
       if [[ ! -d csharp ]]; then

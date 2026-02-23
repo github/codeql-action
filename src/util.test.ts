@@ -101,16 +101,6 @@ test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   }
 });
 
-test("getAddSnippetsFlag() should return the correct flag", (t) => {
-  t.deepEqual(util.getAddSnippetsFlag(true), "--sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("true"), "--sarif-add-snippets");
-
-  t.deepEqual(util.getAddSnippetsFlag(false), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag(undefined), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("false"), "--no-sarif-add-snippets");
-  t.deepEqual(util.getAddSnippetsFlag("foo bar"), "--no-sarif-add-snippets");
-});
-
 test("getThreadsFlag() should return the correct --threads flag", (t) => {
   const numCpus = os.cpus().length;
 
@@ -252,6 +242,35 @@ test("allowed API versions", async (t) => {
   );
 });
 
+test("getRequiredEnvParam - gets environment variables", (t) => {
+  process.env.SOME_UNIT_TEST_VAR = "foo";
+  const result = util.getRequiredEnvParam("SOME_UNIT_TEST_VAR");
+  t.is(result, "foo");
+});
+
+test("getRequiredEnvParam - throws if an environment variable isn't set", (t) => {
+  t.throws(() => util.getRequiredEnvParam("SOME_UNIT_TEST_VAR"));
+});
+
+test("getOptionalEnvVar - gets environment variables", (t) => {
+  process.env.SOME_UNIT_TEST_VAR = "foo";
+  const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
+  t.is(result, "foo");
+});
+
+test("getOptionalEnvVar - gets undefined for empty environment variables", (t) => {
+  process.env.SOME_UNIT_TEST_VAR = "";
+  const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
+  t.is(result, undefined);
+});
+
+test("getOptionalEnvVar - doesn't throw for undefined environment variables", (t) => {
+  t.notThrows(() => {
+    const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
+    t.is(result, undefined);
+  });
+});
+
 test("doesDirectoryExist", async (t) => {
   // Returns false if no file/dir of this name exists
   t.false(util.doesDirectoryExist("non-existent-file.txt"));
@@ -297,42 +316,51 @@ test("listFolder", async (t) => {
 const longTime = 999_999;
 const shortTime = 10;
 
-test("withTimeout on long task", async (t) => {
+test("waitForResultWithTimeLimit on long task", async (t) => {
   let longTaskTimedOut = false;
   const longTask = new Promise((resolve) => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       resolve(42);
     }, longTime);
+    t.teardown(() => clearTimeout(timer));
   });
-  const result = await util.withTimeout(shortTime, longTask, () => {
-    longTaskTimedOut = true;
-  });
+  const result = await util.waitForResultWithTimeLimit(
+    shortTime,
+    longTask,
+    () => {
+      longTaskTimedOut = true;
+    },
+  );
   t.deepEqual(longTaskTimedOut, true);
   t.deepEqual(result, undefined);
 });
 
-test("withTimeout on short task", async (t) => {
+test("waitForResultWithTimeLimit on short task", async (t) => {
   let shortTaskTimedOut = false;
   const shortTask = new Promise((resolve) => {
     setTimeout(() => {
       resolve(99);
     }, shortTime);
   });
-  const result = await util.withTimeout(longTime, shortTask, () => {
-    shortTaskTimedOut = true;
-  });
+  const result = await util.waitForResultWithTimeLimit(
+    longTime,
+    shortTask,
+    () => {
+      shortTaskTimedOut = true;
+    },
+  );
   t.deepEqual(shortTaskTimedOut, false);
   t.deepEqual(result, 99);
 });
 
-test("withTimeout doesn't call callback if promise resolves", async (t) => {
+test("waitForResultWithTimeLimit doesn't call callback if promise resolves", async (t) => {
   let shortTaskTimedOut = false;
   const shortTask = new Promise((resolve) => {
     setTimeout(() => {
       resolve(99);
     }, shortTime);
   });
-  const result = await util.withTimeout(100, shortTask, () => {
+  const result = await util.waitForResultWithTimeLimit(100, shortTask, () => {
     shortTaskTimedOut = true;
   });
   await new Promise((r) => setTimeout(r, 200));
@@ -405,8 +433,8 @@ function formatGitHubVersion(version: util.GitHubVersion): string {
   switch (version.type) {
     case util.GitHubVariant.DOTCOM:
       return "dotcom";
-    case util.GitHubVariant.GHE_DOTCOM:
-      return "GHE dotcom";
+    case util.GitHubVariant.GHEC_DR:
+      return "GHEC-DR";
     case util.GitHubVariant.GHES:
       return `GHES ${version.version}`;
     default:
@@ -417,15 +445,23 @@ function formatGitHubVersion(version: util.GitHubVersion): string {
 const CHECK_ACTION_VERSION_TESTS: Array<[string, util.GitHubVersion, boolean]> =
   [
     ["2.2.1", { type: util.GitHubVariant.DOTCOM }, true],
-    ["2.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, true],
+    ["2.2.1", { type: util.GitHubVariant.GHEC_DR }, true],
     ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, true],
-    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, true],
-    ["3.2.1", { type: util.GitHubVariant.DOTCOM }, false],
-    ["3.2.1", { type: util.GitHubVariant.GHE_DOTCOM }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, false],
+    ["2.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, false],
+    ["3.2.1", { type: util.GitHubVariant.DOTCOM }, true],
+    ["3.2.1", { type: util.GitHubVariant.GHEC_DR }, true],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.10" }, false],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.11" }, false],
     ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.12" }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.19" }, false],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.20" }, true],
+    ["3.2.1", { type: util.GitHubVariant.GHES, version: "3.21" }, true],
+    ["4.2.1", { type: util.GitHubVariant.DOTCOM }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHEC_DR }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.19" }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.20" }, false],
+    ["4.2.1", { type: util.GitHubVariant.GHES, version: "3.21" }, false],
   ];
 
 for (const [
@@ -440,7 +476,7 @@ for (const [
     githubVersion,
   )}`;
   test(`checkActionVersion ${reportErrorDescription} for ${versionsDescription}`, async (t) => {
-    const warningSpy = sinon.spy(core, "error");
+    const warningSpy = sinon.spy(core, "warning");
     const versionStub = sinon
       .stub(api, "getGitHubVersion")
       .resolves(githubVersion);
@@ -452,9 +488,7 @@ for (const [
     if (shouldReportError) {
       t.true(
         warningSpy.calledOnceWithExactly(
-          sinon.match(
-            "CodeQL Action major versions v1 and v2 have been deprecated.",
-          ),
+          sinon.match("CodeQL Action v3 will be deprecated in December 2026."),
         ),
       );
     } else {
@@ -495,4 +529,62 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is 
       undefined,
     );
   });
+});
+
+test("checkDiskUsage succeeds and produces positive numbers", async (t) => {
+  process.env["GITHUB_WORKSPACE"] = os.tmpdir();
+  const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
+  if (t.truthy(diskUsage)) {
+    t.true(diskUsage.numAvailableBytes > 0);
+    t.true(diskUsage.numTotalBytes > 0);
+  }
+});
+
+test("joinAtMost - behaves like join if limit is <= 0", (t) => {
+  const sep = ", ";
+  const array: string[] = new Array(10).fill("test");
+  t.is(util.joinAtMost(array, sep, 0), array.join(sep));
+  t.is(util.joinAtMost(array, sep, -1), array.join(sep));
+});
+
+test("joinAtMost - behaves like join if limit is >= the size of the array", (t) => {
+  const sep = ", ";
+  const array: string[] = new Array(10).fill("test");
+  t.is(util.joinAtMost(array, sep, 10), array.join(sep));
+  t.is(util.joinAtMost(array, sep, 11), array.join(sep));
+});
+
+test("joinAtMost - truncates list if array is > than limit", (t) => {
+  const sep = ", ";
+  const array: string[] = Array.from(new Array(10), (_, i) => `test${i + 1}`);
+  const result = util.joinAtMost(array, sep, 5);
+  t.not(result, array.join(sep));
+  t.assert(result.endsWith(", ..."));
+  t.assert(result.includes("test5"));
+  t.false(result.includes("test6"));
+});
+
+test("Result.success creates a success result", (t) => {
+  const result = util.Result.success("test value");
+  t.true(result.isSuccess());
+  t.false(result.isFailure());
+  t.is(result.value, "test value");
+});
+
+test("Result.failure creates a failure result", (t) => {
+  const error = new Error("test error");
+  const result = util.Result.failure(error);
+  t.false(result.isSuccess());
+  t.true(result.isFailure());
+  t.is(result.value, error);
+});
+
+test("Result.orElse returns the value for a success result", (t) => {
+  const result = util.Result.success("success value");
+  t.is(result.orElse("default value"), "success value");
+});
+
+test("Result.orElse returns the default value for a failure result", (t) => {
+  const result = util.Result.failure(new Error("test error"));
+  t.is(result.orElse("default value"), "default value");
 });

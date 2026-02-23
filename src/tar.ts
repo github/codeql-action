@@ -9,7 +9,7 @@ import * as semver from "semver";
 
 import { CommandInvocationError } from "./actions-util";
 import { Logger } from "./logging";
-import { assertNever, cleanUpGlob, isBinaryAccessible } from "./util";
+import { assertNever, cleanUpPath, isBinaryAccessible } from "./util";
 
 const MIN_REQUIRED_BSD_TAR_VERSION = "3.4.3";
 const MIN_REQUIRED_GNU_TAR_VERSION = "1.31";
@@ -35,14 +35,14 @@ async function getTarVersion(): Promise<TarVersion> {
   // Return whether this is GNU tar or BSD tar, and the version number
   if (stdout.includes("GNU tar")) {
     const match = stdout.match(/tar \(GNU tar\) ([0-9.]+)/);
-    if (!match || !match[1]) {
+    if (!match?.[1]) {
       throw new Error("Failed to parse output of tar --version.");
     }
 
     return { type: "gnu", version: match[1] };
   } else if (stdout.includes("bsdtar")) {
     const match = stdout.match(/bsdtar ([0-9.]+)/);
-    if (!match || !match[1]) {
+    if (!match?.[1]) {
       throw new Error("Failed to parse output of tar --version.");
     }
 
@@ -152,7 +152,16 @@ export async function extractTarZst(
 
   try {
     // Initialize args
-    const args = ["-x", "--zstd"];
+    //
+    // `--ignore-zeros` means that trailing zero bytes at the end of an archive will be read
+    // by `tar` in case a further concatenated archive follows. Otherwise when a tarball built
+    // by GNU tar, which writes many trailing zeroes, is read by BSD tar, which expects less, then
+    // BSD tar can hang up the pipe to its filter program early, and if that program is `zstd`
+    // then it will try to write the remaining zeroes, get an EPIPE error because `tar` has closed
+    // its end of the pipe, return 1, and `tar` will pass the error along.
+    //
+    // See also https://github.com/facebook/zstd/issues/4294
+    const args = ["-x", "--zstd", "--ignore-zeros"];
 
     if (tarVersion.type === "gnu") {
       // Suppress warnings when using GNU tar to extract archives created by BSD tar
@@ -208,7 +217,7 @@ export async function extractTarZst(
       });
     });
   } catch (e) {
-    await cleanUpGlob(dest, "extraction destination directory", logger);
+    await cleanUpPath(dest, "extraction destination directory", logger);
     throw e;
   }
 }

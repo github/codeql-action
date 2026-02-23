@@ -1,11 +1,18 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as github from "@actions/github";
+import { HTTPError } from "@actions/tool-cache";
 import test from "ava";
+import * as sinon from "sinon";
 
+import * as analyses from "./analyses";
+import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
+import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
+import { UploadPayload } from "./upload-lib/types";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
@@ -17,14 +24,22 @@ test.beforeEach(() => {
 test("validateSarifFileSchema - valid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/valid-sarif.sarif`;
   t.notThrows(() =>
-    uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger(true)),
+    uploadLib.validateSarifFileSchema(
+      uploadLib.readSarifFile(inputFile),
+      inputFile,
+      getRunnerLogger(true),
+    ),
   );
 });
 
 test("validateSarifFileSchema - invalid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/invalid-sarif.sarif`;
   t.throws(() =>
-    uploadLib.validateSarifFileSchema(inputFile, getRunnerLogger(true)),
+    uploadLib.validateSarifFileSchema(
+      uploadLib.readSarifFile(inputFile),
+      inputFile,
+      getRunnerLogger(true),
+    ),
   );
 });
 
@@ -114,14 +129,135 @@ test("finding SARIF files", async (t) => {
       "file",
     );
 
-    const sarifFiles = uploadLib.findSarifFilesInDir(tmpDir);
+    // add some non-Code Scanning files that should be ignored, unless we look for them specifically
+    for (const analysisKind of analyses.supportedAnalysisKinds) {
+      if (analysisKind === AnalysisKind.CodeScanning) continue;
 
-    t.deepEqual(sarifFiles, [
+      const analysis = analyses.getAnalysisConfig(analysisKind);
+
+      fs.writeFileSync(path.join(tmpDir, `a${analysis.sarifExtension}`), "");
+      fs.writeFileSync(
+        path.join(tmpDir, "dir1", `b${analysis.sarifExtension}`),
+        "",
+      );
+    }
+
+    const expectedSarifFiles: Partial<Record<AnalysisKind, string[]>> = {};
+    expectedSarifFiles[AnalysisKind.CodeScanning] = [
       path.join(tmpDir, "a.sarif"),
       path.join(tmpDir, "b.sarif"),
       path.join(tmpDir, "dir1", "d.sarif"),
       path.join(tmpDir, "dir1", "dir2", "e.sarif"),
-    ]);
+    ];
+    const sarifFiles = uploadLib.findSarifFilesInDir(
+      tmpDir,
+      CodeScanning.sarifPredicate,
+    );
+
+    t.deepEqual(sarifFiles, expectedSarifFiles[AnalysisKind.CodeScanning]);
+
+    for (const analysisKind of analyses.supportedAnalysisKinds) {
+      if (analysisKind === AnalysisKind.CodeScanning) continue;
+
+      const analysis = analyses.getAnalysisConfig(analysisKind);
+
+      expectedSarifFiles[analysisKind] = [
+        path.join(tmpDir, `a${analysis.sarifExtension}`),
+        path.join(tmpDir, "dir1", `b${analysis.sarifExtension}`),
+      ];
+      const foundSarifFiles = uploadLib.findSarifFilesInDir(
+        tmpDir,
+        analysis.sarifPredicate,
+      );
+
+      t.deepEqual(foundSarifFiles, expectedSarifFiles[analysisKind]);
+    }
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      tmpDir,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    for (const analysisKind of analyses.supportedAnalysisKinds) {
+      t.not(groupedSarifFiles[analysisKind], undefined);
+      t.deepEqual(
+        groupedSarifFiles[analysisKind],
+        expectedSarifFiles[analysisKind],
+      );
+    }
+  });
+});
+
+test("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.csra.sarif");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.not(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.RiskAssessment], [sarifPath]);
+  });
+});
+
+test("getGroupedSarifFilePaths - Code Quality file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.quality.sarif");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.CodeQuality], [sarifPath]);
+  });
+});
+
+test("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.sarif");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
+  });
+});
+
+test("getGroupedSarifFilePaths - Other file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sarifPath = path.join(tmpDir, "a.json");
+    fs.writeFileSync(sarifPath, "");
+
+    const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
+      getRunnerLogger(true),
+      sarifPath,
+    );
+
+    t.not(groupedSarifFiles, undefined);
+    t.not(groupedSarifFiles[AnalysisKind.CodeScanning], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.CodeQuality], undefined);
+    t.is(groupedSarifFiles[AnalysisKind.RiskAssessment], undefined);
+    t.deepEqual(groupedSarifFiles[AnalysisKind.CodeScanning], [sarifPath]);
   });
 });
 
@@ -186,109 +322,237 @@ test("populateRunAutomationDetails", (t) => {
 });
 
 test("validateUniqueCategory when empty", (t) => {
-  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif()));
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif()));
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif(),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif(),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
 });
 
 test("validateUniqueCategory for automation details id", (t) => {
-  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif("abc")));
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc")));
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("AbC")));
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("AbC"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
 
-  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif("def")));
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("def")));
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("def"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("def"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
 
   // Our category sanitization is not perfect. Here are some examples
   // of where we see false clashes
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc/def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc/def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc@def")));
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc_def")));
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc def")));
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc@def"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc_def"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc def"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
 
   // this one is fine
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc_ def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc_ def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 });
 
 test("validateUniqueCategory for tool name", (t) => {
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "abc"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "abc"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "AbC")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "AbC"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 
   // Our category sanitization is not perfect. Here are some examples
   // of where we see false clashes
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc/def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "abc/def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc@def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "abc@def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc_def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "abc_def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif(undefined, "abc def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif(undefined, "abc def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 
   // this one is fine
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc_ def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc_ def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 });
 
 test("validateUniqueCategory for automation details id and tool name", (t) => {
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc", "abc")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc", "abc"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc", "abc")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc", "abc"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc_", "def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc_", "def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc_", "def")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc_", "def"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("ghi", "_jkl")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("ghi", "_jkl"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("ghi", "_jkl")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("ghi", "_jkl"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 
   // Our category sanitization is not perfect. Here are some examples
   // of where we see false clashes
-  t.notThrows(() => uploadLib.validateUniqueCategory(createMockSarif("abc")));
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc", "_")));
-
   t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("abc", "def__")),
-  );
-  t.throws(() => uploadLib.validateUniqueCategory(createMockSarif("abc_def")));
-
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("mno_", "pqr")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
   t.throws(() =>
-    uploadLib.validateUniqueCategory(createMockSarif("mno", "_pqr")),
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc", "_"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc", "def__"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("abc_def"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("mno_", "pqr"),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif("mno", "_pqr"),
+      CodeScanning.sentinelPrefix,
+    ),
   );
 });
 
@@ -298,11 +562,32 @@ test("validateUniqueCategory for multiple runs", (t) => {
 
   // duplicate categories are allowed within the same sarif file
   const multiSarif = { runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]] };
-  t.notThrows(() => uploadLib.validateUniqueCategory(multiSarif));
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(multiSarif, CodeScanning.sentinelPrefix),
+  );
 
   // should throw if there are duplicate categories in separate validations
-  t.throws(() => uploadLib.validateUniqueCategory(sarif1));
-  t.throws(() => uploadLib.validateUniqueCategory(sarif2));
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(sarif1, CodeScanning.sentinelPrefix),
+  );
+  t.throws(() =>
+    uploadLib.validateUniqueCategory(sarif2, CodeScanning.sentinelPrefix),
+  );
+});
+
+test("validateUniqueCategory with different prefixes", (t) => {
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif(),
+      CodeScanning.sentinelPrefix,
+    ),
+  );
+  t.notThrows(() =>
+    uploadLib.validateUniqueCategory(
+      createMockSarif(),
+      CodeQuality.sentinelPrefix,
+    ),
+  );
 });
 
 test("accept results with invalid artifactLocation.uri value", (t) => {
@@ -314,7 +599,11 @@ test("accept results with invalid artifactLocation.uri value", (t) => {
   } as Logger;
 
   const sarifFile = `${__dirname}/../src/testdata/with-invalid-uri.sarif`;
-  uploadLib.validateSarifFileSchema(sarifFile, mockLogger);
+  uploadLib.validateSarifFileSchema(
+    uploadLib.readSarifFile(sarifFile),
+    sarifFile,
+    mockLogger,
+  );
 
   t.deepEqual(loggedMessages.length, 3);
   t.deepEqual(
@@ -354,6 +643,18 @@ test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.14", async (t
       {
         type: GitHubVariant.GHES,
         version: "3.14.0",
+      },
+    ),
+  );
+});
+
+test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.16 pre", async (t) => {
+  t.true(
+    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.16.0.pre1",
       },
     ),
   );
@@ -405,6 +706,191 @@ test("shouldShowCombineSarifFilesDeprecationWarning when environment variable is
   );
 });
 
+test("throwIfCombineSarifFilesDisabled when on dotcom", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.13", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.13.2",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.14", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.14.0",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.17", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.17.0",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.18 pre", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.18.0.pre1",
+      },
+    ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.18 alpha", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.18.0-alpha.1",
+      },
+    ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
+  await t.throwsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "3.18.0",
+      },
+    ),
+    {
+      message:
+        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
+    },
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with an invalid GHES version", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.GHES,
+        version: "foobar",
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with only 1 run", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with distinct categories", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "def"), createMockSarif("def", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("throwIfCombineSarifFilesDisabled with distinct tools", async (t) => {
+  await t.notThrowsAsync(
+    uploadLib.throwIfCombineSarifFilesDisabled(
+      [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
+      {
+        type: GitHubVariant.DOTCOM,
+      },
+    ),
+  );
+});
+
+test("shouldConsiderConfigurationError correctly detects configuration errors", (t) => {
+  const error1 = [
+    "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
+  ];
+  t.true(uploadLib.shouldConsiderConfigurationError(error1));
+
+  const error2 = [
+    "rejecting delivery as the repository has too many logical alerts",
+  ];
+  t.true(uploadLib.shouldConsiderConfigurationError(error2));
+
+  // We fail cases where we get > 1 error messages back
+  const error3 = [
+    "rejecting delivery as the repository has too many alerts",
+    "extra error message",
+  ];
+  t.false(uploadLib.shouldConsiderConfigurationError(error3));
+});
+
+test("shouldConsiderInvalidRequest returns correct recognises processing errors", (t) => {
+  const error1 = [
+    "rejecting SARIF",
+    "an invalid URI was provided as a SARIF location",
+  ];
+  t.true(uploadLib.shouldConsiderInvalidRequest(error1));
+
+  const error2 = [
+    "locationFromSarifResult: expected artifact location",
+    "an invalid URI was provided as a SARIF location",
+  ];
+  t.true(uploadLib.shouldConsiderInvalidRequest(error2));
+
+  // We expect ALL errors to be of processing errors, for the outcome to be classified as
+  // an invalid SARIF upload error.
+  const error3 = [
+    "could not convert rules: invalid security severity value, is not a number",
+    "an unknown error occurred",
+  ];
+  t.false(uploadLib.shouldConsiderInvalidRequest(error3));
+});
+
 function createMockSarif(id?: string, tool?: string) {
   return {
     runs: [
@@ -420,4 +906,102 @@ function createMockSarif(id?: string, tool?: string) {
       },
     ],
   };
+}
+
+function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
+  const mockData = {
+    payload: {
+      commit_oid: "abc123",
+      ref: "ref",
+      sarif: "base64data",
+      workflow_run_id: 1,
+      workflow_run_attempt: 1,
+      checkout_uri: "uri",
+      tool_names: ["codeql"],
+    } satisfies UploadPayload,
+    owner: "test-owner",
+    repo: "test-repo",
+    response: {
+      status: 200,
+      data: { id: "uploaded-sarif-id" },
+      headers: {},
+      url: analysis.target,
+    },
+  };
+  const client = github.getOctokit("123");
+  sinon.stub(api, "getApiClient").value(() => client);
+  const requestStub = sinon.stub(client, "request");
+
+  const upload = async () =>
+    uploadLib.uploadPayload(
+      mockData.payload,
+      {
+        owner: mockData.owner,
+        repo: mockData.repo,
+      },
+      getRunnerLogger(true),
+      analysis,
+    );
+
+  return {
+    upload,
+    requestStub,
+    mockData,
+  };
+}
+
+for (const analysisKind of analyses.supportedAnalysisKinds) {
+  const analysis = analyses.getAnalysisConfig(analysisKind);
+
+  test(`uploadPayload on ${analysis.name} uploads successfully`, async (t) => {
+    const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
+    requestStub
+      .withArgs(analysis.target, {
+        owner: mockData.owner,
+        repo: mockData.repo,
+        data: mockData.payload,
+      })
+      .onFirstCall()
+      .returns(Promise.resolve(mockData.response));
+    const result = await upload();
+    t.is(result, mockData.response.data.id);
+    t.true(requestStub.calledOnce);
+  });
+
+  for (const envVar of [
+    "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
+    "CODEQL_ACTION_TEST_MODE",
+  ]) {
+    test(`uploadPayload on ${analysis.name} skips upload when ${envVar} is set`, async (t) => {
+      const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
+      await withTmpDir(async (tmpDir) => {
+        process.env.RUNNER_TEMP = tmpDir;
+        process.env[envVar] = "true";
+        const result = await upload();
+        t.is(result, "dummy-sarif-id");
+        t.false(requestStub.called);
+
+        const payloadFile = path.join(tmpDir, `payload-${analysis.kind}.json`);
+        t.true(fs.existsSync(payloadFile));
+
+        const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
+        t.deepEqual(savedPayload, mockData.payload);
+      });
+    });
+  }
+
+  test(`uploadPayload on ${analysis.name} wraps request errors using wrapApiConfigurationError`, async (t) => {
+    const { upload, requestStub } = uploadPayloadFixtures(analysis);
+    const wrapApiConfigurationErrorStub = sinon.stub(
+      api,
+      "wrapApiConfigurationError",
+    );
+    const originalError = new HTTPError(404);
+    const wrappedError = new Error("Wrapped error message");
+    requestStub.rejects(originalError);
+    wrapApiConfigurationErrorStub.withArgs(originalError).returns(wrappedError);
+    await t.throwsAsync(upload, {
+      is: wrappedError,
+    });
+  });
 }

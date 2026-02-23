@@ -1,0 +1,26 @@
+name: "Rust analysis"
+description: "Tests creation of a Rust database"
+versions:
+  # experimental rust support introduced, requires action to set `CODEQL_ENABLE_EXPERIMENTAL_FEATURES`
+  - stable-v2.19.3
+  # first public preview version
+  - stable-v2.22.1
+  - linked
+  - default
+  - nightly-latest
+steps:
+  - uses: ./../action/init
+    with:
+      languages: rust
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - uses: ./../action/analyze
+    id: analysis
+    with:
+      upload-database: false
+  - name: Check database
+    run: |
+      RUST_DB="${{ fromJson(steps.analysis.outputs.db-locations).rust }}"
+      if [[ ! -d "$RUST_DB" ]]; then
+        echo "Did not create a database for Rust."
+        exit 1
+      fi

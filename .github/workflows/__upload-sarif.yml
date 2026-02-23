@@ -1,0 +1,188 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: PR Check - Test different uses of `upload-sarif`
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      python-version:
+        type: string
+        description: The version of Python to install
+        required: false
+        default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+  workflow_call:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      python-version:
+        type: string
+        description: The version of Python to install
+        required: false
+        default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group:
+    upload-sarif-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+jobs:
+  upload-sarif:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-scanning,code-quality
+    name: Test different uses of `upload-sarif`
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install Python
+        if: matrix.version != 'nightly-latest'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version || '3.13' }}
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: csharp,java,javascript,python
+          analysis-kinds: ${{ matrix.analysis-kinds }}
+      - name: Build code
+        run: ./build.sh
+  # Generate some SARIF we can upload with the upload-sarif step
+      - uses: ./../action/analyze
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          upload: never
+          output: ${{ runner.temp }}/results
+
+      - name: |
+          Upload all SARIF files for `analysis-kinds: ${{ matrix.analysis-kinds }}`
+        uses: ./../action/upload-sarif
+        id: upload-sarif
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:all-files/
+      - name: Fail for missing output from `upload-sarif` step for `code-scanning`
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-scanning)
+        run: exit 1
+      - name: Fail for missing output from `upload-sarif` step for `code-quality`
+        if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-quality)
+        run: exit 1
+
+      - name: Upload single SARIF file for Code Scanning
+        uses: ./../action/upload-sarif
+        id: upload-single-sarif-code-scanning
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results/javascript.sarif
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-scanning/
+      - name: Fail for missing output from `upload-single-sarif-code-scanning` step
+        if: contains(matrix.analysis-kinds, 'code-scanning') &&
+          !(fromJSON(steps.upload-single-sarif-code-scanning.outputs.sarif-ids).code-scanning)
+        run: exit 1
+      - name: Upload single SARIF file for Code Quality
+        uses: ./../action/upload-sarif
+        id: upload-single-sarif-code-quality
+        if: contains(matrix.analysis-kinds, 'code-quality')
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results/javascript.quality.sarif
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-quality/
+      - name: Fail for missing output from `upload-single-sarif-code-quality` step
+        if: contains(matrix.analysis-kinds, 'code-quality') &&
+          !(fromJSON(steps.upload-single-sarif-code-quality.outputs.sarif-ids).code-quality)
+        run: exit 1
+
+      - name: Change SARIF file extension
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        run: mv ${{ runner.temp }}/results/javascript.sarif ${{ runner.temp }}/results/javascript.sarif.json
+      - name: Upload single non-`.sarif` file
+        uses: ./../action/upload-sarif
+        id: upload-single-non-sarif
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        with:
+          ref: refs/heads/main
+          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          sarif_file: ${{ runner.temp }}/results/javascript.sarif.json
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:non-sarif/
+      - name: Fail for missing output from `upload-single-non-sarif` step
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-non-sarif.outputs.sarif-ids).code-scanning)
+        run: exit 1
+    env:
+      CODEQL_ACTION_TEST_MODE: true

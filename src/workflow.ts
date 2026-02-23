@@ -5,11 +5,16 @@ import zlib from "zlib";
 import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
+import { isDynamicWorkflow } from "./actions-util";
 import * as api from "./api-client";
 import { CodeQL } from "./codeql";
 import { EnvVar } from "./environment";
 import { Logger } from "./logging";
-import { getRequiredEnvParam, isInTestMode } from "./util";
+import {
+  getRequiredEnvParam,
+  getTestingEnvironment,
+  isInTestMode,
+} from "./util";
 
 export interface WorkflowJobStep {
   name?: string;
@@ -69,6 +74,7 @@ function toCodedErrors(errors: {
 export const WorkflowErrors = toCodedErrors({
   MissingPushHook: `Please specify an on.push hook to analyze and see code scanning alerts from the default branch on the Security tab.`,
   CheckoutWrongHead: `git checkout HEAD^2 is no longer necessary. Please remove this step as Code Scanning recommends analyzing the merge commit for best results.`,
+  InconsistentActionVersion: `Not all workflow steps that use \`github/codeql-action\` actions use the same version. Please ensure that all such steps use the same version to avoid compatibility issues.`,
 });
 
 /**
@@ -158,6 +164,29 @@ export async function getWorkflowErrors(
     }
   }
 
+  // Check that all `github/codeql-action` steps use the same ref, i.e. the same version.
+  // Mixing different versions of the actions can lead to unpredictable behaviour.
+  const codeqlStepRefs: string[] = [];
+  for (const job of Object.values(doc?.jobs || {})) {
+    if (Array.isArray(job.steps)) {
+      for (const step of job.steps) {
+        if (step.uses?.startsWith("github/codeql-action/")) {
+          const parts = step.uses.split("@");
+          if (parts.length >= 2) {
+            codeqlStepRefs.push(parts[parts.length - 1]);
+          }
+        }
+      }
+    }
+  }
+
+  if (
+    codeqlStepRefs.length > 0 &&
+    !codeqlStepRefs.every((ref) => ref === codeqlStepRefs[0])
+  ) {
+    errors.push(WorkflowErrors.InconsistentActionVersion);
+  }
+
   // If there is no push trigger, we will not be able to analyze the default branch.
   // So add a warning to the user to add a push trigger.
   // If there is a workflow_call trigger, we don't need a push trigger since we assume
@@ -189,7 +218,7 @@ function hasWorkflowTrigger(triggerName: string, doc: Workflow): boolean {
   return Object.prototype.hasOwnProperty.call(doc.on, triggerName);
 }
 
-export async function validateWorkflow(
+async function validateWorkflow(
   codeql: CodeQL,
   logger: Logger,
 ): Promise<undefined | string> {
@@ -344,7 +373,7 @@ function getInputOrThrow(
       input = input.replace(`\${{matrix.${key}}}`, value);
     }
   }
-  if (input !== undefined && input.includes("${{")) {
+  if (input?.includes("${{")) {
     throw new Error(
       `Could not get ${inputName} input to ${actionName} since it contained an unrecognized dynamic value.`,
     );
@@ -358,10 +387,7 @@ function getInputOrThrow(
  * This allows us to test workflow parsing functionality as a CodeQL Action PR check.
  */
 function getAnalyzeActionName() {
-  if (
-    isInTestMode() ||
-    process.env[EnvVar.TESTING_ENVIRONMENT] === "codeql-action-pr-checks"
-  ) {
+  if (isInTestMode() || getTestingEnvironment() === "codeql-action-pr-checks") {
     return "./analyze";
   } else {
     return "github/codeql-action/analyze";
@@ -438,3 +464,36 @@ export function getCheckoutPathInputOrThrow(
     ) || getRequiredEnvParam("GITHUB_WORKSPACE") // if unspecified, checkout_path defaults to ${{ github.workspace }}
   );
 }
+
+/**
+ * A wrapper around `validateWorkflow` which reports the outcome.
+ *
+ * @param logger The logger to use.
+ * @param codeql The CodeQL instance.
+ */
+export async function checkWorkflow(logger: Logger, codeql: CodeQL) {
+  // Check the workflow for problems, unless `SKIP_WORKFLOW_VALIDATION` is `true`
+  // or the workflow trigger is `dynamic`.
+  if (
+    !isDynamicWorkflow() &&
+    process.env[EnvVar.SKIP_WORKFLOW_VALIDATION] !== "true"
+  ) {
+    core.startGroup("Validating workflow");
+    const validateWorkflowResult = await internal.validateWorkflow(
+      codeql,
+      logger,
+    );
+    if (validateWorkflowResult === undefined) {
+      logger.info("Detected no issues with the code scanning workflow.");
+    } else {
+      logger.debug(
+        `Unable to validate code scanning workflow: ${validateWorkflowResult}`,
+      );
+    }
+    core.endGroup();
+  }
+}
+
+export const internal = {
+  validateWorkflow,
+};

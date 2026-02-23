@@ -1,6 +1,5 @@
 name: "Job run UUID added to SARIF"
 description: "Tests that the job run UUID is added to the SARIF output"
-operatingSystems: ["ubuntu"]
 versions: ["nightly-latest"]
 steps:
   - uses: ./../action/init
@@ -12,13 +11,12 @@ steps:
     with:
       output: "${{ runner.temp }}/results"
   - name: Upload SARIF
-    uses: actions/upload-artifact@v4
+    uses: actions/upload-artifact@v6
     with:
       name: ${{ matrix.os }}-${{ matrix.version }}.sarif.json
       path: "${{ runner.temp }}/results/javascript.sarif"
       retention-days: 7
   - name: Check results
-    shell: bash
     run: |
       cd "$RUNNER_TEMP/results"
       actual=$(jq -r '.runs[0].properties.jobRunUuid' javascript.sarif)

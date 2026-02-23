@@ -9,6 +9,6 @@ to one of the files in this directory.
 1. Install https://github.com/casey/just by whichever way you prefer.
 2. Run `just update-pr-checks` in your terminal.
 
-### If you don't want to intall `just`
+### If you don't want to install `just`
 
 Manually run each step in the `justfile`.

@@ -2,45 +2,43 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: "/"
-    reviewers:
-      - "github/codeql-production-shield"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      exclude:
+        - "@actions/*"
     labels:
-      - Update dependencies
+      - Rebuild
     # Ignore incompatible dependency updates
     ignore:
-      # There is a type incompatibility issue between v0.0.9 and our other dependencies.
-      - dependency-name: "@octokit/plugin-retry"
-        versions: ["~6.0.0"]
-      # v7 requires ESM
-      - dependency-name: "del"
-        versions: ["^7.0.0"]
-      # This is broken due to the way configuration files have changed. 
+      # This is broken due to the way configuration files have changed.
       # This might be fixed when we move to eslint v9.
       - dependency-name: "eslint-plugin-import"
         versions: [">=2.30.0"]
     groups:
-      npm:
+      npm-minor:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: github-actions
-    directory: "/"
-    reviewers:
-      - "github/codeql-production-shield"
+    directories:
+      - "/.github/workflows"
+      - "/.github/actions"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      exclude:
+        - "actions/*"
+    labels:
+      - Rebuild
     groups:
-      actions:
+      actions-minor:
         patterns:
           - "*"
-  - package-ecosystem: github-actions
-    directory: "/.github/actions/setup-swift/" # All subdirectories outside of "/.github/workflows" must be explicitly included.
-    reviewers:
-      - "github/codeql-production-shield"
-    schedule:
-      interval: weekly
-    groups:
-      actions-setup-swift:
-        patterns:
-          - "*"
+        update-types:
+          - "minor"
+          - "patch"

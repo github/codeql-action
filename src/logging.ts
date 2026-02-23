@@ -13,7 +13,15 @@ export interface Logger {
 }
 
 export function getActionsLogger(): Logger {
-  return core;
+  return {
+    debug: core.debug,
+    info: core.info,
+    warning: core.warning,
+    error: core.error,
+    isDebug: core.isDebug,
+    startGroup: core.startGroup,
+    endGroup: core.endGroup,
+  };
 }
 
 export function getRunnerLogger(debugMode: boolean): Logger {

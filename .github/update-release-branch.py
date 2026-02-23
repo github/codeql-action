@@ -71,8 +71,9 @@ def open_pr(
     body.append('')
     body.append('Contains the following pull requests:')
     for pr in pull_requests:
-      merger = get_merger_of_pr(repo, pr)
-      body.append(f'- #{pr.number} (@{merger})')
+      # Use PR author if they are GitHub staff, otherwise use the merger
+      display_user = get_pr_author_if_staff(pr) or get_merger_of_pr(repo, pr)
+      body.append(f'- #{pr.number} (@{display_user})')
 
   # List all commits not part of a PR
   if len(commits_without_pull_requests) > 0:
@@ -97,8 +98,8 @@ def open_pr(
   body.append(' - [ ] Ensure the docs team is aware of any documentation changes that need to be released.')
 
   if not is_primary_release:
-    body.append(' - [ ] Remove and re-add the "Update dependencies" label to the PR to trigger just this workflow.')
-    body.append(' - [ ] Wait for the "Update dependencies" workflow to push a commit updating the dependencies.')
+    body.append(' - [ ] Remove and re-add the "Rebuild" label to the PR to trigger just this workflow.')
+    body.append(' - [ ] Wait for the "Rebuild" workflow to push a commit updating the distribution files.')
 
   body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
   body.append(' - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.')
@@ -108,7 +109,7 @@ def open_pr(
     body.append(' - [ ] Merge all backport PRs to older release branches, that will automatically be created once this PR is merged.')
 
   title = f'Merge {source_branch} into {target_branch}'
-  labels = ['Update dependencies'] if not is_primary_release else []
+  labels = ['Rebuild'] if not is_primary_release else []
 
   # Create the pull request
   # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
@@ -168,6 +169,14 @@ def get_pr_for_commit(commit):
 def get_merger_of_pr(repo, pr):
   return repo.get_commit(pr.merge_commit_sha).author.login
 
+# Get the PR author if they are GitHub staff, otherwise None.
+def get_pr_author_if_staff(pr):
+  if pr.user is None:
+    return None
+  if getattr(pr.user, 'site_admin', False):
+    return pr.user.login
+  return None
+
 def get_current_version():
   with open('package.json', 'r') as f:
     return json.load(f)['version']
@@ -181,9 +190,9 @@ def replace_version_package_json(prev_version, new_version):
       print(line.replace(prev_version, new_version), end='')
     else:
       prev_line_is_codeql = False
-      print(line, end='') 
+      print(line, end='')
     if '\"name\": \"codeql\",' in line:
-        prev_line_is_codeql = True 
+        prev_line_is_codeql = True
 
 def get_today_string():
   today = datetime.datetime.today()
@@ -371,10 +380,10 @@ def main():
       # releases.
       run_git('revert', vOlder_update_commits[0], '--no-edit')
 
-      # Also revert the "Update checked-in dependencies" commit created by Actions.
-      update_dependencies_commit = run_git('log', '--grep', '^Update checked-in dependencies', '--format=%H').split()[0]
-      print(f'  Reverting {update_dependencies_commit}')
-      run_git('revert', update_dependencies_commit, '--no-edit')
+      # Also revert the "Rebuild" commit created by Actions.
+      rebuild_commit = run_git('log', '--grep', '^Rebuild$', '--format=%H').split()[0]
+      print(f'  Reverting {rebuild_commit}')
+      run_git('revert', rebuild_commit, '--no-edit')
 
     else:
       print('  Nothing to revert.')
@@ -389,7 +398,7 @@ def main():
 
     # Migrate the package version number from a vLatest version number to a vOlder version number
     print(f'Setting version number to {version} in package.json')
-    replace_version_package_json(get_current_version(), version) # We rely on the `Update dependencies` workflow to update package-lock.json
+    replace_version_package_json(get_current_version(), version) # We rely on the `Rebuild` workflow to update package-lock.json
     run_git('add', 'package.json')
 
     # Migrate the changelog notes from vLatest version numbers to vOlder version numbers

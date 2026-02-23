@@ -17,8 +17,14 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   upload-artifacts:
+    if: github.triggering_actor != 'dependabot[bot]'
     strategy:
       fail-fast: false
       matrix:
@@ -39,15 +45,21 @@ jobs:
       - name: Dump GitHub event
         run: cat "${GITHUB_EVENT_PATH}"
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ^1.13.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.x'
+      - name: Assert best-effort artifact scan completed
+        uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -55,7 +67,6 @@ jobs:
           debug-artifact-name: my-debug-artifacts
           debug-database-name: my-db
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         id: analysis
@@ -66,6 +77,7 @@ jobs:
           expect-error: true
   download-and-check-artifacts:
     name: Download and check debug artifacts after failure in analyze
+    if: github.triggering_actor != 'dependabot[bot]'
     needs: upload-artifacts
     timeout-minutes: 45
     permissions:
@@ -73,9 +85,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
       - name: Check expected artifacts exist
-        shell: bash
         run: |
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do

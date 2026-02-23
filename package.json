@@ -1,101 +1,103 @@
 {
   "name": "codeql",
-  "version": "3.28.9",
+  "version": "4.32.5",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
-    "build": "tsc --build",
-    "test": "ava src/**.test.ts --serial --verbose",
-    "test-debug": "ava src/**.test.ts --serial --verbose --timeout=20m",
+    "_build_comment": "echo 'Run the full build so we typecheck the project and can reuse the transpiled files in npm test'",
+    "build": "./scripts/check-node-modules.sh && npm run transpile && node build.mjs",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 .",
-    "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
     "lint-ci": "SARIF_ESLINT_IGNORE_SUPPRESSED=true eslint --report-unused-disable-directives --max-warnings=0 . --format @microsoft/eslint-formatter-sarif --output-file=eslint.sarif",
-    "removeNPMAbsolutePaths": "removeNPMAbsolutePaths . --force"
+    "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
+    "ava": "npm run transpile && ava --serial --verbose",
+    "test": "npm run ava -- src/",
+    "test-debug": "npm run test -- --timeout=20m",
+    "transpile": "tsc --build --verbose"
   },
   "ava": {
     "typescript": {
       "rewritePaths": {
-        "src/": "lib/"
+        "src/": "build/"
       },
       "compile": false
     }
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/artifact": "^2.1.9",
+    "@actions/artifact": "^5.0.3",
     "@actions/artifact-legacy": "npm:@actions/artifact@^1.1.2",
-    "@actions/cache": "^4.0.0",
-    "@actions/core": "^1.11.1",
-    "@actions/exec": "^1.1.1",
-    "@actions/github": "^5.1.1",
+    "@actions/cache": "^5.0.5",
+    "@actions/core": "^2.0.3",
+    "@actions/exec": "^2.0.0",
+    "@actions/github": "^8.0.1",
     "@actions/glob": "^0.5.0",
-    "@actions/http-client": "^2.2.3",
-    "@actions/io": "^1.1.3",
-    "@actions/tool-cache": "^2.0.2",
-    "@octokit/plugin-retry": "^5.0.2",
-    "@octokit/types": "^13.7.0",
+    "@actions/http-client": "^3.0.0",
+    "@actions/io": "^2.0.0",
+    "@actions/tool-cache": "^3.0.1",
+    "@octokit/plugin-retry": "^8.0.0",
     "@schemastore/package": "0.0.10",
-    "@types/node-forge": "^1.3.11",
-    "@types/uuid": "^10.0.0",
-    "adm-zip": "^0.5.16",
-    "check-disk-space": "^3.4.0",
-    "console-log-level": "^1.4.1",
-    "del": "^6.1.1",
+    "archiver": "^7.0.1",
     "fast-deep-equal": "^3.1.3",
-    "file-url": "^3.0.0",
-    "follow-redirects": "^1.15.9",
-    "fs": "0.0.1-security",
-    "get-folder-size": "^2.0.1",
-    "js-yaml": "^4.1.0",
+    "follow-redirects": "^1.15.11",
+    "get-folder-size": "^5.0.0",
+    "https-proxy-agent": "^7.0.6",
+    "js-yaml": "^4.1.1",
     "jsonschema": "1.4.1",
-    "long": "^5.2.4",
-    "node-forge": "^1.3.1",
-    "path": "^0.12.7",
-    "semver": "^7.6.3",
-    "uuid": "^11.0.5",
-    "zlib": "^1.0.5"
+    "long": "^5.3.2",
+    "node-forge": "^1.3.3",
+    "semver": "^7.7.4",
+    "uuid": "^13.0.0"
   },
-  "//": [
-    "micromatch is an unspecified dependency of ava"
-  ],
   "devDependencies": {
-    "@ava/typescript": "4.1.0",
-    "@eslint/compat": "^1.1.1",
-    "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.19.0",
+    "@ava/typescript": "6.0.0",
+    "@eslint/compat": "^2.0.2",
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
-    "@types/adm-zip": "^0.5.7",
-    "@types/console-log-level": "^1.4.5",
+    "@octokit/types": "^16.0.0",
+    "@types/archiver": "^7.0.0",
     "@types/follow-redirects": "^1.14.4",
-    "@types/get-folder-size": "^2.0.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "20.9.0",
-    "@types/semver": "^7.5.8",
-    "@types/sinon": "^17.0.3",
-    "@typescript-eslint/eslint-plugin": "^8.22.0",
-    "@typescript-eslint/parser": "^8.22.0",
-    "ava": "^5.3.1",
+    "@types/node": "^20.19.9",
+    "@types/node-forge": "^1.3.14",
+    "@types/semver": "^7.7.1",
+    "@types/sinon": "^21.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.48.0",
+    "ava": "^6.4.1",
+    "esbuild": "^0.27.3",
     "eslint": "^8.57.1",
-    "eslint-import-resolver-typescript": "^3.7.0",
+    "eslint-import-resolver-typescript": "^3.8.7",
     "eslint-plugin-filenames": "^1.3.2",
-    "eslint-plugin-github": "^5.1.5",
+    "eslint-plugin-github": "^5.1.8",
     "eslint-plugin-import": "2.29.1",
+    "eslint-plugin-jsdoc": "^62.5.4",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "micromatch": "4.0.8",
-    "nock": "^14.0.0",
-    "removeNPMAbsolutePaths": "3.0.1",
-    "sinon": "^19.0.2",
-    "typescript": "^5.7.3"
+    "glob": "^11.1.0",
+    "nock": "^14.0.11",
+    "sinon": "^21.0.1",
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "@actions/tool-cache": {
       "semver": ">=6.3.1"
+    },
+    "@octokit/request-error": {
+      "semver": ">=5.1.1"
+    },
+    "@octokit/request": {
+      "semver": ">=8.4.1"
+    },
+    "@octokit/plugin-paginate-rest": {
+      "semver": ">=9.2.2"
     },
     "eslint-plugin-import": {
       "semver": ">=6.3.1"
     },
     "eslint-plugin-jsx-a11y": {
       "semver": ">=6.3.1"
-    }
+    },
+    "brace-expansion@2.0.1": "2.0.2",
+    "glob": "^11.1.0"
   }
 }

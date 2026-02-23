@@ -5,18 +5,18 @@ import * as actionsCache from "@actions/cache";
 
 import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
-import { CodeQL } from "./codeql";
-import type { Config } from "./config-utils";
+import { type CodeQL } from "./codeql";
+import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import {
+  asHTTPError,
   getErrorMessage,
-  isHTTPError,
   tryGetFolderBytes,
-  withTimeout,
+  waitForResultWithTimeLimit,
 } from "./util";
 
 // This constant should be bumped if we make a breaking change
@@ -50,8 +50,8 @@ export async function downloadTrapCaches(
   codeql: CodeQL,
   languages: Language[],
   logger: Logger,
-): Promise<Partial<Record<Language, string>>> {
-  const result: Partial<Record<Language, string>> = {};
+): Promise<{ [language: string]: string }> {
+  const result: { [language: string]: string } = {};
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
     codeql,
     languages,
@@ -96,7 +96,7 @@ export async function downloadTrapCaches(
     logger.info(
       `Looking in Actions cache for TRAP cache with key ${preferredKey}`,
     );
-    const found = await withTimeout(
+    const found = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.restoreCache([cacheDir], preferredKey, [
         // Fall back to any cache with the right key prefix
@@ -156,7 +156,7 @@ export async function uploadTrapCaches(
       process.env.GITHUB_SHA || "unknown",
     );
     logger.info(`Uploading TRAP cache to Actions cache with key ${key}`);
-    await withTimeout(
+    await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.saveCache([cacheDir], key),
       () => {
@@ -236,7 +236,7 @@ export async function cleanupTrapCaches(
     }
     return { trap_cache_cleanup_size_bytes: totalBytesCleanedUp };
   } catch (e) {
-    if (isHTTPError(e) && e.status === 403) {
+    if (asHTTPError(e)?.status === 403) {
       logger.warning(
         "Could not cleanup TRAP caches as the token did not have the required permissions. " +
           'To clean up TRAP caches, ensure the token has the "actions:write" permission. ' +

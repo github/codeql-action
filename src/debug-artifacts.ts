@@ -4,12 +4,12 @@ import * as path from "path";
 import * as artifact from "@actions/artifact";
 import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
-import AdmZip from "adm-zip";
-import del from "del";
+import archiver from "archiver";
 
 import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
-import { getCodeQL } from "./codeql";
+import { scanArtifactsForTokens } from "./artifact-scanner";
+import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
@@ -24,11 +24,12 @@ import {
   getCodeQLDatabasePath,
   getErrorMessage,
   GitHubVariant,
+  isInTestMode,
   listFolder,
 } from "./util";
 
 export function sanitizeArtifactName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_\\-]+/g, "");
+  return name.replace(/[^a-zA-Z0-9_-]+/g, "");
 }
 
 /**
@@ -44,44 +45,46 @@ export async function uploadCombinedSarifArtifacts(
 
   // Upload Actions SARIF artifacts for debugging when environment variable is set
   if (process.env["CODEQL_ACTION_DEBUG_COMBINED_SARIF"] === "true") {
-    logger.info(
-      "Uploading available combined SARIF files as Actions debugging artifact...",
-    );
+    await withGroup("Uploading combined SARIF debug artifact", async () => {
+      logger.info(
+        "Uploading available combined SARIF files as Actions debugging artifact...",
+      );
 
-    const baseTempDir = path.resolve(tempDir, "combined-sarif");
+      const baseTempDir = path.resolve(tempDir, "combined-sarif");
 
-    const toUpload: string[] = [];
+      const toUpload: string[] = [];
 
-    if (fs.existsSync(baseTempDir)) {
-      const outputDirs = fs.readdirSync(baseTempDir);
+      if (fs.existsSync(baseTempDir)) {
+        const outputDirs = fs.readdirSync(baseTempDir);
 
-      for (const outputDir of outputDirs) {
-        const sarifFiles = fs
-          .readdirSync(path.resolve(baseTempDir, outputDir))
-          .filter((f) => f.endsWith(".sarif"));
+        for (const outputDir of outputDirs) {
+          const sarifFiles = fs
+            .readdirSync(path.resolve(baseTempDir, outputDir))
+            .filter((f) => path.extname(f) === ".sarif");
 
-        for (const sarifFile of sarifFiles) {
-          toUpload.push(path.resolve(baseTempDir, outputDir, sarifFile));
+          for (const sarifFile of sarifFiles) {
+            toUpload.push(path.resolve(baseTempDir, outputDir, sarifFile));
+          }
         }
       }
-    }
 
-    try {
-      await uploadDebugArtifacts(
-        logger,
-        toUpload,
-        baseTempDir,
-        "combined-sarif-artifacts",
-        gitHubVariant,
-        codeQlVersion,
-      );
-    } catch (e) {
-      logger.warning(
-        `Failed to upload combined SARIF files as Actions debugging artifact. Reason: ${getErrorMessage(
-          e,
-        )}`,
-      );
-    }
+      try {
+        await uploadDebugArtifacts(
+          logger,
+          toUpload,
+          baseTempDir,
+          "combined-sarif-artifacts",
+          gitHubVariant,
+          codeQlVersion,
+        );
+      } catch (e) {
+        logger.warning(
+          `Failed to upload combined SARIF files as Actions debugging artifact. Reason: ${getErrorMessage(
+            e,
+          )}`,
+        );
+      }
+    });
   }
 }
 
@@ -132,6 +135,7 @@ function tryPrepareSarifDebugArtifact(
  * @return The path to the database bundle, or undefined if an error occurs.
  */
 async function tryBundleDatabase(
+  codeql: CodeQL,
   config: Config,
   language: Language,
   logger: Logger,
@@ -139,7 +143,7 @@ async function tryBundleDatabase(
   try {
     if (dbIsFinalized(config, language, logger)) {
       try {
-        return await createDatabaseBundleCli(config, language);
+        return await createDatabaseBundleCli(codeql, config, language);
       } catch (e) {
         logger.warning(
           `Failed to bundle database for ${language} using the CLI. ` +
@@ -164,6 +168,7 @@ async function tryBundleDatabase(
  * Logs and suppresses any errors that occur.
  */
 export async function tryUploadAllAvailableDebugArtifacts(
+  codeql: CodeQL,
   config: Config,
   logger: Logger,
   codeQlVersion: string | undefined,
@@ -205,6 +210,7 @@ export async function tryUploadAllAvailableDebugArtifacts(
         // Add database bundle
         logger.info("Preparing database bundle debug artifact...");
         const databaseBundle = await tryBundleDatabase(
+          codeql,
           config,
           language,
           logger,
@@ -240,6 +246,42 @@ export async function tryUploadAllAvailableDebugArtifacts(
   }
 }
 
+/**
+ * When a build matrix is used, multiple different jobs arising from the matrix may attempt to upload
+ * workflow artifacts with the same base name. In that case, only one of the uploads will succeed and
+ * the others will fail. This function inspects the matrix object to compute a suffix for the artifact
+ * name that uniquely identifies the matrix values of the current job to avoid name clashes.
+ *
+ * @param matrix A stringified JSON value, usually the value of the `matrix` input.
+ * @returns A suffix that uniquely identifies the `matrix` value for the current job, or `""` if there
+ * is no matrix value.
+ */
+export function getArtifactSuffix(matrix: string | undefined): string {
+  let suffix = "";
+  if (matrix) {
+    try {
+      const matrixObject = JSON.parse(matrix);
+      if (matrixObject !== null && typeof matrixObject === "object") {
+        for (const matrixKey of Object.keys(matrixObject as object).sort())
+          suffix += `-${matrixObject[matrixKey]}`;
+      } else {
+        core.warning("User-specified `matrix` input is not an object.");
+      }
+    } catch {
+      core.warning(
+        "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",
+      );
+    }
+  }
+  return suffix;
+}
+
+// Enumerates different, possible outcomes for artifact uploads.
+export type UploadArtifactsResult =
+  | "no-artifacts-to-upload"
+  | "upload-successful"
+  | "upload-failed";
+
 export async function uploadDebugArtifacts(
   logger: Logger,
   toUpload: string[],
@@ -247,15 +289,7 @@ export async function uploadDebugArtifacts(
   artifactName: string,
   ghVariant: GitHubVariant,
   codeQlVersion: string | undefined,
-): Promise<
-  | "no-artifacts-to-upload"
-  | "upload-successful"
-  | "upload-failed"
-  | "upload-not-supported"
-> {
-  if (toUpload.length === 0) {
-    return "no-artifacts-to-upload";
-  }
+): Promise<UploadArtifactsResult | "upload-not-supported"> {
   const uploadSupported = isSafeArtifactUpload(codeQlVersion);
 
   if (!uploadSupported) {
@@ -265,21 +299,40 @@ export async function uploadDebugArtifacts(
     return "upload-not-supported";
   }
 
-  let suffix = "";
-  const matrix = getOptionalInput("matrix");
-  if (matrix) {
-    try {
-      for (const [, matrixVal] of Object.entries(
-        JSON.parse(matrix) as any[][],
-      ).sort())
-        suffix += `-${matrixVal}`;
-    } catch {
-      core.info(
-        "Could not parse user-specified `matrix` input into JSON. The debug artifact will not be named with the user's `matrix` input.",
-      );
-    }
+  return uploadArtifacts(logger, toUpload, rootDir, artifactName, ghVariant);
+}
+
+/**
+ * Uploads the specified files as a single workflow artifact.
+ *
+ * @param logger The logger to use.
+ * @param toUpload The list of paths to include in the artifact.
+ * @param rootDir The root directory of the paths to include.
+ * @param artifactName The base name for the artifact.
+ * @param ghVariant The GitHub variant.
+ *
+ * @returns The outcome of the attempt to create and upload the artifact.
+ */
+export async function uploadArtifacts(
+  logger: Logger,
+  toUpload: string[],
+  rootDir: string,
+  artifactName: string,
+  ghVariant: GitHubVariant,
+): Promise<UploadArtifactsResult> {
+  if (toUpload.length === 0) {
+    return "no-artifacts-to-upload";
   }
 
+  // When running in test mode, perform a best effort scan of the debug artifacts. The artifact
+  // scanner is basic and not reliable or fast enough for production use, but it can help catch
+  // some issues early.
+  if (isInTestMode()) {
+    await scanArtifactsForTokens(toUpload, logger);
+    core.exportVariable("CODEQL_ACTION_ARTIFACT_SCAN_FINISHED", "true");
+  }
+
+  const suffix = getArtifactSuffix(getOptionalInput("matrix"));
   const artifactUploader = await getArtifactUploaderClient(logger, ghVariant);
 
   try {
@@ -340,11 +393,26 @@ async function createPartialDatabaseBundle(
   );
   // See `bundleDb` for explanation behind deleting existing db bundle.
   if (fs.existsSync(databaseBundlePath)) {
-    await del(databaseBundlePath, { force: true });
+    await fs.promises.rm(databaseBundlePath, { force: true });
   }
-  const zip = new AdmZip();
-  zip.addLocalFolder(databasePath);
-  zip.writeZip(databaseBundlePath);
+  const output = fs.createWriteStream(databaseBundlePath);
+  const zip = archiver("zip");
+
+  zip.on("error", (err) => {
+    throw err;
+  });
+
+  zip.on("warning", (err) => {
+    // Ignore ENOENT warnings. There's nothing anyone can do about it.
+    if (err.code !== "ENOENT") {
+      throw err;
+    }
+  });
+
+  zip.pipe(output);
+  zip.directory(databasePath, false);
+  await zip.finalize();
+
   return databaseBundlePath;
 }
 
@@ -352,13 +420,14 @@ async function createPartialDatabaseBundle(
  * Runs `codeql database bundle` command and returns the path.
  */
 async function createDatabaseBundleCli(
+  codeql: CodeQL,
   config: Config,
   language: Language,
 ): Promise<string> {
   const databaseBundlePath = await bundleDb(
     config,
     language,
-    await getCodeQL(config.codeQLCmd),
+    codeql,
     `${config.debugDatabaseName}-${language}`,
   );
   return databaseBundlePath;

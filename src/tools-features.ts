@@ -3,15 +3,12 @@ import * as semver from "semver";
 import type { VersionInfo } from "./codeql";
 
 export enum ToolsFeature {
-  AnalysisSummaryV2IsDefault = "analysisSummaryV2Default",
-  BuildModeOption = "buildModeOption",
+  BuiltinExtractorsSpecifyDefaultQueries = "builtinExtractorsSpecifyDefaultQueries",
+  BundleSupportsIncludeOption = "bundleSupportsIncludeOption",
+  BundleSupportsOverlay = "bundleSupportsOverlay",
   DatabaseInterpretResultsSupportsSarifRunProperty = "databaseInterpretResultsSupportsSarifRunProperty",
-  IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
-  InformsAboutUnsupportedPathFilters = "informsAboutUnsupportedPathFilters",
-  SetsCodeqlRunnerEnvVar = "setsCodeqlRunnerEnvVar",
-  TraceCommandUseBuildMode = "traceCommandUseBuildMode",
-  SarifMergeRunsFromEqualCategory = "sarifMergeRunsFromEqualCategory",
   ForceOverwrite = "forceOverwrite",
+  IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   PythonDefaultIsToNotExtractStdlib = "pythonDefaultIsToNotExtractStdlib",
 }
 

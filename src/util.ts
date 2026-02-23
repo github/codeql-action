@@ -1,13 +1,10 @@
 import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as os from "os";
 import * as path from "path";
-import { promisify } from "util";
 
 import * as core from "@actions/core";
-import * as exec from "@actions/exec/lib/exec";
 import * as io from "@actions/io";
-import checkDiskSpace from "check-disk-space";
-import del from "del";
 import getFolderSize from "get-folder-size";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
@@ -18,6 +15,12 @@ import type { Config, Pack } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+
+/**
+ * The name of the file containing the base database OIDs, as stored in the
+ * root of the database location.
+ */
+const BASE_DATABASE_OIDS_FILE_NAME = "base-database-oids.json";
 
 /**
  * Specifies bundle versions that are known to be broken
@@ -96,6 +99,16 @@ export interface SarifResult {
       };
     };
   }>;
+  relatedLocations?: Array<{
+    physicalLocation: {
+      artifactLocation: {
+        uri: string;
+      };
+      region?: {
+        startLine?: number;
+      };
+    };
+  }>;
   partialFingerprints: {
     primaryLocationLineHash?: string;
   };
@@ -158,7 +171,7 @@ export async function withTmpDir<T>(
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
   const result = await body(tmpDir);
-  await del(tmpDir, { force: true });
+  await fs.promises.rm(tmpDir, { force: true, recursive: true });
   return result;
 }
 
@@ -302,13 +315,13 @@ function getCgroupMemoryLimitBytes(
 }
 
 /**
- * Get the value of the codeql `--ram` flag as configured by the `ram` input.
- * If no value was specified, the total available memory will be used minus a
+ * Get the maximum amount of memory CodeQL is allowed to use. If no limit has been
+ * configured by the user, then the total available memory will be used minus a
  * threshold reserved for the OS.
  *
- * @returns {number} the amount of RAM to use, in megabytes
+ * @returns {number} the amount of RAM CodeQL is allowed to use, in megabytes
  */
-export function getMemoryFlagValue(
+export function getCodeQLMemoryLimit(
   userInput: string | undefined,
   logger: Logger,
 ): number {
@@ -330,23 +343,8 @@ export function getMemoryFlag(
   userInput: string | undefined,
   logger: Logger,
 ): string {
-  const megabytes = getMemoryFlagValue(userInput, logger);
+  const megabytes = getCodeQLMemoryLimit(userInput, logger);
   return `--ram=${megabytes}`;
-}
-
-/**
- * Get the codeql flag to specify whether to add code snippets to the sarif file.
- *
- * @returns string
- */
-export function getAddSnippetsFlag(
-  userInput: string | boolean | undefined,
-): string {
-  if (typeof userInput === "string") {
-    // have to process specifically because any non-empty string is truthy
-    userInput = userInput.toLowerCase() === "true";
-  }
-  return userInput ? "--sarif-add-snippets" : "--no-sarif-add-snippets";
 }
 
 /**
@@ -504,6 +502,18 @@ export function getCodeQLDatabasePath(config: Config, language: Language) {
 }
 
 /**
+ * Get the path where the generated query suite for the given language lives.
+ */
+export function getGeneratedSuitePath(config: Config, language: Language) {
+  return path.resolve(
+    config.dbLocation,
+    language,
+    "temp",
+    "config-queries.qls",
+  );
+}
+
+/**
  * Parses user input of a github.com or GHES URL to a canonical form.
  * Removes any API prefix or suffix if one is present.
  */
@@ -552,13 +562,17 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
 let hasBeenWarnedAboutVersion = false;
 
 export enum GitHubVariant {
-  DOTCOM,
-  GHES,
-  GHE_DOTCOM,
+  /** [GitHub.com](https://github.com) */
+  DOTCOM = "GitHub.com",
+  /** [GitHub Enterprise Server](https://docs.github.com/en/enterprise-server@latest/admin/overview/about-github-enterprise-server) */
+  GHES = "GitHub Enterprise Server",
+  /** [GitHub Enterprise Cloud with data residency](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency) */
+  GHEC_DR = "GitHub Enterprise Cloud with data residency",
 }
+
 export type GitHubVersion =
   | { type: GitHubVariant.DOTCOM }
-  | { type: GitHubVariant.GHE_DOTCOM }
+  | { type: GitHubVariant.GHEC_DR }
   | { type: GitHubVariant.GHES; version: string };
 
 export function checkGitHubVersionInRange(
@@ -634,11 +648,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(String(EnvVar.FEATURE_MULTI_LANGUAGE), "false");
-  core.exportVariable(String(EnvVar.FEATURE_SANDWICH), "false");
-  core.exportVariable(String(EnvVar.FEATURE_SARIF_COMBINE), "true");
-  core.exportVariable(String(EnvVar.FEATURE_WILL_UPLOAD), "true");
-  core.exportVariable(String(EnvVar.VERSION), version);
+  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
+  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  core.exportVariable(EnvVar.VERSION, version);
 }
 
 /**
@@ -648,6 +662,17 @@ export function getRequiredEnvParam(paramName: string): string {
   const value = process.env[paramName];
   if (value === undefined || value.length === 0) {
     throw new Error(`${paramName} environment variable must be set`);
+  }
+  return value;
+}
+
+/**
+ * Get an environment variable, but return `undefined` if it is not set or empty.
+ */
+export function getOptionalEnvVar(paramName: string): string | undefined {
+  const value = process.env[paramName];
+  if (value?.trim().length === 0) {
+    return undefined;
   }
   return value;
 }
@@ -671,8 +696,22 @@ export class ConfigurationError extends Error {
   }
 }
 
-export function isHTTPError(arg: any): arg is HTTPError {
-  return arg?.status !== undefined && Number.isInteger(arg.status);
+export function asHTTPError(arg: any): HTTPError | undefined {
+  if (
+    typeof arg !== "object" ||
+    arg === null ||
+    typeof arg.message !== "string"
+  ) {
+    return undefined;
+  }
+  if (Number.isInteger(arg.status)) {
+    return new HTTPError(arg.message as string, arg.status as number);
+  }
+  // See https://github.com/actions/toolkit/blob/acb230b99a46ed33a3f04a758cd68b47b9a82908/packages/tool-cache/src/tool-cache.ts#L19
+  if (Number.isInteger(arg.httpStatusCode)) {
+    return new HTTPError(arg.message as string, arg.httpStatusCode as number);
+  }
+  return undefined;
 }
 
 let cachedCodeQlVersion: undefined | VersionInfo = undefined;
@@ -695,6 +734,10 @@ export async function codeQlVersionAtLeast(
   return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
+export function getBaseDatabaseOidsFilePath(config: Config): string {
+  return path.join(config.dbLocation, BASE_DATABASE_OIDS_FILE_NAME);
+}
+
 // Create a bundle for the given DB, if it doesn't already exist
 export async function bundleDb(
   config: Config,
@@ -710,9 +753,29 @@ export async function bundleDb(
   // from somewhere else or someone trying to make the action upload a
   // non-database file.
   if (fs.existsSync(databaseBundlePath)) {
-    await del(databaseBundlePath, { force: true });
+    await fs.promises.rm(databaseBundlePath, { force: true });
   }
-  await codeql.databaseBundle(databasePath, databaseBundlePath, dbName);
+  // When overlay is enabled, the base database OIDs file is included at the
+  // root of the database cluster. However when we bundle a database, we only
+  // include the per-language database. So, to ensure the base database OIDs
+  // file is included in the database bundle, we copy it from the cluster into
+  // the individual database location before bundling.
+  const baseDatabaseOidsFilePath = getBaseDatabaseOidsFilePath(config);
+  const additionalFiles: string[] = [];
+  if (fs.existsSync(baseDatabaseOidsFilePath)) {
+    await fsPromises.copyFile(
+      baseDatabaseOidsFilePath,
+      path.join(databasePath, BASE_DATABASE_OIDS_FILE_NAME),
+    );
+    additionalFiles.push(BASE_DATABASE_OIDS_FILE_NAME);
+  }
+  // Create the bundle, including the base database OIDs file if it exists
+  await codeql.databaseBundle(
+    databasePath,
+    databaseBundlePath,
+    dbName,
+    additionalFiles,
+  );
   return databaseBundlePath;
 }
 
@@ -740,16 +803,36 @@ export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
 }
 
-/*
- * Returns whether we are in test mode.
+/**
+ * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
  *
- * In test mode, we don't upload SARIF results or status reports to the GitHub API.
+ * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
  */
 export function isInTestMode(): boolean {
   return process.env[EnvVar.TEST_MODE] === "true";
 }
 
-/*
+/**
+ * Returns whether we specifically want to skip uploading SARIF files.
+ */
+export function shouldSkipSarifUpload(): boolean {
+  return isInTestMode() || process.env[EnvVar.SKIP_SARIF_UPLOAD] === "true";
+}
+
+/**
+ * Get the testing environment.
+ *
+ * This is set if the CodeQL Action is running in a non-production environment.
+ */
+export function getTestingEnvironment(): string | undefined {
+  const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
+  if (testingEnvironment === "") {
+    return undefined;
+  }
+  return testingEnvironment;
+}
+
+/**
  * Returns whether the path in the argument represents an existing directory.
  */
 export function doesDirectoryExist(dirPath: string): boolean {
@@ -796,7 +879,8 @@ export async function tryGetFolderBytes(
   quiet: boolean = false,
 ): Promise<number | undefined> {
   try {
-    return await promisify<string, number>(getFolderSize)(cacheDir);
+    // tolerate some errors since we're only estimating the size
+    return await getFolderSize.loose(cacheDir);
   } catch (e) {
     if (!quiet || logger.isDebug()) {
       logger.warning(
@@ -829,7 +913,7 @@ let hadTimeout = false;
  * @param onTimeout A callback to call if the promise times out.
  * @returns The result of the promise, or undefined if the promise times out.
  */
-export async function withTimeout<T>(
+export async function waitForResultWithTimeLimit<T>(
   timeoutMs: number,
   promise: Promise<T>,
   onTimeout: () => void,
@@ -859,7 +943,7 @@ export async function withTimeout<T>(
  * Check if the global hadTimeout variable has been set, and if so then
  * exit the process to ensure any background tasks that are still running
  * are killed. This should be called at the end of execution if the
- * `withTimeout` function has been used.
+ * `waitForResultWithTimeLimit` function has been used.
  */
 export async function checkForTimeout() {
   if (hadTimeout === true) {
@@ -975,34 +1059,6 @@ export function fixInvalidNotifications(
   return newSarif;
 }
 
-/**
- * Removes duplicates from the sarif file.
- *
- * When `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX` is set to true, this will
- * simply rename the input file to the output file. Otherwise, it will parse the
- * input file as JSON, remove duplicate locations from the SARIF notification
- * objects, and write the result to the output file.
- *
- * For context, see documentation of:
- * `CODEQL_ACTION_DISABLE_DUPLICATE_LOCATION_FIX`. */
-export function fixInvalidNotificationsInFile(
-  inputPath: string,
-  outputPath: string,
-  logger: Logger,
-): void {
-  if (process.env[EnvVar.DISABLE_DUPLICATE_LOCATION_FIX] === "true") {
-    logger.info(
-      "SARIF notification object duplicate location fix disabled by the " +
-        `${EnvVar.DISABLE_DUPLICATE_LOCATION_FIX} environment variable.`,
-    );
-    fs.renameSync(inputPath, outputPath);
-  } else {
-    let sarif = JSON.parse(fs.readFileSync(inputPath, "utf8")) as SarifFile;
-    sarif = fixInvalidNotifications(sarif, logger);
-    fs.writeFileSync(outputPath, JSON.stringify(sarif));
-  }
-}
-
 export function wrapError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -1032,23 +1088,17 @@ export async function checkDiskUsage(
   logger: Logger,
 ): Promise<DiskUsage | undefined> {
   try {
-    // We avoid running the `df` binary under the hood for macOS ARM runners with SIP disabled.
-    if (
-      process.platform === "darwin" &&
-      (process.arch === "arm" || process.arch === "arm64") &&
-      !(await checkSipEnablement(logger))
-    ) {
-      return undefined;
-    }
-
-    const diskUsage = await checkDiskSpace(
+    const diskUsage = await fsPromises.statfs(
       getRequiredEnvParam("GITHUB_WORKSPACE"),
     );
-    const gbInBytes = 1024 * 1024 * 1024;
-    if (diskUsage.free < 2 * gbInBytes) {
+
+    const blockSizeInBytes = diskUsage.bsize;
+    const numBlocksPerMb = (1024 * 1024) / blockSizeInBytes;
+    const numBlocksPerGb = (1024 * 1024 * 1024) / blockSizeInBytes;
+    if (diskUsage.bavail < 2 * numBlocksPerGb) {
       const message =
         "The Actions runner is running low on disk space " +
-        `(${(diskUsage.free / gbInBytes).toPrecision(4)} GB available).`;
+        `(${(diskUsage.bavail / numBlocksPerMb).toPrecision(4)} MB available).`;
       if (process.env[EnvVar.HAS_WARNED_ABOUT_DISK_SPACE] !== "true") {
         logger.warning(message);
       } else {
@@ -1057,8 +1107,8 @@ export async function checkDiskUsage(
       core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
-      numAvailableBytes: diskUsage.free,
-      numTotalBytes: diskUsage.size,
+      numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
+      numTotalBytes: diskUsage.blocks * blockSizeInBytes,
     };
   } catch (error) {
     logger.warning(
@@ -1069,43 +1119,68 @@ export async function checkDiskUsage(
 }
 
 /**
- * Prompt the customer to upgrade to CodeQL Action v3, if appropriate.
+ * Prompt the customer to upgrade to CodeQL Action v4, if appropriate.
  *
- * Check whether a customer is running v1 or v2. If they are, and we can determine that the GitHub
- * instance supports v3, then log an error prompting the customer to upgrade to v3.
+ * Check whether a customer is running v3. If they are, and we can determine that the GitHub
+ * instance supports v4, then log an error prompting the customer to upgrade to v4.
  */
 export function checkActionVersion(
   version: string,
   githubVersion: GitHubVersion,
 ) {
   if (
-    !semver.satisfies(version, ">=3") && // do not log error if the customer is already running v3
+    !semver.satisfies(version, ">=4") && // do not log error if the customer is already running v4
     !process.env[EnvVar.LOG_VERSION_DEPRECATION] // do not log error if we have already
   ) {
-    // Only error for versions of GHES that are compatible with CodeQL Action version 3.
+    // Only error for versions of GHES that are compatible with CodeQL Action version 4.
     //
-    // GHES 3.11 shipped without the v3 tag, but it also shipped without this warning message code.
-    // Therefore users who are seeing this warning message code have pulled in a new version of the
-    // Action, and with it the v3 tag.
+    // GHES 3.20 is the first version to ship with the v4 tag and this warning message code.
+    // Therefore, users who are seeing this warning message code are running on GHES 3.20 or newer,
+    // and should update to CodeQL Action v4.
     if (
       githubVersion.type === GitHubVariant.DOTCOM ||
-      githubVersion.type === GitHubVariant.GHE_DOTCOM ||
+      githubVersion.type === GitHubVariant.GHEC_DR ||
       (githubVersion.type === GitHubVariant.GHES &&
         semver.satisfies(
           semver.coerce(githubVersion.version) ?? "0.0.0",
-          ">=3.11",
+          ">=3.20",
         ))
     ) {
-      core.error(
-        "CodeQL Action major versions v1 and v2 have been deprecated. " +
-          "Please update all occurrences of the CodeQL Action in your workflow files to v3. " +
+      core.warning(
+        "CodeQL Action v3 will be deprecated in December 2026. " +
+          "Please update all occurrences of the CodeQL Action in your workflow files to v4. " +
           "For more information, see " +
-          "https://github.blog/changelog/2025-01-10-code-scanning-codeql-action-v2-is-now-deprecated/",
+          "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
       core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
     }
   }
+}
+
+/**
+ * This will check whether the given GitHub version satisfies the given range,
+ * taking into account that a range like >=3.18 will also match the GHES 3.18
+ * pre-release/RC versions.
+ *
+ * When the given `githubVersion` is not a GHES version, or if the version
+ * is invalid, this will return `defaultIfInvalid`.
+ */
+export function satisfiesGHESVersion(
+  ghesVersion: string,
+  range: string,
+  defaultIfInvalid: boolean,
+): boolean {
+  const semverVersion = semver.coerce(ghesVersion);
+  if (semverVersion === null) {
+    return defaultIfInvalid;
+  }
+
+  // We always drop the pre-release part of the version, since anything that
+  // applies to GHES 3.18.0 should also apply to GHES 3.18.0.pre1.
+  semverVersion.prerelease = [];
+
+  return semver.satisfies(semverVersion, range);
 }
 
 /**
@@ -1127,62 +1202,13 @@ export function cloneObject<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
 
-// The first time this function is called, it runs `csrutil status` to determine
-// whether System Integrity Protection is enabled; and saves the result in an
-// environment variable. Afterwards, simply return the value of the environment
-// variable.
-export async function checkSipEnablement(
-  logger: Logger,
-): Promise<boolean | undefined> {
-  if (
-    process.env[EnvVar.IS_SIP_ENABLED] !== undefined &&
-    ["true", "false"].includes(process.env[EnvVar.IS_SIP_ENABLED])
-  ) {
-    return process.env[EnvVar.IS_SIP_ENABLED] === "true";
-  }
-
-  try {
-    const sipStatusOutput = await exec.getExecOutput("csrutil status");
-    if (sipStatusOutput.exitCode === 0) {
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: enabled.",
-        )
-      ) {
-        core.exportVariable(EnvVar.IS_SIP_ENABLED, "true");
-        return true;
-      }
-      if (
-        sipStatusOutput.stdout.includes(
-          "System Integrity Protection status: disabled.",
-        )
-      ) {
-        core.exportVariable(EnvVar.IS_SIP_ENABLED, "false");
-        return false;
-      }
-    }
-    return undefined;
-  } catch (e) {
-    logger.warning(
-      `Failed to determine if System Integrity Protection was enabled: ${e}`,
-    );
-    return undefined;
-  }
-}
-
-export async function cleanUpGlob(glob: string, name: string, logger: Logger) {
+export async function cleanUpPath(file: string, name: string, logger: Logger) {
   logger.debug(`Cleaning up ${name}.`);
   try {
-    const deletedPaths = await del(glob, { force: true });
-    if (deletedPaths.length === 0) {
-      logger.warning(
-        `Failed to clean up ${name}: no files found matching ${glob}.`,
-      );
-    } else if (deletedPaths.length === 1) {
-      logger.debug(`Cleaned up ${name}.`);
-    } else {
-      logger.debug(`Cleaned up ${name} (${deletedPaths.length} files).`);
-    }
+    await fs.promises.rm(file, {
+      force: true,
+      recursive: true,
+    });
   } catch (e) {
     logger.warning(`Failed to clean up ${name}: ${e}.`);
   }
@@ -1199,5 +1225,110 @@ export async function isBinaryAccessible(
   } catch (e) {
     logger.debug(`Could not find ${binary}: ${e}`);
     return false;
+  }
+}
+
+export async function asyncFilter<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<T[]> {
+  const results = await Promise.all(array.map(predicate));
+  return array.filter((_, index) => results[index]);
+}
+
+export async function asyncSome<T>(
+  array: T[],
+  predicate: (value: T) => Promise<boolean>,
+): Promise<boolean> {
+  const results = await Promise.all(array.map(predicate));
+  return results.some((result) => result);
+}
+
+/**
+ * Checks that `value` is neither `undefined` nor `null`.
+ * @param value The value to test.
+ * @returns Narrows the type of `value` to exclude `undefined` and `null`.
+ */
+export function isDefined<T>(value: T | null | undefined): value is T {
+  return value !== undefined && value !== null;
+}
+
+/** Like `Object.entries`, but typed so that the key elements of the result have the
+ * same type as the keys of the input object. Note that this may not be sound if the input
+ * object has been cast to `T` from a subtype of `T` and contains additional keys that
+ * are not represented by `keyof T`.
+ */
+export function unsafeEntriesInvariant<T extends Record<string, any>>(
+  object: T,
+): Array<[keyof T, Exclude<T[keyof T], undefined>]> {
+  return Object.entries(object).filter(
+    ([_, val]) => val !== undefined,
+  ) as Array<[keyof T, Exclude<T[keyof T], undefined>]>;
+}
+
+export enum CleanupLevel {
+  Clear = "clear",
+  Overlay = "overlay",
+}
+
+/**
+ * Like `join`, but limits the number of elements that are joined together to `limit`
+ * and appends `...` if the limit is exceeded.
+ *
+ * @param array The array to join.
+ * @param separator The separator to join the array with.
+ * @param limit The maximum number of elements from `array` to join.
+ * @returns The result of joining at most `limit`-many elements from `array`.
+ */
+export function joinAtMost(
+  array: string[],
+  separator: string,
+  limit: number,
+): string {
+  if (limit > 0 && array.length > limit) {
+    array = array.slice(0, limit);
+    array.push("...");
+  }
+
+  return array.join(separator);
+}
+
+/** A success result. */
+type Success<T> = Result<T, never>;
+/** A failure result. */
+type Failure<E> = Result<never, E>;
+
+/**
+ * A simple result type representing either a success or a failure.
+ */
+export class Result<T, E> {
+  private constructor(
+    private readonly _ok: boolean,
+    public readonly value: T | E,
+  ) {}
+
+  /** Creates a success result. */
+  static success<T>(value: T): Success<T> {
+    return new Result(true, value) as Success<T>;
+  }
+
+  /** Creates a failure result. */
+  static failure<E>(value: E): Failure<E> {
+    return new Result(false, value) as Failure<E>;
+  }
+
+  /** Whether this result represents a success. */
+  isSuccess(): this is Success<T> {
+    return this._ok;
+  }
+
+  /** Whether this result represents a failure. */
+  isFailure(): this is Failure<E> {
+    return !this._ok;
+  }
+
+  /** Get the value if this is a success, or return the default value if this is a failure. */
+  orElse<U>(defaultValue: U): T | U {
+    return this.isSuccess() ? this.value : defaultValue;
   }
 }

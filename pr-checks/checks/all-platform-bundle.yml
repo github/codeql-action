@@ -1,16 +1,17 @@
 name: "All-platform bundle"
 description: "Tests using an all-platform CodeQL Bundle"
+operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["nightly-latest"]
-operatingSystems: ["ubuntu"]
 useAllPlatformBundle: "true"
+installGo: true
+installDotNet: true
 steps:
   - id: init
     uses: ./../action/init
     with:
       # Swift is not supported on Ubuntu so we manually exclude it from the list here
-      languages: cpp,csharp,go,java,javascript,python,ruby 
+      languages: cpp,csharp,go,java,javascript,python,ruby
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Build code
-    shell: bash
     run: ./build.sh
   - uses: ./../action/analyze

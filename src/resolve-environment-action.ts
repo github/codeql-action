@@ -13,6 +13,7 @@ import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
 import {
   sendStatusReport,
+  sendUnhandledErrorStatusReport,
   createStatusReportBase,
   getActionsStatus,
   ActionName,
@@ -22,14 +23,17 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
+  ConfigurationError,
   getErrorMessage,
   wrapError,
 } from "./util";
 
 const ENVIRONMENT_OUTPUT_NAME = "environment";
 
-async function run() {
-  const startedAt = new Date();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   const logger = getActionsLogger();
 
   let config: Config | undefined;
@@ -53,7 +57,7 @@ async function run() {
 
     config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
-      throw new Error(
+      throw new ConfigurationError(
         "Config file could not be found at expected location. Has the 'init' action been called?",
       );
     }
@@ -114,13 +118,21 @@ async function run() {
 }
 
 async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
   try {
-    await run();
+    await run(startedAt);
   } catch (error) {
     core.setFailed(
       `${ActionName.ResolveEnvironment} action failed: ${getErrorMessage(
         error,
       )}`,
+    );
+    await sendUnhandledErrorStatusReport(
+      ActionName.ResolveEnvironment,
+      startedAt,
+      error,
+      logger,
     );
   }
   await checkForTimeout();

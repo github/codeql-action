@@ -6,7 +6,7 @@ inputs:
     description: The name of the check run to add text to.
     required: false
   output:
-    description: The path of the directory in which to save the SARIF results
+    description: The path of the directory in which to save the SARIF results from the CodeQL CLI.
     required: false
     default: "../results"
   upload:
@@ -19,9 +19,10 @@ inputs:
     # If changing this, make sure to update workflow.ts accordingly.
     default: "always"
   cleanup-level:
-    description: "Level of cleanup to perform on CodeQL databases at the end of the analyze step. This should either be 'none' to skip cleanup, or be a valid argument for the --cache-cleanup flag of the CodeQL CLI command 'codeql database cleanup' as documented at https://codeql.github.com/docs/codeql-cli/manual/database-cleanup"
+    description: >-
+      DEPRECATED. This option is ignored since, for performance reasons, the CodeQL Action automatically
+      manages cleanup of intermediate results.
     required: false
-    default: "brutal"
   ram:
     description: >-
       The amount of memory in MB that can be used by CodeQL for database finalization and query execution.
@@ -31,14 +32,10 @@ inputs:
       and 13GB for macOS).
     required: false
   add-snippets:
-    description: Specify whether or not to add code snippets to the output sarif file.
+    description: Does not have any effect.
     required: false
-    default: "false"
     deprecationMessage: >-
-      The input "add-snippets" is deprecated and will be removed on the first release in August 2025.
-      When this input is set to true it is expected to add code snippets with an alert to the SARIF file.
-      However, since Code Scanning ignores code snippets provided as part of a SARIF file this is currently
-      a no operation. No alternative is available.
+      The input "add-snippets" has been removed and no longer has any effect.
   skip-queries:
     description: If this option is set, the CodeQL database will be built but no queries will be run on it. Thus, no results will be produced.
     required: false
@@ -57,7 +54,7 @@ inputs:
     # If changing this, make sure to update workflow.ts accordingly.
     default: ${{ github.workspace }}
   ref:
-    description: "The ref where results will be uploaded. If not provided, the Action will use the GITHUB_REF environment variable. If provided, the sha input must be provided as well. This input is ignored for pull requests from forks."
+    description: "The ref where results will be uploaded. If not provided, the Action will use the GITHUB_REF environment variable. If provided, the sha input must be provided as well. This input is ignored for pull requests from forks. Expected format: refs/heads/<branch name>, refs/tags/<tag>, refs/pull/<number>/merge, or refs/pull/<number>/head."
     required: false
   sha:
     description: "The sha of the HEAD of the ref where results will be uploaded. If not provided, the Action will use the GITHUB_SHA environment variable. If provided, the ref input must be provided as well. This input is ignored for pull requests from forks."
@@ -69,6 +66,12 @@ inputs:
     description: Whether to upload the resulting CodeQL database
     required: false
     default: "true"
+  post-processed-sarif-path:
+    description: >-
+      Before uploading the SARIF files produced by the CodeQL CLI, the CodeQL Action may perform some post-processing
+      on them. Ordinarily, these post-processed SARIF files are not saved to disk. However, if a path is provided as an
+      argument for this input, they are written to the specified directory.
+    required: false
   wait-for-processing:
     description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
     required: true
@@ -91,6 +94,6 @@ outputs:
   sarif-id:
     description: The ID of the uploaded SARIF file.
 runs:
-  using: node20
+  using: node24
   main: "../lib/analyze-action.js"
   post: "../lib/analyze-action-post.js"

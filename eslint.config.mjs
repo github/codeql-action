@@ -12,6 +12,7 @@ import filenames from "eslint-plugin-filenames";
 import github from "eslint-plugin-github";
 import _import from "eslint-plugin-import";
 import noAsyncForeach from "eslint-plugin-no-async-foreach";
+import jsdoc from "eslint-plugin-jsdoc";
 import globals from "globals";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -26,9 +27,11 @@ export default [
   {
     ignores: [
       "**/webpack.config.js",
+      "build/**/*",
       "lib/**/*",
       "src/testdata/**/*",
       "tests/**/*",
+      "build.mjs",
       "eslint.config.mjs",
       ".github/**/*",
     ],
@@ -50,6 +53,7 @@ export default [
       github: fixupPluginRules(github),
       import: fixupPluginRules(_import),
       "no-async-foreach": noAsyncForeach,
+      "jsdoc": jsdoc,
     },
 
     languageOptions: {
@@ -74,7 +78,7 @@ export default [
 
         typescript: {},
       },
-      "import/ignore": ["sinon", "uuid", "@octokit/plugin-retry"],
+      "import/ignore": ["sinon", "uuid", "@octokit/plugin-retry", "del", "get-folder-size"],
     },
 
     rules: {
@@ -129,7 +133,18 @@ export default [
       "no-sequences": "error",
       "no-shadow": "off",
       "@typescript-eslint/no-shadow": "error",
+      "@typescript-eslint/prefer-optional-chain": "error",
       "one-var": ["error", "never"],
+
+      // Check param names to ensure that we don't have outdated JSDocs.
+      "jsdoc/check-param-names": [
+        "error",
+        {
+          // We don't currently require full JSDoc coverage, so this rule
+          // should not error on missing @param annotations.
+          disableMissingParamChecks: true,
+        }
+      ],
     },
   },
   {
@@ -138,11 +153,18 @@ export default [
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-enum-comparison": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/no-var-requires": "off",
       "@typescript-eslint/prefer-regexp-exec": "off",
       "@typescript-eslint/require-await": "off",
       "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+        }
+      ],
       "func-style": "off",
     },
   },

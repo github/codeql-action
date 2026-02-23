@@ -2,21 +2,27 @@ import { TextDecoder } from "node:util";
 import path from "path";
 
 import * as github from "@actions/github";
-import { TestFn } from "ava";
+import { ExecutionContext, TestFn } from "ava";
 import nock from "nock";
 import * as sinon from "sinon";
 
+import { getActionVersion } from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
+import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
+import { EnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
+  featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay-database-utils";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -140,34 +146,99 @@ export function setupActionsVars(tempDir: string, toolsDir: string) {
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
   process.env["GITHUB_WORKSPACE"] = tempDir;
+  process.env["GITHUB_EVENT_NAME"] = "push";
 }
 
+type LogLevel = "debug" | "info" | "warning" | "error";
+
 export interface LoggedMessage {
-  type: "debug" | "info" | "warning" | "error";
+  type: LogLevel;
   message: string | Error;
 }
 
-export function getRecordingLogger(messages: LoggedMessage[]): Logger {
+export class RecordingLogger implements Logger {
+  messages: LoggedMessage[] = [];
+  groups: string[] = [];
+  unfinishedGroups: Set<string> = new Set();
+  private currentGroup: string | undefined = undefined;
+
+  constructor(private readonly logToConsole: boolean = true) {}
+
+  private addMessage(level: LogLevel, message: string | Error): void {
+    this.messages.push({ type: level, message });
+
+    if (this.logToConsole) {
+      // eslint-disable-next-line no-console
+      console.debug(message);
+    }
+  }
+
+  isDebug() {
+    return true;
+  }
+
+  debug(message: string) {
+    this.addMessage("debug", message);
+  }
+
+  info(message: string) {
+    this.addMessage("info", message);
+  }
+
+  warning(message: string | Error) {
+    this.addMessage("warning", message);
+  }
+
+  error(message: string | Error) {
+    this.addMessage("error", message);
+  }
+
+  startGroup(name: string) {
+    this.groups.push(name);
+    this.currentGroup = name;
+    this.unfinishedGroups.add(name);
+  }
+
+  endGroup() {
+    if (this.currentGroup !== undefined) {
+      this.unfinishedGroups.delete(this.currentGroup);
+    }
+    this.currentGroup = undefined;
+  }
+}
+
+export function getRecordingLogger(
+  messages: LoggedMessage[],
+  { logToConsole }: { logToConsole?: boolean } = { logToConsole: true },
+): Logger {
   return {
     debug: (message: string) => {
       messages.push({ type: "debug", message });
-      // eslint-disable-next-line no-console
-      console.debug(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.debug(message);
+      }
     },
     info: (message: string) => {
       messages.push({ type: "info", message });
-      // eslint-disable-next-line no-console
-      console.info(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.info(message);
+      }
     },
     warning: (message: string | Error) => {
       messages.push({ type: "warning", message });
-      // eslint-disable-next-line no-console
-      console.warn(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.warn(message);
+      }
     },
     error: (message: string | Error) => {
       messages.push({ type: "error", message });
-      // eslint-disable-next-line no-console
-      console.error(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.error(message);
+      }
     },
     isDebug: () => true,
     startGroup: () => undefined,
@@ -175,10 +246,73 @@ export function getRecordingLogger(messages: LoggedMessage[]): Logger {
   };
 }
 
+export function checkExpectedLogMessages(
+  t: ExecutionContext<any>,
+  messages: LoggedMessage[],
+  expectedMessages: string[],
+) {
+  const missingMessages: string[] = [];
+
+  for (const expectedMessage of expectedMessages) {
+    if (
+      !messages.some(
+        (msg) =>
+          typeof msg.message === "string" &&
+          msg.message.includes(expectedMessage),
+      )
+    ) {
+      missingMessages.push(expectedMessage);
+    }
+  }
+
+  if (missingMessages.length > 0) {
+    const listify = (lines: string[]) =>
+      lines.map((m) => ` - '${m}'`).join("\n");
+
+    t.fail(
+      `Expected\n\n${listify(missingMessages)}\n\nin the logger output, but didn't find it in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
+    );
+  } else {
+    t.pass();
+  }
+}
+
+/**
+ * Initialises a recording logger and calls `body` with it.
+ *
+ * @param body The test that requires a recording logger.
+ * @returns The logged messages.
+ */
+export async function withRecordingLoggerAsync(
+  body: (logger: Logger) => Promise<void>,
+): Promise<LoggedMessage[]> {
+  const messages = [];
+  const logger = getRecordingLogger(messages);
+
+  await body(logger);
+
+  return messages;
+}
+
 /** Mock the HTTP request to the feature flags enablement API endpoint. */
 export function mockFeatureFlagApiEndpoint(
   responseStatusCode: number,
   response: { [flagName: string]: boolean },
+) {
+  stubFeatureFlagApiEndpoint(() => ({
+    status: responseStatusCode,
+    messageIfError: "some error message",
+    data: response,
+  }));
+}
+
+/** Stub the HTTP request to the feature flags enablement API endpoint. */
+export function stubFeatureFlagApiEndpoint(
+  responseFunction: (params: any) => {
+    status: number;
+    messageIfError?: string;
+    data: { [flagName: string]: boolean };
+  },
 ) {
   // Passing an auth token is required, so we just use a dummy value
   const client = github.getOctokit("123");
@@ -188,16 +322,23 @@ export function mockFeatureFlagApiEndpoint(
   const optInSpy = requestSpy.withArgs(
     "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
   );
-  if (responseStatusCode < 300) {
-    optInSpy.resolves({
-      status: responseStatusCode,
-      data: response,
-      headers: {},
-      url: "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
-    });
-  } else {
-    optInSpy.throws(new HTTPError("some error message", responseStatusCode));
-  }
+
+  optInSpy.callsFake((_route, params) => {
+    const response = responseFunction(params);
+    if (response.status < 300) {
+      return Promise.resolve({
+        status: response.status,
+        data: response.data,
+        headers: {},
+        url: "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
+      });
+    } else {
+      throw new HTTPError(
+        response.messageIfError || "default stub error message",
+        response.status,
+      );
+    }
+  });
 
   sinon.stub(apiClient, "getApiClient").value(() => client);
 }
@@ -231,18 +372,21 @@ export function mockLanguagesInRepo(languages: string[]) {
 export const makeVersionInfo = (
   version: string,
   features?: { [name: string]: boolean },
+  overlayVersion?: number,
 ): codeql.VersionInfo => ({
   version,
   features,
+  overlayVersion,
 });
 
 export function mockCodeQLVersion(
   version: string,
   features?: { [name: string]: boolean },
+  overlayVersion?: number,
 ) {
-  return codeql.setCodeQL({
+  return codeql.createStubCodeQL({
     async getVersion() {
-      return makeVersionInfo(version, features);
+      return makeVersionInfo(version, features, overlayVersion);
     },
   });
 }
@@ -258,9 +402,16 @@ export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
       throw new Error("not implemented");
     },
     getValue: async (feature) => {
-      return enabledFeatures.includes(feature);
+      return enabledFeatures.includes(feature as Feature);
     },
   };
+}
+
+export function initializeFeatures(initialValue: boolean) {
+  return Object.keys(featureConfig).reduce((features, key) => {
+    features[key] = initialValue;
+    return features;
+  }, {});
 }
 
 /**
@@ -320,9 +471,12 @@ export function createTestConfig(overrides: Partial<Config>): Config {
   return Object.assign(
     {},
     {
+      version: getActionVersion(),
+      analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
       buildMode: undefined,
       originalUserInput: {},
+      computedConfig: {},
       tempDir: "",
       codeQLCmd: "",
       gitHubVersion: {
@@ -332,14 +486,28 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       debugMode: false,
       debugArtifactName: DEFAULT_DEBUG_ARTIFACT_NAME,
       debugDatabaseName: DEFAULT_DEBUG_DATABASE_NAME,
-      augmentationProperties: {
-        packsInputCombines: false,
-        queriesInputCombines: false,
-      },
       trapCaches: {},
       trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: false,
-    },
+      dependencyCachingEnabled: CachingKind.None,
+      dependencyCachingRestoredKeys: [],
+      extraQueryExclusions: [],
+      overlayDatabaseMode: OverlayDatabaseMode.None,
+      useOverlayDatabaseCaching: false,
+      repositoryProperties: {},
+      enableFileCoverageInformation: true,
+    } satisfies Config,
     overrides,
   );
+}
+
+export function makeTestToken(length: number = 36) {
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  return chars.repeat(Math.ceil(length / chars.length)).slice(0, length);
+}
+
+/** Sets the environment variables needed for isCCR() to be `true`. */
+export function mockCCR() {
+  process.env.GITHUB_EVENT_NAME = "dynamic";
+  process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
 }

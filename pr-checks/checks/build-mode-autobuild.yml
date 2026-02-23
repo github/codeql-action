@@ -1,7 +1,9 @@
 name: "Build mode autobuild"
 description: "An end-to-end integration test of a Java repository built using 'build-mode: autobuild'"
-operatingSystems: ["ubuntu"]
-versions: ["nightly-latest"]
+operatingSystems: ["ubuntu", "windows"]
+versions: ["linked", "nightly-latest"]
+installJava: "true"
+installYq: "true"
 steps:
   - name: Set up Java test repo configuration
     run: |
@@ -23,6 +25,14 @@ steps:
       build_mode=$(yq eval '.buildMode' "$metadata_path")
       if [[ "$build_mode" != "autobuild" ]]; then
         echo "Expected build mode to be 'autobuild' but was $build_mode"
+        exit 1
+      fi
+
+  - name: Check that indirect tracing is disabled
+    run: |
+      if [[ ! -z "${CODEQL_RUNNER}" ]]; then
+        echo "Expected indirect tracing to be disabled, but the" \
+          "CODEQL_RUNNER environment variable is set."
         exit 1
       fi
 

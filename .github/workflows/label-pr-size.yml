@@ -1,0 +1,26 @@
+name: Label PR with size
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sizeup:
+    name: Label PR with size
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Run sizeup
+        uses: lerebear/sizeup-action@b7beb3dd273e36039e16e48e7bc690c189e61951 # 0.8.12
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          configuration-file-path: ".github/sizeup.yml"

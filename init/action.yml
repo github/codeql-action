@@ -12,6 +12,9 @@ inputs:
       - The URL of a CodeQL Bundle tarball GitHub release asset, or
       - A special value `linked` which uses the version of the CodeQL tools
         that the Action has been bundled with.
+      - A special value `nightly` which uses the latest nightly version of the
+        CodeQL tools. Note that this is unstable and not recommended for
+        production use.
 
       If not specified, the Action will check in several places until it finds
       the CodeQL tools.
@@ -42,6 +45,19 @@ inputs:
                      your workflow between the `init` and `analyze` steps. Available for all
                      compiled languages.
     required: false
+  analysis-kinds:
+    description: >-
+      [Internal] A comma-separated list of analysis kinds to enable. This input is intended for
+      internal-use only at this time and the behaviour is subject to changes. Some features may
+      not be available depending on which analysis kinds are enabled.
+
+      Available options are:
+
+      - `code-scanning`: The default, security-focused analysis.
+      - `code-quality`: Analysis focused on code quality. This must be enabled in conjunction
+                        with `code-scanning`.
+    default: 'code-scanning'
+    required: true
   token:
     description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
     default: ${{ github.token }}
@@ -82,6 +98,9 @@ inputs:
     required: false
   queries:
     description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
+    required: false
+  quality-queries:
+    description: '[Internal] DEPRECATED. Comma-separated list of code quality queries to run.'
     required: false
   packs:
     description: >-
@@ -146,6 +165,6 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary used for analysis
 runs:
-  using: node20
+  using: node24
   main: '../lib/init-action.js'
   post: '../lib/init-action-post.js'

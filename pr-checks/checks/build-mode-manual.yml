@@ -1,7 +1,8 @@
 name: "Build mode manual"
 description: "An end-to-end integration test of a Java repository built using 'build-mode: manual'"
-operatingSystems: ["ubuntu"]
 versions: ["nightly-latest"]
+installGo: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     id: init
@@ -21,7 +22,6 @@ steps:
       fi
 
   - name: Build code
-    shell: bash
     run: ./build.sh
 
   - uses: ./../action/analyze

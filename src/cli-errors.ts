@@ -6,6 +6,13 @@ import {
 import { DocUrl } from "./doc-url";
 import { ConfigurationError } from "./util";
 
+const SUPPORTED_PLATFORMS = [
+  ["linux", "x64"],
+  ["win32", "x64"],
+  ["darwin", "x64"],
+  ["darwin", "arm64"],
+];
+
 /**
  * An error from a CodeQL CLI invocation, with associated exit code, stderr, etc.
  */
@@ -119,6 +126,7 @@ function extractAutobuildErrors(error: string): string | undefined {
 /** Error messages from the CLI that we consider configuration errors and handle specially. */
 export enum CliConfigErrorCategory {
   AutobuildError = "AutobuildError",
+  CouldNotCreateTempDir = "CouldNotCreateTempDir",
   ExternalRepositoryCloneFailed = "ExternalRepositoryCloneFailed",
   GradleBuildFailed = "GradleBuildFailed",
   IncompatibleWithActionVersion = "IncompatibleWithActionVersion",
@@ -132,6 +140,7 @@ export enum CliConfigErrorCategory {
   NoSourceCodeSeen = "NoSourceCodeSeen",
   NoSupportedBuildCommandSucceeded = "NoSupportedBuildCommandSucceeded",
   NoSupportedBuildSystemDetected = "NoSupportedBuildSystemDetected",
+  NotFoundInRegistry = "NotFoundInRegistry",
   OutOfMemoryOrDisk = "OutOfMemoryOrDisk",
   PackCannotBeFound = "PackCannotBeFound",
   PackMissingAuth = "PackMissingAuth",
@@ -150,14 +159,14 @@ type CliErrorConfiguration = {
  * All of our caught CLI error messages that we handle specially: ie. if we
  * would like to categorize an error as a configuration error or not.
  */
-export const cliErrorsConfig: Record<
-  CliConfigErrorCategory,
-  CliErrorConfiguration
-> = {
+const cliErrorsConfig: Record<CliConfigErrorCategory, CliErrorConfiguration> = {
   [CliConfigErrorCategory.AutobuildError]: {
     cliErrorMessageCandidates: [
       new RegExp("We were unable to automatically build your code"),
     ],
+  },
+  [CliConfigErrorCategory.CouldNotCreateTempDir]: {
+    cliErrorMessageCandidates: [new RegExp("Could not create temp directory")],
   },
   [CliConfigErrorCategory.ExternalRepositoryCloneFailed]: {
     cliErrorMessageCandidates: [
@@ -166,7 +175,7 @@ export const cliErrorsConfig: Record<
   },
   [CliConfigErrorCategory.GradleBuildFailed]: {
     cliErrorMessageCandidates: [
-      new RegExp("[autobuild] FAILURE: Build failed with an exception."),
+      new RegExp("\\[autobuild\\] FAILURE: Build failed with an exception."),
     ],
   },
   // Version of CodeQL CLI is incompatible with this version of the CodeQL Action
@@ -252,6 +261,9 @@ export const cliErrorsConfig: Record<
       new RegExp(
         "Query pack .* cannot be found\\. Check the spelling of the pack\\.",
       ),
+      new RegExp(
+        "is not a .ql file, .qls file, a directory, or a query pack specification.",
+      ),
     ],
   },
   [CliConfigErrorCategory.PackMissingAuth]: {
@@ -276,6 +288,11 @@ export const cliErrorsConfig: Record<
       ),
     ],
   },
+  [CliConfigErrorCategory.NotFoundInRegistry]: {
+    cliErrorMessageCandidates: [
+      new RegExp("'.*' not found in the registry '.*'"),
+    ],
+  },
 };
 
 /**
@@ -284,7 +301,7 @@ export const cliErrorsConfig: Record<
  * the error messages in the config record, or the exit codes match, return the error category;
  * if not, return undefined.
  */
-export function getCliConfigCategoryIfExists(
+function getCliConfigCategoryIfExists(
   cliError: CliError,
 ): CliConfigErrorCategory | undefined {
   for (const [category, configuration] of Object.entries(cliErrorsConfig)) {
@@ -307,11 +324,37 @@ export function getCliConfigCategoryIfExists(
 }
 
 /**
- * Changes an error received from the CLI to a ConfigurationError with optionally an extra
- * error message appended, if it exists in a known set of configuration errors. Otherwise,
+ * Check if we are running on an unsupported platform/architecture combination.
+ */
+function isUnsupportedPlatform(): boolean {
+  return !SUPPORTED_PLATFORMS.some(
+    ([platform, arch]) =>
+      platform === process.platform && arch === process.arch,
+  );
+}
+
+/**
+ * Transform a CLI error into a ConfigurationError for an unsupported platform.
+ */
+function getUnsupportedPlatformError(cliError: CliError): ConfigurationError {
+  return new ConfigurationError(
+    "The CodeQL CLI does not support the platform/architecture combination of " +
+      `${process.platform}/${process.arch} ` +
+      `(see ${DocUrl.SYSTEM_REQUIREMENTS}). ` +
+      `The underlying error was: ${cliError.message}`,
+  );
+}
+
+/**
+ * Changes an error received from the CLI to a ConfigurationError with the message
+ * optionally being transformed, if it is a known configuration error. Otherwise,
  * simply returns the original error.
  */
 export function wrapCliConfigurationError(cliError: CliError): Error {
+  if (isUnsupportedPlatform()) {
+    return getUnsupportedPlatformError(cliError);
+  }
+
   const cliConfigErrorCategory = getCliConfigCategoryIfExists(cliError);
   if (cliConfigErrorCategory === undefined) {
     return cliError;

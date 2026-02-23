@@ -3,10 +3,12 @@ import * as path from "path";
 
 import * as semver from "semver";
 
+import { isCCR } from "./actions-util";
 import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay-database-utils";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
@@ -25,16 +27,8 @@ export interface CodeQLDefaultVersionInfo {
   toolsFeatureFlagsValid?: boolean;
 }
 
-export interface FeatureEnablement {
-  /** Gets the default version of the CodeQL tools. */
-  getDefaultCliVersion(
-    variant: util.GitHubVariant,
-  ): Promise<CodeQLDefaultVersionInfo>;
-  getValue(feature: Feature, codeql?: CodeQL): Promise<boolean>;
-}
-
 /**
- * Feature enablement as returned by the GitHub API endpoint.
+ * Features as named by the GitHub API endpoint.
  *
  * Do not include the `codeql_action_` prefix as this is stripped by the API
  * endpoint.
@@ -42,64 +36,90 @@ export interface FeatureEnablement {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
+  AllowToolcacheInput = "allow_toolcache_input",
   CleanupTrapCaches = "cleanup_trap_caches",
-  CppBuildModeNone = "cpp_build_mode_none",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
+  CsharpCacheBuildModeNone = "csharp_cache_bmn",
+  CsharpNewCacheKey = "csharp_new_cache_key",
   DiffInformedQueries = "diff_informed_queries",
   DisableCsharpBuildless = "disable_csharp_buildless",
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
-  ExtractToToolcache = "extract_to_toolcache",
+  ForceNightly = "force_nightly",
+  IgnoreGeneratedFiles = "ignore_generated_files",
+  ImprovedProxyCertificates = "improved_proxy_certificates",
+  JavaNetworkDebugging = "java_network_debugging",
+  OverlayAnalysis = "overlay_analysis",
+  OverlayAnalysisActions = "overlay_analysis_actions",
+  OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
+  OverlayAnalysisCodeScanningCpp = "overlay_analysis_code_scanning_cpp",
+  OverlayAnalysisCodeScanningCsharp = "overlay_analysis_code_scanning_csharp",
+  OverlayAnalysisCodeScanningGo = "overlay_analysis_code_scanning_go",
+  OverlayAnalysisCodeScanningJava = "overlay_analysis_code_scanning_java",
+  OverlayAnalysisCodeScanningJavascript = "overlay_analysis_code_scanning_javascript",
+  OverlayAnalysisCodeScanningPython = "overlay_analysis_code_scanning_python",
+  OverlayAnalysisCodeScanningRuby = "overlay_analysis_code_scanning_ruby",
+  OverlayAnalysisCodeScanningRust = "overlay_analysis_code_scanning_rust",
+  OverlayAnalysisCodeScanningSwift = "overlay_analysis_code_scanning_swift",
+  OverlayAnalysisCpp = "overlay_analysis_cpp",
+  OverlayAnalysisCsharp = "overlay_analysis_csharp",
+  OverlayAnalysisGo = "overlay_analysis_go",
+  OverlayAnalysisJava = "overlay_analysis_java",
+  OverlayAnalysisJavascript = "overlay_analysis_javascript",
+  OverlayAnalysisPython = "overlay_analysis_python",
+  OverlayAnalysisRuby = "overlay_analysis_ruby",
+  OverlayAnalysisRust = "overlay_analysis_rust",
+  OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
+  OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
-  ZstdBundleStreamingExtraction = "zstd_bundle_streaming_extraction",
+  /** Note that this currently only disables baseline file coverage information. */
+  SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
+  StartProxyConnectionChecks = "start_proxy_connection_checks",
+  UploadOverlayDbToApi = "upload_overlay_db_to_api",
+  UseRepositoryProperties = "use_repository_properties_v2",
+  ValidateDbConfig = "validate_db_config",
 }
 
-export const featureConfig: Record<
-  Feature,
-  {
-    /**
-     * Default value in environments where the feature flags API is not available,
-     * such as GitHub Enterprise Server.
-     */
-    defaultValue: boolean;
-    /**
-     * Environment variable for explicitly enabling or disabling the feature.
-     *
-     * This overrides enablement status from the feature flags API.
-     */
-    envVar: string;
-    /**
-     * Whether the feature flag is part of the legacy feature flags API (defaults to false).
-     *
-     * These feature flags are included by default in the API response and do not need to be
-     * explicitly requested.
-     */
-    legacyApi?: boolean;
-    /**
-     * Minimum version of the CLI, if applicable.
-     *
-     * Prefer using `ToolsFeature`s for future flags.
-     */
-    minimumVersion: string | undefined;
-    /** Required tools feature, if applicable. */
-    toolsFeature?: ToolsFeature;
-  }
-> = {
+export type FeatureConfig = {
+  /**
+   * Default value in environments where the feature flags API is not available,
+   * such as GitHub Enterprise Server.
+   */
+  defaultValue: boolean;
+  /**
+   * Environment variable for explicitly enabling or disabling the feature.
+   *
+   * This overrides enablement status from the feature flags API.
+   */
+  envVar: string;
+  /**
+   * Whether the feature flag is part of the legacy feature flags API (defaults to false).
+   *
+   * These feature flags are included by default in the API response and do not need to be
+   * explicitly requested.
+   */
+  legacyApi?: boolean;
+  /**
+   * Minimum version of the CLI, if applicable.
+   *
+   * Prefer using `ToolsFeature`s for future flags.
+   */
+  minimumVersion: string | undefined;
+  /** Required tools feature, if applicable. */
+  toolsFeature?: ToolsFeature;
+};
+
+export const featureConfig = {
+  [Feature.AllowToolcacheInput]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
+    minimumVersion: undefined,
+  },
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
-    minimumVersion: undefined,
-  },
-  [Feature.CppBuildModeNone]: {
-    defaultValue: false,
-    envVar: "CODEQL_EXTRACTOR_CPP_BUILD_MODE_NONE",
-    minimumVersion: undefined,
-  },
-  [Feature.ZstdBundleStreamingExtraction]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ZSTD_BUNDLE_STREAMING_EXTRACTION",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
@@ -108,11 +128,20 @@ export const featureConfig: Record<
     legacyApi: true,
     minimumVersion: "2.15.0",
   },
-  [Feature.DiffInformedQueries]: {
+  [Feature.CsharpCacheBuildModeNone]: {
     defaultValue: false,
-    envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
+    envVar: "CODEQL_ACTION_CSHARP_CACHE_BMN",
     minimumVersion: undefined,
-    toolsFeature: ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
+  },
+  [Feature.CsharpNewCacheKey]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CSHARP_NEW_CACHE_KEY",
+    minimumVersion: undefined,
+  },
+  [Feature.DiffInformedQueries]: {
+    defaultValue: true,
+    envVar: "CODEQL_ACTION_DIFF_INFORMED_QUERIES",
+    minimumVersion: "2.21.0",
   },
   [Feature.DisableCsharpBuildless]: {
     defaultValue: false,
@@ -137,9 +166,134 @@ export const featureConfig: Record<
     legacyApi: true,
     minimumVersion: undefined,
   },
-  [Feature.ExtractToToolcache]: {
+  [Feature.ForceNightly]: {
     defaultValue: false,
-    envVar: "CODEQL_ACTION_EXTRACT_TOOLCACHE",
+    envVar: "CODEQL_ACTION_FORCE_NIGHTLY",
+    minimumVersion: undefined,
+  },
+  [Feature.IgnoreGeneratedFiles]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_IGNORE_GENERATED_FILES",
+    minimumVersion: undefined,
+  },
+  [Feature.ImprovedProxyCertificates]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_IMPROVED_PROXY_CERTIFICATES",
+    minimumVersion: undefined,
+  },
+  [Feature.JavaNetworkDebugging]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_JAVA_NETWORK_DEBUGGING",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysis]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS",
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
+  },
+  [Feature.OverlayAnalysisActions]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_ACTIONS",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningActions]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_ACTIONS",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningCpp]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_CPP",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningCsharp]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_CSHARP",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningGo]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_GO",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningJava]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_JAVA",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningJavascript]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_JAVASCRIPT",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningPython]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_PYTHON",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningRuby]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_RUBY",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningRust]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_RUST",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCodeScanningSwift]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_SWIFT",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCpp]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CPP",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisCsharp]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CSHARP",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisGo]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_GO",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisJava]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_JAVA",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisJavascript]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_JAVASCRIPT",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisPython]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_PYTHON",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisRuby]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RUBY",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisRust]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RUST",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisSkipResourceChecks]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisSwift]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SWIFT",
     minimumVersion: undefined,
   },
   [Feature.PythonDefaultIsToNotExtractStdlib]: {
@@ -154,7 +308,59 @@ export const featureConfig: Record<
     legacyApi: true,
     minimumVersion: undefined,
   },
-};
+  [Feature.SkipFileCoverageOnPrs]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS",
+    // For testing, this is not behind a CLI version check yet. However
+    // before rolling this out externally, we should set a minimum version here
+    // since current versions of the CodeQL CLI will log if baseline information
+    // cannot be found when interpreting results.
+    minimumVersion: undefined,
+  },
+  [Feature.StartProxyConnectionChecks]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_START_PROXY_CONNECTION_CHECKS",
+    minimumVersion: undefined,
+  },
+  [Feature.UploadOverlayDbToApi]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_UPLOAD_OVERLAY_DB_TO_API",
+    minimumVersion: undefined,
+    toolsFeature: ToolsFeature.BundleSupportsOverlay,
+  },
+  [Feature.UseRepositoryProperties]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_USE_REPOSITORY_PROPERTIES",
+    minimumVersion: undefined,
+  },
+  [Feature.ValidateDbConfig]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_VALIDATE_DB_CONFIG",
+    minimumVersion: undefined,
+  },
+} satisfies Record<Feature, FeatureConfig>;
+
+/** A feature whose enablement does not depend on the version of the CodeQL CLI. */
+export type FeatureWithoutCLI = {
+  [K in Feature]: (typeof featureConfig)[K] extends
+    | {
+        minimumVersion: string;
+      }
+    | {
+        toolsFeature: ToolsFeature;
+      }
+    ? never
+    : K;
+}[keyof typeof featureConfig];
+
+export interface FeatureEnablement {
+  /** Gets the default version of the CodeQL tools. */
+  getDefaultCliVersion(
+    variant: util.GitHubVariant,
+  ): Promise<CodeQLDefaultVersionInfo>;
+  getValue(feature: FeatureWithoutCLI): Promise<boolean>;
+  getValue(feature: Feature, codeql: CodeQL): Promise<boolean>;
+}
 
 /**
  * A response from the GitHub API that contains feature flag enablement information for the CodeQL
@@ -167,71 +373,84 @@ type GitHubFeatureFlagsApiResponse = Partial<Record<Feature, boolean>>;
 export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
 
 /**
- * Determines the enablement status of a number of features.
- * If feature enablement is not able to be determined locally, a request to the
- * GitHub API is made to determine the enablement status.
+ * Determines the enablement status of a number of features locally without
+ * consulting the GitHub API.
  */
-export class Features implements FeatureEnablement {
-  private gitHubFeatureFlags: GitHubFeatureFlags;
-
-  constructor(
-    gitHubVersion: util.GitHubVersion,
-    repositoryNwo: RepositoryNwo,
-    tempDir: string,
-    private readonly logger: Logger,
-  ) {
-    this.gitHubFeatureFlags = new GitHubFeatureFlags(
-      gitHubVersion,
-      repositoryNwo,
-      path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
-      logger,
-    );
-  }
+class OfflineFeatures implements FeatureEnablement {
+  constructor(protected readonly logger: Logger) {}
 
   async getDefaultCliVersion(
-    variant: util.GitHubVariant,
+    _variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
-    return await this.gitHubFeatureFlags.getDefaultCliVersion(variant);
+    return {
+      cliVersion: defaults.cliVersion,
+      tagName: defaults.bundleVersion,
+    };
   }
 
   /**
+   * Gets the `FeatureConfig` for `feature`.
+   */
+  getFeatureConfig(feature: Feature): FeatureConfig {
+    // Narrow the type to FeatureConfig to avoid type errors. To avoid unsafe use of `as`, we
+    // check that the required properties exist using `satisfies`.
+    return featureConfig[feature] satisfies FeatureConfig as FeatureConfig;
+  }
+
+  /**
+   * Determines whether `feature` is enabled without consulting the GitHub API.
    *
    * @param feature The feature to check.
    * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
    *        feature, the version of the CodeQL CLI will be checked against the minimum version.
    *        If the version is less than the minimum version, the feature will be considered
-   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, the
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, then
    *        this function will throw.
    * @returns true if the feature is enabled, false otherwise.
    *
    * @throws if a `minimumVersion` is specified for the feature, and `codeql` is not provided.
    */
   async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
-    if (!codeql && featureConfig[feature].minimumVersion) {
+    const offlineValue = await this.getOfflineValue(feature, codeql);
+    if (offlineValue !== undefined) {
+      return offlineValue;
+    }
+
+    return this.getDefaultValue(feature);
+  }
+
+  /**
+   * Determines whether `feature` is enabled using the CLI and environment variables.
+   */
+  protected async getOfflineValue(
+    feature: Feature,
+    codeql?: CodeQL,
+  ): Promise<boolean | undefined> {
+    const config = this.getFeatureConfig(feature);
+
+    if (!codeql && config.minimumVersion) {
       throw new Error(
         `Internal error: A minimum version is specified for feature ${feature}, but no instance of CodeQL was provided.`,
       );
     }
-    if (!codeql && featureConfig[feature].toolsFeature) {
+    if (!codeql && config.toolsFeature) {
       throw new Error(
         `Internal error: A required tools feature is specified for feature ${feature}, but no instance of CodeQL was provided.`,
       );
     }
 
-    const envVar = (
-      process.env[featureConfig[feature].envVar] || ""
-    ).toLocaleLowerCase();
+    const envVar = (process.env[config.envVar] || "").toLocaleLowerCase();
 
     // Do not use this feature if user explicitly disables it via an environment variable.
     if (envVar === "false") {
       this.logger.debug(
-        `Feature ${feature} is disabled via the environment variable ${featureConfig[feature].envVar}.`,
+        `Feature ${feature} is disabled via the environment variable ${config.envVar}.`,
       );
       return false;
     }
 
     // Never use this feature if the CLI version explicitly can't support it.
-    const minimumVersion = featureConfig[feature].minimumVersion;
+    const minimumVersion = config.minimumVersion;
     if (codeql && minimumVersion) {
       if (!(await util.codeQlVersionAtLeast(codeql, minimumVersion))) {
         this.logger.debug(
@@ -248,7 +467,7 @@ export class Features implements FeatureEnablement {
         );
       }
     }
-    const toolsFeature = featureConfig[feature].toolsFeature;
+    const toolsFeature = config.toolsFeature;
     if (codeql && toolsFeature) {
       if (!(await codeql.supportsFeature(toolsFeature))) {
         this.logger.debug(
@@ -268,9 +487,71 @@ export class Features implements FeatureEnablement {
     // Use this feature if user explicitly enables it via an environment variable.
     if (envVar === "true") {
       this.logger.debug(
-        `Feature ${feature} is enabled via the environment variable ${featureConfig[feature].envVar}.`,
+        `Feature ${feature} is enabled via the environment variable ${config.envVar}.`,
       );
       return true;
+    }
+
+    return undefined;
+  }
+
+  /** Gets the default value of `feature`. */
+  protected async getDefaultValue(feature: Feature): Promise<boolean> {
+    const config = this.getFeatureConfig(feature);
+    const defaultValue = config.defaultValue;
+    this.logger.debug(
+      `Feature ${feature} is ${
+        defaultValue ? "enabled" : "disabled"
+      } due to its default value.`,
+    );
+    return defaultValue;
+  }
+}
+
+/**
+ * Determines the enablement status of a number of features.
+ * If feature enablement is not able to be determined locally, a request to the
+ * GitHub API is made to determine the enablement status.
+ */
+class Features extends OfflineFeatures {
+  private gitHubFeatureFlags: GitHubFeatureFlags;
+
+  constructor(repositoryNwo: RepositoryNwo, tempDir: string, logger: Logger) {
+    super(logger);
+
+    this.gitHubFeatureFlags = new GitHubFeatureFlags(
+      repositoryNwo,
+      path.join(tempDir, FEATURE_FLAGS_FILE_NAME),
+      logger,
+    );
+  }
+
+  async getDefaultCliVersion(
+    variant: util.GitHubVariant,
+  ): Promise<CodeQLDefaultVersionInfo> {
+    if (supportsFeatureFlags(variant)) {
+      return await this.gitHubFeatureFlags.getDefaultCliVersionFromFlags();
+    }
+    return super.getDefaultCliVersion(variant);
+  }
+
+  /**
+   *
+   * @param feature The feature to check.
+   * @param codeql An optional CodeQL object. If provided, and a `minimumVersion` is specified for the
+   *        feature, the version of the CodeQL CLI will be checked against the minimum version.
+   *        If the version is less than the minimum version, the feature will be considered
+   *        disabled. If not provided, and a `minimumVersion` is specified for the feature, then
+   *        this function will throw.
+   * @returns true if the feature is enabled, false otherwise.
+   *
+   * @throws if a `minimumVersion` is specified for the feature, and `codeql` is not provided.
+   */
+  async getValue(feature: Feature, codeql?: CodeQL): Promise<boolean> {
+    // Check whether the feature is enabled locally.
+    const offlineValue = await this.getOfflineValue(feature, codeql);
+    if (offlineValue !== undefined) {
+      return offlineValue;
     }
 
     // Ask the GitHub API if the feature is enabled.
@@ -284,13 +565,8 @@ export class Features implements FeatureEnablement {
       return apiValue;
     }
 
-    const defaultValue = featureConfig[feature].defaultValue;
-    this.logger.debug(
-      `Feature ${feature} is ${
-        defaultValue ? "enabled" : "disabled"
-      } due to its default value.`,
-    );
-    return defaultValue;
+    // Return the default value.
+    return this.getDefaultValue(feature);
   }
 }
 
@@ -302,7 +578,6 @@ class GitHubFeatureFlags {
   private hasAccessedRemoteFeatureFlags: boolean;
 
   constructor(
-    private readonly gitHubVersion: util.GitHubVersion,
     private readonly repositoryNwo: RepositoryNwo,
     private readonly featureFlagsFile: string,
     private readonly logger: Logger,
@@ -333,19 +608,7 @@ class GitHubFeatureFlags {
     return version;
   }
 
-  async getDefaultCliVersion(
-    variant: util.GitHubVariant,
-  ): Promise<CodeQLDefaultVersionInfo> {
-    if (variant === util.GitHubVariant.DOTCOM) {
-      return await this.getDefaultDotcomCliVersion();
-    }
-    return {
-      cliVersion: defaults.cliVersion,
-      tagName: defaults.bundleVersion,
-    };
-  }
-
-  async getDefaultDotcomCliVersion(): Promise<CodeQLDefaultVersionInfo> {
+  async getDefaultCliVersionFromFlags(): Promise<CodeQLDefaultVersionInfo> {
     const response = await this.getAllFeatures();
 
     const enabledFeatureFlagCliVersions = Object.entries(response)
@@ -470,34 +733,37 @@ class GitHubFeatureFlags {
   }
 
   private async loadApiResponse(): Promise<GitHubFeatureFlagsApiResponse> {
-    // Do nothing when not running against github.com
-    if (
-      this.gitHubVersion.type !== util.GitHubVariant.DOTCOM &&
-      this.gitHubVersion.type !== util.GitHubVariant.GHE_DOTCOM
-    ) {
-      this.logger.debug(
-        "Not running against github.com. Disabling all toggleable features.",
-      );
-      this.hasAccessedRemoteFeatureFlags = false;
-      return {};
-    }
     try {
       const featuresToRequest = Object.entries(featureConfig)
-        .filter(([, config]) => !config.legacyApi)
-        .map(([f]) => f)
-        .join(",");
+        .filter(
+          ([, config]) =>
+            !(config satisfies FeatureConfig as FeatureConfig).legacyApi,
+        )
+        .map(([f]) => f);
 
-      const response = await getApiClient().request(
-        "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
-        {
-          owner: this.repositoryNwo.owner,
-          repo: this.repositoryNwo.repo,
-          features: featuresToRequest,
-        },
-      );
-      const remoteFlags = response.data as GitHubFeatureFlagsApiResponse;
+      const FEATURES_PER_REQUEST = 25;
+      const featureChunks: string[][] = [];
+      while (featuresToRequest.length > 0) {
+        featureChunks.push(featuresToRequest.splice(0, FEATURES_PER_REQUEST));
+      }
+
+      let remoteFlags: GitHubFeatureFlagsApiResponse = {};
+
+      for (const chunk of featureChunks) {
+        const response = await getApiClient().request(
+          "GET /repos/:owner/:repo/code-scanning/codeql-action/features",
+          {
+            owner: this.repositoryNwo.owner,
+            repo: this.repositoryNwo.repo,
+            features: chunk.join(","),
+          },
+        );
+        const chunkFlags = response.data as GitHubFeatureFlagsApiResponse;
+        remoteFlags = { ...remoteFlags, ...chunkFlags };
+      }
+
       this.logger.debug(
-        "Loaded the following default values for the feature flags from the Code Scanning API:",
+        "Loaded the following default values for the feature flags from the CodeQL Action API:",
       );
       for (const [feature, value] of Object.entries(remoteFlags).sort(
         ([nameA], [nameB]) => nameA.localeCompare(nameB),
@@ -507,12 +773,13 @@ class GitHubFeatureFlags {
       this.hasAccessedRemoteFeatureFlags = true;
       return remoteFlags;
     } catch (e) {
-      if (util.isHTTPError(e) && e.status === 403) {
+      const httpError = util.asHTTPError(e);
+      if (httpError?.status === 403) {
         this.logger.warning(
-          "This run of the CodeQL Action does not have permission to access Code Scanning API endpoints. " +
+          "This run of the CodeQL Action does not have permission to access the CodeQL Action API endpoints. " +
             "As a result, it will not be opted into any experimental features. " +
             "This could be because the Action is running on a pull request from a fork. If not, " +
-            `please ensure the Action has the 'security-events: write' permission. Details: ${e.message}`,
+            `please ensure the workflow has at least the 'security-events: read' permission. Details: ${httpError.message}`,
         );
         this.hasAccessedRemoteFeatureFlags = false;
         return {};
@@ -526,5 +793,37 @@ class GitHubFeatureFlags {
         );
       }
     }
+  }
+}
+
+function supportsFeatureFlags(githubVariant: util.GitHubVariant): boolean {
+  return (
+    githubVariant === util.GitHubVariant.DOTCOM ||
+    githubVariant === util.GitHubVariant.GHEC_DR
+  );
+}
+
+/**
+ * Initialises an instance of a `FeatureEnablement` implementation. The implementation used
+ * is determined by the environment we are running in.
+ */
+export function initFeatures(
+  gitHubVersion: util.GitHubVersion,
+  repositoryNwo: RepositoryNwo,
+  tempDir: string,
+  logger: Logger,
+): FeatureEnablement {
+  if (!supportsFeatureFlags(gitHubVersion.type)) {
+    logger.debug(
+      "Not running against github.com. Using default values for all features.",
+    );
+    return new OfflineFeatures(logger);
+  } else if (isCCR()) {
+    logger.debug(
+      "Querying feature flags is not currently supported in Copilot Code Review. Using offline data for all features.",
+    );
+    return new OfflineFeatures(logger);
+  } else {
+    return new Features(repositoryNwo, tempDir, logger);
   }
 }

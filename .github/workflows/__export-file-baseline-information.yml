@@ -1,6 +1,6 @@
 # Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
-#     (cd pr-checks; pip install ruamel.yaml@0.17.31 && python3 sync.py)
+#     pr-checks/sync.sh
 # to regenerate this file.
 
 name: PR Check - Export file baseline information
@@ -20,7 +20,37 @@ on:
       - ready_for_review
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+  workflow_call:
+    inputs:
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group:
+    export-file-baseline-information-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   export-file-baseline-information:
     strategy:
@@ -34,6 +64,7 @@ jobs:
           - os: windows-latest
             version: nightly-latest
     name: Export file baseline information
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -41,7 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -49,29 +80,32 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         id: init
         with:
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: ./../action/.github/actions/setup-swift
-        if: runner.os == 'macOS'
-        with:
-          codeql-path: ${{ steps.init.outputs.codeql-path }}
       - name: Build code
-        shell: bash
         run: ./build.sh
       - uses: ./../action/analyze
         with:
           output: ${{ runner.temp }}/results
       - name: Upload SARIF
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
           path: ${{ runner.temp }}/results/javascript.sarif
           retention-days: 7
       - name: Check results
-        shell: bash
         run: |
           cd "$RUNNER_TEMP/results"
           expected_baseline_languages="c csharp go java kotlin javascript python ruby"
@@ -91,5 +125,6 @@ jobs:
             fi
           done
     env:
+      CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
       CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
       CODEQL_ACTION_TEST_MODE: true

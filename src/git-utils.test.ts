@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import * as core from "@actions/core";
@@ -304,4 +305,172 @@ test("decodeGitFilePath quoted strings", async (t) => {
     gitUtils.decodeGitFilePath('"\\a\\b\\f\\n\\r\\t\\v"'),
     "\x07\b\f\n\r\t\v",
   );
+});
+
+test("getFileOidsUnderPath returns correct file mapping", async (t) => {
+  const runGitCommandStub = sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(
+      "30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js\n" +
+        "d89514599a9a99f22b4085766d40af7b99974827_lib/git-utils.js.map\n" +
+        "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_src/git-utils.ts",
+    );
+
+  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+  t.deepEqual(result, {
+    "lib/git-utils.js": "30d998ded095371488be3a729eb61d86ed721a18",
+    "lib/git-utils.js.map": "d89514599a9a99f22b4085766d40af7b99974827",
+    "src/git-utils.ts": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+  });
+
+  t.deepEqual(runGitCommandStub.firstCall.args, [
+    "/fake/path",
+    ["ls-files", "--recurse-submodules", "--format=%(objectname)_%(path)"],
+    "Cannot list Git OIDs of tracked files.",
+  ]);
+});
+
+test("getFileOidsUnderPath handles quoted paths", async (t) => {
+  sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(
+      "30d998ded095371488be3a729eb61d86ed721a18_lib/normal-file.js\n" +
+        'd89514599a9a99f22b4085766d40af7b99974827_"lib/file with spaces.js"\n' +
+        'a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_"lib/file\\twith\\ttabs.js"',
+    );
+
+  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+  t.deepEqual(result, {
+    "lib/normal-file.js": "30d998ded095371488be3a729eb61d86ed721a18",
+    "lib/file with spaces.js": "d89514599a9a99f22b4085766d40af7b99974827",
+    "lib/file\twith\ttabs.js": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+  });
+});
+
+test("getFileOidsUnderPath handles empty output", async (t) => {
+  sinon.stub(gitUtils as any, "runGitCommand").resolves("");
+
+  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+  t.deepEqual(result, {});
+});
+
+test("getFileOidsUnderPath throws on unexpected output format", async (t) => {
+  sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(
+      "30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js\n" +
+        "invalid-line-format\n" +
+        "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96_src/git-utils.ts",
+    );
+
+  await t.throwsAsync(
+    async () => {
+      await gitUtils.getFileOidsUnderPath("/fake/path");
+    },
+    {
+      instanceOf: Error,
+      message: 'Unexpected "git ls-files" output: invalid-line-format',
+    },
+  );
+});
+
+test("getGitVersionOrThrow returns version for valid git output", async (t) => {
+  sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves(`git version 2.40.0${os.EOL}`);
+
+  const version = await gitUtils.getGitVersionOrThrow();
+  t.is(version.truncatedVersion, "2.40.0");
+  t.is(version.fullVersion, "2.40.0");
+});
+
+test("getGitVersionOrThrow throws for invalid git output", async (t) => {
+  sinon.stub(gitUtils as any, "runGitCommand").resolves("invalid output");
+
+  await t.throwsAsync(
+    async () => {
+      await gitUtils.getGitVersionOrThrow();
+    },
+    {
+      instanceOf: Error,
+      message: "Could not parse Git version from output: invalid output",
+    },
+  );
+});
+
+test("getGitVersionOrThrow handles Windows-style git output", async (t) => {
+  sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .resolves("git version 2.40.0.windows.1");
+
+  const version = await gitUtils.getGitVersionOrThrow();
+  // The truncated version should contain just the major.minor.patch portion
+  t.is(version.truncatedVersion, "2.40.0");
+  t.is(version.fullVersion, "2.40.0.windows.1");
+});
+
+test("getGitVersionOrThrow throws when git command fails", async (t) => {
+  sinon
+    .stub(gitUtils as any, "runGitCommand")
+    .rejects(new Error("git not found"));
+
+  await t.throwsAsync(
+    async () => {
+      await gitUtils.getGitVersionOrThrow();
+    },
+    {
+      instanceOf: Error,
+      message: "git not found",
+    },
+  );
+});
+
+test("GitVersionInfo.isAtLeast correctly compares versions", async (t) => {
+  const version = new gitUtils.GitVersionInfo("2.40.0", "2.40.0");
+
+  t.true(version.isAtLeast("2.38.0"));
+  t.true(version.isAtLeast("2.40.0"));
+  t.false(version.isAtLeast("2.41.0"));
+  t.false(version.isAtLeast("3.0.0"));
+});
+
+test("listFiles returns array of file paths", async (t) => {
+  sinon
+    .stub(gitUtils, "runGitCommand")
+    .resolves(["dir/file.txt", "README.txt", ""].join(os.EOL));
+
+  await t.notThrowsAsync(async () => {
+    const result = await gitUtils.listFiles("/some/path");
+    t.is(result.length, 2);
+    t.is(result[0], "dir/file.txt");
+  });
+});
+
+test("getGeneratedFiles returns generated files only", async (t) => {
+  const runGitCommandStub = sinon.stub(gitUtils, "runGitCommand");
+
+  runGitCommandStub
+    .onFirstCall()
+    .resolves(["dir/file.txt", "test.json", "README.txt", ""].join(os.EOL));
+  runGitCommandStub
+    .onSecondCall()
+    .resolves(
+      [
+        "dir/file.txt: linguist-generated: unspecified",
+        "test.json: linguist-generated: true",
+        "README.txt: linguist-generated: false",
+        "",
+      ].join(os.EOL),
+    );
+
+  await t.notThrowsAsync(async () => {
+    const result = await gitUtils.getGeneratedFiles("/some/path");
+
+    t.assert(runGitCommandStub.calledTwice);
+
+    t.is(result.length, 1);
+    t.is(result[0], "test.json");
+  });
 });

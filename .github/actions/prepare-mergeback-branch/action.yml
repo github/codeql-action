@@ -1,0 +1,80 @@
+name: "Prepare mergeback branch"
+description: Prepares a mergeback branch and opens a PR for it
+inputs:
+  base:
+    description: "The name of the base branch"
+    required: true
+  head:
+    description: "The name of the head branch"
+    required: true
+  branch:
+    description: "The name of the branch to create."
+    required: true
+  version:
+    description: "The new version"
+    required: true
+  token:
+    description: "The token to use"
+    required: true
+  dry-run:
+    description: "Set to true to skip creating the PR. The branch will still be pushed."
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Create mergeback branch
+      shell: bash
+      env:
+        VERSION: "${{ inputs.version }}"
+        NEW_BRANCH: "${{ inputs.branch }}"
+      run: |
+        set -exu
+
+        # Ensure we are on the new branch
+        git checkout "${NEW_BRANCH}"
+
+        # Update the version number ready for the next release
+        npm version patch --no-git-tag-version
+
+        # Update the changelog, adding a new version heading directly above the most recent existing one
+        awk '!f && /##/{print "'"## [UNRELEASED]\n\nNo user facing changes.\n"'"; f=1}1' CHANGELOG.md > temp && mv temp CHANGELOG.md
+        git add .
+        git commit -m "Update changelog and version after ${VERSION}"
+
+        git push origin "${NEW_BRANCH}"
+
+    - name: Create PR
+      shell: bash
+      if: inputs.dry-run != 'true'
+      env:
+        VERSION: "${{ inputs.version }}"
+        BASE_BRANCH: "${{ inputs.base }}"
+        HEAD_BRANCH: "${{ inputs.head }}"
+        NEW_BRANCH: "${{ inputs.branch }}"
+        GITHUB_TOKEN: "${{ inputs.token }}"
+      run: |
+        set -exu
+        pr_title="Mergeback ${VERSION} ${HEAD_BRANCH} into ${BASE_BRANCH}"
+        pr_body=$(cat << EOF
+          This PR bumps the version number and updates the changelog after the ${VERSION} release.
+
+          Please do the following:
+
+          - [ ] Remove and re-add the "Rebuild" label to the PR to trigger just this workflow.
+          - [ ] Wait for the "Rebuild" workflow to push a commit updating the distribution files.
+          - [ ] Mark the PR as ready for review to trigger the full set of PR checks.
+          - [ ] Approve and merge the PR. When merging the PR, make sure "Create a merge commit" is
+                selected rather than "Squash and merge" or "Rebase and merge".
+        EOF
+        )
+
+        # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft
+        # so that a maintainer can take the PR out of draft, thereby triggering the PR checks.
+        gh pr create \
+          --head "${NEW_BRANCH}" \
+          --base "${BASE_BRANCH}" \
+          --title "${pr_title}" \
+          --label "Rebuild" \
+          --body "${pr_body}" \
+          --assignee "${GITHUB_ACTOR}" \
+          --draft

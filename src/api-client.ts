@@ -1,27 +1,23 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
-import consoleLogLevel from "console-log-level";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { parseRepositoryNwo } from "./repository";
+import { EnvVar } from "./environment";
+import { Logger } from "./logging";
+import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
+  asHTTPError,
   ConfigurationError,
   getRequiredEnvParam,
   GITHUB_DOTCOM_URL,
   GitHubVariant,
   GitHubVersion,
-  isHTTPError,
   parseGitHubUrl,
   parseMatrixInput,
 } from "./util";
 
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
-
-export enum DisallowedAPIVersionReason {
-  ACTION_TOO_OLD,
-  ACTION_TOO_NEW,
-}
 
 export type GitHubApiCombinedDetails = GitHubApiDetails &
   GitHubApiExternalRepoDetails;
@@ -49,12 +45,23 @@ function createApiClientWithDetails(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiDetails.apiURL,
       userAgent: `CodeQL-Action/${getActionVersion()}`,
-      log: consoleLogLevel({ level: "debug" }),
+      log: {
+        debug: core.debug,
+        info: core.info,
+        warn: core.warning,
+        error: core.error,
+      },
+      retry: {
+        // The default is 400, 401, 403, 404, 410, 422, and 451. We have observed transient errors
+        // with authentication, so we remove 401, 403, and 404 from the default list to ensure that
+        // these errors are retried.
+        doNotRetry: [400, 410, 422, 451],
+      },
     }),
   );
 }
 
-export function getApiDetails() {
+export function getApiDetails(): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
     url: getRequiredEnvParam("GITHUB_SERVER_URL"),
@@ -70,6 +77,36 @@ export function getApiClientWithExternalAuth(
   apiDetails: GitHubApiCombinedDetails,
 ) {
   return createApiClientWithDetails(apiDetails, { allowExternal: true });
+}
+
+/**
+ * Gets a value for the `Authorization` header for a request to `url`; or `undefined` if the
+ * `Authorization` header should not be set for `url`.
+ *
+ * @param logger The logger to use for debugging messages.
+ * @param apiDetails Details of the GitHub API we are using.
+ * @param url The URL for which we want to add an `Authorization` header.
+ *
+ * @returns The value for the `Authorization` header or `undefined` if it shouldn't be populated.
+ */
+export function getAuthorizationHeaderFor(
+  logger: Logger,
+  apiDetails: GitHubApiDetails,
+  url: string,
+): string | undefined {
+  // We only want to provide an authorization header if we are downloading
+  // from the same GitHub instance the Action is running on.
+  // This avoids leaking Enterprise tokens to dotcom.
+  if (
+    url.startsWith(`${apiDetails.url}/`) ||
+    (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
+  ) {
+    logger.debug(`Providing an authorization token.`);
+    return `token ${apiDetails.auth}`;
+  }
+
+  logger.debug(`Not using an authorization token.`);
+  return undefined;
 }
 
 let cachedGitHubVersion: GitHubVersion | undefined = undefined;
@@ -95,7 +132,7 @@ export async function getGitHubVersionFromApi(
   }
 
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
-    return { type: GitHubVariant.GHE_DOTCOM };
+    return { type: GitHubVariant.GHEC_DR };
   }
 
   const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
@@ -123,17 +160,15 @@ export async function getGitHubVersion(): Promise<GitHubVersion> {
  * Get the path of the currently executing workflow relative to the repository root.
  */
 export async function getWorkflowRelativePath(): Promise<string> {
-  const repo_nwo = getRequiredEnvParam("GITHUB_REPOSITORY").split("/");
-  const owner = repo_nwo[0];
-  const repo = repo_nwo[1];
+  const repo_nwo = getRepositoryNwo();
   const run_id = Number(getRequiredEnvParam("GITHUB_RUN_ID"));
 
   const apiClient = getApiClient();
   const runsResponse = await apiClient.request(
     "GET /repos/:owner/:repo/actions/runs/:run_id?exclude_pull_requests=true",
     {
-      owner,
-      repo,
+      owner: repo_nwo.owner,
+      repo: repo_nwo.repo,
       run_id,
     },
   );
@@ -161,9 +196,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
  * the GitHub API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  const analysisKeyEnvVar = "CODEQL_ACTION_ANALYSIS_KEY";
-
-  let analysisKey = process.env[analysisKeyEnvVar];
+  let analysisKey = process.env[EnvVar.ANALYSIS_KEY];
   if (analysisKey !== undefined) {
     return analysisKey;
   }
@@ -172,7 +205,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
-  core.exportVariable(analysisKeyEnvVar, analysisKey);
+  core.exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
   return analysisKey;
 }
 
@@ -216,11 +249,9 @@ export interface ActionsCacheItem {
 /** List all Actions cache entries matching the provided key and ref. */
 export async function listActionsCaches(
   key: string,
-  ref: string,
+  ref?: string,
 ): Promise<ActionsCacheItem[]> {
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
+  const repositoryNwo = getRepositoryNwo();
 
   return await getApiClient().paginate(
     "GET /repos/{owner}/{repo}/actions/caches",
@@ -235,9 +266,7 @@ export async function listActionsCaches(
 
 /** Delete an Actions cache item by its ID. */
 export async function deleteActionsCache(id: number) {
-  const repositoryNwo = parseRepositoryNwo(
-    getRequiredEnvParam("GITHUB_REPOSITORY"),
-  );
+  const repositoryNwo = getRepositoryNwo();
 
   await getApiClient().rest.actions.deleteActionsCacheById({
     owner: repositoryNwo.owner,
@@ -246,14 +275,57 @@ export async function deleteActionsCache(id: number) {
   });
 }
 
+/** Retrieve all custom repository properties. */
+export async function getRepositoryProperties(repositoryNwo: RepositoryNwo) {
+  return getApiClient().request("GET /repos/:owner/:repo/properties/values", {
+    owner: repositoryNwo.owner,
+    repo: repositoryNwo.repo,
+  });
+}
+
+function isEnablementError(msg: string) {
+  return [
+    /Code Security must be enabled/i,
+    /Advanced Security must be enabled/i,
+    /Code Scanning is not enabled/i,
+  ].some((pattern) => pattern.test(msg));
+}
+
+// TODO: Move to `error-messages.ts` after refactoring import order to avoid cycle
+// since `error-messages.ts` currently depends on this file.
+export function getFeatureEnablementError(message: string): string {
+  return `Please verify that the necessary features are enabled: ${message}`;
+}
+
 export function wrapApiConfigurationError(e: unknown) {
-  if (isHTTPError(e)) {
+  const httpError = asHTTPError(e);
+  if (httpError !== undefined) {
     if (
-      e.message.includes("API rate limit exceeded for site ID installation") ||
-      e.message.includes("commit not found") ||
-      /^ref .* not found in this repository$/.test(e.message)
+      [
+        /API rate limit exceeded/,
+        /commit not found/,
+        /Resource not accessible by integration/,
+        /ref .* not found in this repository/,
+      ].some((pattern) => pattern.test(httpError.message))
     ) {
-      return new ConfigurationError(e.message);
+      return new ConfigurationError(httpError.message);
+    }
+    if (
+      httpError.message.includes("Bad credentials") ||
+      httpError.message.includes("Not Found") ||
+      httpError.message.includes("Requires authentication")
+    ) {
+      return new ConfigurationError(
+        "Please check that your token is valid and has the required permissions: contents: read, security-events: write",
+      );
+    }
+    if (httpError.status === 403 && isEnablementError(httpError.message)) {
+      return new ConfigurationError(
+        getFeatureEnablementError(httpError.message),
+      );
+    }
+    if (httpError.status === 429) {
+      return new ConfigurationError("API rate limit exceeded");
     }
   }
   return e;

@@ -1,7 +1,6 @@
 name: Submit SARIF after failure
 description: Check that a SARIF file is submitted for the workflow run if it fails
 versions: ["linked", "default", "nightly-latest"]
-operatingSystems: ["ubuntu"]
 
 env:
   # Internal-only environment variable used to indicate that the post-init Action
@@ -19,7 +18,7 @@ permissions:
   security-events: write # needed to upload the SARIF file
 
 steps:
-  - uses: actions/checkout@v4
+  - uses: actions/checkout@v6
   - uses: ./init
     with:
       languages: javascript

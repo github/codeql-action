@@ -1,0 +1,244 @@
+import {
+  fixCodeQualityCategory,
+  getOptionalInput,
+  getRequiredInput,
+} from "./actions-util";
+import { EnvVar } from "./environment";
+import { Logger } from "./logging";
+import {
+  AssessmentPayload,
+  BasePayload,
+  UploadPayload,
+} from "./upload-lib/types";
+import { ConfigurationError, getRequiredEnvParam } from "./util";
+
+export enum AnalysisKind {
+  CodeScanning = "code-scanning",
+  CodeQuality = "code-quality",
+  RiskAssessment = "risk-assessment",
+}
+
+export type CompatibilityMatrix = Record<AnalysisKind, Set<AnalysisKind>>;
+
+/** A mapping from analysis kinds to other analysis kinds which can be enabled concurrently. */
+export const compatibilityMatrix: CompatibilityMatrix = {
+  [AnalysisKind.CodeScanning]: new Set([AnalysisKind.CodeQuality]),
+  [AnalysisKind.CodeQuality]: new Set([AnalysisKind.CodeScanning]),
+  [AnalysisKind.RiskAssessment]: new Set(),
+};
+
+// Exported for testing. A set of all known analysis kinds.
+export const supportedAnalysisKinds = new Set(Object.values(AnalysisKind));
+
+/**
+ * Parses a comma-separated string into a list of unique analysis kinds.
+ * Throws a configuration error if the input contains unknown analysis kinds
+ * or doesn't contain at least one element.
+ *
+ * @param input The comma-separated string to parse.
+ * @returns The array of unique analysis kinds that were parsed from the input string.
+ */
+export async function parseAnalysisKinds(
+  input: string,
+): Promise<AnalysisKind[]> {
+  const components = input.split(",");
+
+  if (components.length < 1) {
+    throw new ConfigurationError(
+      "At least one analysis kind must be configured.",
+    );
+  }
+
+  for (const component of components) {
+    if (!supportedAnalysisKinds.has(component as AnalysisKind)) {
+      throw new ConfigurationError(`Unknown analysis kind: ${component}`);
+    }
+  }
+
+  // Return all unique elements.
+  return Array.from(
+    new Set(components.map((component) => component as AnalysisKind)),
+  );
+}
+
+// Used to avoid re-parsing the input after we have done it once.
+let cachedAnalysisKinds: AnalysisKind[] | undefined;
+
+/**
+ * Initialises the analysis kinds for the analysis based on the `analysis-kinds` input.
+ * This function will also use the deprecated `quality-queries` input as an indicator to enable `code-quality`.
+ * If the `analysis-kinds` input cannot be parsed, a `ConfigurationError` is thrown.
+ *
+ * @param logger The logger to use.
+ * @param skipCache For testing, whether to ignore the cached values (default: false).
+ *
+ * @returns The array of enabled analysis kinds.
+ * @throws A `ConfigurationError` if the `analysis-kinds` input cannot be parsed.
+ */
+export async function getAnalysisKinds(
+  logger: Logger,
+  skipCache: boolean = false,
+): Promise<AnalysisKind[]> {
+  if (!skipCache && cachedAnalysisKinds !== undefined) {
+    return cachedAnalysisKinds;
+  }
+
+  const analysisKinds = await parseAnalysisKinds(
+    getRequiredInput("analysis-kinds"),
+  );
+
+  // Warn that `quality-queries` is deprecated if there is an argument for it.
+  const qualityQueriesInput = getOptionalInput("quality-queries");
+
+  if (qualityQueriesInput !== undefined) {
+    logger.warning(
+      "The `quality-queries` input is deprecated and will be removed in a future version of the CodeQL Action. " +
+        "Use the `analysis-kinds` input to configure different analysis kinds instead.",
+    );
+  }
+
+  // For backwards compatibility, add Code Quality to the enabled analysis kinds
+  // if an input to `quality-queries` was specified. We should remove this once
+  // `quality-queries` is no longer used.
+  if (
+    !analysisKinds.includes(AnalysisKind.CodeQuality) &&
+    qualityQueriesInput !== undefined
+  ) {
+    analysisKinds.push(AnalysisKind.CodeQuality);
+  }
+
+  // Check that all enabled analysis kinds are compatible with each other.
+  for (const analysisKind of analysisKinds) {
+    for (const otherAnalysisKind of analysisKinds) {
+      if (analysisKind === otherAnalysisKind) continue;
+
+      if (!compatibilityMatrix[analysisKind].has(otherAnalysisKind)) {
+        throw new ConfigurationError(
+          `${analysisKind} and ${otherAnalysisKind} cannot be enabled at the same time`,
+        );
+      }
+    }
+  }
+
+  // Cache the analysis kinds and return them.
+  cachedAnalysisKinds = analysisKinds;
+  return cachedAnalysisKinds;
+}
+
+/** The queries to use for Code Quality analyses. */
+export const codeQualityQueries: string[] = ["code-quality"];
+
+// Enumerates API endpoints that accept SARIF files.
+enum SARIF_UPLOAD_ENDPOINT {
+  CODE_SCANNING = "PUT /repos/:owner/:repo/code-scanning/analysis",
+  CODE_QUALITY = "PUT /repos/:owner/:repo/code-quality/analysis",
+  RISK_ASSESSMENT = "PUT /repos/:owner/:repo/code-scanning/risk-assessment",
+}
+
+// Represents configurations for different analysis kinds.
+export interface AnalysisConfig {
+  /** The analysis kind the configuration is for. */
+  kind: AnalysisKind;
+  /** A display friendly name for logs. */
+  name: string;
+  /** The API endpoint to upload SARIF files to. */
+  target: SARIF_UPLOAD_ENDPOINT;
+  /** The file extension for SARIF files generated by this kind of analysis. */
+  sarifExtension: string;
+  /** A predicate on filenames to decide whether a SARIF file
+   * belongs to this kind of analysis. */
+  sarifPredicate: (name: string) => boolean;
+  /** Analysis-specific adjustment of the category. */
+  fixCategory: (logger: Logger, category?: string) => string | undefined;
+  /** A prefix for environment variables used to track the uniqueness of SARIF uploads. */
+  sentinelPrefix: string;
+  /** Transforms the upload payload in an analysis-specific way. */
+  transformPayload: (payload: UploadPayload) => BasePayload;
+}
+
+// Represents the Code Scanning analysis configuration.
+export const CodeScanning: AnalysisConfig = {
+  kind: AnalysisKind.CodeScanning,
+  name: "code scanning",
+  target: SARIF_UPLOAD_ENDPOINT.CODE_SCANNING,
+  sarifExtension: ".sarif",
+  sarifPredicate: (name) =>
+    name.endsWith(CodeScanning.sarifExtension) &&
+    !CodeQuality.sarifPredicate(name) &&
+    !RiskAssessment.sarifPredicate(name),
+  fixCategory: (_, category) => category,
+  sentinelPrefix: "CODEQL_UPLOAD_SARIF_",
+  transformPayload: (payload) => payload,
+};
+
+// Represents the Code Quality analysis configuration.
+export const CodeQuality: AnalysisConfig = {
+  kind: AnalysisKind.CodeQuality,
+  name: "code quality",
+  target: SARIF_UPLOAD_ENDPOINT.CODE_QUALITY,
+  sarifExtension: ".quality.sarif",
+  sarifPredicate: (name) => name.endsWith(CodeQuality.sarifExtension),
+  fixCategory: fixCodeQualityCategory,
+  sentinelPrefix: "CODEQL_UPLOAD_QUALITY_SARIF_",
+  transformPayload: (payload) => payload,
+};
+
+/**
+ * Retrieves the CSRA assessment id from an environment variable and adds it to the payload.
+ * @param payload The base payload.
+ */
+function addAssessmentId(payload: UploadPayload): AssessmentPayload {
+  const rawAssessmentId = getRequiredEnvParam(EnvVar.RISK_ASSESSMENT_ID);
+  const assessmentId = parseInt(rawAssessmentId, 10);
+  if (Number.isNaN(assessmentId)) {
+    throw new Error(
+      `${EnvVar.RISK_ASSESSMENT_ID} must not be NaN: ${rawAssessmentId}`,
+    );
+  }
+  if (assessmentId < 0) {
+    throw new Error(
+      `${EnvVar.RISK_ASSESSMENT_ID} must not be negative: ${rawAssessmentId}`,
+    );
+  }
+  return { sarif: payload.sarif, assessment_id: assessmentId };
+}
+
+export const RiskAssessment: AnalysisConfig = {
+  kind: AnalysisKind.RiskAssessment,
+  name: "code scanning risk assessment",
+  target: SARIF_UPLOAD_ENDPOINT.RISK_ASSESSMENT,
+  sarifExtension: ".csra.sarif",
+  sarifPredicate: (name) => name.endsWith(RiskAssessment.sarifExtension),
+  fixCategory: (_, category) => category,
+  sentinelPrefix: "CODEQL_UPLOAD_CSRA_SARIF_",
+  transformPayload: addAssessmentId,
+};
+
+/**
+ * Gets the `AnalysisConfig` corresponding to `kind`.
+ * @param kind The analysis kind to get the `AnalysisConfig` for.
+ * @returns The `AnalysisConfig` corresponding to `kind`.
+ */
+export function getAnalysisConfig(kind: AnalysisKind): AnalysisConfig {
+  // Using a switch statement here accomplishes two things:
+  // 1. The type checker believes us that we have a case for every `AnalysisKind`.
+  // 2. If we ever add another member to `AnalysisKind`, the type checker will alert us that we have to add a case.
+  switch (kind) {
+    case AnalysisKind.CodeScanning:
+      return CodeScanning;
+    case AnalysisKind.CodeQuality:
+      return CodeQuality;
+    case AnalysisKind.RiskAssessment:
+      return RiskAssessment;
+  }
+}
+
+// Since we have overlapping extensions (i.e. ".sarif" includes ".quality.sarif"),
+// we want to scan a folder containing SARIF files in an order that finds the more
+// specific extensions first. This constant defines an array in the order of analyis
+// configurations with more specific extensions to less specific extensions.
+export const SarifScanOrder: AnalysisConfig[] = [
+  RiskAssessment,
+  CodeQuality,
+  CodeScanning,
+];

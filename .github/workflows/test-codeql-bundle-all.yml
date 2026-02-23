@@ -16,6 +16,9 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
+defaults:
+  run:
+    shell: bash
 jobs:
   test-codeql-bundle-all:
     strategy:
@@ -25,6 +28,7 @@ jobs:
         - os: ubuntu-latest
           version: nightly-latest
     name: 'CodeQL Bundle All'
+    if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       security-events: read
@@ -32,21 +36,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Prepare test
       id: prepare-test
       uses: ./.github/actions/prepare-test
       with:
         version: ${{ matrix.version }}
         use-all-platform-bundle: true
+    - name: Install .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: '9.x'
     - id: init
       uses: ./../action/init
       with:
         # We manually exclude Swift from the languages list here, as it is not supported on Ubuntu
-        languages: cpp,csharp,go,java,javascript,python,ruby 
+        languages: cpp,csharp,go,java,javascript,python,ruby
         tools: ${{ steps.prepare-test.outputs.tools-url }}
     - name: Build code
-      shell: bash
       run: ./build.sh
     - uses: ./../action/analyze
     env:

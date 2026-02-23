@@ -2,6 +2,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { AnalysisKind } from "./analyses";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
@@ -28,12 +29,13 @@ test("post: init action with debug mode off", async (t) => {
     const gitHubVersion: util.GitHubVersion = {
       type: util.GitHubVariant.DOTCOM,
     };
-    sinon.stub(configUtils, "getConfig").resolves({
-      debugMode: false,
-      gitHubVersion,
-      languages: [],
-      packs: [],
-    } as unknown as configUtils.Config);
+    sinon.stub(configUtils, "getConfig").resolves(
+      createTestConfig({
+        debugMode: false,
+        gitHubVersion,
+        languages: [],
+      }),
+    );
 
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
@@ -41,6 +43,7 @@ test("post: init action with debug mode off", async (t) => {
     await initActionPostHelper.run(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
+      codeql.createStubCodeQL({}),
       createTestConfig({ debugMode: false }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
@@ -63,6 +66,7 @@ test("post: init action with debug mode on", async (t) => {
     await initActionPostHelper.run(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
+      codeql.createStubCodeQL({}),
       createTestConfig({ debugMode: true }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
@@ -78,18 +82,18 @@ test("uploads failed SARIF run with `diagnostics export` if feature flag is off"
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v4",
+      uses: "actions/checkout@v5",
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v3",
+      uses: "github/codeql-action/init@v4",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v3",
+      uses: "github/codeql-action/analyze@v4",
       with: {
         category: "my-category",
       },
@@ -102,18 +106,18 @@ test("uploads failed SARIF run with `diagnostics export` if the database doesn't
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v4",
+      uses: "actions/checkout@v5",
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v3",
+      uses: "github/codeql-action/init@v4",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v3",
+      uses: "github/codeql-action/analyze@v4",
       with: {
         category: "my-category",
       },
@@ -129,18 +133,18 @@ test("uploads failed SARIF run with database export-diagnostics if the database 
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v4",
+      uses: "actions/checkout@v5",
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v3",
+      uses: "github/codeql-action/init@v4",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v3",
+      uses: "github/codeql-action/analyze@v4",
       with: {
         category: "my-category",
       },
@@ -186,18 +190,18 @@ for (const { uploadInput, shouldUpload } of UPLOAD_INPUT_TEST_CASES) {
     const actionsWorkflow = createTestWorkflow([
       {
         name: "Checkout repository",
-        uses: "actions/checkout@v4",
+        uses: "actions/checkout@v5",
       },
       {
         name: "Initialize CodeQL",
-        uses: "github/codeql-action/init@v3",
+        uses: "github/codeql-action/init@v4",
         with: {
           languages: "javascript",
         },
       },
       {
         name: "Perform CodeQL Analysis",
-        uses: "github/codeql-action/analyze@v3",
+        uses: "github/codeql-action/analyze@v4",
         with: {
           category: "my-category",
           upload: uploadInput,
@@ -221,18 +225,18 @@ test("uploading failed SARIF run succeeds when workflow uses an input with a mat
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v4",
+      uses: "actions/checkout@v5",
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v3",
+      uses: "github/codeql-action/init@v4",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v3",
+      uses: "github/codeql-action/analyze@v4",
       with: {
         category: "/language:${{ matrix.language }}",
       },
@@ -248,18 +252,18 @@ test("uploading failed SARIF run fails when workflow uses a complex upload input
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v4",
+      uses: "actions/checkout@v5",
     },
     {
       name: "Initialize CodeQL",
-      uses: "github/codeql-action/init@v3",
+      uses: "github/codeql-action/init@v4",
       with: {
         languages: "javascript",
       },
     },
     {
       name: "Perform CodeQL Analysis",
-      uses: "github/codeql-action/analyze@v3",
+      uses: "github/codeql-action/analyze@v4",
       with: {
         upload: "${{ matrix.language != 'csharp' }}",
       },
@@ -279,7 +283,7 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
   const actionsWorkflow = createTestWorkflow([
     {
       name: "Checkout repository",
-      uses: "actions/checkout@v4",
+      uses: "actions/checkout@v5",
     },
   ]);
   const result = await testFailedSarifUpload(t, actionsWorkflow, {
@@ -291,6 +295,17 @@ test("uploading failed SARIF run fails when workflow does not reference github/c
       "call github/codeql-action/analyze.",
   );
   t.truthy(result.upload_failed_run_stack_trace);
+});
+
+test("not uploading failed SARIF when `code-scanning` is not an enabled analysis kind", async (t) => {
+  const result = await testFailedSarifUpload(t, createTestWorkflow([]), {
+    analysisKinds: [AnalysisKind.CodeQuality],
+    expectUpload: false,
+  });
+  t.is(
+    result.upload_failed_run_skipped_because,
+    "Code Scanning is not enabled.",
+  );
 });
 
 function createTestWorkflow(
@@ -325,20 +340,22 @@ async function testFailedSarifUpload(
     expectUpload = true,
     exportDiagnosticsEnabled = false,
     matrix = {},
+    analysisKinds = [AnalysisKind.CodeScanning],
   }: {
     category?: string;
     databaseExists?: boolean;
     expectUpload?: boolean;
     exportDiagnosticsEnabled?: boolean;
     matrix?: { [key: string]: string };
+    analysisKinds?: AnalysisKind[];
   } = {},
 ): Promise<initActionPostHelper.UploadFailedSarifResult> {
-  const config = {
+  const config = createTestConfig({
+    analysisKinds,
     codeQLCmd: "codeql",
     debugMode: true,
     languages: [],
-    packs: [],
-  } as unknown as configUtils.Config;
+  });
   if (databaseExists) {
     config.dbLocation = "path/to/database";
   }

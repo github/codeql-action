@@ -5,6 +5,9 @@ operatingSystems:
 versions:
   - linked
   - nightly-latest
+installGo: true
+installPython: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:
@@ -12,6 +15,5 @@ steps:
       languages: cpp,csharp,java,javascript,python
       config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
   - name: Build code
-    shell: bash
     run: ./build.sh
   - uses: ./../action/analyze

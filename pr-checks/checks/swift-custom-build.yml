@@ -2,29 +2,28 @@ name: "Swift analysis using a custom build command"
 description: "Tests creation of a Swift database using custom build"
 versions: ["linked", "default", "nightly-latest"]
 operatingSystems: ["macos"]
+installGo: true
+installDotNet: true
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:
+  - name: Use Xcode 16
+    if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+    run: sudo xcode-select -s "/Applications/Xcode_16.app"
   - uses: ./../action/init
     id: init
     with:
       languages: swift
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-  - uses: ./../action/.github/actions/setup-swift
-    with:
-      codeql-path: ${{steps.init.outputs.codeql-path}}
   - name: Check working directory
-    shell: bash
     run: pwd
   - name: Build code
-    shell: bash
     run: ./build.sh
   - uses: ./../action/analyze
     id: analysis
     with:
       upload-database: false
   - name: Check database
-    shell: bash
     run: |
       SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
       if [[ ! -d "$SWIFT_DB" ]]; then

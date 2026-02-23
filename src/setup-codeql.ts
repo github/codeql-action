@@ -1,23 +1,23 @@
 import * as fs from "fs";
 import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
-import { performance } from "perf_hooks";
 
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isRunningLocalAction } from "./actions-util";
+import { isDynamicWorkflow, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
+import { addNoLanguageDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
-import { formatDuration, Logger } from "./logging";
+import { Logger } from "./logging";
 import * as tar from "./tar";
 import {
   downloadAndExtract,
@@ -26,7 +26,7 @@ import {
   writeToolcacheMarkerFile,
 } from "./tools-download";
 import * as util from "./util";
-import { cleanUpGlob, isGoodVersion } from "./util";
+import { isGoodVersion } from "./util";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -35,9 +35,13 @@ export enum ToolsSource {
   Download = "DOWNLOAD",
 }
 
-export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+const CODEQL_NIGHTLIES_REPOSITORY_OWNER = "dsp-testing";
+const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
+const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
+const CODEQL_TOOLCACHE_INPUT = "toolcache";
 
 function getCodeQLBundleExtension(
   compressionMethod: tar.CompressionMethod,
@@ -52,7 +56,9 @@ function getCodeQLBundleExtension(
   }
 }
 
-function getCodeQLBundleName(compressionMethod: tar.CompressionMethod): string {
+export function getCodeQLBundleName(
+  compressionMethod: tar.CompressionMethod,
+): string {
   const extension = getCodeQLBundleExtension(compressionMethod);
 
   let platform: string;
@@ -155,7 +161,7 @@ export function tryGetTagNameFromUrl(
   logger: Logger,
 ): string | undefined {
   const matches = [...url.matchAll(/\/(codeql-bundle-[^/]*)\//g)];
-  if (!matches.length) {
+  if (matches.length === 0) {
     logger.debug(`Could not determine tag name for URL ${url}.`);
     return undefined;
   }
@@ -165,7 +171,7 @@ export function tryGetTagNameFromUrl(
   // assumes less about the structure of the URL.
   const match = matches[matches.length - 1];
 
-  if (match === null || match.length !== 2) {
+  if (match?.length !== 2) {
     logger.debug(
       `Could not determine tag name for URL ${url}. Matched ${JSON.stringify(
         match,
@@ -175,17 +181,6 @@ export function tryGetTagNameFromUrl(
   }
 
   return match[1];
-}
-
-export function tryGetBundleVersionFromUrl(
-  url: string,
-  logger: Logger,
-): string | undefined {
-  const tagName = tryGetTagNameFromUrl(url, logger);
-  if (tagName === undefined) {
-    return undefined;
-  }
-  return tryGetBundleVersionFromTagName(tagName, logger);
 }
 
 export function convertToSemVer(version: string, logger: Logger): string {
@@ -204,7 +199,7 @@ export function convertToSemVer(version: string, logger: Logger): string {
   return s;
 }
 
-type CodeQLToolsSource =
+export type CodeQLToolsSource =
   | {
       codeqlTarPath: string;
       compressionMethod: tar.CompressionMethod;
@@ -269,17 +264,35 @@ async function findOverridingToolsInCache(
   return undefined;
 }
 
+/**
+ * Determines where the CodeQL CLI we want to use comes from. This can be from a local file,
+ * the Actions toolcache, or a download.
+ *
+ * @param toolsInput The argument provided for the `tools` input, if any.
+ * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
+ * @param apiDetails Information about the GitHub API.
+ * @param variant The GitHub variant we are running on.
+ * @param tarSupportsZstd Whether zstd is supported by `tar`.
+ * @param features Information about enabled features.
+ * @param logger The logger to use.
+ *
+ * @returns Information about where the CodeQL CLI we want to use comes from.
+ */
 export async function getCodeQLSource(
   toolsInput: string | undefined,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tarSupportsZstd: boolean,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
+  // If there is an explicit `tools` input, it's not one of the reserved values, and it doesn't appear
+  // to point to a URL, then we assume it is a local path and use the CLI from there.
+  // TODO: This appears to misclassify filenames that happen to start with `http` as URLs.
   if (
     toolsInput &&
-    !CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput) &&
+    !isReservedToolsValue(toolsInput) &&
     !toolsInput.startsWith("http")
   ) {
     logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
@@ -298,6 +311,61 @@ export async function getCodeQLSource(
     };
   }
 
+  /** CLI version number, for example 2.12.6. */
+  let cliVersion: string | undefined;
+  /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
+  let tagName: string | undefined;
+  /**
+   * URL of the CodeQL bundle.
+   *
+   * This does not always include a tag name.
+   */
+  let url: string | undefined;
+
+  // We allow forcing the nightly CLI via the FF for `dynamic` events (or in test mode) where the
+  // `tools` input cannot be adjusted to explicitly request it.
+  const canForceNightlyWithFF = isDynamicWorkflow() || util.isInTestMode();
+  const forceNightlyValueFF = await features.getValue(Feature.ForceNightly);
+  const forceNightly = forceNightlyValueFF && canForceNightlyWithFF;
+
+  // For advanced workflows, a value from `CODEQL_NIGHTLY_TOOLS_INPUTS` can be specified explicitly
+  // for the `tools` input in the workflow file.
+  const nightlyRequestedByToolsInput =
+    toolsInput !== undefined &&
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput);
+
+  if (forceNightly || nightlyRequestedByToolsInput) {
+    if (forceNightly) {
+      logger.info(
+        `Using the latest CodeQL CLI nightly, as forced by the ${Feature.ForceNightly} feature flag.`,
+      );
+      addNoLanguageDiagnostic(
+        undefined,
+        makeDiagnostic(
+          "codeql-action/forced-nightly-cli",
+          "A nightly release of CodeQL was used",
+          {
+            markdownMessage:
+              "GitHub configured this analysis to use a nightly release of CodeQL to allow you to preview changes from an upcoming release.\n\n" +
+              "Nightly releases do not undergo the same validation as regular releases and may lead to analysis instability.\n\n" +
+              "If use of a nightly CodeQL release for this analysis is unexpected, please contact GitHub support.",
+            visibility: {
+              cliSummaryTable: true,
+              statusPage: true,
+              telemetry: true,
+            },
+            severity: "note",
+          },
+        ),
+      );
+    } else {
+      logger.info(
+        `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
+      );
+    }
+    toolsInput = await getNightlyToolsUrl(logger);
+  }
+
   /**
    * Whether the tools shipped with the Action, i.e. those in `defaults.json`, have been forced.
    *
@@ -311,9 +379,13 @@ export async function getCodeQLSource(
    */
   const forceShippedTools =
     toolsInput && CODEQL_BUNDLE_VERSION_ALIAS.includes(toolsInput);
+
   if (forceShippedTools) {
+    cliVersion = defaults.cliVersion;
+    tagName = defaults.bundleVersion;
+
     logger.info(
-      `'tools: ${toolsInput}' was requested, so using CodeQL version ${defaultCliVersion.cliVersion}, the version shipped with the Action.`,
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${cliVersion}, the version shipped with the Action.`,
     );
 
     if (toolsInput === "latest") {
@@ -321,22 +393,54 @@ export async function getCodeQLSource(
         "`tools: latest` has been renamed to `tools: linked`, but the old name is still supported. No action is required.",
       );
     }
-  }
+  } else if (
+    toolsInput !== undefined &&
+    toolsInput === CODEQL_TOOLCACHE_INPUT
+  ) {
+    let latestToolcacheVersion: string | undefined;
 
-  /** CLI version number, for example 2.12.6. */
-  let cliVersion: string | undefined;
-  /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
-  let tagName: string | undefined;
-  /**
-   * URL of the CodeQL bundle.
-   *
-   * This does not always include a tag name.
-   */
-  let url: string | undefined;
+    // We only allow `toolsInput === "toolcache"` for `dynamic` events. In general, using `toolsInput === "toolcache"`
+    // can lead to alert wobble and so it shouldn't be used for an analysis where results are intended to be uploaded.
+    // We also allow this in test mode.
+    const allowToolcacheValueFF = await features.getValue(
+      Feature.AllowToolcacheInput,
+    );
+    const allowToolcacheValue =
+      allowToolcacheValueFF && (isDynamicWorkflow() || util.isInTestMode());
+    if (allowToolcacheValue) {
+      // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
+      // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
+      // the linked version.
+      logger.info(
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: ${toolsInput}'.`,
+      );
 
-  if (forceShippedTools) {
-    cliVersion = defaults.cliVersion;
-    tagName = defaults.bundleVersion;
+      latestToolcacheVersion = getLatestToolcacheVersion(logger);
+      if (latestToolcacheVersion) {
+        cliVersion = latestToolcacheVersion;
+      }
+    }
+
+    if (latestToolcacheVersion === undefined) {
+      if (allowToolcacheValue) {
+        logger.info(
+          `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
+        );
+      } else {
+        if (allowToolcacheValueFF) {
+          logger.warning(
+            `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
+          );
+        } else {
+          logger.info(
+            `Ignoring 'tools: ${toolsInput}' because the feature is not enabled.`,
+          );
+        }
+      }
+
+      cliVersion = defaultCliVersion.cliVersion;
+      tagName = defaultCliVersion.tagName;
+    }
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.
     tagName = tryGetTagNameFromUrl(toolsInput, logger);
@@ -461,7 +565,7 @@ export async function getCodeQLSource(
   // different version to save download time if the version hasn't been
   // specified explicitly (in which case we always honor it).
   if (
-    variant !== util.GitHubVariant.DOTCOM &&
+    variant === util.GitHubVariant.GHES &&
     !forceShippedTools &&
     !toolsInput
   ) {
@@ -519,7 +623,7 @@ export async function getCodeQLSource(
  * Gets a fallback version number to use when looking for CodeQL in the toolcache if we didn't find
  * the `x.y.z` version. This is to support old versions of the toolcache.
  */
-export async function tryGetFallbackToolcacheVersion(
+async function tryGetFallbackToolcacheVersion(
   cliVersion: string | undefined,
   tagName: string,
   logger: Logger,
@@ -546,7 +650,6 @@ export const downloadCodeQL = async function (
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
@@ -558,21 +661,17 @@ export const downloadCodeQL = async function (
   const headers: OutgoingHttpHeaders = {
     accept: "application/octet-stream",
   };
-  // We only want to provide an authorization header if we are downloading
-  // from the same GitHub instance the Action is running on.
-  // This avoids leaking Enterprise tokens to dotcom.
-  // We also don't want to send an authorization header if there's already a token provided in the URL.
   let authorization: string | undefined = undefined;
+
+  // We don't want to send an authorization header if there's already a token provided in the URL.
   if (searchParams.has("token")) {
     logger.debug("CodeQL tools URL contains an authorization token.");
-  } else if (
-    codeqlURL.startsWith(`${apiDetails.url}/`) ||
-    (apiDetails.apiURL && codeqlURL.startsWith(`${apiDetails.apiURL}/`))
-  ) {
-    logger.debug("Providing an authorization token to download CodeQL tools.");
-    authorization = `token ${apiDetails.auth}`;
   } else {
-    logger.debug("Downloading CodeQL tools without an authorization token.");
+    authorization = api.getAuthorizationHeaderFor(
+      logger,
+      apiDetails,
+      codeqlURL,
+    );
   }
 
   const toolcacheInfo = getToolcacheDestinationInfo(
@@ -580,14 +679,11 @@ export const downloadCodeQL = async function (
     maybeCliVersion,
     logger,
   );
-  const extractToToolcache =
-    !!toolcacheInfo && !!(await features.getValue(Feature.ExtractToToolcache));
 
-  const extractedBundlePath = extractToToolcache
-    ? toolcacheInfo.path
-    : getTempExtractionDir(tempDir);
+  const extractedBundlePath =
+    toolcacheInfo?.path ?? getTempExtractionDir(tempDir);
 
-  let statusReport = await downloadAndExtract(
+  const statusReport = await downloadAndExtract(
     codeqlURL,
     compressionMethod,
     extractedBundlePath,
@@ -609,42 +705,10 @@ export const downloadCodeQL = async function (
     };
   }
 
-  let codeqlFolder = extractedBundlePath;
-
-  if (extractToToolcache) {
-    writeToolcacheMarkerFile(toolcacheInfo.path, logger);
-  } else {
-    logger.debug("Caching CodeQL bundle.");
-    const toolcacheStart = performance.now();
-    codeqlFolder = await toolcache.cacheDir(
-      extractedBundlePath,
-      "CodeQL",
-      toolcacheInfo.version,
-    );
-
-    const cacheDurationMs = performance.now() - toolcacheStart;
-    logger.info(
-      `Added CodeQL bundle to the tool cache (${formatDuration(
-        cacheDurationMs,
-      )}).`,
-    );
-    statusReport = {
-      ...statusReport,
-      cacheDurationMs,
-    };
-
-    // Defensive check: we expect `cacheDir` to copy the bundle to a new location.
-    if (codeqlFolder !== extractedBundlePath) {
-      await cleanUpGlob(
-        extractedBundlePath,
-        "CodeQL bundle from temporary directory",
-        logger,
-      );
-    }
-  }
+  writeToolcacheMarkerFile(toolcacheInfo.path, logger);
 
   return {
-    codeqlFolder,
+    codeqlFolder: extractedBundlePath,
     statusReport,
     toolsVersion: maybeCliVersion ?? toolcacheInfo.version,
   };
@@ -708,7 +772,7 @@ function getCanonicalToolcacheVersion(
   return cliVersion;
 }
 
-export interface SetupCodeQLResult {
+interface SetupCodeQLResult {
   codeqlFolder: string;
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
@@ -726,10 +790,10 @@ export async function setupCodeQLBundle(
   apiDetails: api.GitHubApiDetails,
   tempDir: string,
   variant: util.GitHubVariant,
-  features: FeatureEnablement,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  features: FeatureEnablement,
   logger: Logger,
-) {
+): Promise<SetupCodeQLResult> {
   if (!(await util.isBinaryAccessible("tar", logger))) {
     throw new util.ConfigurationError(
       "Could not find tar in PATH, so unable to extract CodeQL bundle.",
@@ -743,6 +807,7 @@ export async function setupCodeQLBundle(
     apiDetails,
     variant,
     zstdAvailability.available,
+    features,
     logger,
   );
 
@@ -776,7 +841,6 @@ export async function setupCodeQLBundle(
         apiDetails,
         zstdAvailability.version,
         tempDir,
-        features,
         logger,
       );
       toolsVersion = result.toolsVersion;
@@ -811,4 +875,76 @@ async function useZstdBundle(
 
 function getTempExtractionDir(tempDir: string) {
   return path.join(tempDir, uuidV4());
+}
+
+/**
+ * Get the URL of the latest nightly CodeQL bundle.
+ */
+async function getNightlyToolsUrl(logger: Logger) {
+  const zstdAvailability = await tar.isZstdAvailable(logger);
+  // The nightly is guaranteed to have a zstd bundle
+  const compressionMethod = (await useZstdBundle(
+    CODEQL_VERSION_ZSTD_BUNDLE,
+    zstdAvailability.available,
+  ))
+    ? "zstd"
+    : "gzip";
+
+  try {
+    // Since nightlies are prereleases, we can't just download the latest release
+    // on the repository. So instead we need to find the latest pre-release
+    // version and construct the download URL from that.
+    const release = await api.getApiClient().rest.repos.listReleases({
+      owner: CODEQL_NIGHTLIES_REPOSITORY_OWNER,
+      repo: CODEQL_NIGHTLIES_REPOSITORY_NAME,
+      per_page: 1,
+      page: 1,
+      prerelease: true,
+    });
+    const latestRelease = release.data[0];
+    if (!latestRelease) {
+      throw new Error("Could not find the latest nightly release.");
+    }
+    return `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${getCodeQLBundleName(compressionMethod)}`;
+  } catch (e) {
+    throw new Error(
+      `Failed to retrieve the latest nightly release: ${util.wrapError(e)}`,
+    );
+  }
+}
+
+/**
+ * Gets the latest version of the CodeQL CLI that is available in the toolcache, or `undefined`
+ * if no CodeQL CLI is available in the toolcache.
+ *
+ * @param logger The logger to use.
+ * @returns The latest version of the CodeQL CLI that is available in the toolcache, or `undefined` if there is none.
+ */
+export function getLatestToolcacheVersion(logger: Logger): string | undefined {
+  const allVersions = toolcache
+    .findAllVersions("CodeQL")
+    .sort((a, b) => semver.compare(b, a));
+  logger.debug(
+    `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
+      allVersions,
+    )}.`,
+  );
+
+  if (allVersions.length > 0) {
+    const latestToolcacheVersion = allVersions[0];
+    logger.info(
+      `CLI version ${latestToolcacheVersion} is the latest version in the toolcache.`,
+    );
+    return latestToolcacheVersion;
+  }
+
+  return undefined;
+}
+
+function isReservedToolsValue(tools: string): boolean {
+  return (
+    CODEQL_BUNDLE_VERSION_ALIAS.includes(tools) ||
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(tools) ||
+    tools === CODEQL_TOOLCACHE_INPUT
+  );
 }

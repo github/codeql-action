@@ -1,0 +1,21 @@
+name: "Overlay database init fallback"
+description: "Tests that overlay init action succeeds with non-overlay packs"
+versions: ["linked", "nightly-latest"]
+steps:
+  - uses: ./../action/init
+    with:
+      languages: actions   # Any language without overlay support will do
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+    env:
+      CODEQL_OVERLAY_DATABASE_MODE: overlay-base
+  - uses: ./../action/analyze
+    id: analysis
+    with:
+      upload-database: false
+  - name: Check database
+    run: |
+      cd "$RUNNER_TEMP/codeql_databases/actions"
+      if ! grep -q 'overlayBaseDatabase: false' codeql-database.yml ; then
+        echo "This test needs to be updated to use a non-overlay language."
+        exit 1
+      fi

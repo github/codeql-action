@@ -12,14 +12,17 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { type Config } from "./config-utils";
+import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
+import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
+import { OverlayBaseDatabaseDownloadStats } from "./overlay-database-utils";
+import { getRepositoryNwo } from "./repository";
+import { ToolsSource } from "./setup-codeql";
 import {
   ConfigurationError,
-  isHTTPError,
   getRequiredEnvParam,
   getCachedCodeQlVersion,
   isInTestMode,
@@ -28,14 +31,18 @@ import {
   assertNever,
   BuildMode,
   getErrorMessage,
+  getTestingEnvironment,
+  asHTTPError,
 } from "./util";
 
 export enum ActionName {
-  Autobuild = "autobuild",
   Analyze = "finish",
+  Autobuild = "autobuild",
   Init = "init",
   InitPost = "init-post",
   ResolveEnvironment = "resolve-environment",
+  SetupCodeQL = "setup-codeql",
+  StartProxy = "start-proxy",
   UploadSarif = "upload-sarif",
 }
 
@@ -47,11 +54,18 @@ export enum ActionName {
  * considered to be a third party analysis and is treated differently when calculating SLOs. To ensure
  * misconfigured workflows are not treated as third party, only the upload-sarif action can return false.
  */
-export function isFirstPartyAnalysis(actionName: ActionName): boolean {
+function isFirstPartyAnalysis(actionName: ActionName): boolean {
   if (actionName !== ActionName.UploadSarif) {
     return true;
   }
   return process.env[EnvVar.INIT_ACTION_HAS_RUN] === "true";
+}
+
+/**
+ * @returns true if the analysis is considered to be third party.
+ */
+export function isThirdPartyAnalysis(actionName: ActionName): boolean {
+  return !isFirstPartyAnalysis(actionName);
 }
 
 export type ActionStatus =
@@ -82,6 +96,8 @@ export interface StatusReportBase {
   action_version: string;
   /** The name of the Actions event that triggered the workflow. */
   actions_event_name?: string;
+  /** Comma-separated list of the kinds of analyses we are performing. */
+  analysis_kinds?: string;
   /** Analysis key, normally composed from the workflow path and job name. */
   analysis_key: string;
   /** Build mode, if specified. */
@@ -236,7 +252,7 @@ export interface EventReport {
  *
  * @param actionName The name of the action, e.g. 'init', 'finish', 'upload-sarif'
  * @param status The status. Must be 'success', 'failure', or 'starting'
- * @param startedAt The time this action started executing.
+ * @param actionStartedAt The time this action started executing.
  * @param cause  Cause of failure (only supply if status is 'failure')
  * @param exception Exception (only supply if status is 'failure')
  * @returns undefined if an exception was thrown.
@@ -245,7 +261,7 @@ export async function createStatusReportBase(
   actionName: ActionName,
   status: ActionStatus,
   actionStartedAt: Date,
-  config: Config | undefined,
+  config: Partial<Config> | undefined,
   diskInfo: DiskUsage | undefined,
   logger: Logger,
   cause?: string,
@@ -269,10 +285,10 @@ export async function createStatusReportBase(
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
     const codeQlCliVersion = getCachedCodeQlVersion();
     const actionRef = process.env["GITHUB_ACTION_REF"] || "";
-    const testingEnvironment = process.env[EnvVar.TESTING_ENVIRONMENT] || "";
+    const testingEnvironment = getTestingEnvironment();
     // re-export the testing environment variable so that it is available to subsequent steps,
     // even if it was only set for this step
-    if (testingEnvironment !== "") {
+    if (testingEnvironment) {
       core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
     }
     const isSteadyStateDefaultSetupRun =
@@ -284,6 +300,7 @@ export async function createStatusReportBase(
       action_ref: actionRef,
       action_started_at: actionStartedAt.toISOString(),
       action_version: getActionVersion(),
+      analysis_kinds: config?.analysisKinds?.join(","),
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,
@@ -295,7 +312,7 @@ export async function createStatusReportBase(
       started_at: workflowStartedAt,
       status,
       steady_state_default_setup: isSteadyStateDefaultSetupRun,
-      testing_environment: testingEnvironment,
+      testing_environment: testingEnvironment || "",
       workflow_name: workflowName,
       workflow_run_attempt: workflowRunAttempt,
       workflow_run_id: workflowRunID,
@@ -304,11 +321,13 @@ export async function createStatusReportBase(
     try {
       statusReport.actions_event_name = getWorkflowEventName();
     } catch (e) {
-      logger.warning(`Could not determine the workflow event name: ${e}.`);
+      logger.warning(
+        `Could not determine the workflow event name: ${getErrorMessage(e)}.`,
+      );
     }
 
     if (config) {
-      statusReport.languages = config.languages.join(",");
+      statusReport.languages = config.languages?.join(",");
     }
 
     if (diskInfo) {
@@ -357,16 +376,22 @@ export async function createStatusReportBase(
     return statusReport;
   } catch (e) {
     logger.warning(
-      `Caught an exception while gathering information for telemetry: ${e}. Will skip sending status report.`,
+      `Failed to gather information for telemetry: ${getErrorMessage(e)}. Will skip sending status report.`,
     );
+
+    // Re-throw the exception in test mode. While testing, we want to know if something goes wrong here.
+    if (isInTestMode()) {
+      throw e;
+    }
+
     return undefined;
   }
 }
 
 const OUT_OF_DATE_MSG =
-  "CodeQL Action is out-of-date. Please upgrade to the latest version of codeql-action.";
+  "CodeQL Action is out-of-date. Please upgrade to the latest version of `codeql-action`.";
 const INCOMPATIBLE_MSG =
-  "CodeQL Action version is incompatible with the code scanning endpoint. Please update to a compatible version of codeql-action.";
+  "CodeQL Action version is incompatible with the API endpoint. Please update to a compatible version of `codeql-action`.";
 
 /**
  * Send a status report to the code_scanning/analysis/status endpoint.
@@ -393,22 +418,22 @@ export async function sendStatusReport<S extends StatusReportBase>(
     return;
   }
 
-  const nwo = getRequiredEnvParam("GITHUB_REPOSITORY");
-  const [owner, repo] = nwo.split("/");
+  const nwo = getRepositoryNwo();
   const client = getApiClient();
 
   try {
     await client.request(
       "PUT /repos/:owner/:repo/code-scanning/analysis/status",
       {
-        owner,
-        repo,
+        owner: nwo.owner,
+        repo: nwo.repo,
         data: statusReportJSON,
       },
     );
   } catch (e) {
-    if (isHTTPError(e)) {
-      switch (e.status) {
+    const httpError = asHTTPError(e);
+    if (httpError !== undefined) {
+      switch (httpError.status) {
         case 403:
           if (
             getWorkflowEventName() === "push" &&
@@ -416,16 +441,20 @@ export async function sendStatusReport<S extends StatusReportBase>(
           ) {
             core.warning(
               'Workflows triggered by Dependabot on the "push" event run with read-only access. ' +
-                "Uploading Code Scanning results requires write access. " +
-                'To use Code Scanning with Dependabot, please ensure you are using the "pull_request" event for this workflow and avoid triggering on the "push" event for Dependabot branches. ' +
+                "Uploading CodeQL results requires write access. " +
+                'To use CodeQL with Dependabot, please ensure you are using the "pull_request" event for this workflow and avoid triggering on the "push" event for Dependabot branches. ' +
                 `See ${DocUrl.SCANNING_ON_PUSH} for more information on how to configure these events.`,
             );
           } else {
-            core.warning(e.message);
+            core.warning(
+              "This run of the CodeQL Action does not have permission to access the CodeQL Action API endpoints. " +
+                "This could be because the Action is running on a pull request from a fork. If not, " +
+                `please ensure the workflow has at least the 'security-events: read' permission. Details: ${httpError.message}`,
+            );
           }
           return;
         case 404:
-          core.warning(e.message);
+          core.warning(httpError.message);
           return;
         case 422:
           // schema incompatibility when reporting status
@@ -443,9 +472,171 @@ export async function sendStatusReport<S extends StatusReportBase>(
     // something else has gone wrong and the request/response will be logged by octokit
     // it's possible this is a transient error and we should continue scanning
     core.warning(
-      `An unexpected error occurred when sending code scanning status report: ${getErrorMessage(
+      `An unexpected error occurred when sending a status report: ${getErrorMessage(
         e,
       )}`,
     );
+  }
+}
+
+/** Fields of the init status report that can be sent before `config` is populated. */
+export interface InitStatusReport extends StatusReportBase {
+  /** Value given by the user as the "tools" input. */
+  tools_input: string;
+  /** Version of the bundle used. */
+  tools_resolved_version: string;
+  /** Where the bundle originated from. */
+  tools_source: ToolsSource;
+  /** Comma-separated list of languages specified explicitly in the workflow file. */
+  workflow_languages: string;
+}
+
+/** Fields of the init status report that are populated using values from `config`. */
+export interface InitWithConfigStatusReport extends InitStatusReport {
+  /** Comma-separated list of languages where the default queries are disabled. */
+  disable_default_queries: string;
+  /** Comma-separated list of paths, from the 'paths' config field. */
+  paths: string;
+  /** Comma-separated list of paths, from the 'paths-ignore' config field. */
+  paths_ignore: string;
+  /** Comma-separated list of queries sources, from the 'queries' config field or workflow input. */
+  queries: string;
+  /** Stringified JSON object of packs, from the 'packs' config field or workflow input. */
+  packs: string;
+  /** Comma-separated list of languages for which we are using TRAP caching. */
+  trap_cache_languages: string;
+  /** Size of TRAP caches that we downloaded, in bytes. */
+  trap_cache_download_size_bytes: number;
+  /** Time taken to download TRAP caches, in milliseconds. */
+  trap_cache_download_duration_ms: number;
+  /** Size of the overlay-base database that we downloaded, in bytes. */
+  overlay_base_database_download_size_bytes?: number;
+  /** Time taken to download the overlay-base database, in milliseconds. */
+  overlay_base_database_download_duration_ms?: number;
+  /** Stringified JSON object representing information about the results of restoring dependency caches. */
+  dependency_caching_restore_results?: DependencyCacheRestoreStatusReport;
+  /** Stringified JSON array of registry configuration objects, from the 'registries' config field
+  or workflow input. **/
+  registries: string;
+  /** Stringified JSON object representing a query-filters, from the 'query-filters' config field. **/
+  query_filters: string;
+  /** Path to the specified code scanning config file, from the 'config-file' config field. */
+  config_file: string;
+}
+
+/** Fields of the init status report populated when the tools source is `download`. */
+export interface InitToolsDownloadFields {
+  /** Time taken to download the bundle, in milliseconds. */
+  tools_download_duration_ms?: number;
+  /**
+   * Whether the relevant tools dotcom feature flags have been misconfigured.
+   * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
+  tools_feature_flags_valid?: boolean;
+}
+
+/**
+ * Composes a `InitWithConfigStatusReport` from the given values.
+ *
+ * @param config The CodeQL Action configuration whose values should be added to the base status report.
+ * @param initStatusReport The base status report.
+ * @param configFile Optionally, the filename of the configuration file that was read.
+ * @param totalCacheSize The computed total TRAP cache size.
+ * @param overlayBaseDatabaseStats Statistics about the overlay database, if any.
+ * @returns
+ */
+export async function createInitWithConfigStatusReport(
+  config: Config,
+  initStatusReport: InitStatusReport,
+  configFile: string | undefined,
+  totalCacheSize: number,
+  overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
+  dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined,
+): Promise<InitWithConfigStatusReport> {
+  const languages = config.languages.join(",");
+  const paths = (config.originalUserInput.paths || []).join(",");
+  const pathsIgnore = (config.originalUserInput["paths-ignore"] || []).join(
+    ",",
+  );
+  const disableDefaultQueries = config.originalUserInput[
+    "disable-default-queries"
+  ]
+    ? languages
+    : "";
+
+  const queries: string[] = [];
+  let queriesInput = getOptionalInput("queries")?.trim();
+  if (queriesInput === undefined || queriesInput.startsWith("+")) {
+    queries.push(
+      ...(config.originalUserInput.queries || []).map((q) => q.uses),
+    );
+  }
+  if (queriesInput !== undefined) {
+    queriesInput = queriesInput.startsWith("+")
+      ? queriesInput.slice(1)
+      : queriesInput;
+    queries.push(...queriesInput.split(","));
+  }
+
+  let packs: Record<string, string[]> = {};
+  if (Array.isArray(config.computedConfig.packs)) {
+    packs[config.languages[0]] = config.computedConfig.packs;
+  } else if (config.computedConfig.packs !== undefined) {
+    packs = config.computedConfig.packs;
+  }
+
+  return {
+    ...initStatusReport,
+    config_file: configFile ?? "",
+    disable_default_queries: disableDefaultQueries,
+    paths,
+    paths_ignore: pathsIgnore,
+    queries: queries.join(","),
+    packs: JSON.stringify(packs),
+    trap_cache_languages: Object.keys(config.trapCaches).join(","),
+    trap_cache_download_size_bytes: totalCacheSize,
+    trap_cache_download_duration_ms: Math.round(config.trapCacheDownloadTime),
+    overlay_base_database_download_size_bytes:
+      overlayBaseDatabaseStats?.databaseSizeBytes,
+    overlay_base_database_download_duration_ms:
+      overlayBaseDatabaseStats?.databaseDownloadDurationMs,
+    dependency_caching_restore_results: dependencyCachingResults,
+    query_filters: JSON.stringify(
+      config.originalUserInput["query-filters"] ?? [],
+    ),
+    registries: JSON.stringify(
+      parseRegistriesWithoutCredentials(getOptionalInput("registries")) ?? [],
+    ),
+  };
+}
+
+export async function sendUnhandledErrorStatusReport(
+  actionName: ActionName,
+  actionStartedAt: Date,
+  error: unknown,
+  logger: Logger,
+): Promise<void> {
+  try {
+    // In the future, we may want to add a specific field for unhandled errors so we can
+    // create a dedicated monitor for them.
+    const statusReport = await createStatusReportBase(
+      actionName,
+      "failure",
+      actionStartedAt,
+      undefined,
+      undefined,
+      logger,
+      `Unhandled CodeQL Action error: ${getErrorMessage(error)}`,
+      error instanceof Error ? error.stack : undefined,
+    );
+    if (statusReport !== undefined) {
+      await sendStatusReport(statusReport);
+    }
+  } catch (e) {
+    logger.warning(
+      `Failed to send the unhandled error status report: ${getErrorMessage(e)}.`,
+    );
+    if (isInTestMode()) {
+      throw e;
+    }
   }
 }

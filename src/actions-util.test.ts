@@ -12,7 +12,7 @@ import {
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { mockCCR, setupTests } from "./testing-utils";
 import { initializeEnvironment } from "./util";
 
 setupTests(test);
@@ -258,8 +258,8 @@ test("isDynamicWorkflow() returns true if event name is `dynamic`", (t) => {
 });
 
 test("isCCR() returns true when expected", (t) => {
-  process.env.GITHUB_EVENT_NAME = "dynamic";
-  process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
+  mockCCR();
+
   t.assert(isCCR());
   t.false(isDefaultSetup());
 });

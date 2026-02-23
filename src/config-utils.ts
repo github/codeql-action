@@ -80,6 +80,15 @@ const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
 
 /**
+ * The v2 minimum available disk space (in MB) required to perform overlay
+ * analysis. This is a lower threshold than the v1 limit, allowing overlay
+ * analysis to run on runners with less available disk space.
+ */
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB = 14000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES =
+  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB * 1_000_000;
+
+/**
  * The minimum memory (in MB) that must be available for CodeQL to perform overlay
  * analysis. If CodeQL will be given less memory than this threshold, then the
  * action will not perform overlay analysis unless overlay analysis has been
@@ -679,18 +688,23 @@ async function runnerSupportsOverlayAnalysis(
   diskUsage: DiskUsage | undefined,
   ramInput: string | undefined,
   logger: Logger,
+  useV2ResourceChecks: boolean,
 ): Promise<boolean> {
+  const minimumDiskSpaceBytes = useV2ResourceChecks
+    ? OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES
+    : OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
   if (
     diskUsage === undefined ||
-    diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+    diskUsage.numAvailableBytes < minimumDiskSpaceBytes
   ) {
     const diskSpaceMb =
       diskUsage === undefined
         ? 0
         : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+    const minimumDiskSpaceMb = Math.round(minimumDiskSpaceBytes / 1_000_000);
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
-        `due to insufficient disk space (${diskSpaceMb} MB).`,
+        `due to insufficient disk space (${diskSpaceMb} MB, needed ${minimumDiskSpaceMb} MB).`,
     );
     return false;
   }
@@ -699,7 +713,7 @@ async function runnerSupportsOverlayAnalysis(
   if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
-        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB).`,
+        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB, needed ${OVERLAY_MINIMUM_MEMORY_MB} MB).`,
     );
     return false;
   }
@@ -772,6 +786,9 @@ export async function getOverlayDatabaseMode(
       Feature.OverlayAnalysisSkipResourceChecks,
       codeql,
     ));
+    const useV2ResourceChecks = await features.getValue(
+      Feature.OverlayAnalysisResourceChecksV2,
+    );
     const checkOverlayStatus = await features.getValue(
       Feature.OverlayAnalysisStatusCheck,
     );
@@ -781,7 +798,12 @@ export async function getOverlayDatabaseMode(
         : undefined;
     if (
       performResourceChecks &&
-      !(await runnerSupportsOverlayAnalysis(diskUsage, ramInput, logger))
+      !(await runnerSupportsOverlayAnalysis(
+        diskUsage,
+        ramInput,
+        logger,
+        useV2ResourceChecks,
+      ))
     ) {
       overlayDatabaseMode = OverlayDatabaseMode.None;
     } else if (checkOverlayStatus && diskUsage === undefined) {

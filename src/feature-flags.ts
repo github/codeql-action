@@ -70,6 +70,7 @@ export enum Feature {
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
   OverlayAnalysisPython = "overlay_analysis_python",
+  OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
@@ -286,6 +287,11 @@ export const featureConfig = {
   [Feature.OverlayAnalysisPython]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_PYTHON",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisResourceChecksV2]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RESOURCE_CHECKS_V2",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisRuby]: {

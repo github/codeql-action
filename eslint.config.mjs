@@ -1,4 +1,5 @@
 import { fixupPluginRules } from "@eslint/compat";
+import js from "@eslint/js";
 import github from "eslint-plugin-github";
 import { importX, createNodeResolver } from "eslint-plugin-import-x";
 import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
@@ -22,16 +23,15 @@ export default [
       ".github/**/*",
     ],
   },
-  // eslint-plugin-github recommended config (includes eslint:recommended,
-  // eslint-plugin-import, eslint-comments, i18n-text, and github rules).
+  // eslint recommended config
+  js.configs.recommended,
+  // Type-checked rules from typescript-eslint
+  ...tseslint.configs.recommendedTypeChecked,
+  // eslint-plugin-github recommended config
   githubFlatConfigs.recommended,
-  // eslint-plugin-github typescript config (includes
-  // @typescript-eslint/recommended and escompat).
+  // eslint-plugin-github typescript config
   ...githubFlatConfigs.typescript,
-  // Type-checked rules from typescript-eslint (the github plugin only
-  // includes the base recommended rules, not the type-checked ones).
-  ...tseslint.configs.recommendedTypeCheckedOnly,
-  // import-x TypeScript settings (parsers, extensions, external-module-folders).
+  // import-x TypeScript settings
   // This is needed for import-x rules to properly parse TypeScript files.
   {
     settings: importX.flatConfigs.typescript.settings,

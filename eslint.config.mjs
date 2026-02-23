@@ -27,6 +27,7 @@ export default [
   js.configs.recommended,
   // Type-checked rules from typescript-eslint
   ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.strict,
   // eslint-plugin-github recommended config
   githubFlatConfigs.recommended,
   // eslint-plugin-github typescript config
@@ -127,6 +128,8 @@ export default [
       "no-async-foreach/no-async-foreach": "error",
       "no-sequences": "error",
       "no-shadow": "off",
+      // This is overly restrictive with unsetting `EnvVar`s
+      "@typescript-eslint/no-dynamic-delete": "off",
       "@typescript-eslint/no-shadow": "error",
       "@typescript-eslint/prefer-optional-chain": "error",
       "one-var": ["error", "never"],

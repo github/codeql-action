@@ -690,11 +690,7 @@ export class HTTPError extends Error {
  * An Error class that indicates an error that occurred due to
  * a misconfiguration of the action or the CodeQL CLI.
  */
-export class ConfigurationError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
+export class ConfigurationError extends Error {}
 
 export function asHTTPError(arg: any): HTTPError | undefined {
   if (

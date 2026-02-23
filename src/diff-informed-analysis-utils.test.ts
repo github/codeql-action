@@ -8,7 +8,7 @@ import {
   shouldPerformDiffInformedAnalysis,
   exportedForTesting,
 } from "./diff-informed-analysis-utils";
-import { Feature, Features } from "./feature-flags";
+import { Feature, initFeatures } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -63,7 +63,7 @@ const testShouldPerformDiffInformedAnalysis = test.macro({
         delete process.env.CODEQL_ACTION_DIFF_INFORMED_QUERIES;
       }
 
-      const features = new Features(
+      const features = initFeatures(
         testCase.gitHubVersion,
         parseRepositoryNwo("github/example"),
         tmpDir,

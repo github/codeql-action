@@ -84,7 +84,7 @@ See the full list of GHES release and deprecation dates at [GitHub Enterprise Se
 
 If you are using an [advanced setup](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/configuring-advanced-setup-for-code-scanning), we recommend referencing the CodeQL Action using a major version tag (e.g. `v4`) in your workflow file. This ensures your workflow automatically picks up the latest release within that major version, including bug fixes, new features, and updated CodeQL CLI versions.
 
-If you pin to a specific commit SHA or patch version tag, ensure you keep it updated (e.g. via [Dependabot](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/keeping-your-actions-up-to-date-with-dependabot)). Some CodeQL Action features are controlled by server-side flags that may be removed over time, which can cause pinned versions to lose functionality.
+If you pin to a specific commit SHA or patch version tag, ensure you keep it updated (e.g. via [Dependabot](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/keeping-your-actions-up-to-date-with-dependabot)). Some CodeQL Action features are enabled by server-side flags that may be removed over time, which can cause old versions to lose functionality.
 
 ## Troubleshooting
 

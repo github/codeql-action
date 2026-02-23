@@ -86,7 +86,6 @@ We recommend referencing the CodeQL Action using a major version tag (e.g. `v3`)
 
 If you pin to a specific commit SHA or patch version tag, ensure you keep it updated (e.g. via [Dependabot](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/keeping-your-actions-up-to-date-with-dependabot)). Some CodeQL Action features are controlled by server-side flags that may be removed over time, which can cause pinned versions to lose functionality.
 
-
 ## Troubleshooting
 
 Read about [troubleshooting code scanning](https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning).

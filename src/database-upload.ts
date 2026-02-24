@@ -8,7 +8,7 @@ import { Config } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import { OverlayDatabaseMode } from "./overlay";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 import { bundleDb, CleanupLevel, parseGitHubUrl } from "./util";
@@ -101,7 +101,9 @@ export async function cleanupAndUploadDatabases(
       // Although we are uploading arbitrary file contents to the API, it's worth
       // noting that it's the API's job to validate that the contents is acceptable.
       // This API method is available to anyone with write access to the repo.
-      const bundledDb = await bundleDb(config, language, codeql, language);
+      const bundledDb = await bundleDb(config, language, codeql, language, {
+        includeDiagnostics: false,
+      });
       bundledDbSize = fs.statSync(bundledDb).size;
       const bundledDbReadStream = fs.createReadStream(bundledDb);
       const commitOid = await gitUtils.getCommitOid(

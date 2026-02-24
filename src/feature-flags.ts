@@ -7,7 +7,7 @@ import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay-database-utils";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
@@ -63,10 +63,13 @@ export enum Feature {
   OverlayAnalysisCodeScanningSwift = "overlay_analysis_code_scanning_swift",
   OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
+  OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
+  OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
   OverlayAnalysisPython = "overlay_analysis_python",
+  OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
@@ -255,6 +258,16 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CSHARP",
     minimumVersion: undefined,
   },
+  [Feature.OverlayAnalysisStatusCheck]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_CHECK",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisStatusSave]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_SAVE",
+    minimumVersion: undefined,
+  },
   [Feature.OverlayAnalysisGo]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_GO",
@@ -273,6 +286,11 @@ export const featureConfig = {
   [Feature.OverlayAnalysisPython]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_PYTHON",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisResourceChecksV2]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RESOURCE_CHECKS_V2",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisRuby]: {

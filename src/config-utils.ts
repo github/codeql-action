@@ -27,9 +27,11 @@ import {
 } from "./config/db-config";
 import {
   addNoLanguageDiagnostic,
+  makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -44,10 +46,8 @@ import {
 } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import {
-  CODEQL_OVERLAY_MINIMUM_VERSION,
-  OverlayDatabaseMode,
-} from "./overlay-database-utils";
+import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
@@ -63,6 +63,7 @@ import {
   getErrorMessage,
   isInTestMode,
   joinAtMost,
+  DiskUsage,
 } from "./util";
 
 export * from "./config/db-config";
@@ -77,6 +78,15 @@ export * from "./config/db-config";
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
+
+/**
+ * The v2 minimum available disk space (in MB) required to perform overlay
+ * analysis. This is a lower threshold than the v1 limit, allowing overlay
+ * analysis to run on runners with less available disk space.
+ */
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB = 14000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES =
+  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB * 1_000_000;
 
 /**
  * The minimum memory (in MB) that must be available for CodeQL to perform overlay
@@ -675,21 +685,26 @@ async function isOverlayAnalysisFeatureEnabled(
  * and the maximum memory CodeQL will be allowed to use.
  */
 async function runnerSupportsOverlayAnalysis(
+  diskUsage: DiskUsage | undefined,
   ramInput: string | undefined,
   logger: Logger,
+  useV2ResourceChecks: boolean,
 ): Promise<boolean> {
-  const diskUsage = await checkDiskUsage(logger);
+  const minimumDiskSpaceBytes = useV2ResourceChecks
+    ? OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES
+    : OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
   if (
     diskUsage === undefined ||
-    diskUsage.numAvailableBytes < OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES
+    diskUsage.numAvailableBytes < minimumDiskSpaceBytes
   ) {
     const diskSpaceMb =
       diskUsage === undefined
         ? 0
         : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+    const minimumDiskSpaceMb = Math.round(minimumDiskSpaceBytes / 1_000_000);
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
-        `due to insufficient disk space (${diskSpaceMb} MB).`,
+        `due to insufficient disk space (${diskSpaceMb} MB, needed ${minimumDiskSpaceMb} MB).`,
     );
     return false;
   }
@@ -698,7 +713,7 @@ async function runnerSupportsOverlayAnalysis(
   if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
-        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB).`,
+        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB, needed ${OVERLAY_MINIMUM_MEMORY_MB} MB).`,
     );
     return false;
   }
@@ -740,9 +755,11 @@ export async function getOverlayDatabaseMode(
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
   useOverlayDatabaseCaching: boolean;
+  skippedDueToCachedStatus: boolean;
 }> {
   let overlayDatabaseMode = OverlayDatabaseMode.None;
   let useOverlayDatabaseCaching = false;
+  let skippedDueToCachedStatus = false;
 
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
@@ -769,11 +786,43 @@ export async function getOverlayDatabaseMode(
       Feature.OverlayAnalysisSkipResourceChecks,
       codeql,
     ));
+    const useV2ResourceChecks = await features.getValue(
+      Feature.OverlayAnalysisResourceChecksV2,
+    );
+    const checkOverlayStatus = await features.getValue(
+      Feature.OverlayAnalysisStatusCheck,
+    );
+    const diskUsage =
+      performResourceChecks || checkOverlayStatus
+        ? await checkDiskUsage(logger)
+        : undefined;
     if (
       performResourceChecks &&
-      !(await runnerSupportsOverlayAnalysis(ramInput, logger))
+      !(await runnerSupportsOverlayAnalysis(
+        diskUsage,
+        ramInput,
+        logger,
+        useV2ResourceChecks,
+      ))
     ) {
       overlayDatabaseMode = OverlayDatabaseMode.None;
+    } else if (checkOverlayStatus && diskUsage === undefined) {
+      logger.warning(
+        `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
+      );
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+    } else if (
+      checkOverlayStatus &&
+      diskUsage &&
+      (await shouldSkipOverlayAnalysis(codeql, languages, diskUsage, logger))
+    ) {
+      logger.info(
+        `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+          "because overlay analysis previously failed with this combination of languages, " +
+          "disk space, and CodeQL version.",
+      );
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+      skippedDueToCachedStatus = true;
     } else if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
       useOverlayDatabaseCaching = true;
@@ -794,6 +843,7 @@ export async function getOverlayDatabaseMode(
   const nonOverlayAnalysis = {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    skippedDueToCachedStatus,
   };
 
   if (overlayDatabaseMode === OverlayDatabaseMode.None) {
@@ -858,6 +908,7 @@ export async function getOverlayDatabaseMode(
   return {
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
+    skippedDueToCachedStatus,
   };
 }
 
@@ -1004,24 +1055,56 @@ export async function initConfig(
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
   // rest of the config has been populated.
-  const { overlayDatabaseMode, useOverlayDatabaseCaching } =
-    await getOverlayDatabaseMode(
-      inputs.codeql,
-      inputs.features,
-      config.languages,
-      inputs.sourceRoot,
-      config.buildMode,
-      inputs.ramInput,
-      config.computedConfig,
-      gitVersion,
-      logger,
-    );
+  const {
+    overlayDatabaseMode,
+    useOverlayDatabaseCaching,
+    skippedDueToCachedStatus: overlaySkippedDueToCachedStatus,
+  } = await getOverlayDatabaseMode(
+    inputs.codeql,
+    inputs.features,
+    config.languages,
+    inputs.sourceRoot,
+    config.buildMode,
+    inputs.ramInput,
+    config.computedConfig,
+    gitVersion,
+    logger,
+  );
   logger.info(
     `Using overlay database mode: ${overlayDatabaseMode} ` +
       `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
   config.overlayDatabaseMode = overlayDatabaseMode;
   config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+
+  if (overlaySkippedDueToCachedStatus) {
+    addNoLanguageDiagnostic(
+      config,
+      makeDiagnostic(
+        "codeql-action/overlay-skipped-due-to-cached-status",
+        "Skipped improved incremental analysis because it failed previously with similar hardware resources",
+        {
+          attributes: {
+            languages: config.languages,
+          },
+          markdownMessage:
+            `Improved incremental analysis was skipped because it previously failed for this repository ` +
+            `with CodeQL version ${(await inputs.codeql.getVersion()).version} on a runner with similar hardware resources. ` +
+            "Improved incremental analysis may require a significant amount of disk space for some repositories. " +
+            "If you want to enable improved incremental analysis, increase the disk space available " +
+            "to the runner. If that doesn't help, contact GitHub Support for further assistance.\n\n" +
+            "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +
+            `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` entries from the Actions cache.`,
+          severity: "note",
+          visibility: {
+            cliSummaryTable: true,
+            statusPage: true,
+            telemetry: true,
+          },
+        },
+      ),
+    );
+  }
 
   if (
     overlayDatabaseMode === OverlayDatabaseMode.Overlay ||

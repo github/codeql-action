@@ -58,7 +58,7 @@ import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
   OverlayDatabaseMode,
-} from "./overlay-database-utils";
+} from "./overlay";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {

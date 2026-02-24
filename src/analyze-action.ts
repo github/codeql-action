@@ -18,6 +18,7 @@ import {
 import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
+import { ToleratedConfigurationError } from "./cli-errors";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import {
@@ -450,9 +451,16 @@ async function run(startedAt: Date) {
     core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
+
+    const tolerateErrorForCCR =
+      actionsUtil.isCCR() && error instanceof ToleratedConfigurationError;
+
+    // Set the outcome of the action as failed if we are not expecting an error,
+    // or the `expect-error` value is invalid.
     if (
-      actionsUtil.getOptionalInput("expect-error") !== "true" ||
-      hasBadExpectErrorInput()
+      !tolerateErrorForCCR &&
+      (actionsUtil.getOptionalInput("expect-error") !== "true" ||
+        hasBadExpectErrorInput())
     ) {
       core.setFailed(error.message);
     }

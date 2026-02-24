@@ -12,6 +12,10 @@ inputs:
     description: "If true, we setup kotlin"
     default: 'true'
     required: true
+  test-directory:
+    description: "The directory containing the test project that should be moved to the workspace root"
+    required: false
+    default: "tests/multi-language-repo"
 outputs:
   tools-url:
     description: "The value that should be passed as the 'tools' input of the 'init' step."
@@ -21,10 +25,12 @@ runs:
   steps:
     - name: Move codeql-action
       shell: bash
+      env:
+        TEST_DIR: ${{ inputs.test-directory }}
       run: |
         mkdir ../action
         mv * .github ../action/
-        mv ../action/tests/multi-language-repo/{*,.github} .
+        mv ../action/$TEST_DIR/{*,.github} .
         mv ../action/.github/workflows .github
     - id: get-url
       name: Determine URL

@@ -153,6 +153,7 @@ type CliErrorConfiguration = {
   cliErrorMessageCandidates: RegExp[];
   exitCode?: number;
   additionalErrorMessageToAppend?: string;
+  toleratedByCCR?: boolean;
 };
 
 /**
@@ -228,6 +229,7 @@ const cliErrorsConfig: Record<CliConfigErrorCategory, CliErrorConfiguration> = {
   // was unintended to have CodeQL analysis run on it.
   [CliConfigErrorCategory.NoSourceCodeSeen]: {
     exitCode: 32,
+    toleratedByCCR: true,
     cliErrorMessageCandidates: [
       new RegExp(
         "CodeQL detected code written in .* but could not process any of it",
@@ -345,6 +347,20 @@ function getUnsupportedPlatformError(cliError: CliError): ConfigurationError {
   );
 }
 
+export class ToleratedConfigurationError extends ConfigurationError {
+  private category: CliConfigErrorCategory;
+
+  constructor(category: CliConfigErrorCategory, message: string) {
+    super(message);
+
+    this.category = category;
+  }
+
+  public getCategory(): CliConfigErrorCategory {
+    return this.category;
+  }
+}
+
 /**
  * Changes an error received from the CLI to a ConfigurationError with the message
  * optionally being transformed, if it is a known configuration error. Otherwise,
@@ -368,5 +384,11 @@ export function wrapCliConfigurationError(cliError: CliError): Error {
     errorMessageBuilder = `${errorMessageBuilder} ${additionalErrorMessageToAppend}`;
   }
 
+  if (cliErrorsConfig[cliConfigErrorCategory].toleratedByCCR) {
+    return new ToleratedConfigurationError(
+      cliConfigErrorCategory,
+      errorMessageBuilder,
+    );
+  }
   return new ConfigurationError(errorMessageBuilder);
 }

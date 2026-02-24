@@ -21,7 +21,6 @@ import {
   getRecordingLogger,
   initializeFeatures,
   LoggedMessage,
-  mockCCR,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
   setupTests,
@@ -533,14 +532,5 @@ test("initFeatures returns a `Features` instance by default", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const features = setUpFeatureFlagTests(tmpDir);
     t.is("Features", features.constructor.name);
-  });
-});
-
-test("initFeatures returns an `OfflineFeatures` instance in CCR", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    mockCCR();
-
-    const features = setUpFeatureFlagTests(tmpDir);
-    t.is("OfflineFeatures", features.constructor.name);
   });
 });

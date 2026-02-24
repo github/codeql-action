@@ -7,7 +7,7 @@ import * as yaml from "js-yaml";
 import {
   getActionVersion,
   isAnalyzingPullRequest,
-  isCCR,
+  isDynamicWorkflow,
 } from "./actions-util";
 import {
   AnalysisConfig,
@@ -964,10 +964,13 @@ export async function initConfig(
     }
   }
 
-  // If we are in CCR or the corresponding FF is enabled, try to determine
+  // If we are in a dynamic workflow or the corresponding FF is enabled, try to determine
   // which files in the repository are marked as generated and add them to
   // the `paths-ignore` configuration.
-  if ((await features.getValue(Feature.IgnoreGeneratedFiles)) && isCCR()) {
+  if (
+    (await features.getValue(Feature.IgnoreGeneratedFiles)) &&
+    isDynamicWorkflow()
+  ) {
     try {
       const generatedFilesCheckStartedAt = performance.now();
       const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);

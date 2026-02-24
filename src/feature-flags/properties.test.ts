@@ -59,7 +59,7 @@ test("loadPropertiesFromApi returns empty object if on GHES", async (t) => {
     data: [
       { property_name: "github-codeql-extra-queries", value: "+queries" },
       { property_name: "unknown-property", value: "something" },
-    ] satisfies properties.RepositoryProperty[],
+    ] satisfies properties.GitHubPropertiesResponse,
   });
   const logger = getRunnerLogger(true);
   const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
@@ -82,7 +82,7 @@ test("loadPropertiesFromApi loads known properties", async (t) => {
     data: [
       { property_name: "github-codeql-extra-queries", value: "+queries" },
       { property_name: "unknown-property", value: "something" },
-    ] satisfies properties.RepositoryProperty[],
+    ] satisfies properties.GitHubPropertiesResponse,
   });
   const logger = getRunnerLogger(true);
   const mockRepositoryNwo = parseRepositoryNwo("owner/repo");

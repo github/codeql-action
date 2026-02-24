@@ -7,13 +7,42 @@ import { GitHubVariant, GitHubVersion } from "../util";
  * Enumerates repository property names that have some meaning to us.
  */
 export enum RepositoryPropertyName {
+  DISABLE_OVERLAY = "github-codeql-disable-overlay",
   EXTRA_QUERIES = "github-codeql-extra-queries",
+}
+
+function isKnownPropertyName(value: string): value is RepositoryPropertyName {
+  return Object.values(RepositoryPropertyName).includes(
+    value as RepositoryPropertyName,
+  );
+}
+
+type AllRepositoryProperties = {
+  [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
+  [RepositoryPropertyName.EXTRA_QUERIES]: string;
+};
+
+export type RepositoryProperties = Partial<AllRepositoryProperties>;
+
+const mapRepositoryProperties: {
+  [K in RepositoryPropertyName]: (value: string) => AllRepositoryProperties[K];
+} = {
+  [RepositoryPropertyName.DISABLE_OVERLAY]: (value) => value === "true",
+  [RepositoryPropertyName.EXTRA_QUERIES]: (value) => value,
+};
+
+function setProperty<K extends RepositoryPropertyName>(
+  properties: RepositoryProperties,
+  name: K,
+  value: string,
+): void {
+  properties[name] = mapRepositoryProperties[name](value);
 }
 
 /**
  * A repository property has a name and a value.
  */
-export interface RepositoryProperty {
+interface GitHubRepositoryProperty {
   property_name: string;
   value: string;
 }
@@ -21,14 +50,7 @@ export interface RepositoryProperty {
 /**
  * The API returns a list of `RepositoryProperty` objects.
  */
-type GitHubPropertiesResponse = RepositoryProperty[];
-
-/**
- * A partial mapping from `RepositoryPropertyName` to values.
- */
-export type RepositoryProperties = Partial<
-  Record<RepositoryPropertyName, string>
->;
+export type GitHubPropertiesResponse = GitHubRepositoryProperty[];
 
 /**
  * Retrieves all known repository properties from the API.
@@ -62,7 +84,6 @@ export async function loadPropertiesFromApi(
       `Retrieved ${remoteProperties.length} repository properties: ${remoteProperties.map((p) => p.property_name).join(", ")}`,
     );
 
-    const knownProperties = new Set(Object.values(RepositoryPropertyName));
     const properties: RepositoryProperties = {};
     for (const property of remoteProperties) {
       if (property.property_name === undefined) {
@@ -71,10 +92,8 @@ export async function loadPropertiesFromApi(
         );
       }
 
-      if (
-        knownProperties.has(property.property_name as RepositoryPropertyName)
-      ) {
-        properties[property.property_name] = property.value;
+      if (isKnownPropertyName(property.property_name)) {
+        setProperty(properties, property.property_name, property.value);
       }
     }
 

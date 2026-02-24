@@ -45,7 +45,7 @@ test("init-post action with debug mode off", async (t) => {
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
       codeql.createStubCodeQL({}),
@@ -68,7 +68,7 @@ test("init-post action with debug mode on", async (t) => {
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
       codeql.createStubCodeQL({}),
@@ -332,7 +332,7 @@ test("saves overlay status when overlay-base analysis did not complete successfu
 
     const stubCodeQL = codeql.createStubCodeQL({});
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       stubCodeQL,
@@ -392,7 +392,7 @@ test("does not save overlay status when OverlayAnalysisStatusSave feature flag i
       .stub(overlayStatus, "saveOverlayStatus")
       .resolves(true);
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       codeql.createStubCodeQL({}),
@@ -429,7 +429,7 @@ test("does not save overlay status when build successful", async (t) => {
       .stub(overlayStatus, "saveOverlayStatus")
       .resolves(true);
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       codeql.createStubCodeQL({}),
@@ -465,7 +465,7 @@ test("does not save overlay status when overlay not enabled", async (t) => {
       .stub(overlayStatus, "saveOverlayStatus")
       .resolves(true);
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       codeql.createStubCodeQL({}),

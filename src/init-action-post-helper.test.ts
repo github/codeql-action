@@ -309,7 +309,7 @@ test("not uploading failed SARIF when `code-scanning` is not an enabled analysis
   });
   t.is(
     result.upload_failed_run_skipped_because,
-    "Code Scanning is not enabled.",
+    "No analysis kind that supports failed SARIF uploads is enabled.",
   );
 });
 

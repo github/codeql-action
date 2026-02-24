@@ -159,7 +159,8 @@ export async function tryUploadSarifIfRunFailed(
       );
     } else {
       return {
-        upload_failed_run_skipped_because: "Code Scanning is not enabled.",
+        upload_failed_run_skipped_because:
+          "No analysis kind that supports failed SARIF uploads is enabled.",
       };
     }
   } catch (e) {

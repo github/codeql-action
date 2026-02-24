@@ -109,9 +109,7 @@ async function run(startedAt: Date) {
     );
 
     // Check that the private registries are reachable.
-    if (await features.getValue(Feature.StartProxyConnectionChecks)) {
-      await checkConnections(logger, proxyInfo);
-    }
+    await checkConnections(logger, proxyInfo);
 
     // Report success if we have reached this point.
     await sendSuccessStatusReport(

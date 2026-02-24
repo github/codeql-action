@@ -690,11 +690,7 @@ export class HTTPError extends Error {
  * An Error class that indicates an error that occurred due to
  * a misconfiguration of the action or the CodeQL CLI.
  */
-export class ConfigurationError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
+export class ConfigurationError extends Error {}
 
 export function asHTTPError(arg: any): HTTPError | undefined {
   if (
@@ -744,6 +740,7 @@ export async function bundleDb(
   language: Language,
   codeql: CodeQL,
   dbName: string,
+  { includeDiagnostics }: { includeDiagnostics: boolean },
 ) {
   const databasePath = getCodeQLDatabasePath(config, language);
   const databaseBundlePath = path.resolve(config.dbLocation, `${dbName}.zip`);
@@ -774,6 +771,7 @@ export async function bundleDb(
     databasePath,
     databaseBundlePath,
     dbName,
+    includeDiagnostics,
     additionalFiles,
   );
   return databaseBundlePath;

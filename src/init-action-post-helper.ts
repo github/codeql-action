@@ -11,10 +11,13 @@ import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay";
+import { OverlayStatus, saveOverlayStatus } from "./overlay/status";
 import { RepositoryNwo, getRepositoryNwo } from "./repository";
 import { JobStatus } from "./status-report";
 import * as uploadLib from "./upload-lib";
 import {
+  checkDiskUsage,
   delay,
   getErrorMessage,
   getRequiredEnvParam,
@@ -171,6 +174,8 @@ export async function run(
   features: FeatureEnablement,
   logger: Logger,
 ) {
+  await recordOverlayStatus(codeql, config, features, logger);
+
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
     repositoryNwo,
@@ -246,6 +251,68 @@ export async function run(
   }
 
   return uploadFailedSarifResult;
+}
+
+/**
+ * If overlay base database creation was attempted but the analysis did not complete
+ * successfully, save the failure status to the Actions cache so that subsequent runs
+ * can skip overlay analysis until something changes (e.g. a new CodeQL version).
+ */
+async function recordOverlayStatus(
+  codeql: CodeQL,
+  config: Config,
+  features: FeatureEnablement,
+  logger: Logger,
+) {
+  if (
+    config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
+    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true" ||
+    !(await features.getValue(Feature.OverlayAnalysisStatusSave))
+  ) {
+    return;
+  }
+
+  const overlayStatus: OverlayStatus = {
+    attemptedToBuildOverlayBaseDatabase: true,
+    builtOverlayBaseDatabase: false,
+  };
+
+  const diskUsage = await checkDiskUsage(logger);
+  if (diskUsage === undefined) {
+    logger.warning(
+      "Unable to save overlay status to the Actions cache because the available disk space could not be determined.",
+    );
+    return;
+  }
+
+  const saved = await saveOverlayStatus(
+    codeql,
+    config.languages,
+    diskUsage,
+    overlayStatus,
+    logger,
+  );
+
+  const blurb =
+    "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
+    "This may have been due to disk space constraints: using improved incremental analysis can " +
+    "require a significant amount of disk space for some repositories.";
+
+  if (saved) {
+    logger.error(
+      `${blurb} ` +
+        "This failure has been recorded in the Actions cache, so the next CodeQL analysis will run " +
+        "without improved incremental analysis. If you want to enable improved incremental analysis, " +
+        "increase the disk space available to the runner. " +
+        "If that doesn't help, contact GitHub Support for further assistance.",
+    );
+  } else {
+    logger.error(
+      `${blurb} ` +
+        "The attempt to save this failure status to the Actions cache failed. The Action will attempt to " +
+        "run with improved incremental analysis again.",
+    );
+  }
 }
 
 async function removeUploadedSarif(

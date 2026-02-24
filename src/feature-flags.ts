@@ -7,7 +7,7 @@ import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay-database-utils";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
@@ -63,10 +63,13 @@ export enum Feature {
   OverlayAnalysisCodeScanningSwift = "overlay_analysis_code_scanning_swift",
   OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
+  OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
+  OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
   OverlayAnalysisPython = "overlay_analysis_python",
+  OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
@@ -75,7 +78,6 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
-  StartProxyConnectionChecks = "start_proxy_connection_checks",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   UseRepositoryProperties = "use_repository_properties_v2",
   ValidateDbConfig = "validate_db_config",
@@ -255,6 +257,16 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CSHARP",
     minimumVersion: undefined,
   },
+  [Feature.OverlayAnalysisStatusCheck]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_CHECK",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisStatusSave]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_SAVE",
+    minimumVersion: undefined,
+  },
   [Feature.OverlayAnalysisGo]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_GO",
@@ -273,6 +285,11 @@ export const featureConfig = {
   [Feature.OverlayAnalysisPython]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_PYTHON",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisResourceChecksV2]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RESOURCE_CHECKS_V2",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisRuby]: {
@@ -314,11 +331,6 @@ export const featureConfig = {
     // before rolling this out externally, we should set a minimum version here
     // since current versions of the CodeQL CLI will log if baseline information
     // cannot be found when interpreting results.
-    minimumVersion: undefined,
-  },
-  [Feature.StartProxyConnectionChecks]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_START_PROXY_CONNECTION_CHECKS",
     minimumVersion: undefined,
   },
   [Feature.UploadOverlayDbToApi]: {

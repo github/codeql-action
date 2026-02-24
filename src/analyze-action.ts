@@ -33,7 +33,7 @@ import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
+import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {

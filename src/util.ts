@@ -740,6 +740,7 @@ export async function bundleDb(
   language: Language,
   codeql: CodeQL,
   dbName: string,
+  { includeDiagnostics }: { includeDiagnostics: boolean },
 ) {
   const databasePath = getCodeQLDatabasePath(config, language);
   const databaseBundlePath = path.resolve(config.dbLocation, `${dbName}.zip`);
@@ -770,6 +771,7 @@ export async function bundleDb(
     databasePath,
     databaseBundlePath,
     dbName,
+    includeDiagnostics,
     additionalFiles,
   );
   return databaseBundlePath;

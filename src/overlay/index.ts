@@ -8,13 +8,13 @@ import {
   getTemporaryDirectory,
   getWorkflowRunAttempt,
   getWorkflowRunID,
-} from "./actions-util";
-import { getAutomationID } from "./api-client";
-import { createCacheKeyHash } from "./caching-utils";
-import { type CodeQL } from "./codeql";
-import { type Config } from "./config-utils";
-import { getCommitOid, getFileOidsUnderPath } from "./git-utils";
-import { Logger, withGroupAsync } from "./logging";
+} from "../actions-util";
+import { getAutomationID } from "../api-client";
+import { createCacheKeyHash } from "../caching-utils";
+import { type CodeQL } from "../codeql";
+import { type Config } from "../config-utils";
+import { getCommitOid, getFileOidsUnderPath } from "../git-utils";
+import { Logger, withGroupAsync } from "../logging";
 import {
   CleanupLevel,
   getBaseDatabaseOidsFilePath,
@@ -23,7 +23,7 @@ import {
   isInTestMode,
   tryGetFolderBytes,
   waitForResultWithTimeLimit,
-} from "./util";
+} from "../util";
 
 export enum OverlayDatabaseMode {
   Overlay = "overlay",

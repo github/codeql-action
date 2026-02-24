@@ -18,10 +18,8 @@ import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import {
-  CODEQL_OVERLAY_MINIMUM_VERSION,
-  OverlayDatabaseMode,
-} from "./overlay-database-utils";
+import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -984,6 +982,7 @@ interface OverlayDatabaseModeTestSetup {
   codeScanningConfig: configUtils.UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
+  shouldSkipOverlayAnalysisDueToCachedStatus: boolean;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -1005,6 +1004,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
     numTotalBytes: 100_000_000_000,
   },
   memoryFlagValue: 6920,
+  shouldSkipOverlayAnalysisDueToCachedStatus: false,
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1015,6 +1015,7 @@ const getOverlayDatabaseModeMacro = test.macro({
     expected: {
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
+      skippedDueToCachedStatus?: boolean;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1038,6 +1039,10 @@ const getOverlayDatabaseModeMacro = test.macro({
         }
 
         sinon.stub(util, "checkDiskUsage").resolves(setup.diskUsage);
+
+        sinon
+          .stub(overlayStatus, "shouldSkipOverlayAnalysis")
+          .resolves(setup.shouldSkipOverlayAnalysisDueToCachedStatus);
 
         // Mock feature flags
         const features = createFeatures(setup.features);
@@ -1081,7 +1086,10 @@ const getOverlayDatabaseModeMacro = test.macro({
           logger,
         );
 
-        t.deepEqual(result, expected);
+        t.deepEqual(result, {
+          skippedDueToCachedStatus: false,
+          ...expected,
+        });
       } finally {
         // Restore the original environment
         process.env = originalEnv;
@@ -1263,6 +1271,71 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisResourceChecksV2,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 5_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisResourceChecksV2,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 15_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 15_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch if memory flag is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1295,6 +1368,46 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
     useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
+    isDefaultBranch: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    skippedDueToCachedStatus: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
+    isPullRequest: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    skippedDueToCachedStatus: true,
   },
 );
 

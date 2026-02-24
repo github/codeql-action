@@ -245,6 +245,32 @@ export function getRecordingLogger(
   };
 }
 
+/**
+ * Checks whether `messages` contains `messageOrRegExp`.
+ *
+ * If `messageOrRegExp` is a string, this function returns true as long as
+ * `messageOrRegExp` appears as part of one of the `messages`.
+ *
+ * If `messageOrRegExp` is a regular expression, this function returns true as long as
+ * one of the `messages` matches `messageOrRegExp`.
+ */
+function hasLoggedMessage(
+  messages: LoggedMessage[],
+  messageOrRegExp: string | RegExp,
+): boolean {
+  const check = (val: string) =>
+    typeof messageOrRegExp === "string"
+      ? val.includes(messageOrRegExp)
+      : messageOrRegExp.test(val);
+
+  return messages.some(
+    (msg) => typeof msg.message === "string" && check(msg.message),
+  );
+}
+
+/**
+ * Checks that `messages` contains all of `expectedMessages`.
+ */
 export function checkExpectedLogMessages(
   t: ExecutionContext<any>,
   messages: LoggedMessage[],
@@ -253,13 +279,7 @@ export function checkExpectedLogMessages(
   const missingMessages: string[] = [];
 
   for (const expectedMessage of expectedMessages) {
-    if (
-      !messages.some(
-        (msg) =>
-          typeof msg.message === "string" &&
-          msg.message.includes(expectedMessage),
-      )
-    ) {
+    if (!hasLoggedMessage(messages, expectedMessage)) {
       missingMessages.push(expectedMessage);
     }
   }
@@ -274,6 +294,20 @@ export function checkExpectedLogMessages(
   } else {
     t.pass();
   }
+}
+
+/**
+ * Asserts that `message` should not have been logged to `logger`.
+ */
+export function assertNotLogged(
+  t: ExecutionContext<any>,
+  logger: RecordingLogger,
+  message: string | RegExp,
+) {
+  t.false(
+    hasLoggedMessage(logger.messages, message),
+    `'${message}' should not have been logged, but was.`,
+  );
 }
 
 /**

@@ -90,9 +90,7 @@ async function run(startedAt: Date) {
       }
     }
 
-    const ca = generateCertificateAuthority(
-      await features.getValue(Feature.ImprovedProxyCertificates),
-    );
+    const ca = generateCertificateAuthority();
 
     const proxyConfig: ProxyConfig = {
       all_credentials: credentials,

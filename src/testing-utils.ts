@@ -14,7 +14,6 @@ import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { EnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -504,10 +503,4 @@ export function makeTestToken(length: number = 36) {
   const chars =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   return chars.repeat(Math.ceil(length / chars.length)).slice(0, length);
-}
-
-/** Sets the environment variables needed for isCCR() to be `true`. */
-export function mockCCR() {
-  process.env.GITHUB_EVENT_NAME = "dynamic";
-  process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
 }

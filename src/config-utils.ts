@@ -35,7 +35,10 @@ import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { RepositoryProperties } from "./feature-flags/properties";
+import {
+  RepositoryProperties,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
 import {
   getGeneratedFiles,
   getGitRoot,
@@ -750,6 +753,7 @@ export async function getOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   ramInput: string | undefined,
   codeScanningConfig: UserConfig,
+  repositoryProperties: RepositoryProperties,
   gitVersion: GitVersionInfo | undefined,
   logger: Logger,
 ): Promise<{
@@ -774,6 +778,14 @@ export async function getOverlayDatabaseMode(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
+  } else if (
+    repositoryProperties[RepositoryPropertyName.DISABLE_OVERLAY] === true
+  ) {
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `because the ${RepositoryPropertyName.DISABLE_OVERLAY} repository property is set to true.`,
+    );
+    overlayDatabaseMode = OverlayDatabaseMode.None;
   } else if (
     await isOverlayAnalysisFeatureEnabled(
       features,
@@ -1067,6 +1079,7 @@ export async function initConfig(
     config.buildMode,
     inputs.ramInput,
     config.computedConfig,
+    config.repositoryProperties,
     gitVersion,
     logger,
   );

@@ -1,7 +1,6 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
@@ -93,10 +92,10 @@ async function run(startedAt: Date) {
   const logger = getActionsLogger();
 
   try {
-    initializeEnvironment(getActionVersion());
+    initializeEnvironment(actionsUtil.getActionVersion());
 
     const gitHubVersion = await getGitHubVersion();
-    checkActionVersion(getActionVersion(), gitHubVersion);
+    checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
 
     // Make inputs accessible in the `post` step.
     actionsUtil.persistInputs();
@@ -105,7 +104,7 @@ async function run(startedAt: Date) {
     const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
-      getTemporaryDirectory(),
+      actionsUtil.getTemporaryDirectory(),
       logger,
     );
 

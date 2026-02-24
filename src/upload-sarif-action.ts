@@ -4,7 +4,9 @@ import * as actionsUtil from "./actions-util";
 import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
-import { initFeatures } from "./feature-flags";
+import { CodeQL, getCodeQL } from "./codeql";
+import { Config, getConfig } from "./config-utils";
+import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
@@ -20,6 +22,7 @@ import * as upload_lib from "./upload-lib";
 import { postProcessAndUploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
+  GitHubVersion,
   checkActionVersion,
   checkDiskUsage,
   getErrorMessage,
@@ -52,6 +55,35 @@ async function sendSuccessStatusReport(
     };
     await sendStatusReport(statusReport);
   }
+}
+
+/** The cached `CodeQL` instance, if any. */
+let codeql: CodeQL | undefined;
+
+/** Get or initialise a `CodeQL` instance for use by the `upload-sarif` action. */
+async function getOrInitCodeQL(
+  logger: Logger,
+  gitHubVersion: GitHubVersion,
+  features: FeatureEnablement,
+  config: Config | undefined,
+): Promise<CodeQL> {
+  // Return the cached instance, if we have one.
+  if (codeql !== undefined) return codeql;
+
+  // If we have been able to load a `Config` from an earlier CodeQL Action step in the job,
+  // then use the CodeQL executable that we have used previously. Otherwise, initialise the
+  // CLI specifically for `upload-sarif`. Either way, we cache the instance.
+  if (config !== undefined) {
+    codeql = await getCodeQL(config.codeQLCmd);
+  } else {
+    codeql = await upload_lib.minimalInitCodeQL(
+      logger,
+      gitHubVersion,
+      features,
+    );
+  }
+
+  return codeql;
 }
 
 async function run(startedAt: Date) {
@@ -94,9 +126,20 @@ async function run(startedAt: Date) {
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
 
+    // Determine the temporary directory to use. If we are able to read a `Config` from a previous CodeQL Action
+    // step in the job, then use the temporary directory configured there. Otherwise, use our default.
+    let tempDir: string = actionsUtil.getTemporaryDirectory();
+
+    const config = await getConfig(tempDir, logger);
+    if (config !== undefined) {
+      tempDir = config.tempDir;
+    }
+
     const uploadResults = await postProcessAndUploadSarif(
       logger,
+      tempDir,
       features,
+      () => getOrInitCodeQL(logger, gitHubVersion, features, config),
       "always",
       checkoutPath,
       sarifPath,

@@ -5,6 +5,7 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import { AnalysisKind, getAnalysisConfig } from "./analyses";
+import { getCodeQLForTesting } from "./codeql";
 import { getRunnerLogger } from "./logging";
 import { createFeatures, setupTests } from "./testing-utils";
 import { UploadResult } from "./upload-lib";
@@ -26,6 +27,8 @@ function mockPostProcessSarifFiles() {
     const analysisConfig = getAnalysisConfig(analysisKind);
     postProcessSarifFiles
       .withArgs(
+        sinon.match.any,
+        sinon.match.any,
         sinon.match.any,
         sinon.match.any,
         sinon.match.any,
@@ -73,7 +76,9 @@ const postProcessAndUploadSarifMacro = test.macro({
 
       const actual = await postProcessAndUploadSarif(
         logger,
+        tempDir,
         features,
+        async () => getCodeQLForTesting(),
         "always",
         "",
         testPath,
@@ -90,6 +95,8 @@ const postProcessAndUploadSarifMacro = test.macro({
             postProcessSarifFiles.calledWith(
               logger,
               features,
+              sinon.match.func,
+              tempDir,
               sinon.match.any,
               analysisKindResult.expectedFiles?.map(toFullPath) ??
                 fullSarifPaths,
@@ -221,7 +228,9 @@ test("postProcessAndUploadSarif doesn't upload if upload is disabled", async (t)
 
     const actual = await postProcessAndUploadSarif(
       logger,
+      tempDir,
       features,
+      () => getCodeQLForTesting(),
       "never",
       "",
       tempDir,
@@ -248,7 +257,9 @@ test("postProcessAndUploadSarif writes post-processed SARIF files if output dire
     const postProcessedOutPath = path.join(tempDir, "post-processed");
     const actual = await postProcessAndUploadSarif(
       logger,
+      tempDir,
       features,
+      () => getCodeQLForTesting(),
       "never",
       "",
       tempDir,

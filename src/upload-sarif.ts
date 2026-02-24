@@ -14,7 +14,9 @@ export type UploadSarifResults = Partial<
  * Finds SARIF files in `sarifPath`, post-processes them, and uploads them to the appropriate services.
  *
  * @param logger The logger to use.
+ * @param tempPath The path to the temporary directory.
  * @param features Information about enabled features.
+ * @param getCodeQL A function to retrieve a `CodeQL` instance.
  * @param uploadKind The kind of upload that is requested.
  * @param checkoutPath The path where the repository was checked out at.
  * @param sarifPath The path to the file or directory to upload.
@@ -25,7 +27,9 @@ export type UploadSarifResults = Partial<
  */
 export async function postProcessAndUploadSarif(
   logger: Logger,
+  tempPath: string,
   features: FeatureEnablement,
+  getCodeQL: upload_lib.CodeQLGetter,
   uploadKind: UploadKind,
   checkoutPath: string,
   sarifPath: string,
@@ -45,6 +49,8 @@ export async function postProcessAndUploadSarif(
     const postProcessingResults = await upload_lib.postProcessSarifFiles(
       logger,
       features,
+      getCodeQL,
+      tempPath,
       checkoutPath,
       sarifFiles,
       category,

@@ -363,7 +363,9 @@ async function run(startedAt: Date) {
 
       uploadResults = await postProcessAndUploadSarif(
         logger,
+        config.tempDir,
         features,
+        async () => codeql,
         uploadKind,
         checkoutPath,
         outputDir,

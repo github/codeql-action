@@ -425,6 +425,8 @@ async function testFailedSarifUpload(
     t.true(
       uploadFiles.calledOnceWith(
         sinon.match.string,
+        codeqlObject,
+        sinon.match.string,
         sinon.match.string,
         category,
         sinon.match.any,

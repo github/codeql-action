@@ -1339,7 +1339,7 @@ export class Failure<E> implements ResultLike<never, E> {
     return true;
   }
 
-  orElse<U>(defaultValue: U): never | U {
+  orElse<U>(defaultValue: U): U {
     return defaultValue;
   }
 }

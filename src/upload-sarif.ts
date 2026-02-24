@@ -8,38 +8,41 @@ import { Logger } from "./logging";
 import * as upload_lib from "./upload-lib";
 import { GitHubVersion, unsafeEntriesInvariant } from "./util";
 
+export interface UploadSarifState {
+  /** The cached `CodeQL` instance, if any. */
+  cachedCodeQL: CodeQL | undefined;
+}
+
 // Maps analysis kinds to SARIF IDs.
 export type UploadSarifResults = Partial<
   Record<analyses.AnalysisKind, upload_lib.UploadResult>
 >;
 
-/** The cached `CodeQL` instance, if any. */
-let cachedCodeQL: CodeQL | undefined;
-
 /** Get or initialise a `CodeQL` instance for use by the `upload-sarif` action. */
 export async function getOrInitCodeQL(
+  actionState: UploadSarifState,
   logger: Logger,
   gitHubVersion: GitHubVersion,
   features: FeatureEnablement,
   config: Config | undefined,
 ): Promise<CodeQL> {
   // Return the cached instance, if we have one.
-  if (cachedCodeQL !== undefined) return cachedCodeQL;
+  if (actionState.cachedCodeQL !== undefined) return actionState.cachedCodeQL;
 
   // If we have been able to load a `Config` from an earlier CodeQL Action step in the job,
   // then use the CodeQL executable that we have used previously. Otherwise, initialise the
   // CLI specifically for `upload-sarif`. Either way, we cache the instance.
   if (config !== undefined) {
-    cachedCodeQL = await codeql.getCodeQL(config.codeQLCmd);
+    actionState.cachedCodeQL = await codeql.getCodeQL(config.codeQLCmd);
   } else {
-    cachedCodeQL = await upload_lib.minimalInitCodeQL(
+    actionState.cachedCodeQL = await upload_lib.minimalInitCodeQL(
       logger,
       gitHubVersion,
       features,
     );
   }
 
-  return cachedCodeQL;
+  return actionState.cachedCodeQL;
 }
 
 /**

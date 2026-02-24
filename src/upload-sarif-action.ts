@@ -17,7 +17,11 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
-import { getOrInitCodeQL, postProcessAndUploadSarif } from "./upload-sarif";
+import {
+  getOrInitCodeQL,
+  postProcessAndUploadSarif,
+  UploadSarifState,
+} from "./upload-sarif";
 import {
   ConfigurationError,
   checkActionVersion,
@@ -59,6 +63,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  const state: UploadSarifState = { cachedCodeQL: undefined };
 
   try {
     initializeEnvironment(actionsUtil.getActionVersion());
@@ -107,7 +112,7 @@ async function run(startedAt: Date) {
       logger,
       tempDir,
       features,
-      () => getOrInitCodeQL(logger, gitHubVersion, features, config),
+      () => getOrInitCodeQL(state, logger, gitHubVersion, features, config),
       "always",
       checkoutPath,
       sarifPath,

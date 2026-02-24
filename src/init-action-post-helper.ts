@@ -158,7 +158,21 @@ export async function tryUploadSarifIfRunFailed(
   }
 }
 
-export async function run(
+/**
+ * Handles the majority of the `post-init` step logic which, depending on the configuration,
+ * mainly involves uploading a SARIF file with information about the failued run, debug
+ * artifacts, and performing clean-up operations.
+ *
+ * @param uploadAllAvailableDebugArtifacts A function with which to upload debug artifacts.
+ * @param printDebugLogs A function with which to print debug logs.
+ * @param codeql The CodeQL CLI instance.
+ * @param config The CodeQL Action configuration.
+ * @param repositoryNwo The name and owner of the repository.
+ * @param features Information about enabled features.
+ * @param logger The logger to use.
+ * @returns The results of uploading the SARIF file for the failure.
+ */
+export async function uploadFailureInfo(
   uploadAllAvailableDebugArtifacts: (
     codeql: CodeQL,
     config: Config,
@@ -171,7 +185,7 @@ export async function run(
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
-) {
+): Promise<UploadFailedSarifResult> {
   await recordOverlayStatus(codeql, config, features, logger);
 
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(

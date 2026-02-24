@@ -3,9 +3,8 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
-import { CodeQL, getCodeQL } from "./codeql";
-import { Config, getConfig } from "./config-utils";
-import { FeatureEnablement, initFeatures } from "./feature-flags";
+import { getConfig } from "./config-utils";
+import { initFeatures } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
@@ -18,10 +17,9 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
-import { postProcessAndUploadSarif } from "./upload-sarif";
+import { getOrInitCodeQL, postProcessAndUploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
-  GitHubVersion,
   checkActionVersion,
   checkDiskUsage,
   getErrorMessage,
@@ -54,35 +52,6 @@ async function sendSuccessStatusReport(
     };
     await sendStatusReport(statusReport);
   }
-}
-
-/** The cached `CodeQL` instance, if any. */
-let codeql: CodeQL | undefined;
-
-/** Get or initialise a `CodeQL` instance for use by the `upload-sarif` action. */
-async function getOrInitCodeQL(
-  logger: Logger,
-  gitHubVersion: GitHubVersion,
-  features: FeatureEnablement,
-  config: Config | undefined,
-): Promise<CodeQL> {
-  // Return the cached instance, if we have one.
-  if (codeql !== undefined) return codeql;
-
-  // If we have been able to load a `Config` from an earlier CodeQL Action step in the job,
-  // then use the CodeQL executable that we have used previously. Otherwise, initialise the
-  // CLI specifically for `upload-sarif`. Either way, we cache the instance.
-  if (config !== undefined) {
-    codeql = await getCodeQL(config.codeQLCmd);
-  } else {
-    codeql = await upload_lib.minimalInitCodeQL(
-      logger,
-      gitHubVersion,
-      features,
-    );
-  }
-
-  return codeql;
 }
 
 async function run(startedAt: Date) {

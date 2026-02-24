@@ -11,10 +11,12 @@ export enum RepositoryPropertyName {
   EXTRA_QUERIES = "github-codeql-extra-queries",
 }
 
+const KNOWN_REPOSITORY_PROPERTY_NAMES = new Set<string>(
+  Object.values(RepositoryPropertyName),
+);
+
 function isKnownPropertyName(value: string): value is RepositoryPropertyName {
-  return Object.values(RepositoryPropertyName).includes(
-    value as RepositoryPropertyName,
-  );
+  return KNOWN_REPOSITORY_PROPERTY_NAMES.has(value);
 }
 
 type AllRepositoryProperties = {
@@ -24,31 +26,45 @@ type AllRepositoryProperties = {
 
 export type RepositoryProperties = Partial<AllRepositoryProperties>;
 
-const mapRepositoryProperties: {
-  [K in RepositoryPropertyName]: (value: string) => AllRepositoryProperties[K];
+/** Parsers that transform repository properties from the API response into typed values. */
+const repositoryPropertyParsers: {
+  [K in RepositoryPropertyName]: (
+    name: K,
+    value: string,
+    logger: Logger,
+  ) => AllRepositoryProperties[K];
 } = {
-  [RepositoryPropertyName.DISABLE_OVERLAY]: (value) => value === "true",
-  [RepositoryPropertyName.EXTRA_QUERIES]: (value) => value,
+  [RepositoryPropertyName.DISABLE_OVERLAY]: (name, value, logger) => {
+    if (value !== "true" && value !== "false") {
+      logger.warning(
+        `Repository property '${name}' has unexpected value '${value}'. Expected 'true' or 'false'. Defaulting to false.`,
+      );
+    }
+    return value === "true";
+  },
+  [RepositoryPropertyName.EXTRA_QUERIES]: (_name, value) => value,
 };
 
+/** Update the partial set of repository properties with the parsed value of the specified property. */
 function setProperty<K extends RepositoryPropertyName>(
   properties: RepositoryProperties,
   name: K,
   value: string,
+  logger: Logger,
 ): void {
-  properties[name] = mapRepositoryProperties[name](value);
+  properties[name] = repositoryPropertyParsers[name](name, value, logger);
 }
 
 /**
  * A repository property has a name and a value.
  */
-interface GitHubRepositoryProperty {
+export interface GitHubRepositoryProperty {
   property_name: string;
   value: string;
 }
 
 /**
- * The API returns a list of `RepositoryProperty` objects.
+ * The API returns a list of `GitHubRepositoryProperty` objects.
  */
 export type GitHubPropertiesResponse = GitHubRepositoryProperty[];
 
@@ -88,12 +104,18 @@ export async function loadPropertiesFromApi(
     for (const property of remoteProperties) {
       if (property.property_name === undefined) {
         throw new Error(
-          `Expected property object to have a 'property_name', but got: ${JSON.stringify(property)}`,
+          `Expected repository property object to have a 'property_name', but got: ${JSON.stringify(property)}`,
+        );
+      }
+
+      if (typeof property.value !== "string") {
+        throw new Error(
+          `Expected repository property '${property.property_name}' to have a string value, but got: ${JSON.stringify(property)}`,
         );
       }
 
       if (isKnownPropertyName(property.property_name)) {
-        setProperty(properties, property.property_name, property.value);
+        setProperty(properties, property.property_name, property.value, logger);
       }
     }
 

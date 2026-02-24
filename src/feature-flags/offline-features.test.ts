@@ -6,10 +6,9 @@ import {
   checkExpectedLogMessages,
   getRecordingLogger,
   LoggedMessage,
-  mockCCR,
   setupTests,
 } from "../testing-utils";
-import { initializeEnvironment, withTmpDir } from "../util";
+import { GitHubVariant, initializeEnvironment, withTmpDir } from "../util";
 
 import {
   assertAllFeaturesHaveDefaultValues,
@@ -20,14 +19,16 @@ setupTests(test);
 
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
-  mockCCR();
 });
 
 test("OfflineFeatures makes no API requests", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const loggedMessages: LoggedMessage[] = [];
     const logger = getRecordingLogger(loggedMessages);
-    const features = setUpFeatureFlagTests(tmpDir, logger);
+    const features = setUpFeatureFlagTests(tmpDir, logger, {
+      type: GitHubVariant.GHES,
+      version: "3.0.0",
+    });
     t.is("OfflineFeatures", features.constructor.name);
 
     sinon
@@ -36,7 +37,7 @@ test("OfflineFeatures makes no API requests", async (t) => {
 
     await assertAllFeaturesHaveDefaultValues(t, features);
     checkExpectedLogMessages(t, loggedMessages, [
-      "Querying feature flags is not currently supported in Copilot Code Review. Using offline data for all features.",
+      "Not running against github.com. Using default values for all features.",
     ]);
   });
 });

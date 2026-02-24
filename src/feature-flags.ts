@@ -3,7 +3,6 @@ import * as path from "path";
 
 import * as semver from "semver";
 
-import { isCCR } from "./actions-util";
 import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
@@ -816,11 +815,6 @@ export function initFeatures(
   if (!supportsFeatureFlags(gitHubVersion.type)) {
     logger.debug(
       "Not running against github.com. Using default values for all features.",
-    );
-    return new OfflineFeatures(logger);
-  } else if (isCCR()) {
-    logger.debug(
-      "Querying feature flags is not currently supported in Copilot Code Review. Using offline data for all features.",
     );
     return new OfflineFeatures(logger);
   } else {

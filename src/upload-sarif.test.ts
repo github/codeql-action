@@ -6,14 +6,100 @@ import * as sinon from "sinon";
 
 import { AnalysisKind, getAnalysisConfig } from "./analyses";
 import { getCodeQLForTesting } from "./codeql";
+import * as codeql from "./codeql";
 import { getRunnerLogger } from "./logging";
-import { createFeatures, setupTests } from "./testing-utils";
+import { createFeatures, createTestConfig, setupTests } from "./testing-utils";
 import { UploadResult } from "./upload-lib";
 import * as uploadLib from "./upload-lib";
-import { postProcessAndUploadSarif } from "./upload-sarif";
+import {
+  getOrInitCodeQL,
+  postProcessAndUploadSarif,
+  UploadSarifState,
+} from "./upload-sarif";
 import * as util from "./util";
 
 setupTests(test);
+
+test("getOrInitCodeQL - gets cached CodeQL instance when available", async (t) => {
+  const cachedCodeQL = await getCodeQLForTesting();
+  const getCodeQL = sinon.stub(codeql, "getCodeQL").resolves(undefined);
+  const minimalInitCodeQL = sinon
+    .stub(uploadLib, "minimalInitCodeQL")
+    .resolves(undefined);
+
+  const result = await getOrInitCodeQL(
+    { cachedCodeQL },
+    getRunnerLogger(true),
+    { type: util.GitHubVariant.GHES, version: "3.0" },
+    createFeatures([]),
+    undefined,
+  );
+
+  // Neither of the two functions to get a CodeQL instance were called.
+  t.true(getCodeQL.notCalled);
+  t.true(minimalInitCodeQL.notCalled);
+
+  // But we have an instance that refers to the same object as the one we put into the state.
+  t.truthy(result);
+  t.is(result, cachedCodeQL);
+});
+
+test("getOrInitCodeQL - uses minimalInitCodeQL when there's no config", async (t) => {
+  const newInstance = await getCodeQLForTesting();
+  const getCodeQL = sinon.stub(codeql, "getCodeQL").resolves(undefined);
+  const minimalInitCodeQL = sinon
+    .stub(uploadLib, "minimalInitCodeQL")
+    .resolves(newInstance);
+
+  const state: UploadSarifState = { cachedCodeQL: undefined };
+  const result = await getOrInitCodeQL(
+    state,
+    getRunnerLogger(true),
+    { type: util.GitHubVariant.GHES, version: "3.0" },
+    createFeatures([]),
+    undefined,
+  );
+
+  // Check that the right function was called.
+  t.true(getCodeQL.notCalled);
+  t.true(minimalInitCodeQL.calledOnce);
+
+  // And that we received the instance that we expected.
+  t.truthy(result);
+  t.is(result, newInstance);
+
+  // And that it was cached.
+  t.is(state.cachedCodeQL, newInstance);
+});
+
+test("getOrInitCodeQL - uses getCodeQL when there's a config", async (t) => {
+  const newInstance = await getCodeQLForTesting();
+  const getCodeQL = sinon.stub(codeql, "getCodeQL").resolves(newInstance);
+  const minimalInitCodeQL = sinon
+    .stub(uploadLib, "minimalInitCodeQL")
+    .resolves(undefined);
+  const config = createTestConfig({});
+
+  const state: UploadSarifState = { cachedCodeQL: undefined };
+  const result = await getOrInitCodeQL(
+    state,
+    getRunnerLogger(true),
+    { type: util.GitHubVariant.GHES, version: "3.0" },
+    createFeatures([]),
+    config,
+  );
+
+  // Check that the right function was called.
+  t.true(getCodeQL.calledOnce);
+  t.true(minimalInitCodeQL.notCalled);
+
+  // And that we received the instance that we expected.
+  t.truthy(result);
+  t.is(result, newInstance);
+
+  // And that it was cached.
+  t.is(state.cachedCodeQL, newInstance);
+});
 
 interface UploadSarifExpectedResult {
   uploadResult?: UploadResult;

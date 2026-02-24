@@ -11,7 +11,7 @@ import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
-import { CodeQL, getCodeQL } from "./codeql";
+import { getCodeQL, type CodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
@@ -183,6 +183,42 @@ async function shouldDisableCombineSarifFiles(
   return true;
 }
 
+/**
+ * Initialises a `CodeQL` instance that we can use to combine SARIF files.
+ */
+export async function minimalInitCodeQL(
+  logger: Logger,
+  gitHubVersion: GitHubVersion,
+  features: FeatureEnablement,
+): Promise<CodeQL> {
+  logger.info(
+    "Initializing CodeQL since the 'init' Action was not called before this step.",
+  );
+
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    externalRepoAuth: actionsUtil.getOptionalInput("external-repository-token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+  };
+
+  const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
+    gitHubVersion.type,
+  );
+
+  const initCodeQLResult = await initCodeQL(
+    undefined, // There is no tools input on the upload action
+    apiDetails,
+    actionsUtil.getTemporaryDirectory(),
+    gitHubVersion.type,
+    codeQLDefaultVersionInfo,
+    features,
+    logger,
+  );
+
+  return initCodeQLResult.codeql;
+}
+
 // Takes a list of paths to sarif files and combines them together using the
 // CLI `github merge-results` command when all SARIF files are produced by
 // CodeQL. Otherwise, it will fall back to combining the files in the action.
@@ -239,34 +275,7 @@ async function combineSarifFilesUsingCLI(
     codeQL = await getCodeQL(config.codeQLCmd);
     tempDir = config.tempDir;
   } else {
-    logger.info(
-      "Initializing CodeQL since the 'init' Action was not called before this step.",
-    );
-
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      externalRepoAuth: actionsUtil.getOptionalInput(
-        "external-repository-token",
-      ),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-    };
-
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
-
-    const initCodeQLResult = await initCodeQL(
-      undefined, // There is no tools input on the upload action
-      apiDetails,
-      tempDir,
-      gitHubVersion.type,
-      codeQLDefaultVersionInfo,
-      features,
-      logger,
-    );
-
-    codeQL = initCodeQLResult.codeql;
+    codeQL = await minimalInitCodeQL(logger, gitHubVersion, features);
   }
 
   const baseTempDir = path.resolve(tempDir, "combined-sarif");

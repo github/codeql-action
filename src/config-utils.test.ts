@@ -14,6 +14,7 @@ import { createStubCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
+import { RepositoryProperties } from "./feature-flags/properties";
 import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -983,6 +984,7 @@ interface OverlayDatabaseModeTestSetup {
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
   shouldSkipOverlayAnalysisDueToCachedStatus: boolean;
+  repositoryProperties: RepositoryProperties;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -1005,6 +1007,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   },
   memoryFlagValue: 6920,
   shouldSkipOverlayAnalysisDueToCachedStatus: false,
+  repositoryProperties: {},
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1082,6 +1085,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           setup.buildMode,
           undefined,
           setup.codeScanningConfig,
+          setup.repositoryProperties,
           setup.gitVersion,
           logger,
         );
@@ -1916,6 +1920,55 @@ test(
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay when disabled via repository property",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryProperties: {
+      "github-codeql-disable-overlay": true,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay not disabled when repository property is false",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryProperties: {
+      "github-codeql-disable-overlay": false,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override takes precedence over repository property",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryProperties: {
+      "github-codeql-disable-overlay": true,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: false,
   },
 );

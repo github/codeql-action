@@ -5,14 +5,13 @@ import {
   fixCodeQualityCategory,
   getPullRequestBranches,
   isAnalyzingPullRequest,
-  isCCR,
   isDefaultSetup,
   isDynamicWorkflow,
 } from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { mockCCR, setupTests } from "./testing-utils";
+import { setupTests } from "./testing-utils";
 import { initializeEnvironment } from "./util";
 
 setupTests(test);
@@ -257,16 +256,8 @@ test("isDynamicWorkflow() returns true if event name is `dynamic`", (t) => {
   t.false(isDynamicWorkflow());
 });
 
-test("isCCR() returns true when expected", (t) => {
-  mockCCR();
-
-  t.assert(isCCR());
-  t.false(isDefaultSetup());
-});
-
 test("isDefaultSetup() returns true when expected", (t) => {
   process.env.GITHUB_EVENT_NAME = "dynamic";
   process.env[EnvVar.ANALYSIS_KEY] = "dynamic/github-code-scanning";
   t.assert(isDefaultSetup());
-  t.false(isCCR());
 });

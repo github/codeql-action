@@ -8,7 +8,6 @@ import * as io from "@actions/io";
 import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import type { Config } from "./config-utils";
-import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import {
   doesDirectoryExist,
@@ -255,15 +254,7 @@ export function isDynamicWorkflow(): boolean {
 
 /** Determines whether we are running in default setup. */
 export function isDefaultSetup(): boolean {
-  return isDynamicWorkflow() && !isCCR();
-}
-
-/* The analysis key prefix used for CCR. */
-const CCR_KEY_PREFIX = "dynamic/copilot-pull-request-reviewer";
-
-/** Determines whether we are running in CCR. */
-export function isCCR(): boolean {
-  return process.env[EnvVar.ANALYSIS_KEY]?.startsWith(CCR_KEY_PREFIX) || false;
+  return isDynamicWorkflow();
 }
 
 export function prettyPrintInvocation(cmd: string, args: string[]): string {

@@ -125,31 +125,43 @@ async function maybeUploadFailedSarif(
     : {};
 }
 
+/**
+ * Tries to upload a SARIF file with information about the run, if it failed.
+ *
+ * @param config The CodeQL Action configuration.
+ * @param repositoryNwo The name and owner of the repository.
+ * @param features Information about enabled features.
+ * @param logger The logger to use.
+ * @returns The results of uploading the SARIF file for the failure.
+ */
 export async function tryUploadSarifIfRunFailed(
   config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
-  // Only upload the failed SARIF to Code scanning if Code scanning is enabled.
-  if (!isCodeScanningEnabled(config)) {
-    return {
-      upload_failed_run_skipped_because: "Code Scanning is not enabled.",
-    };
-  }
+  // There's nothing to do here if the analysis succeeded.
   if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true") {
     return {
       upload_failed_run_skipped_because:
         "Analyze Action completed successfully",
     };
   }
+
   try {
-    return await maybeUploadFailedSarif(
-      config,
-      repositoryNwo,
-      features,
-      logger,
-    );
+    // Only upload the failed SARIF to Code scanning if Code scanning is enabled.
+    if (isCodeScanningEnabled(config)) {
+      return await maybeUploadFailedSarif(
+        config,
+        repositoryNwo,
+        features,
+        logger,
+      );
+    } else {
+      return {
+        upload_failed_run_skipped_because: "Code Scanning is not enabled.",
+      };
+    }
   } catch (e) {
     logger.debug(
       `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`,

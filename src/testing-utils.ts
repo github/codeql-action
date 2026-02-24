@@ -157,8 +157,8 @@ export interface LoggedMessage {
 
 export class RecordingLogger implements Logger {
   messages: LoggedMessage[] = [];
-  groups: string[] = [];
-  unfinishedGroups: Set<string> = new Set();
+  readonly groups: string[] = [];
+  readonly unfinishedGroups: Set<string> = new Set();
   private currentGroup: string | undefined = undefined;
 
   constructor(private readonly logToConsole: boolean = true) {}
@@ -170,6 +170,19 @@ export class RecordingLogger implements Logger {
       // eslint-disable-next-line no-console
       console.debug(message);
     }
+  }
+
+  /**
+   * Checks whether the logged messages contain `messageOrRegExp`.
+   *
+   * If `messageOrRegExp` is a string, this function returns true as long as
+   * `messageOrRegExp` appears as part of one of the `messages`.
+   *
+   * If `messageOrRegExp` is a regular expression, this function returns true as long as
+   * one of the `messages` matches `messageOrRegExp`.
+   */
+  hasMessage(messageOrRegExp: string | RegExp): boolean {
+    return hasLoggedMessage(this.messages, messageOrRegExp);
   }
 
   isDebug() {
@@ -275,7 +288,7 @@ export function assertNotLogged(
   message: string | RegExp,
 ) {
   t.false(
-    hasLoggedMessage(logger.messages, message),
+    logger.hasMessage(message),
     `'${message}' should not have been logged, but was.`,
   );
 }

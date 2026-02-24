@@ -96,6 +96,8 @@ import {
   GitHubVersion,
   Result,
   getOptionalEnvVar,
+  Success,
+  Failure,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -834,25 +836,25 @@ async function loadRepositoryProperties(
       "Skipping loading repository properties because the repository is owned by a user and " +
         "therefore cannot have repository properties.",
     );
-    return Result.success({});
+    return new Success({});
   }
 
   if (!(await features.getValue(Feature.UseRepositoryProperties))) {
     logger.debug(
       "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
     );
-    return Result.success({});
+    return new Success({});
   }
 
   try {
-    return Result.success(
+    return new Success(
       await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
     );
   } catch (error) {
     logger.warning(
       `Failed to load repository properties: ${getErrorMessage(error)}`,
     );
-    return Result.failure(error);
+    return new Failure(error);
   }
 }
 

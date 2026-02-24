@@ -1295,7 +1295,7 @@ export function joinAtMost(
   return array.join(separator);
 }
 
-/** A simple result type representing either a success or a failure. */
+/** An interface representing something that is either a success or a failure. */
 interface ResultLike<T, E> {
   /** The value of the result, which can be either a success value or a failure value. */
   value: T | E;

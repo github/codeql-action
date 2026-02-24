@@ -1,9 +1,9 @@
 import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
-import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
+import { getConfig } from "./config-utils";
 import { initFeatures } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -17,7 +17,11 @@ import {
   isThirdPartyAnalysis,
 } from "./status-report";
 import * as upload_lib from "./upload-lib";
-import { postProcessAndUploadSarif } from "./upload-sarif";
+import {
+  getOrInitCodeQL,
+  postProcessAndUploadSarif,
+  UploadSarifState,
+} from "./upload-sarif";
 import {
   ConfigurationError,
   checkActionVersion,
@@ -59,12 +63,13 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  const state: UploadSarifState = { cachedCodeQL: undefined };
 
   try {
-    initializeEnvironment(getActionVersion());
+    initializeEnvironment(actionsUtil.getActionVersion());
 
     const gitHubVersion = await getGitHubVersion();
-    checkActionVersion(getActionVersion(), gitHubVersion);
+    checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
 
     // Make inputs accessible in the `post` step.
     actionsUtil.persistInputs();
@@ -73,7 +78,7 @@ async function run(startedAt: Date) {
     const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
-      getTemporaryDirectory(),
+      actionsUtil.getTemporaryDirectory(),
       logger,
     );
 
@@ -94,9 +99,20 @@ async function run(startedAt: Date) {
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
 
+    // Determine the temporary directory to use. If we are able to read a `Config` from a previous CodeQL Action
+    // step in the job, then use the temporary directory configured there. Otherwise, use our default.
+    let tempDir: string = actionsUtil.getTemporaryDirectory();
+
+    const config = await getConfig(tempDir, logger);
+    if (config !== undefined) {
+      tempDir = config.tempDir;
+    }
+
     const uploadResults = await postProcessAndUploadSarif(
       logger,
+      tempDir,
       features,
+      () => getOrInitCodeQL(state, logger, gitHubVersion, features, config),
       "always",
       checkoutPath,
       sarifPath,

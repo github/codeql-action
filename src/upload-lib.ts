@@ -11,8 +11,7 @@ import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
-import { CodeQL, getCodeQL } from "./codeql";
-import { getConfig } from "./config-utils";
+import { type CodeQL } from "./codeql";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
@@ -183,6 +182,44 @@ async function shouldDisableCombineSarifFiles(
   return true;
 }
 
+/**
+ * Initialises a `CodeQL` instance that we can use to combine SARIF files.
+ */
+export async function minimalInitCodeQL(
+  logger: Logger,
+  gitHubVersion: GitHubVersion,
+  features: FeatureEnablement,
+): Promise<CodeQL> {
+  logger.info(
+    "Initializing CodeQL since the 'init' Action was not called before this step.",
+  );
+
+  const apiDetails = {
+    auth: actionsUtil.getRequiredInput("token"),
+    externalRepoAuth: actionsUtil.getOptionalInput("external-repository-token"),
+    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+  };
+
+  const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
+    gitHubVersion.type,
+  );
+
+  const initCodeQLResult = await initCodeQL(
+    undefined, // There is no tools input on the upload action
+    apiDetails,
+    actionsUtil.getTemporaryDirectory(),
+    gitHubVersion.type,
+    codeQLDefaultVersionInfo,
+    features,
+    logger,
+  );
+
+  return initCodeQLResult.codeql;
+}
+
+export type CodeQLGetter = () => Promise<CodeQL>;
+
 // Takes a list of paths to sarif files and combines them together using the
 // CLI `github merge-results` command when all SARIF files are produced by
 // CodeQL. Otherwise, it will fall back to combining the files in the action.
@@ -190,8 +227,10 @@ async function shouldDisableCombineSarifFiles(
 async function combineSarifFilesUsingCLI(
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
-  features: FeatureEnablement,
+  _features: FeatureEnablement,
   logger: Logger,
+  getCodeQL: CodeQLGetter,
+  tempDir: string,
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");
 
@@ -229,45 +268,10 @@ async function combineSarifFilesUsingCLI(
     return combineSarifFiles(sarifFiles, logger);
   }
 
-  // Initialize CodeQL, either by using the config file from the 'init' step,
-  // or by initializing it here.
-  let codeQL: CodeQL;
-  let tempDir: string = actionsUtil.getTemporaryDirectory();
-
-  const config = await getConfig(tempDir, logger);
-  if (config !== undefined) {
-    codeQL = await getCodeQL(config.codeQLCmd);
-    tempDir = config.tempDir;
-  } else {
-    logger.info(
-      "Initializing CodeQL since the 'init' Action was not called before this step.",
-    );
-
-    const apiDetails = {
-      auth: actionsUtil.getRequiredInput("token"),
-      externalRepoAuth: actionsUtil.getOptionalInput(
-        "external-repository-token",
-      ),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
-    };
-
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
-
-    const initCodeQLResult = await initCodeQL(
-      undefined, // There is no tools input on the upload action
-      apiDetails,
-      tempDir,
-      gitHubVersion.type,
-      codeQLDefaultVersionInfo,
-      features,
-      logger,
-    );
-
-    codeQL = initCodeQLResult.codeql;
-  }
+  // Obtain a `CodeQL` instance. For `analyze`, this is typically the instance that was used for running the queries.
+  // For `upload-sarif`, this either initialises a new instance or returns a previously initialised one if `getCodeQL`
+  // is called more than once.
+  const codeQL: CodeQL = await getCodeQL();
 
   const baseTempDir = path.resolve(tempDir, "combined-sarif");
   fs.mkdirSync(baseTempDir, { recursive: true });
@@ -673,6 +677,8 @@ export interface PostProcessingResults {
  *
  * @param logger The logger to use.
  * @param features Information about enabled features.
+ * @param getCodeQL A function to retrieve a `CodeQL` instance.
+ * @param tempPath A path to a temporary directory.
  * @param checkoutPath The path where the repo was checked out at.
  * @param sarifPaths The paths of the SARIF files to post-process.
  * @param category The analysis category.
@@ -684,6 +690,8 @@ export interface PostProcessingResults {
 export async function postProcessSarifFiles(
   logger: Logger,
   features: FeatureEnablement,
+  getCodeQL: CodeQLGetter,
+  tempPath: string,
   checkoutPath: string,
   sarifPaths: string[],
   category: string | undefined,
@@ -708,6 +716,8 @@ export async function postProcessSarifFiles(
       gitHubVersion,
       features,
       logger,
+      getCodeQL,
+      tempPath,
     );
   } else {
     const sarifPath = sarifPaths[0];
@@ -768,6 +778,8 @@ export async function writePostProcessedFiles(
  * to.
  */
 export async function uploadFiles(
+  tempDir: string,
+  codeql: CodeQL,
   inputSarifPath: string,
   checkoutPath: string,
   category: string | undefined,
@@ -781,6 +793,8 @@ export async function uploadFiles(
   );
 
   return uploadSpecifiedFiles(
+    tempDir,
+    codeql,
     sarifPaths,
     checkoutPath,
     category,
@@ -794,6 +808,8 @@ export async function uploadFiles(
  * Uploads the given array of SARIF files.
  */
 async function uploadSpecifiedFiles(
+  tempDir: string,
+  codeql: CodeQL,
   sarifPaths: string[],
   checkoutPath: string,
   category: string | undefined,
@@ -804,6 +820,8 @@ async function uploadSpecifiedFiles(
   const processingResults: PostProcessingResults = await postProcessSarifFiles(
     logger,
     features,
+    async () => codeql,
+    tempDir,
     checkoutPath,
     sarifPaths,
     category,

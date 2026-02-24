@@ -1,20 +1,57 @@
 import { UploadKind } from "./actions-util";
 import * as analyses from "./analyses";
+import type { CodeQL } from "./codeql";
+import * as codeql from "./codeql";
+import { Config } from "./config-utils";
 import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import * as upload_lib from "./upload-lib";
-import { unsafeEntriesInvariant } from "./util";
+import { GitHubVersion, unsafeEntriesInvariant } from "./util";
+
+export interface UploadSarifState {
+  /** The cached `CodeQL` instance, if any. */
+  cachedCodeQL: CodeQL | undefined;
+}
 
 // Maps analysis kinds to SARIF IDs.
 export type UploadSarifResults = Partial<
   Record<analyses.AnalysisKind, upload_lib.UploadResult>
 >;
 
+/** Get or initialise a `CodeQL` instance for use by the `upload-sarif` action. */
+export async function getOrInitCodeQL(
+  actionState: UploadSarifState,
+  logger: Logger,
+  gitHubVersion: GitHubVersion,
+  features: FeatureEnablement,
+  config: Config | undefined,
+): Promise<CodeQL> {
+  // Return the cached instance, if we have one.
+  if (actionState.cachedCodeQL !== undefined) return actionState.cachedCodeQL;
+
+  // If we have been able to load a `Config` from an earlier CodeQL Action step in the job,
+  // then use the CodeQL executable that we have used previously. Otherwise, initialise the
+  // CLI specifically for `upload-sarif`. Either way, we cache the instance.
+  if (config !== undefined) {
+    actionState.cachedCodeQL = await codeql.getCodeQL(config.codeQLCmd);
+  } else {
+    actionState.cachedCodeQL = await upload_lib.minimalInitCodeQL(
+      logger,
+      gitHubVersion,
+      features,
+    );
+  }
+
+  return actionState.cachedCodeQL;
+}
+
 /**
  * Finds SARIF files in `sarifPath`, post-processes them, and uploads them to the appropriate services.
  *
  * @param logger The logger to use.
+ * @param tempPath The path to the temporary directory.
  * @param features Information about enabled features.
+ * @param getCodeQL A function to retrieve a `CodeQL` instance.
  * @param uploadKind The kind of upload that is requested.
  * @param checkoutPath The path where the repository was checked out at.
  * @param sarifPath The path to the file or directory to upload.
@@ -25,7 +62,9 @@ export type UploadSarifResults = Partial<
  */
 export async function postProcessAndUploadSarif(
   logger: Logger,
+  tempPath: string,
   features: FeatureEnablement,
+  getCodeQL: upload_lib.CodeQLGetter,
   uploadKind: UploadKind,
   checkoutPath: string,
   sarifPath: string,
@@ -45,6 +84,8 @@ export async function postProcessAndUploadSarif(
     const postProcessingResults = await upload_lib.postProcessSarifFiles(
       logger,
       features,
+      getCodeQL,
+      tempPath,
       checkoutPath,
       sarifFiles,
       category,

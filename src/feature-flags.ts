@@ -75,7 +75,6 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
-  StartProxyConnectionChecks = "start_proxy_connection_checks",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   UseRepositoryProperties = "use_repository_properties_v2",
   ValidateDbConfig = "validate_db_config",
@@ -314,11 +313,6 @@ export const featureConfig = {
     // before rolling this out externally, we should set a minimum version here
     // since current versions of the CodeQL CLI will log if baseline information
     // cannot be found when interpreting results.
-    minimumVersion: undefined,
-  },
-  [Feature.StartProxyConnectionChecks]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_START_PROXY_CONNECTION_CHECKS",
     minimumVersion: undefined,
   },
   [Feature.UploadOverlayDbToApi]: {

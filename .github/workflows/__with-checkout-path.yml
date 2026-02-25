@@ -18,6 +18,7 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  merge_group: {}
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:

@@ -308,7 +308,9 @@ for file in sorted((this_dir / 'checks').glob('*.yml')):
                 'pull_request': {
                     'types': ["opened", "synchronize", "reopened", "ready_for_review"]
                 },
-                'merge_group': {},
+                'merge_group': {
+                    'types': ['checks_requested']
+                },
                 'schedule': [{'cron': SingleQuotedScalarString('0 5 * * *')}],
                 'workflow_dispatch': {
                     'inputs': workflowInputs

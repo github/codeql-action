@@ -11,19 +11,13 @@ export enum RepositoryPropertyName {
   EXTRA_QUERIES = "github-codeql-extra-queries",
 }
 
-const KNOWN_REPOSITORY_PROPERTY_NAMES = new Set<string>(
-  Object.values(RepositoryPropertyName),
-);
-
-function isKnownPropertyName(value: string): value is RepositoryPropertyName {
-  return KNOWN_REPOSITORY_PROPERTY_NAMES.has(value);
-}
-
+/** Parsed types of the known repository properties. */
 type AllRepositoryProperties = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
 };
 
+/** Parsed repository properties. */
 export type RepositoryProperties = Partial<AllRepositoryProperties>;
 
 /** Parsers that transform repository properties from the API response into typed values. */
@@ -34,26 +28,9 @@ const repositoryPropertyParsers: {
     logger: Logger,
   ) => AllRepositoryProperties[K];
 } = {
-  [RepositoryPropertyName.DISABLE_OVERLAY]: (name, value, logger) => {
-    if (value !== "true" && value !== "false") {
-      logger.warning(
-        `Repository property '${name}' has unexpected value '${value}'. Expected 'true' or 'false'. Defaulting to false.`,
-      );
-    }
-    return value === "true";
-  },
-  [RepositoryPropertyName.EXTRA_QUERIES]: (_name, value) => value,
+  [RepositoryPropertyName.DISABLE_OVERLAY]: parseBooleanRepositoryProperty,
+  [RepositoryPropertyName.EXTRA_QUERIES]: parseStringRepositoryProperty,
 };
-
-/** Update the partial set of repository properties with the parsed value of the specified property. */
-function setProperty<K extends RepositoryPropertyName>(
-  properties: RepositoryProperties,
-  name: K,
-  value: string,
-  logger: Logger,
-): void {
-  properties[name] = repositoryPropertyParsers[name](name, value, logger);
-}
 
 /**
  * A repository property has a name and a value.
@@ -138,4 +115,43 @@ export async function loadPropertiesFromApi(
       `Encountered an error while trying to determine repository properties: ${e}`,
     );
   }
+}
+
+/** Update the partial set of repository properties with the parsed value of the specified property. */
+function setProperty<K extends RepositoryPropertyName>(
+  properties: RepositoryProperties,
+  name: K,
+  value: string,
+  logger: Logger,
+): void {
+  properties[name] = repositoryPropertyParsers[name](name, value, logger);
+}
+
+/** Parse a boolean repository property. */
+function parseBooleanRepositoryProperty(
+  name: string,
+  value: string,
+  logger: Logger,
+): boolean {
+  if (value !== "true" && value !== "false") {
+    logger.warning(
+      `Repository property '${name}' has unexpected value '${value}'. Expected 'true' or 'false'. Defaulting to false.`,
+    );
+  }
+  return value === "true";
+}
+
+/** Parse a string repository property. */
+function parseStringRepositoryProperty(_name: string, value: string): string {
+  return value;
+}
+
+/** Set of known repository property names, for fast lookups. */
+const KNOWN_REPOSITORY_PROPERTY_NAMES = new Set<string>(
+  Object.values(RepositoryPropertyName),
+);
+
+/** Returns whether the given value is a known repository property name. */
+function isKnownPropertyName(name: string): name is RepositoryPropertyName {
+  return KNOWN_REPOSITORY_PROPERTY_NAMES.has(name);
 }

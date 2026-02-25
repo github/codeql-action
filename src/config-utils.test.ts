@@ -11,8 +11,8 @@ import { AnalysisKind, supportedAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
+import { UserConfig } from "./config/db-config";
 import * as configUtils from "./config-utils";
-import { OverlayDisabledReason } from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
@@ -21,6 +21,7 @@ import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { OverlayDisabledReason } from "./overlay/diagnostics";
 import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -248,7 +249,7 @@ test("initActionState doesn't throw if there are queries configured in the repos
     };
 
     // Expected configuration for a CQ-only analysis.
-    const computedConfig: configUtils.UserConfig = {
+    const computedConfig: UserConfig = {
       "disable-default-queries": true,
       queries: [{ uses: "code-quality" }],
       "query-filters": [],
@@ -493,7 +494,7 @@ test("load non-empty input", async (t) => {
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
-    const userConfig: configUtils.UserConfig = {
+    const userConfig: UserConfig = {
       name: "my config",
       "disable-default-queries": true,
       queries: [{ uses: "./foo" }],
@@ -981,7 +982,7 @@ interface OverlayDatabaseModeTestSetup {
   codeqlVersion: string;
   gitRoot: string | undefined;
   gitVersion: GitVersionInfo | undefined;
-  codeScanningConfig: configUtils.UserConfig;
+  codeScanningConfig: UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
   shouldSkipOverlayAnalysisDueToCachedStatus: boolean;
@@ -1189,7 +1190,7 @@ test(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
@@ -1434,7 +1435,7 @@ test(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
@@ -1455,7 +1456,7 @@ test(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
@@ -1476,7 +1477,7 @@ test(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
@@ -1497,7 +1498,7 @@ test(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
@@ -1574,7 +1575,7 @@ test(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
@@ -1712,7 +1713,7 @@ test(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
@@ -1733,7 +1734,7 @@ test(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
@@ -1754,7 +1755,7 @@ test(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
@@ -1775,7 +1776,7 @@ test(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {

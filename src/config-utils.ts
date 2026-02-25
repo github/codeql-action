@@ -760,10 +760,12 @@ export async function getOverlayDatabaseMode(
   overlayDatabaseMode: OverlayDatabaseMode;
   useOverlayDatabaseCaching: boolean;
   skippedDueToCachedStatus: boolean;
+  disabledByRepositoryProperty: boolean;
 }> {
   let overlayDatabaseMode = OverlayDatabaseMode.None;
   let useOverlayDatabaseCaching = false;
   let skippedDueToCachedStatus = false;
+  let disabledByRepositoryProperty = false;
 
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
@@ -786,6 +788,7 @@ export async function getOverlayDatabaseMode(
         `because the ${RepositoryPropertyName.DISABLE_OVERLAY} repository property is set to true.`,
     );
     overlayDatabaseMode = OverlayDatabaseMode.None;
+    disabledByRepositoryProperty = true;
   } else if (
     await isOverlayAnalysisFeatureEnabled(
       features,
@@ -856,6 +859,7 @@ export async function getOverlayDatabaseMode(
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
     skippedDueToCachedStatus,
+    disabledByRepositoryProperty,
   };
 
   if (overlayDatabaseMode === OverlayDatabaseMode.None) {
@@ -921,6 +925,7 @@ export async function getOverlayDatabaseMode(
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
     skippedDueToCachedStatus,
+    disabledByRepositoryProperty,
   };
 }
 
@@ -1071,6 +1076,7 @@ export async function initConfig(
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
     skippedDueToCachedStatus: overlaySkippedDueToCachedStatus,
+    disabledByRepositoryProperty: overlayDisabledByRepositoryProperty,
   } = await getOverlayDatabaseMode(
     inputs.codeql,
     inputs.features,
@@ -1108,6 +1114,31 @@ export async function initConfig(
             "to the runner. If that doesn't help, contact GitHub Support for further assistance.\n\n" +
             "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +
             `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` entries from the Actions cache.`,
+          severity: "note",
+          visibility: {
+            cliSummaryTable: true,
+            statusPage: true,
+            telemetry: true,
+          },
+        },
+      ),
+    );
+  }
+
+  if (overlayDisabledByRepositoryProperty) {
+    addNoLanguageDiagnostic(
+      config,
+      makeDiagnostic(
+        "codeql-action/overlay-disabled-by-repository-property",
+        "Improved incremental analysis disabled by repository property",
+        {
+          attributes: {
+            languages: config.languages,
+          },
+          markdownMessage:
+            "Improved incremental analysis has been disabled because the " +
+            `\`${RepositoryPropertyName.DISABLE_OVERLAY}\` repository property is set to \`true\`. ` +
+            "To re-enable improved incremental analysis, set this property to `false` or remove it.",
           severity: "note",
           visibility: {
             cliSummaryTable: true,

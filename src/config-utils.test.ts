@@ -1019,6 +1019,7 @@ const getOverlayDatabaseModeMacro = test.macro({
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
       skippedDueToCachedStatus?: boolean;
+      disabledByRepositoryProperty?: boolean;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1092,6 +1093,7 @@ const getOverlayDatabaseModeMacro = test.macro({
 
         t.deepEqual(result, {
           skippedDueToCachedStatus: false,
+          disabledByRepositoryProperty: false,
           ...expected,
         });
       } finally {
@@ -1938,6 +1940,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledByRepositoryProperty: true,
   },
 );
 

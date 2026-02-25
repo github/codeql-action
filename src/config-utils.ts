@@ -92,12 +92,22 @@ const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB * 1_000_000;
 
 /**
- * The minimum memory (in MB) that must be available for CodeQL to perform overlay
- * analysis. If CodeQL will be given less memory than this threshold, then the
- * action will not perform overlay analysis unless overlay analysis has been
- * explicitly enabled via environment variable.
+ * The minimum memory (in MB) that must be available for CodeQL to perform overlay analysis. If
+ * CodeQL will be given less memory than this threshold, then the action will not perform overlay
+ * analysis unless overlay analysis has been explicitly enabled via environment variable.
+ *
+ * This check is not performed for CodeQL >= `CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE` since
+ * improved memory usage in that version makes the check unnecessary.
  */
 const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
+
+/**
+ * Versions 2.24.3+ of CodeQL reduce overlay analysis's peak RAM usage.
+ *
+ * In particular, RAM usage with overlay analysis enabled should generally be no higher than it is
+ * without overlay analysis for these versions.
+ */
+const CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE = "2.24.3";
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -683,16 +693,12 @@ async function isOverlayAnalysisFeatureEnabled(
   return true;
 }
 
-/**
- * Checks if the runner supports overlay analysis based on available disk space
- * and the maximum memory CodeQL will be allowed to use.
- */
-async function runnerSupportsOverlayAnalysis(
+/** Checks if the runner has enough disk space for overlay analysis. */
+function runnerHasSufficientDiskSpace(
   diskUsage: DiskUsage | undefined,
-  ramInput: string | undefined,
   logger: Logger,
   useV2ResourceChecks: boolean,
-): Promise<boolean> {
+): boolean {
   const minimumDiskSpaceBytes = useV2ResourceChecks
     ? OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES
     : OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
@@ -711,6 +717,26 @@ async function runnerSupportsOverlayAnalysis(
     );
     return false;
   }
+  return true;
+}
+
+/** Checks if the runner has enough memory for overlay analysis. */
+async function runnerHasSufficientMemory(
+  codeql: CodeQL,
+  ramInput: string | undefined,
+  logger: Logger,
+): Promise<boolean> {
+  if (
+    await codeQlVersionAtLeast(
+      codeql,
+      CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE,
+    )
+  ) {
+    logger.debug(
+      `Skipping memory check for overlay analysis because CodeQL version is at least ${CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE}.`,
+    );
+    return true;
+  }
 
   const memoryFlagValue = getCodeQLMemoryLimit(ramInput, logger);
   if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
@@ -721,6 +747,29 @@ async function runnerSupportsOverlayAnalysis(
     return false;
   }
 
+  logger.debug(
+    `Memory available for CodeQL analysis is ${memoryFlagValue} MB, which is above the minimum of ${OVERLAY_MINIMUM_MEMORY_MB} MB.`,
+  );
+  return true;
+}
+
+/**
+ * Checks if the runner supports overlay analysis based on available disk space
+ * and the maximum memory CodeQL will be allowed to use.
+ */
+async function runnerSupportsOverlayAnalysis(
+  codeql: CodeQL,
+  diskUsage: DiskUsage | undefined,
+  ramInput: string | undefined,
+  logger: Logger,
+  useV2ResourceChecks: boolean,
+): Promise<boolean> {
+  if (!runnerHasSufficientDiskSpace(diskUsage, logger, useV2ResourceChecks)) {
+    return false;
+  }
+  if (!(await runnerHasSufficientMemory(codeql, ramInput, logger))) {
+    return false;
+  }
   return true;
 }
 
@@ -812,6 +861,7 @@ export async function getOverlayDatabaseMode(
     if (
       performResourceChecks &&
       !(await runnerSupportsOverlayAnalysis(
+        codeql,
         diskUsage,
         ramInput,
         logger,

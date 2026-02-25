@@ -12,6 +12,7 @@ import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { OverlayDisabledReason } from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
@@ -1018,8 +1019,7 @@ const getOverlayDatabaseModeMacro = test.macro({
     expected: {
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
-      skippedDueToCachedStatus?: boolean;
-      disabledByRepositoryProperty?: boolean;
+      disabledReason?: OverlayDisabledReason;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1091,11 +1091,11 @@ const getOverlayDatabaseModeMacro = test.macro({
           logger,
         );
 
-        t.deepEqual(result, {
-          skippedDueToCachedStatus: false,
-          disabledByRepositoryProperty: false,
-          ...expected,
-        });
+        if (!("disabledReason" in expected)) {
+          expected.disabledReason = undefined;
+        }
+
+        t.deepEqual(result, expected);
       } finally {
         // Restore the original environment
         process.env = originalEnv;
@@ -1150,6 +1150,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1232,6 +1233,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1250,6 +1252,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1294,6 +1297,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1337,6 +1341,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1355,6 +1360,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1393,7 +1399,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    skippedDueToCachedStatus: true,
+    disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
   },
 );
 
@@ -1413,7 +1419,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    skippedDueToCachedStatus: true,
+    disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
   },
 );
 
@@ -1434,6 +1440,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1454,6 +1461,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1474,6 +1482,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1494,6 +1503,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1508,6 +1518,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1522,6 +1533,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1536,6 +1548,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1605,6 +1618,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1645,6 +1659,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1663,6 +1678,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1702,6 +1718,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1722,6 +1739,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1742,6 +1760,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1762,6 +1781,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1776,6 +1796,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1790,6 +1811,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1804,6 +1826,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1857,6 +1880,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
@@ -1871,6 +1895,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
@@ -1884,6 +1909,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleCodeQl,
   },
 );
 
@@ -1897,6 +1923,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.NoGitRoot,
   },
 );
 
@@ -1910,6 +1937,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleGit,
   },
 );
 
@@ -1923,6 +1951,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleGit,
   },
 );
 
@@ -1940,7 +1969,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledByRepositoryProperty: true,
+    disabledReason: OverlayDisabledReason.DisabledByRepositoryProperty,
   },
 );
 
@@ -1989,6 +2018,7 @@ for (const language in KnownLanguage) {
     {
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      disabledReason: OverlayDisabledReason.FeatureNotEnabled,
     },
   );
 }

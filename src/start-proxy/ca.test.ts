@@ -32,33 +32,7 @@ function checkCertAttributes(
 }
 
 test("generateCertificateAuthority - generates certificates", (t) => {
-  const result = ca.generateCertificateAuthority(false);
-  const cert = pki.certificateFromPem(result.cert);
-  const key = pki.privateKeyFromPem(result.key);
-
-  t.truthy(cert);
-  t.truthy(key);
-
-  checkCertAttributes(t, cert);
-
-  // Check the validity.
-  t.true(
-    cert.validity.notBefore <= new Date(),
-    "notBefore date is in the future",
-  );
-  t.true(cert.validity.notAfter > new Date(), "notAfter date is in the past");
-
-  // Check that the extensions are set as we'd expect.
-  const exts = cert.extensions as ca.Extension[];
-  t.is(exts.length, 1);
-  t.is(exts[0].name, "basicConstraints");
-  t.is(exts[0].cA, true);
-
-  t.truthy(cert.siginfo);
-});
-
-test("generateCertificateAuthority - generates certificates with FF", (t) => {
-  const result = ca.generateCertificateAuthority(true);
+  const result = ca.generateCertificateAuthority();
   const cert = pki.certificateFromPem(result.cert);
   const key = pki.privateKeyFromPem(result.key);
 

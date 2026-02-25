@@ -1292,42 +1292,51 @@ export function joinAtMost(
   return array.join(separator);
 }
 
-/** A success result. */
-type Success<T> = Result<T, never>;
-/** A failure result. */
-type Failure<E> = Result<never, E>;
-
-/**
- * A simple result type representing either a success or a failure.
- */
-export class Result<T, E> {
-  private constructor(
-    private readonly _ok: boolean,
-    public readonly value: T | E,
-  ) {}
-
-  /** Creates a success result. */
-  static success<T>(value: T): Success<T> {
-    return new Result(true, value) as Success<T>;
-  }
-
-  /** Creates a failure result. */
-  static failure<E>(value: E): Failure<E> {
-    return new Result(false, value) as Failure<E>;
-  }
-
+/** An interface representing something that is either a success or a failure. */
+interface ResultLike<T, E> {
+  /** The value of the result, which can be either a success value or a failure value. */
+  value: T | E;
   /** Whether this result represents a success. */
-  isSuccess(): this is Success<T> {
-    return this._ok;
-  }
-
+  isSuccess(): this is Success<T>;
   /** Whether this result represents a failure. */
-  isFailure(): this is Failure<E> {
-    return !this._ok;
+  isFailure(): this is Failure<E>;
+  /** Get the value if this is a success, or return the default value if this is a failure. */
+  orElse<U>(defaultValue: U): T | U;
+}
+
+/** A simple result type representing either a success or a failure. */
+export type Result<T, E> = Success<T> | Failure<E>;
+
+/** A result representing a success. */
+export class Success<T> implements ResultLike<T, never> {
+  constructor(public readonly value: T) {}
+
+  isSuccess(): this is Success<T> {
+    return true;
   }
 
-  /** Get the value if this is a success, or return the default value if this is a failure. */
-  orElse<U>(defaultValue: U): T | U {
-    return this.isSuccess() ? this.value : defaultValue;
+  isFailure(): this is Failure<never> {
+    return false;
+  }
+
+  orElse<U>(_defaultValue: U): T {
+    return this.value;
+  }
+}
+
+/** A result representing a failure. */
+export class Failure<E> implements ResultLike<never, E> {
+  constructor(public readonly value: E) {}
+
+  isSuccess(): this is Success<never> {
+    return false;
+  }
+
+  isFailure(): this is Failure<E> {
+    return true;
+  }
+
+  orElse<U>(defaultValue: U): U {
+    return defaultValue;
   }
 }

@@ -7,6 +7,7 @@ on:
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 defaults:
@@ -81,7 +82,7 @@ jobs:
           category: eslint
 
   check-node-version:
-    if: github.event.pull_request && github.triggering_actor != 'dependabot[bot]'
+    if: github.triggering_actor != 'dependabot[bot]'
     name: Check Action Node versions
     runs-on: ubuntu-latest
     timeout-minutes: 45

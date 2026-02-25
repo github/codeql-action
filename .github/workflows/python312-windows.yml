@@ -8,6 +8,7 @@ on:
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
+    types: [checks_requested]
   schedule:
     # Weekly on Monday.
     - cron: '0 0 * * 1'

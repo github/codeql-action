@@ -672,7 +672,9 @@ test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", asy
     logger,
   );
 
-  const expectedName = `sarif-artifact-${debugArtifacts.getArtifactSuffix(matrix)}`;
+  const expectedName = debugArtifacts.sanitizeArtifactName(
+    `sarif-artifact-${debugArtifacts.getArtifactSuffix(matrix)}`,
+  );
   t.is(result.upload_failed_run_skipped_because, undefined);
   t.is(result.upload_failed_run_error, undefined);
   t.is(result.sarifID, expectedName);

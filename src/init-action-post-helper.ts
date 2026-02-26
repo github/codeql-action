@@ -15,6 +15,7 @@ import {
 import {
   getArtifactSuffix,
   getArtifactUploaderClient,
+  sanitizeArtifactName,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
@@ -233,7 +234,7 @@ async function maybeUploadFailedSarifArtifact(
   const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
 
   const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
-  const name = `sarif-artifact-${suffix}`;
+  const name = sanitizeArtifactName(`sarif-artifact-${suffix}`);
   await client.uploadArtifact(
     name,
     [path.normalize(failedSarif.sarifFile)],

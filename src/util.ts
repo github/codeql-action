@@ -11,7 +11,8 @@ import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL, VersionInfo } from "./codeql";
-import type { Config, Pack } from "./config-utils";
+import type { Pack } from "./config/db-config";
+import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";

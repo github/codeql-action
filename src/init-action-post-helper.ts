@@ -96,30 +96,56 @@ async function prepareFailedSarif(
       upload_failed_run_skipped_because: "CodeQL command not found",
     });
   }
-  const workflow = await getWorkflow(logger);
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
-  const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);
-  if (
-    !["always", "failure-only"].includes(
-      actionsUtil.getUploadValue(shouldUpload),
-    ) ||
-    shouldSkipSarifUpload()
-  ) {
+
+  if (shouldSkipSarifUpload()) {
     return new Failure({
       upload_failed_run_skipped_because: "SARIF upload is disabled",
     });
   }
-  const category = getCategoryInputOrThrow(workflow, jobName, matrix);
-  const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
 
-  const result = await generateFailedSarif(
-    features,
-    config,
-    category,
-    checkoutPath,
-  );
-  return new Success(result);
+  if (isRiskAssessmentEnabled(config)) {
+    if (config.languages.length !== 1) {
+      return new Failure({
+        upload_failed_run_skipped_because:
+          "Unexpectedly, the configuration is not for a single language.",
+      });
+    }
+
+    // We can make these assumptions for risk assessments.
+    const category = `/language:${config.languages[0]}`;
+    const checkoutPath = ".";
+    const result = await generateFailedSarif(
+      features,
+      config,
+      category,
+      checkoutPath,
+    );
+    return new Success(result);
+  } else {
+    const workflow = await getWorkflow(logger);
+    const shouldUpload = getUploadInputOrThrow(workflow, jobName, matrix);
+    if (
+      !["always", "failure-only"].includes(
+        actionsUtil.getUploadValue(shouldUpload),
+      )
+    ) {
+      return new Failure({
+        upload_failed_run_skipped_because: "SARIF upload is disabled",
+      });
+    }
+    const category = getCategoryInputOrThrow(workflow, jobName, matrix);
+    const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
+
+    const result = await generateFailedSarif(
+      features,
+      config,
+      category,
+      checkoutPath,
+    );
+    return new Success(result);
+  }
 }
 
 async function generateFailedSarif(

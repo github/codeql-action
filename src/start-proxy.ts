@@ -7,10 +7,16 @@ import {
   getApiClient,
   getApiDetails,
   getAuthorizationHeaderFor,
+  getGitHubVersion,
 } from "./api-client";
 import * as artifactScanner from "./artifact-scanner";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -391,16 +397,24 @@ export function getFallbackUrl(proxyPackage: string): string {
 
 /**
  * Uses the GitHub API to obtain information about the CodeQL CLI bundle release
- * that is pointed at by `defaults.json`.
+ * that is tagged by `version`.
  *
  * @returns The response from the GitHub API.
  */
-async function getLinkedRelease() {
+async function getReleaseByVersion(version: string) {
   return getApiClient().rest.repos.getReleaseByTag({
     owner: "github",
     repo: "codeql-action",
-    tag: defaults.bundleVersion,
+    tag: version,
   });
+}
+
+/** Uses `features` to determine the default CLI version. */
+async function getCliVersionFromFeatures(
+  features: FeatureEnablement,
+): Promise<CodeQLDefaultVersionInfo> {
+  const gitHubVersion = await getGitHubVersion();
+  return await features.getDefaultCliVersion(gitHubVersion.type);
 }
 
 /**
@@ -408,29 +422,44 @@ async function getLinkedRelease() {
  * already in the toolcache, and its version.
  *
  * @param logger The logger to use.
+ * @param features Information about enabled features.
  * @returns Returns the download URL and version of the proxy package we plan to use.
  */
 export async function getDownloadUrl(
   logger: Logger,
+  features: FeatureEnablement,
 ): Promise<{ url: string; version: string }> {
   const proxyPackage = getProxyPackage();
 
   try {
-    // Try to retrieve information about the CLI bundle release pointed at by `defaults.json`.
-    const cliRelease = await getLinkedRelease();
+    const useFeaturesToDetermineCLI = await features.getValue(
+      Feature.StartProxyUseFeaturesRelease,
+    );
+
+    // Retrieve information about the CLI version we should use. This will be either the linked
+    // version, or the one enabled by FFs.
+    const versionInfo = useFeaturesToDetermineCLI
+      ? await getCliVersionFromFeatures(features)
+      : {
+          cliVersion: defaults.cliVersion,
+          tagName: defaults.bundleVersion,
+        };
+
+    // Try to retrieve information about the CLI bundle release identified by `versionInfo`.
+    const cliRelease = await getReleaseByVersion(versionInfo.tagName);
 
     // Search the release's assets to find the one we are looking for.
     for (const asset of cliRelease.data.assets) {
       if (asset.name === proxyPackage) {
         logger.info(
-          `Found '${proxyPackage}' in release '${defaults.bundleVersion}' at '${asset.url}'`,
+          `Found '${proxyPackage}' in release '${versionInfo.tagName}' at '${asset.url}'`,
         );
         return {
           url: asset.url,
           // The `update-job-proxy` doesn't have a version as such. Since we now bundle it
           // with CodeQL CLI bundle releases, we use the corresponding CLI version to
           // differentiate between (potentially) different versions of `update-job-proxy`.
-          version: defaults.cliVersion,
+          version: versionInfo.cliVersion,
         };
       }
     }
@@ -548,9 +577,12 @@ export function getProxyFilename() {
  * @param logger The logger to use.
  * @returns The path to the proxy binary.
  */
-export async function getProxyBinaryPath(logger: Logger): Promise<string> {
+export async function getProxyBinaryPath(
+  logger: Logger,
+  features: FeatureEnablement,
+): Promise<string> {
   const proxyFileName = getProxyFilename();
-  const proxyInfo = await getDownloadUrl(logger);
+  const proxyInfo = await getDownloadUrl(logger, features);
 
   let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
   if (!proxyBin) {

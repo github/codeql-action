@@ -112,6 +112,22 @@ async function prepareFailedSarif(
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
+
+  const result = await generateFailedSarif(
+    features,
+    config,
+    category,
+    checkoutPath,
+  );
+  return new Success(result);
+}
+
+async function generateFailedSarif(
+  features: FeatureEnablement,
+  config: Config,
+  category: string | undefined,
+  checkoutPath: string,
+) {
   const databasePath = config.dbLocation;
 
   const codeql = await getCodeQL(config.codeQLCmd);
@@ -128,7 +144,7 @@ async function prepareFailedSarif(
     await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);
   }
 
-  return new Success({ sarifFile, category, checkoutPath });
+  return { sarifFile, category, checkoutPath };
 }
 
 /**

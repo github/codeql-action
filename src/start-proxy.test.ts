@@ -15,7 +15,6 @@ import { parseLanguage } from "./start-proxy";
 import * as statusReport from "./status-report";
 import {
   checkExpectedLogMessages,
-  createFeatures,
   getRecordingLogger,
   makeTestToken,
   RecordingLogger,
@@ -392,19 +391,22 @@ function mockOfflineFeatures(tempDir: string, logger: Logger) {
 }
 
 test("getDownloadUrl returns fallback when `getReleaseByVersion` rejects", async (t) => {
+  const logger = new RecordingLogger();
   mockGetReleaseByTag();
 
-  const features = createFeatures([]);
-  const info = await startProxyExports.getDownloadUrl(
-    getRunnerLogger(true),
-    features,
-  );
+  await withTmpDir(async (tempDir) => {
+    const features = mockOfflineFeatures(tempDir, logger);
+    const info = await startProxyExports.getDownloadUrl(
+      getRunnerLogger(true),
+      features,
+    );
 
-  t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
-  t.is(
-    info.url,
-    startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
-  );
+    t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+    t.is(
+      info.url,
+      startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+    );
+  });
 });
 
 test("getDownloadUrl returns fallback when there's no matching release asset", async (t) => {

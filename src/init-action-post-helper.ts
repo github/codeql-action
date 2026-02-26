@@ -19,10 +19,13 @@ import * as uploadLib from "./upload-lib";
 import {
   checkDiskUsage,
   delay,
+  Failure,
   getErrorMessage,
   getRequiredEnvParam,
   parseMatrixInput,
+  Result,
   shouldSkipSarifUpload,
+  Success,
   wrapError,
 } from "./util";
 import {
@@ -62,18 +65,27 @@ function createFailedUploadFailedSarifResult(
   };
 }
 
+/** Records details about a SARIF file that can contains information about a failed analysis. */
+interface FailedSarifInfo {
+  sarifFile: string;
+  category: string | undefined;
+  checkoutPath: string;
+}
+
 /**
- * Upload a failed SARIF file if we can verify that SARIF upload is enabled and determine the SARIF
- * category for the workflow.
+ * Tries to prepare a SARIF file that can contains information about a failed analysis.
+ *
+ * @returns Either information about the SARIF file that was produced, or a reason why it couldn't be produced.
  */
-async function maybeUploadFailedSarif(
-  config: Config,
-  repositoryNwo: RepositoryNwo,
-  features: FeatureEnablement,
+async function prepareFailedSarif(
   logger: Logger,
-): Promise<UploadFailedSarifResult> {
+  features: FeatureEnablement,
+  config: Config,
+): Promise<Result<FailedSarifInfo, UploadFailedSarifResult>> {
   if (!config.codeQLCmd) {
-    return { upload_failed_run_skipped_because: "CodeQL command not found" };
+    return new Failure({
+      upload_failed_run_skipped_because: "CodeQL command not found",
+    });
   }
   const workflow = await getWorkflow(logger);
   const jobName = getRequiredEnvParam("GITHUB_JOB");
@@ -85,7 +97,9 @@ async function maybeUploadFailedSarif(
     ) ||
     shouldSkipSarifUpload()
   ) {
-    return { upload_failed_run_skipped_because: "SARIF upload is disabled" };
+    return new Failure({
+      upload_failed_run_skipped_because: "SARIF upload is disabled",
+    });
   }
   const category = getCategoryInputOrThrow(workflow, jobName, matrix);
   const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
@@ -105,11 +119,32 @@ async function maybeUploadFailedSarif(
     await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);
   }
 
-  logger.info(`Uploading failed SARIF file ${sarifFile}`);
+  return new Success({ sarifFile, category, checkoutPath });
+}
+
+/**
+ * Upload a failed SARIF file if we can verify that SARIF upload is enabled and determine the SARIF
+ * category for the workflow.
+ */
+async function maybeUploadFailedSarif(
+  config: Config,
+  repositoryNwo: RepositoryNwo,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<UploadFailedSarifResult> {
+  const failedSarifResult = await prepareFailedSarif(logger, features, config);
+
+  if (failedSarifResult.isFailure()) {
+    return failedSarifResult.value;
+  }
+
+  const failedSarif = failedSarifResult.value;
+
+  logger.info(`Uploading failed SARIF file ${failedSarif.sarifFile}`);
   const uploadResult = await uploadLib.uploadFiles(
-    sarifFile,
-    checkoutPath,
-    category,
+    failedSarif.sarifFile,
+    failedSarif.checkoutPath,
+    failedSarif.category,
     features,
     logger,
     CodeScanning,

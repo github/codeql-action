@@ -12,7 +12,11 @@ import {
 import * as artifactScanner from "./artifact-scanner";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { FeatureEnablement } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -405,6 +409,14 @@ async function getReleaseByVersion(version: string) {
   });
 }
 
+/** Uses `features` to determine the default CLI version. */
+async function getCliVersionFromFeatures(
+  features: FeatureEnablement,
+): Promise<CodeQLDefaultVersionInfo> {
+  const gitHubVersion = await getGitHubVersion();
+  return await features.getDefaultCliVersion(gitHubVersion.type);
+}
+
 /**
  * Determines the URL of the proxy release asset that we should download if its not
  * already in the toolcache, and its version.
@@ -420,10 +432,18 @@ export async function getDownloadUrl(
   const proxyPackage = getProxyPackage();
 
   try {
+    const useFeaturesToDetermineCLI = await features.getValue(
+      Feature.StartProxyUseFeaturesRelease,
+    );
+
     // Retrieve information about the CLI version we should use. This will be either the linked
     // version, or the one enabled by FFs.
-    const gitHubVersion = await getGitHubVersion();
-    const versionInfo = await features.getDefaultCliVersion(gitHubVersion.type);
+    const versionInfo = useFeaturesToDetermineCLI
+      ? await getCliVersionFromFeatures(features)
+      : {
+          cliVersion: defaults.cliVersion,
+          tagName: defaults.bundleVersion,
+        };
 
     // Try to retrieve information about the CLI bundle release identified by `versionInfo`.
     const cliRelease = await getReleaseByVersion(versionInfo.tagName);

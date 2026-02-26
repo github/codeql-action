@@ -27,15 +27,16 @@ import {
 } from "./config/db-config";
 import {
   addNoLanguageDiagnostic,
-  makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
-import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { RepositoryProperties } from "./feature-flags/properties";
+import {
+  RepositoryProperties,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
 import {
   getGeneratedFiles,
   getGitRoot,
@@ -47,6 +48,10 @@ import {
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import {
+  addOverlayDisablementDiagnostics,
+  OverlayDisabledReason,
+} from "./overlay/diagnostics";
 import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
@@ -65,8 +70,6 @@ import {
   joinAtMost,
   DiskUsage,
 } from "./util";
-
-export * from "./config/db-config";
 
 /**
  * The minimum available disk space (in MB) required to perform overlay analysis.
@@ -750,16 +753,17 @@ export async function getOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   ramInput: string | undefined,
   codeScanningConfig: UserConfig,
+  repositoryProperties: RepositoryProperties,
   gitVersion: GitVersionInfo | undefined,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
   useOverlayDatabaseCaching: boolean;
-  skippedDueToCachedStatus: boolean;
+  disabledReason: OverlayDisabledReason | undefined;
 }> {
   let overlayDatabaseMode = OverlayDatabaseMode.None;
   let useOverlayDatabaseCaching = false;
-  let skippedDueToCachedStatus = false;
+  let disabledReason: OverlayDisabledReason | undefined;
 
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
@@ -774,6 +778,15 @@ export async function getOverlayDatabaseMode(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
+  } else if (
+    repositoryProperties[RepositoryPropertyName.DISABLE_OVERLAY] === true
+  ) {
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `because the ${RepositoryPropertyName.DISABLE_OVERLAY} repository property is set to true.`,
+    );
+    overlayDatabaseMode = OverlayDatabaseMode.None;
+    disabledReason = OverlayDisabledReason.DisabledByRepositoryProperty;
   } else if (
     await isOverlayAnalysisFeatureEnabled(
       features,
@@ -806,11 +819,13 @@ export async function getOverlayDatabaseMode(
       ))
     ) {
       overlayDatabaseMode = OverlayDatabaseMode.None;
+      disabledReason = OverlayDisabledReason.InsufficientResources;
     } else if (checkOverlayStatus && diskUsage === undefined) {
       logger.warning(
         `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
       );
       overlayDatabaseMode = OverlayDatabaseMode.None;
+      disabledReason = OverlayDisabledReason.UnableToDetermineDiskUsage;
     } else if (
       checkOverlayStatus &&
       diskUsage &&
@@ -822,7 +837,7 @@ export async function getOverlayDatabaseMode(
           "disk space, and CodeQL version.",
       );
       overlayDatabaseMode = OverlayDatabaseMode.None;
-      skippedDueToCachedStatus = true;
+      disabledReason = OverlayDisabledReason.SkippedDueToCachedStatus;
     } else if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
       useOverlayDatabaseCaching = true;
@@ -838,16 +853,18 @@ export async function getOverlayDatabaseMode(
           "with caching because we are analyzing the default branch.",
       );
     }
+  } else {
+    disabledReason = OverlayDisabledReason.FeatureNotEnabled;
   }
 
-  const nonOverlayAnalysis = {
+  const disabledResult = (reason: OverlayDisabledReason | undefined) => ({
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    skippedDueToCachedStatus,
-  };
+    disabledReason: reason,
+  });
 
   if (overlayDatabaseMode === OverlayDatabaseMode.None) {
-    return nonOverlayAnalysis;
+    return disabledResult(disabledReason);
   }
 
   if (
@@ -870,7 +887,7 @@ export async function getOverlayDatabaseMode(
         `build-mode is set to "${buildMode}" instead of "none". ` +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.IncompatibleBuildMode);
   }
   if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
     logger.warning(
@@ -878,7 +895,7 @@ export async function getOverlayDatabaseMode(
         `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.IncompatibleCodeQl);
   }
   if ((await getGitRoot(sourceRoot)) === undefined) {
     logger.warning(
@@ -886,7 +903,7 @@ export async function getOverlayDatabaseMode(
         `the source root "${sourceRoot}" is not inside a git repository. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.NoGitRoot);
   }
   if (gitVersion === undefined) {
     logger.warning(
@@ -894,7 +911,7 @@ export async function getOverlayDatabaseMode(
         "the Git version could not be determined. " +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.IncompatibleGit);
   }
   if (!gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
     logger.warning(
@@ -902,13 +919,13 @@ export async function getOverlayDatabaseMode(
         `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.IncompatibleGit);
   }
 
   return {
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
-    skippedDueToCachedStatus,
+    disabledReason,
   };
 }
 
@@ -1058,7 +1075,7 @@ export async function initConfig(
   const {
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
-    skippedDueToCachedStatus: overlaySkippedDueToCachedStatus,
+    disabledReason: overlayDisabledReason,
   } = await getOverlayDatabaseMode(
     inputs.codeql,
     inputs.features,
@@ -1067,6 +1084,7 @@ export async function initConfig(
     config.buildMode,
     inputs.ramInput,
     config.computedConfig,
+    config.repositoryProperties,
     gitVersion,
     logger,
   );
@@ -1077,32 +1095,11 @@ export async function initConfig(
   config.overlayDatabaseMode = overlayDatabaseMode;
   config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
 
-  if (overlaySkippedDueToCachedStatus) {
-    addNoLanguageDiagnostic(
+  if (overlayDisabledReason !== undefined) {
+    await addOverlayDisablementDiagnostics(
       config,
-      makeDiagnostic(
-        "codeql-action/overlay-skipped-due-to-cached-status",
-        "Skipped improved incremental analysis because it failed previously with similar hardware resources",
-        {
-          attributes: {
-            languages: config.languages,
-          },
-          markdownMessage:
-            `Improved incremental analysis was skipped because it previously failed for this repository ` +
-            `with CodeQL version ${(await inputs.codeql.getVersion()).version} on a runner with similar hardware resources. ` +
-            "Improved incremental analysis may require a significant amount of disk space for some repositories. " +
-            "If you want to enable improved incremental analysis, increase the disk space available " +
-            "to the runner. If that doesn't help, contact GitHub Support for further assistance.\n\n" +
-            "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +
-            `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` entries from the Actions cache.`,
-          severity: "note",
-          visibility: {
-            cliSummaryTable: true,
-            statusPage: true,
-            telemetry: true,
-          },
-        },
-      ),
+      inputs.codeql,
+      overlayDisabledReason,
     );
   }
 

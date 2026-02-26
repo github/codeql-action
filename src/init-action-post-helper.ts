@@ -1,12 +1,21 @@
 import * as fs from "fs";
+import path from "path";
 
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
 import { CodeScanning } from "./analyses";
-import { getApiClient } from "./api-client";
+import { getApiClient, getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
-import { Config, isCodeScanningEnabled } from "./config-utils";
+import {
+  Config,
+  isCodeScanningEnabled,
+  isRiskAssessmentEnabled,
+} from "./config-utils";
+import {
+  getArtifactSuffix,
+  getArtifactUploaderClient,
+} from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -160,6 +169,38 @@ async function maybeUploadFailedSarif(
     : {};
 }
 
+/** Uploads a failed SARIF file as workflow artifact, if it can be generated. */
+async function maybeUploadFailedSarifArtifact(
+  config: Config,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<UploadFailedSarifResult> {
+  const failedSarifResult = await prepareFailedSarif(logger, features, config);
+
+  if (failedSarifResult.isFailure()) {
+    return failedSarifResult.value;
+  }
+
+  const failedSarif = failedSarifResult.value;
+
+  logger.info(
+    `Uploading failed SARIF file ${failedSarif.sarifFile} as artifact`,
+  );
+
+  const gitHubVersion = await getGitHubVersion();
+  const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
+
+  const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
+  const name = `sarif-artifact-${suffix}`;
+  await client.uploadArtifact(
+    name,
+    [path.normalize(failedSarif.sarifFile)],
+    path.normalize(".."),
+  );
+
+  return { sarifID: name };
+}
+
 /**
  * Tries to upload a SARIF file with information about the run, if it failed.
  *
@@ -192,6 +233,8 @@ export async function tryUploadSarifIfRunFailed(
         features,
         logger,
       );
+    } else if (isRiskAssessmentEnabled(config)) {
+      return await maybeUploadFailedSarifArtifact(config, features, logger);
     } else {
       return {
         upload_failed_run_skipped_because:
@@ -245,7 +288,7 @@ export async function uploadFailureInfo(
 
   if (uploadFailedSarifResult.upload_failed_run_skipped_because) {
     logger.debug(
-      "Won't upload a failed SARIF file for this CodeQL code scanning run because: " +
+      "Won't upload a failed SARIF file for this CodeQL analysis because: " +
         `${uploadFailedSarifResult.upload_failed_run_skipped_because}.`,
     );
   }

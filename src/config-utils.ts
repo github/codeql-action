@@ -1471,6 +1471,13 @@ export function isCodeQualityEnabled(config: Config): boolean {
 }
 
 /**
+ * Returns `true` if Code Scanning Risk Assessment analysis is enabled, or `false` if not.
+ */
+export function isRiskAssessmentEnabled(config: Config): boolean {
+  return config.analysisKinds.includes(AnalysisKind.RiskAssessment);
+}
+
+/**
  * Returns the primary analysis kind that the Action is initialised with. If there is only
  * one analysis kind, then that is returned.
  *

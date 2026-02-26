@@ -110,9 +110,9 @@ export async function checkConnections(
         result.add(registry);
       } catch (e) {
         if (e instanceof ReachabilityError && e.statusCode !== undefined) {
-          logger.error(`Connection test to ${url} failed. (${e.statusCode})`);
+          logger.info(`Connection test to ${url} failed. (${e.statusCode})`);
         } else {
-          logger.error(
+          logger.warning(
             `Connection test to ${url} failed: ${getErrorMessage(e)}`,
           );
         }
@@ -121,7 +121,7 @@ export async function checkConnections(
 
     logger.debug(`Finished testing connections to private registries.`);
   } catch (e) {
-    logger.error(
+    logger.warning(
       `Failed to test connections to private registries: ${getErrorMessage(e)}`,
     );
   }

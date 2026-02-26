@@ -4,7 +4,7 @@ import path from "path";
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
-import { CodeScanning } from "./analyses";
+import { CodeScanning, RiskAssessment } from "./analyses";
 import { getApiClient, getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import {
@@ -115,13 +115,15 @@ async function prepareFailedSarif(
     }
 
     // We can make these assumptions for risk assessments.
-    const category = `/language:${config.languages[0]}`;
+    const language = config.languages[0];
+    const category = `/language:${language}`;
     const checkoutPath = ".";
     const result = await generateFailedSarif(
       features,
       config,
       category,
       checkoutPath,
+      `../codeql-failed-sarif-${language}${RiskAssessment.sarifExtension}`,
     );
     return new Success(result);
   } else {
@@ -154,11 +156,15 @@ async function generateFailedSarif(
   config: Config,
   category: string | undefined,
   checkoutPath: string,
+  sarifFile?: string,
 ) {
   const databasePath = config.dbLocation;
-
   const codeql = await getCodeQL(config.codeQLCmd);
-  const sarifFile = "../codeql-failed-run.sarif";
+
+  // Set the filename for the SARIF file if not already set.
+  if (sarifFile === undefined) {
+    sarifFile = "../codeql-failed-run.sarif";
+  }
 
   // If there is no database or the feature flag is off, we run 'export diagnostics'
   if (

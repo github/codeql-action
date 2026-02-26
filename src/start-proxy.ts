@@ -410,6 +410,7 @@ async function getReleaseByVersion(version: string) {
  * already in the toolcache, and its version.
  *
  * @param logger The logger to use.
+ * @param features Information about enabled features.
  * @returns Returns the download URL and version of the proxy package we plan to use.
  */
 export async function getDownloadUrl(

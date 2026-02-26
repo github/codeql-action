@@ -157,8 +157,8 @@ export interface LoggedMessage {
 
 export class RecordingLogger implements Logger {
   messages: LoggedMessage[] = [];
-  groups: string[] = [];
-  unfinishedGroups: Set<string> = new Set();
+  readonly groups: string[] = [];
+  readonly unfinishedGroups: Set<string> = new Set();
   private currentGroup: string | undefined = undefined;
 
   constructor(private readonly logToConsole: boolean = true) {}
@@ -170,6 +170,19 @@ export class RecordingLogger implements Logger {
       // eslint-disable-next-line no-console
       console.debug(message);
     }
+  }
+
+  /**
+   * Checks whether the logged messages contain `messageOrRegExp`.
+   *
+   * If `messageOrRegExp` is a string, this function returns true as long as
+   * `messageOrRegExp` appears as part of one of the `messages`.
+   *
+   * If `messageOrRegExp` is a regular expression, this function returns true as long as
+   * one of the `messages` matches `messageOrRegExp`.
+   */
+  hasMessage(messageOrRegExp: string | RegExp): boolean {
+    return hasLoggedMessage(this.messages, messageOrRegExp);
   }
 
   isDebug() {
@@ -210,41 +223,37 @@ export function getRecordingLogger(
   messages: LoggedMessage[],
   { logToConsole }: { logToConsole?: boolean } = { logToConsole: true },
 ): Logger {
-  return {
-    debug: (message: string) => {
-      messages.push({ type: "debug", message });
-      if (logToConsole) {
-        // eslint-disable-next-line no-console
-        console.debug(message);
-      }
-    },
-    info: (message: string) => {
-      messages.push({ type: "info", message });
-      if (logToConsole) {
-        // eslint-disable-next-line no-console
-        console.info(message);
-      }
-    },
-    warning: (message: string | Error) => {
-      messages.push({ type: "warning", message });
-      if (logToConsole) {
-        // eslint-disable-next-line no-console
-        console.warn(message);
-      }
-    },
-    error: (message: string | Error) => {
-      messages.push({ type: "error", message });
-      if (logToConsole) {
-        // eslint-disable-next-line no-console
-        console.error(message);
-      }
-    },
-    isDebug: () => true,
-    startGroup: () => undefined,
-    endGroup: () => undefined,
-  };
+  const logger = new RecordingLogger(logToConsole);
+  logger.messages = messages;
+  return logger;
 }
 
+/**
+ * Checks whether `messages` contains `messageOrRegExp`.
+ *
+ * If `messageOrRegExp` is a string, this function returns true as long as
+ * `messageOrRegExp` appears as part of one of the `messages`.
+ *
+ * If `messageOrRegExp` is a regular expression, this function returns true as long as
+ * one of the `messages` matches `messageOrRegExp`.
+ */
+function hasLoggedMessage(
+  messages: LoggedMessage[],
+  messageOrRegExp: string | RegExp,
+): boolean {
+  const check = (val: string) =>
+    typeof messageOrRegExp === "string"
+      ? val.includes(messageOrRegExp)
+      : messageOrRegExp.test(val);
+
+  return messages.some(
+    (msg) => typeof msg.message === "string" && check(msg.message),
+  );
+}
+
+/**
+ * Checks that `messages` contains all of `expectedMessages`.
+ */
 export function checkExpectedLogMessages(
   t: ExecutionContext<any>,
   messages: LoggedMessage[],
@@ -253,13 +262,7 @@ export function checkExpectedLogMessages(
   const missingMessages: string[] = [];
 
   for (const expectedMessage of expectedMessages) {
-    if (
-      !messages.some(
-        (msg) =>
-          typeof msg.message === "string" &&
-          msg.message.includes(expectedMessage),
-      )
-    ) {
+    if (!hasLoggedMessage(messages, expectedMessage)) {
       missingMessages.push(expectedMessage);
     }
   }
@@ -274,6 +277,20 @@ export function checkExpectedLogMessages(
   } else {
     t.pass();
   }
+}
+
+/**
+ * Asserts that `message` should not have been logged to `logger`.
+ */
+export function assertNotLogged(
+  t: ExecutionContext<any>,
+  logger: RecordingLogger,
+  message: string | RegExp,
+) {
+  t.false(
+    logger.hasMessage(message),
+    `'${message}' should not have been logged, but was.`,
+  );
 }
 
 /**

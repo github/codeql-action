@@ -1,10 +1,13 @@
+import * as core from "@actions/core";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { AnalysisKind } from "./analyses";
+import * as apiClient from "./api-client";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
+import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -16,6 +19,7 @@ import {
   createFeatures,
   createTestConfig,
   makeVersionInfo,
+  RecordingLogger,
   setupTests,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -622,3 +626,61 @@ async function testFailedSarifUpload(
   }
   return result;
 }
+
+test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", async (t) => {
+  process.env["GITHUB_JOB"] = "analyze";
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+  process.env["GITHUB_WORKSPACE"] =
+    "/home/runner/work/codeql-action-fake-repository/codeql-action-fake-repository";
+
+  const logger = new RecordingLogger();
+  const config = createTestConfig({
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+    languages: ["javascript"],
+  });
+  const features = createFeatures([]);
+
+  sinon
+    .stub(apiClient, "getGitHubVersion")
+    .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
+
+  const uploadArtifact = sinon.stub().resolves();
+  const artifactClient = { uploadArtifact };
+  sinon
+    .stub(debugArtifacts, "getArtifactUploaderClient")
+    .value(() => artifactClient);
+
+  const matrix = JSON.stringify({
+    language: "javascript",
+    category: "/language:javascript",
+    "build-mode": "none",
+    runner: "ubuntu-latest",
+  });
+  sinon.stub(core, "getInput").withArgs("matrix").returns(matrix);
+
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "databaseExportDiagnostics").resolves();
+  sinon.stub(codeqlObject, "diagnosticsExport").resolves();
+
+  sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+
+  const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
+    config,
+    parseRepositoryNwo("github/codeql-action-fake-repository"),
+    features,
+    logger,
+  );
+
+  const expectedName = `sarif-artifact-${debugArtifacts.getArtifactSuffix(matrix)}`;
+  t.is(result.upload_failed_run_skipped_because, undefined);
+  t.is(result.upload_failed_run_error, undefined);
+  t.is(result.sarifID, expectedName);
+  t.assert(
+    uploadArtifact.calledOnceWith(
+      expectedName,
+      sinon.match.array,
+      sinon.match.string,
+    ),
+  );
+});

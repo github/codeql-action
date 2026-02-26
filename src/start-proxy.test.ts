@@ -622,49 +622,52 @@ test("getProxyBinaryPath - returns path from tool cache if available", async (t)
 });
 
 test("getProxyBinaryPath - downloads proxy if not in cache", async (t) => {
+  const logger = new RecordingLogger();
   const downloadUrl = "url-we-want";
   mockGetReleaseByTag([
     { name: startProxyExports.getProxyPackage(), url: downloadUrl },
   ]);
 
-  await withRecordingLoggerAsync(async (logger) => {
-    const toolcachePath = "/path/to/proxy/dir";
-    const find = sinon.stub(toolcache, "find").returns("");
-    const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
-      auth: "",
-      url: "",
-      apiURL: "",
-    });
-    const getAuthorizationHeaderFor = sinon
-      .stub(apiClient, "getAuthorizationHeaderFor")
-      .returns(undefined);
-    const archivePath = "/path/to/archive";
-    const downloadTool = sinon
-      .stub(toolcache, "downloadTool")
-      .resolves(archivePath);
-    const extractedPath = "/path/to/extracted";
-    const extractTar = sinon
-      .stub(toolcache, "extractTar")
-      .resolves(extractedPath);
-    const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
-
-    const path = await startProxyExports.getProxyBinaryPath(
-      logger,
-      createFeatures([]),
-    );
-
-    t.assert(find.calledOnce);
-    t.assert(getApiDetails.calledOnce);
-    t.assert(getAuthorizationHeaderFor.calledOnce);
-    t.assert(downloadTool.calledOnceWith(downloadUrl));
-    t.assert(extractTar.calledOnceWith(archivePath));
-    t.assert(cacheDir.calledOnceWith(extractedPath));
-    t.assert(path);
-    t.is(
-      path,
-      filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
-    );
+  const toolcachePath = "/path/to/proxy/dir";
+  const find = sinon.stub(toolcache, "find").returns("");
+  const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
+    auth: "",
+    url: "",
+    apiURL: "",
   });
+  const getAuthorizationHeaderFor = sinon
+    .stub(apiClient, "getAuthorizationHeaderFor")
+    .returns(undefined);
+  const archivePath = "/path/to/archive";
+  const downloadTool = sinon
+    .stub(toolcache, "downloadTool")
+    .resolves(archivePath);
+  const extractedPath = "/path/to/extracted";
+  const extractTar = sinon
+    .stub(toolcache, "extractTar")
+    .resolves(extractedPath);
+  const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
+
+  const path = await startProxyExports.getProxyBinaryPath(
+    logger,
+    createFeatures([]),
+  );
+
+  t.assert(find.calledOnce);
+  t.assert(getApiDetails.calledOnce);
+  t.assert(getAuthorizationHeaderFor.calledOnce);
+  t.assert(downloadTool.calledOnceWith(downloadUrl));
+  t.assert(extractTar.calledOnceWith(archivePath));
+  t.assert(cacheDir.calledOnceWith(extractedPath));
+  t.assert(path);
+  t.is(
+    path,
+    filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+  );
+
+  checkExpectedLogMessages(t, logger.messages, [
+    `Found '${startProxyExports.getProxyPackage()}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
+  ]);
 });
 
 test("getProxyBinaryPath - downloads proxy based on features if not in cache", async (t) => {
@@ -745,4 +748,8 @@ test("getProxyBinaryPath - downloads proxy based on features if not in cache", a
       filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
     );
   });
+
+  checkExpectedLogMessages(t, logger.messages, [
+    `Found '${startProxyExports.getProxyPackage()}' in release '${expectedTag}' at '${downloadUrl}'`,
+  ]);
 });

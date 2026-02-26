@@ -7,6 +7,7 @@ import sinon from "sinon";
 
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
+import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
 import * as startProxyExports from "./start-proxy";
@@ -14,12 +15,19 @@ import { parseLanguage } from "./start-proxy";
 import * as statusReport from "./status-report";
 import {
   checkExpectedLogMessages,
+  createFeatures,
   getRecordingLogger,
   makeTestToken,
+  RecordingLogger,
   setupTests,
   withRecordingLoggerAsync,
 } from "./testing-utils";
-import { ConfigurationError } from "./util";
+import {
+  ConfigurationError,
+  GitHubVariant,
+  GitHubVersion,
+  withTmpDir,
+} from "./util";
 
 setupTests(test);
 
@@ -347,8 +355,18 @@ test("parseLanguage", async (t) => {
   t.deepEqual(parseLanguage(""), undefined);
 });
 
-function mockGetReleaseByTag(assets?: Array<{ name: string; url?: string }>) {
-  const mockClient = sinon.stub(apiClient, "getApiClient");
+function mockGetApiClient(endpoints: any) {
+  return (
+    sinon
+      .stub(apiClient, "getApiClient")
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      .returns({ rest: endpoints } as any)
+  );
+}
+
+type ReleaseAssets = Array<{ name: string; url?: string }>;
+
+function mockGetReleaseByTag(assets?: ReleaseAssets) {
   const getReleaseByTag =
     assets === undefined
       ? sinon.stub().rejects()
@@ -359,57 +377,82 @@ function mockGetReleaseByTag(assets?: Array<{ name: string; url?: string }>) {
           url: "GET /repos/:owner/:repo/releases/tags/:tag",
         });
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  mockClient.returns({
-    rest: {
-      repos: {
-        getReleaseByTag,
-      },
-    },
-  } as any);
-  return mockClient;
+  return mockGetApiClient({ repos: { getReleaseByTag } });
 }
 
-test("getDownloadUrl returns fallback when `getLinkedRelease` rejects", async (t) => {
+function mockOfflineFeatures(tempDir: string, logger: Logger) {
+  // Using GHES ensures that we are using `OfflineFeatures`.
+  const gitHubVersion = {
+    type: GitHubVariant.GHES,
+    version: "3.0.0",
+  };
+  sinon.stub(apiClient, "getGitHubVersion").resolves(gitHubVersion);
+
+  return setUpFeatureFlagTests(tempDir, logger, gitHubVersion);
+}
+
+test("getDownloadUrl returns fallback when `getReleaseByVersion` rejects", async (t) => {
+  const logger = new RecordingLogger();
   mockGetReleaseByTag();
 
-  const info = await startProxyExports.getDownloadUrl(getRunnerLogger(true));
-
-  t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
-  t.is(
-    info.url,
-    startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
-  );
-});
-
-test("getDownloadUrl returns fallback when there's no matching release asset", async (t) => {
-  const testAssets = [[], [{ name: "foo" }]];
-
-  for (const assets of testAssets) {
-    const stub = mockGetReleaseByTag(assets);
-    const info = await startProxyExports.getDownloadUrl(getRunnerLogger(true));
+  await withTmpDir(async (tempDir) => {
+    const features = mockOfflineFeatures(tempDir, logger);
+    const info = await startProxyExports.getDownloadUrl(
+      getRunnerLogger(true),
+      features,
+    );
 
     t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
     t.is(
       info.url,
       startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
     );
+  });
+});
 
-    stub.restore();
-  }
+test("getDownloadUrl returns fallback when there's no matching release asset", async (t) => {
+  const logger = new RecordingLogger();
+  const testAssets = [[], [{ name: "foo" }]];
+
+  await withTmpDir(async (tempDir) => {
+    const features = mockOfflineFeatures(tempDir, logger);
+
+    for (const assets of testAssets) {
+      const stub = mockGetReleaseByTag(assets);
+      const info = await startProxyExports.getDownloadUrl(
+        getRunnerLogger(true),
+        features,
+      );
+
+      t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+      t.is(
+        info.url,
+        startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+      );
+
+      stub.restore();
+    }
+  });
 });
 
 test("getDownloadUrl returns matching release asset", async (t) => {
+  const logger = new RecordingLogger();
   const assets = [
     { name: "foo", url: "other-url" },
     { name: startProxyExports.getProxyPackage(), url: "url-we-want" },
   ];
   mockGetReleaseByTag(assets);
 
-  const info = await startProxyExports.getDownloadUrl(getRunnerLogger(true));
+  await withTmpDir(async (tempDir) => {
+    const features = mockOfflineFeatures(tempDir, logger);
+    const info = await startProxyExports.getDownloadUrl(
+      getRunnerLogger(true),
+      features,
+    );
 
-  t.is(info.version, defaults.cliVersion);
-  t.is(info.url, "url-we-want");
+    t.is(info.version, defaults.cliVersion);
+    t.is(info.url, "url-we-want");
+  });
 });
 
 test("credentialToStr - hides passwords", (t) => {
@@ -560,13 +603,15 @@ test(
 );
 
 test("getProxyBinaryPath - returns path from tool cache if available", async (t) => {
+  const logger = new RecordingLogger();
   mockGetReleaseByTag();
 
-  await withRecordingLoggerAsync(async (logger) => {
+  await withTmpDir(async (tempDir) => {
     const toolcachePath = "/path/to/proxy/dir";
     sinon.stub(toolcache, "find").returns(toolcachePath);
 
-    const path = await startProxyExports.getProxyBinaryPath(logger);
+    const features = mockOfflineFeatures(tempDir, logger);
+    const path = await startProxyExports.getProxyBinaryPath(logger, features);
 
     t.assert(path);
     t.is(
@@ -577,12 +622,80 @@ test("getProxyBinaryPath - returns path from tool cache if available", async (t)
 });
 
 test("getProxyBinaryPath - downloads proxy if not in cache", async (t) => {
+  const logger = new RecordingLogger();
   const downloadUrl = "url-we-want";
   mockGetReleaseByTag([
     { name: startProxyExports.getProxyPackage(), url: downloadUrl },
   ]);
 
-  await withRecordingLoggerAsync(async (logger) => {
+  const toolcachePath = "/path/to/proxy/dir";
+  const find = sinon.stub(toolcache, "find").returns("");
+  const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
+    auth: "",
+    url: "",
+    apiURL: "",
+  });
+  const getAuthorizationHeaderFor = sinon
+    .stub(apiClient, "getAuthorizationHeaderFor")
+    .returns(undefined);
+  const archivePath = "/path/to/archive";
+  const downloadTool = sinon
+    .stub(toolcache, "downloadTool")
+    .resolves(archivePath);
+  const extractedPath = "/path/to/extracted";
+  const extractTar = sinon
+    .stub(toolcache, "extractTar")
+    .resolves(extractedPath);
+  const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
+
+  const path = await startProxyExports.getProxyBinaryPath(
+    logger,
+    createFeatures([]),
+  );
+
+  t.assert(find.calledOnce);
+  t.assert(getApiDetails.calledOnce);
+  t.assert(getAuthorizationHeaderFor.calledOnce);
+  t.assert(downloadTool.calledOnceWith(downloadUrl));
+  t.assert(extractTar.calledOnceWith(archivePath));
+  t.assert(cacheDir.calledOnceWith(extractedPath));
+  t.assert(path);
+  t.is(
+    path,
+    filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+  );
+
+  checkExpectedLogMessages(t, logger.messages, [
+    `Found '${startProxyExports.getProxyPackage()}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
+  ]);
+});
+
+test("getProxyBinaryPath - downloads proxy based on features if not in cache", async (t) => {
+  const logger = new RecordingLogger();
+  const expectedTag = "codeql-bundle-v2.20.1";
+  const expectedParams = {
+    owner: "github",
+    repo: "codeql-action",
+    tag: expectedTag,
+  };
+  const downloadUrl = "url-we-want";
+  const assets = [
+    {
+      name: startProxyExports.getProxyPackage(),
+      url: downloadUrl,
+    },
+  ];
+
+  const getReleaseByTag = sinon.stub();
+  getReleaseByTag.withArgs(sinon.match(expectedParams)).resolves({
+    status: 200,
+    data: { assets },
+    headers: {},
+    url: "GET /repos/:owner/:repo/releases/tags/:tag",
+  });
+  mockGetApiClient({ repos: { getReleaseByTag } });
+
+  await withTmpDir(async (tempDir) => {
     const toolcachePath = "/path/to/proxy/dir";
     const find = sinon.stub(toolcache, "find").returns("");
     const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
@@ -603,8 +716,25 @@ test("getProxyBinaryPath - downloads proxy if not in cache", async (t) => {
       .resolves(extractedPath);
     const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
 
-    const path = await startProxyExports.getProxyBinaryPath(logger);
+    const gitHubVersion: GitHubVersion = {
+      type: GitHubVariant.DOTCOM,
+    };
+    sinon.stub(apiClient, "getGitHubVersion").resolves(gitHubVersion);
 
+    const features = setUpFeatureFlagTests(tempDir, logger, gitHubVersion);
+    sinon.stub(features, "getValue").callsFake(async (_feature, _codeql) => {
+      return true;
+    });
+    const getDefaultCliVersion = sinon
+      .stub(features, "getDefaultCliVersion")
+      .resolves({ cliVersion: "2.20.1", tagName: expectedTag });
+    const path = await startProxyExports.getProxyBinaryPath(logger, features);
+
+    t.assert(getDefaultCliVersion.calledOnce);
+    sinon.assert.calledOnceWithMatch(
+      getReleaseByTag,
+      sinon.match(expectedParams),
+    );
     t.assert(find.calledOnce);
     t.assert(getApiDetails.calledOnce);
     t.assert(getAuthorizationHeaderFor.calledOnce);
@@ -618,4 +748,8 @@ test("getProxyBinaryPath - downloads proxy if not in cache", async (t) => {
       filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
     );
   });
+
+  checkExpectedLogMessages(t, logger.messages, [
+    `Found '${startProxyExports.getProxyPackage()}' in release '${expectedTag}' at '${downloadUrl}'`,
+  ]);
 });

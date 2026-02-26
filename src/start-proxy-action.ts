@@ -5,7 +5,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
+import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -98,7 +98,7 @@ async function run(startedAt: Date) {
     };
 
     // Start the Proxy
-    const proxyBin = await getProxyBinaryPath(logger);
+    const proxyBin = await getProxyBinaryPath(logger, features);
     const proxyInfo = await startProxy(
       proxyBin,
       proxyConfig,

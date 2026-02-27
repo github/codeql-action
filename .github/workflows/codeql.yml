@@ -66,7 +66,7 @@ jobs:
         #
         # If we're running on push or schedule, then we can skip running with `tools: linked` when it would be
         # the same as running with `tools: null`.
-        if [[ "$GITHUB_EVENT_NAME" != "pull_request" && "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
+        if [[ "$GITHUB_EVENT_NAME" != "pull_request" && "$GITHUB_EVENT_NAME" != "merge_group" && "$CODEQL_VERSION_DEFAULT" == "$CODEQL_VERSION_LATEST" ]]; then
           VERSIONS_JSON='[null]'
         else
           VERSIONS_JSON='[null, "linked"]'
@@ -110,7 +110,7 @@ jobs:
       uses: ./analyze
       with:
         category: "/language:javascript"
-        upload: ${{ (matrix.os == 'ubuntu-24.04' && !matrix.tools && 'always') || 'never' }}
+        upload: ${{ (matrix.os == 'ubuntu-24.04' && !matrix.tools && github.event_name != 'merge_group' && 'always' ) || 'never' }}
 
   analyze-other:
     if: github.triggering_actor != 'dependabot[bot]'
@@ -145,3 +145,4 @@ jobs:
       uses: ./analyze
       with:
         category: "/language:${{ matrix.language }}"
+        upload: ${{ (github.event_name != 'merge_group' && 'always') || 'never' }}

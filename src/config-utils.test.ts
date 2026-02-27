@@ -1367,6 +1367,25 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if memory flag is too low but CodeQL >= 2.24.3",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+    codeqlVersion: "2.24.3",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1680,6 +1699,25 @@ test(
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if memory flag is too low but CodeQL >= 2.24.3",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+    codeqlVersion: "2.24.3",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
   },
 );
 

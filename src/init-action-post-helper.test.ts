@@ -627,6 +627,13 @@ async function testFailedSarifUpload(
   return result;
 }
 
+const singleLanguageMatrix = JSON.stringify({
+  language: "javascript",
+  category: "/language:javascript",
+  "build-mode": "none",
+  runner: "ubuntu-latest",
+});
+
 async function mockRiskAssessmentEnv(matrix: string) {
   process.env["GITHUB_JOB"] = "analyze";
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
@@ -655,16 +662,9 @@ async function mockRiskAssessmentEnv(matrix: string) {
 }
 
 test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", async (t) => {
-  const matrix = JSON.stringify({
-    language: "javascript",
-    category: "/language:javascript",
-    "build-mode": "none",
-    runner: "ubuntu-latest",
-  });
-
-  const [uploadArtifact] = await mockRiskAssessmentEnv(matrix);
-
   const logger = new RecordingLogger();
+  const [uploadArtifact] = await mockRiskAssessmentEnv(singleLanguageMatrix);
+
   const config = createTestConfig({
     analysisKinds: [AnalysisKind.RiskAssessment],
     codeQLCmd: "codeql-for-testing",
@@ -680,7 +680,7 @@ test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", asy
   );
 
   const expectedName = debugArtifacts.sanitizeArtifactName(
-    `sarif-artifact-${debugArtifacts.getArtifactSuffix(matrix)}`,
+    `sarif-artifact-${debugArtifacts.getArtifactSuffix(singleLanguageMatrix)}`,
   );
   t.is(result.upload_failed_run_skipped_because, undefined);
   t.is(result.upload_failed_run_error, undefined);
@@ -693,3 +693,62 @@ test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", asy
     ),
   );
 });
+
+const skippedUploadTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    config: Partial<configUtils.Config>,
+    expectedSkippedReason: string,
+  ) => {
+    const logger = new RecordingLogger();
+    const [uploadArtifact] = await mockRiskAssessmentEnv(singleLanguageMatrix);
+    const features = createFeatures([]);
+
+    const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
+      createTestConfig(config),
+      parseRepositoryNwo("github/codeql-action-fake-repository"),
+      features,
+      logger,
+    );
+
+    t.is(result.upload_failed_run_skipped_because, expectedSkippedReason);
+    t.assert(uploadArtifact.notCalled);
+  },
+
+  title: (providedTitle: string = "") =>
+    `tryUploadSarifIfRunFailed - skips upload ${providedTitle}`,
+});
+
+test(
+  "without CodeQL command",
+  skippedUploadTest,
+  // No codeQLCmd
+  {
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    languages: ["javascript"],
+  } satisfies Partial<configUtils.Config>,
+  "CodeQL command not found",
+);
+
+test(
+  "if no language is configured",
+  skippedUploadTest,
+  // No explicit language configuration
+  {
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+  } satisfies Partial<configUtils.Config>,
+  "Unexpectedly, the configuration is not for a single language.",
+);
+
+test(
+  "if multiple languages is configured",
+  skippedUploadTest,
+  // Multiple explicit languages configured
+  {
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+    languages: ["javascript", "python"],
+  } satisfies Partial<configUtils.Config>,
+  "Unexpectedly, the configuration is not for a single language.",
+);

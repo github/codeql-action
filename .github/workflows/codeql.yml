@@ -31,6 +31,8 @@ jobs:
 
     permissions:
       contents: read
+      # We currently need `security-events: read` to access feature flags.
+      security-events: read
 
     steps:
     - uses: actions/checkout@v6

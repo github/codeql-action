@@ -627,11 +627,42 @@ async function testFailedSarifUpload(
   return result;
 }
 
-test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", async (t) => {
+async function mockRiskAssessmentEnv(matrix: string) {
   process.env["GITHUB_JOB"] = "analyze";
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   process.env["GITHUB_WORKSPACE"] =
     "/home/runner/work/codeql-action-fake-repository/codeql-action-fake-repository";
+
+  sinon
+    .stub(apiClient, "getGitHubVersion")
+    .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
+
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  sinon.stub(codeqlObject, "databaseExportDiagnostics").resolves();
+  sinon.stub(codeqlObject, "diagnosticsExport").resolves();
+
+  sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+
+  sinon.stub(core, "getInput").withArgs("matrix").returns(matrix);
+
+  const uploadArtifact = sinon.stub().resolves();
+  const artifactClient = { uploadArtifact };
+  sinon
+    .stub(debugArtifacts, "getArtifactUploaderClient")
+    .value(() => artifactClient);
+
+  return [uploadArtifact];
+}
+
+test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", async (t) => {
+  const matrix = JSON.stringify({
+    language: "javascript",
+    category: "/language:javascript",
+    "build-mode": "none",
+    runner: "ubuntu-latest",
+  });
+
+  const [uploadArtifact] = await mockRiskAssessmentEnv(matrix);
 
   const logger = new RecordingLogger();
   const config = createTestConfig({
@@ -640,30 +671,6 @@ test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", asy
     languages: ["javascript"],
   });
   const features = createFeatures([]);
-
-  sinon
-    .stub(apiClient, "getGitHubVersion")
-    .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
-
-  const uploadArtifact = sinon.stub().resolves();
-  const artifactClient = { uploadArtifact };
-  sinon
-    .stub(debugArtifacts, "getArtifactUploaderClient")
-    .value(() => artifactClient);
-
-  const matrix = JSON.stringify({
-    language: "javascript",
-    category: "/language:javascript",
-    "build-mode": "none",
-    runner: "ubuntu-latest",
-  });
-  sinon.stub(core, "getInput").withArgs("matrix").returns(matrix);
-
-  const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "databaseExportDiagnostics").resolves();
-  sinon.stub(codeqlObject, "diagnosticsExport").resolves();
-
-  sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
 
   const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
     config,

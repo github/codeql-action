@@ -4,7 +4,8 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## 4.32.5 - 27 Feb 2026
 
-No user facing changes.
+- Repositories owned by an organization can can now set up the `github-codeql-disable-overlay` custom repository property to disable [improved incremental analysis for CodeQL](https://github.com/github/roadmap/issues/1158). First, create a custom repository property with the name `github-codeql-disable-overlay` and the type "True/false" in the organization's settings. Then in the repository's settings, set this property to `true` to disable improved incremental analysis. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). This feature is not yet available on GitHub Enterprise Server. [#3507](https://github.com/github/codeql-action/pull/3507)
+- The previously experimental changes from versions 4.32.3, 4.32.4, 3.32.3 and 3.32.4 are now enabled by default. 
 
 ## 4.32.4 - 20 Feb 2026
 

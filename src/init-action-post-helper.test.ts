@@ -635,6 +635,7 @@ const singleLanguageMatrix = JSON.stringify({
 });
 
 async function mockRiskAssessmentEnv(matrix: string) {
+  process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "false";
   process.env["GITHUB_JOB"] = "analyze";
   process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
   process.env["GITHUB_WORKSPACE"] =
@@ -645,8 +646,12 @@ async function mockRiskAssessmentEnv(matrix: string) {
     .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
 
   const codeqlObject = await codeql.getCodeQLForTesting();
-  sinon.stub(codeqlObject, "databaseExportDiagnostics").resolves();
-  sinon.stub(codeqlObject, "diagnosticsExport").resolves();
+  const databaseExportDiagnostics = sinon
+    .stub(codeqlObject, "databaseExportDiagnostics")
+    .resolves();
+  const diagnosticsExport = sinon
+    .stub(codeqlObject, "diagnosticsExport")
+    .resolves();
 
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
 
@@ -658,12 +663,13 @@ async function mockRiskAssessmentEnv(matrix: string) {
     .stub(debugArtifacts, "getArtifactUploaderClient")
     .value(() => artifactClient);
 
-  return [uploadArtifact];
+  return { uploadArtifact, databaseExportDiagnostics, diagnosticsExport };
 }
 
-test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", async (t) => {
+test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments (diagnosticsExport)", async (t) => {
   const logger = new RecordingLogger();
-  const [uploadArtifact] = await mockRiskAssessmentEnv(singleLanguageMatrix);
+  const { uploadArtifact, databaseExportDiagnostics, diagnosticsExport } =
+    await mockRiskAssessmentEnv(singleLanguageMatrix);
 
   const config = createTestConfig({
     analysisKinds: [AnalysisKind.RiskAssessment],
@@ -682,14 +688,68 @@ test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments", asy
   const expectedName = debugArtifacts.sanitizeArtifactName(
     `sarif-artifact-${debugArtifacts.getArtifactSuffix(singleLanguageMatrix)}`,
   );
+  const expectedFilePattern = /codeql-failed-sarif-javascript\.csra\.sarif$/;
   t.is(result.upload_failed_run_skipped_because, undefined);
   t.is(result.upload_failed_run_error, undefined);
   t.is(result.sarifID, expectedName);
   t.assert(
     uploadArtifact.calledOnceWith(
       expectedName,
-      sinon.match.array,
+      [sinon.match(expectedFilePattern)],
       sinon.match.string,
+    ),
+  );
+  t.assert(databaseExportDiagnostics.notCalled);
+  t.assert(
+    diagnosticsExport.calledOnceWith(
+      sinon.match(expectedFilePattern),
+      "/language:javascript",
+      config,
+    ),
+  );
+});
+
+test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments (databaseExportDiagnostics)", async (t) => {
+  const logger = new RecordingLogger();
+  const { uploadArtifact, databaseExportDiagnostics, diagnosticsExport } =
+    await mockRiskAssessmentEnv(singleLanguageMatrix);
+
+  const dbLocation = "/some/path";
+  const config = createTestConfig({
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+    languages: ["javascript"],
+    dbLocation: "/some/path",
+  });
+  const features = createFeatures([Feature.ExportDiagnosticsEnabled]);
+
+  const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
+    config,
+    parseRepositoryNwo("github/codeql-action-fake-repository"),
+    features,
+    logger,
+  );
+
+  const expectedName = debugArtifacts.sanitizeArtifactName(
+    `sarif-artifact-${debugArtifacts.getArtifactSuffix(singleLanguageMatrix)}`,
+  );
+  const expectedFilePattern = /codeql-failed-sarif-javascript\.csra\.sarif$/;
+  t.is(result.upload_failed_run_skipped_because, undefined);
+  t.is(result.upload_failed_run_error, undefined);
+  t.is(result.sarifID, expectedName);
+  t.assert(
+    uploadArtifact.calledOnceWith(
+      expectedName,
+      [sinon.match(expectedFilePattern)],
+      sinon.match.string,
+    ),
+  );
+  t.assert(diagnosticsExport.notCalled);
+  t.assert(
+    databaseExportDiagnostics.calledOnceWith(
+      dbLocation,
+      sinon.match(expectedFilePattern),
+      "/language:javascript",
     ),
   );
 });
@@ -701,7 +761,8 @@ const skippedUploadTest = test.macro({
     expectedSkippedReason: string,
   ) => {
     const logger = new RecordingLogger();
-    const [uploadArtifact] = await mockRiskAssessmentEnv(singleLanguageMatrix);
+    const { uploadArtifact, diagnosticsExport } =
+      await mockRiskAssessmentEnv(singleLanguageMatrix);
     const features = createFeatures([]);
 
     const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
@@ -713,6 +774,7 @@ const skippedUploadTest = test.macro({
 
     t.is(result.upload_failed_run_skipped_because, expectedSkippedReason);
     t.assert(uploadArtifact.notCalled);
+    t.assert(diagnosticsExport.notCalled);
   },
 
   title: (providedTitle: string = "") =>

@@ -17,6 +17,7 @@ jobs:
   sizeup:
     name: Label PR with size
     runs-on: ubuntu-slim
+    if: github.event.pull_request.merged != true
 
     steps:
       - name: Run sizeup

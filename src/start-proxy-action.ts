@@ -5,7 +5,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { Feature, Features } from "./feature-flags";
+import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -32,7 +32,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
-  let features: Features | undefined;
+  let features: FeatureEnablement | undefined;
   let language: KnownLanguage | undefined;
 
   try {
@@ -47,7 +47,7 @@ async function run(startedAt: Date) {
     // Initialise FFs.
     const repositoryNwo = getRepositoryNwo();
     const gitHubVersion = await getGitHubVersion();
-    features = new Features(
+    features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),
@@ -90,9 +90,7 @@ async function run(startedAt: Date) {
       }
     }
 
-    const ca = generateCertificateAuthority(
-      await features.getValue(Feature.ImprovedProxyCertificates),
-    );
+    const ca = generateCertificateAuthority();
 
     const proxyConfig: ProxyConfig = {
       all_credentials: credentials,
@@ -100,7 +98,7 @@ async function run(startedAt: Date) {
     };
 
     // Start the Proxy
-    const proxyBin = await getProxyBinaryPath(logger);
+    const proxyBin = await getProxyBinaryPath(logger, features);
     const proxyInfo = await startProxy(
       proxyBin,
       proxyConfig,
@@ -109,9 +107,7 @@ async function run(startedAt: Date) {
     );
 
     // Check that the private registries are reachable.
-    if (await features.getValue(Feature.StartProxyConnectionChecks)) {
-      await checkConnections(logger, proxyInfo);
-    }
+    await checkConnections(logger, proxyInfo);
 
     // Report success if we have reached this point.
     await sendSuccessStatusReport(

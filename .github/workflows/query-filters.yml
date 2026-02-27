@@ -11,9 +11,11 @@ on:
     - synchronize
     - reopened
     - ready_for_review
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 defaults:
   run:

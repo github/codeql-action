@@ -5,7 +5,6 @@ import {
   fixCodeQualityCategory,
   getPullRequestBranches,
   isAnalyzingPullRequest,
-  isCCR,
   isDefaultSetup,
   isDynamicWorkflow,
 } from "./actions-util";
@@ -257,16 +256,8 @@ test("isDynamicWorkflow() returns true if event name is `dynamic`", (t) => {
   t.false(isDynamicWorkflow());
 });
 
-test("isCCR() returns true when expected", (t) => {
-  process.env.GITHUB_EVENT_NAME = "dynamic";
-  process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
-  t.assert(isCCR());
-  t.false(isDefaultSetup());
-});
-
 test("isDefaultSetup() returns true when expected", (t) => {
   process.env.GITHUB_EVENT_NAME = "dynamic";
   process.env[EnvVar.ANALYSIS_KEY] = "dynamic/github-code-scanning";
   t.assert(isDefaultSetup());
-  t.false(isCCR());
 });

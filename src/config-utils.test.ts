@@ -11,17 +11,18 @@ import { AnalysisKind, supportedAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
+import { UserConfig } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
+import { RepositoryProperties } from "./feature-flags/properties";
 import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import {
-  CODEQL_OVERLAY_MINIMUM_VERSION,
-  OverlayDatabaseMode,
-} from "./overlay-database-utils";
+import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { OverlayDisabledReason } from "./overlay/diagnostics";
+import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -248,7 +249,7 @@ test("initActionState doesn't throw if there are queries configured in the repos
     };
 
     // Expected configuration for a CQ-only analysis.
-    const computedConfig: configUtils.UserConfig = {
+    const computedConfig: UserConfig = {
       "disable-default-queries": true,
       queries: [{ uses: "code-quality" }],
       "query-filters": [],
@@ -493,7 +494,7 @@ test("load non-empty input", async (t) => {
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
-    const userConfig: configUtils.UserConfig = {
+    const userConfig: UserConfig = {
       name: "my config",
       "disable-default-queries": true,
       queries: [{ uses: "./foo" }],
@@ -981,9 +982,11 @@ interface OverlayDatabaseModeTestSetup {
   codeqlVersion: string;
   gitRoot: string | undefined;
   gitVersion: GitVersionInfo | undefined;
-  codeScanningConfig: configUtils.UserConfig;
+  codeScanningConfig: UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
+  shouldSkipOverlayAnalysisDueToCachedStatus: boolean;
+  repositoryProperties: RepositoryProperties;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -1005,6 +1008,8 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
     numTotalBytes: 100_000_000_000,
   },
   memoryFlagValue: 6920,
+  shouldSkipOverlayAnalysisDueToCachedStatus: false,
+  repositoryProperties: {},
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1015,6 +1020,7 @@ const getOverlayDatabaseModeMacro = test.macro({
     expected: {
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
+      disabledReason?: OverlayDisabledReason;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1038,6 +1044,10 @@ const getOverlayDatabaseModeMacro = test.macro({
         }
 
         sinon.stub(util, "checkDiskUsage").resolves(setup.diskUsage);
+
+        sinon
+          .stub(overlayStatus, "shouldSkipOverlayAnalysis")
+          .resolves(setup.shouldSkipOverlayAnalysisDueToCachedStatus);
 
         // Mock feature flags
         const features = createFeatures(setup.features);
@@ -1077,9 +1087,14 @@ const getOverlayDatabaseModeMacro = test.macro({
           setup.buildMode,
           undefined,
           setup.codeScanningConfig,
+          setup.repositoryProperties,
           setup.gitVersion,
           logger,
         );
+
+        if (!("disabledReason" in expected)) {
+          expected.disabledReason = undefined;
+        }
 
         t.deepEqual(result, expected);
       } finally {
@@ -1136,6 +1151,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1174,7 +1190,7 @@ test(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
@@ -1218,6 +1234,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1236,6 +1253,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1263,6 +1281,73 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisResourceChecksV2,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 5_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisResourceChecksV2,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 15_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 15_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch if memory flag is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1276,6 +1361,26 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if memory flag is too low but CodeQL >= 2.24.3",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+    codeqlVersion: "2.24.3",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
   },
 );
 
@@ -1300,6 +1405,46 @@ test(
 
 test(
   getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
+    isDefaultBranch: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
+    isPullRequest: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1309,12 +1454,13 @@ test(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1329,12 +1475,13 @@ test(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1349,12 +1496,13 @@ test(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1369,12 +1517,13 @@ test(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1389,6 +1538,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1403,6 +1553,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1417,6 +1568,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1442,7 +1594,7 @@ test(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
@@ -1486,6 +1638,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1526,6 +1679,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
   },
 );
 
@@ -1544,6 +1698,26 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if memory flag is too low but CodeQL >= 2.24.3",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+    codeqlVersion: "2.24.3",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
   },
 );
 
@@ -1577,12 +1751,13 @@ test(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1597,12 +1772,13 @@ test(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1617,12 +1793,13 @@ test(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1637,12 +1814,13 @@ test(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1657,6 +1835,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1671,6 +1850,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1685,6 +1865,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
@@ -1738,6 +1919,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
@@ -1752,6 +1934,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
@@ -1765,6 +1948,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleCodeQl,
   },
 );
 
@@ -1778,6 +1962,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.NoGitRoot,
   },
 );
 
@@ -1791,6 +1976,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleGit,
   },
 );
 
@@ -1803,6 +1989,57 @@ test(
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleGit,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "No overlay when disabled via repository property",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryProperties: {
+      "github-codeql-disable-overlay": true,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.DisabledByRepositoryProperty,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Overlay not disabled when repository property is false",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryProperties: {
+      "github-codeql-disable-overlay": false,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override takes precedence over repository property",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryProperties: {
+      "github-codeql-disable-overlay": true,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: false,
   },
 );
@@ -1820,6 +2057,7 @@ for (const language in KnownLanguage) {
     {
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      disabledReason: OverlayDisabledReason.FeatureNotEnabled,
     },
   );
 }

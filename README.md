@@ -72,13 +72,21 @@ We typically release new minor versions of the CodeQL Action and Bundle when a n
 
 | Minimum CodeQL Action | Minimum CodeQL Bundle Version | GitHub Environment | Notes |
 |-----------------------|-------------------------------|--------------------|-------|
-| `v3.28.21`  | `2.21.3` | Enterprise Server 3.18 | |
-| `v3.28.12`  | `2.20.7` | Enterprise Server 3.17 | |
-| `v3.28.6`  | `2.20.3` | Enterprise Server 3.16 | |
-| `v3.28.6`  | `2.20.3` | Enterprise Server 3.15 | |
+| `v4.31.10` | `2.23.9` | Enterprise Server 3.20 | |
+| `v3.29.11` | `2.22.4` | Enterprise Server 3.19 | |
+| `v3.28.21` | `2.21.3` | Enterprise Server 3.18 | |
+| `v3.28.12` | `2.20.7` | Enterprise Server 3.17 | |
+| `v3.28.6` | `2.20.3` | Enterprise Server 3.16 | |
+| `v3.28.6` | `2.20.3` | Enterprise Server 3.15 | |
 | `v3.28.6` | `2.20.3` | Enterprise Server 3.14 | |
 
 See the full list of GHES release and deprecation dates at [GitHub Enterprise Server releases](https://docs.github.com/en/enterprise-server/admin/all-releases#releases-of-github-enterprise-server).
+
+## Keeping the CodeQL Action up to date in advanced setups
+
+If you are using an [advanced setup](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/configuring-advanced-setup-for-code-scanning), we recommend referencing the CodeQL Action using a major version tag (e.g. `v4`) in your workflow file. This ensures your workflow automatically picks up the latest release within that major version, including bug fixes, new features, and updated CodeQL CLI versions.
+
+If you pin to a specific commit SHA or patch version tag, ensure you keep it updated (e.g. via [Dependabot](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/keeping-your-actions-up-to-date-with-dependabot)). Some CodeQL Action features are enabled by server-side flags that may be removed over time, which can cause old versions to lose functionality.
 
 ## Troubleshooting
 

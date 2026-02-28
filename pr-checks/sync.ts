@@ -457,6 +457,50 @@ function main(): void {
     writeYaml(outputPath, workflow);
   }
 
+  // Write workflow files for collections.
+  for (const collectionName of Object.keys(collections)) {
+    const jobs: Record<string, any> = {};
+    let combinedInputs: Record<string, WorkflowInput> = {};
+
+    for (const check of collections[collectionName]) {
+      const { checkName, specification, inputs: checkInputs } = check;
+      const checkWith: Record<string, string> = {};
+
+      combinedInputs = { ...combinedInputs, ...checkInputs };
+
+      for (const inputName of Object.keys(checkInputs)) {
+        checkWith[inputName] = "${{ inputs." + inputName + " }}";
+      }
+
+      jobs[checkName] = {
+        name: specification.name,
+        permissions: {
+          contents: "read",
+          "security-events": "read",
+        },
+        uses: `./.github/workflows/__${checkName}.yml`,
+        with: checkWith,
+      };
+    }
+
+    const collectionWorkflow = {
+      name: `Manual Check - ${collectionName}`,
+      env: {
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
+        GO111MODULE: "auto",
+      },
+      on: {
+        workflow_dispatch: {
+          inputs: combinedInputs,
+        },
+      },
+      jobs,
+    };
+
+    const outputPath = path.join(OUTPUT_DIR, `__${collectionName}.yml`);
+    writeYaml(outputPath, collectionWorkflow);
+  }
+
   console.log(
     `\nDone. Wrote ${checkFiles.length} workflow file(s) to ${OUTPUT_DIR}`,
   );

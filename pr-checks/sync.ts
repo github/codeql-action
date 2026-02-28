@@ -184,6 +184,11 @@ function main(): void {
       }
     }
 
+    let useAllPlatformBundle = "false"; // Default to false
+    if (checkSpecification.useAllPlatformBundle) {
+      useAllPlatformBundle = checkSpecification.useAllPlatformBundle;
+    }
+
     // Construct the workflow steps needed for this check.
     const steps: any[] = [
       {

@@ -365,6 +365,18 @@ function main(): void {
 
     // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
     const specSteps = specDocument.get("steps") as yaml.YAMLSeq;
+
+    // A handful of workflow specifications use double quotes for values, while we generally use single quotes.
+    // This replaces double quotes with single quotes for consistency.
+    yaml.visit(specSteps, {
+      Scalar(_key, node) {
+        if (node.type === "QUOTE_DOUBLE") {
+          node.type = "QUOTE_SINGLE";
+        }
+      }
+    });
+
+    // Add the generated steps in front of the ones from the specification.
     specSteps.items.unshift(...steps);
 
     const checkJob: Record<string, any> = {

@@ -82,7 +82,7 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/autobuild
         env:
-      # Explicitly disable the CLR tracer.
+          # Explicitly disable the CLR tracer.
           COR_ENABLE_PROFILING: ''
           COR_PROFILER: ''
           COR_PROFILER_PATH_64: ''

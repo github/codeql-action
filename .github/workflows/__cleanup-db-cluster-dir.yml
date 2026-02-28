@@ -67,7 +67,7 @@ jobs:
         id: init
         with:
           build-mode: none
-          db-location: ${{ runner.temp }}/customDbLocation
+          db-location: '${{ runner.temp }}/customDbLocation'
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 

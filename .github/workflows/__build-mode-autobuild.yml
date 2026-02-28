@@ -97,7 +97,7 @@ jobs:
         id: init
         with:
           build-mode: autobuild
-          db-location: ${{ runner.temp }}/customDbLocation
+          db-location: '${{ runner.temp }}/customDbLocation'
           languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 

@@ -200,6 +200,10 @@ function main(): void {
       "runs-on": "${{ matrix.os }}",
     };
 
+    if (checkSpecification.permissions) {
+      checkJob.permissions = checkSpecification.permissions;
+    }
+
 
     let extraGroupName = "";
     for (const inputName of Object.keys(workflowInputs)) {

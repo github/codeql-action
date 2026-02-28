@@ -183,6 +183,17 @@ function main(): void {
         }
       }
     }
+
+    // Construct the workflow steps needed for this check.
+    const steps: any[] = [
+      {
+        name: "Check out repository",
+        uses: "actions/checkout@v6",
+      },
+    ];
+
+    steps.push(...checkSpecification.steps);
+
     const checkJob: Record<string, any> = {
       strategy: {
         "fail-fast": false,
@@ -198,6 +209,7 @@ function main(): void {
       },
       "timeout-minutes": 45,
       "runs-on": "${{ matrix.os }}",
+      steps,
     };
 
     if (checkSpecification.permissions) {

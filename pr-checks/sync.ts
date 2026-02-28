@@ -156,6 +156,11 @@ function main(): void {
       workflowInputs = checkSpecification.inputs;
     }
 
+    let extraGroupName = "";
+    for (const inputName of Object.keys(workflowInputs)) {
+      extraGroupName += "-${{inputs." + inputName + "}}";
+    }
+
     const workflow = {
       name: `PR Check - ${checkSpecification.name}`,
       env: {
@@ -184,6 +189,11 @@ function main(): void {
         run: {
           shell: "bash",
         },
+      },
+      concurrency: {
+        "cancel-in-progress":
+          "${{ github.event_name == 'pull_request' || false }}",
+        group: checkName + "-${{github.ref}}" + extraGroupName,
       },
       jobs: {
         [checkName]: checkJob,

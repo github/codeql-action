@@ -225,12 +225,13 @@ function isPAT(value: string) {
 }
 
 const LANGUAGE_TO_REGISTRY_TYPE: Partial<Record<KnownLanguage, string[]>> = {
+  actions: [],
   java: ["maven_repository"],
   csharp: ["nuget_feed"],
-  javascript: ["npm_registry"],
-  python: ["python_index"],
-  ruby: ["rubygems_server"],
-  rust: ["cargo_registry"],
+  javascript: [],
+  python: [],
+  ruby: [],
+  rust: [],
   go: ["goproxy_server", "git_source"],
 } as const;
 

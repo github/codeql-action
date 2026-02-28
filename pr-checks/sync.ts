@@ -81,7 +81,7 @@ const defaultTestVersions = [
 
 const THIS_DIR = __dirname;
 const CHECKS_DIR = path.join(THIS_DIR, "checks");
-const OUTPUT_DIR = path.join(THIS_DIR, "new-output");
+const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
 
 /**
  * Loads and parses a YAML file.

@@ -109,7 +109,17 @@ function writeYaml(filePath: string, data: any): void {
     quotingType: "'", // Use single quotes where quoting is needed
     forceQuotes: false,
   });
-  fs.writeFileSync(filePath, header + yamlStr, "utf8");
+  fs.writeFileSync(filePath, stripTrailingWhitespace(header + yamlStr), "utf8");
+}
+
+/**
+ * Strip trailing whitespace from each line.
+ */
+function stripTrailingWhitespace(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .join("\n");
 }
 
 /**

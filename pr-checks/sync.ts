@@ -204,6 +204,11 @@ function main(): void {
       checkJob.permissions = checkSpecification.permissions;
     }
 
+    for (const key of ["env", "container", "services"] as const) {
+      if (checkSpecification[key] !== undefined) {
+        checkJob[key] = checkSpecification[key];
+      }
+    }
 
     checkJob.env = checkJob.env ?? {};
     if (!("CODEQL_ACTION_TEST_MODE" in checkJob.env)) {

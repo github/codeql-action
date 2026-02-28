@@ -75,7 +75,7 @@ function createFailedUploadFailedSarifResult(
   };
 }
 
-/** Records details about a SARIF file that can contains information about a failed analysis. */
+/** Records details about a SARIF file that contains information about a failed analysis. */
 interface FailedSarifInfo {
   sarifFile: string;
   category: string | undefined;
@@ -83,7 +83,7 @@ interface FailedSarifInfo {
 }
 
 /**
- * Tries to prepare a SARIF file that can contains information about a failed analysis.
+ * Tries to prepare a SARIF file that contains information about a failed analysis.
  *
  * @returns Either information about the SARIF file that was produced, or a reason why it couldn't be produced.
  */
@@ -300,7 +300,7 @@ export async function tryUploadSarifIfRunFailed(
 
 /**
  * Handles the majority of the `post-init` step logic which, depending on the configuration,
- * mainly involves uploading a SARIF file with information about the failued run, debug
+ * mainly involves uploading a SARIF file with information about the failed run, debug
  * artifacts, and performing clean-up operations.
  *
  * @param uploadAllAvailableDebugArtifacts A function with which to upload debug artifacts.

@@ -112,6 +112,13 @@ function writeYaml(filePath: string, data: any): void {
   fs.writeFileSync(filePath, stripTrailingWhitespace(header + yamlStr), "utf8");
 }
 
+function isTruthy(value: string | boolean | undefined): boolean {
+  if (typeof value === "string") {
+    return value.toLowerCase() === "true";
+  }
+  return Boolean(value);
+}
+
 /**
  * Strip trailing whitespace from each line.
  */

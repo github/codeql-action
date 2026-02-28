@@ -145,6 +145,15 @@ function main(): void {
 
   console.log(`Found ${checkFiles.length} check specification(s).`);
 
+  const collections: Record<
+    string,
+    Array<{
+      specification: Specification;
+      checkName: string;
+      inputs: Record<string, WorkflowInput>;
+    }>
+  > = {};
+
   for (const file of checkFiles) {
     const checkName = path.basename(file, ".yml");
     const checkSpecification = loadYaml(file);
@@ -385,6 +394,19 @@ function main(): void {
     checkJob.env = checkJob.env ?? {};
     if (!("CODEQL_ACTION_TEST_MODE" in checkJob.env)) {
       checkJob.env.CODEQL_ACTION_TEST_MODE = true;
+    }
+
+    // If this check belongs to a named collection, record it.
+    if (checkSpecification.collection) {
+      const collectionName = checkSpecification.collection;
+      if (!collections[collectionName]) {
+        collections[collectionName] = [];
+      }
+      collections[collectionName].push({
+        specification: checkSpecification,
+        checkName,
+        inputs: workflowInputs,
+      });
     }
 
     let extraGroupName = "";

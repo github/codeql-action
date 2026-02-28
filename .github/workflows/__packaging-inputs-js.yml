@@ -52,8 +52,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group:
-    packaging-inputs-js-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
+  group: packaging-inputs-js-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   packaging-inputs-js:
     strategy:
@@ -101,7 +100,7 @@ jobs:
           dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
-          config-file: .github/codeql/codeql-config-packaging2.yml
+          config-file: '.github/codeql/codeql-config-packaging2.yml'
           languages: javascript
           packs: codeql-testing/codeql-pack1@1.0.0, codeql-testing/codeql-pack2, codeql-testing/codeql-pack3:other-query.ql
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -109,14 +108,13 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         with:
-          output: ${{ runner.temp }}/results
+          output: '${{ runner.temp }}/results'
 
       - name: Check results
         uses: ./../action/.github/actions/check-sarif
         with:
           sarif-file: ${{ runner.temp }}/results/javascript.sarif
-          queries-run:
-            javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+          queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
           queries-not-run: foo,bar
 
       - name: Assert Results

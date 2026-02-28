@@ -65,12 +65,12 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/analyze
         with:
-          output: ${{ runner.temp }}/results
+          output: '${{ runner.temp }}/results'
       - name: Upload SARIF
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.os }}-${{ matrix.version }}.sarif.json
-          path: ${{ runner.temp }}/results/javascript.sarif
+          path: '${{ runner.temp }}/results/javascript.sarif'
           retention-days: 7
       - name: Check results
         run: |

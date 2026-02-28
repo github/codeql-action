@@ -11,5 +11,5 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
       languages: javascript
   - name: Fail if the CodeQL version is not a nightly
-    if: "!contains(steps.init.outputs.codeql-version, '+')"
+    if: ${{ !contains(steps.init.outputs.codeql-version, '+') }}
     run: exit 1

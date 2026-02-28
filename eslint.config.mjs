@@ -21,6 +21,7 @@ export default [
       "build.mjs",
       "eslint.config.mjs",
       ".github/**/*",
+      "pr-checks/**/*",
     ],
   },
   // eslint recommended config

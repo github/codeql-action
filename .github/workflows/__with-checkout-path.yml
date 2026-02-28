@@ -62,8 +62,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group:
-    with-checkout-path-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: with-checkout-path-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   with-checkout-path:
     strategy:
@@ -80,6 +79,7 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
+      # This ensures we don't accidentally use the original checkout for any part of the test.
       - name: Check out repository
         uses: actions/checkout@v6
       - name: Prepare test
@@ -109,8 +109,8 @@ jobs:
           # Actions does not support deleting the current working directory, so we
           # delete the contents of the directory instead.
           rm -rf ./* .github .git
-  # Check out the actions repo again, but at a different location.
-  # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
+      # Check out the actions repo again, but at a different location.
+      # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
       - uses: actions/checkout@v6
         with:
           ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
@@ -119,7 +119,7 @@ jobs:
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      # it's enough to test one compiled language and one interpreted language
+          # it's enough to test one compiled language and one interpreted language
           languages: csharp,javascript
           source-root: x/y/z/some-path/tests/multi-language-repo
 

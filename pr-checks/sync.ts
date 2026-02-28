@@ -210,6 +210,148 @@ function main(): void {
       },
     ];
 
+    const installNode = isTruthy(checkSpecification.installNode);
+
+    if (installNode) {
+      steps.push(
+        {
+          name: "Install Node.js",
+          uses: "actions/setup-node@v6",
+          with: {
+            "node-version": "20.x",
+            cache: "npm",
+          },
+        },
+        {
+          name: "Install dependencies",
+          run: "npm ci",
+        },
+      );
+    }
+
+    steps.push({
+      name: "Prepare test",
+      id: "prepare-test",
+      uses: "./.github/actions/prepare-test",
+      with: {
+        version: "${{ matrix.version }}",
+        "use-all-platform-bundle": useAllPlatformBundle,
+        // If the action is being run from a container, then do not setup kotlin.
+        // This is because the kotlin binaries cannot be downloaded from the container.
+        "setup-kotlin": String(
+          !("container" in checkSpecification),
+        ).toLowerCase(),
+      },
+    });
+
+    const installGo = isTruthy(checkSpecification.installGo);
+
+    if (installGo) {
+      const baseGoVersionExpr = ">=1.21.0";
+      workflowInputs["go-version"] = {
+        type: "string",
+        description: "The version of Go to install",
+        required: false,
+        default: baseGoVersionExpr,
+      };
+
+      steps.push({
+        name: "Install Go",
+        uses: "actions/setup-go@v6",
+        with: {
+          "go-version":
+            "${{ inputs.go-version || '" + baseGoVersionExpr + "' }}",
+          // to avoid potentially misleading autobuilder results where we expect it to download
+          // dependencies successfully, but they actually come from a warm cache
+          cache: false,
+        },
+      });
+    }
+
+    const installJava = isTruthy(checkSpecification.installJava);
+
+    if (installJava) {
+      const baseJavaVersionExpr = "17";
+      workflowInputs["java-version"] = {
+        type: "string",
+        description: "The version of Java to install",
+        required: false,
+        default: baseJavaVersionExpr,
+      };
+
+      steps.push({
+        name: "Install Java",
+        uses: "actions/setup-java@v5",
+        with: {
+          "java-version":
+            "${{ inputs.java-version || '" + baseJavaVersionExpr + "' }}",
+          distribution: "temurin",
+        },
+      });
+    }
+
+    const installPython = isTruthy(checkSpecification.installPython);
+
+    if (installPython) {
+      const basePythonVersionExpr = "3.13";
+      workflowInputs["python-version"] = {
+        type: "string",
+        description: "The version of Python to install",
+        required: false,
+        default: basePythonVersionExpr,
+      };
+
+      steps.push({
+        name: "Install Python",
+        if: "matrix.version != 'nightly-latest'",
+        uses: "actions/setup-python@v6",
+        with: {
+          "python-version":
+            "${{ inputs.python-version || '" + basePythonVersionExpr + "' }}",
+        },
+      });
+    }
+
+    const installDotNet = isTruthy(checkSpecification.installDotNet);
+
+    if (installDotNet) {
+      const baseDotNetVersionExpr = "9.x";
+      workflowInputs["dotnet-version"] = {
+        type: "string",
+        description: "The version of .NET to install",
+        required: false,
+        default: baseDotNetVersionExpr,
+      };
+
+      steps.push({
+        name: "Install .NET",
+        uses: "actions/setup-dotnet@v5",
+        with: {
+          "dotnet-version":
+            "${{ inputs.dotnet-version || '" + baseDotNetVersionExpr + "' }}",
+        },
+      });
+    }
+
+    const installYq = isTruthy(checkSpecification.installYq);
+
+    if (installYq) {
+      steps.push({
+        name: "Install yq",
+        if: "runner.os == 'Windows'",
+        env: {
+          YQ_PATH: "${{ runner.temp }}/yq",
+          // This is essentially an arbitrary version of `yq`, which happened to be the one that
+          // `choco` fetched when we moved away from using that here.
+          // See https://github.com/github/codeql-action/pull/3423
+          YQ_VERSION: "v4.50.1",
+        },
+        run:
+          'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n' +
+          'echo "$YQ_PATH" >> "$GITHUB_PATH"',
+      });
+    }
+
     steps.push(...checkSpecification.steps);
 
     const checkJob: Record<string, any> = {

@@ -184,6 +184,12 @@ function main(): void {
       }
     }
     const checkJob: Record<string, any> = {
+      strategy: {
+        "fail-fast": false,
+        matrix: {
+          include: matrix,
+        },
+      },
       name: checkSpecification.name,
       if: "github.triggering_actor != 'dependabot[bot]'",
       permissions: {
@@ -191,6 +197,7 @@ function main(): void {
         "security-events": "read",
       },
       "timeout-minutes": 45,
+      "runs-on": "${{ matrix.os }}",
     };
 
 

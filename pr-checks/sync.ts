@@ -5,16 +5,66 @@ import * as path from "path";
 
 import * as yaml from "js-yaml";
 
+/**
+ * Represents workflow input definitions.
+ */
+interface WorkflowInput {
+  type: string;
+  description: string;
+  required: boolean;
+  default: string;
+}
+
+/**
+ * Represents PR check specifications.
+ */
+interface Specification {
+  /** The display name for the check. */
+  name: string;
+  /** The workflow steps specific to this check. */
+  steps: any[];
+  /** Workflow-level input definitions forwarded to `workflow_dispatch`/`workflow_call`. */
+  inputs?: Record<string, WorkflowInput>;
+  /** CodeQL bundle versions to test against. Defaults to `DEFAULT_TEST_VERSIONS`. */
+  versions?: string[];
+  /** Operating system prefixes used to select runner images (e.g. `["ubuntu", "macos"]`). */
+  operatingSystems?: string[];
+  /** Whether to use the all-platform CodeQL bundle. */
+  useAllPlatformBundle?: string;
+  /** Values for the `analysis-kinds` matrix dimension. */
+  analysisKinds?: string[];
+
+  installNode?: string | boolean;
+  installGo?: string | boolean;
+  installJava?: string | boolean;
+  installPython?: string | boolean;
+  installDotNet?: string | boolean;
+  installYq?: string | boolean;
+
+  /** Container image configuration for the job. */
+  container?: any;
+  /** Service containers for the job. */
+  services?: any;
+
+  /** Custom permissions override for the job. */
+  permissions?: Record<string, string>;
+  /** Extra environment variables for the job. */
+  env?: Record<string, any>;
+
+  /** If set, this check is part of a named collection that gets its own caller workflow. */
+  collection?: string;
+}
+
 const THIS_DIR = __dirname;
 const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const OUTPUT_DIR = path.join(THIS_DIR, "new-output");
 
 /**
- * Load and parse a YAML file, returning its contents as an object.
+ * Loads and parses a YAML file as a `Specification`.
  */
-function loadYaml(filePath: string): any {
+function loadYaml(filePath: string): Specification {
   const content = fs.readFileSync(filePath, "utf8");
-  return yaml.load(content);
+  return yaml.load(content) as Specification;
 }
 
 /**

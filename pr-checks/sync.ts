@@ -156,6 +156,34 @@ function main(): void {
       workflowInputs = checkSpecification.inputs;
     }
 
+    let matrix: Array<Record<string, any>> = [];
+
+    for (const version of checkSpecification.versions ?? defaultTestVersions) {
+      if (version === "latest") {
+        throw new Error(
+          'Did not recognise "version: latest". Did you mean "version: linked"?',
+        );
+      }
+
+      const runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"];
+      const operatingSystems = checkSpecification.operatingSystems ?? [
+        "ubuntu",
+      ];
+
+      for (const operatingSystem of operatingSystems) {
+        const runnerImagesForOs = runnerImages.filter((image) =>
+          image.startsWith(operatingSystem),
+        );
+
+        for (const runnerImage of runnerImagesForOs) {
+          matrix.push({
+            os: runnerImage,
+            version,
+          });
+        }
+      }
+    }
+
     let extraGroupName = "";
     for (const inputName of Object.keys(workflowInputs)) {
       extraGroupName += "-${{inputs." + inputName + "}}";

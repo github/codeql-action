@@ -189,6 +189,19 @@ function main(): void {
       useAllPlatformBundle = checkSpecification.useAllPlatformBundle;
     }
 
+    if (checkSpecification.analysisKinds) {
+      const newMatrix: Array<Record<string, any>> = [];
+      for (const matrixInclude of matrix) {
+        for (const analysisKind of checkSpecification.analysisKinds) {
+          newMatrix.push({
+            ...matrixInclude,
+            "analysis-kinds": analysisKind,
+          });
+        }
+      }
+      matrix = newMatrix;
+    }
+
     // Construct the workflow steps needed for this check.
     const steps: any[] = [
       {

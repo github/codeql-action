@@ -3,7 +3,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as yaml from "js-yaml";
+import * as yaml from "yaml";
 
 /**
  * Represents workflow input definitions.
@@ -84,30 +84,31 @@ const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const OUTPUT_DIR = path.join(THIS_DIR, "new-output");
 
 /**
- * Loads and parses a YAML file as a `Specification`.
+ * Loads and parses a YAML file.
  */
-function loadYaml(filePath: string): Specification {
+function loadYaml(filePath: string): yaml.Document {
   const content = fs.readFileSync(filePath, "utf8");
-  return yaml.load(content) as Specification;
+  return yaml.parseDocument(content);
 }
 
 /**
  * Serialize a value to YAML and write it to a file, prepended with the
  * standard header comment.
  */
-function writeYaml(filePath: string, data: any): void {
+function writeYaml(filePath: string, workflow: any): void {
   const header = `# Warning: This file is generated automatically, and should not be modified.
 # Instead, please modify the template in the pr-checks directory and run:
 #     pr-checks/sync.sh
 # to regenerate this file.
 
 `;
-  const yamlStr = yaml.dump(data, {
-    indent: 2,
-    lineWidth: -1, // Don't wrap long lines
-    noRefs: true, // Don't use YAML anchors/aliases
-    quotingType: "'", // Use single quotes where quoting is needed
-    forceQuotes: false,
+  const workflowDoc = new yaml.Document(workflow, {
+    aliasDuplicateObjects: false,
+  });
+  const yamlStr = yaml.stringify(workflowDoc, {
+    aliasDuplicateObjects: false,
+    singleQuote: true,
+    lineWidth: 0,
   });
   fs.writeFileSync(filePath, stripTrailingWhitespace(header + yamlStr), "utf8");
 }
@@ -156,7 +157,8 @@ function main(): void {
 
   for (const file of checkFiles) {
     const checkName = path.basename(file, ".yml");
-    const checkSpecification = loadYaml(file);
+    const specDocument = loadYaml(file);
+    const checkSpecification = specDocument.toJS() as Specification;
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
@@ -361,7 +363,9 @@ function main(): void {
       });
     }
 
-    steps.push(...checkSpecification.steps);
+    // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
+    const specSteps = specDocument.get("steps") as yaml.YAMLSeq;
+    specSteps.items.unshift(...steps);
 
     const checkJob: Record<string, any> = {
       strategy: {
@@ -378,7 +382,7 @@ function main(): void {
       },
       "timeout-minutes": 45,
       "runs-on": "${{ matrix.os }}",
-      steps,
+      steps: specSteps,
     };
 
     if (checkSpecification.permissions) {
@@ -414,6 +418,9 @@ function main(): void {
       extraGroupName += "-${{inputs." + inputName + "}}";
     }
 
+    const cron = new yaml.Scalar("0 5 * * *");
+    cron.type = yaml.Scalar.QUOTE_SINGLE;
+
     const workflow = {
       name: `PR Check - ${checkSpecification.name}`,
       env: {
@@ -430,7 +437,7 @@ function main(): void {
         merge_group: {
           types: ["checks_requested"],
         },
-        schedule: [{ cron: "0 5 * * *" }],
+        schedule: [{ cron }],
         workflow_dispatch: {
           inputs: workflowInputs,
         },

@@ -205,6 +205,11 @@ function main(): void {
     }
 
 
+    checkJob.env = checkJob.env ?? {};
+    if (!("CODEQL_ACTION_TEST_MODE" in checkJob.env)) {
+      checkJob.env.CODEQL_ACTION_TEST_MODE = true;
+    }
+
     let extraGroupName = "";
     for (const inputName of Object.keys(workflowInputs)) {
       extraGroupName += "-${{inputs." + inputName + "}}";

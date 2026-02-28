@@ -151,9 +151,47 @@ function main(): void {
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
-    // For now, write a placeholder workflow file.
+    let workflowInputs: Record<string, WorkflowInput> = {};
+    if (checkSpecification.inputs) {
+      workflowInputs = checkSpecification.inputs;
+    }
+
+    const workflow = {
+      name: `PR Check - ${checkSpecification.name}`,
+      env: {
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
+        GO111MODULE: "auto",
+      },
+      on: {
+        push: {
+          branches: ["main", "releases/v*"],
+        },
+        pull_request: {
+          types: ["opened", "synchronize", "reopened", "ready_for_review"],
+        },
+        merge_group: {
+          types: ["checks_requested"],
+        },
+        schedule: [{ cron: "0 5 * * *" }],
+        workflow_dispatch: {
+          inputs: workflowInputs,
+        },
+        workflow_call: {
+          inputs: workflowInputs,
+        },
+      },
+      defaults: {
+        run: {
+          shell: "bash",
+        },
+      },
+      jobs: {
+        [checkName]: checkJob,
+      },
+    };
+
     const outputPath = path.join(OUTPUT_DIR, `__${checkName}.yml`);
-    writeYaml(outputPath, {});
+    writeYaml(outputPath, workflow);
   }
 
   console.log(

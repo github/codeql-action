@@ -183,6 +183,16 @@ function main(): void {
         }
       }
     }
+    const checkJob: Record<string, any> = {
+      name: checkSpecification.name,
+      if: "github.triggering_actor != 'dependabot[bot]'",
+      permissions: {
+        contents: "read",
+        "security-events": "read",
+      },
+      "timeout-minutes": 45,
+    };
+
 
     let extraGroupName = "";
     for (const inputName of Object.keys(workflowInputs)) {

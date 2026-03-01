@@ -83,7 +83,8 @@ jobs:
         if: startsWith(env.HEAD_REF, 'dependabot/')
         working-directory: pr-checks
         run: |
-          python3 sync_back.py -v
+          npm ci
+          npx tsx sync_back.ts --verbose
 
       - name: Generate workflows
         working-directory: pr-checks

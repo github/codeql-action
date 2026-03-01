@@ -64,6 +64,55 @@ function scanGeneratedWorkflows(workflowDir: string): Record<string, string> {
   return actionVersions;
 }
 
+/**
+ * Update hardcoded action versions in pr-checks/sync.ts
+ *
+ * @param syncTsPath - Path to sync.ts file
+ * @param actionVersions - Map of action names to versions (may include comments)
+ * @returns True if the file was modified, false otherwise
+ */
+function updateSyncTs(
+  syncTsPath: string,
+  actionVersions: Record<string, string>,
+): boolean {
+  if (!fs.existsSync(syncTsPath)) {
+    throw new Error(`Could not find ${syncTsPath}`);
+  }
+
+  let content = fs.readFileSync(syncTsPath, "utf8");
+  const originalContent = content;
+
+  // Update hardcoded action versions
+  for (const [actionName, versionWithComment] of Object.entries(
+    actionVersions,
+  )) {
+    // Extract just the version part (before any comment) for sync.ts
+    const version = versionWithComment.includes("#")
+      ? versionWithComment.split("#")[0].trim()
+      : versionWithComment.trim();
+
+    // Look for patterns like uses: "actions/setup-node@v4"
+    // Note that this will break if we store an Action uses reference in a
+    // variable - that's a risk we're happy to take since in that case the
+    // PR checks will just fail.
+    const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(
+      `(uses:\\s*")${escaped}@(?:[^"]+)(")`,
+      "g",
+    );
+    content = content.replace(pattern, `$1${actionName}@${version}$2`);
+  }
+
+  if (content !== originalContent) {
+    fs.writeFileSync(syncTsPath, content, "utf8");
+    console.info(`Updated ${syncTsPath}`);
+    return true;
+  } else {
+    console.info(`No changes needed in ${syncTsPath}`);
+    return false;
+  }
+}
+
 function main(): number {
   const { values } = parseArgs({
     options: {
@@ -91,6 +140,28 @@ function main(): number {
   if (Object.keys(actionVersions).length === 0) {
     console.error("No action versions found in generated workflows");
     return 1;
+  }
+
+  // Update files
+  console.info("\nUpdating source files...");
+  const modifiedFiles: string[] = [];
+
+  // Update sync.ts
+  if (updateSyncTs(SYNC_TS_PATH, actionVersions)) {
+    modifiedFiles.push(SYNC_TS_PATH);
+  }
+
+  // TODO: Update template files
+
+  if (modifiedFiles.length > 0) {
+    console.info(`\nSync completed. Modified ${modifiedFiles.length} files:`);
+    for (const filePath of modifiedFiles) {
+      console.info(`  ${filePath}`);
+    }
+  } else {
+    console.info(
+      "\nNo files needed updating - all action versions are already in sync",
+    );
   }
 
   return 0;

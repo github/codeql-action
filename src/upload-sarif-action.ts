@@ -20,6 +20,7 @@ import * as upload_lib from "./upload-lib";
 import { postProcessAndUploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
+  InvalidSarifUploadError,
   checkActionVersion,
   checkDiskUsage,
   getErrorMessage,
@@ -141,7 +142,7 @@ async function run(startedAt: Date) {
   } catch (unwrappedError) {
     const error =
       isThirdPartyAnalysis(ActionName.UploadSarif) &&
-      unwrappedError instanceof upload_lib.InvalidSarifUploadError
+      unwrappedError instanceof InvalidSarifUploadError
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);
     const message = error.message;

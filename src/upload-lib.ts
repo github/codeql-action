@@ -21,7 +21,13 @@ import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
-import type { SarifFile, SarifRun } from "./sarif";
+import type { SarifFile } from "./sarif";
+import {
+  areAllRunsProducedByCodeQL,
+  areAllRunsUnique,
+  combineSarifFiles,
+  InvalidSarifUploadError,
+} from "./sarif";
 import { BasePayload, UploadPayload } from "./upload-lib/types";
 import * as util from "./util";
 import {
@@ -37,89 +43,6 @@ const GENERIC_403_MSG =
   "The repo on which this action is running has not opted-in to CodeQL code scanning.";
 const GENERIC_404_MSG =
   "The CodeQL code scanning feature is forbidden on this repository.";
-
-// Takes a list of paths to sarif files and combines them together,
-// returning the contents of the combined sarif file.
-function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
-  logger.info(`Loading SARIF file(s)`);
-  const combinedSarif: SarifFile = {
-    version: null,
-    runs: [],
-  };
-
-  for (const sarifFile of sarifFiles) {
-    logger.debug(`Loading SARIF file: ${sarifFile}`);
-    const sarifObject = util.readSarifFile(sarifFile);
-    // Check SARIF version
-    if (combinedSarif.version === null) {
-      combinedSarif.version = sarifObject.version;
-    } else if (combinedSarif.version !== sarifObject.version) {
-      throw new InvalidSarifUploadError(
-        `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`,
-      );
-    }
-
-    combinedSarif.runs.push(...sarifObject.runs);
-  }
-
-  return combinedSarif;
-}
-
-/**
- * Checks whether all the runs in the given SARIF files were produced by CodeQL.
- * @param sarifObjects The list of SARIF objects to check.
- */
-function areAllRunsProducedByCodeQL(sarifObjects: SarifFile[]): boolean {
-  return sarifObjects.every((sarifObject) => {
-    return sarifObject.runs?.every(
-      (run) => run.tool?.driver?.name === "CodeQL",
-    );
-  });
-}
-
-type SarifRunKey = {
-  name: string | undefined;
-  fullName: string | undefined;
-  version: string | undefined;
-  semanticVersion: string | undefined;
-  guid: string | undefined;
-  automationId: string | undefined;
-};
-
-function createRunKey(run: SarifRun): SarifRunKey {
-  return {
-    name: run.tool?.driver?.name,
-    fullName: run.tool?.driver?.fullName,
-    version: run.tool?.driver?.version,
-    semanticVersion: run.tool?.driver?.semanticVersion,
-    guid: run.tool?.driver?.guid,
-    automationId: run.automationDetails?.id,
-  };
-}
-
-/**
- * Checks whether all runs in the given SARIF files are unique (based on the
- * criteria used by Code Scanning to determine analysis categories).
- * @param sarifObjects The list of SARIF objects to check.
- */
-function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
-  const keys = new Set<string>();
-
-  for (const sarifObject of sarifObjects) {
-    for (const run of sarifObject.runs) {
-      const key = JSON.stringify(createRunKey(run));
-
-      // If the key already exists, the runs are not unique.
-      if (keys.has(key)) {
-        return false;
-      }
-
-      keys.add(key);
-    }
-  }
-
-  return true;
-}
 
 // Checks whether the deprecation warning for combining SARIF files should be shown.
 export async function shouldShowCombineSarifFilesDeprecationWarning(
@@ -280,7 +203,7 @@ async function combineSarifFilesUsingCLI(
 // Populates the run.automationDetails.id field using the analysis_key and environment
 // and return an updated sarif file contents.
 export function populateRunAutomationDetails(
-  sarif: SarifFile,
+  sarifFile: SarifFile,
   category: string | undefined,
   analysis_key: string,
   environment: string | undefined,
@@ -288,16 +211,16 @@ export function populateRunAutomationDetails(
   const automationID = getAutomationID(category, analysis_key, environment);
 
   if (automationID !== undefined) {
-    for (const run of sarif.runs || []) {
+    for (const run of sarifFile.runs || []) {
       if (run.automationDetails === undefined) {
         run.automationDetails = {
           id: automationID,
         };
       }
     }
-    return sarif;
+    return sarifFile;
   }
-  return sarif;
+  return sarifFile;
 }
 
 function getAutomationID(
@@ -1121,11 +1044,6 @@ export function validateUniqueCategory(
 function sanitize(str?: string) {
   return (str ?? "_").replace(/[^a-zA-Z0-9_]/g, "_").toLocaleUpperCase();
 }
-
-/**
- * An error that occurred due to an invalid SARIF upload request.
- */
-export class InvalidSarifUploadError extends Error {}
 
 function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
   const diffRanges = readDiffRangesJsonFile(logger);

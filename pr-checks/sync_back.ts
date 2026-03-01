@@ -113,6 +113,51 @@ function updateSyncTs(
   }
 }
 
+/**
+ * Update action versions in template files in pr-checks/checks/
+ *
+ * @param checksDir - Path to pr-checks/checks directory
+ * @param actionVersions - Map of action names to versions (may include comments)
+ * @returns List of files that were modified
+ */
+function updateTemplateFiles(
+  checksDir: string,
+  actionVersions: Record<string, string>,
+): string[] {
+  const modifiedFiles: string[] = [];
+
+  const templateFiles = fs
+    .readdirSync(checksDir)
+    .filter((f) => f.endsWith(".yml"))
+    .map((f) => path.join(checksDir, f));
+
+  for (const filePath of templateFiles) {
+    let content = fs.readFileSync(filePath, "utf8");
+    const originalContent = content;
+
+    // Update action versions
+    for (const [actionName, versionWithComment] of Object.entries(
+      actionVersions,
+    )) {
+      // Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
+      const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(
+        `(uses:\\s+${escaped})@(?:[^@\n]+)`,
+        "g",
+      );
+      content = content.replace(pattern, `$1@${versionWithComment}`);
+    }
+
+    if (content !== originalContent) {
+      fs.writeFileSync(filePath, content, "utf8");
+      modifiedFiles.push(filePath);
+      console.info(`Updated ${filePath}`);
+    }
+  }
+
+  return modifiedFiles;
+}
+
 function main(): number {
   const { values } = parseArgs({
     options: {
@@ -151,7 +196,9 @@ function main(): number {
     modifiedFiles.push(SYNC_TS_PATH);
   }
 
-  // TODO: Update template files
+  // Update template files
+  const templateModified = updateTemplateFiles(CHECKS_DIR, actionVersions);
+  modifiedFiles.push(...templateModified);
 
   if (modifiedFiles.length > 0) {
     console.info(`\nSync completed. Modified ${modifiedFiles.length} files:`);

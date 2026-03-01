@@ -21,6 +21,7 @@ import * as gitUtils from "./git-utils";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
+import type { SarifFile, SarifRun } from "./sarif";
 import { BasePayload, UploadPayload } from "./upload-lib/types";
 import * as util from "./util";
 import {
@@ -30,8 +31,6 @@ import {
   GitHubVariant,
   GitHubVersion,
   satisfiesGHESVersion,
-  SarifFile,
-  SarifRun,
 } from "./util";
 
 const GENERIC_403_MSG =
@@ -50,9 +49,7 @@ function combineSarifFiles(sarifFiles: string[], logger: Logger): SarifFile {
 
   for (const sarifFile of sarifFiles) {
     logger.debug(`Loading SARIF file: ${sarifFile}`);
-    const sarifObject = JSON.parse(
-      fs.readFileSync(sarifFile, "utf8"),
-    ) as SarifFile;
+    const sarifObject = util.readSarifFile(sarifFile);
     // Check SARIF version
     if (combinedSarif.version === null) {
       combinedSarif.version = sarifObject.version;
@@ -195,9 +192,7 @@ async function combineSarifFilesUsingCLI(
 ): Promise<SarifFile> {
   logger.info("Combining SARIF files using the CodeQL CLI");
 
-  const sarifObjects = sarifFiles.map((sarifFile): SarifFile => {
-    return JSON.parse(fs.readFileSync(sarifFile, "utf8")) as SarifFile;
-  });
+  const sarifObjects = sarifFiles.map(util.readSarifFile);
 
   const deprecationWarningMessage =
     gitHubVersion.type === GitHubVariant.GHES
@@ -279,7 +274,7 @@ async function combineSarifFilesUsingCLI(
     mergeRunsFromEqualCategory: true,
   });
 
-  return JSON.parse(fs.readFileSync(outputFile, "utf8")) as SarifFile;
+  return util.readSarifFile(outputFile);
 }
 
 // Populates the run.automationDetails.id field using the analysis_key and environment
@@ -531,7 +526,7 @@ function countResultsInSarif(sarif: string): number {
 
 export function readSarifFile(sarifFilePath: string): SarifFile {
   try {
-    return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
+    return util.readSarifFile(sarifFilePath);
   } catch (e) {
     throw new InvalidSarifUploadError(
       `Invalid SARIF. JSON syntax error: ${getErrorMessage(e)}`,

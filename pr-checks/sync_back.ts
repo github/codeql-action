@@ -33,7 +33,7 @@ const SYNC_TS_PATH = path.join(THIS_DIR, "sync.ts");
  * @param workflowDir - Path to .github/workflows directory
  * @returns Map from action names to their latest versions (including comments)
  */
-function scanGeneratedWorkflows(workflowDir: string): Record<string, string> {
+export function scanGeneratedWorkflows(workflowDir: string): Record<string, string> {
   const actionVersions: Record<string, string> = {};
 
   const generatedFiles = fs
@@ -71,7 +71,7 @@ function scanGeneratedWorkflows(workflowDir: string): Record<string, string> {
  * @param actionVersions - Map of action names to versions (may include comments)
  * @returns True if the file was modified, false otherwise
  */
-function updateSyncTs(
+export function updateSyncTs(
   syncTsPath: string,
   actionVersions: Record<string, string>,
 ): boolean {
@@ -120,7 +120,7 @@ function updateSyncTs(
  * @param actionVersions - Map of action names to versions (may include comments)
  * @returns List of files that were modified
  */
-function updateTemplateFiles(
+export function updateTemplateFiles(
   checksDir: string,
   actionVersions: Record<string, string>,
 ): string[] {
@@ -214,4 +214,7 @@ function main(): number {
   return 0;
 }
 
-process.exit(main());
+// Only call `main` if this script was run directly.
+if (require.main === module) {
+  process.exit(main());
+}

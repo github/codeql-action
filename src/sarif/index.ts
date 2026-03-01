@@ -1,3 +1,5 @@
+import * as fs from "fs";
+
 import { Logger } from "../logging";
 
 export interface SarifLocation {
@@ -165,4 +167,8 @@ export function fixInvalidNotifications(
     logger.debug("No duplicate locations found in SARIF notification objects.");
   }
   return newSarif;
+}
+
+export function readSarifFile(sarifFilePath: string): SarifFile {
+  return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
 }

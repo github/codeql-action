@@ -578,6 +578,110 @@ test("file coverage information enabled when env var enables it on PRs", async (
   );
 });
 
+test("file coverage information disabled when env var disables it on PRs", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+  process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS] = "false";
+  t.teardown(() => {
+    delete process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS];
+  });
+
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  t.false(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("other-org/some-repo"),
+      createFeatures([]),
+      {},
+      logger,
+    ),
+  );
+
+  t.true(
+    messages.some(
+      (m) =>
+        m.type === "info" &&
+        typeof m.message === "string" &&
+        m.message.includes(EnvVar.ENABLE_FILE_COVERAGE_ON_PRS) &&
+        m.message.includes("disabled"),
+    ),
+  );
+});
+
+test("file coverage information disabled when repository property disables it on PRs", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  t.false(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("other-org/some-repo"),
+      createFeatures([]),
+      {
+        [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: false,
+      },
+      logger,
+    ),
+  );
+
+  t.true(
+    messages.some(
+      (m) =>
+        m.type === "info" &&
+        typeof m.message === "string" &&
+        m.message.includes(
+          RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS,
+        ) &&
+        m.message.includes("disabled"),
+    ),
+  );
+});
+
+test("file coverage env var 'false' takes precedence over repository property 'true'", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+  process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS] = "false";
+  t.teardown(() => {
+    delete process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS];
+  });
+
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
+
+  t.false(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {
+        [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: true,
+      },
+      logger,
+    ),
+  );
+
+  // Should mention the env var, not the repo property
+  t.true(
+    messages.some(
+      (m) =>
+        m.type === "info" &&
+        typeof m.message === "string" &&
+        m.message.includes(EnvVar.ENABLE_FILE_COVERAGE_ON_PRS) &&
+        m.message.includes("disabled"),
+    ),
+  );
+  t.false(
+    messages.some(
+      (m) =>
+        m.type === "info" &&
+        typeof m.message === "string" &&
+        m.message.includes(RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS),
+    ),
+  );
+});
+
 test("file coverage env var takes precedence over repository property", async (t) => {
   sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
   process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS] = "true";

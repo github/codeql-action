@@ -318,8 +318,10 @@ export async function getFileCoverageInformationEnabled(
   // it is used to populate the status page.
   if (!isAnalyzingPullRequest()) return true;
 
-  // Allow users to opt in to file coverage on PRs via an environment variable.
-  if (process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS] === "true") {
+  // Allow users to explicitly enable or disable file coverage on PRs via
+  // an environment variable. This has the highest precedence.
+  const envVarValue = process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS];
+  if (envVarValue === "true") {
     logger.info(
       "File coverage information on pull requests has been enabled by the " +
         `'${EnvVar.ENABLE_FILE_COVERAGE_ON_PRS}' environment variable. ` +
@@ -328,13 +330,19 @@ export async function getFileCoverageInformationEnabled(
     );
     return true;
   }
+  if (envVarValue === "false") {
+    logger.info(
+      "File coverage information on pull requests has been disabled by the " +
+        `'${EnvVar.ENABLE_FILE_COVERAGE_ON_PRS}' environment variable.`,
+    );
+    return false;
+  }
 
-  // Allow repository owners to opt in to file coverage on PRs via a
-  // repository property.
-  if (
-    repositoryProperties[RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS] ===
-    true
-  ) {
+  // Allow repository owners to explicitly enable or disable file coverage
+  // on PRs via a repository property.
+  const repoPropValue =
+    repositoryProperties[RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS];
+  if (repoPropValue === true) {
     logger.info(
       "File coverage information on pull requests has been enabled by the " +
         `'${RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS}' repository property. ` +
@@ -342,6 +350,13 @@ export async function getFileCoverageInformationEnabled(
         "particularly on large repositories.",
     );
     return true;
+  }
+  if (repoPropValue === false) {
+    logger.info(
+      "File coverage information on pull requests has been disabled by the " +
+        `'${RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS}' repository property.`,
+    );
+    return false;
   }
 
   // For now, restrict this feature to the GitHub org

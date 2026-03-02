@@ -380,6 +380,7 @@ async function run(startedAt: Date) {
         debugMode,
         repositoryNwo,
         features,
+        repositoryPropertiesResult.orElse({}),
       ),
       logger,
     });

@@ -7,6 +7,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
+import { RepositoryPropertyName } from "./feature-flags/properties";
 import {
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
@@ -455,6 +456,7 @@ test("file coverage information enabled when debugMode is true", async (t) => {
       true, // debugMode
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     ),
   );
 });
@@ -467,6 +469,7 @@ test("file coverage information enabled when not analyzing a pull request", asyn
       false, // debugMode
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     ),
   );
 });
@@ -479,6 +482,7 @@ test("file coverage information enabled when owner is not 'github'", async (t) =
       false, // debugMode
       parseRepositoryNwo("other-org/some-repo"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     ),
   );
 });
@@ -491,6 +495,7 @@ test("file coverage information enabled when feature flag is not enabled", async
       false, // debugMode
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
+      {},
     ),
   );
 });
@@ -503,6 +508,22 @@ test("file coverage information disabled when all conditions for skipping are me
       false, // debugMode
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
+    ),
+  );
+});
+
+test("file coverage information enabled when repository property enables it on PRs", async (t) => {
+  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+  t.true(
+    await getFileCoverageInformationEnabled(
+      false, // debugMode
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {
+        [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: true,
+      },
     ),
   );
 });

@@ -8,12 +8,14 @@ import { GitHubVariant, GitHubVersion } from "../util";
  */
 export enum RepositoryPropertyName {
   DISABLE_OVERLAY = "github-codeql-disable-overlay",
+  ENABLE_FILE_COVERAGE_ON_PRS = "github-codeql-enable-file-coverage-on-prs",
   EXTRA_QUERIES = "github-codeql-extra-queries",
 }
 
 /** Parsed types of the known repository properties. */
 type AllRepositoryProperties = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
+  [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
 };
 
@@ -29,6 +31,8 @@ const repositoryPropertyParsers: {
   ) => AllRepositoryProperties[K];
 } = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: parseBooleanRepositoryProperty,
+  [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]:
+    parseBooleanRepositoryProperty,
   [RepositoryPropertyName.EXTRA_QUERIES]: parseStringRepositoryProperty,
 };
 

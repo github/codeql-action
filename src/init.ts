@@ -18,6 +18,10 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
+import {
+  RepositoryProperties,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { RepositoryNwo } from "./repository";
@@ -302,6 +306,7 @@ export async function getFileCoverageInformationEnabled(
   debugMode: boolean,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
+  repositoryProperties: RepositoryProperties,
 ): Promise<boolean> {
   return (
     // Always enable file coverage information in debug mode
@@ -310,6 +315,10 @@ export async function getFileCoverageInformationEnabled(
     // submitting file coverage information for the default branch since
     // it is used to populate the status page.
     !isAnalyzingPullRequest() ||
+    // Allow repository owners to opt in to file coverage on PRs via a
+    // repository property.
+    repositoryProperties[RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS] ===
+      true ||
     // For now, restrict this feature to the GitHub org
     repositoryNwo.owner !== "github" ||
     !(await features.getValue(Feature.SkipFileCoverageOnPrs))

@@ -1,10 +1,13 @@
+import * as core from "@actions/core";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { AnalysisKind } from "./analyses";
+import * as apiClient from "./api-client";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
+import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -16,6 +19,7 @@ import {
   createFeatures,
   createTestConfig,
   makeVersionInfo,
+  RecordingLogger,
   setupTests,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -45,7 +49,7 @@ test("init-post action with debug mode off", async (t) => {
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
       codeql.createStubCodeQL({}),
@@ -68,7 +72,7 @@ test("init-post action with debug mode on", async (t) => {
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       uploadAllAvailableDebugArtifactsSpy,
       printDebugLogsSpy,
       codeql.createStubCodeQL({}),
@@ -309,7 +313,7 @@ test("not uploading failed SARIF when `code-scanning` is not an enabled analysis
   });
   t.is(
     result.upload_failed_run_skipped_because,
-    "Code Scanning is not enabled.",
+    "No analysis kind that supports failed SARIF uploads is enabled.",
   );
 });
 
@@ -332,7 +336,7 @@ test("saves overlay status when overlay-base analysis did not complete successfu
 
     const stubCodeQL = codeql.createStubCodeQL({});
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       stubCodeQL,
@@ -392,7 +396,7 @@ test("does not save overlay status when OverlayAnalysisStatusSave feature flag i
       .stub(overlayStatus, "saveOverlayStatus")
       .resolves(true);
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       codeql.createStubCodeQL({}),
@@ -429,7 +433,7 @@ test("does not save overlay status when build successful", async (t) => {
       .stub(overlayStatus, "saveOverlayStatus")
       .resolves(true);
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       codeql.createStubCodeQL({}),
@@ -465,7 +469,7 @@ test("does not save overlay status when overlay not enabled", async (t) => {
       .stub(overlayStatus, "saveOverlayStatus")
       .resolves(true);
 
-    await initActionPostHelper.run(
+    await initActionPostHelper.uploadFailureInfo(
       sinon.spy(),
       sinon.spy(),
       codeql.createStubCodeQL({}),
@@ -622,3 +626,191 @@ async function testFailedSarifUpload(
   }
   return result;
 }
+
+const singleLanguageMatrix = JSON.stringify({
+  language: "javascript",
+  category: "/language:javascript",
+  "build-mode": "none",
+  runner: "ubuntu-latest",
+});
+
+async function mockRiskAssessmentEnv(matrix: string) {
+  process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "false";
+  process.env["GITHUB_JOB"] = "analyze";
+  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+  process.env["GITHUB_WORKSPACE"] =
+    "/home/runner/work/codeql-action-fake-repository/codeql-action-fake-repository";
+
+  sinon
+    .stub(apiClient, "getGitHubVersion")
+    .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
+
+  const codeqlObject = await codeql.getCodeQLForTesting();
+  const databaseExportDiagnostics = sinon
+    .stub(codeqlObject, "databaseExportDiagnostics")
+    .resolves();
+  const diagnosticsExport = sinon
+    .stub(codeqlObject, "diagnosticsExport")
+    .resolves();
+
+  sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+
+  sinon.stub(core, "getInput").withArgs("matrix").returns(matrix);
+
+  const uploadArtifact = sinon.stub().resolves();
+  const artifactClient = { uploadArtifact };
+  sinon
+    .stub(debugArtifacts, "getArtifactUploaderClient")
+    .value(() => artifactClient);
+
+  return { uploadArtifact, databaseExportDiagnostics, diagnosticsExport };
+}
+
+test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments (diagnosticsExport)", async (t) => {
+  const logger = new RecordingLogger();
+  const { uploadArtifact, databaseExportDiagnostics, diagnosticsExport } =
+    await mockRiskAssessmentEnv(singleLanguageMatrix);
+
+  const config = createTestConfig({
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+    languages: ["javascript"],
+  });
+  const features = createFeatures([]);
+
+  const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
+    config,
+    parseRepositoryNwo("github/codeql-action-fake-repository"),
+    features,
+    logger,
+  );
+
+  const expectedName = debugArtifacts.sanitizeArtifactName(
+    `sarif-artifact-${debugArtifacts.getArtifactSuffix(singleLanguageMatrix)}`,
+  );
+  const expectedFilePattern = /codeql-failed-sarif-javascript\.csra\.sarif$/;
+  t.is(result.upload_failed_run_skipped_because, undefined);
+  t.is(result.upload_failed_run_error, undefined);
+  t.is(result.sarifID, expectedName);
+  t.assert(
+    uploadArtifact.calledOnceWith(
+      expectedName,
+      [sinon.match(expectedFilePattern)],
+      sinon.match.string,
+    ),
+  );
+  t.assert(databaseExportDiagnostics.notCalled);
+  t.assert(
+    diagnosticsExport.calledOnceWith(
+      sinon.match(expectedFilePattern),
+      "/language:javascript",
+      config,
+    ),
+  );
+});
+
+test("tryUploadSarifIfRunFailed - uploads as artifact for risk assessments (databaseExportDiagnostics)", async (t) => {
+  const logger = new RecordingLogger();
+  const { uploadArtifact, databaseExportDiagnostics, diagnosticsExport } =
+    await mockRiskAssessmentEnv(singleLanguageMatrix);
+
+  const dbLocation = "/some/path";
+  const config = createTestConfig({
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+    languages: ["javascript"],
+    dbLocation: "/some/path",
+  });
+  const features = createFeatures([Feature.ExportDiagnosticsEnabled]);
+
+  const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
+    config,
+    parseRepositoryNwo("github/codeql-action-fake-repository"),
+    features,
+    logger,
+  );
+
+  const expectedName = debugArtifacts.sanitizeArtifactName(
+    `sarif-artifact-${debugArtifacts.getArtifactSuffix(singleLanguageMatrix)}`,
+  );
+  const expectedFilePattern = /codeql-failed-sarif-javascript\.csra\.sarif$/;
+  t.is(result.upload_failed_run_skipped_because, undefined);
+  t.is(result.upload_failed_run_error, undefined);
+  t.is(result.sarifID, expectedName);
+  t.assert(
+    uploadArtifact.calledOnceWith(
+      expectedName,
+      [sinon.match(expectedFilePattern)],
+      sinon.match.string,
+    ),
+  );
+  t.assert(diagnosticsExport.notCalled);
+  t.assert(
+    databaseExportDiagnostics.calledOnceWith(
+      dbLocation,
+      sinon.match(expectedFilePattern),
+      "/language:javascript",
+    ),
+  );
+});
+
+const skippedUploadTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    config: Partial<configUtils.Config>,
+    expectedSkippedReason: string,
+  ) => {
+    const logger = new RecordingLogger();
+    const { uploadArtifact, diagnosticsExport } =
+      await mockRiskAssessmentEnv(singleLanguageMatrix);
+    const features = createFeatures([]);
+
+    const result = await initActionPostHelper.tryUploadSarifIfRunFailed(
+      createTestConfig(config),
+      parseRepositoryNwo("github/codeql-action-fake-repository"),
+      features,
+      logger,
+    );
+
+    t.is(result.upload_failed_run_skipped_because, expectedSkippedReason);
+    t.assert(uploadArtifact.notCalled);
+    t.assert(diagnosticsExport.notCalled);
+  },
+
+  title: (providedTitle: string = "") =>
+    `tryUploadSarifIfRunFailed - skips upload ${providedTitle}`,
+});
+
+test(
+  "without CodeQL command",
+  skippedUploadTest,
+  // No codeQLCmd
+  {
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    languages: ["javascript"],
+  } satisfies Partial<configUtils.Config>,
+  "CodeQL command not found",
+);
+
+test(
+  "if no language is configured",
+  skippedUploadTest,
+  // No explicit language configuration
+  {
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+  } satisfies Partial<configUtils.Config>,
+  "Unexpectedly, the configuration is not for a single language.",
+);
+
+test(
+  "if multiple languages is configured",
+  skippedUploadTest,
+  // Multiple explicit languages configured
+  {
+    analysisKinds: [AnalysisKind.RiskAssessment],
+    codeQLCmd: "codeql-for-testing",
+    languages: ["javascript", "python"],
+  } satisfies Partial<configUtils.Config>,
+  "Unexpectedly, the configuration is not for a single language.",
+);

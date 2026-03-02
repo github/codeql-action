@@ -4,7 +4,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Added an experimental change which disables file coverage information on pull requests to speed up analysis.
+  - If your repository is owned by an organization, you can opt out of this change by setting up the `github-codeql-enable-file-coverage-on-prs` custom repository property as follows. First, create a custom repository property with the name `github-codeql-enable-file-coverage-on-prs` and the type "True/false" in the organization's settings. Then in the repository's settings, set this property to `true`. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization).
+  - If you are using Advanced Setup, you can opt out of this change by setting the `CODEQL_ACTION_ENABLE_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
+  - If you are using Default Setup to analyze a repository owned by a personal account, you will need to switch to Advanced Setup to opt out of this change. For more information, see [Configuring advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/configuring-advanced-setup-for-code-scanning).
 
 ## 4.32.5 - 02 Mar 2026
 

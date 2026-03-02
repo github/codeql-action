@@ -41,6 +41,8 @@ jobs:
       CODEQL_ACTION_TEST_MODE: true
     permissions:
       contents: read
+      # We currently need `security-events: read` to access feature flags.
+      security-events: read
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:

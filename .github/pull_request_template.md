@@ -23,13 +23,13 @@ For internal use only. Please select the risk level of this change:
 Workflow types:
 
 - **Advanced setup** - Impacts users who have custom CodeQL workflows.
-- **Managed** - Impacts users with `dynamic` workflows (Default Setup, CCR, ...).
+- **Managed** - Impacts users with `dynamic` workflows (Default Setup, Code Quality, ...).
 
 Products:
 
 - **Code Scanning** - The changes impact analyses when `analysis-kinds: code-scanning`.
 - **Code Quality** - The changes impact analyses when `analysis-kinds: code-quality`.
-- **CCR** - The changes impact analyses for Copilot Code Reviews.
+- **Other first-party** - The changes impact other first-party analyses.
 - **Third-party analyses** - The changes affect the `upload-sarif` action.
 
 Environments:
@@ -54,6 +54,7 @@ Environments:
 
 - **Feature flags** - All new or changed code paths can be fully disabled with corresponding feature flags.
 - **Rollback** - Change can only be disabled by rolling back the release or releasing a new version with a fix.
+- **Development/testing only** - This change cannot cause any failures in production.
 - **Other** - Please provide details.
 
 #### How will you know if something goes wrong after this change is released?

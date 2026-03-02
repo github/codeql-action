@@ -429,6 +429,7 @@ async function createDatabaseBundleCli(
     language,
     codeql,
     `${config.debugDatabaseName}-${language}`,
+    { includeDiagnostics: true },
   );
   return databaseBundlePath;
 }

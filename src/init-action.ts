@@ -38,7 +38,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { EnvVar } from "./environment";
-import { Feature, FeatureEnablement, Features } from "./feature-flags";
+import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
   loadPropertiesFromApi,
   RepositoryProperties,
@@ -58,7 +58,7 @@ import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
   OverlayDatabaseMode,
-} from "./overlay-database-utils";
+} from "./overlay";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -96,6 +96,8 @@ import {
   GitHubVersion,
   Result,
   getOptionalEnvVar,
+  Success,
+  Failure,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -211,7 +213,7 @@ async function run(startedAt: Date) {
   let config: configUtils.Config | undefined;
   let configFile: string | undefined;
   let codeql: CodeQL;
-  let features: Features;
+  let features: FeatureEnablement;
   let sourceRoot: string;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
@@ -238,7 +240,7 @@ async function run(startedAt: Date) {
 
     const repositoryNwo = getRepositoryNwo();
 
-    features = new Features(
+    features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),
@@ -834,25 +836,25 @@ async function loadRepositoryProperties(
       "Skipping loading repository properties because the repository is owned by a user and " +
         "therefore cannot have repository properties.",
     );
-    return Result.success({});
+    return new Success({});
   }
 
   if (!(await features.getValue(Feature.UseRepositoryProperties))) {
     logger.debug(
       "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
     );
-    return Result.success({});
+    return new Success({});
   }
 
   try {
-    return Result.success(
+    return new Success(
       await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
     );
   } catch (error) {
     logger.warning(
       `Failed to load repository properties: ${getErrorMessage(error)}`,
     );
-    return Result.failure(error);
+    return new Failure(error);
   }
 }
 

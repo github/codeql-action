@@ -14,6 +14,7 @@ import {
   getFileCoverageInformationEnabled,
 } from "./init";
 import { KnownLanguage } from "./languages";
+import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
@@ -457,6 +458,7 @@ test("file coverage information enabled when debugMode is true", async (t) => {
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
+      getRunnerLogger(true),
     ),
   );
 });
@@ -470,6 +472,7 @@ test("file coverage information enabled when not analyzing a pull request", asyn
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
+      getRunnerLogger(true),
     ),
   );
 });
@@ -483,6 +486,7 @@ test("file coverage information enabled when owner is not 'github'", async (t) =
       parseRepositoryNwo("other-org/some-repo"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
+      getRunnerLogger(true),
     ),
   );
 });
@@ -496,6 +500,7 @@ test("file coverage information enabled when feature flag is not enabled", async
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       {},
+      getRunnerLogger(true),
     ),
   );
 });
@@ -509,12 +514,16 @@ test("file coverage information disabled when all conditions for skipping are me
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
+      getRunnerLogger(true),
     ),
   );
 });
 
 test("file coverage information enabled when repository property enables it on PRs", async (t) => {
   sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+  const messages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(messages);
 
   t.true(
     await getFileCoverageInformationEnabled(
@@ -524,6 +533,16 @@ test("file coverage information enabled when repository property enables it on P
       {
         [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: true,
       },
+      logger,
+    ),
+  );
+
+  t.true(
+    messages.some(
+      (m) =>
+        m.type === "info" &&
+        typeof m.message === "string" &&
+        m.message.includes(RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS),
     ),
   );
 });

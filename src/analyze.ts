@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
+import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
@@ -22,6 +23,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
+import { RepositoryPropertyName } from "./feature-flags/properties";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay";
@@ -502,9 +504,13 @@ export async function runQueries(
         logger.info(qualityAnalysisSummary);
       }
       if (!config.enableFileCoverageInformation) {
+        const isOrgOwned =
+          github.context.payload.repository?.owner.type === "Organization";
+        const reenableMessage = isOrgOwned
+          ? ` To enable file coverage information on pull requests, set the '${RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS}' repository property to 'true'.`
+          : "";
         logger.info(
-          "To speed up pull request analysis, file coverage information is only enabled when analyzing " +
-            "the default branch and protected branches.",
+          `To speed up pull request analysis, file coverage information is only enabled when analyzing the default branch and protected branches.${reenableMessage}`,
         );
       }
 

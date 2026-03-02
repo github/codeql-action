@@ -307,20 +307,35 @@ export async function getFileCoverageInformationEnabled(
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   repositoryProperties: RepositoryProperties,
+  logger: Logger,
 ): Promise<boolean> {
-  return (
-    // Always enable file coverage information in debug mode
-    debugMode ||
-    // We're most interested in speeding up PRs, and we want to keep
-    // submitting file coverage information for the default branch since
-    // it is used to populate the status page.
-    !isAnalyzingPullRequest() ||
-    // Allow repository owners to opt in to file coverage on PRs via a
-    // repository property.
+  // Always enable file coverage information in debug mode
+  if (debugMode) return true;
+
+  // We're most interested in speeding up PRs, and we want to keep
+  // submitting file coverage information for the default branch since
+  // it is used to populate the status page.
+  if (!isAnalyzingPullRequest()) return true;
+
+  // Allow repository owners to opt in to file coverage on PRs via a
+  // repository property.
+  if (
     repositoryProperties[RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS] ===
-      true ||
-    // For now, restrict this feature to the GitHub org
-    repositoryNwo.owner !== "github" ||
-    !(await features.getValue(Feature.SkipFileCoverageOnPrs))
-  );
+    true
+  ) {
+    logger.info(
+      "File coverage information on pull requests has been enabled by the " +
+        `'${RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS}' repository property. ` +
+        "This will increase the time it takes to analyze pull requests, particularly on " +
+        "large repositories.",
+    );
+    return true;
+  }
+
+  // For now, restrict this feature to the GitHub org
+  if (repositoryNwo.owner !== "github") return true;
+
+  if (!(await features.getValue(Feature.SkipFileCoverageOnPrs))) return true;
+
+  return false;
 }

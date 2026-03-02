@@ -381,6 +381,7 @@ async function run(startedAt: Date) {
         repositoryNwo,
         features,
         repositoryPropertiesResult.orElse({}),
+        logger,
       ),
       logger,
     });

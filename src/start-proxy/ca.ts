@@ -37,7 +37,8 @@ export type Extension = {
   [key: string]: unknown;
 };
 
-const extraExtensions: Extension[] = [
+const allExtensions: Extension[] = [
+  { name: "basicConstraints", cA: true },
   {
     name: "keyUsage",
     critical: true,
@@ -52,12 +53,9 @@ const extraExtensions: Extension[] = [
 /**
  * Generates a CA certificate for the proxy.
  *
- * @param newCertGenFF Whether to use the updated certificate generation.
  * @returns The private and public keys.
  */
-export function generateCertificateAuthority(
-  newCertGenFF: boolean,
-): CertificateAuthority {
+export function generateCertificateAuthority(): CertificateAuthority {
   const keys = pki.rsa.generateKeyPair(KEY_SIZE);
   const cert = pki.createCertificate();
   cert.publicKey = keys.publicKey;
@@ -71,21 +69,11 @@ export function generateCertificateAuthority(
   cert.setSubject(CERT_SUBJECT);
   cert.setIssuer(CERT_SUBJECT);
 
-  const extensions: Extension[] = [{ name: "basicConstraints", cA: true }];
+  // Set the CA extensions for the certificate.
+  cert.setExtensions(allExtensions);
 
-  // Add the extra CA extensions if the FF is enabled.
-  if (newCertGenFF) {
-    extensions.push(...extraExtensions);
-  }
-
-  cert.setExtensions(extensions);
-
-  // Specifically use SHA256 when the FF is enabled.
-  if (newCertGenFF) {
-    cert.sign(keys.privateKey, md.sha256.create());
-  } else {
-    cert.sign(keys.privateKey);
-  }
+  // Specifically use SHA256 to ensure consistency and compatibility.
+  cert.sign(keys.privateKey, md.sha256.create());
 
   const pem = pki.certificateToPem(cert);
   const key = pki.privateKeyToPem(keys.privateKey);

@@ -942,7 +942,6 @@ export async function waitForProcessing(
     const client = api.getApiClient();
 
     const statusCheckingStarted = Date.now();
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       if (
         Date.now() >
@@ -1131,11 +1130,7 @@ function sanitize(str?: string) {
 /**
  * An error that occurred due to an invalid SARIF upload request.
  */
-export class InvalidSarifUploadError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
+export class InvalidSarifUploadError extends Error {}
 
 function filterAlertsByDiffRange(logger: Logger, sarif: SarifFile): SarifFile {
   const diffRanges = readDiffRangesJsonFile(logger);

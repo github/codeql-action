@@ -10,7 +10,7 @@ import {
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { initFeatures } from "./feature-flags";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -114,7 +114,7 @@ async function run(startedAt: Date): Promise<void> {
 
     const repositoryNwo = getRepositoryNwo();
 
-    const features = new Features(
+    const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),

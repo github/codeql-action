@@ -195,10 +195,9 @@ function main(): void {
       }
     }
 
-    let useAllPlatformBundle = "false"; // Default to false
-    if (checkSpecification.useAllPlatformBundle) {
-      useAllPlatformBundle = checkSpecification.useAllPlatformBundle;
-    }
+    const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
+      ? checkSpecification.useAllPlatformBundle
+      : "false";
 
     if (checkSpecification.analysisKinds) {
       const newMatrix: Array<Record<string, any>> = [];
@@ -249,9 +248,7 @@ function main(): void {
         "use-all-platform-bundle": useAllPlatformBundle,
         // If the action is being run from a container, then do not setup kotlin.
         // This is because the kotlin binaries cannot be downloaded from the container.
-        "setup-kotlin": String(
-          !("container" in checkSpecification),
-        ).toLowerCase(),
+        "setup-kotlin": "container" in checkSpecification ? "false" : "true",
       },
     });
 
@@ -373,7 +370,7 @@ function main(): void {
         if (node.type === "QUOTE_DOUBLE") {
           node.type = "QUOTE_SINGLE";
         }
-      }
+      },
     });
 
     // Add the generated steps in front of the ones from the specification.

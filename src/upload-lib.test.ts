@@ -10,15 +10,11 @@ import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";
+import * as sarif from "./sarif";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { UploadPayload } from "./upload-lib/types";
-import {
-  GitHubVariant,
-  initializeEnvironment,
-  SarifFile,
-  withTmpDir,
-} from "./util";
+import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -268,13 +264,13 @@ test("getGroupedSarifFilePaths - Other file", async (t) => {
 
 test("populateRunAutomationDetails", (t) => {
   const tool = { driver: { name: "test tool" } };
-  let sarif: SarifFile = {
+  let sarifLog: sarif.Log = {
     version: "2.1.0",
     runs: [{ tool }],
   };
   const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
 
-  let expectedSarif: SarifFile = {
+  let expectedSarif: sarif.Log = {
     version: "2.1.0",
     runs: [
       { tool, automationDetails: { id: "language:javascript/os:linux/" } },
@@ -283,7 +279,7 @@ test("populateRunAutomationDetails", (t) => {
 
   // Category has priority over analysis_key/environment
   let modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     "language:javascript/os:linux",
     analysisKey,
     '{"language": "other", "os": "other"}',
@@ -292,7 +288,7 @@ test("populateRunAutomationDetails", (t) => {
 
   // It doesn't matter if the category has a slash at the end or not
   modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     "language:javascript/os:linux/",
     analysisKey,
     "",
@@ -300,7 +296,7 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 
   // check that the automation details doesn't get overwritten
-  sarif = {
+  sarifLog = {
     version: "2.1.0",
     runs: [{ tool, automationDetails: { id: "my_id" } }],
   };
@@ -309,7 +305,7 @@ test("populateRunAutomationDetails", (t) => {
     runs: [{ tool, automationDetails: { id: "my_id" } }],
   };
   modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     undefined,
     analysisKey,
     '{"os": "linux", "language": "javascript"}',
@@ -317,7 +313,7 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 
   // check multiple runs
-  sarif = {
+  sarifLog = {
     version: "2.1.0",
     runs: [{ tool, automationDetails: { id: "my_id" } }, { tool }],
   };
@@ -334,7 +330,7 @@ test("populateRunAutomationDetails", (t) => {
     ],
   };
   modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     undefined,
     analysisKey,
     '{"os": "linux", "language": "javascript"}',
@@ -570,7 +566,7 @@ test("validateUniqueCategory for multiple runs", (t) => {
   const sarif2 = createMockSarif("ghi", "jkl");
 
   // duplicate categories are allowed within the same sarif file
-  const multiSarif: SarifFile = {
+  const multiSarif: sarif.Log = {
     version: "2.1.0",
     runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]],
   };
@@ -903,7 +899,7 @@ test("shouldConsiderInvalidRequest returns correct recognises processing errors"
   t.false(uploadLib.shouldConsiderInvalidRequest(error3));
 });
 
-function createMockSarif(id?: string, tool?: string): SarifFile {
+function createMockSarif(id?: string, tool?: string): sarif.Log {
   return {
     version: "2.1.0",
     runs: [

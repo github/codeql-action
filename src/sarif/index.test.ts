@@ -4,7 +4,7 @@ import test from "ava";
 
 import { setupTests } from "../testing-utils";
 
-import { getToolNames, type SarifFile } from ".";
+import { getToolNames, type Log } from ".";
 
 setupTests(test);
 
@@ -13,6 +13,6 @@ test("getToolNames", (t) => {
     `${__dirname}/../../src/testdata/tool-names.sarif`,
     "utf8",
   );
-  const toolNames = getToolNames(JSON.parse(input) as SarifFile);
+  const toolNames = getToolNames(JSON.parse(input) as Log);
   t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
 });

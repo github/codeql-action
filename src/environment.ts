@@ -142,6 +142,11 @@ export enum EnvVar {
    */
   ANALYSIS_KEY = "CODEQL_ACTION_ANALYSIS_KEY",
 
+  /**
+   * Whether to enable file coverage information on pull requests.
+   */
+  ENABLE_FILE_COVERAGE_ON_PRS = "CODEQL_ACTION_ENABLE_FILE_COVERAGE_ON_PRS",
+
   /** Used by Code Scanning Risk Assessment to communicate the assessment ID to the CodeQL Action. */
   RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }

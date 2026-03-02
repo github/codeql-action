@@ -13,6 +13,7 @@ import {
 import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -317,6 +318,17 @@ export async function getFileCoverageInformationEnabled(
   // it is used to populate the status page.
   if (!isAnalyzingPullRequest()) return true;
 
+  // Allow users to opt in to file coverage on PRs via an environment variable.
+  if (process.env[EnvVar.ENABLE_FILE_COVERAGE_ON_PRS] === "true") {
+    logger.info(
+      "File coverage information on pull requests has been enabled by the " +
+        `'${EnvVar.ENABLE_FILE_COVERAGE_ON_PRS}' environment variable. ` +
+        "This may increase the time it takes to analyze pull requests, " +
+        "particularly on large repositories.",
+    );
+    return true;
+  }
+
   // Allow repository owners to opt in to file coverage on PRs via a
   // repository property.
   if (
@@ -326,8 +338,8 @@ export async function getFileCoverageInformationEnabled(
     logger.info(
       "File coverage information on pull requests has been enabled by the " +
         `'${RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS}' repository property. ` +
-        "This will increase the time it takes to analyze pull requests, particularly on " +
-        "large repositories.",
+        "This may increase the time it takes to analyze pull requests, " +
+        "particularly on large repositories.",
     );
     return true;
   }

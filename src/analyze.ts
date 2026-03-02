@@ -6,7 +6,11 @@ import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
-import { getTemporaryDirectory, PullRequestBranches } from "./actions-util";
+import {
+  getTemporaryDirectory,
+  isDefaultSetup,
+  PullRequestBranches,
+} from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -506,9 +510,14 @@ export async function runQueries(
       if (!config.enableFileCoverageInformation) {
         const isOrgOwned =
           github.context.payload.repository?.owner.type === "Organization";
-        const reenableMessage = isOrgOwned
-          ? ` To enable file coverage information on pull requests, set the '${RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS}' repository property to 'true'.`
-          : "";
+        let reenableMessage: string;
+        if (isOrgOwned) {
+          reenableMessage = ` To enable file coverage information on pull requests, set the '${RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS}' repository property to 'true'.`;
+        } else if (!isDefaultSetup()) {
+          reenableMessage = ` To enable file coverage information on pull requests, set the '${EnvVar.ENABLE_FILE_COVERAGE_ON_PRS}' environment variable to 'true'.`;
+        } else {
+          reenableMessage = "";
+        }
         logger.info(
           `To speed up pull request analysis, file coverage information is only enabled when analyzing the default branch and protected branches.${reenableMessage}`,
         );

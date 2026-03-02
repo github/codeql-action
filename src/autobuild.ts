@@ -6,7 +6,7 @@ import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
-import { Feature, featureConfig, Features } from "./feature-flags";
+import { Feature, featureConfig, initFeatures } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -117,7 +117,7 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
   const featureName = "C++ automatic installation of dependencies";
   const gitHubVersion = await getGitHubVersion();
   const repositoryNwo = getRepositoryNwo();
-  const features = new Features(
+  const features = initFeatures(
     gitHubVersion,
     repositoryNwo,
     getTemporaryDirectory(),

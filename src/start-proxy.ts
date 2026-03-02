@@ -236,14 +236,16 @@ const LANGUAGE_TO_REGISTRY_TYPE: RegistryMapping = {
   go: ["goproxy_server", "git_source"],
 } as const;
 
-const NEW_LANGUAGE_TO_REGISTRY_TYPE: RegistryMapping = {
+const NEW_LANGUAGE_TO_REGISTRY_TYPE: Required<RegistryMapping> = {
   actions: [],
+  cpp: [],
   java: ["maven_repository"],
   csharp: ["nuget_feed"],
   javascript: [],
   python: [],
   ruby: [],
   rust: [],
+  swift: [],
   go: ["goproxy_server", "git_source"],
 } as const;
 

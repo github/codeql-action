@@ -21,7 +21,7 @@ import {
   getDependencyCacheUsage,
 } from "./dependency-caching";
 import { EnvVar } from "./environment";
-import { Features } from "./feature-flags";
+import { initFeatures } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getActionsLogger } from "./logging";
@@ -62,7 +62,7 @@ async function run(startedAt: Date) {
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     const repositoryNwo = getRepositoryNwo();
-    const features = new Features(
+    const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       getTemporaryDirectory(),

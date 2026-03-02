@@ -15,10 +15,10 @@ import { CliError } from "./cli-errors";
 import * as codeql from "./codeql";
 import {
   AugmentationProperties,
-  Config,
-  defaultAugmentationProperties,
   generateCodeScanningConfig,
-} from "./config-utils";
+  defaultAugmentationProperties,
+} from "./config/db-config";
+import type { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
 import { KnownLanguage } from "./languages";

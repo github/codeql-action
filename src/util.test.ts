@@ -564,27 +564,27 @@ test("joinAtMost - truncates list if array is > than limit", (t) => {
   t.false(result.includes("test6"));
 });
 
-test("Result.success creates a success result", (t) => {
-  const result = util.Result.success("test value");
+test("Success creates a success result", (t) => {
+  const result = new util.Success("test value");
   t.true(result.isSuccess());
   t.false(result.isFailure());
   t.is(result.value, "test value");
 });
 
-test("Result.failure creates a failure result", (t) => {
+test("Failure creates a failure result", (t) => {
   const error = new Error("test error");
-  const result = util.Result.failure(error);
+  const result = new util.Failure(error);
   t.false(result.isSuccess());
   t.true(result.isFailure());
   t.is(result.value, error);
 });
 
-test("Result.orElse returns the value for a success result", (t) => {
-  const result = util.Result.success("success value");
+test("Success.orElse returns the value for a success result", (t) => {
+  const result = new util.Success("success value");
   t.is(result.orElse("default value"), "success value");
 });
 
-test("Result.orElse returns the default value for a failure result", (t) => {
-  const result = util.Result.failure(new Error("test error"));
+test("Failure.orElse returns the default value for a failure result", (t) => {
+  const result = new util.Failure(new Error("test error"));
   t.is(result.orElse("default value"), "default value");
 });

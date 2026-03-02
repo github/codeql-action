@@ -1,33 +1,31 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import test, { ExecutionContext } from "ava";
+import test from "ava";
 
 import * as defaults from "./defaults.json";
-import { EnvVar } from "./environment";
 import {
   Feature,
   featureConfig,
-  FeatureEnablement,
-  Features,
   FEATURE_FLAGS_FILE_NAME,
   FeatureConfig,
-  FeatureWithoutCLI,
 } from "./feature-flags";
-import { getRunnerLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
 import {
+  setUpFeatureFlagTests,
+  getFeatureIncludingCodeQlIfRequired,
+  assertAllFeaturesUndefinedInApi,
+  assertAllFeaturesHaveDefaultValues,
+} from "./feature-flags/testing-util";
+import {
+  checkExpectedLogMessages,
   getRecordingLogger,
   initializeFeatures,
   LoggedMessage,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
-  setupActionsVars,
   setupTests,
   stubFeatureFlagApiEndpoint,
 } from "./testing-utils";
-import { ToolsFeature } from "./tools-features";
-import * as util from "./util";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
@@ -36,11 +34,9 @@ test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });
 
-const testRepositoryNwo = parseRepositoryNwo("github/example");
-
 test(`All features use default values if running against GHES`, async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const loggedMessages: LoggedMessage[] = [];
+    const loggedMessages = [];
     const features = setUpFeatureFlagTests(
       tmpDir,
       getRecordingLogger(loggedMessages),
@@ -48,30 +44,9 @@ test(`All features use default values if running against GHES`, async (t) => {
     );
 
     await assertAllFeaturesHaveDefaultValues(t, features);
-    assertLoggedMessage(
-      t,
-      loggedMessages,
+    checkExpectedLogMessages(t, loggedMessages, [
       "Not running against github.com. Using default values for all features.",
-    );
-  });
-});
-
-test(`All features use default values if running in CCR`, async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const loggedMessages: LoggedMessage[] = [];
-    const features = setUpFeatureFlagTests(
-      tmpDir,
-      getRecordingLogger(loggedMessages),
-    );
-
-    process.env[EnvVar.ANALYSIS_KEY] = "dynamic/copilot-pull-request-reviewer";
-
-    await assertAllFeaturesHaveDefaultValues(t, features);
-    assertLoggedMessage(
-      t,
-      loggedMessages,
-      "Feature flags are not supported in Copilot Code Review. Using default values for all features.",
-    );
+    ]);
   });
 });
 
@@ -553,79 +528,9 @@ test("non-legacy feature flags should not start with codeql_action_", async (t) 
   }
 });
 
-async function assertAllFeaturesHaveDefaultValues(
-  t: ExecutionContext<unknown>,
-  features: FeatureEnablement,
-) {
-  for (const feature of Object.values(Feature)) {
-    t.deepEqual(
-      await getFeatureIncludingCodeQlIfRequired(features, feature),
-      featureConfig[feature].defaultValue,
-    );
-  }
-}
-
-function assertLoggedMessage(
-  t: ExecutionContext<unknown>,
-  loggedMessages: LoggedMessage[],
-  expectedMessage: string,
-) {
-  t.assert(
-    loggedMessages.find(
-      (v: LoggedMessage) => v.type === "debug" && v.message === expectedMessage,
-    ) !== undefined,
-  );
-}
-
-function assertAllFeaturesUndefinedInApi(
-  t: ExecutionContext<unknown>,
-  loggedMessages: LoggedMessage[],
-) {
-  for (const feature of Object.keys(featureConfig)) {
-    t.assert(
-      loggedMessages.find(
-        (v) =>
-          v.type === "debug" &&
-          (v.message as string).includes(feature) &&
-          (v.message as string).includes("undefined in API response"),
-      ) !== undefined,
-    );
-  }
-}
-
-function setUpFeatureFlagTests(
-  tmpDir: string,
-  logger = getRunnerLogger(true),
-  gitHubVersion = { type: GitHubVariant.DOTCOM } as util.GitHubVersion,
-): FeatureEnablement {
-  setupActionsVars(tmpDir, tmpDir);
-
-  return new Features(gitHubVersion, testRepositoryNwo, tmpDir, logger);
-}
-
-/**
- * Returns an argument to pass to `getValue` that if required includes a CodeQL object meeting the
- * minimum version or tool feature requirements specified by the feature.
- */
-function getFeatureIncludingCodeQlIfRequired(
-  features: FeatureEnablement,
-  feature: Feature,
-) {
-  const config = featureConfig[
-    feature
-  ] satisfies FeatureConfig as FeatureConfig;
-  if (
-    config.minimumVersion === undefined &&
-    config.toolsFeature === undefined
-  ) {
-    return features.getValue(feature as FeatureWithoutCLI);
-  }
-
-  return features.getValue(
-    feature,
-    mockCodeQLVersion(
-      "9.9.9",
-      Object.fromEntries(Object.values(ToolsFeature).map((v) => [v, true])),
-    ),
-  );
-}
+test("initFeatures returns a `Features` instance by default", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const features = setUpFeatureFlagTests(tmpDir);
+    t.is("Features", features.constructor.name);
+  });
+});

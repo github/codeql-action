@@ -92,7 +92,7 @@ We typically deprecate a version of CodeQL when the GitHub Enterprise Server (GH
 1. Remove support for the old version of CodeQL.
     - Bump `CODEQL_MINIMUM_VERSION` in `src/codeql.ts` to the new minimum version of CodeQL.
     - Remove any code that is only needed to support the old version of CodeQL. This is often behind a version guard, so look for instances of version numbers between the old minimum version and the new minimum version in the codebase. A good place to start is the list of version numbers in `src/codeql.ts`.
-    - Update the default set of CodeQL test versions in `pr-checks/sync.py`.
+    - Update the default set of CodeQL test versions in `pr-checks/sync.ts`.
         - Remove the old minimum version of CodeQL.
         - Add the latest patch release for any new CodeQL minor version series that have shipped in GHES.
         - Run the script to update the generated PR checks.

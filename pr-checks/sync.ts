@@ -5,6 +5,14 @@ import * as path from "path";
 
 import * as yaml from "yaml";
 
+/** Known workflow input names. */
+enum KnownInputName {
+  GoVersion = "go-version",
+  JavaVersion = "java-version",
+  PythonVersion = "python-version",
+  DotnetVersion = "dotnet-version",
+}
+
 /**
  * Represents workflow input definitions.
  */
@@ -14,6 +22,9 @@ interface WorkflowInput {
   required: boolean;
   default: string;
 }
+
+/** A partial mapping from known input names to input definitions. */
+type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 
 /**
  * Represents PR check specifications.
@@ -155,11 +166,7 @@ function main(): void {
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
-    let workflowInputs: Record<string, WorkflowInput> = {};
-    if (checkSpecification.inputs) {
-      workflowInputs = checkSpecification.inputs;
-    }
-
+    const workflowInputs: WorkflowInputs = {};
     let matrix: Array<Record<string, any>> = [];
 
     for (const version of checkSpecification.versions ?? defaultTestVersions) {
@@ -249,7 +256,7 @@ function main(): void {
 
     if (installGo) {
       const baseGoVersionExpr = ">=1.21.0";
-      workflowInputs["go-version"] = {
+      workflowInputs[KnownInputName.GoVersion] = {
         type: "string",
         description: "The version of Go to install",
         required: false,
@@ -273,7 +280,7 @@ function main(): void {
 
     if (installJava) {
       const baseJavaVersionExpr = "17";
-      workflowInputs["java-version"] = {
+      workflowInputs[KnownInputName.JavaVersion] = {
         type: "string",
         description: "The version of Java to install",
         required: false,
@@ -295,7 +302,7 @@ function main(): void {
 
     if (installPython) {
       const basePythonVersionExpr = "3.13";
-      workflowInputs["python-version"] = {
+      workflowInputs[KnownInputName.PythonVersion] = {
         type: "string",
         description: "The version of Python to install",
         required: false,
@@ -317,7 +324,7 @@ function main(): void {
 
     if (installDotNet) {
       const baseDotNetVersionExpr = "9.x";
-      workflowInputs["dotnet-version"] = {
+      workflowInputs[KnownInputName.DotnetVersion] = {
         type: "string",
         description: "The version of .NET to install",
         required: false,

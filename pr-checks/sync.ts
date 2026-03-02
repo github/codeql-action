@@ -34,12 +34,12 @@ interface Specification {
   /** Values for the `analysis-kinds` matrix dimension. */
   analysisKinds?: string[];
 
-  installNode?: string | boolean;
-  installGo?: string | boolean;
-  installJava?: string | boolean;
-  installPython?: string | boolean;
-  installDotNet?: string | boolean;
-  installYq?: string | boolean;
+  installNode?: boolean;
+  installGo?: boolean;
+  installJava?: boolean;
+  installPython?: boolean;
+  installDotNet?: boolean;
+  installYq?: boolean;
 
   /** Container image configuration for the job. */
   container?: any;
@@ -111,13 +111,6 @@ function writeYaml(filePath: string, workflow: any): void {
     lineWidth: 0,
   });
   fs.writeFileSync(filePath, stripTrailingWhitespace(header + yamlStr), "utf8");
-}
-
-function isTruthy(value: string | boolean | undefined): boolean {
-  if (typeof value === "string") {
-    return value.toLowerCase() === "true";
-  }
-  return Boolean(value);
 }
 
 /**
@@ -220,7 +213,7 @@ function main(): void {
       },
     ];
 
-    const installNode = isTruthy(checkSpecification.installNode);
+    const installNode = checkSpecification.installNode;
 
     if (installNode) {
       steps.push(
@@ -252,7 +245,7 @@ function main(): void {
       },
     });
 
-    const installGo = isTruthy(checkSpecification.installGo);
+    const installGo = checkSpecification.installGo;
 
     if (installGo) {
       const baseGoVersionExpr = ">=1.21.0";
@@ -276,7 +269,7 @@ function main(): void {
       });
     }
 
-    const installJava = isTruthy(checkSpecification.installJava);
+    const installJava = checkSpecification.installJava;
 
     if (installJava) {
       const baseJavaVersionExpr = "17";
@@ -298,7 +291,7 @@ function main(): void {
       });
     }
 
-    const installPython = isTruthy(checkSpecification.installPython);
+    const installPython = checkSpecification.installPython;
 
     if (installPython) {
       const basePythonVersionExpr = "3.13";
@@ -320,7 +313,7 @@ function main(): void {
       });
     }
 
-    const installDotNet = isTruthy(checkSpecification.installDotNet);
+    const installDotNet = checkSpecification.installDotNet;
 
     if (installDotNet) {
       const baseDotNetVersionExpr = "9.x";
@@ -341,7 +334,7 @@ function main(): void {
       });
     }
 
-    const installYq = isTruthy(checkSpecification.installYq);
+    const installYq = checkSpecification.installYq;
 
     if (installYq) {
       steps.push({

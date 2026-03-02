@@ -16,7 +16,6 @@ import {
 } from "./init";
 import { KnownLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
   LoggedMessage,
@@ -456,7 +455,6 @@ test("file coverage information enabled when debugMode is true", async (t) => {
   t.true(
     await getFileCoverageInformationEnabled(
       true, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
       getRunnerLogger(true),
@@ -470,21 +468,6 @@ test("file coverage information enabled when not analyzing a pull request", asyn
   t.true(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
-      createFeatures([Feature.SkipFileCoverageOnPrs]),
-      {},
-      getRunnerLogger(true),
-    ),
-  );
-});
-
-test("file coverage information enabled when owner is not 'github'", async (t) => {
-  sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
-
-  t.true(
-    await getFileCoverageInformationEnabled(
-      false, // debugMode
-      parseRepositoryNwo("other-org/some-repo"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
       getRunnerLogger(true),
@@ -498,7 +481,6 @@ test("file coverage information enabled when feature flag is not enabled", async
   t.true(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       {},
       getRunnerLogger(true),
@@ -512,7 +494,6 @@ test("file coverage information disabled when all conditions for skipping are me
   t.false(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
       getRunnerLogger(true),
@@ -529,7 +510,6 @@ test("file coverage information enabled when repository property enables it on P
   t.true(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {
         [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: true,
@@ -561,7 +541,6 @@ test("file coverage information enabled when env var enables it on PRs", async (
   t.true(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {},
       logger,
@@ -591,7 +570,6 @@ test("file coverage information disabled when env var disables it on PRs", async
   t.false(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("other-org/some-repo"),
       createFeatures([]),
       {},
       logger,
@@ -618,7 +596,6 @@ test("file coverage information disabled when repository property disables it on
   t.false(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("other-org/some-repo"),
       createFeatures([]),
       {
         [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: false,
@@ -653,7 +630,6 @@ test("file coverage env var 'false' takes precedence over repository property 't
   t.false(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {
         [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: true,
@@ -695,7 +671,6 @@ test("file coverage env var takes precedence over repository property", async (t
   t.true(
     await getFileCoverageInformationEnabled(
       false, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
       {
         [RepositoryPropertyName.ENABLE_FILE_COVERAGE_ON_PRS]: true,

@@ -378,7 +378,6 @@ async function run(startedAt: Date) {
       repositoryProperties: repositoryPropertiesResult.orElse({}),
       enableFileCoverageInformation: await getFileCoverageInformationEnabled(
         debugMode,
-        repositoryNwo,
         features,
         repositoryPropertiesResult.orElse({}),
         logger,

@@ -25,7 +25,6 @@ import {
 } from "./feature-flags/properties";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
-import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -305,7 +304,6 @@ export function cleanupDatabaseClusterDirectory(
 
 export async function getFileCoverageInformationEnabled(
   debugMode: boolean,
-  repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   repositoryProperties: RepositoryProperties,
   logger: Logger,
@@ -358,9 +356,6 @@ export async function getFileCoverageInformationEnabled(
     );
     return false;
   }
-
-  // For now, restrict this feature to the GitHub org
-  if (repositoryNwo.owner !== "github") return true;
 
   if (!(await features.getValue(Feature.SkipFileCoverageOnPrs))) return true;
 

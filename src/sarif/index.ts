@@ -2,84 +2,18 @@ import * as fs from "fs";
 
 import { Logger } from "../logging";
 
-export interface SarifLocation {
-  physicalLocation?: {
-    artifactLocation?: {
-      uri?: string;
-    };
-  };
-}
+import * as sarif from "sarif";
 
-export interface SarifNotification {
-  locations?: SarifLocation[];
-}
+// Re-export some types with other names for backwards-compatibility
+export type SarifLocation = sarif.Location;
+export type SarifNotification = sarif.Notification;
+export type SarifInvocation = sarif.Invocation;
+export type SarifResult = sarif.Result;
+export type SarifRun = sarif.Run;
+export type SarifFile = sarif.Log;
 
-export interface SarifInvocation {
-  toolExecutionNotifications?: SarifNotification[];
-}
-
-export interface SarifResult {
-  ruleId?: string;
-  rule?: {
-    id?: string;
-  };
-  message?: {
-    text?: string;
-  };
-  locations: Array<{
-    physicalLocation: {
-      artifactLocation: {
-        uri: string;
-      };
-      region?: {
-        startLine?: number;
-      };
-    };
-  }>;
-  relatedLocations?: Array<{
-    physicalLocation: {
-      artifactLocation: {
-        uri: string;
-      };
-      region?: {
-        startLine?: number;
-      };
-    };
-  }>;
-  partialFingerprints: {
-    primaryLocationLineHash?: string;
-  };
-}
-
-export interface SarifRun {
-  tool?: {
-    driver?: {
-      guid?: string;
-      name?: string;
-      fullName?: string;
-      semanticVersion?: string;
-      version?: string;
-    };
-  };
-  automationDetails?: {
-    id?: string;
-  };
-  artifacts?: string[];
-  invocations?: SarifInvocation[];
-  results?: SarifResult[];
-}
-
-export interface SarifFile {
-  version?: string | null;
-  runs: SarifRun[];
-}
-
-export type SarifRunKey = {
-  name: string | undefined;
-  fullName: string | undefined;
-  version: string | undefined;
-  semanticVersion: string | undefined;
-  guid: string | undefined;
+// `automationId` is non-standard.
+export type SarifRunKey = sarif.ToolComponent & {
   automationId: string | undefined;
 };
 
@@ -93,10 +27,10 @@ export class InvalidSarifUploadError extends Error {}
  *
  * Returns an array of unique string tool names.
  */
-export function getToolNames(sarif: SarifFile): string[] {
+export function getToolNames(sarifFile: SarifFile): string[] {
   const toolNames = {};
 
-  for (const run of sarif.runs || []) {
+  for (const run of sarifFile.runs || []) {
     const tool = run.tool || {};
     const driver = tool.driver || {};
     if (typeof driver.name === "string" && driver.name.length > 0) {
@@ -119,7 +53,7 @@ export function combineSarifFiles(
 ): SarifFile {
   logger.info(`Loading SARIF file(s)`);
   const combinedSarif: SarifFile = {
-    version: null,
+    version: "2.1.0",
     runs: [],
   };
 

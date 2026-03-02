@@ -13,7 +13,12 @@ import { getRunnerLogger, Logger } from "./logging";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { UploadPayload } from "./upload-lib/types";
-import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
+import {
+  GitHubVariant,
+  initializeEnvironment,
+  SarifFile,
+  withTmpDir,
+} from "./util";
 
 setupTests(test);
 
@@ -262,13 +267,18 @@ test("getGroupedSarifFilePaths - Other file", async (t) => {
 });
 
 test("populateRunAutomationDetails", (t) => {
-  let sarif = {
-    runs: [{}],
+  const tool = { driver: { name: "test tool" } };
+  let sarif: SarifFile = {
+    version: "2.1.0",
+    runs: [{ tool }],
   };
   const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
 
-  let expectedSarif = {
-    runs: [{ automationDetails: { id: "language:javascript/os:linux/" } }],
+  let expectedSarif: SarifFile = {
+    version: "2.1.0",
+    runs: [
+      { tool, automationDetails: { id: "language:javascript/os:linux/" } },
+    ],
   };
 
   // Category has priority over analysis_key/environment
@@ -290,8 +300,14 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 
   // check that the automation details doesn't get overwritten
-  sarif = { runs: [{ automationDetails: { id: "my_id" } }] };
-  expectedSarif = { runs: [{ automationDetails: { id: "my_id" } }] };
+  sarif = {
+    version: "2.1.0",
+    runs: [{ tool, automationDetails: { id: "my_id" } }],
+  };
+  expectedSarif = {
+    version: "2.1.0",
+    runs: [{ tool, automationDetails: { id: "my_id" } }],
+  };
   modifiedSarif = uploadLib.populateRunAutomationDetails(
     sarif,
     undefined,
@@ -301,11 +317,16 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 
   // check multiple runs
-  sarif = { runs: [{ automationDetails: { id: "my_id" } }, {}] };
+  sarif = {
+    version: "2.1.0",
+    runs: [{ tool, automationDetails: { id: "my_id" } }, { tool }],
+  };
   expectedSarif = {
+    version: "2.1.0",
     runs: [
-      { automationDetails: { id: "my_id" } },
+      { tool, automationDetails: { id: "my_id" } },
       {
+        tool,
         automationDetails: {
           id: ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/",
         },
@@ -515,20 +536,8 @@ test("validateUniqueCategory for automation details id and tool name", (t) => {
   );
 
   // Our category sanitization is not perfect. Here are some examples
-  // of where we see false clashes
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-  t.throws(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc", "_"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-
+  // of where we see false clashes because we replace some characters
+  // with `_` in `sanitize`.
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(
       createMockSarif("abc", "def__"),
@@ -537,7 +546,7 @@ test("validateUniqueCategory for automation details id and tool name", (t) => {
   );
   t.throws(() =>
     uploadLib.validateUniqueCategory(
-      createMockSarif("abc_def"),
+      createMockSarif("abc_def", "_"),
       CodeScanning.sentinelPrefix,
     ),
   );
@@ -561,7 +570,10 @@ test("validateUniqueCategory for multiple runs", (t) => {
   const sarif2 = createMockSarif("ghi", "jkl");
 
   // duplicate categories are allowed within the same sarif file
-  const multiSarif = { runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]] };
+  const multiSarif: SarifFile = {
+    version: "2.1.0",
+    runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]],
+  };
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(multiSarif, CodeScanning.sentinelPrefix),
   );
@@ -891,8 +903,9 @@ test("shouldConsiderInvalidRequest returns correct recognises processing errors"
   t.false(uploadLib.shouldConsiderInvalidRequest(error3));
 });
 
-function createMockSarif(id?: string, tool?: string) {
+function createMockSarif(id?: string, tool?: string): SarifFile {
   return {
+    version: "2.1.0",
     runs: [
       {
         automationDetails: {
@@ -900,7 +913,7 @@ function createMockSarif(id?: string, tool?: string) {
         },
         tool: {
           driver: {
-            name: tool,
+            name: tool || "test tool",
           },
         },
       },

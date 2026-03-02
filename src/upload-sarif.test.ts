@@ -33,7 +33,11 @@ function mockPostProcessSarifFiles() {
         sinon.match.any,
         analysisConfig,
       )
-      .resolves({ sarif: { runs: [] }, analysisKey: "", environment: "" });
+      .resolves({
+        sarif: { version: "2.1.0", runs: [] },
+        analysisKey: "",
+        environment: "",
+      });
   }
 
   return postProcessSarifFiles;

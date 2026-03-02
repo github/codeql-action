@@ -4,16 +4,10 @@ import { Logger } from "../logging";
 
 import * as sarif from "sarif";
 
-// Re-export some types with other names for backwards-compatibility
-export type SarifLocation = sarif.Location;
-export type SarifNotification = sarif.Notification;
-export type SarifInvocation = sarif.Invocation;
-export type SarifResult = sarif.Result;
-export type SarifRun = sarif.Run;
-export type SarifFile = sarif.Log;
+export type * from "sarif";
 
 // `automationId` is non-standard.
-export type SarifRunKey = sarif.ToolComponent & {
+export type RunKey = sarif.ToolComponent & {
   automationId: string | undefined;
 };
 
@@ -27,7 +21,7 @@ export class InvalidSarifUploadError extends Error {}
  *
  * Returns an array of unique string tool names.
  */
-export function getToolNames(sarifFile: SarifFile): string[] {
+export function getToolNames(sarifFile: sarif.Log): string[] {
   const toolNames = {};
 
   for (const run of sarifFile.runs || []) {
@@ -41,8 +35,8 @@ export function getToolNames(sarifFile: SarifFile): string[] {
   return Object.keys(toolNames);
 }
 
-export function readSarifFile(sarifFilePath: string): SarifFile {
-  return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as SarifFile;
+export function readSarifFile(sarifFilePath: string): sarif.Log {
+  return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as sarif.Log;
 }
 
 // Takes a list of paths to sarif files and combines them together,
@@ -50,9 +44,9 @@ export function readSarifFile(sarifFilePath: string): SarifFile {
 export function combineSarifFiles(
   sarifFiles: string[],
   logger: Logger,
-): SarifFile {
+): sarif.Log {
   logger.info(`Loading SARIF file(s)`);
-  const combinedSarif: SarifFile = {
+  const combinedSarif: sarif.Log = {
     version: "2.1.0",
     runs: [],
   };
@@ -79,7 +73,7 @@ export function combineSarifFiles(
  * Checks whether all the runs in the given SARIF files were produced by CodeQL.
  * @param sarifObjects The list of SARIF objects to check.
  */
-export function areAllRunsProducedByCodeQL(sarifObjects: SarifFile[]): boolean {
+export function areAllRunsProducedByCodeQL(sarifObjects: sarif.Log[]): boolean {
   return sarifObjects.every((sarifObject) => {
     return sarifObject.runs?.every(
       (run) => run.tool?.driver?.name === "CodeQL",
@@ -87,7 +81,7 @@ export function areAllRunsProducedByCodeQL(sarifObjects: SarifFile[]): boolean {
   });
 }
 
-function createRunKey(run: SarifRun): SarifRunKey {
+function createRunKey(run: sarif.Run): RunKey {
   return {
     name: run.tool?.driver?.name,
     fullName: run.tool?.driver?.fullName,
@@ -103,7 +97,7 @@ function createRunKey(run: SarifRun): SarifRunKey {
  * criteria used by Code Scanning to determine analysis categories).
  * @param sarifObjects The list of SARIF objects to check.
  */
-export function areAllRunsUnique(sarifObjects: SarifFile[]): boolean {
+export function areAllRunsUnique(sarifObjects: sarif.Log[]): boolean {
   const keys = new Set<string>();
 
   for (const sarifObject of sarifObjects) {

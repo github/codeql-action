@@ -25,6 +25,11 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
       go-version:
         type: string
         description: The version of Go to install
@@ -35,13 +40,13 @@ on:
         description: The version of Python to install
         required: false
         default: '3.13'
-      dotnet-version:
-        type: string
-        description: The version of .NET to install
-        required: false
-        default: 9.x
   workflow_call:
     inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
       go-version:
         type: string
         description: The version of Go to install
@@ -52,17 +57,12 @@ on:
         description: The version of Python to install
         required: false
         default: '3.13'
-      dotnet-version:
-        type: string
-        description: The version of .NET to install
-        required: false
-        default: 9.x
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: remote-config-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: remote-config-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}-${{inputs.python-version}}
 jobs:
   remote-config:
     strategy:
@@ -90,6 +90,10 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - name: Install Go
         uses: actions/setup-go@v6
         with:
@@ -100,10 +104,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version || '3.13' }}
-      - name: Install .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}

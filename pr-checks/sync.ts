@@ -5,6 +5,14 @@ import * as path from "path";
 
 import * as yaml from "yaml";
 
+/** Known workflow input names. */
+enum KnownInputName {
+  GoVersion = "go-version",
+  JavaVersion = "java-version",
+  PythonVersion = "python-version",
+  DotnetVersion = "dotnet-version",
+}
+
 /**
  * Represents workflow input definitions.
  */
@@ -14,6 +22,9 @@ interface WorkflowInput {
   required: boolean;
   default: string;
 }
+
+/** A partial mapping from known input names to input definitions. */
+type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 
 /**
  * Represents PR check specifications.
@@ -34,12 +45,12 @@ interface Specification {
   /** Values for the `analysis-kinds` matrix dimension. */
   analysisKinds?: string[];
 
-  installNode?: string | boolean;
-  installGo?: string | boolean;
-  installJava?: string | boolean;
-  installPython?: string | boolean;
-  installDotNet?: string | boolean;
-  installYq?: string | boolean;
+  installNode?: boolean;
+  installGo?: boolean;
+  installJava?: boolean;
+  installPython?: boolean;
+  installDotNet?: boolean;
+  installYq?: boolean;
 
   /** Container image configuration for the job. */
   container?: any;
@@ -113,13 +124,6 @@ function writeYaml(filePath: string, workflow: any): void {
   fs.writeFileSync(filePath, stripTrailingWhitespace(header + yamlStr), "utf8");
 }
 
-function isTruthy(value: string | boolean | undefined): boolean {
-  if (typeof value === "string") {
-    return value.toLowerCase() === "true";
-  }
-  return Boolean(value);
-}
-
 /**
  * Strip trailing whitespace from each line.
  */
@@ -162,11 +166,7 @@ function main(): void {
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
-    let workflowInputs: Record<string, WorkflowInput> = {};
-    if (checkSpecification.inputs) {
-      workflowInputs = checkSpecification.inputs;
-    }
-
+    const workflowInputs: WorkflowInputs = {};
     let matrix: Array<Record<string, any>> = [];
 
     for (const version of checkSpecification.versions ?? defaultTestVersions) {
@@ -195,10 +195,9 @@ function main(): void {
       }
     }
 
-    let useAllPlatformBundle = "false"; // Default to false
-    if (checkSpecification.useAllPlatformBundle) {
-      useAllPlatformBundle = checkSpecification.useAllPlatformBundle;
-    }
+    const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
+      ? checkSpecification.useAllPlatformBundle
+      : "false";
 
     if (checkSpecification.analysisKinds) {
       const newMatrix: Array<Record<string, any>> = [];
@@ -221,7 +220,7 @@ function main(): void {
       },
     ];
 
-    const installNode = isTruthy(checkSpecification.installNode);
+    const installNode = checkSpecification.installNode;
 
     if (installNode) {
       steps.push(
@@ -249,17 +248,15 @@ function main(): void {
         "use-all-platform-bundle": useAllPlatformBundle,
         // If the action is being run from a container, then do not setup kotlin.
         // This is because the kotlin binaries cannot be downloaded from the container.
-        "setup-kotlin": String(
-          !("container" in checkSpecification),
-        ).toLowerCase(),
+        "setup-kotlin": "container" in checkSpecification ? "false" : "true",
       },
     });
 
-    const installGo = isTruthy(checkSpecification.installGo);
+    const installGo = checkSpecification.installGo;
 
     if (installGo) {
       const baseGoVersionExpr = ">=1.21.0";
-      workflowInputs["go-version"] = {
+      workflowInputs[KnownInputName.GoVersion] = {
         type: "string",
         description: "The version of Go to install",
         required: false,
@@ -279,11 +276,11 @@ function main(): void {
       });
     }
 
-    const installJava = isTruthy(checkSpecification.installJava);
+    const installJava = checkSpecification.installJava;
 
     if (installJava) {
       const baseJavaVersionExpr = "17";
-      workflowInputs["java-version"] = {
+      workflowInputs[KnownInputName.JavaVersion] = {
         type: "string",
         description: "The version of Java to install",
         required: false,
@@ -301,11 +298,11 @@ function main(): void {
       });
     }
 
-    const installPython = isTruthy(checkSpecification.installPython);
+    const installPython = checkSpecification.installPython;
 
     if (installPython) {
       const basePythonVersionExpr = "3.13";
-      workflowInputs["python-version"] = {
+      workflowInputs[KnownInputName.PythonVersion] = {
         type: "string",
         description: "The version of Python to install",
         required: false,
@@ -323,11 +320,11 @@ function main(): void {
       });
     }
 
-    const installDotNet = isTruthy(checkSpecification.installDotNet);
+    const installDotNet = checkSpecification.installDotNet;
 
     if (installDotNet) {
       const baseDotNetVersionExpr = "9.x";
-      workflowInputs["dotnet-version"] = {
+      workflowInputs[KnownInputName.DotnetVersion] = {
         type: "string",
         description: "The version of .NET to install",
         required: false,
@@ -344,7 +341,7 @@ function main(): void {
       });
     }
 
-    const installYq = isTruthy(checkSpecification.installYq);
+    const installYq = checkSpecification.installYq;
 
     if (installYq) {
       steps.push({
@@ -373,7 +370,7 @@ function main(): void {
         if (node.type === "QUOTE_DOUBLE") {
           node.type = "QUOTE_SINGLE";
         }
-      }
+      },
     });
 
     // Add the generated steps in front of the ones from the specification.

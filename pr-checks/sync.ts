@@ -275,6 +275,52 @@ function stripTrailingWhitespace(content: string): string {
     .join("\n");
 }
 
+/** Generates the matrix for a job. */
+function generateJobMatrix(
+  checkSpecification: Specification,
+): Array<Record<string, any>> {
+  let matrix: Array<Record<string, any>> = [];
+
+  for (const version of checkSpecification.versions ?? defaultTestVersions) {
+    if (version === "latest") {
+      throw new Error(
+        'Did not recognise "version: latest". Did you mean "version: linked"?',
+      );
+    }
+
+    const runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"];
+    const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
+
+    for (const operatingSystem of operatingSystems) {
+      const runnerImagesForOs = runnerImages.filter((image) =>
+        image.startsWith(operatingSystem),
+      );
+
+      for (const runnerImage of runnerImagesForOs) {
+        matrix.push({
+          os: runnerImage,
+          version,
+        });
+      }
+    }
+  }
+
+  if (checkSpecification.analysisKinds) {
+    const newMatrix: Array<Record<string, any>> = [];
+    for (const matrixInclude of matrix) {
+      for (const analysisKind of checkSpecification.analysisKinds) {
+        newMatrix.push({
+          ...matrixInclude,
+          "analysis-kinds": analysisKind,
+        });
+      }
+    }
+    matrix = newMatrix;
+  }
+
+  return matrix;
+}
+
 /**
  * Retrieves setup steps and additional input definitions based on specific languages or frameworks
  * that are requested by the `checkSpecification`.
@@ -337,50 +383,10 @@ function main(): void {
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
-    let matrix: Array<Record<string, any>> = [];
-
-    for (const version of checkSpecification.versions ?? defaultTestVersions) {
-      if (version === "latest") {
-        throw new Error(
-          'Did not recognise "version: latest". Did you mean "version: linked"?',
-        );
-      }
-
-      const runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"];
-      const operatingSystems = checkSpecification.operatingSystems ?? [
-        "ubuntu",
-      ];
-
-      for (const operatingSystem of operatingSystems) {
-        const runnerImagesForOs = runnerImages.filter((image) =>
-          image.startsWith(operatingSystem),
-        );
-
-        for (const runnerImage of runnerImagesForOs) {
-          matrix.push({
-            os: runnerImage,
-            version,
-          });
-        }
-      }
-    }
-
+    const matrix: Array<Record<string, any>> = generateJobMatrix(checkSpecification);
     const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
       ? checkSpecification.useAllPlatformBundle
       : "false";
-
-    if (checkSpecification.analysisKinds) {
-      const newMatrix: Array<Record<string, any>> = [];
-      for (const matrixInclude of matrix) {
-        for (const analysisKind of checkSpecification.analysisKinds) {
-          newMatrix.push({
-            ...matrixInclude,
-            "analysis-kinds": analysisKind,
-          });
-        }
-      }
-      matrix = newMatrix;
-    }
 
     // Determine which languages or frameworks have to be installed.
     const setupInfo = getSetupSteps(checkSpecification);

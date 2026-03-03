@@ -293,7 +293,7 @@ async function recordOverlayStatus(
 
   const blurb =
     "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
-    "This may have been due to disk space constraints: using improved incremental analysis can " +
+    "One possible reason for this is disk space constraints, since improved incremental analysis can " +
     "require a significant amount of disk space for some repositories.";
 
   if (saved) {
@@ -301,7 +301,7 @@ async function recordOverlayStatus(
       `${blurb} ` +
         "This failure has been recorded in the Actions cache, so the next CodeQL analysis will run " +
         "without improved incremental analysis. If you want to enable improved incremental analysis, " +
-        "increase the disk space available to the runner. " +
+        "try increasing the disk space available to the runner. " +
         "If that doesn't help, contact GitHub Support for further assistance.",
     );
   } else {

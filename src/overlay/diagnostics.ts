@@ -68,8 +68,8 @@ export async function addOverlayDisablementDiagnostics(
           markdownMessage:
             `Improved incremental analysis was skipped because it previously failed for this repository ` +
             `with CodeQL version ${(await codeql.getVersion()).version} on a runner with similar hardware resources. ` +
-            "Improved incremental analysis may require a significant amount of disk space for some repositories. " +
-            "If you want to enable improved incremental analysis, increase the disk space available " +
+            "One possible reason for this is that improved incremental analysis can require a significant amount of disk space for some repositories. " +
+            "If you want to try re-enabling improved incremental analysis, increase the disk space available " +
             "to the runner. If that doesn't help, contact GitHub Support for further assistance.\n\n" +
             "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +
             `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` entries from the Actions cache.`,

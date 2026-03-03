@@ -139,13 +139,40 @@ export function setupTests(test: TestFn<any>) {
   });
 }
 
+/**
+ * Default values for environment variables typically set in an Actions
+ * environment. Tests can override individual variables by passing them in the
+ * `overrides` parameter.
+ */
+const DEFAULT_ACTIONS_VARS: Record<string, string> = {
+  GITHUB_ACTION_REPOSITORY: "github/codeql-action",
+  GITHUB_API_URL: "https://api.github.com",
+  GITHUB_EVENT_NAME: "push",
+  GITHUB_JOB: "test-job",
+  GITHUB_REF: "refs/heads/main",
+  GITHUB_REPOSITORY: "github/codeql-action-testing",
+  GITHUB_RUN_ATTEMPT: "1",
+  GITHUB_RUN_ID: "1",
+  GITHUB_SERVER_URL: "https://github.com",
+  GITHUB_SHA: "0".repeat(40),
+  GITHUB_WORKFLOW: "test-workflow",
+  RUNNER_OS: "Linux",
+};
+
 // Sets environment variables that make using some libraries designed for
 // use only on actions safe to use outside of actions.
-export function setupActionsVars(tempDir: string, toolsDir: string) {
+export function setupActionsVars(
+  tempDir: string,
+  toolsDir: string,
+  overrides?: Partial<Record<string, string>>,
+) {
+  const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
+  for (const [key, value] of Object.entries(vars)) {
+    process.env[key] = value;
+  }
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
   process.env["GITHUB_WORKSPACE"] = tempDir;
-  process.env["GITHUB_EVENT_NAME"] = "push";
 }
 
 type LogLevel = "debug" | "info" | "warning" | "error";

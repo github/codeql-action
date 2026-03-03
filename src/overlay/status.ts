@@ -45,6 +45,8 @@ function getStatusFilePath(languages: string[]): string {
 
 /** Details of the job that recorded an overlay status. */
 interface JobInfo {
+  /** The check run ID. This is optional since it is not always available. */
+  checkRunId?: number;
   /** The workflow run ID. */
   workflowRunId: number;
   /** The workflow run attempt number. */
@@ -66,14 +68,17 @@ export interface OverlayStatus {
 /** Creates an `OverlayStatus` populated with the details of the current job. */
 export function createOverlayStatus(
   attributes: Omit<OverlayStatus, "job">,
+  checkRunId?: number,
 ): OverlayStatus {
+  const job: JobInfo = {
+    workflowRunId: getWorkflowRunID(),
+    workflowRunAttempt: getWorkflowRunAttempt(),
+    name: getRequiredEnvParam("GITHUB_JOB"),
+    ...(checkRunId !== undefined && { checkRunId }),
+  };
   return {
     ...attributes,
-    job: {
-      workflowRunId: getWorkflowRunID(),
-      workflowRunAttempt: getWorkflowRunAttempt(),
-      name: getRequiredEnvParam("GITHUB_JOB"),
-    },
+    job,
   };
 }
 

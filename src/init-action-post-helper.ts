@@ -274,10 +274,17 @@ async function recordOverlayStatus(
     return;
   }
 
-  const overlayStatus: OverlayStatus = createOverlayStatus({
-    attemptedToBuildOverlayBaseDatabase: true,
-    builtOverlayBaseDatabase: false,
-  });
+  const checkRunIdInput = actionsUtil.getOptionalInput("check-run-id");
+  const checkRunId =
+    checkRunIdInput !== undefined ? parseInt(checkRunIdInput, 10) : undefined;
+
+  const overlayStatus: OverlayStatus = createOverlayStatus(
+    {
+      attemptedToBuildOverlayBaseDatabase: true,
+      builtOverlayBaseDatabase: false,
+    },
+    Number.isNaN(checkRunId) ? undefined : checkRunId,
+  );
 
   const diskUsage = await checkDiskUsage(logger);
   if (diskUsage === undefined) {

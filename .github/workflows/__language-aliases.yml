@@ -63,7 +63,7 @@ jobs:
           languages: C#,java-kotlin,swift,typescript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-      - name: Check languages
+      - name: 'Check languages'
         run: |
           expected_languages="csharp,java,swift,javascript"
           actual_languages=$(jq -r '.languages | join(",")' "$RUNNER_TEMP"/config)

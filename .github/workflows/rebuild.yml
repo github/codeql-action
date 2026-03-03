@@ -87,10 +87,7 @@ jobs:
 
       - name: Generate workflows
         working-directory: pr-checks
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruamel.yaml==0.17.31
-          python3 sync.py
+        run: ./sync.sh
 
       - name: "Merge in progress: Finish merge and push"
         if: steps.merge.outputs.merge-in-progress == 'true'

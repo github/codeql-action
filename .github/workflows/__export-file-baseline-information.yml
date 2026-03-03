@@ -52,8 +52,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group:
-    export-file-baseline-information-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
+  group: export-file-baseline-information-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   export-file-baseline-information:
     strategy:
@@ -101,12 +100,12 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         with:
-          output: ${{ runner.temp }}/results
+          output: '${{ runner.temp }}/results'
       - name: Upload SARIF
         uses: actions/upload-artifact@v6
         with:
           name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
-          path: ${{ runner.temp }}/results/javascript.sarif
+          path: '${{ runner.temp }}/results/javascript.sarif'
           retention-days: 7
       - name: Check results
         run: |

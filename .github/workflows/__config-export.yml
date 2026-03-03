@@ -67,18 +67,18 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/analyze
         with:
-          output: ${{ runner.temp }}/results
+          output: '${{ runner.temp }}/results'
           upload-database: false
       - name: Upload SARIF
         uses: actions/upload-artifact@v6
         with:
           name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
-          path: ${{ runner.temp }}/results/javascript.sarif
+          path: '${{ runner.temp }}/results/javascript.sarif'
           retention-days: 7
       - name: Check config properties appear in SARIF
         uses: actions/github-script@v8
         env:
-          SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
+          SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'
         with:
           script: |
             const fs = require('fs');

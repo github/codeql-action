@@ -13,12 +13,17 @@ import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
 
-import { getTemporaryDirectory } from "../actions-util";
+import {
+  getTemporaryDirectory,
+  getWorkflowRunAttempt,
+  getWorkflowRunID,
+} from "../actions-util";
 import { type CodeQL } from "../codeql";
 import { Logger } from "../logging";
 import {
   DiskUsage,
   getErrorMessage,
+  getRequiredEnvParam,
   waitForResultWithTimeLimit,
 } from "../util";
 
@@ -38,12 +43,38 @@ function getStatusFilePath(languages: string[]): string {
   );
 }
 
+/** Details of the job that recorded an overlay status. */
+interface JobInfo {
+  /** The workflow run ID. */
+  workflowRunId: number;
+  /** The workflow run attempt number. */
+  workflowRunAttempt: number;
+  /** The name of the job (from GITHUB_JOB). */
+  name: string;
+}
+
 /** Status of an overlay analysis for a group of languages. */
 export interface OverlayStatus {
   /** Whether the job attempted to build an overlay base database. */
   attemptedToBuildOverlayBaseDatabase: boolean;
   /** Whether the job successfully built an overlay base database. */
   builtOverlayBaseDatabase: boolean;
+  /** Details of the job that recorded this status. */
+  job?: JobInfo;
+}
+
+/** Creates an `OverlayStatus` populated with the details of the current job. */
+export function createOverlayStatus(
+  attributes: Omit<OverlayStatus, "job">,
+): OverlayStatus {
+  return {
+    ...attributes,
+    job: {
+      workflowRunId: getWorkflowRunID(),
+      workflowRunAttempt: getWorkflowRunAttempt(),
+      name: getRequiredEnvParam("GITHUB_JOB"),
+    },
+  };
 }
 
 /**

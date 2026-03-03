@@ -58,6 +58,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.19.9",
     "@types/node-forge": "^1.3.14",
+    "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^21.0.0",
     "ava": "^6.4.1",

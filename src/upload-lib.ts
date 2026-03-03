@@ -115,7 +115,7 @@ async function combineSarifFilesUsingCLI(
 ): Promise<sarif.Log> {
   logger.info("Combining SARIF files using the CodeQL CLI");
 
-  const sarifObjects = sarifFiles.map(util.readSarifFile);
+  const sarifObjects = sarifFiles.map(sarif.readSarifFile);
 
   const deprecationWarningMessage =
     gitHubVersion.type === GitHubVariant.GHES
@@ -197,7 +197,7 @@ async function combineSarifFilesUsingCLI(
     mergeRunsFromEqualCategory: true,
   });
 
-  return util.readSarifFile(outputFile);
+  return sarif.readSarifFile(outputFile);
 }
 
 // Populates the run.automationDetails.id field using the analysis_key and environment
@@ -447,7 +447,11 @@ function countResultsInSarif(sarifLog: string): number {
   return numResults;
 }
 
-export function readSarifFile(sarifFilePath: string): sarif.Log {
+/** A thin wrapper around `readSarifFile` which wraps exceptions in `InvalidSarifUploadError`.
+ *
+ * @throws InvalidSarifUploadError If parsing the SARIF file as JSON failed.
+ */
+export function readSarifFileOrThrow(sarifFilePath: string): sarif.Log {
   try {
     return sarif.readSarifFile(sarifFilePath);
   } catch (e) {
@@ -617,7 +621,7 @@ export async function postProcessSarifFiles(
   if (sarifPaths.length > 1) {
     // Validate that the files we were asked to upload are all valid SARIF files
     for (const sarifPath of sarifPaths) {
-      const parsedSarif = readSarifFile(sarifPath);
+      const parsedSarif = readSarifFileOrThrow(sarifPath);
       validateSarifFileSchema(parsedSarif, sarifPath, logger);
     }
 
@@ -629,7 +633,7 @@ export async function postProcessSarifFiles(
     );
   } else {
     const sarifPath = sarifPaths[0];
-    sarifLog = readSarifFile(sarifPath);
+    sarifLog = readSarifFileOrThrow(sarifPath);
     validateSarifFileSchema(sarifLog, sarifPath, logger);
 
     // Validate that there are no runs for the same category
@@ -755,7 +759,7 @@ export async function uploadPostProcessedFiles(
   logger.startGroup(`Uploading ${uploadTarget.name} results`);
 
   const sarifLog = postProcessingResults.sarif;
-  const toolNames = util.getToolNames(sarifLog);
+  const toolNames = sarif.getToolNames(sarifLog);
 
   logger.debug(`Validating that each SARIF run has a unique category`);
   validateUniqueCategory(sarifLog, uploadTarget.sentinelPrefix);

@@ -17,8 +17,6 @@ import { EnvVar } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
-export * from "./sarif";
-
 /**
  * The name of the file containing the base database OIDs, as stored in the
  * root of the database location.

@@ -71,13 +71,11 @@ export function combineSarifFiles(
 
 /**
  * Checks whether all the runs in the given SARIF files were produced by CodeQL.
- * @param sarifObjects The list of SARIF objects to check.
+ * @param sarifLogs The list of SARIF objects to check.
  */
-export function areAllRunsProducedByCodeQL(sarifObjects: sarif.Log[]): boolean {
-  return sarifObjects.every((sarifObject) => {
-    return sarifObject.runs?.every(
-      (run) => run.tool?.driver?.name === "CodeQL",
-    );
+export function areAllRunsProducedByCodeQL(sarifLogs: sarif.Log[]): boolean {
+  return sarifLogs.every((sarifLog: sarif.Log) => {
+    return sarifLog.runs?.every((run) => run.tool?.driver?.name === "CodeQL");
   });
 }
 
@@ -95,13 +93,13 @@ function createRunKey(run: sarif.Run): RunKey {
 /**
  * Checks whether all runs in the given SARIF files are unique (based on the
  * criteria used by Code Scanning to determine analysis categories).
- * @param sarifObjects The list of SARIF objects to check.
+ * @param sarifLogs The list of SARIF objects to check.
  */
-export function areAllRunsUnique(sarifObjects: sarif.Log[]): boolean {
+export function areAllRunsUnique(sarifLogs: sarif.Log[]): boolean {
   const keys = new Set<string>();
 
-  for (const sarifObject of sarifObjects) {
-    for (const run of sarifObject.runs) {
+  for (const sarifLog of sarifLogs) {
+    for (const run of sarifLog.runs) {
       const key = JSON.stringify(createRunKey(run));
 
       // If the key already exists, the runs are not unique.

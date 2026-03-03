@@ -26,7 +26,10 @@ export enum OverlayDisabledReason {
   LanguageNotEnabled = "language-not-enabled",
   /** The source root is not inside a git repository. */
   NoGitRoot = "no-git-root",
-  /** Overlay analysis is restricted to code-scanning-only configs but the config uses custom queries or packs. */
+  /**
+   * Overlay analysis is restricted to code-scanning-only configs but the config uses custom
+   * queries or packs, disables default queries, or specifies query filters.
+   */
   NonDefaultQueries = "non-default-queries",
   /** The top-level overlay analysis feature flag is not enabled. */
   OverallFeatureNotEnabled = "overall-feature-not-enabled",

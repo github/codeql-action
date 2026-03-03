@@ -1253,7 +1253,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
+    disabledReason: OverlayDisabledReason.UnableToDetermineDiskUsage,
   },
 );
 
@@ -1679,7 +1679,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
+    disabledReason: OverlayDisabledReason.UnableToDetermineDiskUsage,
   },
 );
 

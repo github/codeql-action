@@ -62,15 +62,22 @@ export enum Feature {
   OverlayAnalysisCodeScanningSwift = "overlay_analysis_code_scanning_swift",
   OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
+  /** Controls whether the Actions cache is checked for overlay build outcomes. */
   OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
+  /** Controls whether overlay build failures on are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
   OverlayAnalysisPython = "overlay_analysis_python",
+  /**
+   * Controls whether lower disk space requirements are used for overlay hardware checks.
+   * Has no effect if `OverlayAnalysisSkipResourceChecks` is enabled.
+   */
   OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
+  /** Controls whether hardware checks are skipped for overlay analysis. */
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",

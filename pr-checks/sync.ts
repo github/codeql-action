@@ -29,11 +29,9 @@ type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 /**
  * Represents PR check specifications.
  */
-interface Specification {
+interface Specification extends JobSpecification {
   /** The display name for the check. */
   name: string;
-  /** The workflow steps specific to this check. */
-  steps: any[];
   /** Workflow-level input definitions forwarded to `workflow_dispatch`/`workflow_call`. */
   inputs?: Record<string, WorkflowInput>;
   /** CodeQL bundle versions to test against. Defaults to `DEFAULT_TEST_VERSIONS`. */
@@ -45,25 +43,31 @@ interface Specification {
   /** Values for the `analysis-kinds` matrix dimension. */
   analysisKinds?: string[];
 
+  /** Container image configuration for the job. */
+  container?: any;
+  /** Service containers for the job. */
+  services?: any;
+
+  /** If set, this check is part of a named collection that gets its own caller workflow. */
+  collection?: string;
+}
+
+/** Represents job specifications. */
+interface JobSpecification {
+  /** Custom permissions override for the job. */
+  permissions?: Record<string, string>;
+  /** Extra environment variables for the job. */
+  env?: Record<string, any>;
+
+  /** The workflow steps specific to this check. */
+  steps: any[];
+
   installNode?: boolean;
   installGo?: boolean;
   installJava?: boolean;
   installPython?: boolean;
   installDotNet?: boolean;
   installYq?: boolean;
-
-  /** Container image configuration for the job. */
-  container?: any;
-  /** Service containers for the job. */
-  services?: any;
-
-  /** Custom permissions override for the job. */
-  permissions?: Record<string, string>;
-  /** Extra environment variables for the job. */
-  env?: Record<string, any>;
-
-  /** If set, this check is part of a named collection that gets its own caller workflow. */
-  collection?: string;
 }
 
 // The default set of CodeQL Bundle versions to use for the PR checks.

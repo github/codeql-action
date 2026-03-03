@@ -46,27 +46,33 @@ export function combineSarifFiles(
   logger: Logger,
 ): sarif.Log {
   logger.info(`Loading SARIF file(s)`);
-  const combinedSarif: sarif.Log = {
-    version: "2.1.0",
-    runs: [],
-  };
+  const runs: sarif.Run[] = [];
+  let version: sarif.Log.version | undefined = undefined;
 
   for (const sarifFile of sarifFiles) {
     logger.debug(`Loading SARIF file: ${sarifFile}`);
-    const sarifObject = readSarifFile(sarifFile);
-    // Check SARIF version
-    if (combinedSarif.version === null) {
-      combinedSarif.version = sarifObject.version;
-    } else if (combinedSarif.version !== sarifObject.version) {
+    const sarifLog = readSarifFile(sarifFile);
+    // If this is the first SARIF file we are reading, store the version from it so that we
+    // can put it in the combined SARIF. If not, then check that the versions match and
+    // throw an exception if they do not.
+    if (version === undefined) {
+      version = sarifLog.version;
+    } else if (version !== sarifLog.version) {
       throw new InvalidSarifUploadError(
-        `Different SARIF versions encountered: ${combinedSarif.version} and ${sarifObject.version}`,
+        `Different SARIF versions encountered: ${version} and ${sarifLog.version}`,
       );
     }
 
-    combinedSarif.runs.push(...sarifObject.runs);
+    runs.push(...sarifLog.runs);
   }
 
-  return combinedSarif;
+  // We can't guarantee that the SARIF files we load will have version properties. As a fallback,
+  // we set it to the expected version if we didn't find any other.
+  if (version === undefined) {
+    version = "2.1.0";
+  }
+
+  return { version, runs };
 }
 
 /**

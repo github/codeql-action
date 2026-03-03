@@ -1151,7 +1151,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
@@ -1460,7 +1460,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1481,7 +1481,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1502,7 +1502,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1523,7 +1523,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1538,7 +1538,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
@@ -1553,7 +1553,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
@@ -1568,7 +1568,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.LanguageNotEnabled,
   },
 );
 
@@ -1757,7 +1757,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1778,7 +1778,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1799,7 +1799,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1820,7 +1820,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
@@ -1835,7 +1835,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
@@ -1850,7 +1850,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
@@ -1865,7 +1865,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.LanguageNotEnabled,
   },
 );
 
@@ -2057,7 +2057,7 @@ for (const language in KnownLanguage) {
     {
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
-      disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+      disabledReason: OverlayDisabledReason.LanguageNotEnabled,
     },
   );
 }

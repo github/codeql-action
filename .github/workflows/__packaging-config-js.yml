@@ -25,34 +25,34 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
-      go-version:
-        type: string
-        description: The version of Go to install
-        required: false
-        default: '>=1.21.0'
       dotnet-version:
         type: string
         description: The version of .NET to install
         required: false
         default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
   workflow_call:
     inputs:
-      go-version:
-        type: string
-        description: The version of Go to install
-        required: false
-        default: '>=1.21.0'
       dotnet-version:
         type: string
         description: The version of .NET to install
         required: false
         default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: packaging-config-js-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
+  group: packaging-config-js-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
   packaging-config-js:
     strategy:
@@ -75,13 +75,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20.x
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -89,15 +82,22 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - name: Install Go
         uses: actions/setup-go@v6
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
-      - name: Install .NET
-        uses: actions/setup-dotnet@v5
+      - name: Install Node.js
+        uses: actions/setup-node@v6
         with:
-          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+          node-version: 20.x
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
       - uses: ./../action/init
         with:
           config-file: '.github/codeql/codeql-config-packaging.yml'

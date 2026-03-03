@@ -32,8 +32,6 @@ type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
  * Represents PR check specifications.
  */
 interface Specification extends JobSpecification {
-  /** The display name for the check. */
-  name: string;
   /** Workflow-level input definitions forwarded to `workflow_dispatch`/`workflow_call`. */
   inputs?: Record<string, WorkflowInput>;
   /** CodeQL bundle versions to test against. Defaults to `DEFAULT_TEST_VERSIONS`. */
@@ -50,12 +48,17 @@ interface Specification extends JobSpecification {
   /** Service containers for the job. */
   services?: any;
 
+  /** Additional jobs to run after the main PR check job. */
+  validationJobs?: Record<string, JobSpecification>;
+
   /** If set, this check is part of a named collection that gets its own caller workflow. */
   collection?: string;
 }
 
 /** Represents job specifications. */
 interface JobSpecification {
+  /** The display name for the check. */
+  name: string;
   /** Custom permissions override for the job. */
   permissions?: Record<string, string>;
   /** Extra environment variables for the job. */
@@ -469,6 +472,92 @@ function generateJob(
   return { checkJob, workflowInputs };
 }
 
+/** Generates a validation job. */
+function generateValidationJob(
+  specDocument: yaml.Document,
+  jobSpecification: JobSpecification,
+  checkName: string,
+  name: string,
+) {
+  // Determine which languages or frameworks have to be installed.
+  const { inputs, steps } = getSetupSteps(jobSpecification);
+
+  // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
+  const specSteps = specDocument.getIn([
+    "validationJobs",
+    name,
+    "steps",
+  ]) as yaml.YAMLSeq;
+
+  // Add the generated steps in front of the ones from the specification.
+  specSteps.items.unshift(...steps);
+
+  const validationJob: Record<string, any> = {
+    name: jobSpecification.name,
+    if: "github.triggering_actor != 'dependabot[bot]'",
+    needs: [checkName],
+    permissions: {
+      contents: "read",
+      "security-events": "read",
+    },
+    "timeout-minutes": 5,
+    "runs-on": "ubuntu-slim",
+    steps: specSteps,
+  };
+
+  if (jobSpecification.permissions) {
+    validationJob.permissions = jobSpecification.permissions;
+  }
+
+  for (const key of ["env"] as const) {
+    if (jobSpecification[key] !== undefined) {
+      validationJob[key] = jobSpecification[key];
+    }
+  }
+
+  validationJob.env = validationJob.env ?? {};
+  if (!("CODEQL_ACTION_TEST_MODE" in validationJob.env)) {
+    validationJob.env.CODEQL_ACTION_TEST_MODE = true;
+  }
+
+  return { validationJob, inputs };
+}
+
+/** Generates additional jobs that run after the main check job, based on the `validationJobs` property. */
+function generateValidationJobs(
+  specDocument: yaml.Document,
+  checkSpecification: Specification,
+  checkName: string,
+): Record<string, any> {
+  if (checkSpecification.validationJobs === undefined) {
+    return {};
+  }
+
+  const validationJobs: Record<string, any> = {};
+  let workflowInputs: WorkflowInputs = {};
+
+  for (const [jobName, jobSpec] of Object.entries(
+    checkSpecification.validationJobs,
+  )) {
+    if (checkName === jobName) {
+      throw new Error(
+        `Validation job '${jobName}' cannot have the same name as the main job.`,
+      );
+    }
+
+    const { validationJob, inputs } = generateValidationJob(
+      specDocument,
+      jobSpec,
+      checkName,
+      jobName,
+    );
+    validationJobs[jobName] = validationJob;
+    workflowInputs = { ...workflowInputs, ...inputs };
+  }
+
+  return { validationJobs, workflowInputs };
+}
+
 /**
  * Main entry point for the sync script.
  */
@@ -505,6 +594,12 @@ function main(): void {
       specDocument,
       checkSpecification,
     );
+    const { validationJobs, validationJobInputs } = generateValidationJobs(
+      specDocument,
+      checkSpecification,
+      checkName,
+    );
+    const combinedInputs = { ...workflowInputs, ...validationJobInputs };
 
     // If this check belongs to a named collection, record it.
     if (checkSpecification.collection) {
@@ -515,12 +610,12 @@ function main(): void {
       collections[collectionName].push({
         specification: checkSpecification,
         checkName,
-        inputs: workflowInputs,
+        inputs: combinedInputs,
       });
     }
 
     let extraGroupName = "";
-    for (const inputName of Object.keys(workflowInputs)) {
+    for (const inputName of Object.keys(combinedInputs)) {
       extraGroupName += "-${{inputs." + inputName + "}}";
     }
 
@@ -545,10 +640,10 @@ function main(): void {
         },
         schedule: [{ cron }],
         workflow_dispatch: {
-          inputs: workflowInputs,
+          inputs: combinedInputs,
         },
         workflow_call: {
-          inputs: workflowInputs,
+          inputs: combinedInputs,
         },
       },
       defaults: {
@@ -563,6 +658,7 @@ function main(): void {
       },
       jobs: {
         [checkName]: checkJob,
+        ...validationJobs,
       },
     };
 

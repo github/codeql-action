@@ -653,6 +653,11 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
   swift: Feature.OverlayAnalysisCodeScanningSwift,
 };
 
+/**
+ * Checks whether the overlay analysis feature is enabled for the given
+ * languages and configuration, returning the specific reason it is disabled,
+ * or `undefined` if it is enabled.
+ */
 async function getOverlayFeatureDisabledReason(
   features: FeatureEnablement,
   codeql: CodeQL,
@@ -756,8 +761,9 @@ async function runnerHasSufficientMemory(
 }
 
 /**
- * Checks if the runner supports overlay analysis based on available disk space
- * and the maximum memory CodeQL will be allowed to use.
+ * Checks if the runner has sufficient disk space and memory for overlay
+ * analysis, returning the specific reason if not, or `undefined` if resources
+ * are sufficient.
  */
 async function getResourceDisabledReason(
   codeql: CodeQL,

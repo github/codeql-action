@@ -353,8 +353,7 @@ test("getCodeQLSource correctly returns nightly CLI version when forced by FF", 
   sinon.stub(api, "getApiClient").value(() => client);
 
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    process.env["GITHUB_EVENT_NAME"] = "dynamic";
+    setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
 
     const source = await setupCodeql.getCodeQLSource(
       undefined,
@@ -405,8 +404,7 @@ test("getCodeQLSource correctly returns latest version from toolcache when tools
     .returns(latestVersionPath);
 
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    process.env["GITHUB_EVENT_NAME"] = "dynamic";
+    setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
 
     const source = await setupCodeql.getCodeQLSource(
       "toolcache",

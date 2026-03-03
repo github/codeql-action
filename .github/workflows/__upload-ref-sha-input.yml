@@ -62,8 +62,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group:
-    upload-ref-sha-input-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: upload-ref-sha-input-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   upload-ref-sha-input:
     strategy:
@@ -107,19 +106,18 @@ jobs:
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           languages: cpp,csharp,java,javascript,python
-          config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{
-            github.sha }}
+          config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
       - name: Build code
         run: ./build.sh
-  # Generate some SARIF we can upload with the upload-sarif step
+      # Generate some SARIF we can upload with the upload-sarif step
       - uses: ./../action/analyze
         with:
-          ref: refs/heads/main
-          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
           upload: never
       - uses: ./../action/upload-sarif
         with:
-          ref: refs/heads/main
-          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
     env:
       CODEQL_ACTION_TEST_MODE: true

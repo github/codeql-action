@@ -256,10 +256,10 @@ export function resolveUriToFile(
 // Compute fingerprints for results in the given sarif file
 // and return an updated sarif file contents.
 export async function addFingerprints(
-  sarifLog: sarif.Log,
+  sarifLog: Partial<sarif.Log>,
   sourceRoot: string,
   logger: Logger,
-): Promise<sarif.Log> {
+): Promise<Partial<sarif.Log>> {
   logger.info(
     `Adding fingerprints to SARIF file. See ${DocUrl.TRACK_CODE_SCANNING_ALERTS_ACROSS_RUNS} for more information.`,
   );

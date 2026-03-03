@@ -7,6 +7,7 @@ import { getGitHubVersion } from "./api-client";
 import { initFeatures } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
+import { InvalidSarifUploadError } from "./sarif";
 import {
   createStatusReportBase,
   sendStatusReport,
@@ -20,7 +21,6 @@ import * as upload_lib from "./upload-lib";
 import { postProcessAndUploadSarif } from "./upload-sarif";
 import {
   ConfigurationError,
-  InvalidSarifUploadError,
   checkActionVersion,
   checkDiskUsage,
   getErrorMessage,

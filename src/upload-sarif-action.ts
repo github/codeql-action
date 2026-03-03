@@ -7,6 +7,7 @@ import { getGitHubVersion } from "./api-client";
 import { initFeatures } from "./feature-flags";
 import { Logger, getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
+import { InvalidSarifUploadError } from "./sarif";
 import {
   createStatusReportBase,
   sendStatusReport,
@@ -141,7 +142,7 @@ async function run(startedAt: Date) {
   } catch (unwrappedError) {
     const error =
       isThirdPartyAnalysis(ActionName.UploadSarif) &&
-      unwrappedError instanceof upload_lib.InvalidSarifUploadError
+      unwrappedError instanceof InvalidSarifUploadError
         ? new ConfigurationError(unwrappedError.message)
         : wrapError(unwrappedError);
     const message = error.message;

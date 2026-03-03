@@ -10,19 +10,10 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
+import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
-
-test("getToolNames", (t) => {
-  const input = fs.readFileSync(
-    `${__dirname}/../src/testdata/tool-names.sarif`,
-    "utf8",
-  );
-  const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
-  t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
-});
 
 const GET_MEMORY_FLAG_TESTS = [
   {
@@ -366,67 +357,6 @@ test("waitForResultWithTimeLimit doesn't call callback if promise resolves", asy
   await new Promise((r) => setTimeout(r, 200));
   t.deepEqual(shortTaskTimedOut, false);
   t.deepEqual(result, 99);
-});
-
-function createMockSarifWithNotification(
-  locations: util.SarifLocation[],
-): util.SarifFile {
-  return {
-    runs: [
-      {
-        tool: {
-          driver: {
-            name: "CodeQL",
-          },
-        },
-        invocations: [
-          {
-            toolExecutionNotifications: [
-              {
-                locations,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
-}
-
-const stubLocation: util.SarifLocation = {
-  physicalLocation: {
-    artifactLocation: {
-      uri: "file1",
-    },
-  },
-};
-
-test("fixInvalidNotifications leaves notifications with unique locations alone", (t) => {
-  const messages: LoggedMessage[] = [];
-  const result = util.fixInvalidNotifications(
-    createMockSarifWithNotification([stubLocation]),
-    getRecordingLogger(messages),
-  );
-  t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
-  t.is(messages.length, 1);
-  t.deepEqual(messages[0], {
-    type: "debug",
-    message: "No duplicate locations found in SARIF notification objects.",
-  });
-});
-
-test("fixInvalidNotifications removes duplicate locations", (t) => {
-  const messages: LoggedMessage[] = [];
-  const result = util.fixInvalidNotifications(
-    createMockSarifWithNotification([stubLocation, stubLocation]),
-    getRecordingLogger(messages),
-  );
-  t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
-  t.is(messages.length, 1);
-  t.deepEqual(messages[0], {
-    type: "info",
-    message: "Removed 1 duplicate locations from SARIF notification objects.",
-  });
 });
 
 function formatGitHubVersion(version: util.GitHubVersion): string {

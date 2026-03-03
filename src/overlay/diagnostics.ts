@@ -12,8 +12,12 @@ import { RepositoryPropertyName } from "../feature-flags/properties";
 export enum OverlayDisabledReason {
   /** Overlay analysis was disabled by a repository property. */
   DisabledByRepositoryProperty = "disabled-by-repository-property",
-  /** Overlay analysis feature was not enabled. */
-  FeatureNotEnabled = "feature-not-enabled",
+  /** The top-level overlay analysis feature flag is not enabled. */
+  OverallFeatureNotEnabled = "overall-feature-not-enabled",
+  /** Overlay analysis is not enabled for one or more of the configured languages. */
+  LanguageNotEnabled = "language-not-enabled",
+  /** Overlay analysis is restricted to code-scanning-only configs but the config uses custom queries or packs. */
+  NonDefaultQueries = "non-default-queries",
   /** The build mode is incompatible with overlay analysis. */
   IncompatibleBuildMode = "incompatible-build-mode",
   /** The CodeQL CLI version is too old to support overlay analysis. */

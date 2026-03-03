@@ -653,14 +653,14 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
   swift: Feature.OverlayAnalysisCodeScanningSwift,
 };
 
-async function isOverlayAnalysisFeatureEnabled(
+async function getOverlayFeatureDisabledReason(
   features: FeatureEnablement,
   codeql: CodeQL,
   languages: Language[],
   codeScanningConfig: UserConfig,
-): Promise<boolean> {
+): Promise<OverlayDisabledReason | undefined> {
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
-    return false;
+    return OverlayDisabledReason.OverallFeatureNotEnabled;
   }
   let enableForCodeScanningOnly = false;
   for (const language of languages) {
@@ -677,20 +677,22 @@ async function isOverlayAnalysisFeatureEnabled(
       enableForCodeScanningOnly = true;
       continue;
     }
-    return false;
+    return OverlayDisabledReason.LanguageNotEnabled;
   }
   if (enableForCodeScanningOnly) {
     // A code-scanning configuration runs only the (default) code-scanning suite
     // if the default queries are not disabled, and no packs, queries, or
     // query-filters are specified.
-    return (
+    const isCodeScanningOnly =
       codeScanningConfig["disable-default-queries"] !== true &&
       codeScanningConfig.packs === undefined &&
       codeScanningConfig.queries === undefined &&
-      codeScanningConfig["query-filters"] === undefined
-    );
+      codeScanningConfig["query-filters"] === undefined;
+    if (!isCodeScanningOnly) {
+      return OverlayDisabledReason.NonDefaultQueries;
+    }
   }
-  return true;
+  return undefined;
 }
 
 /** Checks if the runner has enough disk space for overlay analysis. */
@@ -837,12 +839,12 @@ export async function getOverlayDatabaseMode(
     overlayDatabaseMode = OverlayDatabaseMode.None;
     disabledReason = OverlayDisabledReason.DisabledByRepositoryProperty;
   } else if (
-    await isOverlayAnalysisFeatureEnabled(
+    (disabledReason = await getOverlayFeatureDisabledReason(
       features,
       codeql,
       languages,
       codeScanningConfig,
-    )
+    )) === undefined
   ) {
     const performResourceChecks = !(await features.getValue(
       Feature.OverlayAnalysisSkipResourceChecks,
@@ -903,8 +905,6 @@ export async function getOverlayDatabaseMode(
           "with caching because we are analyzing the default branch.",
       );
     }
-  } else {
-    disabledReason = OverlayDisabledReason.FeatureNotEnabled;
   }
 
   const disabledResult = (reason: OverlayDisabledReason | undefined) => ({

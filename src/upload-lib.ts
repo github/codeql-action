@@ -46,7 +46,7 @@ const GENERIC_404_MSG =
 
 // Checks whether the deprecation warning for combining SARIF files should be shown.
 export async function shouldShowCombineSarifFilesDeprecationWarning(
-  sarifObjects: sarif.Log[],
+  sarifObjects: Array<Partial<sarif.Log>>,
   githubVersion: GitHubVersion,
 ) {
   // Do not show this warning on GHES versions before 3.14.0
@@ -66,7 +66,7 @@ export async function shouldShowCombineSarifFilesDeprecationWarning(
 }
 
 export async function throwIfCombineSarifFilesDisabled(
-  sarifObjects: sarif.Log[],
+  sarifObjects: Array<Partial<sarif.Log>>,
   githubVersion: GitHubVersion,
 ) {
   if (!(await shouldDisableCombineSarifFiles(sarifObjects, githubVersion))) {
@@ -83,7 +83,7 @@ export async function throwIfCombineSarifFilesDisabled(
 
 // Checks whether combining SARIF files should be disabled.
 async function shouldDisableCombineSarifFiles(
-  sarifObjects: sarif.Log[],
+  sarifObjects: Array<Partial<sarif.Log>>,
   githubVersion: GitHubVersion,
 ) {
   if (githubVersion.type === GitHubVariant.GHES) {
@@ -112,7 +112,7 @@ async function combineSarifFilesUsingCLI(
   gitHubVersion: GitHubVersion,
   features: FeatureEnablement,
   logger: Logger,
-): Promise<sarif.Log> {
+): Promise<Partial<sarif.Log>> {
   logger.info("Combining SARIF files using the CodeQL CLI");
 
   const sarifObjects = sarifFiles.map(sarif.readSarifFile);
@@ -203,11 +203,11 @@ async function combineSarifFilesUsingCLI(
 // Populates the run.automationDetails.id field using the analysis_key and environment
 // and return an updated sarif file contents.
 export function populateRunAutomationDetails(
-  sarifFile: sarif.Log,
+  sarifFile: Partial<sarif.Log>,
   category: string | undefined,
   analysis_key: string,
   environment: string | undefined,
-): sarif.Log {
+): Partial<sarif.Log> {
   const automationID = getAutomationID(category, analysis_key, environment);
 
   if (automationID !== undefined) {
@@ -451,7 +451,9 @@ function countResultsInSarif(sarifLog: string): number {
  *
  * @throws InvalidSarifUploadError If parsing the SARIF file as JSON failed.
  */
-export function readSarifFileOrThrow(sarifFilePath: string): sarif.Log {
+export function readSarifFileOrThrow(
+  sarifFilePath: string,
+): Partial<sarif.Log> {
   try {
     return sarif.readSarifFile(sarifFilePath);
   } catch (e) {
@@ -464,10 +466,10 @@ export function readSarifFileOrThrow(sarifFilePath: string): sarif.Log {
 // Validates the given SARIF object and throws an error if the SARIF object is invalid.
 // The file path is only used in error messages to improve clarity.
 export function validateSarifFileSchema(
-  sarifLog: sarif.Log,
+  sarifLog: Partial<sarif.Log>,
   sarifFilePath: string,
   logger: Logger,
-) {
+): sarifLog is sarif.Log {
   if (
     areAllRunsProducedByCodeQL([sarifLog]) &&
     // We want to validate CodeQL SARIF in testing environments.
@@ -476,7 +478,7 @@ export function validateSarifFileSchema(
     logger.debug(
       `Skipping SARIF schema validation for ${sarifFilePath} as all runs are produced by CodeQL.`,
     );
-    return;
+    return true;
   }
 
   logger.info(`Validating ${sarifFilePath}`);
@@ -525,6 +527,8 @@ export function validateSarifFileSchema(
       )}`,
     );
   }
+
+  return true;
 }
 
 // buildPayload constructs a map ready to be uploaded to the API from the given
@@ -585,7 +589,7 @@ export function buildPayload(
 }
 
 export interface PostProcessingResults {
-  sarif: sarif.Log;
+  sarif: Partial<sarif.Log>;
   analysisKey: string;
   environment: string;
 }
@@ -615,7 +619,7 @@ export async function postProcessSarifFiles(
 
   const gitHubVersion = await getGitHubVersion();
 
-  let sarifLog: sarif.Log;
+  let sarifLog: Partial<sarif.Log>;
   category = analysis.fixCategory(logger, category);
 
   if (sarifPaths.length > 1) {
@@ -1007,14 +1011,14 @@ function handleProcessingResultForUnsuccessfulExecution(
 }
 
 export function validateUniqueCategory(
-  sarifLog: sarif.Log,
+  sarifLog: Partial<sarif.Log>,
   sentinelPrefix: string,
 ): void {
   // duplicate categories are allowed in the same sarif file
   // but not across multiple sarif files
   const categories = {} as Record<string, { id?: string; tool?: string }>;
 
-  for (const run of sarifLog.runs) {
+  for (const run of sarifLog.runs || []) {
     const id = run?.automationDetails?.id;
     const tool = run.tool?.driver?.name;
     const category = `${sanitize(id)}_${sanitize(tool)}`;
@@ -1051,10 +1055,14 @@ function sanitize(str?: string) {
 
 function filterAlertsByDiffRange(
   logger: Logger,
-  sarifLog: sarif.Log,
-): sarif.Log {
+  sarifLog: Partial<sarif.Log>,
+): Partial<sarif.Log> {
   const diffRanges = readDiffRangesJsonFile(logger);
   if (!diffRanges?.length) {
+    return sarifLog;
+  }
+
+  if (sarifLog.runs === undefined) {
     return sarifLog;
   }
 

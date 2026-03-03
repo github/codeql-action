@@ -21,7 +21,7 @@ export class InvalidSarifUploadError extends Error {}
  *
  * Returns an array of unique string tool names.
  */
-export function getToolNames(sarifFile: sarif.Log): string[] {
+export function getToolNames(sarifFile: Partial<sarif.Log>): string[] {
   const toolNames = {};
 
   for (const run of sarifFile.runs || []) {
@@ -35,7 +35,15 @@ export function getToolNames(sarifFile: sarif.Log): string[] {
   return Object.keys(toolNames);
 }
 
-export function readSarifFile(sarifFilePath: string): sarif.Log {
+/**
+ * Reads the file pointed at by `sarifFilePath` and parses it as JSON. This function does
+ * not validate that the JSON represents a valid SARIF file. I.e. this function will only
+ * throw if the file cannot be read or does not contain valid JSON.
+ *
+ * @param sarifFilePath The file to read.
+ * @returns The resulting JSON value, cast to a SARIF `Log`.
+ */
+export function readSarifFile(sarifFilePath: string): Partial<sarif.Log> {
   return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as sarif.Log;
 }
 
@@ -63,7 +71,7 @@ export function combineSarifFiles(
       );
     }
 
-    runs.push(...sarifLog.runs);
+    runs.push(...(sarifLog?.runs || []));
   }
 
   // We can't guarantee that the SARIF files we load will have version properties. As a fallback,
@@ -79,8 +87,10 @@ export function combineSarifFiles(
  * Checks whether all the runs in the given SARIF files were produced by CodeQL.
  * @param sarifLogs The list of SARIF objects to check.
  */
-export function areAllRunsProducedByCodeQL(sarifLogs: sarif.Log[]): boolean {
-  return sarifLogs.every((sarifLog: sarif.Log) => {
+export function areAllRunsProducedByCodeQL(
+  sarifLogs: Array<Partial<sarif.Log>>,
+): boolean {
+  return sarifLogs.every((sarifLog: Partial<sarif.Log>) => {
     return sarifLog.runs?.every((run) => run.tool?.driver?.name === "CodeQL");
   });
 }
@@ -101,10 +111,16 @@ function createRunKey(run: sarif.Run): RunKey {
  * criteria used by Code Scanning to determine analysis categories).
  * @param sarifLogs The list of SARIF objects to check.
  */
-export function areAllRunsUnique(sarifLogs: sarif.Log[]): boolean {
+export function areAllRunsUnique(
+  sarifLogs: Array<Partial<sarif.Log>>,
+): boolean {
   const keys = new Set<string>();
 
   for (const sarifLog of sarifLogs) {
+    if (sarifLog.runs === undefined) {
+      continue;
+    }
+
     for (const run of sarifLog.runs) {
       const key = JSON.stringify(createRunKey(run));
 

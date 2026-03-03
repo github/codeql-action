@@ -759,20 +759,20 @@ async function runnerHasSufficientMemory(
  * Checks if the runner supports overlay analysis based on available disk space
  * and the maximum memory CodeQL will be allowed to use.
  */
-async function runnerSupportsOverlayAnalysis(
+async function getResourceDisabledReason(
   codeql: CodeQL,
   diskUsage: DiskUsage | undefined,
   ramInput: string | undefined,
   logger: Logger,
   useV2ResourceChecks: boolean,
-): Promise<boolean> {
+): Promise<OverlayDisabledReason | undefined> {
   if (!runnerHasSufficientDiskSpace(diskUsage, logger, useV2ResourceChecks)) {
-    return false;
+    return OverlayDisabledReason.InsufficientDiskSpace;
   }
   if (!(await runnerHasSufficientMemory(codeql, ramInput, logger))) {
-    return false;
+    return OverlayDisabledReason.InsufficientMemory;
   }
-  return true;
+  return undefined;
 }
 
 /**
@@ -860,18 +860,19 @@ export async function getOverlayDatabaseMode(
       performResourceChecks || checkOverlayStatus
         ? await checkDiskUsage(logger)
         : undefined;
+    let resourceDisabledReason: OverlayDisabledReason | undefined;
     if (
       performResourceChecks &&
-      !(await runnerSupportsOverlayAnalysis(
+      (resourceDisabledReason = await getResourceDisabledReason(
         codeql,
         diskUsage,
         ramInput,
         logger,
         useV2ResourceChecks,
-      ))
+      )) !== undefined
     ) {
       overlayDatabaseMode = OverlayDatabaseMode.None;
-      disabledReason = OverlayDisabledReason.InsufficientResources;
+      disabledReason = resourceDisabledReason;
     } else if (checkOverlayStatus && diskUsage === undefined) {
       logger.warning(
         `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,

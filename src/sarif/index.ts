@@ -6,8 +6,12 @@ import * as sarif from "sarif";
 
 export type * from "sarif";
 
-// `automationId` is non-standard.
+// Extends `ToolComponent` with the non-standard `automationId` property we use.
 export type RunKey = sarif.ToolComponent & {
+  /**
+   * Describes a SARIF run (either uniquely or not uniquely) based on the criteria used by
+   * Code Scanning to determine analysis categories
+   */
   automationId: string | undefined;
 };
 

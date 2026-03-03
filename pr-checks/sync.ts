@@ -5,6 +5,8 @@ import * as path from "path";
 
 import * as yaml from "yaml";
 
+import { KnownLanguage } from "../src/languages";
+
 /** Known workflow input names. */
 enum KnownInputName {
   GoVersion = "go-version",
@@ -70,6 +72,16 @@ interface JobSpecification {
   installYq?: boolean;
 }
 
+/** Describes language/framework-specific steps and inputs. */
+interface LanguageSetup {
+  specProperty: keyof Specification;
+  inputs?: WorkflowInputs;
+  steps: any[];
+}
+
+/** Describes partial mappings from known languages to their specific setup information. */
+type LanguageSetups = Partial<Record<KnownLanguage, LanguageSetup>>;
+
 // The default set of CodeQL Bundle versions to use for the PR checks.
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
@@ -93,6 +105,131 @@ const defaultTestVersions = [
   // A nightly build directly from the our private repo, built in the last 24 hours.
   "nightly-latest",
 ];
+
+/** The default versions we use for languages / frameworks, if not specified as a workflow input. */
+const defaultLanguageVersions = {
+  javascript: "20.x",
+  go: ">=1.21.0",
+  java: "17",
+  python: "3.13",
+  csharp: "9.x",
+} as const satisfies Partial<Record<KnownLanguage, string>>;
+
+/** A partial mapping from known languages to their specific setup information. */
+const languageSetups: LanguageSetups = {
+  javascript: {
+    specProperty: "installNode",
+    steps: [
+      {
+        name: "Install Node.js",
+        uses: "actions/setup-node@v6",
+        with: {
+          "node-version": defaultLanguageVersions.javascript,
+          cache: "npm",
+        },
+      },
+      {
+        name: "Install dependencies",
+        run: "npm ci",
+      },
+    ],
+  },
+  go: {
+    specProperty: "installGo",
+    inputs: {
+      [KnownInputName.GoVersion]: {
+        type: "string",
+        description: "The version of Go to install",
+        required: false,
+        default: defaultLanguageVersions.go,
+      },
+    },
+    steps: [
+      {
+        name: "Install Go",
+        uses: "actions/setup-go@v6",
+        with: {
+          "go-version":
+            "${{ inputs.go-version || '" + defaultLanguageVersions.go + "' }}",
+          // to avoid potentially misleading autobuilder results where we expect it to download
+          // dependencies successfully, but they actually come from a warm cache
+          cache: false,
+        },
+      },
+    ],
+  },
+  java: {
+    specProperty: "installJava",
+    inputs: {
+      [KnownInputName.JavaVersion]: {
+        type: "string",
+        description: "The version of Java to install",
+        required: false,
+        default: defaultLanguageVersions.java,
+      },
+    },
+    steps: [
+      {
+        name: "Install Java",
+        uses: "actions/setup-java@v5",
+        with: {
+          "java-version":
+            "${{ inputs.java-version || '" +
+            defaultLanguageVersions.java +
+            "' }}",
+          distribution: "temurin",
+        },
+      },
+    ],
+  },
+  python: {
+    specProperty: "installPython",
+    inputs: {
+      [KnownInputName.PythonVersion]: {
+        type: "string",
+        description: "The version of Python to install",
+        required: false,
+        default: defaultLanguageVersions.python,
+      },
+    },
+    steps: [
+      {
+        name: "Install Python",
+        if: "matrix.version != 'nightly-latest'",
+        uses: "actions/setup-python@v6",
+        with: {
+          "python-version":
+            "${{ inputs.python-version || '" +
+            defaultLanguageVersions.python +
+            "' }}",
+        },
+      },
+    ],
+  },
+  csharp: {
+    specProperty: "installDotNet",
+    inputs: {
+      [KnownInputName.DotnetVersion]: {
+        type: "string",
+        description: "The version of .NET to install",
+        required: false,
+        default: defaultLanguageVersions.csharp,
+      },
+    },
+    steps: [
+      {
+        name: "Install .NET",
+        uses: "actions/setup-dotnet@v5",
+        with: {
+          "dotnet-version":
+            "${{ inputs.dotnet-version || '" +
+            defaultLanguageVersions.csharp +
+            "' }}",
+        },
+      },
+    ],
+  },
+};
 
 const THIS_DIR = __dirname;
 const CHECKS_DIR = path.join(THIS_DIR, "checks");
@@ -139,6 +276,36 @@ function stripTrailingWhitespace(content: string): string {
 }
 
 /**
+ * Retrieves setup steps and additional input definitions based on specific languages or frameworks
+ * that are requested by the `checkSpecification`.
+ *
+ * @returns An object containing setup steps and additional input specifications.
+ */
+function getSetupSteps(checkSpecification: Specification): {
+  inputs: WorkflowInputs;
+  steps: any[];
+} {
+  let inputs: WorkflowInputs = {};
+  const steps = [];
+
+  for (const language of Object.values(KnownLanguage).sort()) {
+    const setupSpec = languageSetups[language];
+
+    if (
+      setupSpec === undefined ||
+      checkSpecification[setupSpec.specProperty] === undefined
+    ) {
+      continue;
+    }
+
+    steps.push(...setupSpec.steps);
+    inputs = { ...inputs, ...setupSpec.inputs };
+  }
+
+  return { inputs, steps };
+}
+
+/**
  * Main entry point for the sync script.
  */
 function main(): void {
@@ -170,7 +337,6 @@ function main(): void {
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
-    const workflowInputs: WorkflowInputs = {};
     let matrix: Array<Record<string, any>> = [];
 
     for (const version of checkSpecification.versions ?? defaultTestVersions) {
@@ -216,134 +382,30 @@ function main(): void {
       matrix = newMatrix;
     }
 
+    // Determine which languages or frameworks have to be installed.
+    const setupInfo = getSetupSteps(checkSpecification);
+    const workflowInputs = setupInfo.inputs;
+
     // Construct the workflow steps needed for this check.
     const steps: any[] = [
       {
         name: "Check out repository",
         uses: "actions/checkout@v6",
       },
-    ];
-
-    const installNode = checkSpecification.installNode;
-
-    if (installNode) {
-      steps.push(
-        {
-          name: "Install Node.js",
-          uses: "actions/setup-node@v6",
-          with: {
-            "node-version": "20.x",
-            cache: "npm",
-          },
+      {
+        name: "Prepare test",
+        id: "prepare-test",
+        uses: "./.github/actions/prepare-test",
+        with: {
+          version: "${{ matrix.version }}",
+          "use-all-platform-bundle": useAllPlatformBundle,
+          // If the action is being run from a container, then do not setup kotlin.
+          // This is because the kotlin binaries cannot be downloaded from the container.
+          "setup-kotlin": "container" in checkSpecification ? "false" : "true",
         },
-        {
-          name: "Install dependencies",
-          run: "npm ci",
-        },
-      );
-    }
-
-    steps.push({
-      name: "Prepare test",
-      id: "prepare-test",
-      uses: "./.github/actions/prepare-test",
-      with: {
-        version: "${{ matrix.version }}",
-        "use-all-platform-bundle": useAllPlatformBundle,
-        // If the action is being run from a container, then do not setup kotlin.
-        // This is because the kotlin binaries cannot be downloaded from the container.
-        "setup-kotlin": "container" in checkSpecification ? "false" : "true",
       },
-    });
-
-    const installGo = checkSpecification.installGo;
-
-    if (installGo) {
-      const baseGoVersionExpr = ">=1.21.0";
-      workflowInputs[KnownInputName.GoVersion] = {
-        type: "string",
-        description: "The version of Go to install",
-        required: false,
-        default: baseGoVersionExpr,
-      };
-
-      steps.push({
-        name: "Install Go",
-        uses: "actions/setup-go@v6",
-        with: {
-          "go-version":
-            "${{ inputs.go-version || '" + baseGoVersionExpr + "' }}",
-          // to avoid potentially misleading autobuilder results where we expect it to download
-          // dependencies successfully, but they actually come from a warm cache
-          cache: false,
-        },
-      });
-    }
-
-    const installJava = checkSpecification.installJava;
-
-    if (installJava) {
-      const baseJavaVersionExpr = "17";
-      workflowInputs[KnownInputName.JavaVersion] = {
-        type: "string",
-        description: "The version of Java to install",
-        required: false,
-        default: baseJavaVersionExpr,
-      };
-
-      steps.push({
-        name: "Install Java",
-        uses: "actions/setup-java@v5",
-        with: {
-          "java-version":
-            "${{ inputs.java-version || '" + baseJavaVersionExpr + "' }}",
-          distribution: "temurin",
-        },
-      });
-    }
-
-    const installPython = checkSpecification.installPython;
-
-    if (installPython) {
-      const basePythonVersionExpr = "3.13";
-      workflowInputs[KnownInputName.PythonVersion] = {
-        type: "string",
-        description: "The version of Python to install",
-        required: false,
-        default: basePythonVersionExpr,
-      };
-
-      steps.push({
-        name: "Install Python",
-        if: "matrix.version != 'nightly-latest'",
-        uses: "actions/setup-python@v6",
-        with: {
-          "python-version":
-            "${{ inputs.python-version || '" + basePythonVersionExpr + "' }}",
-        },
-      });
-    }
-
-    const installDotNet = checkSpecification.installDotNet;
-
-    if (installDotNet) {
-      const baseDotNetVersionExpr = "9.x";
-      workflowInputs[KnownInputName.DotnetVersion] = {
-        type: "string",
-        description: "The version of .NET to install",
-        required: false,
-        default: baseDotNetVersionExpr,
-      };
-
-      steps.push({
-        name: "Install .NET",
-        uses: "actions/setup-dotnet@v5",
-        with: {
-          "dotnet-version":
-            "${{ inputs.dotnet-version || '" + baseDotNetVersionExpr + "' }}",
-        },
-      });
-    }
+      ...setupInfo.steps,
+    ];
 
     const installYq = checkSpecification.installYq;
 

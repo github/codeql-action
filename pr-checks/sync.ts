@@ -352,6 +352,122 @@ function getSetupSteps(checkSpecification: Specification): {
 }
 
 /**
+ * Generates an Actions job from the `checkSpecification`.
+ *
+ * @param specDocument
+ * The raw YAML document of the PR check specification.
+ * Used to extract `jobs` without losing the original formatting.
+ * @param checkSpecification The PR check specification.
+ * @returns The job and additional workflow inputs.
+ */
+function generateJob(
+  specDocument: yaml.Document,
+  checkSpecification: Specification,
+) {
+  const matrix: Array<Record<string, any>> =
+    generateJobMatrix(checkSpecification);
+
+  const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
+    ? checkSpecification.useAllPlatformBundle
+    : "false";
+
+  // Determine which languages or frameworks have to be installed.
+  const setupInfo = getSetupSteps(checkSpecification);
+  const workflowInputs = setupInfo.inputs;
+
+  // Construct the workflow steps needed for this check.
+  const steps: any[] = [
+    {
+      name: "Check out repository",
+      uses: "actions/checkout@v6",
+    },
+    {
+      name: "Prepare test",
+      id: "prepare-test",
+      uses: "./.github/actions/prepare-test",
+      with: {
+        version: "${{ matrix.version }}",
+        "use-all-platform-bundle": useAllPlatformBundle,
+        // If the action is being run from a container, then do not setup kotlin.
+        // This is because the kotlin binaries cannot be downloaded from the container.
+        "setup-kotlin": "container" in checkSpecification ? "false" : "true",
+      },
+    },
+    ...setupInfo.steps,
+  ];
+
+  const installYq = checkSpecification.installYq;
+
+  if (installYq) {
+    steps.push({
+      name: "Install yq",
+      if: "runner.os == 'Windows'",
+      env: {
+        YQ_PATH: "${{ runner.temp }}/yq",
+        // This is essentially an arbitrary version of `yq`, which happened to be the one that
+        // `choco` fetched when we moved away from using that here.
+        // See https://github.com/github/codeql-action/pull/3423
+        YQ_VERSION: "v4.50.1",
+      },
+      run:
+        'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n' +
+        'echo "$YQ_PATH" >> "$GITHUB_PATH"',
+    });
+  }
+
+  // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
+  const specSteps = specDocument.get("steps") as yaml.YAMLSeq;
+
+  // A handful of workflow specifications use double quotes for values, while we generally use single quotes.
+  // This replaces double quotes with single quotes for consistency.
+  yaml.visit(specSteps, {
+    Scalar(_key, node) {
+      if (node.type === "QUOTE_DOUBLE") {
+        node.type = "QUOTE_SINGLE";
+      }
+    },
+  });
+
+  // Add the generated steps in front of the ones from the specification.
+  specSteps.items.unshift(...steps);
+
+  const checkJob: Record<string, any> = {
+    strategy: {
+      "fail-fast": false,
+      matrix: {
+        include: matrix,
+      },
+    },
+    name: checkSpecification.name,
+    if: "github.triggering_actor != 'dependabot[bot]'",
+    permissions: {
+      contents: "read",
+      "security-events": "read",
+    },
+    "timeout-minutes": 45,
+    "runs-on": "${{ matrix.os }}",
+    steps: specSteps,
+  };
+
+  if (checkSpecification.permissions) {
+    checkJob.permissions = checkSpecification.permissions;
+  }
+
+  for (const key of ["env", "container", "services"] as const) {
+    if (checkSpecification[key] !== undefined) {
+      checkJob[key] = checkSpecification[key];
+    }
+  }
+
+  checkJob.env = checkJob.env ?? {};
+  if (!("CODEQL_ACTION_TEST_MODE" in checkJob.env)) {
+    checkJob.env.CODEQL_ACTION_TEST_MODE = true;
+  }
+
+  return { checkJob, workflowInputs };
+}
+
+/**
  * Main entry point for the sync script.
  */
 function main(): void {
@@ -383,103 +499,10 @@ function main(): void {
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
-    const matrix: Array<Record<string, any>> = generateJobMatrix(checkSpecification);
-    const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
-      ? checkSpecification.useAllPlatformBundle
-      : "false";
-
-    // Determine which languages or frameworks have to be installed.
-    const setupInfo = getSetupSteps(checkSpecification);
-    const workflowInputs = setupInfo.inputs;
-
-    // Construct the workflow steps needed for this check.
-    const steps: any[] = [
-      {
-        name: "Check out repository",
-        uses: "actions/checkout@v6",
-      },
-      {
-        name: "Prepare test",
-        id: "prepare-test",
-        uses: "./.github/actions/prepare-test",
-        with: {
-          version: "${{ matrix.version }}",
-          "use-all-platform-bundle": useAllPlatformBundle,
-          // If the action is being run from a container, then do not setup kotlin.
-          // This is because the kotlin binaries cannot be downloaded from the container.
-          "setup-kotlin": "container" in checkSpecification ? "false" : "true",
-        },
-      },
-      ...setupInfo.steps,
-    ];
-
-    const installYq = checkSpecification.installYq;
-
-    if (installYq) {
-      steps.push({
-        name: "Install yq",
-        if: "runner.os == 'Windows'",
-        env: {
-          YQ_PATH: "${{ runner.temp }}/yq",
-          // This is essentially an arbitrary version of `yq`, which happened to be the one that
-          // `choco` fetched when we moved away from using that here.
-          // See https://github.com/github/codeql-action/pull/3423
-          YQ_VERSION: "v4.50.1",
-        },
-        run:
-          'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n' +
-          'echo "$YQ_PATH" >> "$GITHUB_PATH"',
-      });
-    }
-
-    // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
-    const specSteps = specDocument.get("steps") as yaml.YAMLSeq;
-
-    // A handful of workflow specifications use double quotes for values, while we generally use single quotes.
-    // This replaces double quotes with single quotes for consistency.
-    yaml.visit(specSteps, {
-      Scalar(_key, node) {
-        if (node.type === "QUOTE_DOUBLE") {
-          node.type = "QUOTE_SINGLE";
-        }
-      },
-    });
-
-    // Add the generated steps in front of the ones from the specification.
-    specSteps.items.unshift(...steps);
-
-    const checkJob: Record<string, any> = {
-      strategy: {
-        "fail-fast": false,
-        matrix: {
-          include: matrix,
-        },
-      },
-      name: checkSpecification.name,
-      if: "github.triggering_actor != 'dependabot[bot]'",
-      permissions: {
-        contents: "read",
-        "security-events": "read",
-      },
-      "timeout-minutes": 45,
-      "runs-on": "${{ matrix.os }}",
-      steps: specSteps,
-    };
-
-    if (checkSpecification.permissions) {
-      checkJob.permissions = checkSpecification.permissions;
-    }
-
-    for (const key of ["env", "container", "services"] as const) {
-      if (checkSpecification[key] !== undefined) {
-        checkJob[key] = checkSpecification[key];
-      }
-    }
-
-    checkJob.env = checkJob.env ?? {};
-    if (!("CODEQL_ACTION_TEST_MODE" in checkJob.env)) {
-      checkJob.env.CODEQL_ACTION_TEST_MODE = true;
-    }
+    const { checkJob, workflowInputs } = generateJob(
+      specDocument,
+      checkSpecification,
+    );
 
     // If this check belongs to a named collection, record it.
     if (checkSpecification.collection) {

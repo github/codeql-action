@@ -1234,7 +1234,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
@@ -1253,7 +1253,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
@@ -1298,7 +1298,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
@@ -1342,7 +1342,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
@@ -1361,7 +1361,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientMemory,
   },
 );
 
@@ -1638,7 +1638,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
@@ -1679,7 +1679,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
@@ -1698,7 +1698,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientMemory,
   },
 );
 

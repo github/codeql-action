@@ -24,8 +24,10 @@ export enum OverlayDisabledReason {
   IncompatibleCodeQl = "incompatible-codeql",
   /** The Git version could not be determined or is too old. */
   IncompatibleGit = "incompatible-git",
-  /** The runner does not have enough disk space or memory. */
-  InsufficientResources = "insufficient-resources",
+  /** The runner does not have enough disk space to perform overlay analysis. */
+  InsufficientDiskSpace = "insufficient-disk-space",
+  /** The runner does not have enough memory to perform overlay analysis. */
+  InsufficientMemory = "insufficient-memory",
   /** The source root is not inside a git repository. */
   NoGitRoot = "no-git-root",
   /** Overlay analysis was skipped because it previously failed with similar hardware resources. */

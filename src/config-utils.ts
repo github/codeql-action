@@ -702,21 +702,15 @@ async function getOverlayFeatureDisabledReason(
 
 /** Checks if the runner has enough disk space for overlay analysis. */
 function runnerHasSufficientDiskSpace(
-  diskUsage: DiskUsage | undefined,
+  diskUsage: DiskUsage,
   logger: Logger,
   useV2ResourceChecks: boolean,
 ): boolean {
   const minimumDiskSpaceBytes = useV2ResourceChecks
     ? OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES
     : OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
-  if (
-    diskUsage === undefined ||
-    diskUsage.numAvailableBytes < minimumDiskSpaceBytes
-  ) {
-    const diskSpaceMb =
-      diskUsage === undefined
-        ? 0
-        : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+  if (diskUsage.numAvailableBytes < minimumDiskSpaceBytes) {
+    const diskSpaceMb = Math.round(diskUsage.numAvailableBytes / 1_000_000);
     const minimumDiskSpaceMb = Math.round(minimumDiskSpaceBytes / 1_000_000);
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
@@ -772,6 +766,13 @@ async function getResourceDisabledReason(
   logger: Logger,
   useV2ResourceChecks: boolean,
 ): Promise<OverlayDisabledReason | undefined> {
+  if (diskUsage === undefined) {
+    logger.info(
+      `Unable to determine available disk space for overlay analysis. ` +
+        `Setting overlay database mode to ${OverlayDatabaseMode.None}.`,
+    );
+    return OverlayDisabledReason.UnableToDetermineDiskUsage;
+  }
   if (!runnerHasSufficientDiskSpace(diskUsage, logger, useV2ResourceChecks)) {
     return OverlayDisabledReason.InsufficientDiskSpace;
   }

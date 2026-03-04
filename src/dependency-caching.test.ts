@@ -45,7 +45,7 @@ function makeAbsolutePatterns(tmpDir: string, patterns: string[]): string[] {
 }
 
 test.serial(
-  "getCsharpDependencyDirs - does not include BMN dir if FF is enabled",
+  "getCsharpDependencyDirs - does not include BMN dir if FF is disabled",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       process.env["RUNNER_TEMP"] = tmpDir;

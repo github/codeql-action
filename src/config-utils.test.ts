@@ -1111,7 +1111,7 @@ const checkOverlayEnablementMacro = test.macro({
   title: (_, title) => `checkOverlayEnablement: ${title}`,
 });
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Environment variable override - Overlay",
   {
@@ -1123,7 +1123,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Environment variable override - OverlayBase",
   {
@@ -1135,7 +1135,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Environment variable override - None",
   {
@@ -1146,7 +1146,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Ignore invalid environment variable",
   {
@@ -1157,7 +1157,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Ignore feature flag when analyzing non-default branch",
   {
@@ -1169,7 +1169,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay-base database on default branch when feature enabled",
   {
@@ -1183,7 +1183,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay-base database on default branch when feature enabled with custom analysis",
   {
@@ -1200,7 +1200,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay-base database on default branch when code-scanning feature enabled",
   {
@@ -1217,7 +1217,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is too low",
   {
@@ -1237,7 +1237,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch if we can't determine runner disk space",
   {
@@ -1254,7 +1254,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay-base database on default branch if runner disk space is too low and skip resource checks flag is enabled",
   {
@@ -1276,7 +1276,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
   {
@@ -1297,7 +1297,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
   {
@@ -1319,7 +1319,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
   {
@@ -1339,7 +1339,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch if memory flag is too low",
   {
@@ -1356,7 +1356,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay-base database on default branch if memory flag is too low but CodeQL >= 2.24.3",
   {
@@ -1375,7 +1375,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
   {
@@ -1394,7 +1394,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when cached status indicates previous failure",
   {
@@ -1412,7 +1412,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when cached status indicates previous failure",
   {
@@ -1430,7 +1430,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
   {
@@ -1449,7 +1449,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with packs",
   {
@@ -1468,7 +1468,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with queries",
   {
@@ -1487,7 +1487,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with query-filters",
   {
@@ -1506,7 +1506,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when only language-specific feature enabled",
   {
@@ -1519,7 +1519,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when only code-scanning feature enabled",
   {
@@ -1532,7 +1532,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay-base database on default branch when language-specific feature disabled",
   {
@@ -1545,7 +1545,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay analysis on PR when feature enabled",
   {
@@ -1559,7 +1559,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
@@ -1576,7 +1576,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay analysis on PR when code-scanning feature enabled",
   {
@@ -1593,7 +1593,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR if runner disk space is too low",
   {
@@ -1613,7 +1613,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay analysis on PR if runner disk space is too low and skip resource checks flag is enabled",
   {
@@ -1635,7 +1635,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR if we can't determine runner disk space",
   {
@@ -1652,7 +1652,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR if memory flag is too low",
   {
@@ -1669,7 +1669,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay analysis on PR if memory flag is too low but CodeQL >= 2.24.3",
   {
@@ -1688,7 +1688,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay analysis on PR if memory flag is too low and skip resource checks flag is enabled",
   {
@@ -1707,7 +1707,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
   {
@@ -1726,7 +1726,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with packs",
   {
@@ -1745,7 +1745,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with queries",
   {
@@ -1764,7 +1764,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with query-filters",
   {
@@ -1783,7 +1783,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when only language-specific feature enabled",
   {
@@ -1796,7 +1796,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when only code-scanning feature enabled",
   {
@@ -1809,7 +1809,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis on PR when language-specific feature disabled",
   {
@@ -1822,7 +1822,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay PR analysis by env",
   {
@@ -1834,7 +1834,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay PR analysis by env on a runner with low disk space",
   {
@@ -1847,7 +1847,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay PR analysis by feature flag",
   {
@@ -1861,7 +1861,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Fallback due to autobuild with traced language",
   {
@@ -1874,7 +1874,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Fallback due to no build mode with traced language",
   {
@@ -1887,7 +1887,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Fallback due to old CodeQL version",
   {
@@ -1899,7 +1899,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Fallback due to missing git root",
   {
@@ -1911,7 +1911,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Fallback due to old git version",
   {
@@ -1923,7 +1923,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Fallback when git version cannot be determined",
   {
@@ -1935,7 +1935,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "No overlay when disabled via repository property",
   {
@@ -1951,7 +1951,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Overlay not disabled when repository property is false",
   {
@@ -1968,7 +1968,7 @@ test(
   },
 );
 
-test(
+test.serial(
   checkOverlayEnablementMacro,
   "Environment variable override takes precedence over repository property",
   {
@@ -1985,7 +1985,7 @@ test(
 
 // Exercise language-specific overlay analysis features code paths
 for (const language in KnownLanguage) {
-  test(
+  test.serial(
     checkOverlayEnablementMacro,
     `Check default overlay analysis feature for ${language}`,
     {

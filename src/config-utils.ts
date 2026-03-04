@@ -869,21 +869,16 @@ export async function getOverlayDatabaseMode(
   const checkOverlayStatus = await features.getValue(
     Feature.OverlayAnalysisStatusCheck,
   );
-  const diskUsage =
-    performResourceChecks || checkOverlayStatus
-      ? await checkDiskUsage(logger)
-      : undefined;
-  if (
-    (performResourceChecks || checkOverlayStatus) &&
-    diskUsage === undefined
-  ) {
+  const needDiskUsage = performResourceChecks || checkOverlayStatus;
+  const diskUsage = needDiskUsage ? await checkDiskUsage(logger) : undefined;
+  if (needDiskUsage && diskUsage === undefined) {
     logger.warning(
       `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
     );
     return new Failure(OverlayDisabledReason.UnableToDetermineDiskUsage);
   }
   const resourceResult =
-    performResourceChecks && diskUsage
+    performResourceChecks && diskUsage !== undefined
       ? await checkRunnerResources(
           codeql,
           diskUsage,
@@ -897,7 +892,7 @@ export async function getOverlayDatabaseMode(
   }
   if (
     checkOverlayStatus &&
-    diskUsage &&
+    diskUsage !== undefined &&
     (await shouldSkipOverlayAnalysis(codeql, languages, diskUsage, logger))
   ) {
     logger.info(

@@ -370,6 +370,7 @@ test("saves overlay status when overlay-base analysis did not complete successfu
         attemptedToBuildOverlayBaseDatabase: true,
         builtOverlayBaseDatabase: false,
         job: {
+          checkRunId: undefined,
           workflowRunId: Number(DEFAULT_ACTIONS_VARS.GITHUB_RUN_ID),
           workflowRunAttempt: Number(DEFAULT_ACTIONS_VARS.GITHUB_RUN_ATTEMPT),
           name: DEFAULT_ACTIONS_VARS.GITHUB_JOB,

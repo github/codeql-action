@@ -231,6 +231,11 @@ const languageSetups: LanguageSetups = {
   },
 };
 
+// This is essentially an arbitrary version of `yq`, which happened to be the one that
+// `choco` fetched when we moved away from using that here.
+// See https://github.com/github/codeql-action/pull/3423
+const YQ_VERSION = "v4.50.1";
+
 const THIS_DIR = __dirname;
 const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
@@ -348,6 +353,22 @@ function getSetupSteps(checkSpecification: Specification): {
     inputs = { ...inputs, ...setupSpec.inputs };
   }
 
+  const installYq = checkSpecification.installYq;
+
+  if (installYq) {
+    steps.push({
+      name: "Install yq",
+      if: "runner.os == 'Windows'",
+      env: {
+        YQ_PATH: "${{ runner.temp }}/yq",
+        YQ_VERSION,
+      },
+      run:
+        'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n' +
+        'echo "$YQ_PATH" >> "$GITHUB_PATH"',
+    });
+  }
+
   return { inputs, steps };
 }
 
@@ -395,25 +416,6 @@ function generateJob(
     },
     ...setupInfo.steps,
   ];
-
-  const installYq = checkSpecification.installYq;
-
-  if (installYq) {
-    steps.push({
-      name: "Install yq",
-      if: "runner.os == 'Windows'",
-      env: {
-        YQ_PATH: "${{ runner.temp }}/yq",
-        // This is essentially an arbitrary version of `yq`, which happened to be the one that
-        // `choco` fetched when we moved away from using that here.
-        // See https://github.com/github/codeql-action/pull/3423
-        YQ_VERSION: "v4.50.1",
-      },
-      run:
-        'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n' +
-        'echo "$YQ_PATH" >> "$GITHUB_PATH"',
-    });
-  }
 
   // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
   const specSteps = specDocument.get("steps") as yaml.YAMLSeq;

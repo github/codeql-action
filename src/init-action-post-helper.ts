@@ -283,7 +283,7 @@ async function recordOverlayStatus(
       attemptedToBuildOverlayBaseDatabase: true,
       builtOverlayBaseDatabase: false,
     },
-    Number.isNaN(checkRunId) ? undefined : checkRunId,
+    checkRunId !== undefined && checkRunId >= 0 ? checkRunId : undefined,
   );
 
   const diskUsage = await checkDiskUsage(logger);

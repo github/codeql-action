@@ -1139,6 +1139,7 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.DisabledByEnvironmentVariable,
   },
 );
 

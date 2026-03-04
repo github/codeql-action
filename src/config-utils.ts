@@ -844,6 +844,11 @@ export async function getOverlayDatabaseMode(
       `Setting overlay database mode to ${modeEnv} ` +
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
+    if (modeEnv === OverlayDatabaseMode.None) {
+      return disabledResult(
+        OverlayDisabledReason.DisabledByEnvironmentVariable,
+      );
+    }
     return validateOverlayDatabaseMode(
       modeEnv,
       false,
@@ -959,7 +964,7 @@ export async function getOverlayDatabaseMode(
  * appropriate disabled reason.
  */
 async function validateOverlayDatabaseMode(
-  overlayDatabaseMode: OverlayDatabaseMode,
+  overlayDatabaseMode: Exclude<OverlayDatabaseMode, OverlayDatabaseMode.None>,
   useOverlayDatabaseCaching: boolean,
   codeql: CodeQL,
   languages: Language[],
@@ -977,14 +982,6 @@ async function validateOverlayDatabaseMode(
     useOverlayDatabaseCaching: false,
     disabledReason: reason,
   });
-
-  if (overlayDatabaseMode === OverlayDatabaseMode.None) {
-    return {
-      overlayDatabaseMode: OverlayDatabaseMode.None,
-      useOverlayDatabaseCaching: false,
-      disabledReason: undefined,
-    };
-  }
 
   if (
     buildMode !== BuildMode.None &&

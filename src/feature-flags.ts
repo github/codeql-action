@@ -7,7 +7,15 @@ import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
+import {
+  CODEQL_OVERLAY_MINIMUM_VERSION,
+  CODEQL_OVERLAY_MINIMUM_VERSION_CSHARP,
+  CODEQL_OVERLAY_MINIMUM_VERSION_GO,
+  CODEQL_OVERLAY_MINIMUM_VERSION_JAVA,
+  CODEQL_OVERLAY_MINIMUM_VERSION_JAVASCRIPT,
+  CODEQL_OVERLAY_MINIMUM_VERSION_PYTHON,
+  CODEQL_OVERLAY_MINIMUM_VERSION_RUBY,
+} from "./overlay";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
@@ -49,24 +57,18 @@ export enum Feature {
   IgnoreGeneratedFiles = "ignore_generated_files",
   JavaNetworkDebugging = "java_network_debugging",
   OverlayAnalysis = "overlay_analysis",
-  OverlayAnalysisActions = "overlay_analysis_actions",
-  OverlayAnalysisCodeScanningActions = "overlay_analysis_code_scanning_actions",
-  OverlayAnalysisCodeScanningCpp = "overlay_analysis_code_scanning_cpp",
   OverlayAnalysisCodeScanningCsharp = "overlay_analysis_code_scanning_csharp",
   OverlayAnalysisCodeScanningGo = "overlay_analysis_code_scanning_go",
   OverlayAnalysisCodeScanningJava = "overlay_analysis_code_scanning_java",
   OverlayAnalysisCodeScanningJavascript = "overlay_analysis_code_scanning_javascript",
   OverlayAnalysisCodeScanningPython = "overlay_analysis_code_scanning_python",
   OverlayAnalysisCodeScanningRuby = "overlay_analysis_code_scanning_ruby",
-  OverlayAnalysisCodeScanningRust = "overlay_analysis_code_scanning_rust",
-  OverlayAnalysisCodeScanningSwift = "overlay_analysis_code_scanning_swift",
-  OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
+  OverlayAnalysisGo = "overlay_analysis_go",
   /** Controls whether the Actions cache is checked for overlay build outcomes. */
   OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
   /** Controls whether overlay build failures on are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
-  OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
   OverlayAnalysisPython = "overlay_analysis_python",
@@ -76,10 +78,8 @@ export enum Feature {
    */
   OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
-  OverlayAnalysisRust = "overlay_analysis_rust",
   /** Controls whether hardware checks are skipped for overlay analysis. */
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
-  OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
@@ -195,70 +195,48 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS",
     minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   },
-  [Feature.OverlayAnalysisActions]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_ACTIONS",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisCodeScanningActions]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_ACTIONS",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisCodeScanningCpp]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_CPP",
-    minimumVersion: undefined,
-  },
+  // Per-language overlay feature flags. Each has minimumVersion set to the
+  // minimum CLI version that supports overlay analysis for that language.
+  // Only languages that are GA or in staff-ship should have feature flags here.
   [Feature.OverlayAnalysisCodeScanningCsharp]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_CSHARP",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_CSHARP,
   },
   [Feature.OverlayAnalysisCodeScanningGo]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_GO",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_GO,
   },
   [Feature.OverlayAnalysisCodeScanningJava]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_JAVA",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_JAVA,
   },
   [Feature.OverlayAnalysisCodeScanningJavascript]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_JAVASCRIPT",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_JAVASCRIPT,
   },
   [Feature.OverlayAnalysisCodeScanningPython]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_PYTHON",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_PYTHON,
   },
   [Feature.OverlayAnalysisCodeScanningRuby]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_RUBY",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisCodeScanningRust]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_RUST",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisCodeScanningSwift]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_SWIFT",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisCpp]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CPP",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_RUBY,
   },
   [Feature.OverlayAnalysisCsharp]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CSHARP",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_CSHARP,
+  },
+  [Feature.OverlayAnalysisGo]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_GO",
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_GO,
   },
   [Feature.OverlayAnalysisStatusCheck]: {
     defaultValue: false,
@@ -270,25 +248,20 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_SAVE",
     minimumVersion: undefined,
   },
-  [Feature.OverlayAnalysisGo]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_GO",
-    minimumVersion: undefined,
-  },
   [Feature.OverlayAnalysisJava]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_JAVA",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_JAVA,
   },
   [Feature.OverlayAnalysisJavascript]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_JAVASCRIPT",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_JAVASCRIPT,
   },
   [Feature.OverlayAnalysisPython]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_PYTHON",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_PYTHON,
   },
   [Feature.OverlayAnalysisResourceChecksV2]: {
     defaultValue: false,
@@ -298,21 +271,11 @@ export const featureConfig = {
   [Feature.OverlayAnalysisRuby]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RUBY",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisRust]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RUST",
-    minimumVersion: undefined,
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_RUBY,
   },
   [Feature.OverlayAnalysisSkipResourceChecks]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisSwift]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SWIFT",
     minimumVersion: undefined,
   },
   [Feature.PythonDefaultIsToNotExtractStdlib]: {

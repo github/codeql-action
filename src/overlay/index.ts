@@ -33,6 +33,15 @@ export enum OverlayDatabaseMode {
 
 export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.23.8";
 
+// Per-language minimum CLI versions for overlay analysis, based on release
+// validation data.
+export const CODEQL_OVERLAY_MINIMUM_VERSION_CSHARP = "2.24.1";
+export const CODEQL_OVERLAY_MINIMUM_VERSION_GO = "2.24.2";
+export const CODEQL_OVERLAY_MINIMUM_VERSION_JAVA = "2.23.8";
+export const CODEQL_OVERLAY_MINIMUM_VERSION_JAVASCRIPT = "2.23.9";
+export const CODEQL_OVERLAY_MINIMUM_VERSION_PYTHON = "2.23.9";
+export const CODEQL_OVERLAY_MINIMUM_VERSION_RUBY = "2.23.9";
+
 /**
  * The maximum (uncompressed) size of the overlay base database that we will
  * upload. By default, the Actions Cache has an overall capacity of 10 GB, and

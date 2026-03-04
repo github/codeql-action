@@ -692,12 +692,12 @@ async function checkOverlayAnalysisFeatureEnabled(
     // A code-scanning configuration runs only the (default) code-scanning suite
     // if the default queries are not disabled, and no packs, queries, or
     // query-filters are specified.
-    const isCodeScanningOnly =
+    const usesDefaultQueriesOnly =
       codeScanningConfig["disable-default-queries"] !== true &&
       codeScanningConfig.packs === undefined &&
       codeScanningConfig.queries === undefined &&
       codeScanningConfig["query-filters"] === undefined;
-    if (!isCodeScanningOnly) {
+    if (!usesDefaultQueriesOnly) {
       return {
         enabled: false,
         reason: OverlayDisabledReason.NonDefaultQueries,

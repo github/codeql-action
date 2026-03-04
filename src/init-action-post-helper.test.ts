@@ -15,7 +15,9 @@ import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
   createTestConfig,
+  DEFAULT_ACTIONS_VARS,
   makeVersionInfo,
+  setupActionsVars,
   setupTests,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -28,8 +30,7 @@ setupTests(test);
 
 test.serial("init-post action with debug mode off", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
-    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-    process.env["RUNNER_TEMP"] = tmpDir;
+    setupActionsVars(tmpDir, tmpDir);
 
     const gitHubVersion: util.GitHubVersion = {
       type: util.GitHubVariant.DOTCOM,
@@ -62,8 +63,7 @@ test.serial("init-post action with debug mode off", async (t) => {
 
 test.serial("init-post action with debug mode on", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
-    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-    process.env["RUNNER_TEMP"] = tmpDir;
+    setupActionsVars(tmpDir, tmpDir);
 
     const uploadAllAvailableDebugArtifactsSpy = sinon.spy();
     const printDebugLogsSpy = sinon.spy();
@@ -343,11 +343,7 @@ test.serial(
   "saves overlay status when overlay-base analysis did not complete successfully",
   async (t) => {
     return await util.withTmpDir(async (tmpDir) => {
-      process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-      process.env["GITHUB_RUN_ID"] = "12345";
-      process.env["GITHUB_RUN_ATTEMPT"] = "1";
-      process.env["GITHUB_JOB"] = "analyze";
-      process.env["RUNNER_TEMP"] = tmpDir;
+      setupActionsVars(tmpDir, tmpDir);
       // Ensure analyze did not complete successfully.
       delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
 
@@ -403,9 +399,9 @@ test.serial(
           builtOverlayBaseDatabase: false,
           job: {
             checkRunId: undefined,
-            workflowRunId: 12345,
-            workflowRunAttempt: 1,
-            name: "analyze",
+            workflowRunId: Number(DEFAULT_ACTIONS_VARS.GITHUB_RUN_ID),
+            workflowRunAttempt: Number(DEFAULT_ACTIONS_VARS.GITHUB_RUN_ATTEMPT),
+            name: DEFAULT_ACTIONS_VARS.GITHUB_JOB,
           },
         },
         "fourth arg should be the overlay status recording an unsuccessful build attempt with job details",
@@ -418,8 +414,7 @@ test.serial(
   "does not save overlay status when OverlayAnalysisStatusSave feature flag is disabled",
   async (t) => {
     return await util.withTmpDir(async (tmpDir) => {
-      process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-      process.env["RUNNER_TEMP"] = tmpDir;
+      setupActionsVars(tmpDir, tmpDir);
       // Ensure analyze did not complete successfully.
       delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
 
@@ -456,8 +451,7 @@ test.serial(
 
 test.serial("does not save overlay status when build successful", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
-    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-    process.env["RUNNER_TEMP"] = tmpDir;
+    setupActionsVars(tmpDir, tmpDir);
     // Mark analyze as having completed successfully.
     process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "true";
 
@@ -495,8 +489,7 @@ test.serial(
   "does not save overlay status when overlay not enabled",
   async (t) => {
     return await util.withTmpDir(async (tmpDir) => {
-      process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-      process.env["RUNNER_TEMP"] = tmpDir;
+      setupActionsVars(tmpDir, tmpDir);
       delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
 
       sinon.stub(util, "checkDiskUsage").resolves({
@@ -582,9 +575,8 @@ async function testFailedSarifUpload(
     config.dbLocation = "path/to/database";
   }
   process.env["GITHUB_JOB"] = "analyze";
-  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-  process.env["GITHUB_WORKSPACE"] =
-    "/home/runner/work/codeql-action/codeql-action";
+  process.env["GITHUB_REPOSITORY"] = DEFAULT_ACTIONS_VARS.GITHUB_REPOSITORY;
+  process.env["GITHUB_WORKSPACE"] = "/tmp";
   sinon
     .stub(actionsUtil, "getRequiredInput")
     .withArgs("matrix")

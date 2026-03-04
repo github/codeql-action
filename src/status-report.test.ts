@@ -25,18 +25,14 @@ import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 setupTests(test);
 
 function setupEnvironmentAndStub(tmpDir: string) {
-  setupActionsVars(tmpDir, tmpDir);
+  setupActionsVars(tmpDir, tmpDir, {
+    GITHUB_EVENT_NAME: "dynamic",
+    GITHUB_RUN_ATTEMPT: "2",
+    GITHUB_RUN_ID: "100",
+  });
 
   process.env[EnvVar.ANALYSIS_KEY] = "analysis-key";
-  process.env["GITHUB_EVENT_NAME"] = "dynamic";
-  process.env["GITHUB_REF"] = "refs/heads/main";
-  process.env["GITHUB_REPOSITORY"] = "octocat/HelloWorld";
-  process.env["GITHUB_RUN_ATTEMPT"] = "2";
-  process.env["GITHUB_RUN_ID"] = "100";
-  process.env["GITHUB_SHA"] = "a".repeat(40);
   process.env["ImageVersion"] = "2023.05.19.1";
-  process.env["RUNNER_OS"] = "macOS";
-  process.env["RUNNER_TEMP"] = tmpDir;
 
   const getRequiredInput = sinon.stub(actionsUtil, "getRequiredInput");
   getRequiredInput.withArgs("matrix").resolves("input/matrix");

@@ -82,7 +82,7 @@ jobs:
           output: ${{ runner.temp }}/results
           upload-database: false
       - name: Upload SARIF
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.os }}-zstd-bundle.sarif
           path: ${{ runner.temp }}/results/javascript.sarif

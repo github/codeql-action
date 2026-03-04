@@ -74,7 +74,7 @@ export function createOverlayStatus(
     workflowRunId: getWorkflowRunID(),
     workflowRunAttempt: getWorkflowRunAttempt(),
     name: getRequiredEnvParam("GITHUB_JOB"),
-    ...(checkRunId !== undefined && { checkRunId }),
+    checkRunId,
   };
   return {
     ...attributes,

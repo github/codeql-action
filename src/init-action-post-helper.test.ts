@@ -374,6 +374,7 @@ test("saves overlay status when overlay-base analysis did not complete successfu
         attemptedToBuildOverlayBaseDatabase: true,
         builtOverlayBaseDatabase: false,
         job: {
+          checkRunId: undefined,
           workflowRunId: 12345,
           workflowRunAttempt: 1,
           name: "analyze",

@@ -10,6 +10,8 @@ import { RepositoryPropertyName } from "../feature-flags/properties";
 
 /** Reason why overlay analysis was disabled. */
 export enum OverlayDisabledReason {
+  /** Overlay analysis was disabled by the CODEQL_OVERLAY_DATABASE_MODE environment variable being set to "none". */
+  DisabledByEnvironmentVariable = "disabled-by-environment-variable",
   /** Overlay analysis was disabled by a repository property. */
   DisabledByRepositoryProperty = "disabled-by-repository-property",
   /** The build mode is incompatible with overlay analysis. */

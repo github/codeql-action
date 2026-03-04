@@ -32,7 +32,7 @@ setupTests(test);
  * - Checks that the duration fields are populated for the correct language.
  * - Checks that the QA telemetry status report fields are populated when the QA feature flag is enabled.
  */
-test("status report fields", async (t) => {
+test.serial("status report fields", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 

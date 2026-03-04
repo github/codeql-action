@@ -69,19 +69,22 @@ test("checkJavaEnvironment - none set", (t) => {
   assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
 });
 
-test("checkJavaEnvironment - logs values when variables are set", (t) => {
-  const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages);
+test.serial(
+  "checkJavaEnvironment - logs values when variables are set",
+  (t) => {
+    const messages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(messages);
 
-  for (const envVar of Object.values(JavaEnvVars)) {
-    process.env[envVar] = envVar;
-  }
+    for (const envVar of Object.values(JavaEnvVars)) {
+      process.env[envVar] = envVar;
+    }
 
-  checkJavaEnvVars(logger);
-  assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, true);
-});
+    checkJavaEnvVars(logger);
+    assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, true);
+  },
+);
 
-test("discoverActionsJdks - discovers JDK paths", (t) => {
+test.serial("discoverActionsJdks - discovers JDK paths", (t) => {
   // Clear GHA variables that may interfere with this test in CI.
   for (const envVar of Object.keys(process.env)) {
     if (envVar.startsWith("JAVA_HOME_")) {
@@ -149,7 +152,7 @@ test("checkProxyEnvVars - none set", (t) => {
   assertEnvVarLogMessages(t, Object.values(ProxyEnvVars), messages, false);
 });
 
-test("checkProxyEnvVars - logs values when variables are set", (t) => {
+test.serial("checkProxyEnvVars - logs values when variables are set", (t) => {
   const messages: LoggedMessage[] = [];
   const logger = getRecordingLogger(messages);
 
@@ -161,7 +164,7 @@ test("checkProxyEnvVars - logs values when variables are set", (t) => {
   assertEnvVarLogMessages(t, Object.values(ProxyEnvVars), messages, true);
 });
 
-test("checkProxyEnvVars - credentials are removed from URLs", (t) => {
+test.serial("checkProxyEnvVars - credentials are removed from URLs", (t) => {
   const messages: LoggedMessage[] = [];
   const logger = getRecordingLogger(messages);
 
@@ -178,36 +181,45 @@ test("checkProxyEnvVars - credentials are removed from URLs", (t) => {
   );
 });
 
-test("checkProxyEnvironment - includes base checks for all known languages", async (t) => {
-  stubToolrunner();
+test.serial(
+  "checkProxyEnvironment - includes base checks for all known languages",
+  async (t) => {
+    stubToolrunner();
 
-  for (const language of Object.values(KnownLanguage)) {
+    for (const language of Object.values(KnownLanguage)) {
+      const messages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(messages);
+
+      await checkProxyEnvironment(logger, language);
+      assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
+    }
+  },
+);
+
+test.serial(
+  "checkProxyEnvironment - includes Java checks for Java",
+  async (t) => {
     const messages: LoggedMessage[] = [];
     const logger = getRecordingLogger(messages);
 
-    await checkProxyEnvironment(logger, language);
+    stubToolrunner();
+
+    await checkProxyEnvironment(logger, KnownLanguage.java);
     assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
-  }
-});
+    assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
+  },
+);
 
-test("checkProxyEnvironment - includes Java checks for Java", async (t) => {
-  const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages);
+test.serial(
+  "checkProxyEnvironment - includes language-specific checks if the language is undefined",
+  async (t) => {
+    const messages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(messages);
 
-  stubToolrunner();
+    stubToolrunner();
 
-  await checkProxyEnvironment(logger, KnownLanguage.java);
-  assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
-  assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
-});
-
-test("checkProxyEnvironment - includes language-specific checks if the language is undefined", async (t) => {
-  const messages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(messages);
-
-  stubToolrunner();
-
-  await checkProxyEnvironment(logger, undefined);
-  assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
-  assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
-});
+    await checkProxyEnvironment(logger, undefined);
+    assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
+    assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
+  },
+);

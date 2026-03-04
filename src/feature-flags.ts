@@ -84,6 +84,7 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
+  StartProxyRemoveUnusedRegistries = "start_proxy_remove_unused_registries",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   UseRepositoryProperties = "use_repository_properties_v2",
@@ -333,6 +334,11 @@ export const featureConfig = {
     // before rolling this out externally, we should set a minimum version here
     // since current versions of the CodeQL CLI will log if baseline information
     // cannot be found when interpreting results.
+    minimumVersion: undefined,
+  },
+  [Feature.StartProxyRemoveUnusedRegistries]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_START_PROXY_REMOVE_UNUSED_REGISTRIES",
     minimumVersion: undefined,
   },
   [Feature.StartProxyUseFeaturesRelease]: {

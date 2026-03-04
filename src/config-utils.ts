@@ -799,10 +799,11 @@ interface EnabledOverlayConfig {
  * For `Overlay` and `OverlayBase`, the function performs further checks and
  * reverts to `None` if any check should fail.
  *
- * @returns An object containing the overlay database mode and whether the
- * action should perform overlay-base database caching.
+ * @returns A `Success` containing the overlay database mode and whether the
+ * action should perform overlay-base database caching, or a `Failure`
+ * containing the reason why overlay analysis is disabled.
  */
-export async function getOverlayDatabaseMode(
+export async function checkOverlayEnablement(
   codeql: CodeQL,
   features: FeatureEnablement,
   languages: Language[],
@@ -1152,7 +1153,7 @@ export async function initConfig(
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
   // rest of the config has been populated.
-  const overlayDatabaseModeResult = await getOverlayDatabaseMode(
+  const overlayDatabaseModeResult = await checkOverlayEnablement(
     inputs.codeql,
     inputs.features,
     config.languages,

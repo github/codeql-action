@@ -1014,7 +1014,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   repositoryProperties: {},
 };
 
-const getOverlayDatabaseModeMacro = test.macro({
+const checkOverlayEnablementMacro = test.macro({
   exec: async (
     t: ExecutionContext,
     _title: string,
@@ -1084,7 +1084,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           .stub(gitUtils, "isAnalyzingDefaultBranch")
           .resolves(setup.isDefaultBranch);
 
-        const result = await configUtils.getOverlayDatabaseMode(
+        const result = await configUtils.checkOverlayEnablement(
           codeql,
           features,
           setup.languages,
@@ -1108,11 +1108,11 @@ const getOverlayDatabaseModeMacro = test.macro({
       }
     });
   },
-  title: (_, title) => `getOverlayDatabaseMode: ${title}`,
+  title: (_, title) => `checkOverlayEnablement: ${title}`,
 });
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override - Overlay",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1124,7 +1124,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override - OverlayBase",
   {
     overlayDatabaseEnvVar: "overlay-base",
@@ -1136,7 +1136,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override - None",
   {
     overlayDatabaseEnvVar: "none",
@@ -1147,7 +1147,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Ignore invalid environment variable",
   {
     overlayDatabaseEnvVar: "invalid-mode",
@@ -1158,7 +1158,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Ignore feature flag when analyzing non-default branch",
   {
     languages: [KnownLanguage.javascript],
@@ -1170,7 +1170,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch when feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1184,7 +1184,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch when feature enabled with custom analysis",
   {
     languages: [KnownLanguage.javascript],
@@ -1201,7 +1201,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch when code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1218,7 +1218,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1238,7 +1238,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if we can't determine runner disk space",
   {
     languages: [KnownLanguage.javascript],
@@ -1255,7 +1255,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if runner disk space is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1277,7 +1277,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1298,7 +1298,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1320,7 +1320,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1340,7 +1340,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if memory flag is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1357,7 +1357,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if memory flag is too low but CodeQL >= 2.24.3",
   {
     languages: [KnownLanguage.javascript],
@@ -1376,7 +1376,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1395,7 +1395,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when cached status indicates previous failure",
   {
     languages: [KnownLanguage.javascript],
@@ -1413,7 +1413,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when cached status indicates previous failure",
   {
     languages: [KnownLanguage.javascript],
@@ -1431,7 +1431,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1450,7 +1450,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with packs",
   {
     languages: [KnownLanguage.javascript],
@@ -1469,7 +1469,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1488,7 +1488,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with query-filters",
   {
     languages: [KnownLanguage.javascript],
@@ -1507,7 +1507,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when only language-specific feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1520,7 +1520,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when only code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1533,7 +1533,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when language-specific feature disabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1546,7 +1546,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR when feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1560,7 +1560,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
     languages: [KnownLanguage.javascript],
@@ -1577,7 +1577,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR when code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1594,7 +1594,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR if runner disk space is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1614,7 +1614,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR if runner disk space is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1636,7 +1636,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR if we can't determine runner disk space",
   {
     languages: [KnownLanguage.javascript],
@@ -1653,7 +1653,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR if memory flag is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1670,7 +1670,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR if memory flag is too low but CodeQL >= 2.24.3",
   {
     languages: [KnownLanguage.javascript],
@@ -1689,7 +1689,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR if memory flag is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1708,7 +1708,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1727,7 +1727,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with packs",
   {
     languages: [KnownLanguage.javascript],
@@ -1746,7 +1746,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1765,7 +1765,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with query-filters",
   {
     languages: [KnownLanguage.javascript],
@@ -1784,7 +1784,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when only language-specific feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1797,7 +1797,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when only code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1810,7 +1810,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when language-specific feature disabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1823,7 +1823,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay PR analysis by env",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1835,7 +1835,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay PR analysis by env on a runner with low disk space",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1848,7 +1848,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay PR analysis by feature flag",
   {
     languages: [KnownLanguage.javascript],
@@ -1862,7 +1862,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to autobuild with traced language",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1875,7 +1875,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to no build mode with traced language",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1888,7 +1888,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to old CodeQL version",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1900,7 +1900,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to missing git root",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1912,7 +1912,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to old git version",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1924,7 +1924,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback when git version cannot be determined",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1936,7 +1936,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay when disabled via repository property",
   {
     languages: [KnownLanguage.javascript],
@@ -1952,7 +1952,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay not disabled when repository property is false",
   {
     languages: [KnownLanguage.javascript],
@@ -1969,7 +1969,7 @@ test(
 );
 
 test(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override takes precedence over repository property",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1986,7 +1986,7 @@ test(
 // Exercise language-specific overlay analysis features code paths
 for (const language in KnownLanguage) {
   test(
-    getOverlayDatabaseModeMacro,
+    checkOverlayEnablementMacro,
     `Check default overlay analysis feature for ${language}`,
     {
       languages: [language],

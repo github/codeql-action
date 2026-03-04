@@ -209,14 +209,14 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
   title: (_, title) => `downloadOverlayBaseDatabaseFromCache: ${title}`,
 });
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns stats when successful",
   {},
   true,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when mode is OverlayDatabaseMode.OverlayBase",
   {
@@ -225,7 +225,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when mode is OverlayDatabaseMode.None",
   {
@@ -234,7 +234,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when caching is disabled",
   {
@@ -243,7 +243,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined in test mode",
   {
@@ -252,7 +252,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when cache miss",
   {
@@ -261,7 +261,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when download fails",
   {
@@ -270,7 +270,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when downloaded database is invalid",
   {
@@ -279,7 +279,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when downloaded database doesn't have an overlayBaseSpecifier",
   {
@@ -288,7 +288,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when resolving database metadata fails",
   {
@@ -297,7 +297,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when filesystem error occurs",
   {

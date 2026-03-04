@@ -359,6 +359,38 @@ test.serial(
   },
 );
 
+test.serial(
+  "getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE",
+  async (t) => {
+    const credentialsInput = toEncodedJSON(mixedCredentials);
+
+    const credentials = startProxyExports.getCredentials(
+      getRunnerLogger(true),
+      undefined,
+      credentialsInput,
+      KnownLanguage.actions,
+      false,
+    );
+    t.is(credentials.length, mixedCredentials.length);
+  },
+);
+
+test.serial(
+  "getCredentials returns no credentials for Actions when using NEW_LANGUAGE_TO_REGISTRY_TYPE",
+  async (t) => {
+    const credentialsInput = toEncodedJSON(mixedCredentials);
+
+    const credentials = startProxyExports.getCredentials(
+      getRunnerLogger(true),
+      undefined,
+      credentialsInput,
+      KnownLanguage.actions,
+      true,
+    );
+    t.deepEqual(credentials, []);
+  },
+);
+
 test.serial("parseLanguage", async (t) => {
   // Exact matches
   t.deepEqual(parseLanguage("csharp"), KnownLanguage.csharp);

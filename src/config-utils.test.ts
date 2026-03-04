@@ -40,6 +40,8 @@ import {
   withTmpDir,
   BuildMode,
   DiskUsage,
+  Success,
+  Failure,
 } from "./util";
 import * as util from "./util";
 
@@ -1017,11 +1019,14 @@ const getOverlayDatabaseModeMacro = test.macro({
     t: ExecutionContext,
     _title: string,
     setupOverrides: Partial<OverlayDatabaseModeTestSetup>,
-    expected: {
-      overlayDatabaseMode: OverlayDatabaseMode;
-      useOverlayDatabaseCaching: boolean;
-      disabledReason?: OverlayDisabledReason;
-    },
+    expected:
+      | {
+          overlayDatabaseMode: OverlayDatabaseMode;
+          useOverlayDatabaseCaching: boolean;
+        }
+      | {
+          disabledReason: OverlayDisabledReason;
+        },
   ) => {
     return await withTmpDir(async (tempDir) => {
       const messages: LoggedMessage[] = [];
@@ -1092,11 +1097,11 @@ const getOverlayDatabaseModeMacro = test.macro({
           logger,
         );
 
-        if (!("disabledReason" in expected)) {
-          expected.disabledReason = undefined;
+        if ("disabledReason" in expected) {
+          t.deepEqual(result, new Failure(expected.disabledReason));
+        } else {
+          t.deepEqual(result, new Success(expected));
         }
-
-        t.deepEqual(result, expected);
       } finally {
         // Restore the original environment
         process.env = originalEnv;
@@ -1137,8 +1142,6 @@ test(
     overlayDatabaseEnvVar: "none",
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.DisabledByEnvironmentVariable,
   },
 );
@@ -1150,8 +1153,6 @@ test(
     overlayDatabaseEnvVar: "invalid-mode",
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
@@ -1164,8 +1165,6 @@ test(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NotPullRequestOrDefaultBranch,
   },
 );
@@ -1234,8 +1233,6 @@ test(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
@@ -1253,8 +1250,6 @@ test(
     diskUsage: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.UnableToDetermineDiskUsage,
   },
 );
@@ -1298,8 +1293,6 @@ test(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
@@ -1342,8 +1335,6 @@ test(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
@@ -1361,8 +1352,6 @@ test(
     memoryFlagValue: 3072,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.InsufficientMemory,
   },
 );
@@ -1419,8 +1408,6 @@ test(
     shouldSkipOverlayAnalysisDueToCachedStatus: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
   },
 );
@@ -1439,8 +1426,6 @@ test(
     shouldSkipOverlayAnalysisDueToCachedStatus: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
   },
 );
@@ -1460,8 +1445,6 @@ test(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1481,8 +1464,6 @@ test(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1502,8 +1483,6 @@ test(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1523,8 +1502,6 @@ test(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1538,8 +1515,6 @@ test(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
@@ -1553,8 +1528,6 @@ test(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
@@ -1568,8 +1541,6 @@ test(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.LanguageNotEnabled,
   },
 );
@@ -1638,8 +1609,6 @@ test(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
@@ -1679,8 +1648,6 @@ test(
     diskUsage: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.UnableToDetermineDiskUsage,
   },
 );
@@ -1698,8 +1665,6 @@ test(
     memoryFlagValue: 3072,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.InsufficientMemory,
   },
 );
@@ -1757,8 +1722,6 @@ test(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1778,8 +1741,6 @@ test(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1799,8 +1760,6 @@ test(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1820,8 +1779,6 @@ test(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
@@ -1835,8 +1792,6 @@ test(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
@@ -1850,8 +1805,6 @@ test(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
@@ -1865,8 +1818,6 @@ test(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.LanguageNotEnabled,
   },
 );
@@ -1919,8 +1870,6 @@ test(
     languages: [KnownLanguage.java],
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
@@ -1934,8 +1883,6 @@ test(
     languages: [KnownLanguage.java],
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
@@ -1948,8 +1895,6 @@ test(
     codeqlVersion: "2.14.0",
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleCodeQl,
   },
 );
@@ -1962,8 +1907,6 @@ test(
     gitRoot: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NoGitRoot,
   },
 );
@@ -1976,8 +1919,6 @@ test(
     gitVersion: new GitVersionInfo("2.30.0", "2.30.0"), // Version below required 2.38.0
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleGit,
   },
 );
@@ -1990,8 +1931,6 @@ test(
     gitVersion: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleGit,
   },
 );
@@ -2008,8 +1947,6 @@ test(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.DisabledByRepositoryProperty,
   },
 );
@@ -2057,8 +1994,6 @@ for (const language in KnownLanguage) {
       isPullRequest: true,
     },
     {
-      overlayDatabaseMode: OverlayDatabaseMode.None,
-      useOverlayDatabaseCaching: false,
       disabledReason: OverlayDisabledReason.LanguageNotEnabled,
     },
   );

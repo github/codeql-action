@@ -31,6 +31,8 @@ export enum OverlayDisabledReason {
    * queries or packs, disables default queries, or specifies query filters.
    */
   NonDefaultQueries = "non-default-queries",
+  /** We are not analyzing a pull request or the default branch. */
+  NotPullRequestOrDefaultBranch = "not-pull-request-or-default-branch",
   /** The top-level overlay analysis feature flag is not enabled. */
   OverallFeatureNotEnabled = "overall-feature-not-enabled",
   /** Overlay analysis was skipped because it previously failed with similar hardware resources. */

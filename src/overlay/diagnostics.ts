@@ -27,8 +27,10 @@ export enum OverlayDisabledReason {
   /** The source root is not inside a git repository. */
   NoGitRoot = "no-git-root",
   /**
-   * Overlay analysis is restricted to code-scanning-only configs but the config uses custom
-   * queries or packs, disables default queries, or specifies query filters.
+   * For one or more of the configured languages, overlay analysis is only
+   * enabled when using the default query suite, but the config customises the
+   * queries by disabling default queries, specifying custom queries or packs,
+   * or adding query filters.
    */
   NonDefaultQueries = "non-default-queries",
   /** We are not analyzing a pull request or the default branch. */

@@ -316,6 +316,9 @@ test("not uploading failed SARIF when `code-scanning` is not an enabled analysis
 test("saves overlay status when overlay-base analysis did not complete successfully", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    process.env["GITHUB_RUN_ID"] = "12345";
+    process.env["GITHUB_RUN_ATTEMPT"] = "1";
+    process.env["GITHUB_JOB"] = "analyze";
     process.env["RUNNER_TEMP"] = tmpDir;
     // Ensure analyze did not complete successfully.
     delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
@@ -370,8 +373,14 @@ test("saves overlay status when overlay-base analysis did not complete successfu
       {
         attemptedToBuildOverlayBaseDatabase: true,
         builtOverlayBaseDatabase: false,
+        job: {
+          checkRunId: undefined,
+          workflowRunId: 12345,
+          workflowRunAttempt: 1,
+          name: "analyze",
+        },
       },
-      "fourth arg should be the overlay status recording an unsuccessful build attempt",
+      "fourth arg should be the overlay status recording an unsuccessful build attempt with job details",
     );
   });
 });

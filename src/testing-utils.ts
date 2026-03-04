@@ -144,7 +144,7 @@ export function setupTests(test: TestFn<any>) {
  * environment. Tests can override individual variables by passing them in the
  * `overrides` parameter.
  */
-export const DEFAULT_ACTIONS_VARS: Record<string, string> = {
+export const DEFAULT_ACTIONS_VARS = {
   GITHUB_ACTION_REPOSITORY: "github/codeql-action",
   GITHUB_API_URL: "https://api.github.com",
   GITHUB_EVENT_NAME: "push",
@@ -157,14 +157,14 @@ export const DEFAULT_ACTIONS_VARS: Record<string, string> = {
   GITHUB_SHA: "0".repeat(40),
   GITHUB_WORKFLOW: "test-workflow",
   RUNNER_OS: "Linux",
-};
+} as const satisfies Record<string, string>;
 
 // Sets environment variables that make using some libraries designed for
 // use only on actions safe to use outside of actions.
 export function setupActionsVars(
   tempDir: string,
   toolsDir: string,
-  overrides?: Partial<Record<string, string>>,
+  overrides?: Partial<Record<keyof typeof DEFAULT_ACTIONS_VARS, string>>,
 ) {
   const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
   for (const [key, value] of Object.entries(vars)) {

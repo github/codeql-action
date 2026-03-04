@@ -776,7 +776,7 @@ async function checkRunnerResources(
   return new Success(undefined);
 }
 
-interface OverlayParameters {
+interface EnabledOverlayConfig {
   overlayDatabaseMode: Exclude<OverlayDatabaseMode, OverlayDatabaseMode.None>;
   useOverlayDatabaseCaching: boolean;
 }
@@ -813,7 +813,7 @@ export async function getOverlayDatabaseMode(
   repositoryProperties: RepositoryProperties,
   gitVersion: GitVersionInfo | undefined,
   logger: Logger,
-): Promise<Result<OverlayParameters, OverlayDisabledReason>> {
+): Promise<Result<EnabledOverlayConfig, OverlayDisabledReason>> {
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
   // treated as if the environment variable was not set.
@@ -947,7 +947,7 @@ async function validateOverlayDatabaseMode(
   buildMode: BuildMode | undefined,
   gitVersion: GitVersionInfo | undefined,
   logger: Logger,
-): Promise<Result<OverlayParameters, OverlayDisabledReason>> {
+): Promise<Result<EnabledOverlayConfig, OverlayDisabledReason>> {
   if (
     buildMode !== BuildMode.None &&
     (

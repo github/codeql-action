@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
       - name: Check expected artifacts exist
         run: |
           LANGUAGES="cpp csharp go java javascript python"

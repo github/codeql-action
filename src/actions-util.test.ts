@@ -100,7 +100,7 @@ test("computeAutomationID()", async (t) => {
   );
 });
 
-test("getPullRequestBranches() with pull request context", (t) => {
+test.serial("getPullRequestBranches() with pull request context", (t) => {
   withMockedContext(
     {
       pull_request: {
@@ -119,19 +119,22 @@ test("getPullRequestBranches() with pull request context", (t) => {
   );
 });
 
-test("getPullRequestBranches() returns undefined with push context", (t) => {
-  withMockedContext(
-    {
-      push: {
-        ref: "refs/heads/main",
+test.serial(
+  "getPullRequestBranches() returns undefined with push context",
+  (t) => {
+    withMockedContext(
+      {
+        push: {
+          ref: "refs/heads/main",
+        },
       },
-    },
-    () => {
-      t.is(getPullRequestBranches(), undefined);
-      t.is(isAnalyzingPullRequest(), false);
-    },
-  );
-});
+      () => {
+        t.is(getPullRequestBranches(), undefined);
+        t.is(isAnalyzingPullRequest(), false);
+      },
+    );
+  },
+);
 
 test.serial(
   "getPullRequestBranches() with Default Setup environment variables",

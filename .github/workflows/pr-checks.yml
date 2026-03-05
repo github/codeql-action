@@ -42,11 +42,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
-
       - name: Install dependencies
         run: |
           # Use the system Bash shell to ensure we can run commands like `npm ci`
@@ -68,7 +63,7 @@ jobs:
       - name: Run pr-checks tests
         if: always()
         working-directory: pr-checks
-        run: python -m unittest discover
+        run: npm ci && npx tsx --test
 
       - name: Lint
         if: always() && matrix.os != 'windows-latest'

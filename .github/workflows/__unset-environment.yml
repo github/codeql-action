@@ -30,11 +30,6 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
       dotnet-version:
         type: string
         description: The version of .NET to install
@@ -47,11 +42,6 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
       dotnet-version:
         type: string
         description: The version of .NET to install
@@ -62,7 +52,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: unset-environment-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: unset-environment-${{github.ref}}-${{inputs.go-version}}-${{inputs.dotnet-version}}
 jobs:
   unset-environment:
     strategy:
@@ -95,11 +85,6 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
-      - name: Install Python
-        if: matrix.version != 'nightly-latest'
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ inputs.python-version || '3.13' }}
       - name: Install .NET
         uses: actions/setup-dotnet@v5
         with:

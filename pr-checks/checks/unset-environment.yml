@@ -6,7 +6,6 @@ versions:
   - linked
   - nightly-latest
 installGo: true
-installPython: true
 installDotNet: true
 steps:
   - uses: ./../action/init

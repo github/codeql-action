@@ -1,6 +1,10 @@
+import * as os from "os";
+
 import * as core from "@actions/core";
+import { ExecOptions } from "@actions/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
+import * as semver from "semver";
 
 import {
   getOptionalInput,
@@ -9,10 +13,57 @@ import {
 } from "./actions-util";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
+/**
+ * Minimum Git version required for overlay analysis. The `git ls-files --format`
+ * option, which is used by `getFileOidsUnderPath`, was introduced in Git 2.38.0.
+ */
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
+
+/**
+ * Git version information
+ *
+ * The full version string as reported by `git --version` may not be
+ * semver-compatible (e.g., "2.40.0.windows.1"). This class captures both
+ * the full version string and a truncated semver-compatible version string
+ * (e.g., "2.40.0").
+ */
+export class GitVersionInfo {
+  constructor(
+    /** Truncated semver-compatible version */
+    public truncatedVersion: string,
+    /** Full version string as reported by `git --version` */
+    public fullVersion: string,
+  ) {}
+
+  isAtLeast(minVersion: string): boolean {
+    return semver.gte(this.truncatedVersion, minVersion);
+  }
+}
+
+/**
+ * Gets the version of Git installed on the system and throws an error if
+ * the version cannot be determined.
+ */
+export async function getGitVersionOrThrow(): Promise<GitVersionInfo> {
+  const stdout = await runGitCommand(
+    undefined,
+    ["--version"],
+    "Failed to get git version.",
+  );
+  // Git version output can vary: "git version 2.40.0" or "git version 2.40.0.windows.1"
+  // We capture just the major.minor.patch portion to ensure semver compatibility.
+  const match = stdout.trim().match(/^git version ((\d+\.\d+\.\d+).*)$/);
+  if (match?.[1] && match?.[2]) {
+    return new GitVersionInfo(match[2], match[1]);
+  }
+  throw new Error(`Could not parse Git version from output: ${stdout.trim()}`);
+}
+
 export const runGitCommand = async function (
   workingDirectory: string | undefined,
   args: string[],
   customErrorMessage: string,
+  options?: ExecOptions,
 ): Promise<string> {
   let stdout = "";
   let stderr = "";
@@ -29,6 +80,7 @@ export const runGitCommand = async function (
         },
       },
       cwd: workingDirectory,
+      ...options,
     }).exec();
     return stdout;
   } catch (error) {
@@ -119,67 +171,6 @@ export const determineBaseBranchHeadCommitOid = async function (
     return undefined;
   } catch {
     return undefined;
-  }
-};
-
-/**
- * Deepen the git history of HEAD by one level. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const deepenGitHistory = async function () {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      [
-        "fetch",
-        "origin",
-        "HEAD",
-        "--no-tags",
-        "--no-recurse-submodules",
-        "--deepen=1",
-      ],
-      "Cannot deepen the shallow repository.",
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
-  }
-};
-
-/**
- * Fetch the given remote branch. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const gitFetch = async function (branch: string, extraFlags: string[]) {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      ["fetch", "--no-tags", ...extraFlags, "origin", `${branch}:${branch}`],
-      `Cannot fetch ${branch}.`,
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
-  }
-};
-
-/**
- * Repack the git repository, using with the given flags. Errors are logged.
- *
- * This function uses the `checkout_path` to determine the repository path and
- * works only when called from `analyze` or `upload-sarif`.
- */
-export const gitRepack = async function (flags: string[]) {
-  try {
-    await runGitCommand(
-      getOptionalInput("checkout_path"),
-      ["repack", ...flags],
-      "Cannot repack the repository.",
-    );
-  } catch {
-    // Errors are already logged by runGitCommand()
   }
 };
 
@@ -407,4 +398,46 @@ export async function isAnalyzingDefaultBranch(): Promise<boolean> {
   }
 
   return currentRef === defaultBranch;
+}
+
+/**
+ * Gets a list of all tracked files in the repository.
+ *
+ * @param workingDirectory The working directory, which is part of a Git repository.
+ */
+export async function listFiles(workingDirectory: string): Promise<string[]> {
+  const stdout = await runGitCommand(
+    workingDirectory,
+    ["ls-files"],
+    "Unable to list tracked files.",
+  );
+  return stdout.split(os.EOL).filter((line) => line.trim().length > 0);
+}
+
+/**
+ * Gets a list of files that have the `linguist-generated: true` attribute.
+ *
+ * @param workingDirectory The working directory, which is part of a Git repository.
+ */
+export async function getGeneratedFiles(
+  workingDirectory: string,
+): Promise<string[]> {
+  const files = await listFiles(workingDirectory);
+  const stdout = await runGitCommand(
+    workingDirectory,
+    ["check-attr", "linguist-generated", "--stdin"],
+    "Unable to check attributes of files.",
+    { input: Buffer.from(files.join(os.EOL)) },
+  );
+
+  const generatedFiles: string[] = [];
+  const regex = /^([^:]+): linguist-generated: true$/;
+  for (const result of stdout.split(os.EOL)) {
+    const match = result.match(regex);
+    if (match && match[1].trim().length > 0) {
+      generatedFiles.push(match[1].trim());
+    }
+  }
+
+  return generatedFiles;
 }

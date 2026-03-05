@@ -18,7 +18,7 @@ import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
 import { Logger } from "./logging";
-import { OverlayBaseDatabaseDownloadStats } from "./overlay-database-utils";
+import { OverlayBaseDatabaseDownloadStats } from "./overlay";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -54,7 +54,7 @@ export enum ActionName {
  * considered to be a third party analysis and is treated differently when calculating SLOs. To ensure
  * misconfigured workflows are not treated as third party, only the upload-sarif action can return false.
  */
-export function isFirstPartyAnalysis(actionName: ActionName): boolean {
+function isFirstPartyAnalysis(actionName: ActionName): boolean {
   if (actionName !== ActionName.UploadSarif) {
     return true;
   }
@@ -321,7 +321,9 @@ export async function createStatusReportBase(
     try {
       statusReport.actions_event_name = getWorkflowEventName();
     } catch (e) {
-      logger.warning(`Could not determine the workflow event name: ${e}.`);
+      logger.warning(
+        `Could not determine the workflow event name: ${getErrorMessage(e)}.`,
+      );
     }
 
     if (config) {
@@ -374,7 +376,7 @@ export async function createStatusReportBase(
     return statusReport;
   } catch (e) {
     logger.warning(
-      `Caught an exception while gathering information for telemetry: ${e}. Will skip sending status report.`,
+      `Failed to gather information for telemetry: ${getErrorMessage(e)}. Will skip sending status report.`,
     );
 
     // Re-throw the exception in test mode. While testing, we want to know if something goes wrong here.
@@ -605,4 +607,36 @@ export async function createInitWithConfigStatusReport(
       parseRegistriesWithoutCredentials(getOptionalInput("registries")) ?? [],
     ),
   };
+}
+
+export async function sendUnhandledErrorStatusReport(
+  actionName: ActionName,
+  actionStartedAt: Date,
+  error: unknown,
+  logger: Logger,
+): Promise<void> {
+  try {
+    // In the future, we may want to add a specific field for unhandled errors so we can
+    // create a dedicated monitor for them.
+    const statusReport = await createStatusReportBase(
+      actionName,
+      "failure",
+      actionStartedAt,
+      undefined,
+      undefined,
+      logger,
+      `Unhandled CodeQL Action error: ${getErrorMessage(error)}`,
+      error instanceof Error ? error.stack : undefined,
+    );
+    if (statusReport !== undefined) {
+      await sendStatusReport(statusReport);
+    }
+  } catch (e) {
+    logger.warning(
+      `Failed to send the unhandled error status report: ${getErrorMessage(e)}.`,
+    );
+    if (isInTestMode()) {
+      throw e;
+    }
+  }
 }

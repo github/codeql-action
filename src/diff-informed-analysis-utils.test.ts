@@ -8,7 +8,7 @@ import {
   shouldPerformDiffInformedAnalysis,
   exportedForTesting,
 } from "./diff-informed-analysis-utils";
-import { Feature, Features } from "./feature-flags";
+import { Feature, initFeatures } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -63,7 +63,7 @@ const testShouldPerformDiffInformedAnalysis = test.macro({
         delete process.env.CODEQL_ACTION_DIFF_INFORMED_QUERIES;
       }
 
-      const features = new Features(
+      const features = initFeatures(
         testCase.gitHubVersion,
         parseRepositoryNwo("github/example"),
         tmpDir,
@@ -97,14 +97,14 @@ const testShouldPerformDiffInformedAnalysis = test.macro({
   title: (_, title) => `shouldPerformDiffInformedAnalysis: ${title}`,
 });
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns true in the default test case",
   {},
   true,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns false when feature flag is disabled from the API",
   {
@@ -113,7 +113,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns false when CODEQL_ACTION_DIFF_INFORMED_QUERIES is set to false",
   {
@@ -123,7 +123,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns true when CODEQL_ACTION_DIFF_INFORMED_QUERIES is set to true",
   {
@@ -133,7 +133,7 @@ test(
   true,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns false for CodeQL version 2.20.0",
   {
@@ -142,7 +142,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns false for invalid GHES version",
   {
@@ -154,7 +154,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns false for GHES version 3.18.5",
   {
@@ -166,7 +166,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns true for GHES version 3.19.0",
   {
@@ -178,7 +178,7 @@ test(
   true,
 );
 
-test(
+test.serial(
   testShouldPerformDiffInformedAnalysis,
   "returns false when not a pull request",
   {
@@ -198,12 +198,12 @@ function runGetDiffRanges(changes: number, patch: string[] | undefined): any {
   );
 }
 
-test("getDiffRanges: file unchanged", async (t) => {
+test.serial("getDiffRanges: file unchanged", async (t) => {
   const diffRanges = runGetDiffRanges(0, undefined);
   t.deepEqual(diffRanges, []);
 });
 
-test("getDiffRanges: file diff too large", async (t) => {
+test.serial("getDiffRanges: file diff too large", async (t) => {
   const diffRanges = runGetDiffRanges(1000000, undefined);
   t.deepEqual(diffRanges, [
     {
@@ -214,43 +214,49 @@ test("getDiffRanges: file diff too large", async (t) => {
   ]);
 });
 
-test("getDiffRanges: diff thunk with single addition range", async (t) => {
-  const diffRanges = runGetDiffRanges(2, [
-    "@@ -30,6 +50,8 @@",
-    " a",
-    " b",
-    " c",
-    "+1",
-    "+2",
-    " d",
-    " e",
-    " f",
-  ]);
-  t.deepEqual(diffRanges, [
-    {
-      path: "test.txt",
-      startLine: 53,
-      endLine: 54,
-    },
-  ]);
-});
+test.serial(
+  "getDiffRanges: diff thunk with single addition range",
+  async (t) => {
+    const diffRanges = runGetDiffRanges(2, [
+      "@@ -30,6 +50,8 @@",
+      " a",
+      " b",
+      " c",
+      "+1",
+      "+2",
+      " d",
+      " e",
+      " f",
+    ]);
+    t.deepEqual(diffRanges, [
+      {
+        path: "test.txt",
+        startLine: 53,
+        endLine: 54,
+      },
+    ]);
+  },
+);
 
-test("getDiffRanges: diff thunk with single deletion range", async (t) => {
-  const diffRanges = runGetDiffRanges(2, [
-    "@@ -30,8 +50,6 @@",
-    " a",
-    " b",
-    " c",
-    "-1",
-    "-2",
-    " d",
-    " e",
-    " f",
-  ]);
-  t.deepEqual(diffRanges, []);
-});
+test.serial(
+  "getDiffRanges: diff thunk with single deletion range",
+  async (t) => {
+    const diffRanges = runGetDiffRanges(2, [
+      "@@ -30,8 +50,6 @@",
+      " a",
+      " b",
+      " c",
+      "-1",
+      "-2",
+      " d",
+      " e",
+      " f",
+    ]);
+    t.deepEqual(diffRanges, []);
+  },
+);
 
-test("getDiffRanges: diff thunk with single update range", async (t) => {
+test.serial("getDiffRanges: diff thunk with single update range", async (t) => {
   const diffRanges = runGetDiffRanges(2, [
     "@@ -30,7 +50,7 @@",
     " a",
@@ -271,7 +277,7 @@ test("getDiffRanges: diff thunk with single update range", async (t) => {
   ]);
 });
 
-test("getDiffRanges: diff thunk with addition ranges", async (t) => {
+test.serial("getDiffRanges: diff thunk with addition ranges", async (t) => {
   const diffRanges = runGetDiffRanges(2, [
     "@@ -30,7 +50,9 @@",
     " a",
@@ -298,7 +304,7 @@ test("getDiffRanges: diff thunk with addition ranges", async (t) => {
   ]);
 });
 
-test("getDiffRanges: diff thunk with mixed ranges", async (t) => {
+test.serial("getDiffRanges: diff thunk with mixed ranges", async (t) => {
   const diffRanges = runGetDiffRanges(2, [
     "@@ -30,7 +50,7 @@",
     " a",
@@ -330,7 +336,7 @@ test("getDiffRanges: diff thunk with mixed ranges", async (t) => {
   ]);
 });
 
-test("getDiffRanges: multiple diff thunks", async (t) => {
+test.serial("getDiffRanges: multiple diff thunks", async (t) => {
   const diffRanges = runGetDiffRanges(2, [
     "@@ -30,6 +50,8 @@",
     " a",
@@ -365,7 +371,7 @@ test("getDiffRanges: multiple diff thunks", async (t) => {
   ]);
 });
 
-test("getDiffRanges: no diff context lines", async (t) => {
+test.serial("getDiffRanges: no diff context lines", async (t) => {
   const diffRanges = runGetDiffRanges(2, ["@@ -30 +50,2 @@", "+1", "+2"]);
   t.deepEqual(diffRanges, [
     {
@@ -376,7 +382,7 @@ test("getDiffRanges: no diff context lines", async (t) => {
   ]);
 });
 
-test("getDiffRanges: malformed thunk header", async (t) => {
+test.serial("getDiffRanges: malformed thunk header", async (t) => {
   const diffRanges = runGetDiffRanges(2, ["@@ 30 +50,2 @@", "+1", "+2"]);
   t.deepEqual(diffRanges, undefined);
 });

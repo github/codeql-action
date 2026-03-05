@@ -4,6 +4,7 @@ versions: ["linked", "default", "nightly-latest"] # This feature is not compatib
 installGo: true
 installNode: true
 installPython: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:

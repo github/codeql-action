@@ -5,7 +5,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { CodeQuality, CodeScanning } from "./analyses";
+import { CodeQuality, CodeScanning, RiskAssessment } from "./analyses";
 import {
   runQueries,
   defaultSuites,
@@ -34,7 +34,7 @@ setupTests(test);
  * - Checks that the duration fields are populated for the correct language.
  * - Checks that the QA telemetry status report fields are populated when the QA feature flag is enabled.
  */
-test("status report fields", async (t) => {
+test.serial("status report fields", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
 
@@ -89,7 +89,6 @@ test("status report fields", async (t) => {
           );
           return "";
         },
-        databasePrintBaseline: async () => "",
       });
 
       const config = createTestConfig({
@@ -158,6 +157,7 @@ test("addSarifExtension", (t) => {
       addSarifExtension(CodeQuality, language),
       `${language}.quality.sarif`,
     );
+    t.is(addSarifExtension(RiskAssessment, language), `${language}.csra.sarif`);
   }
 });
 

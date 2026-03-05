@@ -76,7 +76,7 @@ export async function endTracingForCluster(
   }
 }
 
-export async function getTracerConfigForCluster(
+async function getTracerConfigForCluster(
   config: Config,
 ): Promise<TracerConfig> {
   const tracingEnvVariables = JSON.parse(

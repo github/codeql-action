@@ -80,7 +80,7 @@ export function isRunningLocalAction(): boolean {
  *
  * This can be used to get the Action's name or tell if we're running a local Action.
  */
-export function getRelativeScriptPath(): string {
+function getRelativeScriptPath(): string {
   const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);

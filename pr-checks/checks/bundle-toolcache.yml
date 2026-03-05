@@ -16,7 +16,7 @@ steps:
         const codeqlPath = path.join(process.env['RUNNER_TOOL_CACHE'], 'CodeQL');
         fs.rmdirSync(codeqlPath, { recursive: true });
   - name: Install @actions/tool-cache
-    run: npm install @actions/tool-cache
+    run: npm install @actions/tool-cache@3
   - name: Check toolcache does not contain CodeQL
     uses: actions/github-script@v8
     with:

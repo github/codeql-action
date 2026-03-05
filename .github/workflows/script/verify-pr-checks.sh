@@ -19,7 +19,7 @@ if [ ! -z "$(git status --porcelain)" ]; then
     # If we get a fail here then the PR needs attention
     git diff
     git status
-    >&2 echo "Failed: PR checks are not up to date. Run 'cd pr-checks && python3 sync.py' to update"
+    >&2 echo "Failed: PR checks are not up to date. Run 'cd pr-checks && ./sync.sh' to update"
 
     echo "### Generated workflows diff" >> $GITHUB_STEP_SUMMARY
     echo "" >> $GITHUB_STEP_SUMMARY

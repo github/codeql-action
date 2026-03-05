@@ -18,6 +18,9 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
@@ -28,8 +31,8 @@ defaults:
   run:
     shell: bash
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: global-proxy-${{github.ref}}
 jobs:
   global-proxy:
     strategy:
@@ -48,20 +51,8 @@ jobs:
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
-  # These steps are required to initialise the `gh` cli in a container that doesn't
-  # come pre-installed with it. The reason for that is that this is later
-  # needed by the `prepare-test` workflow to find the latest release of CodeQL.
-      - name: Set up GitHub CLI
-        run: |
-          apt update
-          apt install -y curl libreadline8 gnupg2 software-properties-common zstd
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          apt-key add /usr/share/keyrings/githubcli-archive-keyring.gpg
-          apt-add-repository https://cli.github.com/packages
-          apt install -y gh
-        env: {}
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -76,6 +67,7 @@ jobs:
       - uses: ./../action/analyze
     env:
       https_proxy: http://squid-proxy:3128
+      CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION: true
       CODEQL_ACTION_TEST_MODE: true
     container:
       image: ubuntu:22.04

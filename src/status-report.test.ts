@@ -25,24 +25,20 @@ import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 setupTests(test);
 
 function setupEnvironmentAndStub(tmpDir: string) {
-  setupActionsVars(tmpDir, tmpDir);
+  setupActionsVars(tmpDir, tmpDir, {
+    GITHUB_EVENT_NAME: "dynamic",
+    GITHUB_RUN_ATTEMPT: "2",
+    GITHUB_RUN_ID: "100",
+  });
 
-  process.env["CODEQL_ACTION_ANALYSIS_KEY"] = "analysis-key";
-  process.env["GITHUB_EVENT_NAME"] = "dynamic";
-  process.env["GITHUB_REF"] = "refs/heads/main";
-  process.env["GITHUB_REPOSITORY"] = "octocat/HelloWorld";
-  process.env["GITHUB_RUN_ATTEMPT"] = "2";
-  process.env["GITHUB_RUN_ID"] = "100";
-  process.env["GITHUB_SHA"] = "a".repeat(40);
+  process.env[EnvVar.ANALYSIS_KEY] = "analysis-key";
   process.env["ImageVersion"] = "2023.05.19.1";
-  process.env["RUNNER_OS"] = "macOS";
-  process.env["RUNNER_TEMP"] = tmpDir;
 
   const getRequiredInput = sinon.stub(actionsUtil, "getRequiredInput");
   getRequiredInput.withArgs("matrix").resolves("input/matrix");
 }
 
-test("createStatusReportBase", async (t) => {
+test.serial("createStatusReportBase", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupEnvironmentAndStub(tmpDir);
 
@@ -92,7 +88,7 @@ test("createStatusReportBase", async (t) => {
   });
 });
 
-test("createStatusReportBase - empty configuration", async (t) => {
+test.serial("createStatusReportBase - empty configuration", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupEnvironmentAndStub(tmpDir);
 
@@ -112,7 +108,7 @@ test("createStatusReportBase - empty configuration", async (t) => {
   });
 });
 
-test("createStatusReportBase - partial configuration", async (t) => {
+test.serial("createStatusReportBase - partial configuration", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupEnvironmentAndStub(tmpDir);
 
@@ -135,7 +131,7 @@ test("createStatusReportBase - partial configuration", async (t) => {
   });
 });
 
-test("createStatusReportBase_firstParty", async (t) => {
+test.serial("createStatusReportBase_firstParty", async (t) => {
   await withTmpDir(async (tmpDir: string) => {
     setupEnvironmentAndStub(tmpDir);
 
@@ -239,58 +235,61 @@ test("createStatusReportBase_firstParty", async (t) => {
   });
 });
 
-test("getActionStatus handling correctly various types of errors", (t) => {
-  t.is(
-    getActionsStatus(new Error("arbitrary error")),
-    "failure",
-    "We categorise an arbitrary error as a failure",
-  );
+test.serial(
+  "getActionStatus handling correctly various types of errors",
+  (t) => {
+    t.is(
+      getActionsStatus(new Error("arbitrary error")),
+      "failure",
+      "We categorise an arbitrary error as a failure",
+    );
 
-  t.is(
-    getActionsStatus(new ConfigurationError("arbitrary error")),
-    "user-error",
-    "We categorise a ConfigurationError as a user error",
-  );
+    t.is(
+      getActionsStatus(new ConfigurationError("arbitrary error")),
+      "user-error",
+      "We categorise a ConfigurationError as a user error",
+    );
 
-  t.is(
-    getActionsStatus(new Error("exit code 1"), "multiple things went wrong"),
-    "failure",
-    "getActionsStatus should return failure if passed an arbitrary error and an additional failure cause",
-  );
+    t.is(
+      getActionsStatus(new Error("exit code 1"), "multiple things went wrong"),
+      "failure",
+      "getActionsStatus should return failure if passed an arbitrary error and an additional failure cause",
+    );
 
-  t.is(
-    getActionsStatus(
-      new ConfigurationError("exit code 1"),
-      "multiple things went wrong",
-    ),
-    "user-error",
-    "getActionsStatus should return user-error if passed a configuration error and an additional failure cause",
-  );
+    t.is(
+      getActionsStatus(
+        new ConfigurationError("exit code 1"),
+        "multiple things went wrong",
+      ),
+      "user-error",
+      "getActionsStatus should return user-error if passed a configuration error and an additional failure cause",
+    );
 
-  t.is(
-    getActionsStatus(),
-    "success",
-    "getActionsStatus should return success if no error is passed",
-  );
+    t.is(
+      getActionsStatus(),
+      "success",
+      "getActionsStatus should return success if no error is passed",
+    );
 
-  t.is(
-    getActionsStatus(new Object()),
-    "failure",
-    "getActionsStatus should return failure if passed an arbitrary object",
-  );
+    t.is(
+      getActionsStatus(new Object()),
+      "failure",
+      "getActionsStatus should return failure if passed an arbitrary object",
+    );
 
-  t.is(
-    getActionsStatus(null, "an error occurred"),
-    "failure",
-    "getActionsStatus should return failure if passed null and an additional failure cause",
-  );
+    t.is(
+      getActionsStatus(null, "an error occurred"),
+      "failure",
+      "getActionsStatus should return failure if passed null and an additional failure cause",
+    );
 
-  t.is(
-    getActionsStatus(wrapError(new ConfigurationError("arbitrary error"))),
-    "user-error",
-    "We still recognise a wrapped ConfigurationError as a user error",
-  );
-});
+    t.is(
+      getActionsStatus(wrapError(new ConfigurationError("arbitrary error"))),
+      "user-error",
+      "We still recognise a wrapped ConfigurationError as a user error",
+    );
+  },
+);
 
 const testCreateInitWithConfigStatusReport = test.macro({
   exec: async (
@@ -341,7 +340,7 @@ const testCreateInitWithConfigStatusReport = test.macro({
   title: (_, title) => `createInitWithConfigStatusReport: ${title}`,
 });
 
-test(
+test.serial(
   testCreateInitWithConfigStatusReport,
   "returns a value",
   createTestConfig({
@@ -356,7 +355,7 @@ test(
   },
 );
 
-test(
+test.serial(
   testCreateInitWithConfigStatusReport,
   "includes packs for a single language",
   createTestConfig({
@@ -373,7 +372,7 @@ test(
   },
 );
 
-test(
+test.serial(
   testCreateInitWithConfigStatusReport,
   "includes packs for multiple languages",
   createTestConfig({

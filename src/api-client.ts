@@ -3,6 +3,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
+import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -17,11 +18,6 @@ import {
 } from "./util";
 
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
-
-export enum DisallowedAPIVersionReason {
-  ACTION_TOO_OLD,
-  ACTION_TOO_NEW,
-}
 
 export type GitHubApiCombinedDetails = GitHubApiDetails &
   GitHubApiExternalRepoDetails;
@@ -54,6 +50,12 @@ function createApiClientWithDetails(
         info: core.info,
         warn: core.warning,
         error: core.error,
+      },
+      retry: {
+        // The default is 400, 401, 403, 404, 410, 422, and 451. We have observed transient errors
+        // with authentication, so we remove 401, 403, and 404 from the default list to ensure that
+        // these errors are retried.
+        doNotRetry: [400, 410, 422, 451],
       },
     }),
   );
@@ -130,7 +132,7 @@ export async function getGitHubVersionFromApi(
   }
 
   if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
-    return { type: GitHubVariant.GHE_DOTCOM };
+    return { type: GitHubVariant.GHEC_DR };
   }
 
   const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
@@ -194,9 +196,7 @@ export async function getWorkflowRelativePath(): Promise<string> {
  * the GitHub API, but after that the result will be cached.
  */
 export async function getAnalysisKey(): Promise<string> {
-  const analysisKeyEnvVar = "CODEQL_ACTION_ANALYSIS_KEY";
-
-  let analysisKey = process.env[analysisKeyEnvVar];
+  let analysisKey = process.env[EnvVar.ANALYSIS_KEY];
   if (analysisKey !== undefined) {
     return analysisKey;
   }
@@ -205,7 +205,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
-  core.exportVariable(analysisKeyEnvVar, analysisKey);
+  core.exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
   return analysisKey;
 }
 
@@ -312,7 +312,8 @@ export function wrapApiConfigurationError(e: unknown) {
     }
     if (
       httpError.message.includes("Bad credentials") ||
-      httpError.message.includes("Not Found")
+      httpError.message.includes("Not Found") ||
+      httpError.message.includes("Requires authentication")
     ) {
       return new ConfigurationError(
         "Please check that your token is valid and has the required permissions: contents: read, security-events: write",

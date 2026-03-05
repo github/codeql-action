@@ -4,13 +4,16 @@ import { performance } from "perf_hooks";
 
 import * as yaml from "js-yaml";
 
-import { getActionVersion, isAnalyzingPullRequest } from "./actions-util";
+import {
+  getActionVersion,
+  isAnalyzingPullRequest,
+  isDynamicWorkflow,
+} from "./actions-util";
 import {
   AnalysisConfig,
   AnalysisKind,
-  CodeQuality,
   codeQualityQueries,
-  CodeScanning,
+  getAnalysisConfig,
 } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
@@ -22,17 +25,34 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
+import {
+  addNoLanguageDiagnostic,
+  makeTelemetryDiagnostic,
+} from "./diagnostics";
 import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { RepositoryProperties } from "./feature-flags/properties";
-import { getGitRoot, isAnalyzingDefaultBranch } from "./git-utils";
+import {
+  RepositoryProperties,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
+import {
+  getGeneratedFiles,
+  getGitRoot,
+  getGitVersionOrThrow,
+  GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  GitVersionInfo,
+  isAnalyzingDefaultBranch,
+} from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { Logger } from "./logging";
+import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
 import {
-  CODEQL_OVERLAY_MINIMUM_VERSION,
-  OverlayDatabaseMode,
-} from "./overlay-database-utils";
+  addOverlayDisablementDiagnostics,
+  OverlayDisabledReason,
+} from "./overlay/diagnostics";
+import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
@@ -43,9 +63,51 @@ import {
   codeQlVersionAtLeast,
   cloneObject,
   isDefined,
+  checkDiskUsage,
+  getCodeQLMemoryLimit,
+  getErrorMessage,
+  isInTestMode,
+  joinAtMost,
+  DiskUsage,
 } from "./util";
 
-export * from "./config/db-config";
+/**
+ * The minimum available disk space (in MB) required to perform overlay analysis.
+ * If the available disk space on the runner is below the threshold when deciding
+ * whether to perform overlay analysis, then the action will not perform overlay
+ * analysis unless overlay analysis has been explicitly enabled via environment
+ * variable.
+ */
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
+  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
+
+/**
+ * The v2 minimum available disk space (in MB) required to perform overlay
+ * analysis. This is a lower threshold than the v1 limit, allowing overlay
+ * analysis to run on runners with less available disk space.
+ */
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB = 14000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES =
+  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB * 1_000_000;
+
+/**
+ * The minimum memory (in MB) that must be available for CodeQL to perform overlay analysis. If
+ * CodeQL will be given less memory than this threshold, then the action will not perform overlay
+ * analysis unless overlay analysis has been explicitly enabled via environment variable.
+ *
+ * This check is not performed for CodeQL >= `CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE` since
+ * improved memory usage in that version makes the check unnecessary.
+ */
+const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
+
+/**
+ * Versions 2.24.3+ of CodeQL reduce overlay analysis's peak RAM usage.
+ *
+ * In particular, RAM usage with overlay analysis enabled should generally be no higher than it is
+ * without overlay analysis for these versions.
+ */
+const CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE = "2.24.3";
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -148,6 +210,9 @@ export interface Config {
   /** A value indicating how dependency caching should be used. */
   dependencyCachingEnabled: CachingKind;
 
+  /** The keys of caches that we restored, if any. */
+  dependencyCachingRestoredKeys: string[];
+
   /**
    * Extra query exclusions to append to the config.
    */
@@ -174,9 +239,14 @@ export interface Config {
    * A partial mapping from repository properties that affect us to their values.
    */
   repositoryProperties: RepositoryProperties;
+
+  /**
+   * Whether to enable file coverage information.
+   */
+  enableFileCoverageInformation: boolean;
 }
 
-export async function getSupportedLanguageMap(
+async function getSupportedLanguageMap(
   codeql: CodeQL,
   logger: Logger,
 ): Promise<Record<string, string>> {
@@ -239,7 +309,7 @@ export function hasActionsWorkflows(sourceRoot: string): boolean {
 /**
  * Gets the set of languages in the current repository.
  */
-export async function getRawLanguagesInRepo(
+async function getRawLanguagesInRepo(
   repository: RepositoryNwo,
   sourceRoot: string,
   logger: Logger,
@@ -348,7 +418,7 @@ export function getRawLanguagesNoAutodetect(
  * @returns A tuple containing a list of languages in this repository that might be
  * analyzable and whether or not this list was determined automatically.
  */
-export async function getRawLanguages(
+async function getRawLanguages(
   languagesInput: string | undefined,
   repository: RepositoryNwo,
   sourceRoot: string,
@@ -378,6 +448,7 @@ export interface InitConfigInputs {
   dbLocation: string | undefined;
   configInput: string | undefined;
   buildModeInput: string | undefined;
+  ramInput: string | undefined;
   trapCachingEnabled: boolean;
   dependencyCachingEnabled: string | undefined;
   debugMode: boolean;
@@ -392,6 +463,7 @@ export interface InitConfigInputs {
   apiDetails: api.GitHubApiCombinedDetails;
   features: FeatureEnablement;
   repositoryProperties: RepositoryProperties;
+  enableFileCoverageInformation: boolean;
   analysisKinds: AnalysisKind[];
   logger: Logger;
 }
@@ -421,6 +493,7 @@ export async function initActionState(
     repositoryProperties,
     analysisKinds,
     logger,
+    enableFileCoverageInformation,
   }: InitConfigInputs,
   userConfig: UserConfig,
 ): Promise<Config> {
@@ -496,10 +569,12 @@ export async function initActionState(
     trapCaches,
     trapCacheDownloadTime,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
+    dependencyCachingRestoredKeys: [],
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
     repositoryProperties,
+    enableFileCoverageInformation,
   };
 }
 
@@ -579,17 +654,11 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
 };
 
 async function isOverlayAnalysisFeatureEnabled(
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   codeql: CodeQL,
   languages: Language[],
   codeScanningConfig: UserConfig,
 ): Promise<boolean> {
-  // TODO: Remove the repository owner check once support for overlay analysis
-  // stabilizes, and no more backward-incompatible changes are expected.
-  if (!["github", "dsp-testing"].includes(repository.owner)) {
-    return false;
-  }
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
     return false;
   }
@@ -624,6 +693,86 @@ async function isOverlayAnalysisFeatureEnabled(
   return true;
 }
 
+/** Checks if the runner has enough disk space for overlay analysis. */
+function runnerHasSufficientDiskSpace(
+  diskUsage: DiskUsage | undefined,
+  logger: Logger,
+  useV2ResourceChecks: boolean,
+): boolean {
+  const minimumDiskSpaceBytes = useV2ResourceChecks
+    ? OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES
+    : OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
+  if (
+    diskUsage === undefined ||
+    diskUsage.numAvailableBytes < minimumDiskSpaceBytes
+  ) {
+    const diskSpaceMb =
+      diskUsage === undefined
+        ? 0
+        : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+    const minimumDiskSpaceMb = Math.round(minimumDiskSpaceBytes / 1_000_000);
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient disk space (${diskSpaceMb} MB, needed ${minimumDiskSpaceMb} MB).`,
+    );
+    return false;
+  }
+  return true;
+}
+
+/** Checks if the runner has enough memory for overlay analysis. */
+async function runnerHasSufficientMemory(
+  codeql: CodeQL,
+  ramInput: string | undefined,
+  logger: Logger,
+): Promise<boolean> {
+  if (
+    await codeQlVersionAtLeast(
+      codeql,
+      CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE,
+    )
+  ) {
+    logger.debug(
+      `Skipping memory check for overlay analysis because CodeQL version is at least ${CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE}.`,
+    );
+    return true;
+  }
+
+  const memoryFlagValue = getCodeQLMemoryLimit(ramInput, logger);
+  if (memoryFlagValue < OVERLAY_MINIMUM_MEMORY_MB) {
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `due to insufficient memory for CodeQL analysis (${memoryFlagValue} MB, needed ${OVERLAY_MINIMUM_MEMORY_MB} MB).`,
+    );
+    return false;
+  }
+
+  logger.debug(
+    `Memory available for CodeQL analysis is ${memoryFlagValue} MB, which is above the minimum of ${OVERLAY_MINIMUM_MEMORY_MB} MB.`,
+  );
+  return true;
+}
+
+/**
+ * Checks if the runner supports overlay analysis based on available disk space
+ * and the maximum memory CodeQL will be allowed to use.
+ */
+async function runnerSupportsOverlayAnalysis(
+  codeql: CodeQL,
+  diskUsage: DiskUsage | undefined,
+  ramInput: string | undefined,
+  logger: Logger,
+  useV2ResourceChecks: boolean,
+): Promise<boolean> {
+  if (!runnerHasSufficientDiskSpace(diskUsage, logger, useV2ResourceChecks)) {
+    return false;
+  }
+  if (!(await runnerHasSufficientMemory(codeql, ramInput, logger))) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Calculate and validate the overlay database mode and caching to use.
  *
@@ -647,19 +796,23 @@ async function isOverlayAnalysisFeatureEnabled(
  */
 export async function getOverlayDatabaseMode(
   codeql: CodeQL,
-  repository: RepositoryNwo,
   features: FeatureEnablement,
   languages: Language[],
   sourceRoot: string,
   buildMode: BuildMode | undefined,
+  ramInput: string | undefined,
   codeScanningConfig: UserConfig,
+  repositoryProperties: RepositoryProperties,
+  gitVersion: GitVersionInfo | undefined,
   logger: Logger,
 ): Promise<{
   overlayDatabaseMode: OverlayDatabaseMode;
   useOverlayDatabaseCaching: boolean;
+  disabledReason: OverlayDisabledReason | undefined;
 }> {
   let overlayDatabaseMode = OverlayDatabaseMode.None;
   let useOverlayDatabaseCaching = false;
+  let disabledReason: OverlayDisabledReason | undefined;
 
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
@@ -675,15 +828,67 @@ export async function getOverlayDatabaseMode(
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
   } else if (
+    repositoryProperties[RepositoryPropertyName.DISABLE_OVERLAY] === true
+  ) {
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        `because the ${RepositoryPropertyName.DISABLE_OVERLAY} repository property is set to true.`,
+    );
+    overlayDatabaseMode = OverlayDatabaseMode.None;
+    disabledReason = OverlayDisabledReason.DisabledByRepositoryProperty;
+  } else if (
     await isOverlayAnalysisFeatureEnabled(
-      repository,
       features,
       codeql,
       languages,
       codeScanningConfig,
     )
   ) {
-    if (isAnalyzingPullRequest()) {
+    const performResourceChecks = !(await features.getValue(
+      Feature.OverlayAnalysisSkipResourceChecks,
+      codeql,
+    ));
+    const useV2ResourceChecks = await features.getValue(
+      Feature.OverlayAnalysisResourceChecksV2,
+    );
+    const checkOverlayStatus = await features.getValue(
+      Feature.OverlayAnalysisStatusCheck,
+    );
+    const diskUsage =
+      performResourceChecks || checkOverlayStatus
+        ? await checkDiskUsage(logger)
+        : undefined;
+    if (
+      performResourceChecks &&
+      !(await runnerSupportsOverlayAnalysis(
+        codeql,
+        diskUsage,
+        ramInput,
+        logger,
+        useV2ResourceChecks,
+      ))
+    ) {
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+      disabledReason = OverlayDisabledReason.InsufficientResources;
+    } else if (checkOverlayStatus && diskUsage === undefined) {
+      logger.warning(
+        `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
+      );
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+      disabledReason = OverlayDisabledReason.UnableToDetermineDiskUsage;
+    } else if (
+      checkOverlayStatus &&
+      diskUsage &&
+      (await shouldSkipOverlayAnalysis(codeql, languages, diskUsage, logger))
+    ) {
+      logger.info(
+        `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+          "because overlay analysis previously failed with this combination of languages, " +
+          "disk space, and CodeQL version.",
+      );
+      overlayDatabaseMode = OverlayDatabaseMode.None;
+      disabledReason = OverlayDisabledReason.SkippedDueToCachedStatus;
+    } else if (isAnalyzingPullRequest()) {
       overlayDatabaseMode = OverlayDatabaseMode.Overlay;
       useOverlayDatabaseCaching = true;
       logger.info(
@@ -698,15 +903,18 @@ export async function getOverlayDatabaseMode(
           "with caching because we are analyzing the default branch.",
       );
     }
+  } else {
+    disabledReason = OverlayDisabledReason.FeatureNotEnabled;
   }
 
-  const nonOverlayAnalysis = {
+  const disabledResult = (reason: OverlayDisabledReason | undefined) => ({
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
-  };
+    disabledReason: reason,
+  });
 
   if (overlayDatabaseMode === OverlayDatabaseMode.None) {
-    return nonOverlayAnalysis;
+    return disabledResult(disabledReason);
   }
 
   if (
@@ -729,7 +937,7 @@ export async function getOverlayDatabaseMode(
         `build-mode is set to "${buildMode}" instead of "none". ` +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.IncompatibleBuildMode);
   }
   if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
     logger.warning(
@@ -737,7 +945,7 @@ export async function getOverlayDatabaseMode(
         `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.IncompatibleCodeQl);
   }
   if ((await getGitRoot(sourceRoot)) === undefined) {
     logger.warning(
@@ -745,12 +953,29 @@ export async function getOverlayDatabaseMode(
         `the source root "${sourceRoot}" is not inside a git repository. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return nonOverlayAnalysis;
+    return disabledResult(OverlayDisabledReason.NoGitRoot);
+  }
+  if (gitVersion === undefined) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        "the Git version could not be determined. " +
+        "Falling back to creating a normal full database instead.",
+    );
+    return disabledResult(OverlayDisabledReason.IncompatibleGit);
+  }
+  if (!gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
+    logger.warning(
+      `Cannot build an ${overlayDatabaseMode} database because ` +
+        `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
+        "Falling back to creating a normal full database instead.",
+    );
+    return disabledResult(OverlayDisabledReason.IncompatibleGit);
   }
 
   return {
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
+    disabledReason,
   };
 }
 
@@ -839,27 +1064,94 @@ export async function initConfig(
     config.computedConfig["query-filters"] = [];
   }
 
+  let gitVersion: GitVersionInfo | undefined = undefined;
+  try {
+    gitVersion = await getGitVersionOrThrow();
+    logger.info(`Using Git version ${gitVersion.fullVersion}`);
+    await logGitVersionTelemetry(config, gitVersion);
+  } catch (e) {
+    logger.warning(`Could not determine Git version: ${getErrorMessage(e)}`);
+    // Throw the error in test mode so it's more visible, unless the environment
+    // variable is set to tolerate this, for example because we're running in a
+    // Docker container where git may not be available.
+    if (
+      isInTestMode() &&
+      process.env[EnvVar.TOLERATE_MISSING_GIT_VERSION] !== "true"
+    ) {
+      throw e;
+    }
+  }
+
+  // If we are in a dynamic workflow or the corresponding FF is enabled, try to determine
+  // which files in the repository are marked as generated and add them to
+  // the `paths-ignore` configuration.
+  if (
+    (await features.getValue(Feature.IgnoreGeneratedFiles)) &&
+    isDynamicWorkflow()
+  ) {
+    try {
+      const generatedFilesCheckStartedAt = performance.now();
+      const generatedFiles = await getGeneratedFiles(inputs.sourceRoot);
+      const generatedFilesDuration = Math.round(
+        performance.now() - generatedFilesCheckStartedAt,
+      );
+
+      if (generatedFiles.length > 0) {
+        config.computedConfig["paths-ignore"] ??= [];
+        config.computedConfig["paths-ignore"].push(...generatedFiles);
+        logger.info(
+          `Detected ${generatedFiles.length} generated file(s), which will be excluded from analysis: ${joinAtMost(generatedFiles, ", ", 10)}`,
+        );
+      } else {
+        logger.info(`Found no generated files.`);
+      }
+
+      await logGeneratedFilesTelemetry(
+        config,
+        generatedFilesDuration,
+        generatedFiles.length,
+      );
+    } catch (error) {
+      logger.info(`Cannot ignore generated files: ${getErrorMessage(error)}`);
+    }
+  } else {
+    logger.debug(`Skipping check for generated files.`);
+  }
+
   // The choice of overlay database mode depends on the selection of languages
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
   // rest of the config has been populated.
-  const { overlayDatabaseMode, useOverlayDatabaseCaching } =
-    await getOverlayDatabaseMode(
-      inputs.codeql,
-      inputs.repository,
-      inputs.features,
-      config.languages,
-      inputs.sourceRoot,
-      config.buildMode,
-      config.computedConfig,
-      logger,
-    );
+  const {
+    overlayDatabaseMode,
+    useOverlayDatabaseCaching,
+    disabledReason: overlayDisabledReason,
+  } = await getOverlayDatabaseMode(
+    inputs.codeql,
+    inputs.features,
+    config.languages,
+    inputs.sourceRoot,
+    config.buildMode,
+    inputs.ramInput,
+    config.computedConfig,
+    config.repositoryProperties,
+    gitVersion,
+    logger,
+  );
   logger.info(
     `Using overlay database mode: ${overlayDatabaseMode} ` +
       `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
   );
   config.overlayDatabaseMode = overlayDatabaseMode;
   config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+
+  if (overlayDisabledReason !== undefined) {
+    await addOverlayDisablementDiagnostics(
+      config,
+      inputs.codeql,
+      overlayDisabledReason,
+    );
+  }
 
   if (
     overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
@@ -1229,26 +1521,71 @@ export function isCodeQualityEnabled(config: Config): boolean {
 }
 
 /**
- * Returns the primary analysis kind that the Action is initialised with. This is
- * always `AnalysisKind.CodeScanning` unless `AnalysisKind.CodeScanning` is not enabled.
+ * Returns the primary analysis kind that the Action is initialised with. If there is only
+ * one analysis kind, then that is returned.
  *
- * @returns Returns `AnalysisKind.CodeScanning` if `AnalysisKind.CodeScanning` is enabled;
- * otherwise `AnalysisKind.CodeQuality`.
+ * The special case is Code Scanning + Code Quality, which can be enabled at the same time.
+ * In that case, this function returns Code Scanning.
  */
-export function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+function getPrimaryAnalysisKind(config: Config): AnalysisKind {
+  if (config.analysisKinds.length === 1) {
+    return config.analysisKinds[0];
+  }
+
   return isCodeScanningEnabled(config)
     ? AnalysisKind.CodeScanning
     : AnalysisKind.CodeQuality;
 }
 
 /**
- * Returns the primary analysis configuration that the Action is initialised with. This is
- * always `CodeScanning` unless `CodeScanning` is not enabled.
- *
- * @returns Returns `CodeScanning` if `AnalysisKind.CodeScanning` is enabled; otherwise `CodeQuality`.
+ * Returns the primary analysis configuration that the Action is initialised with.
  */
 export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
-  return getPrimaryAnalysisKind(config) === AnalysisKind.CodeScanning
-    ? CodeScanning
-    : CodeQuality;
+  return getAnalysisConfig(getPrimaryAnalysisKind(config));
+}
+
+/** Logs the Git version as a telemetry diagnostic. */
+async function logGitVersionTelemetry(
+  config: Config,
+  gitVersion: GitVersionInfo,
+): Promise<void> {
+  if (config.languages.length > 0) {
+    addNoLanguageDiagnostic(
+      config,
+      makeTelemetryDiagnostic(
+        "codeql-action/git-version-telemetry",
+        "Git version telemetry",
+        {
+          fullVersion: gitVersion.fullVersion,
+          truncatedVersion: gitVersion.truncatedVersion,
+        },
+      ),
+    );
+  }
+}
+
+/**
+ * Logs the time it took to identify generated files and how many were discovered as
+ * a telemetry diagnostic.
+ * */
+async function logGeneratedFilesTelemetry(
+  config: Config,
+  duration: number,
+  generatedFilesCount: number,
+): Promise<void> {
+  if (config.languages.length < 1) {
+    return;
+  }
+
+  addNoLanguageDiagnostic(
+    config,
+    makeTelemetryDiagnostic(
+      "codeql-action/generated-files-telemetry",
+      "Generated files telemetry",
+      {
+        duration,
+        generatedFilesCount,
+      },
+    ),
+  );
 }

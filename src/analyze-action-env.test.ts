@@ -28,9 +28,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
   // it a bit to 20s.
   t.timeout(1000 * 20);
   await util.withTmpDir(async (tmpDir) => {
-    process.env["GITHUB_SERVER_URL"] = util.GITHUB_DOTCOM_URL;
-    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-    process.env["GITHUB_API_URL"] = "https://api.github.com";
+    setupActionsVars(tmpDir, tmpDir);
     sinon
       .stub(statusReport, "createStatusReportBase")
       .resolves({} as statusReport.StatusReportBase);
@@ -54,7 +52,6 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("expect-error").returns("false");
     sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);
-    setupActionsVars(tmpDir, tmpDir);
     mockFeatureFlagApiEndpoint(200, {});
 
     // When there are no action inputs for RAM and threads, the action uses
@@ -74,11 +71,20 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     // wait for the action promise to complete before starting verification.
     await analyzeAction.runPromise;
 
-    t.assert(runFinalizeStub.calledOnce);
-    t.deepEqual(runFinalizeStub.firstCall.args[1], "--threads=-1");
-    t.deepEqual(runFinalizeStub.firstCall.args[2], "--ram=4992");
-    t.assert(runQueriesStub.calledOnce);
-    t.deepEqual(runQueriesStub.firstCall.args[2], "--threads=-1");
-    t.deepEqual(runQueriesStub.firstCall.args[1], "--ram=4992");
+    t.assert(
+      runFinalizeStub.calledOnceWith(
+        sinon.match.any,
+        sinon.match.any,
+        "--threads=-1",
+        "--ram=4992",
+      ),
+    );
+    t.assert(
+      runQueriesStub.calledOnceWith(
+        sinon.match.any,
+        "--ram=4992",
+        "--threads=-1",
+      ),
+    );
   });
 });

@@ -14,9 +14,11 @@ on:
     - synchronize
     - reopened
     - ready_for_review
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: '0 5 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 defaults:
   run:
@@ -39,13 +41,15 @@ jobs:
       CODEQL_ACTION_TEST_MODE: true
     permissions:
       contents: read
+      # We currently need `security-events: read` to access feature flags.
+      security-events: read
     timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - name: Dump GitHub event
         run: cat "${GITHUB_EVENT_PATH}"
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -54,6 +58,12 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: ^1.13.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.x'
+      - name: Assert best-effort artifact scan completed
+        uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -79,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
       - name: Check expected artifacts exist
         run: |
           LANGUAGES="cpp csharp go java javascript python"

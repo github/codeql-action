@@ -24,7 +24,7 @@ jobs:
       pull-requests: write # needed to comment on the PR
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ env.HEAD_REF }}
@@ -87,10 +87,7 @@ jobs:
 
       - name: Generate workflows
         working-directory: pr-checks
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruamel.yaml==0.17.31
-          python3 sync.py
+        run: ./sync.sh
 
       - name: "Merge in progress: Finish merge and push"
         if: steps.merge.outputs.merge-in-progress == 'true'
@@ -111,7 +108,7 @@ jobs:
             # Otherwise, just commit the changes.
             if git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
               echo "In progress merge detected, finishing it up."
-              git merge --continue
+              git merge --continue --no-edit
             else
               echo "No in-progress merge detected, committing changes."
               git commit -m "Rebuild"

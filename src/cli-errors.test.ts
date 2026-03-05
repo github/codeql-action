@@ -131,27 +131,30 @@ for (const [platform, arch] of [
   ["linux", "arm64"],
   ["win32", "arm64"],
 ]) {
-  test(`wrapCliConfigurationError - ${platform}/${arch} unsupported`, (t) => {
-    sinon.stub(process, "platform").value(platform);
-    sinon.stub(process, "arch").value(arch);
-    const commandError = new CommandInvocationError(
-      "codeql",
-      ["version"],
-      1,
-      "Some error",
-    );
-    const cliError = new CliError(commandError);
+  test.serial(
+    `wrapCliConfigurationError - ${platform}/${arch} unsupported`,
+    (t) => {
+      sinon.stub(process, "platform").value(platform);
+      sinon.stub(process, "arch").value(arch);
+      const commandError = new CommandInvocationError(
+        "codeql",
+        ["version"],
+        1,
+        "Some error",
+      );
+      const cliError = new CliError(commandError);
 
-    const wrappedError = wrapCliConfigurationError(cliError);
+      const wrappedError = wrapCliConfigurationError(cliError);
 
-    t.true(wrappedError instanceof ConfigurationError);
-    t.true(
-      wrappedError.message.includes(
-        "CodeQL CLI does not support the platform/architecture combination",
-      ),
-    );
-    t.true(wrappedError.message.includes(`${platform}/${arch}`));
-  });
+      t.true(wrappedError instanceof ConfigurationError);
+      t.true(
+        wrappedError.message.includes(
+          "CodeQL CLI does not support the platform/architecture combination",
+        ),
+      );
+      t.true(wrappedError.message.includes(`${platform}/${arch}`));
+    },
+  );
 }
 
 test("wrapCliConfigurationError - supported platform", (t) => {

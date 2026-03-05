@@ -18,6 +18,9 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
@@ -28,8 +31,8 @@ defaults:
   run:
     shell: bash
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: language-aliases-${{github.ref}}
 jobs:
   language-aliases:
     strategy:
@@ -47,7 +50,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -60,7 +63,7 @@ jobs:
           languages: C#,java-kotlin,swift,typescript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-      - name: Check languages
+      - name: 'Check languages'
         run: |
           expected_languages="csharp,java,swift,javascript"
           actual_languages=$(jq -r '.languages | join(",")' "$RUNNER_TEMP"/config)

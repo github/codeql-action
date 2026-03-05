@@ -18,6 +18,9 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
@@ -28,8 +31,8 @@ defaults:
   run:
     shell: bash
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: build-mode-none-${{github.ref}}
 jobs:
   build-mode-none:
     strategy:
@@ -49,7 +52,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -61,7 +64,7 @@ jobs:
         id: init
         with:
           build-mode: none
-          db-location: ${{ runner.temp }}/customDbLocation
+          db-location: '${{ runner.temp }}/customDbLocation'
           languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
@@ -74,7 +77,7 @@ jobs:
             exit 1
           fi
 
-  # The latest nightly supports omitting the autobuild Action when the build mode is specified.
+      # The latest nightly supports omitting the autobuild Action when the build mode is specified.
       - uses: ./../action/autobuild
         if: matrix.version != 'nightly-latest'
 

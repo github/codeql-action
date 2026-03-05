@@ -2,14 +2,20 @@ import * as fs from "fs";
 import path from "path";
 
 import test, { ExecutionContext } from "ava";
+import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import { createStubCodeQL } from "./codeql";
+import { Feature } from "./feature-flags";
 import {
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
+  getFileCoverageInformationEnabled,
 } from "./init";
 import { KnownLanguage } from "./languages";
+import { parseRepositoryNwo } from "./repository";
 import {
+  createFeatures,
   LoggedMessage,
   createTestConfig,
   getRecordingLogger,
@@ -71,46 +77,49 @@ for (const { runnerEnv, ErrorConstructor, message } of [
       "otherwise we recommend rerunning the job.",
   },
 ]) {
-  test(`cleanupDatabaseClusterDirectory throws a ${ErrorConstructor.name} when cleanup fails on ${runnerEnv} runner`, async (t) => {
-    await withTmpDir(async (tmpDir: string) => {
-      process.env["RUNNER_ENVIRONMENT"] = runnerEnv;
+  test.serial(
+    `cleanupDatabaseClusterDirectory throws a ${ErrorConstructor.name} when cleanup fails on ${runnerEnv} runner`,
+    async (t) => {
+      await withTmpDir(async (tmpDir: string) => {
+        process.env["RUNNER_ENVIRONMENT"] = runnerEnv;
 
-      const dbLocation = path.resolve(tmpDir, "dbs");
-      fs.mkdirSync(dbLocation, { recursive: true });
+        const dbLocation = path.resolve(tmpDir, "dbs");
+        fs.mkdirSync(dbLocation, { recursive: true });
 
-      const fileToCleanUp = path.resolve(
-        dbLocation,
-        "something-to-cleanup.txt",
-      );
-      fs.writeFileSync(fileToCleanUp, "");
+        const fileToCleanUp = path.resolve(
+          dbLocation,
+          "something-to-cleanup.txt",
+        );
+        fs.writeFileSync(fileToCleanUp, "");
 
-      const rmSyncError = `Failed to clean up file ${fileToCleanUp}`;
+        const rmSyncError = `Failed to clean up file ${fileToCleanUp}`;
 
-      const messages: LoggedMessage[] = [];
-      t.throws(
-        () =>
-          cleanupDatabaseClusterDirectory(
-            createTestConfig({ dbLocation }),
-            getRecordingLogger(messages),
-            {},
-            () => {
-              throw new Error(rmSyncError);
-            },
-          ),
-        {
-          instanceOf: ErrorConstructor,
-          message: `${message(dbLocation)} Details: ${rmSyncError}`,
-        },
-      );
+        const messages: LoggedMessage[] = [];
+        t.throws(
+          () =>
+            cleanupDatabaseClusterDirectory(
+              createTestConfig({ dbLocation }),
+              getRecordingLogger(messages),
+              {},
+              () => {
+                throw new Error(rmSyncError);
+              },
+            ),
+          {
+            instanceOf: ErrorConstructor,
+            message: `${message(dbLocation)} Details: ${rmSyncError}`,
+          },
+        );
 
-      t.is(messages.length, 1);
-      t.is(messages[0].type, "warning");
-      t.is(
-        messages[0].message,
-        `The database cluster directory ${dbLocation} must be empty. Attempting to clean it up.`,
-      );
-    });
-  });
+        t.is(messages.length, 1);
+        t.is(messages[0].type, "warning");
+        t.is(
+          messages[0].message,
+          `The database cluster directory ${dbLocation} must be empty. Attempting to clean it up.`,
+        );
+      });
+    },
+  );
 }
 
 test("cleanupDatabaseClusterDirectory can disable warning with options", async (t) => {
@@ -440,5 +449,75 @@ test(
       },
     },
     expectedResult: true,
+  },
+);
+
+test("file coverage information enabled when debugMode is true", async (t) => {
+  t.true(
+    await getFileCoverageInformationEnabled(
+      true, // debugMode
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+    ),
+  );
+});
+
+test.serial(
+  "file coverage information enabled when not analyzing a pull request",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(false);
+
+    t.true(
+      await getFileCoverageInformationEnabled(
+        false, // debugMode
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([Feature.SkipFileCoverageOnPrs]),
+      ),
+    );
+  },
+);
+
+test.serial(
+  "file coverage information enabled when owner is not 'github'",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+    t.true(
+      await getFileCoverageInformationEnabled(
+        false, // debugMode
+        parseRepositoryNwo("other-org/some-repo"),
+        createFeatures([Feature.SkipFileCoverageOnPrs]),
+      ),
+    );
+  },
+);
+
+test.serial(
+  "file coverage information enabled when feature flag is not enabled",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+    t.true(
+      await getFileCoverageInformationEnabled(
+        false, // debugMode
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([]),
+      ),
+    );
+  },
+);
+
+test.serial(
+  "file coverage information disabled when all conditions for skipping are met",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+    t.false(
+      await getFileCoverageInformationEnabled(
+        false, // debugMode
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([Feature.SkipFileCoverageOnPrs]),
+      ),
+    );
   },
 );

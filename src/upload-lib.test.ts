@@ -1090,21 +1090,24 @@ function runFilterAlertsByDiffRange(
   return uploadLib.filterAlertsByDiffRange(getRunnerLogger(true), input);
 }
 
-test("filterAlertsByDiffRange filters out alerts outside diff-range", (t) => {
-  const input = sarif.readSarifFile(
-    `${__dirname}/../src/testdata/valid-sarif.sarif`,
-  );
-  const actualOutput = runFilterAlertsByDiffRange(input, [
-    {
-      path: "main.js",
-      startLine: 1,
-      endLine: 3,
-    },
-  ]);
+test.serial(
+  "filterAlertsByDiffRange filters out alerts outside diff-range",
+  (t) => {
+    const input = sarif.readSarifFile(
+      `${__dirname}/../src/testdata/valid-sarif.sarif`,
+    );
+    const actualOutput = runFilterAlertsByDiffRange(input, [
+      {
+        path: "main.js",
+        startLine: 1,
+        endLine: 3,
+      },
+    ]);
 
-  const expectedOutput = sarif.readSarifFile(
-    `${__dirname}/../src/testdata/valid-sarif-diff-filtered.sarif`,
-  );
+    const expectedOutput = sarif.readSarifFile(
+      `${__dirname}/../src/testdata/valid-sarif-diff-filtered.sarif`,
+    );
 
-  t.deepEqual(actualOutput, expectedOutput);
-});
+    t.deepEqual(actualOutput, expectedOutput);
+  },
+);

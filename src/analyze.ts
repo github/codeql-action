@@ -265,6 +265,7 @@ export async function setupDiffInformedQueryRun(
 
 export function diffRangeExtensionPackContents(
   ranges: DiffThunkRange[],
+  checkoutPath: string,
 ): string {
   const header = `
 extensions:
@@ -281,7 +282,7 @@ extensions:
       // uses forward slashes as the path separator, so on Windows we need to
       // replace any backslashes with forward slashes.
       const filename = path
-        .join(getRequiredInput("checkout_path"), range.path)
+        .join(checkoutPath, range.path)
         .replaceAll(path.sep, "/");
 
       // Using yaml.dump() with `forceQuotes: true` ensures that all special
@@ -350,7 +351,10 @@ dataExtensions:
 `,
   );
 
-  const extensionContents = diffRangeExtensionPackContents(ranges);
+  const extensionContents = diffRangeExtensionPackContents(
+    ranges,
+    getRequiredInput("checkout_path"),
+  );
   const extensionFilePath = path.join(diffRangeDir, "pr-diff-range.yml");
   fs.writeFileSync(extensionFilePath, extensionContents);
   logger.debug(

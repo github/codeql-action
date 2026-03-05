@@ -4,7 +4,6 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import * as actionsUtil from "./actions-util";
 import { CodeQuality, CodeScanning, RiskAssessment } from "./analyses";
 import {
   runQueries,
@@ -162,17 +161,16 @@ test("addSarifExtension", (t) => {
 });
 
 test("diffRangeExtensionPackContents", (t) => {
-  sinon
-    .stub(actionsUtil, "getRequiredInput")
-    .withArgs("checkout_path")
-    .returns("/checkout/path");
-  const output = diffRangeExtensionPackContents([
-    {
-      path: "main.js",
-      startLine: 10,
-      endLine: 20,
-    },
-  ]);
+  const output = diffRangeExtensionPackContents(
+    [
+      {
+        path: "main.js",
+        startLine: 10,
+        endLine: 20,
+      },
+    ],
+    "/checkout/path",
+  );
 
   const expected = fs.readFileSync(
     `${__dirname}/../src/testdata/pr-diff-range.yml`,

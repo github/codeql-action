@@ -6,9 +6,9 @@ to one of the files in this directory.
 
 ## Updating workflows
 
+Run `./sync.sh` to invoke the workflow generator and re-generate the workflow files in `.github/workflows/` based on the templates in `pr-checks/checks/`.
+
+Alternatively, you can use `just`:
+
 1. Install https://github.com/casey/just by whichever way you prefer.
 2. Run `just update-pr-checks` in your terminal.
-
-### If you don't want to install `just`
-
-Manually run each step in the `justfile`.

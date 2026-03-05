@@ -18,6 +18,9 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
@@ -28,8 +31,8 @@ defaults:
   run:
     shell: bash
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: init-with-registries-${{github.ref}}
 jobs:
   init-with-registries:
     strategy:
@@ -47,12 +50,11 @@ jobs:
     permissions:
       contents: read
       packages: read
-
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -63,7 +65,7 @@ jobs:
       - name: Init with registries
         uses: ./../action/init
         with:
-          db-location: ${{ runner.temp }}/customDbLocation
+          db-location: '${{ runner.temp }}/customDbLocation'
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           config-file: ./.github/codeql/codeql-config-registries.yml
           languages: javascript

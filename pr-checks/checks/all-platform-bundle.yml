@@ -4,6 +4,7 @@ operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["nightly-latest"]
 useAllPlatformBundle: "true"
 installGo: true
+installDotNet: true
 steps:
   - id: init
     uses: ./../action/init

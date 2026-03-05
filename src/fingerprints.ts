@@ -5,7 +5,7 @@ import Long from "long";
 
 import { DocUrl } from "./doc-url";
 import { Logger } from "./logging";
-import { SarifFile, SarifResult } from "./util";
+import type * as sarif from "./sarif";
 
 const tab = "\t".charCodeAt(0);
 const space = " ".charCodeAt(0);
@@ -138,7 +138,7 @@ export async function hash(callback: hashCallback, filepath: string) {
 // Generate a hash callback function that updates the given result in-place
 // when it receives a hash for the correct line number. Ignores hashes for other lines.
 function locationUpdateCallback(
-  result: SarifResult,
+  result: sarif.Result,
   location: any,
   logger: Logger,
 ): hashCallback {
@@ -256,17 +256,17 @@ export function resolveUriToFile(
 // Compute fingerprints for results in the given sarif file
 // and return an updated sarif file contents.
 export async function addFingerprints(
-  sarif: SarifFile,
+  sarifLog: Partial<sarif.Log>,
   sourceRoot: string,
   logger: Logger,
-): Promise<SarifFile> {
+): Promise<Partial<sarif.Log>> {
   logger.info(
     `Adding fingerprints to SARIF file. See ${DocUrl.TRACK_CODE_SCANNING_ALERTS_ACROSS_RUNS} for more information.`,
   );
   // Gather together results for the same file and construct
   // callbacks to accept hashes for that file and update the location
   const callbacksByFile: { [filename: string]: hashCallback[] } = {};
-  for (const run of sarif.runs || []) {
+  for (const run of sarifLog.runs || []) {
     // We may need the list of artifacts to resolve against
     const artifacts = run.artifacts || [];
 
@@ -316,5 +316,5 @@ export async function addFingerprints(
     await hash(teeCallback, filepath);
   }
 
-  return sarif;
+  return sarifLog;
 }

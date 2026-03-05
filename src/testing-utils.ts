@@ -21,7 +21,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import { OverlayDatabaseMode } from "./overlay";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -139,40 +139,132 @@ export function setupTests(test: TestFn<any>) {
   });
 }
 
+/**
+ * Default values for environment variables typically set in an Actions
+ * environment. Tests can override individual variables by passing them in the
+ * `overrides` parameter.
+ */
+export const DEFAULT_ACTIONS_VARS = {
+  GITHUB_ACTION_REPOSITORY: "github/codeql-action",
+  GITHUB_API_URL: "https://api.github.com",
+  GITHUB_EVENT_NAME: "push",
+  GITHUB_JOB: "test-job",
+  GITHUB_REF: "refs/heads/main",
+  GITHUB_REPOSITORY: "github/codeql-action-testing",
+  GITHUB_RUN_ATTEMPT: "1",
+  GITHUB_RUN_ID: "1",
+  GITHUB_SERVER_URL: "https://github.com",
+  GITHUB_SHA: "0".repeat(40),
+  GITHUB_WORKFLOW: "test-workflow",
+  RUNNER_OS: "Linux",
+} as const satisfies Record<string, string>;
+
 // Sets environment variables that make using some libraries designed for
 // use only on actions safe to use outside of actions.
-export function setupActionsVars(tempDir: string, toolsDir: string) {
+export function setupActionsVars(
+  tempDir: string,
+  toolsDir: string,
+  overrides?: Partial<Record<keyof typeof DEFAULT_ACTIONS_VARS, string>>,
+) {
+  const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
+  for (const [key, value] of Object.entries(vars)) {
+    process.env[key] = value;
+  }
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
   process.env["GITHUB_WORKSPACE"] = tempDir;
 }
 
+type LogLevel = "debug" | "info" | "warning" | "error";
+
 export interface LoggedMessage {
-  type: "debug" | "info" | "warning" | "error";
+  type: LogLevel;
   message: string | Error;
 }
 
-export function getRecordingLogger(messages: LoggedMessage[]): Logger {
+export class RecordingLogger implements Logger {
+  messages: LoggedMessage[] = [];
+  groups: string[] = [];
+  unfinishedGroups: Set<string> = new Set();
+  private currentGroup: string | undefined = undefined;
+
+  constructor(private readonly logToConsole: boolean = true) {}
+
+  private addMessage(level: LogLevel, message: string | Error): void {
+    this.messages.push({ type: level, message });
+
+    if (this.logToConsole) {
+      // eslint-disable-next-line no-console
+      console.debug(message);
+    }
+  }
+
+  isDebug() {
+    return true;
+  }
+
+  debug(message: string) {
+    this.addMessage("debug", message);
+  }
+
+  info(message: string) {
+    this.addMessage("info", message);
+  }
+
+  warning(message: string | Error) {
+    this.addMessage("warning", message);
+  }
+
+  error(message: string | Error) {
+    this.addMessage("error", message);
+  }
+
+  startGroup(name: string) {
+    this.groups.push(name);
+    this.currentGroup = name;
+    this.unfinishedGroups.add(name);
+  }
+
+  endGroup() {
+    if (this.currentGroup !== undefined) {
+      this.unfinishedGroups.delete(this.currentGroup);
+    }
+    this.currentGroup = undefined;
+  }
+}
+
+export function getRecordingLogger(
+  messages: LoggedMessage[],
+  { logToConsole }: { logToConsole?: boolean } = { logToConsole: true },
+): Logger {
   return {
     debug: (message: string) => {
       messages.push({ type: "debug", message });
-      // eslint-disable-next-line no-console
-      console.debug(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.debug(message);
+      }
     },
     info: (message: string) => {
       messages.push({ type: "info", message });
-      // eslint-disable-next-line no-console
-      console.info(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.info(message);
+      }
     },
     warning: (message: string | Error) => {
       messages.push({ type: "warning", message });
-      // eslint-disable-next-line no-console
-      console.warn(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.warn(message);
+      }
     },
     error: (message: string | Error) => {
       messages.push({ type: "error", message });
-      // eslint-disable-next-line no-console
-      console.error(message);
+      if (logToConsole) {
+        // eslint-disable-next-line no-console
+        console.error(message);
+      }
     },
     isDebug: () => true,
     startGroup: () => undefined,
@@ -185,16 +277,47 @@ export function checkExpectedLogMessages(
   messages: LoggedMessage[],
   expectedMessages: string[],
 ) {
+  const missingMessages: string[] = [];
+
   for (const expectedMessage of expectedMessages) {
-    t.assert(
-      messages.some(
+    if (
+      !messages.some(
         (msg) =>
           typeof msg.message === "string" &&
           msg.message.includes(expectedMessage),
-      ),
-      `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
-    );
+      )
+    ) {
+      missingMessages.push(expectedMessage);
+    }
   }
+
+  if (missingMessages.length > 0) {
+    const listify = (lines: string[]) =>
+      lines.map((m) => ` - '${m}'`).join("\n");
+
+    t.fail(
+      `Expected\n\n${listify(missingMessages)}\n\nin the logger output, but didn't find it in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
+    );
+  } else {
+    t.pass();
+  }
+}
+
+/**
+ * Initialises a recording logger and calls `body` with it.
+ *
+ * @param body The test that requires a recording logger.
+ * @returns The logged messages.
+ */
+export async function withRecordingLoggerAsync(
+  body: (logger: Logger) => Promise<void>,
+): Promise<LoggedMessage[]> {
+  const messages = [];
+  const logger = getRecordingLogger(messages);
+
+  await body(logger);
+
+  return messages;
 }
 
 /** Mock the HTTP request to the feature flags enablement API endpoint. */
@@ -305,7 +428,7 @@ export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
       throw new Error("not implemented");
     },
     getValue: async (feature) => {
-      return enabledFeatures.includes(feature);
+      return enabledFeatures.includes(feature as Feature);
     },
   };
 }
@@ -392,11 +515,19 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       trapCaches: {},
       trapCacheDownloadTime: 0,
       dependencyCachingEnabled: CachingKind.None,
+      dependencyCachingRestoredKeys: [],
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
       repositoryProperties: {},
+      enableFileCoverageInformation: true,
     } satisfies Config,
     overrides,
   );
+}
+
+export function makeTestToken(length: number = 36) {
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  return chars.repeat(Math.ceil(length / chars.length)).slice(0, length);
 }

@@ -17,7 +17,7 @@ import { cleanUpPath, getErrorMessage, getRequiredEnvParam } from "./util";
 /**
  * High watermark to use when streaming the download and extraction of the CodeQL tools.
  */
-export const STREAMING_HIGH_WATERMARK_BYTES = 4 * 1024 * 1024; // 4 MiB
+const STREAMING_HIGH_WATERMARK_BYTES = 4 * 1024 * 1024; // 4 MiB
 
 /**
  * The name of the tool cache directory for the CodeQL tools.

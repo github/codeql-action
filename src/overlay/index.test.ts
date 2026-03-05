@@ -5,10 +5,20 @@ import * as actionsCache from "@actions/cache";
 import test from "ava";
 import * as sinon from "sinon";
 
-import * as actionsUtil from "./actions-util";
-import * as apiClient from "./api-client";
-import * as gitUtils from "./git-utils";
-import { getRunnerLogger } from "./logging";
+import * as actionsUtil from "../actions-util";
+import * as apiClient from "../api-client";
+import { ResolveDatabaseOutput } from "../codeql";
+import * as gitUtils from "../git-utils";
+import { KnownLanguage } from "../languages";
+import { getRunnerLogger } from "../logging";
+import {
+  createTestConfig,
+  mockCodeQLVersion,
+  setupTests,
+} from "../testing-utils";
+import * as utils from "../util";
+import { withTmpDir } from "../util";
+
 import {
   downloadOverlayBaseDatabaseFromCache,
   getCacheRestoreKeyPrefix,
@@ -16,76 +26,72 @@ import {
   OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
-} from "./overlay-database-utils";
-import {
-  createTestConfig,
-  mockCodeQLVersion,
-  setupTests,
-} from "./testing-utils";
-import * as utils from "./util";
-import { withTmpDir } from "./util";
+} from ".";
 
 setupTests(test);
 
-test("writeOverlayChangesFile generates correct changes file", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    const dbLocation = path.join(tmpDir, "db");
-    await fs.promises.mkdir(dbLocation, { recursive: true });
-    const sourceRoot = path.join(tmpDir, "src");
-    await fs.promises.mkdir(sourceRoot, { recursive: true });
-    const tempDir = path.join(tmpDir, "temp");
-    await fs.promises.mkdir(tempDir, { recursive: true });
+test.serial(
+  "writeOverlayChangesFile generates correct changes file",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const dbLocation = path.join(tmpDir, "db");
+      await fs.promises.mkdir(dbLocation, { recursive: true });
+      const sourceRoot = path.join(tmpDir, "src");
+      await fs.promises.mkdir(sourceRoot, { recursive: true });
+      const tempDir = path.join(tmpDir, "temp");
+      await fs.promises.mkdir(tempDir, { recursive: true });
 
-    const logger = getRunnerLogger(true);
-    const config = createTestConfig({ dbLocation });
+      const logger = getRunnerLogger(true);
+      const config = createTestConfig({ dbLocation });
 
-    // Mock the getFileOidsUnderPath function to return base OIDs
-    const baseOids = {
-      "unchanged.js": "aaa111",
-      "modified.js": "bbb222",
-      "deleted.js": "ccc333",
-    };
-    const getFileOidsStubForBase = sinon
-      .stub(gitUtils, "getFileOidsUnderPath")
-      .resolves(baseOids);
+      // Mock the getFileOidsUnderPath function to return base OIDs
+      const baseOids = {
+        "unchanged.js": "aaa111",
+        "modified.js": "bbb222",
+        "deleted.js": "ccc333",
+      };
+      const getFileOidsStubForBase = sinon
+        .stub(gitUtils, "getFileOidsUnderPath")
+        .resolves(baseOids);
 
-    // Write the base database OIDs file
-    await writeBaseDatabaseOidsFile(config, sourceRoot);
-    getFileOidsStubForBase.restore();
+      // Write the base database OIDs file
+      await writeBaseDatabaseOidsFile(config, sourceRoot);
+      getFileOidsStubForBase.restore();
 
-    // Mock the getFileOidsUnderPath function to return overlay OIDs
-    const currentOids = {
-      "unchanged.js": "aaa111",
-      "modified.js": "ddd444", // Changed OID
-      "added.js": "eee555", // New file
-    };
-    const getFileOidsStubForOverlay = sinon
-      .stub(gitUtils, "getFileOidsUnderPath")
-      .resolves(currentOids);
+      // Mock the getFileOidsUnderPath function to return overlay OIDs
+      const currentOids = {
+        "unchanged.js": "aaa111",
+        "modified.js": "ddd444", // Changed OID
+        "added.js": "eee555", // New file
+      };
+      const getFileOidsStubForOverlay = sinon
+        .stub(gitUtils, "getFileOidsUnderPath")
+        .resolves(currentOids);
 
-    // Write the overlay changes file, which uses the mocked overlay OIDs
-    // and the base database OIDs file
-    const getTempDirStub = sinon
-      .stub(actionsUtil, "getTemporaryDirectory")
-      .returns(tempDir);
-    const changesFilePath = await writeOverlayChangesFile(
-      config,
-      sourceRoot,
-      logger,
-    );
-    getFileOidsStubForOverlay.restore();
-    getTempDirStub.restore();
+      // Write the overlay changes file, which uses the mocked overlay OIDs
+      // and the base database OIDs file
+      const getTempDirStub = sinon
+        .stub(actionsUtil, "getTemporaryDirectory")
+        .returns(tempDir);
+      const changesFilePath = await writeOverlayChangesFile(
+        config,
+        sourceRoot,
+        logger,
+      );
+      getFileOidsStubForOverlay.restore();
+      getTempDirStub.restore();
 
-    const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
-    const parsedContent = JSON.parse(fileContent) as { changes: string[] };
+      const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
+      const parsedContent = JSON.parse(fileContent) as { changes: string[] };
 
-    t.deepEqual(
-      parsedContent.changes.sort(),
-      ["added.js", "deleted.js", "modified.js"],
-      "Should identify added, deleted, and modified files",
-    );
-  });
-});
+      t.deepEqual(
+        parsedContent.changes.sort(),
+        ["added.js", "deleted.js", "modified.js"],
+        "Should identify added, deleted, and modified files",
+      );
+    });
+  },
+);
 
 interface DownloadOverlayBaseDatabaseTestCase {
   overlayDatabaseMode: OverlayDatabaseMode;
@@ -95,6 +101,7 @@ interface DownloadOverlayBaseDatabaseTestCase {
   hasBaseDatabaseOidsFile: boolean;
   tryGetFolderBytesSucceeds: boolean;
   codeQLVersion: string;
+  resolveDatabaseOutput: ResolveDatabaseOutput | Error;
 }
 
 const defaultDownloadTestCase: DownloadOverlayBaseDatabaseTestCase = {
@@ -105,6 +112,7 @@ const defaultDownloadTestCase: DownloadOverlayBaseDatabaseTestCase = {
   hasBaseDatabaseOidsFile: true,
   tryGetFolderBytesSucceeds: true,
   codeQLVersion: "2.20.5",
+  resolveDatabaseOutput: { overlayBaseSpecifier: "20250626:XXX" },
 };
 
 const testDownloadOverlayBaseDatabaseFromCache = test.macro({
@@ -119,9 +127,11 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
       await fs.promises.mkdir(dbLocation, { recursive: true });
 
       const logger = getRunnerLogger(true);
-      const config = createTestConfig({ dbLocation });
-
       const testCase = { ...defaultDownloadTestCase, ...partialTestCase };
+      const config = createTestConfig({
+        dbLocation,
+        languages: [KnownLanguage.java],
+      });
 
       config.overlayDatabaseMode = testCase.overlayDatabaseMode;
       config.useOverlayDatabaseCaching = testCase.useOverlayDatabaseCaching;
@@ -163,9 +173,23 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
         .resolves(testCase.tryGetFolderBytesSucceeds ? 1024 * 1024 : undefined);
       stubs.push(tryGetFolderBytesStub);
 
+      const codeql = mockCodeQLVersion(testCase.codeQLVersion);
+
+      if (testCase.resolveDatabaseOutput instanceof Error) {
+        const resolveDatabaseStub = sinon
+          .stub(codeql, "resolveDatabase")
+          .rejects(testCase.resolveDatabaseOutput);
+        stubs.push(resolveDatabaseStub);
+      } else {
+        const resolveDatabaseStub = sinon
+          .stub(codeql, "resolveDatabase")
+          .resolves(testCase.resolveDatabaseOutput);
+        stubs.push(resolveDatabaseStub);
+      }
+
       try {
         const result = await downloadOverlayBaseDatabaseFromCache(
-          mockCodeQLVersion(testCase.codeQLVersion),
+          codeql,
           config,
           logger,
         );
@@ -185,14 +209,14 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
   title: (_, title) => `downloadOverlayBaseDatabaseFromCache: ${title}`,
 });
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns stats when successful",
   {},
   true,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when mode is OverlayDatabaseMode.OverlayBase",
   {
@@ -201,7 +225,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when mode is OverlayDatabaseMode.None",
   {
@@ -210,7 +234,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when caching is disabled",
   {
@@ -219,7 +243,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined in test mode",
   {
@@ -228,7 +252,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when cache miss",
   {
@@ -237,7 +261,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when download fails",
   {
@@ -246,7 +270,7 @@ test(
   false,
 );
 
-test(
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when downloaded database is invalid",
   {
@@ -255,7 +279,25 @@ test(
   false,
 );
 
-test(
+test.serial(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when downloaded database doesn't have an overlayBaseSpecifier",
+  {
+    resolveDatabaseOutput: {},
+  },
+  false,
+);
+
+test.serial(
+  testDownloadOverlayBaseDatabaseFromCache,
+  "returns undefined when resolving database metadata fails",
+  {
+    resolveDatabaseOutput: new Error("Failed to resolve database metadata"),
+  },
+  false,
+);
+
+test.serial(
   testDownloadOverlayBaseDatabaseFromCache,
   "returns undefined when filesystem error occurs",
   {
@@ -264,7 +306,7 @@ test(
   false,
 );
 
-test("overlay-base database cache keys remain stable", async (t) => {
+test.serial("overlay-base database cache keys remain stable", async (t) => {
   const logger = getRunnerLogger(true);
   const config = createTestConfig({ languages: ["python", "javascript"] });
   const codeQlVersion = "2.23.0";

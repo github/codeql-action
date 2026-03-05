@@ -10,6 +10,7 @@ import { v4 as uuidV4 } from "uuid";
 import { isDynamicWorkflow, isRunningLocalAction } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
+import { addNoLanguageDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
@@ -34,7 +35,7 @@ export enum ToolsSource {
   Download = "DOWNLOAD",
 }
 
-export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
+const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 const CODEQL_NIGHTLIES_REPOSITORY_OWNER = "dsp-testing";
 const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
@@ -55,7 +56,9 @@ function getCodeQLBundleExtension(
   }
 }
 
-function getCodeQLBundleName(compressionMethod: tar.CompressionMethod): string {
+export function getCodeQLBundleName(
+  compressionMethod: tar.CompressionMethod,
+): string {
   const extension = getCodeQLBundleExtension(compressionMethod);
 
   let platform: string;
@@ -180,17 +183,6 @@ export function tryGetTagNameFromUrl(
   return match[1];
 }
 
-export function tryGetBundleVersionFromUrl(
-  url: string,
-  logger: Logger,
-): string | undefined {
-  const tagName = tryGetTagNameFromUrl(url, logger);
-  if (tagName === undefined) {
-    return undefined;
-  }
-  return tryGetBundleVersionFromTagName(tagName, logger);
-}
-
 export function convertToSemVer(version: string, logger: Logger): string {
   if (!semver.valid(version)) {
     logger.debug(
@@ -207,7 +199,7 @@ export function convertToSemVer(version: string, logger: Logger): string {
   return s;
 }
 
-type CodeQLToolsSource =
+export type CodeQLToolsSource =
   | {
       codeqlTarPath: string;
       compressionMethod: tar.CompressionMethod;
@@ -272,6 +264,20 @@ async function findOverridingToolsInCache(
   return undefined;
 }
 
+/**
+ * Determines where the CodeQL CLI we want to use comes from. This can be from a local file,
+ * the Actions toolcache, or a download.
+ *
+ * @param toolsInput The argument provided for the `tools` input, if any.
+ * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
+ * @param apiDetails Information about the GitHub API.
+ * @param variant The GitHub variant we are running on.
+ * @param tarSupportsZstd Whether zstd is supported by `tar`.
+ * @param features Information about enabled features.
+ * @param logger The logger to use.
+ *
+ * @returns Information about where the CodeQL CLI we want to use comes from.
+ */
 export async function getCodeQLSource(
   toolsInput: string | undefined,
   defaultCliVersion: CodeQLDefaultVersionInfo,
@@ -281,6 +287,9 @@ export async function getCodeQLSource(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
+  // If there is an explicit `tools` input, it's not one of the reserved values, and it doesn't appear
+  // to point to a URL, then we assume it is a local path and use the CLI from there.
+  // TODO: This appears to misclassify filenames that happen to start with `http` as URLs.
   if (
     toolsInput &&
     !isReservedToolsValue(toolsInput) &&
@@ -313,13 +322,47 @@ export async function getCodeQLSource(
    */
   let url: string | undefined;
 
-  if (
+  // We allow forcing the nightly CLI via the FF for `dynamic` events (or in test mode) where the
+  // `tools` input cannot be adjusted to explicitly request it.
+  const canForceNightlyWithFF = isDynamicWorkflow() || util.isInTestMode();
+  const forceNightlyValueFF = await features.getValue(Feature.ForceNightly);
+  const forceNightly = forceNightlyValueFF && canForceNightlyWithFF;
+
+  // For advanced workflows, a value from `CODEQL_NIGHTLY_TOOLS_INPUTS` can be specified explicitly
+  // for the `tools` input in the workflow file.
+  const nightlyRequestedByToolsInput =
     toolsInput !== undefined &&
-    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput)
-  ) {
-    logger.info(
-      `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
-    );
+    CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput);
+
+  if (forceNightly || nightlyRequestedByToolsInput) {
+    if (forceNightly) {
+      logger.info(
+        `Using the latest CodeQL CLI nightly, as forced by the ${Feature.ForceNightly} feature flag.`,
+      );
+      addNoLanguageDiagnostic(
+        undefined,
+        makeDiagnostic(
+          "codeql-action/forced-nightly-cli",
+          "A nightly release of CodeQL was used",
+          {
+            markdownMessage:
+              "GitHub configured this analysis to use a nightly release of CodeQL to allow you to preview changes from an upcoming release.\n\n" +
+              "Nightly releases do not undergo the same validation as regular releases and may lead to analysis instability.\n\n" +
+              "If use of a nightly CodeQL release for this analysis is unexpected, please contact GitHub support.",
+            visibility: {
+              cliSummaryTable: true,
+              statusPage: true,
+              telemetry: true,
+            },
+            severity: "note",
+          },
+        ),
+      );
+    } else {
+      logger.info(
+        `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
+      );
+    }
     toolsInput = await getNightlyToolsUrl(logger);
   }
 
@@ -522,7 +565,7 @@ export async function getCodeQLSource(
   // different version to save download time if the version hasn't been
   // specified explicitly (in which case we always honor it).
   if (
-    variant !== util.GitHubVariant.DOTCOM &&
+    variant === util.GitHubVariant.GHES &&
     !forceShippedTools &&
     !toolsInput
   ) {
@@ -580,7 +623,7 @@ export async function getCodeQLSource(
  * Gets a fallback version number to use when looking for CodeQL in the toolcache if we didn't find
  * the `x.y.z` version. This is to support old versions of the toolcache.
  */
-export async function tryGetFallbackToolcacheVersion(
+async function tryGetFallbackToolcacheVersion(
   cliVersion: string | undefined,
   tagName: string,
   logger: Logger,
@@ -729,7 +772,7 @@ function getCanonicalToolcacheVersion(
   return cliVersion;
 }
 
-export interface SetupCodeQLResult {
+interface SetupCodeQLResult {
   codeqlFolder: string;
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
@@ -750,7 +793,7 @@ export async function setupCodeQLBundle(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   features: FeatureEnablement,
   logger: Logger,
-) {
+): Promise<SetupCodeQLResult> {
   if (!(await util.isBinaryAccessible("tar", logger))) {
     throw new util.ConfigurationError(
       "Could not find tar in PATH, so unable to extract CodeQL bundle.",

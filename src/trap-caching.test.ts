@@ -94,7 +94,7 @@ function getTestConfigWithTempDir(tempDir: string): configUtils.Config {
   });
 }
 
-test("check flags for JS, analyzing default branch", async (t) => {
+test.serial("check flags for JS, analyzing default branch", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     const config = getTestConfigWithTempDir(tmpDir);
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
@@ -110,7 +110,7 @@ test("check flags for JS, analyzing default branch", async (t) => {
   });
 });
 
-test("check flags for all, not analyzing default branch", async (t) => {
+test.serial("check flags for all, not analyzing default branch", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     const config = getTestConfigWithTempDir(tmpDir);
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
@@ -137,7 +137,7 @@ test("get languages that support TRAP caching", async (t) => {
   t.deepEqual(languagesSupportingCaching, [KnownLanguage.javascript]);
 });
 
-test("upload cache key contains right fields", async (t) => {
+test.serial("upload cache key contains right fields", async (t) => {
   const loggedMessages = [];
   const logger = getRecordingLogger(loggedMessages);
   sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
@@ -156,47 +156,50 @@ test("upload cache key contains right fields", async (t) => {
   );
 });
 
-test("download cache looks for the right key and creates dir", async (t) => {
-  await util.withTmpDir(async (tmpDir) => {
-    const loggedMessages = [];
-    const logger = getRecordingLogger(loggedMessages);
-    sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tmpDir);
-    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
-    const stubRestore = sinon.stub(cache, "restoreCache").resolves("found");
-    const eventFile = path.resolve(tmpDir, "event.json");
-    process.env.GITHUB_EVENT_NAME = "pull_request";
-    process.env.GITHUB_EVENT_PATH = eventFile;
-    fs.writeFileSync(
-      eventFile,
-      JSON.stringify({
-        pull_request: {
-          base: {
-            sha: "somesha",
+test.serial(
+  "download cache looks for the right key and creates dir",
+  async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      const loggedMessages = [];
+      const logger = getRecordingLogger(loggedMessages);
+      sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tmpDir);
+      sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
+      const stubRestore = sinon.stub(cache, "restoreCache").resolves("found");
+      const eventFile = path.resolve(tmpDir, "event.json");
+      process.env.GITHUB_EVENT_NAME = "pull_request";
+      process.env.GITHUB_EVENT_PATH = eventFile;
+      fs.writeFileSync(
+        eventFile,
+        JSON.stringify({
+          pull_request: {
+            base: {
+              sha: "somesha",
+            },
           },
-        },
-      }),
-    );
-    await downloadTrapCaches(
-      stubCodeql,
-      [KnownLanguage.javascript, KnownLanguage.cpp],
-      logger,
-    );
-    t.assert(
-      stubRestore.calledOnceWith(
-        sinon.match.array.contains([
-          path.resolve(tmpDir, "trapCaches", "javascript"),
-        ]),
-        sinon
-          .match("somesha")
-          .and(sinon.match("2.10.3"))
-          .and(sinon.match("javascript")),
-      ),
-    );
-    t.assert(fs.existsSync(path.resolve(tmpDir, "trapCaches", "javascript")));
-  });
-});
+        }),
+      );
+      await downloadTrapCaches(
+        stubCodeql,
+        [KnownLanguage.javascript, KnownLanguage.cpp],
+        logger,
+      );
+      t.assert(
+        stubRestore.calledOnceWith(
+          sinon.match.array.contains([
+            path.resolve(tmpDir, "trapCaches", "javascript"),
+          ]),
+          sinon
+            .match("somesha")
+            .and(sinon.match("2.10.3"))
+            .and(sinon.match("javascript")),
+        ),
+      );
+      t.assert(fs.existsSync(path.resolve(tmpDir, "trapCaches", "javascript")));
+    });
+  },
+);
 
-test("cleanup removes only old CodeQL TRAP caches", async (t) => {
+test.serial("cleanup removes only old CodeQL TRAP caches", async (t) => {
   await util.withTmpDir(async (tmpDir) => {
     // This config specifies that we are analyzing JavaScript and Ruby, but not Swift.
     const config = getTestConfigWithTempDir(tmpDir);

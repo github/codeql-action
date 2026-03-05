@@ -19,23 +19,21 @@ import { getApiDetails, getGitHubVersion } from "./api-client";
 import { runAutobuild } from "./autobuild";
 import { getTotalCacheSize, shouldStoreCache } from "./caching-utils";
 import { getCodeQL } from "./codeql";
+import { Config, getConfig } from "./config-utils";
 import {
-  Config,
-  getConfig,
-  isCodeQualityEnabled,
-  isCodeScanningEnabled,
-} from "./config-utils";
-import { uploadDatabases } from "./database-upload";
+  cleanupAndUploadDatabases,
+  DatabaseUploadResult,
+} from "./database-upload";
 import {
   DependencyCacheUploadStatusReport,
   uploadDependencyCaches,
 } from "./dependency-caching";
 import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
-import { Feature, Features } from "./feature-flags";
+import { initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { uploadOverlayBaseDatabaseToCache } from "./overlay-database-utils";
+import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
@@ -43,6 +41,7 @@ import {
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
+  sendUnhandledErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import {
@@ -59,15 +58,13 @@ interface AnalysisStatusReport
   extends uploadLib.UploadStatusReport,
     QueriesStatusReport {}
 
-interface DependencyCachingUploadStatusReport {
-  dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
-}
-
 interface FinishStatusReport
   extends StatusReportBase,
     DatabaseCreationTimings,
-    AnalysisStatusReport,
-    DependencyCachingUploadStatusReport {}
+    AnalysisStatusReport {
+  dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
+  database_upload_results: DatabaseUploadResult[];
+}
 
 interface FinishWithTrapUploadStatusReport extends FinishStatusReport {
   /** Size of TRAP caches that we uploaded, in bytes. */
@@ -86,6 +83,7 @@ async function sendStatusReport(
   didUploadTrapCaches: boolean,
   trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   dependencyCacheResults: DependencyCacheUploadStatusReport | undefined,
+  databaseUploadResults: DatabaseUploadResult[],
   logger: Logger,
 ) {
   const status = getActionsStatus(error, stats?.analyze_failure_language);
@@ -106,6 +104,7 @@ async function sendStatusReport(
       ...(dbCreationTimings || {}),
       ...(trapCacheCleanup || {}),
       dependency_caching_upload_results: dependencyCacheResults,
+      database_upload_results: databaseUploadResults,
     };
     if (config && didUploadTrapCaches) {
       const trapCacheUploadStatusReport: FinishWithTrapUploadStatusReport = {
@@ -210,8 +209,10 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, KnownLanguage.go, logger);
 }
 
-async function run() {
-  const startedAt = new Date();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+
   let uploadResults:
     | Partial<Record<analyses.AnalysisKind, UploadResult>>
     | undefined = undefined;
@@ -223,14 +224,16 @@ async function run() {
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
   let dependencyCacheResults: DependencyCacheUploadStatusReport | undefined;
-  util.initializeEnvironment(actionsUtil.getActionVersion());
-
-  // Make inputs accessible in the `post` step, details at
-  // https://github.com/github/codeql-action/issues/2553
-  actionsUtil.persistInputs();
-
+  let databaseUploadResults: DatabaseUploadResult[] = [];
   const logger = getActionsLogger();
+
   try {
+    util.initializeEnvironment(actionsUtil.getActionVersion());
+
+    // Make inputs accessible in the `post` step, details at
+    // https://github.com/github/codeql-action/issues/2553
+    actionsUtil.persistInputs();
+
     const statusReportBase = await createStatusReportBase(
       ActionName.Analyze,
       "starting",
@@ -290,7 +293,7 @@ async function run() {
 
     util.checkActionVersion(actionsUtil.getActionVersion(), gitHubVersion);
 
-    const features = new Features(
+    const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
       actionsUtil.getTemporaryDirectory(),
@@ -315,6 +318,7 @@ async function run() {
     await runAutobuildIfLegacyGoWorkflow(config, logger);
 
     dbCreationTimings = await runFinalize(
+      features,
       outputDir,
       threads,
       memory,
@@ -357,46 +361,15 @@ async function run() {
       const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
-      if (await features.getValue(Feature.AnalyzeUseNewUpload)) {
-        uploadResults = await postProcessAndUploadSarif(
-          logger,
-          features,
-          uploadKind,
-          checkoutPath,
-          outputDir,
-          category,
-          actionsUtil.getOptionalInput("post-processed-sarif-path"),
-        );
-      } else if (uploadKind === "always") {
-        uploadResults = {};
-
-        if (isCodeScanningEnabled(config)) {
-          uploadResults[analyses.AnalysisKind.CodeScanning] =
-            await uploadLib.uploadFiles(
-              outputDir,
-              checkoutPath,
-              category,
-              features,
-              logger,
-              analyses.CodeScanning,
-            );
-        }
-
-        if (isCodeQualityEnabled(config)) {
-          uploadResults[analyses.AnalysisKind.CodeQuality] =
-            await uploadLib.uploadFiles(
-              outputDir,
-              checkoutPath,
-              category,
-              features,
-              logger,
-              analyses.CodeQuality,
-            );
-        }
-      } else {
-        uploadResults = {};
-        logger.info("Not uploading results");
-      }
+      uploadResults = await postProcessAndUploadSarif(
+        logger,
+        features,
+        uploadKind,
+        checkoutPath,
+        outputDir,
+        category,
+        actionsUtil.getOptionalInput("post-processed-sarif-path"),
+      );
 
       // Set the SARIF id outputs only if we have results for them, to avoid
       // having keys with empty values in the action output.
@@ -417,12 +390,21 @@ async function run() {
     }
 
     // Possibly upload the overlay-base database to actions cache.
-    // If databases are to be uploaded, they will first be cleaned up at the overlay level.
-    await uploadOverlayBaseDatabaseToCache(codeql, config, logger);
+    // Note: Take care with the ordering of this call since databases may be cleaned up
+    // at the `overlay` level.
+    await cleanupAndUploadOverlayBaseDatabaseToCache(codeql, config, logger);
 
     // Possibly upload the database bundles for remote queries.
-    // If databases are to be uploaded, they will first be cleaned up at the clear level.
-    await uploadDatabases(repositoryNwo, codeql, config, apiDetails, logger);
+    // Note: Take care with the ordering of this call since databases may be cleaned up
+    // at the `overlay` or `clear` level.
+    databaseUploadResults = await cleanupAndUploadDatabases(
+      repositoryNwo,
+      codeql,
+      config,
+      apiDetails,
+      features,
+      logger,
+    );
 
     // Possibly upload the TRAP caches for later re-use
     const trapCacheUploadStartTime = performance.now();
@@ -438,14 +420,11 @@ async function run() {
 
     // Store dependency cache(s) if dependency caching is enabled.
     if (shouldStoreCache(config.dependencyCachingEnabled)) {
-      const minimizeJavaJars = await features.getValue(
-        Feature.JavaMinimizeDependencyJars,
-        codeql,
-      );
       dependencyCacheResults = await uploadDependencyCaches(
+        codeql,
+        features,
         config,
         logger,
-        minimizeJavaJars,
       );
     }
 
@@ -490,6 +469,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
     return;
@@ -512,6 +492,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   } else if (runStats !== undefined) {
@@ -525,6 +506,7 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   } else {
@@ -538,18 +520,28 @@ async function run() {
       didUploadTrapCaches,
       trapCacheCleanupTelemetry,
       dependencyCacheResults,
+      databaseUploadResults,
       logger,
     );
   }
 }
 
-export const runPromise = run();
+// Module-level startedAt so it can be accessed by runWrapper for error reporting
+const startedAt = new Date();
+export const runPromise = run(startedAt);
 
 async function runWrapper() {
+  const logger = getActionsLogger();
   try {
     await runPromise;
   } catch (error) {
     core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
+    await sendUnhandledErrorStatusReport(
+      ActionName.Analyze,
+      startedAt,
+      error,
+      logger,
+    );
   }
   await util.checkForTimeout();
 }

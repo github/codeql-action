@@ -7,20 +7,22 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { AnalysisKind } from "./analyses";
+import { AnalysisKind, supportedAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
+import { UserConfig } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
+import { RepositoryProperties } from "./feature-flags/properties";
 import * as gitUtils from "./git-utils";
+import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import {
-  CODEQL_OVERLAY_MINIMUM_VERSION,
-  OverlayDatabaseMode,
-} from "./overlay-database-utils";
+import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { OverlayDisabledReason } from "./overlay/diagnostics";
+import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -37,7 +39,9 @@ import {
   ConfigurationError,
   withTmpDir,
   BuildMode,
+  DiskUsage,
 } from "./util";
+import * as util from "./util";
 
 setupTests(test);
 
@@ -57,6 +61,7 @@ function createTestInitConfigInputs(
       dbLocation: undefined,
       configInput: undefined,
       buildModeInput: undefined,
+      ramInput: undefined,
       trapCachingEnabled: false,
       dependencyCachingEnabled: CachingKind.None,
       debugMode: false,
@@ -85,6 +90,7 @@ function createTestInitConfigInputs(
       },
       features: createFeatures([]),
       repositoryProperties: {},
+      enableFileCoverageInformation: true,
       logger: getRunnerLogger(true),
     } satisfies configUtils.InitConfigInputs,
     overrides,
@@ -131,7 +137,7 @@ function mockListLanguages(languages: string[]) {
   sinon.stub(api, "getApiClient").value(() => client);
 }
 
-test("load empty config", async (t) => {
+test.serial("load empty config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
     const languages = "javascript,python";
@@ -172,7 +178,7 @@ test("load empty config", async (t) => {
   });
 });
 
-test("load code quality config", async (t) => {
+test.serial("load code quality config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
     const languages = "actions";
@@ -200,12 +206,9 @@ test("load code quality config", async (t) => {
     );
 
     // And the config we expect it to result in
-    const expectedConfig: configUtils.Config = {
-      version: actionsUtil.getActionVersion(),
+    const expectedConfig = createTestConfig({
       analysisKinds: [AnalysisKind.CodeQuality],
       languages: [KnownLanguage.actions],
-      buildMode: undefined,
-      originalUserInput: {},
       // This gets set because we only have `AnalysisKind.CodeQuality`
       computedConfig: {
         "disable-default-queries": true,
@@ -219,78 +222,74 @@ test("load code quality config", async (t) => {
       debugMode: false,
       debugArtifactName: "",
       debugDatabaseName: "",
-      trapCaches: {},
-      trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: CachingKind.None,
-      extraQueryExclusions: [],
-      overlayDatabaseMode: OverlayDatabaseMode.None,
-      useOverlayDatabaseCaching: false,
-      repositoryProperties: {},
-    };
+    });
 
     t.deepEqual(config, expectedConfig);
   });
 });
 
-test("initActionState doesn't throw if there are queries configured in the repository properties", async (t) => {
-  return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
-    const languages = "javascript";
+test.serial(
+  "initActionState doesn't throw if there are queries configured in the repository properties",
+  async (t) => {
+    return await withTmpDir(async (tempDir) => {
+      const logger = getRunnerLogger(true);
+      const languages = "javascript";
 
-    const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
-        return {
-          extractors: {
-            javascript: [{ extractor_root: "" }],
-          },
-        };
-      },
+      const codeql = createStubCodeQL({
+        async betterResolveLanguages() {
+          return {
+            extractors: {
+              javascript: [{ extractor_root: "" }],
+            },
+          };
+        },
+      });
+
+      // This should be ignored and no error should be thrown.
+      const repositoryProperties = {
+        "github-codeql-extra-queries": "+foo",
+      };
+
+      // Expected configuration for a CQ-only analysis.
+      const computedConfig: UserConfig = {
+        "disable-default-queries": true,
+        queries: [{ uses: "code-quality" }],
+        "query-filters": [],
+      };
+
+      const expectedConfig = createTestConfig({
+        analysisKinds: [AnalysisKind.CodeQuality],
+        languages: [KnownLanguage.javascript],
+        codeQLCmd: codeql.getPath(),
+        computedConfig,
+        dbLocation: path.resolve(tempDir, "codeql_databases"),
+        debugArtifactName: "",
+        debugDatabaseName: "",
+        tempDir,
+        repositoryProperties,
+      });
+
+      await t.notThrowsAsync(async () => {
+        const config = await configUtils.initConfig(
+          createFeatures([]),
+          createTestInitConfigInputs({
+            analysisKinds: [AnalysisKind.CodeQuality],
+            languagesInput: languages,
+            repository: { owner: "github", repo: "example" },
+            tempDir,
+            codeql,
+            repositoryProperties,
+            logger,
+          }),
+        );
+
+        t.deepEqual(config, expectedConfig);
+      });
     });
+  },
+);
 
-    // This should be ignored and no error should be thrown.
-    const repositoryProperties = {
-      "github-codeql-extra-queries": "+foo",
-    };
-
-    // Expected configuration for a CQ-only analysis.
-    const computedConfig: configUtils.UserConfig = {
-      "disable-default-queries": true,
-      queries: [{ uses: "code-quality" }],
-      "query-filters": [],
-    };
-
-    const expectedConfig = createTestConfig({
-      analysisKinds: [AnalysisKind.CodeQuality],
-      languages: [KnownLanguage.javascript],
-      codeQLCmd: codeql.getPath(),
-      computedConfig,
-      dbLocation: path.resolve(tempDir, "codeql_databases"),
-      debugArtifactName: "",
-      debugDatabaseName: "",
-      tempDir,
-      repositoryProperties,
-    });
-
-    await t.notThrowsAsync(async () => {
-      const config = await configUtils.initConfig(
-        createFeatures([]),
-        createTestInitConfigInputs({
-          analysisKinds: [AnalysisKind.CodeQuality],
-          languagesInput: languages,
-          repository: { owner: "github", repo: "example" },
-          tempDir,
-          codeql,
-          repositoryProperties,
-          logger,
-        }),
-      );
-
-      t.deepEqual(config, expectedConfig);
-    });
-  });
-});
-
-test("loading a saved config produces the same config", async (t) => {
+test.serial("loading a saved config produces the same config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
@@ -337,7 +336,7 @@ test("loading a saved config produces the same config", async (t) => {
   });
 });
 
-test("loading config with version mismatch throws", async (t) => {
+test.serial("loading config with version mismatch throws", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
 
@@ -389,7 +388,7 @@ test("loading config with version mismatch throws", async (t) => {
   });
 });
 
-test("load input outside of workspace", async (t) => {
+test.serial("load input outside of workspace", async (t) => {
   return await withTmpDir(async (tempDir) => {
     try {
       await configUtils.initConfig(
@@ -414,7 +413,7 @@ test("load input outside of workspace", async (t) => {
   });
 });
 
-test("load non-local input with invalid repo syntax", async (t) => {
+test.serial("load non-local input with invalid repo syntax", async (t) => {
   return await withTmpDir(async (tempDir) => {
     // no filename given, just a repo
     const configFile = "octo-org/codeql-config@main";
@@ -442,7 +441,7 @@ test("load non-local input with invalid repo syntax", async (t) => {
   });
 });
 
-test("load non-existent input", async (t) => {
+test.serial("load non-existent input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const languagesInput = "javascript";
     const configFile = "input";
@@ -472,7 +471,7 @@ test("load non-existent input", async (t) => {
   });
 });
 
-test("load non-empty input", async (t) => {
+test.serial("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = createStubCodeQL({
       async betterResolveLanguages() {
@@ -498,7 +497,7 @@ test("load non-empty input", async (t) => {
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
-    const userConfig: configUtils.UserConfig = {
+    const userConfig: UserConfig = {
       name: "my config",
       "disable-default-queries": true,
       queries: [{ uses: "./foo" }],
@@ -507,9 +506,7 @@ test("load non-empty input", async (t) => {
     };
 
     // And the config we expect it to parse to
-    const expectedConfig: configUtils.Config = {
-      version: actionsUtil.getActionVersion(),
-      analysisKinds: [AnalysisKind.CodeScanning],
+    const expectedConfig = createTestConfig({
       languages: [KnownLanguage.javascript],
       buildMode: BuildMode.None,
       originalUserInput: userConfig,
@@ -521,14 +518,7 @@ test("load non-empty input", async (t) => {
       debugMode: false,
       debugArtifactName: "my-artifact",
       debugDatabaseName: "my-db",
-      trapCaches: {},
-      trapCacheDownloadTime: 0,
-      dependencyCachingEnabled: CachingKind.None,
-      extraQueryExclusions: [],
-      overlayDatabaseMode: OverlayDatabaseMode.None,
-      useOverlayDatabaseCaching: false,
-      repositoryProperties: {},
-    };
+    });
 
     const languagesInput = "javascript";
     const configFilePath = createConfigFile(inputFileContents, tempDir);
@@ -552,18 +542,20 @@ test("load non-empty input", async (t) => {
   });
 });
 
-test("Using config input and file together, config input should be used.", async (t) => {
-  return await withTmpDir(async (tempDir) => {
-    process.env["RUNNER_TEMP"] = tempDir;
-    process.env["GITHUB_WORKSPACE"] = tempDir;
+test.serial(
+  "Using config input and file together, config input should be used.",
+  async (t) => {
+    return await withTmpDir(async (tempDir) => {
+      process.env["RUNNER_TEMP"] = tempDir;
+      process.env["GITHUB_WORKSPACE"] = tempDir;
 
-    const inputFileContents = `
+      const inputFileContents = `
       name: my config
       queries:
         - uses: ./foo_file`;
-    const configFilePath = createConfigFile(inputFileContents, tempDir);
+      const configFilePath = createConfigFile(inputFileContents, tempDir);
 
-    const configInput = `
+      const configInput = `
       name: my config
       queries:
         - uses: ./foo
@@ -574,39 +566,40 @@ test("Using config input and file together, config input should be used.", async
           - c/d@1.2.3
     `;
 
-    fs.mkdirSync(path.join(tempDir, "foo"));
+      fs.mkdirSync(path.join(tempDir, "foo"));
 
-    const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
-        return {
-          extractors: {
-            javascript: [{ extractor_root: "" }],
-            python: [{ extractor_root: "" }],
-          },
-        };
-      },
+      const codeql = createStubCodeQL({
+        async betterResolveLanguages() {
+          return {
+            extractors: {
+              javascript: [{ extractor_root: "" }],
+              python: [{ extractor_root: "" }],
+            },
+          };
+        },
+      });
+
+      // Only JS, python packs will be ignored
+      const languagesInput = "javascript";
+
+      const config = await configUtils.initConfig(
+        createFeatures([]),
+        createTestInitConfigInputs({
+          languagesInput,
+          configFile: configFilePath,
+          configInput,
+          tempDir,
+          codeql,
+          workspacePath: tempDir,
+        }),
+      );
+
+      t.deepEqual(config.originalUserInput, yaml.load(configInput));
     });
+  },
+);
 
-    // Only JS, python packs will be ignored
-    const languagesInput = "javascript";
-
-    const config = await configUtils.initConfig(
-      createFeatures([]),
-      createTestInitConfigInputs({
-        languagesInput,
-        configFile: configFilePath,
-        configInput,
-        tempDir,
-        codeql,
-        workspacePath: tempDir,
-      }),
-    );
-
-    t.deepEqual(config.originalUserInput, yaml.load(configInput));
-  });
-});
-
-test("API client used when reading remote config", async (t) => {
+test.serial("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = createStubCodeQL({
       async betterResolveLanguages() {
@@ -655,34 +648,37 @@ test("API client used when reading remote config", async (t) => {
   });
 });
 
-test("Remote config handles the case where a directory is provided", async (t) => {
-  return await withTmpDir(async (tempDir) => {
-    const dummyResponse = []; // directories are returned as arrays
-    mockGetContents(dummyResponse);
+test.serial(
+  "Remote config handles the case where a directory is provided",
+  async (t) => {
+    return await withTmpDir(async (tempDir) => {
+      const dummyResponse = []; // directories are returned as arrays
+      mockGetContents(dummyResponse);
 
-    const repoReference = "octo-org/codeql-config/config.yaml@main";
-    try {
-      await configUtils.initConfig(
-        createFeatures([]),
-        createTestInitConfigInputs({
-          configFile: repoReference,
-          tempDir,
-          workspacePath: tempDir,
-        }),
-      );
-      throw new Error("initConfig did not throw error");
-    } catch (err) {
-      t.deepEqual(
-        err,
-        new ConfigurationError(
-          errorMessages.getConfigFileDirectoryGivenMessage(repoReference),
-        ),
-      );
-    }
-  });
-});
+      const repoReference = "octo-org/codeql-config/config.yaml@main";
+      try {
+        await configUtils.initConfig(
+          createFeatures([]),
+          createTestInitConfigInputs({
+            configFile: repoReference,
+            tempDir,
+            workspacePath: tempDir,
+          }),
+        );
+        throw new Error("initConfig did not throw error");
+      } catch (err) {
+        t.deepEqual(
+          err,
+          new ConfigurationError(
+            errorMessages.getConfigFileDirectoryGivenMessage(repoReference),
+          ),
+        );
+      }
+    });
+  },
+);
 
-test("Invalid format of remote config handled correctly", async (t) => {
+test.serial("Invalid format of remote config handled correctly", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const dummyResponse = {
       // note no "content" property here
@@ -711,7 +707,7 @@ test("Invalid format of remote config handled correctly", async (t) => {
   });
 });
 
-test("No detected languages", async (t) => {
+test.serial("No detected languages", async (t) => {
   return await withTmpDir(async (tempDir) => {
     mockListLanguages([]);
     const codeql = createStubCodeQL({
@@ -739,7 +735,7 @@ test("No detected languages", async (t) => {
   });
 });
 
-test("Unknown languages", async (t) => {
+test.serial("Unknown languages", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const languagesInput = "rubbish,english";
 
@@ -766,7 +762,7 @@ test("Unknown languages", async (t) => {
 
 const mockLogger = getRunnerLogger(true);
 
-test("no generateRegistries when registries is undefined", async (t) => {
+test.serial("no generateRegistries when registries is undefined", async (t) => {
   return await withTmpDir(async (tmpDir) => {
     const registriesInput = undefined;
     const logger = getRunnerLogger(true);
@@ -778,24 +774,27 @@ test("no generateRegistries when registries is undefined", async (t) => {
   });
 });
 
-test("generateRegistries prefers original CODEQL_REGISTRIES_AUTH", async (t) => {
-  return await withTmpDir(async (tmpDir) => {
-    process.env.CODEQL_REGISTRIES_AUTH = "original";
-    const registriesInput = yaml.dump([
-      {
-        url: "http://ghcr.io",
-        packages: ["codeql/*", "codeql-testing/*"],
-        token: "not-a-token",
-      },
-    ]);
-    const logger = getRunnerLogger(true);
-    const { registriesAuthTokens, qlconfigFile } =
-      await configUtils.generateRegistries(registriesInput, tmpDir, logger);
+test.serial(
+  "generateRegistries prefers original CODEQL_REGISTRIES_AUTH",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      process.env.CODEQL_REGISTRIES_AUTH = "original";
+      const registriesInput = yaml.dump([
+        {
+          url: "http://ghcr.io",
+          packages: ["codeql/*", "codeql-testing/*"],
+          token: "not-a-token",
+        },
+      ]);
+      const logger = getRunnerLogger(true);
+      const { registriesAuthTokens, qlconfigFile } =
+        await configUtils.generateRegistries(registriesInput, tmpDir, logger);
 
-    t.is(registriesAuthTokens, "original");
-    t.is(qlconfigFile, path.join(tmpDir, "qlconfig.yml"));
-  });
-});
+      t.is(registriesAuthTokens, "original");
+      t.is(qlconfigFile, path.join(tmpDir, "qlconfig.yml"));
+    });
+  },
+);
 
 // getLanguages
 
@@ -873,7 +872,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     expectedLanguages: ["javascript"],
   },
 ].forEach((args) => {
-  test(`getLanguages: ${args.name}`, async (t) => {
+  test.serial(`getLanguages: ${args.name}`, async (t) => {
     const mockRequest = mockLanguagesInRepo(args.languagesInRepository);
     const stubExtractorEntry = {
       extractor_root: "",
@@ -943,46 +942,55 @@ for (const { displayName, language, feature } of [
     feature: Feature.DisableCsharpBuildless,
   },
 ]) {
-  test(`Build mode not overridden when disable ${displayName} buildless feature flag disabled`, async (t) => {
-    const messages: LoggedMessage[] = [];
-    const buildMode = await configUtils.parseBuildModeInput(
-      "none",
-      [language],
-      createFeatures([]),
-      getRecordingLogger(messages),
-    );
-    t.is(buildMode, BuildMode.None);
-    t.deepEqual(messages, []);
-  });
+  test.serial(
+    `Build mode not overridden when disable ${displayName} buildless feature flag disabled`,
+    async (t) => {
+      const messages: LoggedMessage[] = [];
+      const buildMode = await configUtils.parseBuildModeInput(
+        "none",
+        [language],
+        createFeatures([]),
+        getRecordingLogger(messages),
+      );
+      t.is(buildMode, BuildMode.None);
+      t.deepEqual(messages, []);
+    },
+  );
 
-  test(`Build mode not overridden for other languages when disable ${displayName} buildless feature flag enabled`, async (t) => {
-    const messages: LoggedMessage[] = [];
-    const buildMode = await configUtils.parseBuildModeInput(
-      "none",
-      [KnownLanguage.python],
-      createFeatures([feature]),
-      getRecordingLogger(messages),
-    );
-    t.is(buildMode, BuildMode.None);
-    t.deepEqual(messages, []);
-  });
+  test.serial(
+    `Build mode not overridden for other languages when disable ${displayName} buildless feature flag enabled`,
+    async (t) => {
+      const messages: LoggedMessage[] = [];
+      const buildMode = await configUtils.parseBuildModeInput(
+        "none",
+        [KnownLanguage.python],
+        createFeatures([feature]),
+        getRecordingLogger(messages),
+      );
+      t.is(buildMode, BuildMode.None);
+      t.deepEqual(messages, []);
+    },
+  );
 
-  test(`Build mode overridden when analyzing ${displayName} and disable ${displayName} buildless feature flag enabled`, async (t) => {
-    const messages: LoggedMessage[] = [];
-    const buildMode = await configUtils.parseBuildModeInput(
-      "none",
-      [language],
-      createFeatures([feature]),
-      getRecordingLogger(messages),
-    );
-    t.is(buildMode, BuildMode.Autobuild);
-    t.deepEqual(messages, [
-      {
-        message: `Scanning ${displayName} code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.`,
-        type: "warning",
-      },
-    ]);
-  });
+  test.serial(
+    `Build mode overridden when analyzing ${displayName} and disable ${displayName} buildless feature flag enabled`,
+    async (t) => {
+      const messages: LoggedMessage[] = [];
+      const buildMode = await configUtils.parseBuildModeInput(
+        "none",
+        [language],
+        createFeatures([feature]),
+        getRecordingLogger(messages),
+      );
+      t.is(buildMode, BuildMode.Autobuild);
+      t.deepEqual(messages, [
+        {
+          message: `Scanning ${displayName} code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.`,
+          type: "warning",
+        },
+      ]);
+    },
+  );
 }
 
 interface OverlayDatabaseModeTestSetup {
@@ -990,12 +998,16 @@ interface OverlayDatabaseModeTestSetup {
   features: Feature[];
   isPullRequest: boolean;
   isDefaultBranch: boolean;
-  repositoryOwner: string;
   buildMode: BuildMode | undefined;
   languages: Language[];
   codeqlVersion: string;
   gitRoot: string | undefined;
-  codeScanningConfig: configUtils.UserConfig;
+  gitVersion: GitVersionInfo | undefined;
+  codeScanningConfig: UserConfig;
+  diskUsage: DiskUsage | undefined;
+  memoryFlagValue: number;
+  shouldSkipOverlayAnalysisDueToCachedStatus: boolean;
+  repositoryProperties: RepositoryProperties;
 }
 
 const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
@@ -1003,12 +1015,22 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   features: [],
   isPullRequest: false,
   isDefaultBranch: false,
-  repositoryOwner: "github",
   buildMode: BuildMode.None,
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
+  gitVersion: new GitVersionInfo(
+    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
+    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  ),
   codeScanningConfig: {},
+  diskUsage: {
+    numAvailableBytes: 50_000_000_000,
+    numTotalBytes: 100_000_000_000,
+  },
+  memoryFlagValue: 6920,
+  shouldSkipOverlayAnalysisDueToCachedStatus: false,
+  repositoryProperties: {},
 };
 
 const getOverlayDatabaseModeMacro = test.macro({
@@ -1019,6 +1041,7 @@ const getOverlayDatabaseModeMacro = test.macro({
     expected: {
       overlayDatabaseMode: OverlayDatabaseMode;
       useOverlayDatabaseCaching: boolean;
+      disabledReason?: OverlayDisabledReason;
     },
   ) => {
     return await withTmpDir(async (tempDir) => {
@@ -1041,6 +1064,12 @@ const getOverlayDatabaseModeMacro = test.macro({
             setup.overlayDatabaseEnvVar;
         }
 
+        sinon.stub(util, "checkDiskUsage").resolves(setup.diskUsage);
+
+        sinon
+          .stub(overlayStatus, "shouldSkipOverlayAnalysis")
+          .resolves(setup.shouldSkipOverlayAnalysisDueToCachedStatus);
+
         // Mock feature flags
         const features = createFeatures(setup.features);
 
@@ -1049,11 +1078,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           .stub(actionsUtil, "isAnalyzingPullRequest")
           .returns(setup.isPullRequest);
 
-        // Mock repository owner
-        const repository = {
-          owner: setup.repositoryOwner,
-          repo: "test-repo",
-        };
+        sinon.stub(util, "getCodeQLMemoryLimit").returns(setup.memoryFlagValue);
 
         // Set up CodeQL mock
         const codeql = mockCodeQLVersion(setup.codeqlVersion);
@@ -1077,14 +1102,20 @@ const getOverlayDatabaseModeMacro = test.macro({
 
         const result = await configUtils.getOverlayDatabaseMode(
           codeql,
-          repository,
           features,
           setup.languages,
           tempDir, // sourceRoot
           setup.buildMode,
+          undefined,
           setup.codeScanningConfig,
+          setup.repositoryProperties,
+          setup.gitVersion,
           logger,
         );
+
+        if (!("disabledReason" in expected)) {
+          expected.disabledReason = undefined;
+        }
 
         t.deepEqual(result, expected);
       } finally {
@@ -1096,7 +1127,7 @@ const getOverlayDatabaseModeMacro = test.macro({
   title: (_, title) => `getOverlayDatabaseMode: ${title}`,
 });
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Environment variable override - Overlay",
   {
@@ -1108,7 +1139,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Environment variable override - OverlayBase",
   {
@@ -1120,7 +1151,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Environment variable override - None",
   {
@@ -1132,7 +1163,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Ignore invalid environment variable",
   {
@@ -1141,10 +1172,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Ignore feature flag when analyzing non-default branch",
   {
@@ -1157,7 +1189,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when feature enabled",
   {
@@ -1171,7 +1203,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when feature enabled with custom analysis",
   {
@@ -1179,7 +1211,7 @@ test(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
@@ -1188,7 +1220,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Overlay-base database on default branch when code-scanning feature enabled",
   {
@@ -1205,7 +1237,234 @@ test(
   },
 );
 
-test(
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if we can't determine runner disk space",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if runner disk space is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisResourceChecksV2,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 5_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisResourceChecksV2,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 15_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 15_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch if memory flag is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if memory flag is too low but CodeQL >= 2.24.3",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+    codeqlVersion: "2.24.3",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isDefaultBranch: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay-base database on default branch when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
+    isDefaultBranch: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR when cached status indicates previous failure",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheck,
+    ],
+    isPullRequest: true,
+    shouldSkipOverlayAnalysisDueToCachedStatus: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
+  },
+);
+
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
   {
@@ -1216,16 +1475,17 @@ test(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with packs",
   {
@@ -1236,16 +1496,17 @@ test(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with queries",
   {
@@ -1256,16 +1517,17 @@ test(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with query-filters",
   {
@@ -1276,16 +1538,17 @@ test(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isDefaultBranch: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when only language-specific feature enabled",
   {
@@ -1296,10 +1559,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when only code-scanning feature enabled",
   {
@@ -1310,10 +1574,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay-base database on default branch when language-specific feature disabled",
   {
@@ -1324,10 +1589,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled",
   {
@@ -1341,7 +1607,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
@@ -1349,7 +1615,7 @@ test(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
@@ -1358,7 +1624,7 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Overlay analysis on PR when code-scanning feature enabled",
   {
@@ -1375,7 +1641,127 @@ test(
   },
 );
 
-test(
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR if runner disk space is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if runner disk space is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isPullRequest: true,
+    diskUsage: {
+      numAvailableBytes: 1_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR if we can't determine runner disk space",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    diskUsage: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay analysis on PR if memory flag is too low",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.InsufficientResources,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if memory flag is too low but CodeQL >= 2.24.3",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+    codeqlVersion: "2.24.3",
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay analysis on PR if memory flag is too low and skip resource checks flag is enabled",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisSkipResourceChecks,
+    ],
+    isPullRequest: true,
+    memoryFlagValue: 3072,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
   {
@@ -1386,16 +1772,17 @@ test(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with packs",
   {
@@ -1406,16 +1793,17 @@ test(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with queries",
   {
@@ -1426,16 +1814,17 @@ test(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when code-scanning feature enabled with query-filters",
   {
@@ -1446,16 +1835,17 @@ test(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as configUtils.UserConfig,
+    } as UserConfig,
     isPullRequest: true,
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when only language-specific feature enabled",
   {
@@ -1466,10 +1856,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when only code-scanning feature enabled",
   {
@@ -1480,10 +1871,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "No overlay analysis on PR when language-specific feature disabled",
   {
@@ -1494,15 +1886,15 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
-  "Overlay PR analysis by env for dsp-testing",
+  "Overlay PR analysis by env",
   {
     overlayDatabaseEnvVar: "overlay",
-    repositoryOwner: "dsp-testing",
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
@@ -1510,12 +1902,12 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
-  "Overlay PR analysis by env for other-org",
+  "Overlay PR analysis by env on a runner with low disk space",
   {
     overlayDatabaseEnvVar: "overlay",
-    repositoryOwner: "other-org",
+    diskUsage: { numAvailableBytes: 0, numTotalBytes: 100_000_000_000 },
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
@@ -1523,14 +1915,13 @@ test(
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
-  "Overlay PR analysis by feature flag for dsp-testing",
+  "Overlay PR analysis by feature flag",
   {
     languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     isPullRequest: true,
-    repositoryOwner: "dsp-testing",
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
@@ -1538,22 +1929,7 @@ test(
   },
 );
 
-test(
-  getOverlayDatabaseModeMacro,
-  "No overlay PR analysis by feature flag for other-org",
-  {
-    languages: [KnownLanguage.javascript],
-    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
-    isPullRequest: true,
-    repositoryOwner: "other-org",
-  },
-  {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-  },
-);
-
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Fallback due to autobuild with traced language",
   {
@@ -1564,10 +1940,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Fallback due to no build mode with traced language",
   {
@@ -1578,10 +1955,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Fallback due to old CodeQL version",
   {
@@ -1591,10 +1969,11 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleCodeQl,
   },
 );
 
-test(
+test.serial(
   getOverlayDatabaseModeMacro,
   "Fallback due to missing git root",
   {
@@ -1604,12 +1983,91 @@ test(
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.NoGitRoot,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Fallback due to old git version",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: new GitVersionInfo("2.30.0", "2.30.0"), // Version below required 2.38.0
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleGit,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Fallback when git version cannot be determined",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: undefined,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.IncompatibleGit,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "No overlay when disabled via repository property",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryProperties: {
+      "github-codeql-disable-overlay": true,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.None,
+    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.DisabledByRepositoryProperty,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Overlay not disabled when repository property is false",
+  {
+    languages: [KnownLanguage.javascript],
+    features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
+    isPullRequest: true,
+    repositoryProperties: {
+      "github-codeql-disable-overlay": false,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+test.serial(
+  getOverlayDatabaseModeMacro,
+  "Environment variable override takes precedence over repository property",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    repositoryProperties: {
+      "github-codeql-disable-overlay": true,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
   },
 );
 
 // Exercise language-specific overlay analysis features code paths
 for (const language in KnownLanguage) {
-  test(
+  test.serial(
     getOverlayDatabaseModeMacro,
     `Check default overlay analysis feature for ${language}`,
     {
@@ -1620,12 +2078,35 @@ for (const language in KnownLanguage) {
     {
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      disabledReason: OverlayDisabledReason.FeatureNotEnabled,
     },
   );
 }
 
-test("hasActionsWorkflows doesn't throw if workflows folder doesn't exist", async (t) => {
-  return withTmpDir(async (tmpDir) => {
-    t.notThrows(() => configUtils.hasActionsWorkflows(tmpDir));
+test.serial(
+  "hasActionsWorkflows doesn't throw if workflows folder doesn't exist",
+  async (t) => {
+    return withTmpDir(async (tmpDir) => {
+      t.notThrows(() => configUtils.hasActionsWorkflows(tmpDir));
+    });
+  },
+);
+
+test.serial("getPrimaryAnalysisConfig - single analysis kind", (t) => {
+  // If only one analysis kind is configured, we expect to get the matching configuration.
+  for (const analysisKind of supportedAnalysisKinds) {
+    const singleKind = createTestConfig({ analysisKinds: [analysisKind] });
+    t.is(configUtils.getPrimaryAnalysisConfig(singleKind).kind, analysisKind);
+  }
+});
+
+test.serial("getPrimaryAnalysisConfig - Code Scanning + Code Quality", (t) => {
+  // For CS+CQ, we expect to get the Code Scanning configuration.
+  const codeScanningAndCodeQuality = createTestConfig({
+    analysisKinds: [AnalysisKind.CodeScanning, AnalysisKind.CodeQuality],
   });
+  t.is(
+    configUtils.getPrimaryAnalysisConfig(codeScanningAndCodeQuality).kind,
+    AnalysisKind.CodeScanning,
+  );
 });

@@ -71,8 +71,9 @@ def open_pr(
     body.append('')
     body.append('Contains the following pull requests:')
     for pr in pull_requests:
-      merger = get_merger_of_pr(repo, pr)
-      body.append(f'- #{pr.number} (@{merger})')
+      # Use PR author if they are GitHub staff, otherwise use the merger
+      display_user = get_pr_author_if_staff(pr) or get_merger_of_pr(repo, pr)
+      body.append(f'- #{pr.number} (@{display_user})')
 
   # List all commits not part of a PR
   if len(commits_without_pull_requests) > 0:
@@ -168,6 +169,14 @@ def get_pr_for_commit(commit):
 def get_merger_of_pr(repo, pr):
   return repo.get_commit(pr.merge_commit_sha).author.login
 
+# Get the PR author if they are GitHub staff, otherwise None.
+def get_pr_author_if_staff(pr):
+  if pr.user is None:
+    return None
+  if getattr(pr.user, 'site_admin', False):
+    return pr.user.login
+  return None
+
 def get_current_version():
   with open('package.json', 'r') as f:
     return json.load(f)['version']
@@ -181,9 +190,9 @@ def replace_version_package_json(prev_version, new_version):
       print(line.replace(prev_version, new_version), end='')
     else:
       prev_line_is_codeql = False
-      print(line, end='') 
+      print(line, end='')
     if '\"name\": \"codeql\",' in line:
-        prev_line_is_codeql = True 
+        prev_line_is_codeql = True
 
 def get_today_string():
   today = datetime.datetime.today()

@@ -5,13 +5,22 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
-import { getOptionalInput, isSelfHostedRunner } from "./actions-util";
+import {
+  getOptionalInput,
+  isAnalyzingPullRequest,
+  isSelfHostedRunner,
+} from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { CodeQLDefaultVersionInfo, FeatureEnablement } from "./feature-flags";
+import {
+  CodeQLDefaultVersionInfo,
+  Feature,
+  FeatureEnablement,
+} from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
+import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -287,4 +296,22 @@ export function cleanupDatabaseClusterDirectory(
       }
     }
   }
+}
+
+export async function getFileCoverageInformationEnabled(
+  debugMode: boolean,
+  repositoryNwo: RepositoryNwo,
+  features: FeatureEnablement,
+): Promise<boolean> {
+  return (
+    // Always enable file coverage information in debug mode
+    debugMode ||
+    // We're most interested in speeding up PRs, and we want to keep
+    // submitting file coverage information for the default branch since
+    // it is used to populate the status page.
+    !isAnalyzingPullRequest() ||
+    // For now, restrict this feature to the GitHub org
+    repositoryNwo.owner !== "github" ||
+    !(await features.getValue(Feature.SkipFileCoverageOnPrs))
+  );
 }

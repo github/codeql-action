@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Need full history for calculation of diffs
 
@@ -127,9 +127,8 @@ jobs:
         env:
           NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
-          VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG "$VERSION" > $PARTIAL_CHANGELOG
+          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG > $PARTIAL_CHANGELOG
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG
@@ -137,7 +136,7 @@ jobs:
 
       - name: Generate token
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/create-github-app-token@v2.1.4
+        uses: actions/create-github-app-token@v2.2.1
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}

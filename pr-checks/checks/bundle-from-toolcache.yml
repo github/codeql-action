@@ -4,7 +4,7 @@ versions:
   - toolcache
 steps:
   - name: Install @actions/tool-cache
-    run: npm install @actions/tool-cache
+    run: npm install @actions/tool-cache@3
   - name: Check toolcache contains CodeQL
     continue-on-error: true
     uses: actions/github-script@v8

@@ -18,6 +18,9 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
@@ -32,6 +35,11 @@ on:
         description: The version of Python to install
         required: false
         default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
   workflow_call:
     inputs:
       go-version:
@@ -44,12 +52,17 @@ on:
         description: The version of Python to install
         required: false
         default: '3.13'
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
 defaults:
   run:
     shell: bash
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: upload-sarif-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   upload-sarif:
     strategy:
@@ -74,7 +87,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -92,6 +105,10 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version || '3.13' }}
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -99,11 +116,11 @@ jobs:
           analysis-kinds: ${{ matrix.analysis-kinds }}
       - name: Build code
         run: ./build.sh
-  # Generate some SARIF we can upload with the upload-sarif step
+      # Generate some SARIF we can upload with the upload-sarif step
       - uses: ./../action/analyze
         with:
-          ref: refs/heads/main
-          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
           upload: never
           output: ${{ runner.temp }}/results
 
@@ -112,15 +129,15 @@ jobs:
         uses: ./../action/upload-sarif
         id: upload-sarif
         with:
-          ref: refs/heads/main
-          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
           sarif_file: ${{ runner.temp }}/results
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:all-files/
-      - name: Fail for missing output from `upload-sarif` step for `code-scanning`
+      - name: 'Fail for missing output from `upload-sarif` step for `code-scanning`'
         if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1
-      - name: Fail for missing output from `upload-sarif` step for `code-quality`
+      - name: 'Fail for missing output from `upload-sarif` step for `code-quality`'
         if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-quality)
         run: exit 1
 
@@ -129,28 +146,26 @@ jobs:
         id: upload-single-sarif-code-scanning
         if: contains(matrix.analysis-kinds, 'code-scanning')
         with:
-          ref: refs/heads/main
-          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
           sarif_file: ${{ runner.temp }}/results/javascript.sarif
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-scanning/
-      - name: Fail for missing output from `upload-single-sarif-code-scanning` step
-        if: contains(matrix.analysis-kinds, 'code-scanning') &&
-          !(fromJSON(steps.upload-single-sarif-code-scanning.outputs.sarif-ids).code-scanning)
+      - name: 'Fail for missing output from `upload-single-sarif-code-scanning` step'
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-sarif-code-scanning.outputs.sarif-ids).code-scanning)
         run: exit 1
       - name: Upload single SARIF file for Code Quality
         uses: ./../action/upload-sarif
         id: upload-single-sarif-code-quality
         if: contains(matrix.analysis-kinds, 'code-quality')
         with:
-          ref: refs/heads/main
-          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
           sarif_file: ${{ runner.temp }}/results/javascript.quality.sarif
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-quality/
-      - name: Fail for missing output from `upload-single-sarif-code-quality` step
-        if: contains(matrix.analysis-kinds, 'code-quality') &&
-          !(fromJSON(steps.upload-single-sarif-code-quality.outputs.sarif-ids).code-quality)
+      - name: 'Fail for missing output from `upload-single-sarif-code-quality` step'
+        if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-single-sarif-code-quality.outputs.sarif-ids).code-quality)
         run: exit 1
 
       - name: Change SARIF file extension
@@ -161,12 +176,12 @@ jobs:
         id: upload-single-non-sarif
         if: contains(matrix.analysis-kinds, 'code-scanning')
         with:
-          ref: refs/heads/main
-          sha: 5e235361806c361d4d3f8859e3c897658025a9a2
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
           sarif_file: ${{ runner.temp }}/results/javascript.sarif.json
           category: |
             ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:non-sarif/
-      - name: Fail for missing output from `upload-single-non-sarif` step
+      - name: 'Fail for missing output from `upload-single-non-sarif` step'
         if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-non-sarif.outputs.sarif-ids).code-scanning)
         run: exit 1
     env:

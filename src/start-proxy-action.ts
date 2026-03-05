@@ -2,149 +2,74 @@ import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as toolcache from "@actions/tool-cache";
-import { pki } from "node-forge";
 
 import * as actionsUtil from "./actions-util";
-import { getApiDetails, getAuthorizationHeaderFor } from "./api-client";
-import { Config } from "./config-utils";
+import { getGitHubVersion } from "./api-client";
+import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
+import { getRepositoryNwo } from "./repository";
 import {
-  Credential,
+  credentialToStr,
   getCredentials,
-  getDownloadUrl,
+  getProxyBinaryPath,
+  getSafeErrorMessage,
   parseLanguage,
-  UPDATEJOB_PROXY,
+  ProxyInfo,
+  sendFailedStatusReport,
+  sendSuccessStatusReport,
+  Registry,
+  ProxyConfig,
 } from "./start-proxy";
-import {
-  ActionName,
-  createStatusReportBase,
-  getActionsStatus,
-  sendStatusReport,
-  StatusReportBase,
-} from "./status-report";
+import { generateCertificateAuthority } from "./start-proxy/ca";
+import { checkProxyEnvironment } from "./start-proxy/environment";
+import { checkConnections } from "./start-proxy/reachability";
+import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
 
-const KEY_SIZE = 2048;
-const KEY_EXPIRY_YEARS = 2;
-
-type CertificateAuthority = {
-  cert: string;
-  key: string;
-};
-
-type BasicAuthCredentials = {
-  username: string;
-  password: string;
-};
-
-type ProxyConfig = {
-  all_credentials: Credential[];
-  ca: CertificateAuthority;
-  proxy_auth?: BasicAuthCredentials;
-};
-
-const CERT_SUBJECT = [
-  {
-    name: "commonName",
-    value: "Dependabot Internal CA",
-  },
-  {
-    name: "organizationName",
-    value: "GitHub inc.",
-  },
-  {
-    shortName: "OU",
-    value: "Dependabot",
-  },
-  {
-    name: "countryName",
-    value: "US",
-  },
-  {
-    shortName: "ST",
-    value: "California",
-  },
-  {
-    name: "localityName",
-    value: "San Francisco",
-  },
-];
-
-function generateCertificateAuthority(): CertificateAuthority {
-  const keys = pki.rsa.generateKeyPair(KEY_SIZE);
-  const cert = pki.createCertificate();
-  cert.publicKey = keys.publicKey;
-  cert.serialNumber = "01";
-  cert.validity.notBefore = new Date();
-  cert.validity.notAfter = new Date();
-  cert.validity.notAfter.setFullYear(
-    cert.validity.notBefore.getFullYear() + KEY_EXPIRY_YEARS,
-  );
-
-  cert.setSubject(CERT_SUBJECT);
-  cert.setIssuer(CERT_SUBJECT);
-  cert.setExtensions([{ name: "basicConstraints", cA: true }]);
-  cert.sign(keys.privateKey);
-
-  const pem = pki.certificateToPem(cert);
-  const key = pki.privateKeyToPem(keys.privateKey);
-  return { cert: pem, key };
-}
-
-interface StartProxyStatus extends StatusReportBase {
-  // A comma-separated list of registry types which are configured for CodeQL.
-  // This only includes registry types we support, not all that are configured.
-  registry_types: string;
-}
-
-async function sendSuccessStatusReport(
-  startedAt: Date,
-  config: Partial<Config>,
-  registry_types: string[],
-  logger: Logger,
-) {
-  const statusReportBase = await createStatusReportBase(
-    ActionName.StartProxy,
-    "success",
-    startedAt,
-    config,
-    await util.checkDiskUsage(logger),
-    logger,
-  );
-  if (statusReportBase !== undefined) {
-    const statusReport: StartProxyStatus = {
-      ...statusReportBase,
-      registry_types: registry_types.join(","),
-    };
-    await sendStatusReport(statusReport);
-  }
-}
-
-async function runWrapper() {
-  const startedAt = new Date();
-
-  // Make inputs accessible in the `post` step.
-  actionsUtil.persistInputs();
+async function run(startedAt: Date) {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  let features: FeatureEnablement | undefined;
   let language: KnownLanguage | undefined;
 
   try {
+    // Make inputs accessible in the `post` step.
+    actionsUtil.persistInputs();
+
     // Setup logging for the proxy
     const tempDir = actionsUtil.getTemporaryDirectory();
     const proxyLogFilePath = path.resolve(tempDir, "proxy.log");
     core.saveState("proxy-log-file", proxyLogFilePath);
 
-    // Get the configuration options
+    // Initialise FFs.
+    const repositoryNwo = getRepositoryNwo();
+    const gitHubVersion = await getGitHubVersion();
+    features = initFeatures(
+      gitHubVersion,
+      repositoryNwo,
+      actionsUtil.getTemporaryDirectory(),
+      logger,
+    );
+
+    // Get the language input.
     const languageInput = actionsUtil.getOptionalInput("language");
     language = languageInput ? parseLanguage(languageInput) : undefined;
+
+    // Query the FF for whether we should use the reduced registry mapping.
+    const skipUnusedRegistries = await features.getValue(
+      Feature.StartProxyRemoveUnusedRegistries,
+    );
+
+    // Get the registry configurations from one of the inputs.
     const credentials = getCredentials(
       logger,
       actionsUtil.getOptionalInput("registry_secrets"),
       actionsUtil.getOptionalInput("registries_credentials"),
       language,
+      skipUnusedRegistries,
     );
 
     if (credentials.length === 0) {
@@ -158,6 +83,19 @@ async function runWrapper() {
         .join("\n")}`,
     );
 
+    // Check the environment for any configurations which may affect the proxy.
+    // This is a best effort process to give us insights into potential factors
+    // which may affect the operation of our proxy.
+    if (core.isDebug() || util.isInTestMode()) {
+      try {
+        await checkProxyEnvironment(logger, language);
+      } catch (err) {
+        logger.debug(
+          `Unable to inspect runner environment: ${util.getErrorMessage(err)}`,
+        );
+      }
+    }
+
     const ca = generateCertificateAuthority();
 
     const proxyConfig: ProxyConfig = {
@@ -166,8 +104,16 @@ async function runWrapper() {
     };
 
     // Start the Proxy
-    const proxyBin = await getProxyBinaryPath(logger);
-    await startProxy(proxyBin, proxyConfig, proxyLogFilePath, logger);
+    const proxyBin = await getProxyBinaryPath(logger, features);
+    const proxyInfo = await startProxy(
+      proxyBin,
+      proxyConfig,
+      proxyLogFilePath,
+      logger,
+    );
+
+    // Check that the private registries are reachable.
+    await checkConnections(logger, proxyInfo);
 
     // Report success if we have reached this point.
     await sendSuccessStatusReport(
@@ -179,24 +125,24 @@ async function runWrapper() {
       logger,
     );
   } catch (unwrappedError) {
-    const error = util.wrapError(unwrappedError);
-    core.setFailed(`start-proxy action failed: ${error.message}`);
+    await sendFailedStatusReport(logger, startedAt, language, unwrappedError);
+  }
+}
 
-    // We skip sending the error message and stack trace here to avoid the possibility
-    // of leaking any sensitive information into the telemetry.
-    const errorStatusReportBase = await createStatusReportBase(
+async function runWrapper() {
+  const startedAt = new Date();
+  const logger = getActionsLogger();
+
+  try {
+    await run(startedAt);
+  } catch (error) {
+    core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
+    await sendUnhandledErrorStatusReport(
       ActionName.StartProxy,
-      getActionsStatus(error),
       startedAt,
-      {
-        languages: language && [language],
-      },
-      await util.checkDiskUsage(logger),
+      getSafeErrorMessage(util.wrapError(error)),
       logger,
     );
-    if (errorStatusReportBase !== undefined) {
-      await sendStatusReport(errorStatusReportBase);
-    }
   }
 }
 
@@ -205,7 +151,7 @@ async function startProxy(
   config: ProxyConfig,
   logFilePath: string,
   logger: Logger,
-) {
+): Promise<ProxyInfo> {
   const host = "127.0.0.1";
   let port = 49152;
   let subprocess: ChildProcess | undefined = undefined;
@@ -248,51 +194,15 @@ async function startProxy(
   core.setOutput("proxy_port", port.toString());
   core.setOutput("proxy_ca_certificate", config.ca.cert);
 
-  const registry_urls = config.all_credentials
+  const registry_urls: Registry[] = config.all_credentials
     .filter((credential) => credential.url !== undefined)
     .map((credential) => ({
       type: credential.type,
       url: credential.url,
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
-}
 
-async function getProxyBinaryPath(logger: Logger): Promise<string> {
-  const proxyFileName =
-    process.platform === "win32" ? `${UPDATEJOB_PROXY}.exe` : UPDATEJOB_PROXY;
-  const proxyInfo = await getDownloadUrl(logger);
-
-  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
-  if (!proxyBin) {
-    const apiDetails = getApiDetails();
-    const authorization = getAuthorizationHeaderFor(
-      logger,
-      apiDetails,
-      proxyInfo.url,
-    );
-    const temp = await toolcache.downloadTool(
-      proxyInfo.url,
-      undefined,
-      authorization,
-      {
-        accept: "application/octet-stream",
-      },
-    );
-    const extracted = await toolcache.extractTar(temp);
-    proxyBin = await toolcache.cacheDir(
-      extracted,
-      proxyFileName,
-      proxyInfo.version,
-    );
-  }
-  proxyBin = path.join(proxyBin, proxyFileName);
-  return proxyBin;
-}
-
-function credentialToStr(c: Credential): string {
-  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
-    c.username
-  }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
+  return { host, port, cert: config.ca.cert, registries: registry_urls };
 }
 
 void runWrapper();

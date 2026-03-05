@@ -14,7 +14,10 @@ import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { getJavaTempDependencyDir } from "./dependency-caching";
+import {
+  getCsharpTempDependencyDir,
+  getJavaTempDependencyDir,
+} from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
@@ -25,7 +28,8 @@ import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
-import { OverlayDatabaseMode } from "./overlay-database-utils";
+import { OverlayDatabaseMode } from "./overlay";
+import type * as sarif from "./sarif";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
 import * as util from "./util";
@@ -102,6 +106,7 @@ async function setupPythonExtractor(logger: Logger) {
 
 export async function runExtraction(
   codeql: CodeQL,
+  features: FeatureEnablement,
   config: configUtils.Config,
   logger: Logger,
 ) {
@@ -126,7 +131,7 @@ export async function runExtraction(
           await setupCppAutobuild(codeql, logger);
         }
 
-        // The Java `build-mode: none` extractor places dependencies (.jar files) in the
+        // The Java and C# `build-mode: none` extractors place dependencies in the
         // database scratch directory by default. For dependency caching purposes, we want
         // a stable path that caches can be restored into and that we can cache at the
         // end of the workflow (i.e. that does not get removed when the scratch directory is).
@@ -136,6 +141,15 @@ export async function runExtraction(
         ) {
           process.env["CODEQL_EXTRACTOR_JAVA_OPTION_BUILDLESS_DEPENDENCY_DIR"] =
             getJavaTempDependencyDir();
+        }
+        if (
+          language === KnownLanguage.csharp &&
+          config.buildMode === BuildMode.None &&
+          (await features.getValue(Feature.CsharpCacheBuildModeNone))
+        ) {
+          process.env[
+            "CODEQL_EXTRACTOR_CSHARP_OPTION_BUILDLESS_DEPENDENCY_DIR"
+          ] = getCsharpTempDependencyDir();
         }
 
         await codeql.extractUsingBuildMode(config, language);
@@ -181,13 +195,14 @@ export function dbIsFinalized(
 
 async function finalizeDatabaseCreation(
   codeql: CodeQL,
+  features: FeatureEnablement,
   config: configUtils.Config,
   threadsFlag: string,
   memoryFlag: string,
   logger: Logger,
 ): Promise<DatabaseCreationTimings> {
   const extractionStart = performance.now();
-  await runExtraction(codeql, config, logger);
+  await runExtraction(codeql, features, config, logger);
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
@@ -499,9 +514,17 @@ export async function runQueries(
         endTimeInterpretResults.getTime() - startTimeInterpretResults.getTime();
       logger.endGroup();
 
-      logger.info(analysisSummary);
-      if (qualityAnalysisSummary) {
+      if (analysisSummary.trim()) {
+        logger.info(analysisSummary);
+      }
+      if (qualityAnalysisSummary?.trim()) {
         logger.info(qualityAnalysisSummary);
+      }
+      if (!config.enableFileCoverageInformation) {
+        logger.info(
+          "To speed up pull request analysis, file coverage information is only enabled when analyzing " +
+            "the default branch and protected branches.",
+        );
       }
 
       if (await features.getValue(Feature.QaTelemetryEnabled)) {
@@ -545,12 +568,9 @@ export async function runQueries(
   ): Promise<{ summary: string; sarifFile: string }> {
     logger.info(`Interpreting ${analysis.name} results for ${language}`);
 
-    // If this is a Code Quality analysis, correct the category to one
-    // accepted by the Code Quality backend.
-    let category = automationDetailsId;
-    if (analysis.kind === analyses.AnalysisKind.CodeQuality) {
-      category = analysis.fixCategory(logger, automationDetailsId);
-    }
+    // Apply the analysis configuration's `fixCategory` function to adjust the category if needed.
+    // This is a no-op for Code Scanning.
+    const category = analysis.fixCategory(logger, automationDetailsId);
 
     const sarifFile = path.join(
       sarifFolder,
@@ -593,7 +613,7 @@ export async function runQueries(
   function getPerQueryAlertCounts(sarifPath: string): Record<string, number> {
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifPath, "utf8"),
-    ) as util.SarifFile;
+    ) as sarif.Log;
     // We do not need to compute fingerprints because we are not sending data based off of locations.
 
     // Generate the query: alert count object
@@ -615,6 +635,7 @@ export async function runQueries(
 }
 
 export async function runFinalize(
+  features: FeatureEnablement,
   outputDir: string,
   threadsFlag: string,
   memoryFlag: string,
@@ -633,6 +654,7 @@ export async function runFinalize(
 
   const timings = await finalizeDatabaseCreation(
     codeql,
+    features,
     config,
     threadsFlag,
     memoryFlag,

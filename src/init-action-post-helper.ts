@@ -1,6 +1,5 @@
 import * as fs from "fs";
 
-import * as core from "@actions/core";
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
@@ -12,10 +11,17 @@ import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
+import { OverlayDatabaseMode } from "./overlay";
+import {
+  createOverlayStatus,
+  OverlayStatus,
+  saveOverlayStatus,
+} from "./overlay/status";
 import { RepositoryNwo, getRepositoryNwo } from "./repository";
 import { JobStatus } from "./status-report";
 import * as uploadLib from "./upload-lib";
 import {
+  checkDiskUsage,
   delay,
   getErrorMessage,
   getRequiredEnvParam,
@@ -129,47 +135,30 @@ export async function tryUploadSarifIfRunFailed(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
-  if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] !== "true") {
-    // If analyze didn't complete successfully and the job status hasn't
-    // already been set to Failure/ConfigurationError previously, this
-    // means that something along the way failed in a step that is not
-    // owned by the Action, for example a manual build step. We
-    // consider this a configuration error.
-    core.exportVariable(
-      EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
-    );
-
-    // If the only enabled analysis kind is `code-quality`, then we shouldn't
-    // upload the failed SARIF to Code Scanning.
-    if (!isCodeScanningEnabled(config)) {
-      return {
-        upload_failed_run_skipped_because: "Code Scanning is not enabled.",
-      };
-    }
-
-    try {
-      return await maybeUploadFailedSarif(
-        config,
-        repositoryNwo,
-        features,
-        logger,
-      );
-    } catch (e) {
-      logger.debug(
-        `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`,
-      );
-      return createFailedUploadFailedSarifResult(e);
-    }
-  } else {
-    core.exportVariable(
-      EnvVar.JOB_STATUS,
-      process.env[EnvVar.JOB_STATUS] ?? JobStatus.SuccessStatus,
-    );
+  // Only upload the failed SARIF to Code scanning if Code scanning is enabled.
+  if (!isCodeScanningEnabled(config)) {
+    return {
+      upload_failed_run_skipped_because: "Code Scanning is not enabled.",
+    };
+  }
+  if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true") {
     return {
       upload_failed_run_skipped_because:
         "Analyze Action completed successfully",
     };
+  }
+  try {
+    return await maybeUploadFailedSarif(
+      config,
+      repositoryNwo,
+      features,
+      logger,
+    );
+  } catch (e) {
+    logger.debug(
+      `Failed to upload a SARIF file for this failed CodeQL code scanning run. ${e}`,
+    );
+    return createFailedUploadFailedSarifResult(e);
   }
 }
 
@@ -187,6 +176,8 @@ export async function run(
   features: FeatureEnablement,
   logger: Logger,
 ) {
+  await recordOverlayStatus(codeql, config, features, logger);
+
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
     repositoryNwo,
@@ -264,6 +255,75 @@ export async function run(
   return uploadFailedSarifResult;
 }
 
+/**
+ * If overlay base database creation was attempted but the analysis did not complete
+ * successfully, save the failure status to the Actions cache so that subsequent runs
+ * can skip overlay analysis until something changes (e.g. a new CodeQL version).
+ */
+async function recordOverlayStatus(
+  codeql: CodeQL,
+  config: Config,
+  features: FeatureEnablement,
+  logger: Logger,
+) {
+  if (
+    config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
+    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true" ||
+    !(await features.getValue(Feature.OverlayAnalysisStatusSave))
+  ) {
+    return;
+  }
+
+  const checkRunIdInput = actionsUtil.getOptionalInput("check-run-id");
+  const checkRunId =
+    checkRunIdInput !== undefined ? parseInt(checkRunIdInput, 10) : undefined;
+
+  const overlayStatus: OverlayStatus = createOverlayStatus(
+    {
+      attemptedToBuildOverlayBaseDatabase: true,
+      builtOverlayBaseDatabase: false,
+    },
+    checkRunId !== undefined && checkRunId >= 0 ? checkRunId : undefined,
+  );
+
+  const diskUsage = await checkDiskUsage(logger);
+  if (diskUsage === undefined) {
+    logger.warning(
+      "Unable to save overlay status to the Actions cache because the available disk space could not be determined.",
+    );
+    return;
+  }
+
+  const saved = await saveOverlayStatus(
+    codeql,
+    config.languages,
+    diskUsage,
+    overlayStatus,
+    logger,
+  );
+
+  const blurb =
+    "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
+    "One possible reason for this is disk space constraints, since improved incremental analysis can " +
+    "require a significant amount of disk space for some repositories.";
+
+  if (saved) {
+    logger.error(
+      `${blurb} ` +
+        "This failure has been recorded in the Actions cache, so the next CodeQL analysis will run " +
+        "without improved incremental analysis. If you want to enable improved incremental analysis, " +
+        "try increasing the disk space available to the runner. " +
+        "If that doesn't help, contact GitHub Support for further assistance.",
+    );
+  } else {
+    logger.error(
+      `${blurb} ` +
+        "The attempt to save this failure status to the Actions cache failed. The Action will attempt to " +
+        "run with improved incremental analysis again.",
+    );
+  }
+}
+
 async function removeUploadedSarif(
   uploadFailedSarifResult: UploadFailedSarifResult,
   logger: Logger,
@@ -334,21 +394,4 @@ async function removeUploadedSarif(
       "Could not delete the uploaded SARIF analysis because a SARIF ID wasn't provided by the API when uploading the SARIF file.",
     );
   }
-}
-
-/**
- * Returns the final job status sent in the `init-post` Action, based on the
- * current value of the JOB_STATUS environment variable. If the variable is
- * unset, or if its value is not one of the JobStatus enum values, returns
- * Unknown. Otherwise it returns the status set in the environment variable.
- */
-export function getFinalJobStatus(): JobStatus {
-  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
-  if (
-    !jobStatusFromEnvironment ||
-    !Object.values(JobStatus).includes(jobStatusFromEnvironment as JobStatus)
-  ) {
-    return JobStatus.UnknownStatus;
-  }
-  return jobStatusFromEnvironment as JobStatus;
 }

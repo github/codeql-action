@@ -3,7 +3,9 @@ description: "Tests that file baseline information is exported when the feature 
 operatingSystems: ["ubuntu", "macos", "windows"]
 versions: ["nightly-latest"]
 installGo: true
+installDotNet: true
 env:
+  CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
 steps:
   - uses: ./../action/init
@@ -17,7 +19,7 @@ steps:
     with:
       output: "${{ runner.temp }}/results"
   - name: Upload SARIF
-    uses: actions/upload-artifact@v5
+    uses: actions/upload-artifact@v6
     with:
       name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
       path: "${{ runner.temp }}/results/javascript.sarif"

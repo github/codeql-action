@@ -3,6 +3,7 @@ description: "Checks that specifying packages using the input to the Action work
 versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
 installGo: true
 installNode: true
+installDotNet: true
 steps:
   - uses: ./../action/init
     with:

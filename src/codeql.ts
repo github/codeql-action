@@ -28,14 +28,14 @@ import {
   OverlayDatabaseMode,
   writeBaseDatabaseOidsFile,
   writeOverlayChangesFile,
-} from "./overlay-database-utils";
+} from "./overlay";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, getErrorMessage } from "./util";
+import { BuildMode, CleanupLevel, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
 
@@ -141,14 +141,27 @@ export interface CodeQL {
   /**
    * Clean up all the databases within a database cluster.
    */
-  databaseCleanupCluster(config: Config, cleanupLevel: string): Promise<void>;
+  databaseCleanupCluster(
+    config: Config,
+    cleanupLevel: CleanupLevel,
+  ): Promise<void>;
   /**
    * Run 'codeql database bundle'.
+   *
+   * @param alsoIncludeRelativePaths Additional paths that should be included in the bundle if
+   * supported by the version of the CodeQL CLI.
+   *
+   * These paths are relative to the database root.
+   *
+   * Older versions of the CodeQL CLI do not support including additional paths in the bundle.
+   * In those cases, this parameter will be ignored.
    */
   databaseBundle(
     databasePath: string,
     outputFilePath: string,
     dbName: string,
+    includeDiagnostics: boolean,
+    alsoIncludeRelativePaths: string[],
   ): Promise<void>;
   /**
    * Run 'codeql database run-queries'. If no `queries` are specified, then the CLI
@@ -175,10 +188,6 @@ export interface CodeQL {
     features: FeatureEnablement,
   ): Promise<string>;
   /**
-   * Run 'codeql database print-baseline'.
-   */
-  databasePrintBaseline(databasePath: string): Promise<string>;
-  /**
    * Run 'codeql database export-diagnostics'
    *
    * Note that the "--sarif-include-diagnostics" option is always used, as the command should
@@ -203,6 +212,7 @@ export interface CodeQL {
    * Run 'codeql resolve queries --format=startingpacks'.
    */
   resolveQueriesStartingPacks(queries: string[]): Promise<string[]>;
+  resolveDatabase(databasePath: string): Promise<ResolveDatabaseOutput>;
   /**
    * Run 'codeql github merge-results'.
    */
@@ -225,6 +235,10 @@ export interface VersionInfo {
    * we need to revert to non-overlay analysis.
    */
   overlayVersion?: number;
+}
+
+export interface ResolveDatabaseOutput {
+  overlayBaseSpecifier?: string;
 }
 
 export interface ResolveLanguagesOutput {
@@ -476,10 +490,6 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "databaseInterpretResults",
     ),
-    databasePrintBaseline: resolveFunction(
-      partialCodeql,
-      "databasePrintBaseline",
-    ),
     databaseExportDiagnostics: resolveFunction(
       partialCodeql,
       "databaseExportDiagnostics",
@@ -490,6 +500,7 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       partialCodeql,
       "resolveQueriesStartingPacks",
     ),
+    resolveDatabase: resolveFunction(partialCodeql, "resolveDatabase"),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
   };
 }
@@ -513,7 +524,7 @@ export async function getCodeQLForTesting(
  *        version requirement. Must be set to true outside tests.
  * @returns A new CodeQL object
  */
-export async function getCodeQLForCmd(
+async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean,
 ): Promise<CodeQL> {
@@ -610,6 +621,13 @@ export async function getCodeQLForCmd(
         extraArgs.push("--overlay-base");
       }
 
+      const baselineFilesOptions = config.enableFileCoverageInformation
+        ? [
+            "--calculate-language-specific-baseline",
+            "--sublanguage-file-coverage",
+          ]
+        : ["--no-calculate-baseline"];
+
       await runCli(
         cmd,
         [
@@ -621,12 +639,14 @@ export async function getCodeQLForCmd(
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
-          "--calculate-language-specific-baseline",
+          ...baselineFilesOptions,
           "--extractor-include-aliases",
-          "--sublanguage-file-coverage",
           ...extraArgs,
           ...getExtraOptionsFromEnv(["database", "init"], {
-            ignoringOptions: ["--overwrite"],
+            // Some user configs specify `--no-calculate-baseline` as an additional
+            // argument to `codeql database init`. Therefore ignore the baseline file
+            // options here to avoid specifying the same argument twice and erroring.
+            ignoringOptions: ["--overwrite", ...baselineFilesOptions],
           }),
         ],
         { stdin: externalRepositoryToken },
@@ -867,18 +887,9 @@ export async function getCodeQLForCmd(
         noStreamStdout: true,
       });
     },
-    async databasePrintBaseline(databasePath: string): Promise<string> {
-      const codeqlArgs = [
-        "database",
-        "print-baseline",
-        ...getExtraOptionsFromEnv(["database", "print-baseline"]),
-        databasePath,
-      ];
-      return await runCli(cmd, codeqlArgs);
-    },
     async databaseCleanupCluster(
       config: Config,
-      cleanupLevel: string,
+      cleanupLevel: CleanupLevel,
     ): Promise<void> {
       const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
         this,
@@ -902,15 +913,33 @@ export async function getCodeQLForCmd(
       databasePath: string,
       outputFilePath: string,
       databaseName: string,
+      includeDiagnostics: boolean,
+      alsoIncludeRelativePaths: string[],
     ): Promise<void> {
+      const includeDiagnosticsArgs = includeDiagnostics
+        ? ["--include-diagnostics"]
+        : [];
       const args = [
         "database",
         "bundle",
         databasePath,
         `--output=${outputFilePath}`,
         `--name=${databaseName}`,
-        ...getExtraOptionsFromEnv(["database", "bundle"]),
+        ...includeDiagnosticsArgs,
+        ...getExtraOptionsFromEnv(["database", "bundle"], {
+          ignoringOptions: includeDiagnosticsArgs,
+        }),
       ];
+      if (
+        await this.supportsFeature(ToolsFeature.BundleSupportsIncludeOption)
+      ) {
+        args.push(
+          ...alsoIncludeRelativePaths.flatMap((relativePath) => [
+            "--include",
+            relativePath,
+          ]),
+        );
+      }
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
     async databaseExportDiagnostics(
@@ -997,6 +1026,26 @@ export async function getCodeQLForCmd(
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve queries --format=startingpacks: ${e}`,
+        );
+      }
+    },
+    async resolveDatabase(
+      databasePath: string,
+    ): Promise<ResolveDatabaseOutput> {
+      const codeqlArgs = [
+        "resolve",
+        "database",
+        databasePath,
+        "--format=json",
+        ...getExtraOptionsFromEnv(["resolve", "database"]),
+      ];
+      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+
+      try {
+        return JSON.parse(output) as ResolveDatabaseOutput;
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve database --format=json: ${e}`,
         );
       }
     },
@@ -1222,7 +1271,7 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-export function getGeneratedCodeScanningConfigPath(config: Config): string {
+function getGeneratedCodeScanningConfigPath(config: Config): string {
   return path.resolve(config.tempDir, "user-config.yaml");
 }
 

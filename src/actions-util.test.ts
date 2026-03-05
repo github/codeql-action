@@ -100,7 +100,7 @@ test("computeAutomationID()", async (t) => {
   );
 });
 
-test("getPullRequestBranches() with pull request context", (t) => {
+test.serial("getPullRequestBranches() with pull request context", (t) => {
   withMockedContext(
     {
       pull_request: {
@@ -119,89 +119,104 @@ test("getPullRequestBranches() with pull request context", (t) => {
   );
 });
 
-test("getPullRequestBranches() returns undefined with push context", (t) => {
-  withMockedContext(
-    {
-      push: {
-        ref: "refs/heads/main",
-      },
-    },
-    () => {
-      t.is(getPullRequestBranches(), undefined);
-      t.is(isAnalyzingPullRequest(), false);
-    },
-  );
-});
-
-test("getPullRequestBranches() with Default Setup environment variables", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
+test.serial(
+  "getPullRequestBranches() returns undefined with push context",
+  (t) => {
+    withMockedContext(
       {
-        CODE_SCANNING_REF: "refs/heads/feature-branch",
-        CODE_SCANNING_BASE_BRANCH: "main",
-      },
-      () => {
-        t.deepEqual(getPullRequestBranches(), {
-          base: "main",
-          head: "refs/heads/feature-branch",
-        });
-        t.is(isAnalyzingPullRequest(), true);
-      },
-    );
-  });
-});
-
-test("getPullRequestBranches() returns undefined when only CODE_SCANNING_REF is set", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
-      {
-        CODE_SCANNING_REF: "refs/heads/feature-branch",
-        CODE_SCANNING_BASE_BRANCH: undefined,
+        push: {
+          ref: "refs/heads/main",
+        },
       },
       () => {
         t.is(getPullRequestBranches(), undefined);
         t.is(isAnalyzingPullRequest(), false);
       },
     );
-  });
-});
+  },
+);
 
-test("getPullRequestBranches() returns undefined when only CODE_SCANNING_BASE_BRANCH is set", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
-      {
-        CODE_SCANNING_REF: undefined,
-        CODE_SCANNING_BASE_BRANCH: "main",
-      },
-      () => {
-        t.is(getPullRequestBranches(), undefined);
-        t.is(isAnalyzingPullRequest(), false);
-      },
-    );
-  });
-});
+test.serial(
+  "getPullRequestBranches() with Default Setup environment variables",
+  (t) => {
+    withMockedContext({}, () => {
+      withMockedEnv(
+        {
+          CODE_SCANNING_REF: "refs/heads/feature-branch",
+          CODE_SCANNING_BASE_BRANCH: "main",
+        },
+        () => {
+          t.deepEqual(getPullRequestBranches(), {
+            base: "main",
+            head: "refs/heads/feature-branch",
+          });
+          t.is(isAnalyzingPullRequest(), true);
+        },
+      );
+    });
+  },
+);
 
-test("getPullRequestBranches() returns undefined when no PR context", (t) => {
-  withMockedContext({}, () => {
-    withMockedEnv(
-      {
-        CODE_SCANNING_REF: undefined,
-        CODE_SCANNING_BASE_BRANCH: undefined,
-      },
-      () => {
-        t.is(getPullRequestBranches(), undefined);
-        t.is(isAnalyzingPullRequest(), false);
-      },
-    );
-  });
-});
+test.serial(
+  "getPullRequestBranches() returns undefined when only CODE_SCANNING_REF is set",
+  (t) => {
+    withMockedContext({}, () => {
+      withMockedEnv(
+        {
+          CODE_SCANNING_REF: "refs/heads/feature-branch",
+          CODE_SCANNING_BASE_BRANCH: undefined,
+        },
+        () => {
+          t.is(getPullRequestBranches(), undefined);
+          t.is(isAnalyzingPullRequest(), false);
+        },
+      );
+    });
+  },
+);
 
-test("initializeEnvironment", (t) => {
+test.serial(
+  "getPullRequestBranches() returns undefined when only CODE_SCANNING_BASE_BRANCH is set",
+  (t) => {
+    withMockedContext({}, () => {
+      withMockedEnv(
+        {
+          CODE_SCANNING_REF: undefined,
+          CODE_SCANNING_BASE_BRANCH: "main",
+        },
+        () => {
+          t.is(getPullRequestBranches(), undefined);
+          t.is(isAnalyzingPullRequest(), false);
+        },
+      );
+    });
+  },
+);
+
+test.serial(
+  "getPullRequestBranches() returns undefined when no PR context",
+  (t) => {
+    withMockedContext({}, () => {
+      withMockedEnv(
+        {
+          CODE_SCANNING_REF: undefined,
+          CODE_SCANNING_BASE_BRANCH: undefined,
+        },
+        () => {
+          t.is(getPullRequestBranches(), undefined);
+          t.is(isAnalyzingPullRequest(), false);
+        },
+      );
+    });
+  },
+);
+
+test.serial("initializeEnvironment", (t) => {
   initializeEnvironment("1.2.3");
   t.deepEqual(process.env[EnvVar.VERSION], "1.2.3");
 });
 
-test("fixCodeQualityCategory", (t) => {
+test.serial("fixCodeQualityCategory", (t) => {
   withMockedEnv(
     {
       GITHUB_EVENT_NAME: "dynamic",
@@ -249,14 +264,17 @@ test("fixCodeQualityCategory", (t) => {
   );
 });
 
-test("isDynamicWorkflow() returns true if event name is `dynamic`", (t) => {
-  process.env.GITHUB_EVENT_NAME = "dynamic";
-  t.assert(isDynamicWorkflow());
-  process.env.GITHUB_EVENT_NAME = "push";
-  t.false(isDynamicWorkflow());
-});
+test.serial(
+  "isDynamicWorkflow() returns true if event name is `dynamic`",
+  (t) => {
+    process.env.GITHUB_EVENT_NAME = "dynamic";
+    t.assert(isDynamicWorkflow());
+    process.env.GITHUB_EVENT_NAME = "push";
+    t.false(isDynamicWorkflow());
+  },
+);
 
-test("isDefaultSetup() returns true when expected", (t) => {
+test.serial("isDefaultSetup() returns true when expected", (t) => {
   process.env.GITHUB_EVENT_NAME = "dynamic";
   process.env[EnvVar.ANALYSIS_KEY] = "dynamic/github-code-scanning";
   t.assert(isDefaultSetup());

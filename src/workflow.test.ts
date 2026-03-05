@@ -306,7 +306,7 @@ test("getWorkflowErrors() when on.pull_request for wildcard branches", async (t)
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() when HEAD^2 is checked out", async (t) => {
+test.serial("getWorkflowErrors() when HEAD^2 is checked out", async (t) => {
   process.env.GITHUB_JOB = "test";
 
   const errors = await getWorkflowErrors(
@@ -320,47 +320,59 @@ test("getWorkflowErrors() when HEAD^2 is checked out", async (t) => {
   t.deepEqual(...errorCodes(errors, [WorkflowErrors.CheckoutWrongHead]));
 });
 
-test("getWorkflowErrors() produces an error for workflow with language name and its alias", async (t) => {
-  await testLanguageAliases(
-    t,
-    ["java", "kotlin"],
-    { java: ["java-kotlin", "kotlin"] },
-    [
-      "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
-        "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
-        "matrix parameter to keep only one of the following: 'java', 'kotlin'.",
-    ],
-  );
-});
+test.serial(
+  "getWorkflowErrors() produces an error for workflow with language name and its alias",
+  async (t) => {
+    await testLanguageAliases(
+      t,
+      ["java", "kotlin"],
+      { java: ["java-kotlin", "kotlin"] },
+      [
+        "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
+          "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
+          "matrix parameter to keep only one of the following: 'java', 'kotlin'.",
+      ],
+    );
+  },
+);
 
-test("getWorkflowErrors() produces an error for workflow with two aliases same language", async (t) => {
-  await testLanguageAliases(
-    t,
-    ["java-kotlin", "kotlin"],
-    { java: ["java-kotlin", "kotlin"] },
-    [
-      "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
-        "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
-        "matrix parameter to keep only one of the following: 'java-kotlin', 'kotlin'.",
-    ],
-  );
-});
+test.serial(
+  "getWorkflowErrors() produces an error for workflow with two aliases same language",
+  async (t) => {
+    await testLanguageAliases(
+      t,
+      ["java-kotlin", "kotlin"],
+      { java: ["java-kotlin", "kotlin"] },
+      [
+        "CodeQL language 'java' is referenced by more than one entry in the 'language' matrix " +
+          "parameter for job 'test'. This may result in duplicate alerts. Please edit the 'language' " +
+          "matrix parameter to keep only one of the following: 'java-kotlin', 'kotlin'.",
+      ],
+    );
+  },
+);
 
-test("getWorkflowErrors() does not produce an error for workflow with two distinct languages", async (t) => {
-  await testLanguageAliases(
-    t,
-    ["java", "typescript"],
-    {
-      java: ["java-kotlin", "kotlin"],
-      javascript: ["javascript-typescript", "typescript"],
-    },
-    [],
-  );
-});
+test.serial(
+  "getWorkflowErrors() does not produce an error for workflow with two distinct languages",
+  async (t) => {
+    await testLanguageAliases(
+      t,
+      ["java", "typescript"],
+      {
+        java: ["java-kotlin", "kotlin"],
+        javascript: ["javascript-typescript", "typescript"],
+      },
+      [],
+    );
+  },
+);
 
-test("getWorkflowErrors() does not produce an error if codeql doesn't support language aliases", async (t) => {
-  await testLanguageAliases(t, ["java-kotlin", "kotlin"], undefined, []);
-});
+test.serial(
+  "getWorkflowErrors() does not produce an error if codeql doesn't support language aliases",
+  async (t) => {
+    await testLanguageAliases(t, ["java-kotlin", "kotlin"], undefined, []);
+  },
+);
 
 async function testLanguageAliases(
   t: ExecutionContext<unknown>,
@@ -483,11 +495,13 @@ test("getWorkflowErrors() when on.push has a trailing comma", async (t) => {
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getWorkflowErrors() should only report the current job's CheckoutWrongHead", async (t) => {
-  process.env.GITHUB_JOB = "test";
+test.serial(
+  "getWorkflowErrors() should only report the current job's CheckoutWrongHead",
+  async (t) => {
+    process.env.GITHUB_JOB = "test";
 
-  const errors = await getWorkflowErrors(
-    yaml.load(`
+    const errors = await getWorkflowErrors(
+      yaml.load(`
   name: "CodeQL"
   on:
     push:
@@ -507,17 +521,20 @@ test("getWorkflowErrors() should only report the current job's CheckoutWrongHead
     test3:
       steps: []
   `) as Workflow,
-    await getCodeQLForTesting(),
-  );
+      await getCodeQLForTesting(),
+    );
 
-  t.deepEqual(...errorCodes(errors, [WorkflowErrors.CheckoutWrongHead]));
-});
+    t.deepEqual(...errorCodes(errors, [WorkflowErrors.CheckoutWrongHead]));
+  },
+);
 
-test("getWorkflowErrors() should not report a different job's CheckoutWrongHead", async (t) => {
-  process.env.GITHUB_JOB = "test3";
+test.serial(
+  "getWorkflowErrors() should not report a different job's CheckoutWrongHead",
+  async (t) => {
+    process.env.GITHUB_JOB = "test3";
 
-  const errors = await getWorkflowErrors(
-    yaml.load(`
+    const errors = await getWorkflowErrors(
+      yaml.load(`
   name: "CodeQL"
   on:
     push:
@@ -537,11 +554,12 @@ test("getWorkflowErrors() should not report a different job's CheckoutWrongHead"
     test3:
       steps: []
   `) as Workflow,
-    await getCodeQLForTesting(),
-  );
+      await getCodeQLForTesting(),
+    );
 
-  t.deepEqual(...errorCodes(errors, []));
-});
+    t.deepEqual(...errorCodes(errors, []));
+  },
+);
 
 test("getWorkflowErrors() when on is missing", async (t) => {
   const errors = await getWorkflowErrors(
@@ -723,11 +741,13 @@ test("getWorkflowErrors() should not report a warning involving versions of othe
   t.deepEqual(...errorCodes(errors, []));
 });
 
-test("getCategoryInputOrThrow returns category for simple workflow with category", (t) => {
-  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-  t.is(
-    getCategoryInputOrThrow(
-      yaml.load(`
+test.serial(
+  "getCategoryInputOrThrow returns category for simple workflow with category",
+  (t) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    t.is(
+      getCategoryInputOrThrow(
+        yaml.load(`
         jobs:
           analysis:
             runs-on: ubuntu-latest
@@ -738,18 +758,21 @@ test("getCategoryInputOrThrow returns category for simple workflow with category
                 with:
                   category: some-category
       `) as Workflow,
-      "analysis",
-      {},
-    ),
-    "some-category",
-  );
-});
+        "analysis",
+        {},
+      ),
+      "some-category",
+    );
+  },
+);
 
-test("getCategoryInputOrThrow returns undefined for simple workflow without category", (t) => {
-  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-  t.is(
-    getCategoryInputOrThrow(
-      yaml.load(`
+test.serial(
+  "getCategoryInputOrThrow returns undefined for simple workflow without category",
+  (t) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    t.is(
+      getCategoryInputOrThrow(
+        yaml.load(`
         jobs:
           analysis:
             runs-on: ubuntu-latest
@@ -758,18 +781,21 @@ test("getCategoryInputOrThrow returns undefined for simple workflow without cate
               - uses: github/codeql-action/init@v4
               - uses: github/codeql-action/analyze@v4
       `) as Workflow,
-      "analysis",
-      {},
-    ),
-    undefined,
-  );
-});
+        "analysis",
+        {},
+      ),
+      undefined,
+    );
+  },
+);
 
-test("getCategoryInputOrThrow returns category for workflow with multiple jobs", (t) => {
-  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-  t.is(
-    getCategoryInputOrThrow(
-      yaml.load(`
+test.serial(
+  "getCategoryInputOrThrow returns category for workflow with multiple jobs",
+  (t) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    t.is(
+      getCategoryInputOrThrow(
+        yaml.load(`
         jobs:
           foo:
             runs-on: ubuntu-latest
@@ -790,18 +816,21 @@ test("getCategoryInputOrThrow returns category for workflow with multiple jobs",
                 with:
                   category: bar-category
       `) as Workflow,
-      "bar",
-      {},
-    ),
-    "bar-category",
-  );
-});
+        "bar",
+        {},
+      ),
+      "bar-category",
+    );
+  },
+);
 
-test("getCategoryInputOrThrow finds category for workflow with language matrix", (t) => {
-  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-  t.is(
-    getCategoryInputOrThrow(
-      yaml.load(`
+test.serial(
+  "getCategoryInputOrThrow finds category for workflow with language matrix",
+  (t) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    t.is(
+      getCategoryInputOrThrow(
+        yaml.load(`
         jobs:
           analysis:
             runs-on: ubuntu-latest
@@ -817,19 +846,22 @@ test("getCategoryInputOrThrow finds category for workflow with language matrix",
                 with:
                   category: "/language:\${{ matrix.language }}"
       `) as Workflow,
-      "analysis",
-      { language: "javascript" },
-    ),
-    "/language:javascript",
-  );
-});
+        "analysis",
+        { language: "javascript" },
+      ),
+      "/language:javascript",
+    );
+  },
+);
 
-test("getCategoryInputOrThrow throws error for workflow with dynamic category", (t) => {
-  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-  t.throws(
-    () =>
-      getCategoryInputOrThrow(
-        yaml.load(`
+test.serial(
+  "getCategoryInputOrThrow throws error for workflow with dynamic category",
+  (t) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    t.throws(
+      () =>
+        getCategoryInputOrThrow(
+          yaml.load(`
           jobs:
             analysis:
               steps:
@@ -839,23 +871,26 @@ test("getCategoryInputOrThrow throws error for workflow with dynamic category", 
                   with:
                     category: "\${{ github.workflow }}"
         `) as Workflow,
-        "analysis",
-        {},
-      ),
-    {
-      message:
-        "Could not get category input to github/codeql-action/analyze since it contained " +
-        "an unrecognized dynamic value.",
-    },
-  );
-});
+          "analysis",
+          {},
+        ),
+      {
+        message:
+          "Could not get category input to github/codeql-action/analyze since it contained " +
+          "an unrecognized dynamic value.",
+      },
+    );
+  },
+);
 
-test("getCategoryInputOrThrow throws error for workflow with multiple calls to analyze", (t) => {
-  process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
-  t.throws(
-    () =>
-      getCategoryInputOrThrow(
-        yaml.load(`
+test.serial(
+  "getCategoryInputOrThrow throws error for workflow with multiple calls to analyze",
+  (t) => {
+    process.env["GITHUB_REPOSITORY"] = "github/codeql-action-fake-repository";
+    t.throws(
+      () =>
+        getCategoryInputOrThrow(
+          yaml.load(`
           jobs:
             analysis:
               runs-on: ubuntu-latest
@@ -869,88 +904,101 @@ test("getCategoryInputOrThrow throws error for workflow with multiple calls to a
                   with:
                     category: another-category
         `) as Workflow,
-        "analysis",
-        {},
-      ),
-    {
-      message:
-        "Could not get category input to github/codeql-action/analyze since the analysis job " +
-        "calls github/codeql-action/analyze multiple times.",
-    },
-  );
-});
+          "analysis",
+          {},
+        ),
+      {
+        message:
+          "Could not get category input to github/codeql-action/analyze since the analysis job " +
+          "calls github/codeql-action/analyze multiple times.",
+      },
+    );
+  },
+);
 
-test("checkWorkflow - validates workflow if `SKIP_WORKFLOW_VALIDATION` is not set", async (t) => {
-  const messages: LoggedMessage[] = [];
-  const codeql = createStubCodeQL({});
+test.serial(
+  "checkWorkflow - validates workflow if `SKIP_WORKFLOW_VALIDATION` is not set",
+  async (t) => {
+    const messages: LoggedMessage[] = [];
+    const codeql = createStubCodeQL({});
 
-  sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
-  const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
-  validateWorkflow.resolves(undefined);
+    sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
+    const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
+    validateWorkflow.resolves(undefined);
 
-  await checkWorkflow(getRecordingLogger(messages), codeql);
+    await checkWorkflow(getRecordingLogger(messages), codeql);
 
-  t.assert(
-    validateWorkflow.calledOnce,
-    "`checkWorkflow` unexpectedly did not call `validateWorkflow`",
-  );
-  checkExpectedLogMessages(t, messages, [
-    "Detected no issues with the code scanning workflow.",
-  ]);
-});
+    t.assert(
+      validateWorkflow.calledOnce,
+      "`checkWorkflow` unexpectedly did not call `validateWorkflow`",
+    );
+    checkExpectedLogMessages(t, messages, [
+      "Detected no issues with the code scanning workflow.",
+    ]);
+  },
+);
 
-test("checkWorkflow - logs problems with workflow validation", async (t) => {
-  const messages: LoggedMessage[] = [];
-  const codeql = createStubCodeQL({});
+test.serial(
+  "checkWorkflow - logs problems with workflow validation",
+  async (t) => {
+    const messages: LoggedMessage[] = [];
+    const codeql = createStubCodeQL({});
 
-  sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
-  const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
-  validateWorkflow.resolves("problem");
+    sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
+    const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
+    validateWorkflow.resolves("problem");
 
-  await checkWorkflow(getRecordingLogger(messages), codeql);
+    await checkWorkflow(getRecordingLogger(messages), codeql);
 
-  t.assert(
-    validateWorkflow.calledOnce,
-    "`checkWorkflow` unexpectedly did not call `validateWorkflow`",
-  );
-  checkExpectedLogMessages(t, messages, [
-    "Unable to validate code scanning workflow: problem",
-  ]);
-});
+    t.assert(
+      validateWorkflow.calledOnce,
+      "`checkWorkflow` unexpectedly did not call `validateWorkflow`",
+    );
+    checkExpectedLogMessages(t, messages, [
+      "Unable to validate code scanning workflow: problem",
+    ]);
+  },
+);
 
-test("checkWorkflow - skips validation if `SKIP_WORKFLOW_VALIDATION` is `true`", async (t) => {
-  process.env[EnvVar.SKIP_WORKFLOW_VALIDATION] = "true";
+test.serial(
+  "checkWorkflow - skips validation if `SKIP_WORKFLOW_VALIDATION` is `true`",
+  async (t) => {
+    process.env[EnvVar.SKIP_WORKFLOW_VALIDATION] = "true";
 
-  const messages: LoggedMessage[] = [];
-  const codeql = createStubCodeQL({});
+    const messages: LoggedMessage[] = [];
+    const codeql = createStubCodeQL({});
 
-  sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
-  const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
+    sinon.stub(actionsUtil, "isDynamicWorkflow").returns(false);
+    const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
 
-  await checkWorkflow(getRecordingLogger(messages), codeql);
+    await checkWorkflow(getRecordingLogger(messages), codeql);
 
-  t.assert(
-    validateWorkflow.notCalled,
-    "`checkWorkflow` called `validateWorkflow` unexpectedly",
-  );
-  t.is(messages.length, 0);
-});
+    t.assert(
+      validateWorkflow.notCalled,
+      "`checkWorkflow` called `validateWorkflow` unexpectedly",
+    );
+    t.is(messages.length, 0);
+  },
+);
 
-test("checkWorkflow - skips validation for `dynamic` workflows", async (t) => {
-  const messages: LoggedMessage[] = [];
-  const codeql = createStubCodeQL({});
+test.serial(
+  "checkWorkflow - skips validation for `dynamic` workflows",
+  async (t) => {
+    const messages: LoggedMessage[] = [];
+    const codeql = createStubCodeQL({});
 
-  const isDynamicWorkflow = sinon
-    .stub(actionsUtil, "isDynamicWorkflow")
-    .returns(true);
-  const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
+    const isDynamicWorkflow = sinon
+      .stub(actionsUtil, "isDynamicWorkflow")
+      .returns(true);
+    const validateWorkflow = sinon.stub(workflow.internal, "validateWorkflow");
 
-  await checkWorkflow(getRecordingLogger(messages), codeql);
+    await checkWorkflow(getRecordingLogger(messages), codeql);
 
-  t.assert(isDynamicWorkflow.calledOnce);
-  t.assert(
-    validateWorkflow.notCalled,
-    "`checkWorkflow` called `validateWorkflow` unexpectedly",
-  );
-  t.is(messages.length, 0);
-});
+    t.assert(isDynamicWorkflow.calledOnce);
+    t.assert(
+      validateWorkflow.notCalled,
+      "`checkWorkflow` called `validateWorkflow` unexpectedly",
+    );
+    t.is(messages.length, 0);
+  },
+);

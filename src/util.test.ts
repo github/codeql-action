@@ -10,19 +10,10 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { getRecordingLogger, LoggedMessage, setupTests } from "./testing-utils";
+import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
-
-test("getToolNames", (t) => {
-  const input = fs.readFileSync(
-    `${__dirname}/../src/testdata/tool-names.sarif`,
-    "utf8",
-  );
-  const toolNames = util.getToolNames(JSON.parse(input) as util.SarifFile);
-  t.deepEqual(toolNames, ["CodeQL command-line toolchain", "ESLint"]);
-});
 
 const GET_MEMORY_FLAG_TESTS = [
   {
@@ -77,22 +68,25 @@ for (const {
   expectedMemoryValue,
   reservedPercentageValue,
 } of GET_MEMORY_FLAG_TESTS) {
-  test(`Memory flag value is ${expectedMemoryValue} for ${
-    input ?? "no user input"
-  } on ${platform} with ${totalMemoryMb} MB total system RAM${
-    reservedPercentageValue
-      ? ` and reserved percentage env var set to ${reservedPercentageValue}`
-      : ""
-  }`, async (t) => {
-    process.env[EnvVar.SCALING_RESERVED_RAM_PERCENTAGE] =
-      reservedPercentageValue || undefined;
-    const flag = util.getMemoryFlagValueForPlatform(
-      input,
-      totalMemoryMb * 1024 * 1024,
-      platform,
-    );
-    t.deepEqual(flag, expectedMemoryValue);
-  });
+  test.serial(
+    `Memory flag value is ${expectedMemoryValue} for ${
+      input ?? "no user input"
+    } on ${platform} with ${totalMemoryMb} MB total system RAM${
+      reservedPercentageValue
+        ? ` and reserved percentage env var set to ${reservedPercentageValue}`
+        : ""
+    }`,
+    async (t) => {
+      process.env[EnvVar.SCALING_RESERVED_RAM_PERCENTAGE] =
+        reservedPercentageValue || undefined;
+      const flag = util.getMemoryFlagValueForPlatform(
+        input,
+        totalMemoryMb * 1024 * 1024,
+        platform,
+      );
+      t.deepEqual(flag, expectedMemoryValue);
+    },
+  );
 }
 
 test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
@@ -123,19 +117,22 @@ test("getThreadsFlag() throws if the threads input is not an integer", (t) => {
   t.throws(() => util.getThreadsFlag("hello!", getRunnerLogger(true)));
 });
 
-test("getExtraOptionsEnvParam() succeeds on valid JSON with invalid options (for now)", (t) => {
-  const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
+test.serial(
+  "getExtraOptionsEnvParam() succeeds on valid JSON with invalid options (for now)",
+  (t) => {
+    const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
 
-  const options = { foo: 42 };
+    const options = { foo: 42 };
 
-  process.env.CODEQL_ACTION_EXTRA_OPTIONS = JSON.stringify(options);
+    process.env.CODEQL_ACTION_EXTRA_OPTIONS = JSON.stringify(options);
 
-  t.deepEqual(util.getExtraOptionsEnvParam(), <any>options);
+    t.deepEqual(util.getExtraOptionsEnvParam(), <any>options);
 
-  process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
-});
+    process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
+  },
+);
 
-test("getExtraOptionsEnvParam() succeeds on valid JSON options", (t) => {
+test.serial("getExtraOptionsEnvParam() succeeds on valid JSON options", (t) => {
   const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
 
   const options = { database: { init: ["--debug"] } };
@@ -146,7 +143,7 @@ test("getExtraOptionsEnvParam() succeeds on valid JSON options", (t) => {
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
 });
 
-test("getExtraOptionsEnvParam() succeeds on valid YAML options", (t) => {
+test.serial("getExtraOptionsEnvParam() succeeds on valid YAML options", (t) => {
   const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
 
   const options = { database: { init: ["--debug"] } };
@@ -157,7 +154,7 @@ test("getExtraOptionsEnvParam() succeeds on valid YAML options", (t) => {
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
 });
 
-test("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
+test.serial("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
   const origExtraOptions = process.env.CODEQL_ACTION_EXTRA_OPTIONS;
 
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = "{{invalid-json}";
@@ -242,7 +239,7 @@ test("allowed API versions", async (t) => {
   );
 });
 
-test("getRequiredEnvParam - gets environment variables", (t) => {
+test.serial("getRequiredEnvParam - gets environment variables", (t) => {
   process.env.SOME_UNIT_TEST_VAR = "foo";
   const result = util.getRequiredEnvParam("SOME_UNIT_TEST_VAR");
   t.is(result, "foo");
@@ -252,17 +249,20 @@ test("getRequiredEnvParam - throws if an environment variable isn't set", (t) =>
   t.throws(() => util.getRequiredEnvParam("SOME_UNIT_TEST_VAR"));
 });
 
-test("getOptionalEnvVar - gets environment variables", (t) => {
+test.serial("getOptionalEnvVar - gets environment variables", (t) => {
   process.env.SOME_UNIT_TEST_VAR = "foo";
   const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
   t.is(result, "foo");
 });
 
-test("getOptionalEnvVar - gets undefined for empty environment variables", (t) => {
-  process.env.SOME_UNIT_TEST_VAR = "";
-  const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
-  t.is(result, undefined);
-});
+test.serial(
+  "getOptionalEnvVar - gets undefined for empty environment variables",
+  (t) => {
+    process.env.SOME_UNIT_TEST_VAR = "";
+    const result = util.getOptionalEnvVar("SOME_UNIT_TEST_VAR");
+    t.is(result, undefined);
+  },
+);
 
 test("getOptionalEnvVar - doesn't throw for undefined environment variables", (t) => {
   t.notThrows(() => {
@@ -368,67 +368,6 @@ test("waitForResultWithTimeLimit doesn't call callback if promise resolves", asy
   t.deepEqual(result, 99);
 });
 
-function createMockSarifWithNotification(
-  locations: util.SarifLocation[],
-): util.SarifFile {
-  return {
-    runs: [
-      {
-        tool: {
-          driver: {
-            name: "CodeQL",
-          },
-        },
-        invocations: [
-          {
-            toolExecutionNotifications: [
-              {
-                locations,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  };
-}
-
-const stubLocation: util.SarifLocation = {
-  physicalLocation: {
-    artifactLocation: {
-      uri: "file1",
-    },
-  },
-};
-
-test("fixInvalidNotifications leaves notifications with unique locations alone", (t) => {
-  const messages: LoggedMessage[] = [];
-  const result = util.fixInvalidNotifications(
-    createMockSarifWithNotification([stubLocation]),
-    getRecordingLogger(messages),
-  );
-  t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
-  t.is(messages.length, 1);
-  t.deepEqual(messages[0], {
-    type: "debug",
-    message: "No duplicate locations found in SARIF notification objects.",
-  });
-});
-
-test("fixInvalidNotifications removes duplicate locations", (t) => {
-  const messages: LoggedMessage[] = [];
-  const result = util.fixInvalidNotifications(
-    createMockSarifWithNotification([stubLocation, stubLocation]),
-    getRecordingLogger(messages),
-  );
-  t.deepEqual(result, createMockSarifWithNotification([stubLocation]));
-  t.is(messages.length, 1);
-  t.deepEqual(messages[0], {
-    type: "info",
-    message: "Removed 1 duplicate locations from SARIF notification objects.",
-  });
-});
-
 function formatGitHubVersion(version: util.GitHubVersion): string {
   switch (version.type) {
     case util.GitHubVariant.DOTCOM:
@@ -475,27 +414,32 @@ for (const [
   const versionsDescription = `CodeQL Action version ${version} and GitHub version ${formatGitHubVersion(
     githubVersion,
   )}`;
-  test(`checkActionVersion ${reportErrorDescription} for ${versionsDescription}`, async (t) => {
-    const warningSpy = sinon.spy(core, "warning");
-    const versionStub = sinon
-      .stub(api, "getGitHubVersion")
-      .resolves(githubVersion);
+  test.serial(
+    `checkActionVersion ${reportErrorDescription} for ${versionsDescription}`,
+    async (t) => {
+      const warningSpy = sinon.spy(core, "warning");
+      const versionStub = sinon
+        .stub(api, "getGitHubVersion")
+        .resolves(githubVersion);
 
-    // call checkActionVersion twice and assert below that warning is reported only once
-    util.checkActionVersion(version, await api.getGitHubVersion());
-    util.checkActionVersion(version, await api.getGitHubVersion());
+      // call checkActionVersion twice and assert below that warning is reported only once
+      util.checkActionVersion(version, await api.getGitHubVersion());
+      util.checkActionVersion(version, await api.getGitHubVersion());
 
-    if (shouldReportError) {
-      t.true(
-        warningSpy.calledOnceWithExactly(
-          sinon.match("CodeQL Action v3 will be deprecated in December 2026."),
-        ),
-      );
-    } else {
-      t.false(warningSpy.called);
-    }
-    versionStub.restore();
-  });
+      if (shouldReportError) {
+        t.true(
+          warningSpy.calledOnceWithExactly(
+            sinon.match(
+              "CodeQL Action v3 will be deprecated in December 2026.",
+            ),
+          ),
+        );
+      } else {
+        t.false(warningSpy.called);
+      }
+      versionStub.restore();
+    },
+  );
 }
 
 test("getCgroupCpuCountFromCpus calculates the number of CPUs correctly", async (t) => {
@@ -531,14 +475,17 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is 
   });
 });
 
-test("checkDiskUsage succeeds and produces positive numbers", async (t) => {
-  process.env["GITHUB_WORKSPACE"] = os.tmpdir();
-  const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
-  if (t.truthy(diskUsage)) {
-    t.true(diskUsage.numAvailableBytes > 0);
-    t.true(diskUsage.numTotalBytes > 0);
-  }
-});
+test.serial(
+  "checkDiskUsage succeeds and produces positive numbers",
+  async (t) => {
+    process.env["GITHUB_WORKSPACE"] = os.tmpdir();
+    const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
+    if (t.truthy(diskUsage)) {
+      t.true(diskUsage.numAvailableBytes > 0);
+      t.true(diskUsage.numTotalBytes > 0);
+    }
+  },
+);
 
 test("joinAtMost - behaves like join if limit is <= 0", (t) => {
   const sep = ", ";

@@ -62,8 +62,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group:
-    multi-language-autodetect-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: multi-language-autodetect-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   multi-language-autodetect:
     strategy:
@@ -144,9 +143,8 @@ jobs:
       - uses: ./../action/init
         id: init
         with:
-          db-location: ${{ runner.temp }}/customDbLocation
-          languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby'
-            || '' }}
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 
       - name: Build code

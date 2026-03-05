@@ -6,6 +6,7 @@ import test from "ava";
 
 import * as fingerprints from "./fingerprints";
 import { getRunnerLogger } from "./logging";
+import * as sarif from "./sarif";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -201,7 +202,7 @@ test("addFingerprints", async (t) => {
     fs
       .readFileSync(`${__dirname}/../src/testdata/fingerprinting.input.sarif`)
       .toString(),
-  ) as util.SarifFile;
+  ) as sarif.Log;
   const expected = JSON.parse(
     fs
       .readFileSync(
@@ -229,7 +230,7 @@ test("missingRegions", async (t) => {
     fs
       .readFileSync(`${__dirname}/../src/testdata/fingerprinting2.input.sarif`)
       .toString(),
-  ) as util.SarifFile;
+  ) as sarif.Log;
   const expected = JSON.parse(
     fs
       .readFileSync(

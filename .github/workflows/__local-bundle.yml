@@ -62,8 +62,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group:
-    local-bundle-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: local-bundle-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
 jobs:
   local-bundle:
     strategy:
@@ -109,7 +108,7 @@ jobs:
       - id: init
         uses: ./../action/init
         with:
-      # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          # Swift is not supported on Ubuntu so we manually exclude it from the list here
           languages: cpp,csharp,go,java,javascript,python,ruby
           tools: ./codeql-bundle-linux64.tar.zst
       - name: Build code

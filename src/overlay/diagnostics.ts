@@ -10,20 +10,35 @@ import { RepositoryPropertyName } from "../feature-flags/properties";
 
 /** Reason why overlay analysis was disabled. */
 export enum OverlayDisabledReason {
+  /** Overlay analysis was disabled by the CODEQL_OVERLAY_DATABASE_MODE environment variable being set to "none". */
+  DisabledByEnvironmentVariable = "disabled-by-environment-variable",
   /** Overlay analysis was disabled by a repository property. */
   DisabledByRepositoryProperty = "disabled-by-repository-property",
-  /** Overlay analysis feature was not enabled. */
-  FeatureNotEnabled = "feature-not-enabled",
   /** The build mode is incompatible with overlay analysis. */
   IncompatibleBuildMode = "incompatible-build-mode",
   /** The CodeQL CLI version is too old to support overlay analysis. */
   IncompatibleCodeQl = "incompatible-codeql",
   /** The Git version could not be determined or is too old. */
   IncompatibleGit = "incompatible-git",
-  /** The runner does not have enough disk space or memory. */
-  InsufficientResources = "insufficient-resources",
+  /** The runner does not have enough disk space to perform overlay analysis. */
+  InsufficientDiskSpace = "insufficient-disk-space",
+  /** The runner does not have enough memory to perform overlay analysis. */
+  InsufficientMemory = "insufficient-memory",
+  /** Overlay analysis is not enabled for one or more of the configured languages. */
+  LanguageNotEnabled = "language-not-enabled",
   /** The source root is not inside a git repository. */
   NoGitRoot = "no-git-root",
+  /**
+   * For one or more of the configured languages, overlay analysis is only
+   * enabled when using the default query suite, but the config customises the
+   * queries by disabling default queries, specifying custom queries or packs,
+   * or adding query filters.
+   */
+  NonDefaultQueries = "non-default-queries",
+  /** We are not analyzing a pull request or the default branch. */
+  NotPullRequestOrDefaultBranch = "not-pull-request-or-default-branch",
+  /** The top-level overlay analysis feature flag is not enabled. */
+  OverallFeatureNotEnabled = "overall-feature-not-enabled",
   /** Overlay analysis was skipped because it previously failed with similar hardware resources. */
   SkippedDueToCachedStatus = "skipped-due-to-cached-status",
   /** Disk usage could not be determined during the overlay status check. */

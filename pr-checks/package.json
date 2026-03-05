@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "description": "Dependencies for the sync.ts",
+  "dependencies": {
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.9",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

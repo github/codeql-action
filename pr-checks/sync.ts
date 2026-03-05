@@ -528,9 +528,9 @@ function generateValidationJobs(
   specDocument: yaml.Document,
   checkSpecification: Specification,
   checkName: string,
-): Record<string, any> {
+) {
   if (checkSpecification.validationJobs === undefined) {
-    return {};
+    return { validationJobs: {}, workflowInputs: {} };
   }
 
   const validationJobs: Record<string, any> = {};
@@ -594,11 +594,8 @@ function main(): void {
       specDocument,
       checkSpecification,
     );
-    const { validationJobs, validationJobInputs } = generateValidationJobs(
-      specDocument,
-      checkSpecification,
-      checkName,
-    );
+    const { validationJobs, workflowInputs: validationJobInputs } =
+      generateValidationJobs(specDocument, checkSpecification, checkName);
     const combinedInputs = { ...workflowInputs, ...validationJobInputs };
 
     // If this check belongs to a named collection, record it.

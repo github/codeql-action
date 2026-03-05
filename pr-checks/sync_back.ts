@@ -28,12 +28,78 @@ const WORKFLOW_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
 const SYNC_TS_PATH = path.join(THIS_DIR, "sync.ts");
 
 /**
+ * Used to find action references (including versions and comments) in a workflow file.
+ *
+ * This pattern captures `action_name` and `version_with_possible_comment` from
+ * `uses: action_name@version_with_possible_comment`. For example, if we have
+ *
+ * ```
+ * uses: ruby/setup-ruby@09a7688d3b55cf0e976497ff046b70949eeaccfd # v1.288.0
+ * ```
+ *
+ * in a workflow file, this regular expression gets us:
+ *
+ * - `ruby/setup-ruby`; and
+ * - `09a7688d3b55cf0e976497ff046b70949eeaccfd # v1.288.0`.
+ */
+const EXTRACT_ACTION_REF_PATTERN: RegExp =
+  /uses:\s+([^/\s]+\/[^@\s]+)@([^@\n]+)/g;
+
+/**
+ * Used to identify characters in `action_name` strings that need to
+ * be escaped before inserting them into TypeScript or YAML strings.
+ */
+const ESCAPE_PATTERN = /[.*+?^${}()|[\]\\]/g;
+
+/**
+ * A `SyncBackPattern` is a function which constructs a regular expression for a specific `actionName`,
+ * which finds references to `actionName` and surrounding context in a particular file that we want
+ * to sync updated versions back to.
+ */
+type SyncBackPattern = (actionName: string) => RegExp;
+
+/**
+ * Used to find lines containing action references in `sync.ts`.
+ *
+ * Matches `uses: "actionName@version_str"` in PR check specifications and groups `uses: "`
+ * and `"`, allowing `actionName@version_str` to be replaced with a new action reference.
+ */
+const TS_PATTERN: SyncBackPattern = (actionName: string) =>
+  new RegExp(`(uses:\\s*")${actionName}@(?:[^"]+)(")`, "g");
+
+/**
+ * Used to find lines containing action references in a PR check specification.
+ *
+ * Matches `uses: actionName@rest_of_line` in PR check specifications and extracts `uses: actionName`,
+ * allowing `rest_of_line` to be replaced with a new version string.
+ */
+const YAML_PATTERN: SyncBackPattern = (actionName: string) =>
+  new RegExp(`(uses:\\s+${actionName})@(?:[^@\n]+)`, "g");
+
+/**
+ * Constructs a regular expression using `patternFunction` for `actionName`, which is sanitised
+ * before `patternFunction` is called.
+ *
+ * @param patternFunction The pattern builder to use.
+ * @param actionName The action name, which will be sanitised.
+ * @returns The regular expression returned by `patternFunction`.
+ */
+function makeReplacementPattern(
+  patternFunction: SyncBackPattern,
+  actionName: string,
+): RegExp {
+  return patternFunction(actionName.replace(ESCAPE_PATTERN, "\\$&"));
+}
+
+/**
  * Scan generated workflow files to extract the latest action versions.
  *
  * @param workflowDir - Path to .github/workflows directory
  * @returns Map from action names to their latest versions (including comments)
  */
-export function scanGeneratedWorkflows(workflowDir: string): Record<string, string> {
+export function scanGeneratedWorkflows(
+  workflowDir: string,
+): Record<string, string> {
   const actionVersions: Record<string, string> = {};
 
   const generatedFiles = fs
@@ -43,13 +109,10 @@ export function scanGeneratedWorkflows(workflowDir: string): Record<string, stri
 
   for (const filePath of generatedFiles) {
     const content = fs.readFileSync(filePath, "utf8");
-
-    // Find all action uses in the file, including potential comments
-    // This pattern captures: action_name@version_with_possible_comment
-    const pattern = /uses:\s+([^/\s]+\/[^@\s]+)@([^@\n]+)/g;
     let match: RegExpExecArray | null;
 
-    while ((match = pattern.exec(content)) !== null) {
+    EXTRACT_ACTION_REF_PATTERN.lastIndex = 0;
+    while ((match = EXTRACT_ACTION_REF_PATTERN.exec(content)) !== null) {
       const actionName = match[1];
       const versionWithComment = match[2].trimEnd();
 
@@ -91,15 +154,11 @@ export function updateSyncTs(
       ? versionWithComment.split("#")[0].trim()
       : versionWithComment.trim();
 
-    // Look for patterns like uses: "actions/setup-node@v4"
+    // Update uses of `actionName` for `version`.
     // Note that this will break if we store an Action uses reference in a
     // variable - that's a risk we're happy to take since in that case the
     // PR checks will just fail.
-    const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(
-      `(uses:\\s*")${escaped}@(?:[^"]+)(")`,
-      "g",
-    );
+    const pattern = makeReplacementPattern(TS_PATTERN, actionName);
     content = content.replace(pattern, `$1${actionName}@${version}$2`);
   }
 
@@ -139,12 +198,8 @@ export function updateTemplateFiles(
     for (const [actionName, versionWithComment] of Object.entries(
       actionVersions,
     )) {
-      // Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
-      const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const pattern = new RegExp(
-        `(uses:\\s+${escaped})@(?:[^@\n]+)`,
-        "g",
-      );
+      // Update uses of `actionName` for `versionWithComment`.
+      const pattern = makeReplacementPattern(YAML_PATTERN, actionName);
       content = content.replace(pattern, `$1@${versionWithComment}`);
     }
 

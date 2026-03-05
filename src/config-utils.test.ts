@@ -40,6 +40,8 @@ import {
   withTmpDir,
   BuildMode,
   DiskUsage,
+  Success,
+  Failure,
 } from "./util";
 import * as util from "./util";
 
@@ -942,55 +944,46 @@ for (const { displayName, language, feature } of [
     feature: Feature.DisableCsharpBuildless,
   },
 ]) {
-  test.serial(
-    `Build mode not overridden when disable ${displayName} buildless feature flag disabled`,
-    async (t) => {
-      const messages: LoggedMessage[] = [];
-      const buildMode = await configUtils.parseBuildModeInput(
-        "none",
-        [language],
-        createFeatures([]),
-        getRecordingLogger(messages),
-      );
-      t.is(buildMode, BuildMode.None);
-      t.deepEqual(messages, []);
-    },
-  );
+  test(`Build mode not overridden when disable ${displayName} buildless feature flag disabled`, async (t) => {
+    const messages: LoggedMessage[] = [];
+    const buildMode = await configUtils.parseBuildModeInput(
+      "none",
+      [language],
+      createFeatures([]),
+      getRecordingLogger(messages),
+    );
+    t.is(buildMode, BuildMode.None);
+    t.deepEqual(messages, []);
+  });
 
-  test.serial(
-    `Build mode not overridden for other languages when disable ${displayName} buildless feature flag enabled`,
-    async (t) => {
-      const messages: LoggedMessage[] = [];
-      const buildMode = await configUtils.parseBuildModeInput(
-        "none",
-        [KnownLanguage.python],
-        createFeatures([feature]),
-        getRecordingLogger(messages),
-      );
-      t.is(buildMode, BuildMode.None);
-      t.deepEqual(messages, []);
-    },
-  );
+  test(`Build mode not overridden for other languages when disable ${displayName} buildless feature flag enabled`, async (t) => {
+    const messages: LoggedMessage[] = [];
+    const buildMode = await configUtils.parseBuildModeInput(
+      "none",
+      [KnownLanguage.python],
+      createFeatures([feature]),
+      getRecordingLogger(messages),
+    );
+    t.is(buildMode, BuildMode.None);
+    t.deepEqual(messages, []);
+  });
 
-  test.serial(
-    `Build mode overridden when analyzing ${displayName} and disable ${displayName} buildless feature flag enabled`,
-    async (t) => {
-      const messages: LoggedMessage[] = [];
-      const buildMode = await configUtils.parseBuildModeInput(
-        "none",
-        [language],
-        createFeatures([feature]),
-        getRecordingLogger(messages),
-      );
-      t.is(buildMode, BuildMode.Autobuild);
-      t.deepEqual(messages, [
-        {
-          message: `Scanning ${displayName} code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.`,
-          type: "warning",
-        },
-      ]);
-    },
-  );
+  test(`Build mode overridden when analyzing ${displayName} and disable ${displayName} buildless feature flag enabled`, async (t) => {
+    const messages: LoggedMessage[] = [];
+    const buildMode = await configUtils.parseBuildModeInput(
+      "none",
+      [language],
+      createFeatures([feature]),
+      getRecordingLogger(messages),
+    );
+    t.is(buildMode, BuildMode.Autobuild);
+    t.deepEqual(messages, [
+      {
+        message: `Scanning ${displayName} code without a build is temporarily unavailable. Falling back to 'autobuild' build mode.`,
+        type: "warning",
+      },
+    ]);
+  });
 }
 
 interface OverlayDatabaseModeTestSetup {
@@ -1033,16 +1026,19 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   repositoryProperties: {},
 };
 
-const getOverlayDatabaseModeMacro = test.macro({
+const checkOverlayEnablementMacro = test.macro({
   exec: async (
     t: ExecutionContext,
     _title: string,
     setupOverrides: Partial<OverlayDatabaseModeTestSetup>,
-    expected: {
-      overlayDatabaseMode: OverlayDatabaseMode;
-      useOverlayDatabaseCaching: boolean;
-      disabledReason?: OverlayDisabledReason;
-    },
+    expected:
+      | {
+          overlayDatabaseMode: OverlayDatabaseMode;
+          useOverlayDatabaseCaching: boolean;
+        }
+      | {
+          disabledReason: OverlayDisabledReason;
+        },
   ) => {
     return await withTmpDir(async (tempDir) => {
       const messages: LoggedMessage[] = [];
@@ -1100,7 +1096,7 @@ const getOverlayDatabaseModeMacro = test.macro({
           .stub(gitUtils, "isAnalyzingDefaultBranch")
           .resolves(setup.isDefaultBranch);
 
-        const result = await configUtils.getOverlayDatabaseMode(
+        const result = await configUtils.checkOverlayEnablement(
           codeql,
           features,
           setup.languages,
@@ -1113,22 +1109,22 @@ const getOverlayDatabaseModeMacro = test.macro({
           logger,
         );
 
-        if (!("disabledReason" in expected)) {
-          expected.disabledReason = undefined;
+        if ("disabledReason" in expected) {
+          t.deepEqual(result, new Failure(expected.disabledReason));
+        } else {
+          t.deepEqual(result, new Success(expected));
         }
-
-        t.deepEqual(result, expected);
       } finally {
         // Restore the original environment
         process.env = originalEnv;
       }
     });
   },
-  title: (_, title) => `getOverlayDatabaseMode: ${title}`,
+  title: (_, title) => `checkOverlayEnablement: ${title}`,
 });
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override - Overlay",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1140,7 +1136,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override - OverlayBase",
   {
     overlayDatabaseEnvVar: "overlay-base",
@@ -1152,45 +1148,41 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override - None",
   {
     overlayDatabaseEnvVar: "none",
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.DisabledByEnvironmentVariable,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Ignore invalid environment variable",
   {
     overlayDatabaseEnvVar: "invalid-mode",
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Ignore feature flag when analyzing non-default branch",
   {
     languages: [KnownLanguage.javascript],
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
+    disabledReason: OverlayDisabledReason.NotPullRequestOrDefaultBranch,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch when feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1204,7 +1196,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch when feature enabled with custom analysis",
   {
     languages: [KnownLanguage.javascript],
@@ -1221,7 +1213,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch when code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1238,7 +1230,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1253,14 +1245,12 @@ test.serial(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if we can't determine runner disk space",
   {
     languages: [KnownLanguage.javascript],
@@ -1272,14 +1262,12 @@ test.serial(
     diskUsage: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.UnableToDetermineDiskUsage,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if runner disk space is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1301,7 +1289,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1317,14 +1305,12 @@ test.serial(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1346,7 +1332,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1361,14 +1347,12 @@ test.serial(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch if memory flag is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1380,14 +1364,12 @@ test.serial(
     memoryFlagValue: 3072,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientMemory,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if memory flag is too low but CodeQL >= 2.24.3",
   {
     languages: [KnownLanguage.javascript],
@@ -1406,7 +1388,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1425,7 +1407,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when cached status indicates previous failure",
   {
     languages: [KnownLanguage.javascript],
@@ -1438,14 +1420,12 @@ test.serial(
     shouldSkipOverlayAnalysisDueToCachedStatus: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when cached status indicates previous failure",
   {
     languages: [KnownLanguage.javascript],
@@ -1458,14 +1438,12 @@ test.serial(
     shouldSkipOverlayAnalysisDueToCachedStatus: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.SkippedDueToCachedStatus,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1479,14 +1457,12 @@ test.serial(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with packs",
   {
     languages: [KnownLanguage.javascript],
@@ -1500,14 +1476,12 @@ test.serial(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1521,14 +1495,12 @@ test.serial(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when code-scanning feature enabled with query-filters",
   {
     languages: [KnownLanguage.javascript],
@@ -1542,14 +1514,12 @@ test.serial(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when only language-specific feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1557,14 +1527,12 @@ test.serial(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when only code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1572,14 +1540,12 @@ test.serial(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay-base database on default branch when language-specific feature disabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1587,14 +1553,12 @@ test.serial(
     isDefaultBranch: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.LanguageNotEnabled,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR when feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1608,7 +1572,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
     languages: [KnownLanguage.javascript],
@@ -1625,7 +1589,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR when code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1642,7 +1606,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR if runner disk space is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1657,14 +1621,12 @@ test.serial(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR if runner disk space is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1686,7 +1648,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR if we can't determine runner disk space",
   {
     languages: [KnownLanguage.javascript],
@@ -1698,14 +1660,12 @@ test.serial(
     diskUsage: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.UnableToDetermineDiskUsage,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR if memory flag is too low",
   {
     languages: [KnownLanguage.javascript],
@@ -1717,14 +1677,12 @@ test.serial(
     memoryFlagValue: 3072,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.InsufficientResources,
+    disabledReason: OverlayDisabledReason.InsufficientMemory,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR if memory flag is too low but CodeQL >= 2.24.3",
   {
     languages: [KnownLanguage.javascript],
@@ -1743,7 +1701,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay analysis on PR if memory flag is too low and skip resource checks flag is enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1762,7 +1720,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1776,14 +1734,12 @@ test.serial(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with packs",
   {
     languages: [KnownLanguage.javascript],
@@ -1797,14 +1753,12 @@ test.serial(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with queries",
   {
     languages: [KnownLanguage.javascript],
@@ -1818,14 +1772,12 @@ test.serial(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when code-scanning feature enabled with query-filters",
   {
     languages: [KnownLanguage.javascript],
@@ -1839,14 +1791,12 @@ test.serial(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.NonDefaultQueries,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when only language-specific feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1854,14 +1804,12 @@ test.serial(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when only code-scanning feature enabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1869,14 +1817,12 @@ test.serial(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.OverallFeatureNotEnabled,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay analysis on PR when language-specific feature disabled",
   {
     languages: [KnownLanguage.javascript],
@@ -1884,14 +1830,12 @@ test.serial(
     isPullRequest: true,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+    disabledReason: OverlayDisabledReason.LanguageNotEnabled,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay PR analysis by env",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1903,7 +1847,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay PR analysis by env on a runner with low disk space",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1916,7 +1860,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay PR analysis by feature flag",
   {
     languages: [KnownLanguage.javascript],
@@ -1930,7 +1874,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to autobuild with traced language",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1938,14 +1882,12 @@ test.serial(
     languages: [KnownLanguage.java],
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to no build mode with traced language",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1953,70 +1895,60 @@ test.serial(
     languages: [KnownLanguage.java],
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleBuildMode,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to old CodeQL version",
   {
     overlayDatabaseEnvVar: "overlay",
     codeqlVersion: "2.14.0",
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleCodeQl,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to missing git root",
   {
     overlayDatabaseEnvVar: "overlay",
     gitRoot: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.NoGitRoot,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback due to old git version",
   {
     overlayDatabaseEnvVar: "overlay",
     gitVersion: new GitVersionInfo("2.30.0", "2.30.0"), // Version below required 2.38.0
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleGit,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Fallback when git version cannot be determined",
   {
     overlayDatabaseEnvVar: "overlay",
     gitVersion: undefined,
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.IncompatibleGit,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "No overlay when disabled via repository property",
   {
     languages: [KnownLanguage.javascript],
@@ -2027,14 +1959,12 @@ test.serial(
     },
   },
   {
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
     disabledReason: OverlayDisabledReason.DisabledByRepositoryProperty,
   },
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Overlay not disabled when repository property is false",
   {
     languages: [KnownLanguage.javascript],
@@ -2051,7 +1981,7 @@ test.serial(
 );
 
 test.serial(
-  getOverlayDatabaseModeMacro,
+  checkOverlayEnablementMacro,
   "Environment variable override takes precedence over repository property",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -2068,7 +1998,7 @@ test.serial(
 // Exercise language-specific overlay analysis features code paths
 for (const language in KnownLanguage) {
   test.serial(
-    getOverlayDatabaseModeMacro,
+    checkOverlayEnablementMacro,
     `Check default overlay analysis feature for ${language}`,
     {
       languages: [language],
@@ -2076,9 +2006,7 @@ for (const language in KnownLanguage) {
       isPullRequest: true,
     },
     {
-      overlayDatabaseMode: OverlayDatabaseMode.None,
-      useOverlayDatabaseCaching: false,
-      disabledReason: OverlayDisabledReason.FeatureNotEnabled,
+      disabledReason: OverlayDisabledReason.LanguageNotEnabled,
     },
   );
 }

@@ -347,7 +347,7 @@ function getSetupSteps(checkSpecification: JobSpecification): {
 
     if (
       setupSpec === undefined ||
-      checkSpecification[setupSpec.specProperty] === undefined
+      checkSpecification[setupSpec.specProperty] !== true
     ) {
       continue;
     }

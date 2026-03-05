@@ -340,7 +340,7 @@ function getSetupSteps(checkSpecification: Specification): {
   steps: any[];
 } {
   let inputs: WorkflowInputs = {};
-  const steps = [];
+  const steps: any[] = [];
 
   for (const language of Object.values(KnownLanguage).sort()) {
     const setupSpec = languageSetups[language];

@@ -630,9 +630,11 @@ async function loadUserConfig(
   }
 }
 
-// Maps languages to their overlay analysis feature flags. Only languages that
-// are GA or in staff-ship for overlay analysis are included here. Languages
-// without an entry will have overlay analysis disabled.
+/**
+ * Maps languages to their overlay analysis feature flags. Only languages that
+ * are GA or in staff-ship for overlay analysis are included here. Languages
+ * without an entry will have overlay analysis disabled.
+ */
 const OVERLAY_ANALYSIS_FEATURES: Partial<Record<Language, Feature>> = {
   csharp: Feature.OverlayAnalysisCsharp,
   go: Feature.OverlayAnalysisGo,

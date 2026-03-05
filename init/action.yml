@@ -159,6 +159,11 @@ inputs:
     description: >-
       Explicitly enable or disable caching of project build dependencies.
     required: false
+  check-run-id:
+    description: >-
+      [Internal] The ID of the check run, as provided by the Actions runtime environment. Do not set this value manually.
+    default: ${{ job.check_run_id }}
+    required: false
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

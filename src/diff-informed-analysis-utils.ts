@@ -71,6 +71,7 @@ export async function getDiffInformedAnalysisBranches(
 }
 
 export interface DiffThunkRange {
+  /** Relative path from the repository root, using forward slashes as separators. */
   path: string;
   startLine: number;
   endLine: number;
@@ -112,8 +113,9 @@ export function readDiffRangesJsonFile(
  *
  * @param branches The base and head branches of the pull request.
  * @param logger
- * @returns An array of tuples, where each tuple contains the absolute path of a
- * file, the start line and the end line (both 1-based and inclusive) of an
+ * @returns An array of tuples, where each tuple contains the relative path of a
+ * file (relative to the repository root, as returned by the GitHub compare API),
+ * the start line and the end line (both 1-based and inclusive) of an
  * added or modified range in that file. Returns `undefined` if the action was
  * not triggered by a pull request or if there was an error.
  */

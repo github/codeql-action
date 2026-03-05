@@ -335,7 +335,7 @@ function generateJobMatrix(
  *
  * @returns An object containing setup steps and additional input specifications.
  */
-function getSetupSteps(checkSpecification: Specification): {
+function getSetupSteps(checkSpecification: JobSpecification): {
   inputs: WorkflowInputs;
   steps: any[];
 } {

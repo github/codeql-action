@@ -29,6 +29,12 @@ const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const WORKFLOW_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
 const SYNC_TS_PATH = path.join(THIS_DIR, "sync.ts");
 
+/** Command-line options for this program. */
+export type Options = {
+  verbose: boolean;
+  force: boolean;
+};
+
 /** Records information about the version of an Action with an optional comment. */
 type ActionVersion = { version: string; comment?: string };
 
@@ -122,11 +128,13 @@ export function scanGeneratedWorkflows(
 /**
  * Update hardcoded action versions in pr-checks/sync.ts
  *
+ * @param options - The command-line options.
  * @param syncTsPath - Path to sync.ts file
  * @param actionVersions - Map of action names to versions (may include comments)
  * @returns True if the file was modified, false otherwise
  */
 export function updateSyncTs(
+  options: Options,
   syncTsPath: string,
   actionVersions: Record<string, ActionVersion>,
 ): boolean {
@@ -150,7 +158,7 @@ export function updateSyncTs(
     );
   }
 
-  if (content !== originalContent) {
+  if (content !== originalContent || options.force) {
     fs.writeFileSync(syncTsPath, content, "utf8");
     console.info(`Updated ${syncTsPath}`);
     return true;
@@ -163,11 +171,13 @@ export function updateSyncTs(
 /**
  * Update action versions in template files in pr-checks/checks/
  *
+ * @param options - The command-line options.
  * @param checksDir - Path to pr-checks/checks directory
  * @param actionVersions - Map of action names to versions (may include comments)
  * @returns List of files that were modified
  */
 export function updateTemplateFiles(
+  options: Options,
   checksDir: string,
   actionVersions: Record<string, ActionVersion>,
 ): string[] {
@@ -200,7 +210,7 @@ export function updateTemplateFiles(
     );
 
     // Write the YAML document back to the file if we made changes.
-    if (modified) {
+    if (modified || options.force) {
       fs.writeFileSync(
         filePath,
         yaml.stringify(doc, { lineWidth: 0, flowCollectionPadding: false }),
@@ -220,6 +230,11 @@ function main(): number {
       verbose: {
         type: "boolean",
         short: "v",
+        default: false,
+      },
+      force: {
+        type: "boolean",
+        short: "f",
         default: false,
       },
     },
@@ -248,12 +263,16 @@ function main(): number {
   const modifiedFiles: string[] = [];
 
   // Update sync.ts
-  if (updateSyncTs(SYNC_TS_PATH, actionVersions)) {
+  if (updateSyncTs(values, SYNC_TS_PATH, actionVersions)) {
     modifiedFiles.push(SYNC_TS_PATH);
   }
 
   // Update template files
-  const templateModified = updateTemplateFiles(CHECKS_DIR, actionVersions);
+  const templateModified = updateTemplateFiles(
+    values,
+    CHECKS_DIR,
+    actionVersions,
+  );
   modifiedFiles.push(...templateModified);
 
   if (modifiedFiles.length > 0) {

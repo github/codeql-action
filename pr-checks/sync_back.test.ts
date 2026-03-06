@@ -11,6 +11,7 @@ import * as path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
 import {
+  Options,
   scanGeneratedWorkflows,
   updateSyncTs,
   updateTemplateFiles,
@@ -20,6 +21,8 @@ let testDir: string;
 let workflowDir: string;
 let checksDir: string;
 let syncTsPath: string;
+
+const defaultOptions: Options = { verbose: false, force: false };
 
 beforeEach(() => {
   /** Set up temporary directories and files for testing */
@@ -150,7 +153,7 @@ const steps = [
       "actions/setup-go": { version: "v6" },
     };
 
-    const result = updateSyncTs(syncTsPath, actionVersions);
+    const result = updateSyncTs(defaultOptions, syncTsPath, actionVersions);
     assert.equal(result, true);
 
     const updatedContent = fs.readFileSync(syncTsPath, "utf8");
@@ -176,7 +179,7 @@ const steps = [
       "actions/setup-node": { version: "v5", comment: " Latest version" },
     };
 
-    const result = updateSyncTs(syncTsPath, actionVersions);
+    const result = updateSyncTs(defaultOptions, syncTsPath, actionVersions);
     assert.equal(result, true);
 
     const updatedContent = fs.readFileSync(syncTsPath, "utf8");
@@ -203,7 +206,7 @@ const steps = [
       "actions/setup-node": { version: "v5" },
     };
 
-    const result = updateSyncTs(syncTsPath, actionVersions);
+    const result = updateSyncTs(defaultOptions, syncTsPath, actionVersions);
     assert.equal(result, false);
   });
 });
@@ -228,7 +231,11 @@ steps:
       "actions/setup-node": { version: "v5", comment: " Latest" },
     };
 
-    const result = updateTemplateFiles(checksDir, actionVersions);
+    const result = updateTemplateFiles(
+      defaultOptions,
+      checksDir,
+      actionVersions,
+    );
     assert.equal(result.length, 1);
     assert.ok(result.includes(templatePath));
 
@@ -256,7 +263,11 @@ steps:
       },
     };
 
-    const result = updateTemplateFiles(checksDir, actionVersions);
+    const result = updateTemplateFiles(
+      defaultOptions,
+      checksDir,
+      actionVersions,
+    );
     assert.equal(result.length, 1);
 
     const updatedContent = fs.readFileSync(templatePath, "utf8");

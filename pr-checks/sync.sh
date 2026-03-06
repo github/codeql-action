@@ -2,8 +2,14 @@
 set -e
 
 cd "$(dirname "$0")"
-python3 -m venv env
-source env/*/activate
-pip3 install ruamel.yaml==0.17.31
-python3 sync.py
 
+# Run `npm ci` in CI or `npm install` otherwise.
+if [ "$GITHUB_ACTIONS" = "true" ]; then
+  echo "In Actions, running 'npm ci' for 'sync.ts'..."
+  npm ci
+else
+  echo "Running 'npm install' for 'sync.ts'..."
+  npm install --no-audit --no-fund
+fi
+
+npx tsx sync.ts

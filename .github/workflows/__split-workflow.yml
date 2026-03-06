@@ -99,7 +99,7 @@ jobs:
           dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
-          config-file: .github/codeql/codeql-config-packaging3.yml
+          config-file: '.github/codeql/codeql-config-packaging3.yml'
           packs: +codeql-testing/codeql-pack1@1.0.0
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -108,7 +108,7 @@ jobs:
       - uses: ./../action/analyze
         with:
           skip-queries: true
-          output: ${{ runner.temp }}/results
+          output: '${{ runner.temp }}/results'
           upload-database: false
 
       - name: Assert No Results
@@ -119,7 +119,7 @@ jobs:
           fi
       - uses: ./../action/analyze
         with:
-          output: ${{ runner.temp }}/results
+          output: '${{ runner.temp }}/results'
           upload-database: false
       - name: Assert Results
         run: |

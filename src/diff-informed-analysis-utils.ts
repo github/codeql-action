@@ -105,7 +105,14 @@ export function readDiffRangesJsonFile(
   logger.debug(
     `Read pr-diff-range JSON file from ${jsonFilePath}:\n${jsonContents}`,
   );
-  return JSON.parse(jsonContents) as DiffThunkRange[];
+  try {
+    return JSON.parse(jsonContents) as DiffThunkRange[];
+  } catch (e) {
+    logger.warning(
+      `Failed to parse diff ranges JSON file at ${jsonFilePath}: ${e}`,
+    );
+    return undefined;
+  }
 }
 
 /**

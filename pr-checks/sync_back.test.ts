@@ -56,9 +56,18 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
-    assert.equal(result["actions/setup-node"], "v5");
-    assert.equal(result["actions/setup-go"], "v6");
+    assert.deepEqual(result["actions/checkout"], {
+      version: "v4",
+      comment: undefined,
+    });
+    assert.deepEqual(result["actions/setup-node"], {
+      version: "v5",
+      comment: undefined,
+    });
+    assert.deepEqual(result["actions/setup-go"], {
+      version: "v6",
+      comment: undefined,
+    });
   });
 
   it("scanning workflows with version comments", () => {
@@ -78,12 +87,18 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
-    assert.equal(
-      result["ruby/setup-ruby"],
-      "44511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
-    );
-    assert.equal(result["actions/setup-python"], "v6 # Latest Python");
+    assert.deepEqual(result["actions/checkout"], {
+      version: "v4",
+      comment: undefined,
+    });
+    assert.deepEqual(result["ruby/setup-ruby"], {
+      version: "44511735964dcb71245e7e55f72539531f7bc0eb",
+      comment: " v1.257.0",
+    });
+    assert.deepEqual(result["actions/setup-python"], {
+      version: "v6",
+      comment: " Latest Python",
+    });
   });
 
   it("ignores local actions", () => {
@@ -103,7 +118,10 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
+    assert.deepEqual(result["actions/checkout"], {
+      version: "v4",
+      comment: undefined,
+    });
     assert.equal("./.github/actions/local-action" in result, false);
     assert.equal("./another-local-action" in result, false);
   });
@@ -128,8 +146,8 @@ const steps = [
     fs.writeFileSync(syncTsPath, syncTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5",
-      "actions/setup-go": "v6",
+      "actions/setup-node": { version: "v5" },
+      "actions/setup-go": { version: "v6" },
     };
 
     const result = updateSyncTs(syncTsPath, actionVersions);
@@ -155,7 +173,7 @@ const steps = [
     fs.writeFileSync(syncTsPath, syncTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5 # Latest version",
+      "actions/setup-node": { version: "v5", comment: " Latest version" },
     };
 
     const result = updateSyncTs(syncTsPath, actionVersions);
@@ -182,7 +200,7 @@ const steps = [
     fs.writeFileSync(syncTsPath, syncTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5",
+      "actions/setup-node": { version: "v5" },
     };
 
     const result = updateSyncTs(syncTsPath, actionVersions);
@@ -206,8 +224,8 @@ steps:
     fs.writeFileSync(templatePath, templateContent);
 
     const actionVersions = {
-      "actions/checkout": "v4",
-      "actions/setup-node": "v5 # Latest",
+      "actions/checkout": { version: "v4" },
+      "actions/setup-node": { version: "v5", comment: " Latest" },
     };
 
     const result = updateTemplateFiles(checksDir, actionVersions);
@@ -232,8 +250,10 @@ steps:
     fs.writeFileSync(templatePath, templateContent);
 
     const actionVersions = {
-      "ruby/setup-ruby":
-        "55511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
+      "ruby/setup-ruby": {
+        version: "55511735964dcb71245e7e55f72539531f7bc0eb",
+        comment: " v1.257.0",
+      },
     };
 
     const result = updateTemplateFiles(checksDir, actionVersions);

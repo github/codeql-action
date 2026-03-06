@@ -1,5 +1,7 @@
 #!/usr/bin/env npx tsx
 
+import * as yaml from "yaml";
+
 /*
 Sync-back script to automatically update action versions in source templates
 from the generated workflow files after Dependabot updates.
@@ -27,14 +29,74 @@ const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const WORKFLOW_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
 const SYNC_TS_PATH = path.join(THIS_DIR, "sync.ts");
 
+/** Records information about the version of an Action with an optional comment. */
+type ActionVersion = { version: string; comment?: string };
+
+/** Converts `info` to a string that includes the version and comment. */
+function versionWithCommentStr(info: ActionVersion): string {
+  const comment = info.comment ? ` #${info.comment}` : "";
+  return `${info.version}${comment}`;
+}
+
+/**
+ * Constructs a `yaml.visitor` which calls `fn` for `yaml.Pair` nodes where the key is "uses" and
+ * the value is a `yaml.Scalar`.
+ */
+function usesVisitor(
+  fn: (
+    pair: yaml.Pair<yaml.Scalar, yaml.Scalar>,
+    actionName: string,
+    actionVersion: ActionVersion,
+  ) => void,
+): yaml.visitor {
+  return {
+    Pair(_, pair) {
+      if (
+        yaml.isScalar(pair.key) &&
+        yaml.isScalar(pair.value) &&
+        pair.key.value === "uses" &&
+        typeof pair.value.value === "string"
+      ) {
+        const usesValue = pair.value.value;
+
+        // Only track non-local actions (those with / but not starting with ./)
+        if (!usesValue.startsWith("./")) {
+          const parts = (pair.value.value as string).split("@");
+
+          if (parts.length !== 2) {
+            throw new Error(`Unexpected 'uses' value: ${usesValue}`);
+          }
+
+          const actionName = parts[0];
+          const actionVersion = parts[1].trimEnd();
+          const comment = pair.value.comment?.trimEnd();
+
+          fn(pair as yaml.Pair<yaml.Scalar, yaml.Scalar>, actionName, {
+            version: actionVersion,
+            comment,
+          });
+        }
+
+        // Do not visit the children of this node.
+        return yaml.visit.SKIP;
+      }
+
+      // Do nothing and continue.
+      return undefined;
+    },
+  };
+}
+
 /**
  * Scan generated workflow files to extract the latest action versions.
  *
  * @param workflowDir - Path to .github/workflows directory
  * @returns Map from action names to their latest versions (including comments)
  */
-export function scanGeneratedWorkflows(workflowDir: string): Record<string, string> {
-  const actionVersions: Record<string, string> = {};
+export function scanGeneratedWorkflows(
+  workflowDir: string,
+): Record<string, ActionVersion> {
+  const actionVersions: Record<string, ActionVersion> = {};
 
   const generatedFiles = fs
     .readdirSync(workflowDir)
@@ -43,22 +105,15 @@ export function scanGeneratedWorkflows(workflowDir: string): Record<string, stri
 
   for (const filePath of generatedFiles) {
     const content = fs.readFileSync(filePath, "utf8");
+    const doc = yaml.parseDocument(content);
 
-    // Find all action uses in the file, including potential comments
-    // This pattern captures: action_name@version_with_possible_comment
-    const pattern = /uses:\s+([^/\s]+\/[^@\s]+)@([^@\n]+)/g;
-    let match: RegExpExecArray | null;
-
-    while ((match = pattern.exec(content)) !== null) {
-      const actionName = match[1];
-      const versionWithComment = match[2].trimEnd();
-
-      // Only track non-local actions (those with / but not starting with ./)
-      if (!actionName.startsWith("./")) {
+    yaml.visit(
+      doc,
+      usesVisitor((_node, actionName, actionVersion) => {
         // Assume that version numbers are consistent (this should be the case on a Dependabot update PR)
-        actionVersions[actionName] = versionWithComment;
-      }
-    }
+        actionVersions[actionName] = actionVersion;
+      }),
+    );
   }
 
   return actionVersions;
@@ -73,7 +128,7 @@ export function scanGeneratedWorkflows(workflowDir: string): Record<string, stri
  */
 export function updateSyncTs(
   syncTsPath: string,
-  actionVersions: Record<string, string>,
+  actionVersions: Record<string, ActionVersion>,
 ): boolean {
   if (!fs.existsSync(syncTsPath)) {
     throw new Error(`Could not find ${syncTsPath}`);
@@ -83,24 +138,16 @@ export function updateSyncTs(
   const originalContent = content;
 
   // Update hardcoded action versions
-  for (const [actionName, versionWithComment] of Object.entries(
-    actionVersions,
-  )) {
-    // Extract just the version part (before any comment) for sync.ts
-    const version = versionWithComment.includes("#")
-      ? versionWithComment.split("#")[0].trim()
-      : versionWithComment.trim();
-
-    // Look for patterns like uses: "actions/setup-node@v4"
+  for (const [actionName, versionInfo] of Object.entries(actionVersions)) {
     // Note that this will break if we store an Action uses reference in a
     // variable - that's a risk we're happy to take since in that case the
     // PR checks will just fail.
     const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(
-      `(uses:\\s*")${escaped}@(?:[^"]+)(")`,
-      "g",
+    const pattern = new RegExp(`(uses:\\s*")${escaped}@(?:[^"]+)(")`, "g");
+    content = content.replace(
+      pattern,
+      `$1${actionName}@${versionInfo.version}$2`,
     );
-    content = content.replace(pattern, `$1${actionName}@${version}$2`);
   }
 
   if (content !== originalContent) {
@@ -122,7 +169,7 @@ export function updateSyncTs(
  */
 export function updateTemplateFiles(
   checksDir: string,
-  actionVersions: Record<string, string>,
+  actionVersions: Record<string, ActionVersion>,
 ): string[] {
   const modifiedFiles: string[] = [];
 
@@ -132,24 +179,33 @@ export function updateTemplateFiles(
     .map((f) => path.join(checksDir, f));
 
   for (const filePath of templateFiles) {
-    let content = fs.readFileSync(filePath, "utf8");
-    const originalContent = content;
+    const content = fs.readFileSync(filePath, "utf8");
+    const doc = yaml.parseDocument(content, { keepSourceTokens: true });
+    let modified: boolean = false;
 
-    // Update action versions
-    for (const [actionName, versionWithComment] of Object.entries(
-      actionVersions,
-    )) {
-      // Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
-      const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const pattern = new RegExp(
-        `(uses:\\s+${escaped})@(?:[^@\n]+)`,
-        "g",
+    yaml.visit(
+      doc,
+      usesVisitor((pair, actionName, actionVersion) => {
+        // Try to look up version information for this action.
+        const versionInfo = actionVersions[actionName];
+
+        // If we found version information, and the version is different from that in the template,
+        // then update the pair node accordingly.
+        if (versionInfo && versionInfo.version !== actionVersion.version) {
+          pair.value.value = `${actionName}@${versionInfo.version}`;
+          pair.value.comment = versionInfo.comment;
+          modified = true;
+        }
+      }),
+    );
+
+    // Write the YAML document back to the file if we made changes.
+    if (modified) {
+      fs.writeFileSync(
+        filePath,
+        yaml.stringify(doc, { lineWidth: 0, flowCollectionPadding: false }),
+        "utf8",
       );
-      content = content.replace(pattern, `$1@${versionWithComment}`);
-    }
-
-    if (content !== originalContent) {
-      fs.writeFileSync(filePath, content, "utf8");
       modifiedFiles.push(filePath);
       console.info(`Updated ${filePath}`);
     }
@@ -178,7 +234,7 @@ function main(): number {
   if (verbose) {
     console.info("Found action versions:");
     for (const [action, version] of Object.entries(actionVersions)) {
-      console.info(`  ${action}@${version}`);
+      console.info(`  ${action}@${versionWithCommentStr(version)}`);
     }
   }
 

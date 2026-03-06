@@ -28,7 +28,6 @@ import {
   DependencyCacheUploadStatusReport,
   uploadDependencyCaches,
 } from "./dependency-caching";
-import { getDiffInformedAnalysisBranches } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
@@ -305,14 +304,8 @@ async function run(startedAt: Date) {
       logger,
     );
 
-    const branches = await getDiffInformedAnalysisBranches(
-      codeql,
-      features,
-      logger,
-    );
-    const diffRangePackDir = branches
-      ? await setupDiffInformedQueryRun(branches, logger)
-      : undefined;
+    // Setup diff informed analysis if needed (based on whether init created the file)
+    const diffRangePackDir = await setupDiffInformedQueryRun(logger);
 
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);

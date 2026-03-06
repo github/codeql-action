@@ -13,7 +13,7 @@ import { getAutomationID } from "../api-client";
 import { createCacheKeyHash } from "../caching-utils";
 import { type CodeQL } from "../codeql";
 import { type Config } from "../config-utils";
-import { getCommitOid, getFileOidsUnderPath } from "../git-utils";
+import { getCommitOid, getFileOidsUnderPath, getGitRoot } from "../git-utils";
 import { Logger, withGroupAsync } from "../logging";
 import {
   CleanupLevel,
@@ -130,10 +130,16 @@ export async function writeOverlayChangesFile(
 ): Promise<string> {
   const baseFileOids = await readBaseDatabaseOidsFile(config, logger);
   const overlayFileOids = await getFileOidsUnderPath(sourceRoot);
-  const changedFiles = computeChangedFiles(baseFileOids, overlayFileOids);
+  const oidChangedFiles = computeChangedFiles(baseFileOids, overlayFileOids);
   logger.info(
-    `Found ${changedFiles.length} changed file(s) under ${sourceRoot}.`,
+    `Found ${oidChangedFiles.length} changed file(s) under ${sourceRoot} from OID comparison.`,
   );
+
+  // Merge in any file paths from precomputed PR diff ranges to ensure the
+  // overlay always includes all files from the PR diff, even in edge cases
+  // like revert PRs where OID comparison shows no change.
+  const diffRangeFiles = await getDiffRangeFilePaths(sourceRoot, logger);
+  const changedFiles = [...new Set([...oidChangedFiles, ...diffRangeFiles])];
 
   const changedFilesJson = JSON.stringify({ changes: changedFiles });
   const overlayChangesFile = path.join(
@@ -163,6 +169,65 @@ function computeChangedFiles(
     }
   }
   return changes;
+}
+
+async function getDiffRangeFilePaths(
+  sourceRoot: string,
+  logger: Logger,
+): Promise<string[]> {
+  const jsonFilePath = path.join(getTemporaryDirectory(), "pr-diff-range.json");
+  if (!fs.existsSync(jsonFilePath)) {
+    return [];
+  }
+  let diffRanges: Array<{ path: string }>;
+  try {
+    diffRanges = JSON.parse(fs.readFileSync(jsonFilePath, "utf8")) as Array<{
+      path: string;
+    }>;
+  } catch (e) {
+    logger.warning(
+      `Failed to parse diff ranges JSON file at ${jsonFilePath}: ${e}`,
+    );
+    return [];
+  }
+  logger.debug(
+    `Read ${diffRanges.length} diff range(s) from ${jsonFilePath} for overlay changes.`,
+  );
+  const repoRelativePaths = [...new Set(diffRanges.map((r) => r.path))];
+
+  // Diff-range paths are relative to the repo root (from the GitHub compare
+  // API), but overlay changed files must be relative to sourceRoot (to match
+  // getFileOidsUnderPath output). Convert and filter accordingly.
+  const repoRoot = await getGitRoot(sourceRoot);
+  if (repoRoot === undefined) {
+    logger.warning(
+      "Cannot determine git root; returning diff range paths as-is.",
+    );
+    return repoRelativePaths;
+  }
+
+  // e.g. if repoRoot=/workspace and sourceRoot=/workspace/src, prefix="src"
+  const sourceRootRelPrefix = path
+    .relative(repoRoot, sourceRoot)
+    .replaceAll(path.sep, "/");
+
+  // If sourceRoot IS the repo root, prefix is "" and all paths pass through.
+  if (sourceRootRelPrefix === "") {
+    return repoRelativePaths;
+  }
+
+  const prefixWithSlash = `${sourceRootRelPrefix}/`;
+  const result: string[] = [];
+  for (const p of repoRelativePaths) {
+    if (p.startsWith(prefixWithSlash)) {
+      result.push(p.slice(prefixWithSlash.length));
+    } else {
+      logger.debug(
+        `Skipping diff range path "${p}" (not under source root "${sourceRootRelPrefix}").`,
+      );
+    }
+  }
+  return result;
 }
 
 // Constants for database caching

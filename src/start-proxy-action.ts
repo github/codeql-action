@@ -1,4 +1,3 @@
-import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 
 import * as core from "@actions/core";
@@ -7,7 +6,7 @@ import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import { KnownLanguage } from "./languages";
-import { getActionsLogger, Logger } from "./logging";
+import { getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
   credentialToStr,
@@ -15,14 +14,13 @@ import {
   getProxyBinaryPath,
   getSafeErrorMessage,
   parseLanguage,
-  ProxyInfo,
+  ProxyConfig,
   sendFailedStatusReport,
   sendSuccessStatusReport,
-  Registry,
-  ProxyConfig,
 } from "./start-proxy";
 import { generateCertificateAuthority } from "./start-proxy/ca";
 import { checkProxyEnvironment } from "./start-proxy/environment";
+import { startProxy } from "./start-proxy/launcher";
 import { checkConnections } from "./start-proxy/reachability";
 import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
 import * as util from "./util";
@@ -144,65 +142,6 @@ async function runWrapper() {
       logger,
     );
   }
-}
-
-async function startProxy(
-  binPath: string,
-  config: ProxyConfig,
-  logFilePath: string,
-  logger: Logger,
-): Promise<ProxyInfo> {
-  const host = "127.0.0.1";
-  let port = 49152;
-  let subprocess: ChildProcess | undefined = undefined;
-  let tries = 5;
-  let subprocessError: Error | undefined = undefined;
-  while (tries-- > 0 && !subprocess && !subprocessError) {
-    subprocess = spawn(
-      binPath,
-      ["-addr", `${host}:${port}`, "-config", "-", "-logfile", logFilePath],
-      {
-        detached: true,
-        stdio: ["pipe", "ignore", "ignore"],
-      },
-    );
-    subprocess.unref();
-    if (subprocess.pid) {
-      core.saveState("proxy-process-pid", `${subprocess.pid}`);
-    }
-    subprocess.on("error", (error) => {
-      subprocessError = error;
-    });
-    subprocess.on("exit", (code) => {
-      if (code !== 0) {
-        // If the proxy failed to start, try a different port from the ephemeral range [49152, 65535]
-        port = Math.floor(Math.random() * (65535 - 49152) + 49152);
-        subprocess = undefined;
-      }
-    });
-    subprocess.stdin?.write(JSON.stringify(config));
-    subprocess.stdin?.end();
-    // Wait a little to allow the proxy to start
-    await util.delay(1000);
-  }
-  if (subprocessError) {
-    // eslint-disable-next-line @typescript-eslint/only-throw-error
-    throw subprocessError;
-  }
-  logger.info(`Proxy started on ${host}:${port}`);
-  core.setOutput("proxy_host", host);
-  core.setOutput("proxy_port", port.toString());
-  core.setOutput("proxy_ca_certificate", config.ca.cert);
-
-  const registry_urls: Registry[] = config.all_credentials
-    .filter((credential) => credential.url !== undefined)
-    .map((credential) => ({
-      type: credential.type,
-      url: credential.url,
-    }));
-  core.setOutput("proxy_urls", JSON.stringify(registry_urls));
-
-  return { host, port, cert: config.ca.cert, registries: registry_urls };
 }
 
 void runWrapper();

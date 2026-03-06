@@ -247,7 +247,12 @@ export async function setupDiffInformedQueryRun(
         `Calculating diff ranges for ${branches.base}...${branches.head}`,
       );
       const diffRanges = await getPullRequestEditedDiffRanges(branches, logger);
-      const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
+      const checkoutPath = getRequiredInput("checkout_path");
+      const packDir = writeDiffRangeDataExtensionPack(
+        logger,
+        diffRanges,
+        checkoutPath,
+      );
       if (packDir === undefined) {
         logger.warning(
           "Cannot create diff range extension pack for diff-informed queries; " +
@@ -310,12 +315,14 @@ extensions:
  * @param logger
  * @param ranges The file line ranges, as returned by
  * `getPullRequestEditedDiffRanges`.
+ * @param checkoutPath The path at which the repository was checked out.
  * @returns The absolute path of the directory containing the extension pack, or
  * `undefined` if no extension pack was created.
  */
 function writeDiffRangeDataExtensionPack(
   logger: Logger,
   ranges: DiffThunkRange[] | undefined,
+  checkoutPath: string,
 ): string | undefined {
   if (ranges === undefined) {
     return undefined;
@@ -353,7 +360,7 @@ dataExtensions:
 
   const extensionContents = diffRangeExtensionPackContents(
     ranges,
-    getRequiredInput("checkout_path"),
+    checkoutPath,
   );
   const extensionFilePath = path.join(diffRangeDir, "pr-diff-range.yml");
   fs.writeFileSync(extensionFilePath, extensionContents);

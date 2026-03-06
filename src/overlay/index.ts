@@ -130,10 +130,16 @@ export async function writeOverlayChangesFile(
 ): Promise<string> {
   const baseFileOids = await readBaseDatabaseOidsFile(config, logger);
   const overlayFileOids = await getFileOidsUnderPath(sourceRoot);
-  const changedFiles = computeChangedFiles(baseFileOids, overlayFileOids);
+  const oidChangedFiles = computeChangedFiles(baseFileOids, overlayFileOids);
   logger.info(
-    `Found ${changedFiles.length} changed file(s) under ${sourceRoot}.`,
+    `Found ${oidChangedFiles.length} changed file(s) under ${sourceRoot} from OID comparison.`,
   );
+
+  // Merge in any file paths from precomputed PR diff ranges to ensure the
+  // overlay always includes all files from the PR diff, even in edge cases
+  // like revert PRs where OID comparison shows no change.
+  const diffRangeFiles = getDiffRangeFilePaths(logger);
+  const changedFiles = [...new Set([...oidChangedFiles, ...diffRangeFiles])];
 
   const changedFilesJson = JSON.stringify({ changes: changedFiles });
   const overlayChangesFile = path.join(
@@ -163,6 +169,20 @@ function computeChangedFiles(
     }
   }
   return changes;
+}
+
+function getDiffRangeFilePaths(logger: Logger): string[] {
+  const jsonFilePath = path.join(getTemporaryDirectory(), "pr-diff-range.json");
+  if (!fs.existsSync(jsonFilePath)) {
+    return [];
+  }
+  const diffRanges = JSON.parse(
+    fs.readFileSync(jsonFilePath, "utf8"),
+  ) as Array<{ path: string }>;
+  logger.debug(
+    `Read ${diffRanges.length} diff range(s) from ${jsonFilePath} for overlay changes.`,
+  );
+  return [...new Set(diffRanges.map((r) => r.path))];
 }
 
 // Constants for database caching

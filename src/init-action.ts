@@ -37,6 +37,11 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
+import {
+  getDiffInformedAnalysisBranches,
+  getPullRequestEditedDiffRanges,
+  writeDiffRangesJsonFile,
+} from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
@@ -54,7 +59,7 @@ import {
   runDatabaseInitCluster,
 } from "./init";
 import { JavaEnvVars, KnownLanguage } from "./languages";
-import { getActionsLogger, Logger } from "./logging";
+import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
@@ -413,6 +418,7 @@ async function run(startedAt: Date) {
     }
 
     await checkInstallPython311(config.languages, codeql);
+    await computeAndPersistDiffRanges(codeql, features, logger);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
@@ -833,6 +839,42 @@ async function loadRepositoryProperties(
   }
 }
 
+/**
+ * Compute and persist diff ranges when diff-informed analysis is enabled
+ * (feature flag + PR context). This writes the standard pr-diff-range.json
+ * file for later reuse in the analyze step. Failures are logged but non-fatal.
+ */
+async function computeAndPersistDiffRanges(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<void> {
+  try {
+    await withGroupAsync("Compute PR diff ranges", async () => {
+      const branches = await getDiffInformedAnalysisBranches(
+        codeql,
+        features,
+        logger,
+      );
+      if (!branches) {
+        return;
+      }
+      const ranges = await getPullRequestEditedDiffRanges(branches, logger);
+      if (ranges === undefined) {
+        return;
+      }
+      writeDiffRangesJsonFile(logger, ranges);
+      const distinctFiles = new Set(ranges.map((r) => r.path)).size;
+      logger.info(
+        `Persisted ${ranges.length} diff range(s) across ${distinctFiles} file(s).`,
+      );
+    });
+  } catch (e) {
+    logger.warning(
+      `Failed to compute and persist PR diff ranges: ${getErrorMessage(e)}`,
+    );
+  }
+}
 async function recordZstdAvailability(
   config: configUtils.Config,
   zstdAvailability: ZstdAvailability,

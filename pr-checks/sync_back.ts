@@ -27,7 +27,7 @@ import * as path from "path";
 const THIS_DIR = __dirname;
 const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const WORKFLOW_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
-const SYNC_TS_PATH = path.join(THIS_DIR, "sync.ts");
+const ACTION_VERSIONS_PATH = path.join(THIS_DIR, "action-versions.ts");
 
 /** Command-line options for this program. */
 export type Options = {
@@ -126,46 +126,34 @@ export function scanGeneratedWorkflows(
 }
 
 /**
- * Update hardcoded action versions in pr-checks/sync.ts
+ * Update hardcoded action versions in pr-checks/action-versions.ts
  *
  * @param options - The command-line options.
- * @param syncTsPath - Path to sync.ts file
+ * @param actionVersionsTsPath - Path to action-versions.ts file
  * @param actionVersions - Map of action names to versions (may include comments)
  * @returns True if the file was modified, false otherwise
  */
-export function updateSyncTs(
+export function updateActionVersions(
   options: Options,
-  syncTsPath: string,
+  actionVersionsTsPath: string,
   actionVersions: Record<string, ActionVersion>,
 ): boolean {
-  if (!fs.existsSync(syncTsPath)) {
-    throw new Error(`Could not find ${syncTsPath}`);
-  }
+  // Build content for the file.
+  let newContent: string = `export const ACTION_VERSIONS = ${JSON.stringify(actionVersions, null, 2)};`;
 
-  let content = fs.readFileSync(syncTsPath, "utf8");
-  const originalContent = content;
+  if (fs.existsSync(actionVersionsTsPath)) {
+    const content = fs.readFileSync(actionVersionsTsPath, "utf8");
+
+    if (content === newContent && !options.force) {
+      console.info(`No changes needed in ${actionVersionsTsPath}`);
+      return false;
+    }
+  }
 
   // Update hardcoded action versions
-  for (const [actionName, versionInfo] of Object.entries(actionVersions)) {
-    // Note that this will break if we store an Action uses reference in a
-    // variable - that's a risk we're happy to take since in that case the
-    // PR checks will just fail.
-    const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(`(uses:\\s*")${escaped}@(?:[^"]+)(")`, "g");
-    content = content.replace(
-      pattern,
-      `$1${actionName}@${versionInfo.version}$2`,
-    );
-  }
-
-  if (content !== originalContent || options.force) {
-    fs.writeFileSync(syncTsPath, content, "utf8");
-    console.info(`Updated ${syncTsPath}`);
-    return true;
-  } else {
-    console.info(`No changes needed in ${syncTsPath}`);
-    return false;
-  }
+  fs.writeFileSync(actionVersionsTsPath, newContent, "utf8");
+  console.info(`Updated ${actionVersionsTsPath}`);
+  return true;
 }
 
 /**
@@ -263,8 +251,8 @@ function main(): number {
   const modifiedFiles: string[] = [];
 
   // Update sync.ts
-  if (updateSyncTs(values, SYNC_TS_PATH, actionVersions)) {
-    modifiedFiles.push(SYNC_TS_PATH);
+  if (updateActionVersions(values, ACTION_VERSIONS_PATH, actionVersions)) {
+    modifiedFiles.push(ACTION_VERSIONS_PATH);
   }
 
   // Update template files

@@ -11,15 +11,18 @@ import * as path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
 import {
+  Options,
   scanGeneratedWorkflows,
-  updateSyncTs,
+  updateActionVersions,
   updateTemplateFiles,
 } from "./sync_back";
 
 let testDir: string;
 let workflowDir: string;
 let checksDir: string;
-let syncTsPath: string;
+let actionVersionsTsPath: string;
+
+const defaultOptions: Options = { verbose: false, force: false };
 
 beforeEach(() => {
   /** Set up temporary directories and files for testing */
@@ -29,8 +32,8 @@ beforeEach(() => {
   fs.mkdirSync(workflowDir, { recursive: true });
   fs.mkdirSync(checksDir, { recursive: true });
 
-  // Create sync.ts file path
-  syncTsPath = path.join(testDir, "pr-checks", "sync.ts");
+  // Create action-versions.ts file path
+  actionVersionsTsPath = path.join(testDir, "pr-checks", "action-versions.ts");
 });
 
 afterEach(() => {
@@ -56,9 +59,18 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
-    assert.equal(result["actions/setup-node"], "v5");
-    assert.equal(result["actions/setup-go"], "v6");
+    assert.deepEqual(result["actions/checkout"], {
+      version: "v4",
+      comment: undefined,
+    });
+    assert.deepEqual(result["actions/setup-node"], {
+      version: "v5",
+      comment: undefined,
+    });
+    assert.deepEqual(result["actions/setup-go"], {
+      version: "v6",
+      comment: undefined,
+    });
   });
 
   it("scanning workflows with version comments", () => {
@@ -78,12 +90,18 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
-    assert.equal(
-      result["ruby/setup-ruby"],
-      "44511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
-    );
-    assert.equal(result["actions/setup-python"], "v6 # Latest Python");
+    assert.deepEqual(result["actions/checkout"], {
+      version: "v4",
+      comment: undefined,
+    });
+    assert.deepEqual(result["ruby/setup-ruby"], {
+      version: "44511735964dcb71245e7e55f72539531f7bc0eb",
+      comment: " v1.257.0",
+    });
+    assert.deepEqual(result["actions/setup-python"], {
+      version: "v6",
+      comment: " Latest Python",
+    });
   });
 
   it("ignores local actions", () => {
@@ -103,89 +121,76 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
+    assert.deepEqual(result["actions/checkout"], {
+      version: "v4",
+      comment: undefined,
+    });
     assert.equal("./.github/actions/local-action" in result, false);
     assert.equal("./another-local-action" in result, false);
   });
 });
 
-describe("updateSyncTs", () => {
-  it("updates sync.ts file", () => {
-    /** Test updating sync.ts file */
-    const syncTsContent = `
-const steps = [
-  {
-    uses: "actions/setup-node@v4",
-    with: { "node-version": "16" },
+describe("updateActionVersions", () => {
+  it("updates action-versions.ts file", () => {
+    /** Test updating action-versions.ts file */
+    const actionVersionsTsContent = `
+export const ACTION_VERSIONS = {
+  "actions/setup-node": {
+    "version": "v4"
   },
-  {
-    uses: "actions/setup-go@v5",
-    with: { "go-version": "1.19" },
-  },
-];
-`;
+  "actions/setup-go": {
+    "version": "v5"
+  }
+};
+`.trim();
 
-    fs.writeFileSync(syncTsPath, syncTsContent);
+    fs.writeFileSync(actionVersionsTsPath, actionVersionsTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5",
-      "actions/setup-go": "v6",
+      "actions/setup-node": { version: "v5" },
+      "actions/setup-go": { version: "v6" },
     };
 
-    const result = updateSyncTs(syncTsPath, actionVersions);
+    const result = updateActionVersions(
+      defaultOptions,
+      actionVersionsTsPath,
+      actionVersions,
+    );
     assert.equal(result, true);
 
-    const updatedContent = fs.readFileSync(syncTsPath, "utf8");
+    const updatedContent = fs.readFileSync(actionVersionsTsPath, "utf8");
 
-    assert.ok(updatedContent.includes('uses: "actions/setup-node@v5"'));
-    assert.ok(updatedContent.includes('uses: "actions/setup-go@v6"'));
-  });
-
-  it("strips comments from versions", () => {
-    /** Test updating sync.ts file when versions have comments */
-    const syncTsContent = `
-const steps = [
-  {
-    uses: "actions/setup-node@v4",
-    with: { "node-version": "16" },
-  },
-];
-`;
-
-    fs.writeFileSync(syncTsPath, syncTsContent);
-
-    const actionVersions = {
-      "actions/setup-node": "v5 # Latest version",
-    };
-
-    const result = updateSyncTs(syncTsPath, actionVersions);
-    assert.equal(result, true);
-
-    const updatedContent = fs.readFileSync(syncTsPath, "utf8");
-
-    // sync.ts should get the version without comment
-    assert.ok(updatedContent.includes('uses: "actions/setup-node@v5"'));
-    assert.ok(!updatedContent.includes("# Latest version"));
+    assert.ok(
+      updatedContent.includes('"actions/setup-node": {\n    "version": "v5"'),
+    );
+    assert.ok(
+      updatedContent.includes('"actions/setup-go": {\n    "version": "v6"'),
+    );
   });
 
   it("returns false when no changes are needed", () => {
-    /** Test that updateSyncTs returns false when no changes are needed */
-    const syncTsContent = `
-const steps = [
-  {
-    uses: "actions/setup-node@v5",
-    with: { "node-version": "16" },
-  },
-];
-`;
+    /** Test that updateActionVersions returns false when no changes are needed */
+    const actionVersionsTsContent = `
+export const ACTION_VERSIONS = {
+  "actions/setup-node": {
+    "version": "v5"
+  }
+};
+`.trim();
 
-    fs.writeFileSync(syncTsPath, syncTsContent);
+    fs.writeFileSync(actionVersionsTsPath, actionVersionsTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5",
+      "actions/setup-node": { version: "v5" },
     };
 
-    const result = updateSyncTs(syncTsPath, actionVersions);
+    const result = updateActionVersions(
+      defaultOptions,
+      actionVersionsTsPath,
+      actionVersions,
+    );
+    const updatedContent = fs.readFileSync(actionVersionsTsPath, "utf8");
+    assert.equal(updatedContent, actionVersionsTsContent);
     assert.equal(result, false);
   });
 });
@@ -206,11 +211,15 @@ steps:
     fs.writeFileSync(templatePath, templateContent);
 
     const actionVersions = {
-      "actions/checkout": "v4",
-      "actions/setup-node": "v5 # Latest",
+      "actions/checkout": { version: "v4" },
+      "actions/setup-node": { version: "v5", comment: " Latest" },
     };
 
-    const result = updateTemplateFiles(checksDir, actionVersions);
+    const result = updateTemplateFiles(
+      defaultOptions,
+      checksDir,
+      actionVersions,
+    );
     assert.equal(result.length, 1);
     assert.ok(result.includes(templatePath));
 
@@ -232,11 +241,17 @@ steps:
     fs.writeFileSync(templatePath, templateContent);
 
     const actionVersions = {
-      "ruby/setup-ruby":
-        "55511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
+      "ruby/setup-ruby": {
+        version: "55511735964dcb71245e7e55f72539531f7bc0eb",
+        comment: " v1.257.0",
+      },
     };
 
-    const result = updateTemplateFiles(checksDir, actionVersions);
+    const result = updateTemplateFiles(
+      defaultOptions,
+      checksDir,
+      actionVersions,
+    );
     assert.equal(result.length, 1);
 
     const updatedContent = fs.readFileSync(templatePath, "utf8");

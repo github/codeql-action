@@ -4,12 +4,11 @@
 # basic mechanics of multi-registry auth is working.
 name: "Packaging: Download using registries"
 description: "Checks that specifying a registries block and associated auth works as expected"
-versions: [
-    # This feature is not compatible with older CLIs
-    "default",
-    "linked",
-    "nightly-latest",
-]
+versions:
+  # This feature is not compatible with older CLIs
+  - "default"
+  - "linked"
+  - "nightly-latest"
 
 permissions:
   contents: read
@@ -24,9 +23,9 @@ steps:
       config-file: ./.github/codeql/codeql-config-registries.yml
       languages: javascript
       registries: |
-          - url: "https://ghcr.io/v2/"
-            packages: "*/*"
-            token: "${{ secrets.GITHUB_TOKEN }}"
+        - url: "https://ghcr.io/v2/"
+          packages: "*/*"
+          token: "${{ secrets.GITHUB_TOKEN }}"
 
   - name: Verify packages installed
     run: |

@@ -38,7 +38,7 @@ test.serial(
 );
 
 test.serial(
-  "loadPropertiesFromApi throws if response data contains unexpected objects",
+  "loadPropertiesFromApi throws if response data contains objects without `property_name`",
   async (t) => {
     sinon.stub(api, "getRepositoryProperties").resolves({
       headers: {},
@@ -197,7 +197,7 @@ test.serial(
 );
 
 test.serial(
-  "loadPropertiesFromApi throws if property value is not a string",
+  "loadPropertiesFromApi throws if known property value is not a string",
   async (t) => {
     sinon.stub(api, "getRepositoryProperties").resolves({
       headers: {},
@@ -217,7 +217,7 @@ test.serial(
       ),
       {
         message:
-          /Expected repository property 'github-codeql-extra-queries' to have a string value/,
+          /Unexpected value for repository property 'github-codeql-extra-queries', got: 123/,
       },
     );
   },

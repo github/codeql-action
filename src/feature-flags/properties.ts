@@ -12,7 +12,7 @@ export enum RepositoryPropertyName {
 }
 
 /** Parsed types of the known repository properties. */
-type AllRepositoryProperties = {
+export type AllRepositoryProperties = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
 };
@@ -21,7 +21,7 @@ type AllRepositoryProperties = {
 export type RepositoryProperties = Partial<AllRepositoryProperties>;
 
 /** Maps known repository properties to the type we expect to get from the API. */
-type RepositoryPropertyApiType = {
+export type RepositoryPropertyApiType = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: string;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
 };

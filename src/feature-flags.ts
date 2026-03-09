@@ -87,7 +87,6 @@ export enum Feature {
   StartProxyRemoveUnusedRegistries = "start_proxy_remove_unused_registries",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
-  UseRepositoryProperties = "use_repository_properties_v2",
   ValidateDbConfig = "validate_db_config",
 }
 
@@ -314,11 +313,6 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_UPLOAD_OVERLAY_DB_TO_API",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.BundleSupportsOverlay,
-  },
-  [Feature.UseRepositoryProperties]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_USE_REPOSITORY_PROPERTIES",
-    minimumVersion: undefined,
   },
   [Feature.ValidateDbConfig]: {
     defaultValue: false,

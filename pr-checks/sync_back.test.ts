@@ -176,7 +176,7 @@ export const ACTION_VERSIONS = {
     "version": "v5"
   }
 };
-`.trim();
+`.trimStart();
 
     fs.writeFileSync(actionVersionsTsPath, actionVersionsTsContent);
 

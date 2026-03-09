@@ -139,7 +139,7 @@ export function updateActionVersions(
   actionVersions: Record<string, ActionVersion>,
 ): boolean {
   // Build content for the file.
-  let newContent: string = `export const ACTION_VERSIONS = ${JSON.stringify(actionVersions, null, 2)};`;
+  let newContent: string = `export const ACTION_VERSIONS = ${JSON.stringify(actionVersions, null, 2)};\n`;
 
   if (fs.existsSync(actionVersionsTsPath)) {
     const content = fs.readFileSync(actionVersionsTsPath, "utf8");

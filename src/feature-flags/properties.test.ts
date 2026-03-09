@@ -217,7 +217,7 @@ test.serial(
       ),
       {
         message:
-          /Unexpected value for repository property 'github-codeql-extra-queries', got: 123/,
+          /Unexpected value for repository property 'github-codeql-extra-queries' \(number\), got: 123/,
       },
     );
   },

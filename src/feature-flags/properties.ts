@@ -172,7 +172,7 @@ function setProperty<K extends RepositoryPropertyName>(
     properties[name] = propertyOptions.parse(name, value, logger);
   } else {
     throw new Error(
-      `Unexpected value for repository property '${name}', got: ${JSON.stringify(value)}`,
+      `Unexpected value for repository property '${name}' (${typeof value}), got: ${JSON.stringify(value)}`,
     );
   }
 }

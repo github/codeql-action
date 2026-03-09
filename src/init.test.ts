@@ -457,6 +457,7 @@ test("file coverage information enabled when debugMode is true", async (t) => {
       true, // debugMode
       createStubCodeQL({}),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     ),
   );
 });
@@ -471,6 +472,7 @@ test.serial(
         false, // debugMode
         createStubCodeQL({}),
         createFeatures([Feature.SkipFileCoverageOnPrs]),
+        {},
       ),
     );
   },
@@ -486,6 +488,25 @@ test.serial(
         false, // debugMode
         createStubCodeQL({}),
         createFeatures([]),
+        {},
+      ),
+    );
+  },
+);
+
+test.serial(
+  "file coverage information enabled when repository property is set",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+    t.true(
+      await getFileCoverageInformationEnabled(
+        false, // debugMode
+        createStubCodeQL({}),
+        createFeatures([Feature.SkipFileCoverageOnPrs]),
+        {
+          "github-codeql-file-coverage-on-prs": true,
+        },
       ),
     );
   },
@@ -501,6 +522,7 @@ test.serial(
         false, // debugMode
         createStubCodeQL({}),
         createFeatures([Feature.SkipFileCoverageOnPrs]),
+        {},
       ),
     );
   },

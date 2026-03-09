@@ -380,6 +380,7 @@ async function run(startedAt: Date) {
         debugMode,
         codeql,
         features,
+        repositoryPropertiesResult.orElse({}),
       ),
       logger,
     });

@@ -29,8 +29,31 @@ export type Token = {
   token?: string;
 } & Username;
 
+/** Configuration for Azure OIDC. */
+export type AzureConfig = { tenant_id: string; client_id: string };
+
+/** Configuration for AWS OIDC. */
+export type AWSConfig = {
+  aws_region: string;
+  account_id: string;
+  role_name: string;
+  domain: string;
+  domain_owner: string;
+  audience?: string;
+};
+
+/** Configuration for JFrog OIDC. */
+export type JFrogConfig = {
+  jfrog_oidc_provider_name: string;
+  audience?: string;
+  identity_mapping_name?: string;
+};
+
+/** Represents all supported OIDC configurations. */
+export type OIDC = AzureConfig | AWSConfig | JFrogConfig;
+
 /** All authentication-related fields. */
-export type AuthConfig = UsernamePassword & Token;
+export type AuthConfig = UsernamePassword & Token & OIDC;
 
 /**
  * A package registry configuration includes identifying information as well as

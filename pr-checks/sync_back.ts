@@ -201,7 +201,7 @@ export function updateTemplateFiles(
     if (modified || options.force) {
       fs.writeFileSync(
         filePath,
-        yaml.stringify(doc, { lineWidth: 0, flowCollectionPadding: false }),
+        doc.toString({ lineWidth: 0, flowCollectionPadding: false }),
         "utf8",
       );
       modifiedFiles.push(filePath);

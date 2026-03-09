@@ -838,9 +838,7 @@ async function loadRepositoryProperties(
   }
 
   try {
-    return new Success(
-      await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
-    );
+    return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
   } catch (error) {
     logger.warning(
       `Failed to load repository properties: ${getErrorMessage(error)}`,

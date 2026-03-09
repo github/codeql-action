@@ -37,7 +37,7 @@ const repositoryPropertyParsers: {
  */
 export interface GitHubRepositoryProperty {
   property_name: string;
-  value: string;
+  value: string | string[];
 }
 
 /**

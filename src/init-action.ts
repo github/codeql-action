@@ -251,7 +251,6 @@ async function run(startedAt: Date) {
     const repositoryPropertiesResult = await loadRepositoryProperties(
       repositoryNwo,
       gitHubVersion,
-      features,
       logger,
     );
 
@@ -821,7 +820,6 @@ async function run(startedAt: Date) {
 async function loadRepositoryProperties(
   repositoryNwo: RepositoryNwo,
   gitHubVersion: GitHubVersion,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Result<RepositoryProperties, unknown>> {
   // See if we can skip loading repository properties early. In particular,
@@ -835,13 +833,6 @@ async function loadRepositoryProperties(
     logger.debug(
       "Skipping loading repository properties because the repository is owned by a user and " +
         "therefore cannot have repository properties.",
-    );
-    return new Success({});
-  }
-
-  if (!(await features.getValue(Feature.UseRepositoryProperties))) {
-    logger.debug(
-      "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
     );
     return new Success({});
   }

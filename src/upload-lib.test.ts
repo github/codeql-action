@@ -10,6 +10,7 @@ import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
 import { getRunnerLogger, Logger } from "./logging";
+import * as sarif from "./sarif";
 import { setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { UploadPayload } from "./upload-lib/types";
@@ -21,91 +22,94 @@ test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });
 
-test("validateSarifFileSchema - valid", (t) => {
+test.serial("validateSarifFileSchema - valid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/valid-sarif.sarif`;
   t.notThrows(() =>
     uploadLib.validateSarifFileSchema(
-      uploadLib.readSarifFile(inputFile),
+      uploadLib.readSarifFileOrThrow(inputFile),
       inputFile,
       getRunnerLogger(true),
     ),
   );
 });
 
-test("validateSarifFileSchema - invalid", (t) => {
+test.serial("validateSarifFileSchema - invalid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/invalid-sarif.sarif`;
   t.throws(() =>
     uploadLib.validateSarifFileSchema(
-      uploadLib.readSarifFile(inputFile),
+      uploadLib.readSarifFileOrThrow(inputFile),
       inputFile,
       getRunnerLogger(true),
     ),
   );
 });
 
-test("validate correct payload used for push, PR merge commit, and PR head", async (t) => {
-  process.env["GITHUB_EVENT_NAME"] = "push";
-  const pushPayload: any = uploadLib.buildPayload(
-    "commit",
-    "refs/heads/master",
-    "key",
-    undefined,
-    "",
-    1234,
-    1,
-    "/opt/src",
-    undefined,
-    ["CodeQL", "eslint"],
-    "mergeBaseCommit",
-  );
-  // Not triggered by a pull request
-  t.falsy(pushPayload.base_ref);
-  t.falsy(pushPayload.base_sha);
+test.serial(
+  "validate correct payload used for push, PR merge commit, and PR head",
+  async (t) => {
+    process.env["GITHUB_EVENT_NAME"] = "push";
+    const pushPayload: any = uploadLib.buildPayload(
+      "commit",
+      "refs/heads/master",
+      "key",
+      undefined,
+      "",
+      1234,
+      1,
+      "/opt/src",
+      undefined,
+      ["CodeQL", "eslint"],
+      "mergeBaseCommit",
+    );
+    // Not triggered by a pull request
+    t.falsy(pushPayload.base_ref);
+    t.falsy(pushPayload.base_sha);
 
-  process.env["GITHUB_EVENT_NAME"] = "pull_request";
-  process.env["GITHUB_SHA"] = "commit";
-  process.env["GITHUB_BASE_REF"] = "master";
-  process.env["GITHUB_EVENT_PATH"] =
-    `${__dirname}/../src/testdata/pull_request.json`;
-  const prMergePayload: any = uploadLib.buildPayload(
-    "commit",
-    "refs/pull/123/merge",
-    "key",
-    undefined,
-    "",
-    1234,
-    1,
-    "/opt/src",
-    undefined,
-    ["CodeQL", "eslint"],
-    "mergeBaseCommit",
-  );
-  // Uploads for a merge commit use the merge base
-  t.deepEqual(prMergePayload.base_ref, "refs/heads/master");
-  t.deepEqual(prMergePayload.base_sha, "mergeBaseCommit");
+    process.env["GITHUB_EVENT_NAME"] = "pull_request";
+    process.env["GITHUB_SHA"] = "commit";
+    process.env["GITHUB_BASE_REF"] = "master";
+    process.env["GITHUB_EVENT_PATH"] =
+      `${__dirname}/../src/testdata/pull_request.json`;
+    const prMergePayload: any = uploadLib.buildPayload(
+      "commit",
+      "refs/pull/123/merge",
+      "key",
+      undefined,
+      "",
+      1234,
+      1,
+      "/opt/src",
+      undefined,
+      ["CodeQL", "eslint"],
+      "mergeBaseCommit",
+    );
+    // Uploads for a merge commit use the merge base
+    t.deepEqual(prMergePayload.base_ref, "refs/heads/master");
+    t.deepEqual(prMergePayload.base_sha, "mergeBaseCommit");
 
-  const prHeadPayload: any = uploadLib.buildPayload(
-    "headCommit",
-    "refs/pull/123/head",
-    "key",
-    undefined,
-    "",
-    1234,
-    1,
-    "/opt/src",
-    undefined,
-    ["CodeQL", "eslint"],
-    "mergeBaseCommit",
-  );
-  // Uploads for the head use the PR base
-  t.deepEqual(prHeadPayload.base_ref, "refs/heads/master");
-  t.deepEqual(
-    prHeadPayload.base_sha,
-    "f95f852bd8fca8fcc58a9a2d6c842781e32a215e",
-  );
-});
+    const prHeadPayload: any = uploadLib.buildPayload(
+      "headCommit",
+      "refs/pull/123/head",
+      "key",
+      undefined,
+      "",
+      1234,
+      1,
+      "/opt/src",
+      undefined,
+      ["CodeQL", "eslint"],
+      "mergeBaseCommit",
+    );
+    // Uploads for the head use the PR base
+    t.deepEqual(prHeadPayload.base_ref, "refs/heads/master");
+    t.deepEqual(
+      prHeadPayload.base_sha,
+      "f95f852bd8fca8fcc58a9a2d6c842781e32a215e",
+    );
+  },
+);
 
-test("finding SARIF files", async (t) => {
+test.serial("finding SARIF files", async (t) => {
   await withTmpDir(async (tmpDir) => {
     // include a couple of sarif files
     fs.writeFileSync(path.join(tmpDir, "a.sarif"), "");
@@ -189,7 +193,7 @@ test("finding SARIF files", async (t) => {
   });
 });
 
-test("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
+test.serial("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const sarifPath = path.join(tmpDir, "a.csra.sarif");
     fs.writeFileSync(sarifPath, "");
@@ -207,7 +211,7 @@ test("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
   });
 });
 
-test("getGroupedSarifFilePaths - Code Quality file", async (t) => {
+test.serial("getGroupedSarifFilePaths - Code Quality file", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const sarifPath = path.join(tmpDir, "a.quality.sarif");
     fs.writeFileSync(sarifPath, "");
@@ -225,7 +229,7 @@ test("getGroupedSarifFilePaths - Code Quality file", async (t) => {
   });
 });
 
-test("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
+test.serial("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const sarifPath = path.join(tmpDir, "a.sarif");
     fs.writeFileSync(sarifPath, "");
@@ -243,7 +247,7 @@ test("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
   });
 });
 
-test("getGroupedSarifFilePaths - Other file", async (t) => {
+test.serial("getGroupedSarifFilePaths - Other file", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const sarifPath = path.join(tmpDir, "a.json");
     fs.writeFileSync(sarifPath, "");
@@ -261,19 +265,24 @@ test("getGroupedSarifFilePaths - Other file", async (t) => {
   });
 });
 
-test("populateRunAutomationDetails", (t) => {
-  let sarif = {
-    runs: [{}],
+test.serial("populateRunAutomationDetails", (t) => {
+  const tool = { driver: { name: "test tool" } };
+  let sarifLog: sarif.Log = {
+    version: "2.1.0",
+    runs: [{ tool }],
   };
   const analysisKey = ".github/workflows/codeql-analysis.yml:analyze";
 
-  let expectedSarif = {
-    runs: [{ automationDetails: { id: "language:javascript/os:linux/" } }],
+  let expectedSarif: sarif.Log = {
+    version: "2.1.0",
+    runs: [
+      { tool, automationDetails: { id: "language:javascript/os:linux/" } },
+    ],
   };
 
   // Category has priority over analysis_key/environment
   let modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     "language:javascript/os:linux",
     analysisKey,
     '{"language": "other", "os": "other"}',
@@ -282,7 +291,7 @@ test("populateRunAutomationDetails", (t) => {
 
   // It doesn't matter if the category has a slash at the end or not
   modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     "language:javascript/os:linux/",
     analysisKey,
     "",
@@ -290,10 +299,16 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 
   // check that the automation details doesn't get overwritten
-  sarif = { runs: [{ automationDetails: { id: "my_id" } }] };
-  expectedSarif = { runs: [{ automationDetails: { id: "my_id" } }] };
+  sarifLog = {
+    version: "2.1.0",
+    runs: [{ tool, automationDetails: { id: "my_id" } }],
+  };
+  expectedSarif = {
+    version: "2.1.0",
+    runs: [{ tool, automationDetails: { id: "my_id" } }],
+  };
   modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     undefined,
     analysisKey,
     '{"os": "linux", "language": "javascript"}',
@@ -301,11 +316,16 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 
   // check multiple runs
-  sarif = { runs: [{ automationDetails: { id: "my_id" } }, {}] };
+  sarifLog = {
+    version: "2.1.0",
+    runs: [{ tool, automationDetails: { id: "my_id" } }, { tool }],
+  };
   expectedSarif = {
+    version: "2.1.0",
     runs: [
-      { automationDetails: { id: "my_id" } },
+      { tool, automationDetails: { id: "my_id" } },
       {
+        tool,
         automationDetails: {
           id: ".github/workflows/codeql-analysis.yml:analyze/language:javascript/os:linux/",
         },
@@ -313,7 +333,7 @@ test("populateRunAutomationDetails", (t) => {
     ],
   };
   modifiedSarif = uploadLib.populateRunAutomationDetails(
-    sarif,
+    sarifLog,
     undefined,
     analysisKey,
     '{"os": "linux", "language": "javascript"}',
@@ -321,7 +341,7 @@ test("populateRunAutomationDetails", (t) => {
   t.deepEqual(modifiedSarif, expectedSarif);
 });
 
-test("validateUniqueCategory when empty", (t) => {
+test.serial("validateUniqueCategory when empty", (t) => {
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(
       createMockSarif(),
@@ -336,7 +356,7 @@ test("validateUniqueCategory when empty", (t) => {
   );
 });
 
-test("validateUniqueCategory for automation details id", (t) => {
+test.serial("validateUniqueCategory for automation details id", (t) => {
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(
       createMockSarif("abc"),
@@ -405,7 +425,7 @@ test("validateUniqueCategory for automation details id", (t) => {
   );
 });
 
-test("validateUniqueCategory for tool name", (t) => {
+test.serial("validateUniqueCategory for tool name", (t) => {
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(
       createMockSarif(undefined, "abc"),
@@ -474,94 +494,88 @@ test("validateUniqueCategory for tool name", (t) => {
   );
 });
 
-test("validateUniqueCategory for automation details id and tool name", (t) => {
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc", "abc"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-  t.throws(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc", "abc"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
+test.serial(
+  "validateUniqueCategory for automation details id and tool name",
+  (t) => {
+    t.notThrows(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("abc", "abc"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
+    t.throws(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("abc", "abc"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
 
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc_", "def"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-  t.throws(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc_", "def"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
+    t.notThrows(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("abc_", "def"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
+    t.throws(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("abc_", "def"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
 
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("ghi", "_jkl"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-  t.throws(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("ghi", "_jkl"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
+    t.notThrows(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("ghi", "_jkl"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
+    t.throws(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("ghi", "_jkl"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
 
-  // Our category sanitization is not perfect. Here are some examples
-  // of where we see false clashes
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-  t.throws(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc", "_"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
+    // Our category sanitization is not perfect. Here are some examples
+    // of where we see false clashes because we replace some characters
+    // with `_` in `sanitize`.
+    t.notThrows(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("abc", "def__"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
+    t.throws(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("abc_def", "_"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
 
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc", "def__"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-  t.throws(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("abc_def"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
+    t.notThrows(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("mno_", "pqr"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
+    t.throws(() =>
+      uploadLib.validateUniqueCategory(
+        createMockSarif("mno", "_pqr"),
+        CodeScanning.sentinelPrefix,
+      ),
+    );
+  },
+);
 
-  t.notThrows(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("mno_", "pqr"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-  t.throws(() =>
-    uploadLib.validateUniqueCategory(
-      createMockSarif("mno", "_pqr"),
-      CodeScanning.sentinelPrefix,
-    ),
-  );
-});
-
-test("validateUniqueCategory for multiple runs", (t) => {
+test.serial("validateUniqueCategory for multiple runs", (t) => {
   const sarif1 = createMockSarif("abc", "def");
   const sarif2 = createMockSarif("ghi", "jkl");
 
   // duplicate categories are allowed within the same sarif file
-  const multiSarif = { runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]] };
+  const multiSarif: sarif.Log = {
+    version: "2.1.0",
+    runs: [sarif1.runs[0], sarif1.runs[0], sarif2.runs[0]],
+  };
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(multiSarif, CodeScanning.sentinelPrefix),
   );
@@ -575,7 +589,7 @@ test("validateUniqueCategory for multiple runs", (t) => {
   );
 });
 
-test("validateUniqueCategory with different prefixes", (t) => {
+test.serial("validateUniqueCategory with different prefixes", (t) => {
   t.notThrows(() =>
     uploadLib.validateUniqueCategory(
       createMockSarif(),
@@ -590,7 +604,7 @@ test("validateUniqueCategory with different prefixes", (t) => {
   );
 });
 
-test("accept results with invalid artifactLocation.uri value", (t) => {
+test.serial("accept results with invalid artifactLocation.uri value", (t) => {
   const loggedMessages: string[] = [];
   const mockLogger = {
     info: (message: string) => {
@@ -600,7 +614,7 @@ test("accept results with invalid artifactLocation.uri value", (t) => {
 
   const sarifFile = `${__dirname}/../src/testdata/with-invalid-uri.sarif`;
   uploadLib.validateSarifFileSchema(
-    uploadLib.readSarifFile(sarifFile),
+    uploadLib.readSarifFileOrThrow(sarifFile),
     sarifFile,
     mockLogger,
   );
@@ -613,100 +627,124 @@ test("accept results with invalid artifactLocation.uri value", (t) => {
   );
 });
 
-test("shouldShowCombineSarifFilesDeprecationWarning when on dotcom", async (t) => {
-  t.true(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.DOTCOM,
-      },
-    ),
-  );
-});
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning when on dotcom",
+  async (t) => {
+    t.true(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.DOTCOM,
+        },
+      ),
+    );
+  },
+);
 
-test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.13", async (t) => {
-  t.false(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.GHES,
-        version: "3.13.2",
-      },
-    ),
-  );
-});
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.13",
+  async (t) => {
+    t.false(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.GHES,
+          version: "3.13.2",
+        },
+      ),
+    );
+  },
+);
 
-test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.14", async (t) => {
-  t.true(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.GHES,
-        version: "3.14.0",
-      },
-    ),
-  );
-});
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.14",
+  async (t) => {
+    t.true(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.GHES,
+          version: "3.14.0",
+        },
+      ),
+    );
+  },
+);
 
-test("shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.16 pre", async (t) => {
-  t.true(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.GHES,
-        version: "3.16.0.pre1",
-      },
-    ),
-  );
-});
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.16 pre",
+  async (t) => {
+    t.true(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.GHES,
+          version: "3.16.0.pre1",
+        },
+      ),
+    );
+  },
+);
 
-test("shouldShowCombineSarifFilesDeprecationWarning with only 1 run", async (t) => {
-  t.false(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.DOTCOM,
-      },
-    ),
-  );
-});
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning with only 1 run",
+  async (t) => {
+    t.false(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.DOTCOM,
+        },
+      ),
+    );
+  },
+);
 
-test("shouldShowCombineSarifFilesDeprecationWarning with distinct categories", async (t) => {
-  t.false(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "def"), createMockSarif("def", "def")],
-      {
-        type: GitHubVariant.DOTCOM,
-      },
-    ),
-  );
-});
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning with distinct categories",
+  async (t) => {
+    t.false(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "def"), createMockSarif("def", "def")],
+        {
+          type: GitHubVariant.DOTCOM,
+        },
+      ),
+    );
+  },
+);
 
-test("shouldShowCombineSarifFilesDeprecationWarning with distinct tools", async (t) => {
-  t.false(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.DOTCOM,
-      },
-    ),
-  );
-});
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning with distinct tools",
+  async (t) => {
+    t.false(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.DOTCOM,
+        },
+      ),
+    );
+  },
+);
 
-test("shouldShowCombineSarifFilesDeprecationWarning when environment variable is already set", async (t) => {
-  process.env["CODEQL_MERGE_SARIF_DEPRECATION_WARNING"] = "true";
+test.serial(
+  "shouldShowCombineSarifFilesDeprecationWarning when environment variable is already set",
+  async (t) => {
+    process.env["CODEQL_MERGE_SARIF_DEPRECATION_WARNING"] = "true";
 
-  t.false(
-    await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.DOTCOM,
-      },
-    ),
-  );
-});
+    t.false(
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.DOTCOM,
+        },
+      ),
+    );
+  },
+);
 
-test("throwIfCombineSarifFilesDisabled when on dotcom", async (t) => {
+test.serial("throwIfCombineSarifFilesDisabled when on dotcom", async (t) => {
   await t.throwsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
@@ -721,7 +759,7 @@ test("throwIfCombineSarifFilesDisabled when on dotcom", async (t) => {
   );
 });
 
-test("throwIfCombineSarifFilesDisabled when on GHES 3.13", async (t) => {
+test.serial("throwIfCombineSarifFilesDisabled when on GHES 3.13", async (t) => {
   await t.notThrowsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
@@ -733,7 +771,7 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.13", async (t) => {
   );
 });
 
-test("throwIfCombineSarifFilesDisabled when on GHES 3.14", async (t) => {
+test.serial("throwIfCombineSarifFilesDisabled when on GHES 3.14", async (t) => {
   await t.notThrowsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
@@ -745,7 +783,7 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.14", async (t) => {
   );
 });
 
-test("throwIfCombineSarifFilesDisabled when on GHES 3.17", async (t) => {
+test.serial("throwIfCombineSarifFilesDisabled when on GHES 3.17", async (t) => {
   await t.notThrowsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
@@ -757,39 +795,45 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.17", async (t) => {
   );
 });
 
-test("throwIfCombineSarifFilesDisabled when on GHES 3.18 pre", async (t) => {
-  await t.throwsAsync(
-    uploadLib.throwIfCombineSarifFilesDisabled(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+test.serial(
+  "throwIfCombineSarifFilesDisabled when on GHES 3.18 pre",
+  async (t) => {
+    await t.throwsAsync(
+      uploadLib.throwIfCombineSarifFilesDisabled(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.GHES,
+          version: "3.18.0.pre1",
+        },
+      ),
       {
-        type: GitHubVariant.GHES,
-        version: "3.18.0.pre1",
+        message:
+          /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
       },
-    ),
-    {
-      message:
-        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
-    },
-  );
-});
+    );
+  },
+);
 
-test("throwIfCombineSarifFilesDisabled when on GHES 3.18 alpha", async (t) => {
-  await t.throwsAsync(
-    uploadLib.throwIfCombineSarifFilesDisabled(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+test.serial(
+  "throwIfCombineSarifFilesDisabled when on GHES 3.18 alpha",
+  async (t) => {
+    await t.throwsAsync(
+      uploadLib.throwIfCombineSarifFilesDisabled(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.GHES,
+          version: "3.18.0-alpha.1",
+        },
+      ),
       {
-        type: GitHubVariant.GHES,
-        version: "3.18.0-alpha.1",
+        message:
+          /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
       },
-    ),
-    {
-      message:
-        /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
-    },
-  );
-});
+    );
+  },
+);
 
-test("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
+test.serial("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
   await t.throwsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
@@ -805,19 +849,22 @@ test("throwIfCombineSarifFilesDisabled when on GHES 3.18", async (t) => {
   );
 });
 
-test("throwIfCombineSarifFilesDisabled with an invalid GHES version", async (t) => {
-  await t.notThrowsAsync(
-    uploadLib.throwIfCombineSarifFilesDisabled(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.GHES,
-        version: "foobar",
-      },
-    ),
-  );
-});
+test.serial(
+  "throwIfCombineSarifFilesDisabled with an invalid GHES version",
+  async (t) => {
+    await t.notThrowsAsync(
+      uploadLib.throwIfCombineSarifFilesDisabled(
+        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.GHES,
+          version: "foobar",
+        },
+      ),
+    );
+  },
+);
 
-test("throwIfCombineSarifFilesDisabled with only 1 run", async (t) => {
+test.serial("throwIfCombineSarifFilesDisabled with only 1 run", async (t) => {
   await t.notThrowsAsync(
     uploadLib.throwIfCombineSarifFilesDisabled(
       [createMockSarif("abc", "def")],
@@ -828,71 +875,84 @@ test("throwIfCombineSarifFilesDisabled with only 1 run", async (t) => {
   );
 });
 
-test("throwIfCombineSarifFilesDisabled with distinct categories", async (t) => {
-  await t.notThrowsAsync(
-    uploadLib.throwIfCombineSarifFilesDisabled(
-      [createMockSarif("abc", "def"), createMockSarif("def", "def")],
-      {
-        type: GitHubVariant.DOTCOM,
-      },
-    ),
-  );
-});
+test.serial(
+  "throwIfCombineSarifFilesDisabled with distinct categories",
+  async (t) => {
+    await t.notThrowsAsync(
+      uploadLib.throwIfCombineSarifFilesDisabled(
+        [createMockSarif("abc", "def"), createMockSarif("def", "def")],
+        {
+          type: GitHubVariant.DOTCOM,
+        },
+      ),
+    );
+  },
+);
 
-test("throwIfCombineSarifFilesDisabled with distinct tools", async (t) => {
-  await t.notThrowsAsync(
-    uploadLib.throwIfCombineSarifFilesDisabled(
-      [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.DOTCOM,
-      },
-    ),
-  );
-});
+test.serial(
+  "throwIfCombineSarifFilesDisabled with distinct tools",
+  async (t) => {
+    await t.notThrowsAsync(
+      uploadLib.throwIfCombineSarifFilesDisabled(
+        [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
+        {
+          type: GitHubVariant.DOTCOM,
+        },
+      ),
+    );
+  },
+);
 
-test("shouldConsiderConfigurationError correctly detects configuration errors", (t) => {
-  const error1 = [
-    "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
-  ];
-  t.true(uploadLib.shouldConsiderConfigurationError(error1));
+test.serial(
+  "shouldConsiderConfigurationError correctly detects configuration errors",
+  (t) => {
+    const error1 = [
+      "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled",
+    ];
+    t.true(uploadLib.shouldConsiderConfigurationError(error1));
 
-  const error2 = [
-    "rejecting delivery as the repository has too many logical alerts",
-  ];
-  t.true(uploadLib.shouldConsiderConfigurationError(error2));
+    const error2 = [
+      "rejecting delivery as the repository has too many logical alerts",
+    ];
+    t.true(uploadLib.shouldConsiderConfigurationError(error2));
 
-  // We fail cases where we get > 1 error messages back
-  const error3 = [
-    "rejecting delivery as the repository has too many alerts",
-    "extra error message",
-  ];
-  t.false(uploadLib.shouldConsiderConfigurationError(error3));
-});
+    // We fail cases where we get > 1 error messages back
+    const error3 = [
+      "rejecting delivery as the repository has too many alerts",
+      "extra error message",
+    ];
+    t.false(uploadLib.shouldConsiderConfigurationError(error3));
+  },
+);
 
-test("shouldConsiderInvalidRequest returns correct recognises processing errors", (t) => {
-  const error1 = [
-    "rejecting SARIF",
-    "an invalid URI was provided as a SARIF location",
-  ];
-  t.true(uploadLib.shouldConsiderInvalidRequest(error1));
+test.serial(
+  "shouldConsiderInvalidRequest returns correct recognises processing errors",
+  (t) => {
+    const error1 = [
+      "rejecting SARIF",
+      "an invalid URI was provided as a SARIF location",
+    ];
+    t.true(uploadLib.shouldConsiderInvalidRequest(error1));
 
-  const error2 = [
-    "locationFromSarifResult: expected artifact location",
-    "an invalid URI was provided as a SARIF location",
-  ];
-  t.true(uploadLib.shouldConsiderInvalidRequest(error2));
+    const error2 = [
+      "locationFromSarifResult: expected artifact location",
+      "an invalid URI was provided as a SARIF location",
+    ];
+    t.true(uploadLib.shouldConsiderInvalidRequest(error2));
 
-  // We expect ALL errors to be of processing errors, for the outcome to be classified as
-  // an invalid SARIF upload error.
-  const error3 = [
-    "could not convert rules: invalid security severity value, is not a number",
-    "an unknown error occurred",
-  ];
-  t.false(uploadLib.shouldConsiderInvalidRequest(error3));
-});
+    // We expect ALL errors to be of processing errors, for the outcome to be classified as
+    // an invalid SARIF upload error.
+    const error3 = [
+      "could not convert rules: invalid security severity value, is not a number",
+      "an unknown error occurred",
+    ];
+    t.false(uploadLib.shouldConsiderInvalidRequest(error3));
+  },
+);
 
-function createMockSarif(id?: string, tool?: string) {
+function createMockSarif(id?: string, tool?: string): sarif.Log {
   return {
+    version: "2.1.0",
     runs: [
       {
         automationDetails: {
@@ -900,7 +960,7 @@ function createMockSarif(id?: string, tool?: string) {
         },
         tool: {
           driver: {
-            name: tool,
+            name: tool || "test tool",
           },
         },
       },
@@ -953,55 +1013,70 @@ function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
 for (const analysisKind of analyses.supportedAnalysisKinds) {
   const analysis = analyses.getAnalysisConfig(analysisKind);
 
-  test(`uploadPayload on ${analysis.name} uploads successfully`, async (t) => {
-    const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
-    requestStub
-      .withArgs(analysis.target, {
-        owner: mockData.owner,
-        repo: mockData.repo,
-        data: mockData.payload,
-      })
-      .onFirstCall()
-      .returns(Promise.resolve(mockData.response));
-    const result = await upload();
-    t.is(result, mockData.response.data.id);
-    t.true(requestStub.calledOnce);
-  });
+  test.serial(
+    `uploadPayload on ${analysis.name} uploads successfully`,
+    async (t) => {
+      const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
+      requestStub
+        .withArgs(analysis.target, {
+          owner: mockData.owner,
+          repo: mockData.repo,
+          data: mockData.payload,
+        })
+        .onFirstCall()
+        .returns(Promise.resolve(mockData.response));
+      const result = await upload();
+      t.is(result, mockData.response.data.id);
+      t.true(requestStub.calledOnce);
+    },
+  );
 
   for (const envVar of [
     "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
     "CODEQL_ACTION_TEST_MODE",
   ]) {
-    test(`uploadPayload on ${analysis.name} skips upload when ${envVar} is set`, async (t) => {
-      const { upload, requestStub, mockData } = uploadPayloadFixtures(analysis);
-      await withTmpDir(async (tmpDir) => {
-        process.env.RUNNER_TEMP = tmpDir;
-        process.env[envVar] = "true";
-        const result = await upload();
-        t.is(result, "dummy-sarif-id");
-        t.false(requestStub.called);
+    test.serial(
+      `uploadPayload on ${analysis.name} skips upload when ${envVar} is set`,
+      async (t) => {
+        const { upload, requestStub, mockData } =
+          uploadPayloadFixtures(analysis);
+        await withTmpDir(async (tmpDir) => {
+          process.env.RUNNER_TEMP = tmpDir;
+          process.env[envVar] = "true";
+          const result = await upload();
+          t.is(result, "dummy-sarif-id");
+          t.false(requestStub.called);
 
-        const payloadFile = path.join(tmpDir, `payload-${analysis.kind}.json`);
-        t.true(fs.existsSync(payloadFile));
+          const payloadFile = path.join(
+            tmpDir,
+            `payload-${analysis.kind}.json`,
+          );
+          t.true(fs.existsSync(payloadFile));
 
-        const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
-        t.deepEqual(savedPayload, mockData.payload);
-      });
-    });
+          const savedPayload = JSON.parse(fs.readFileSync(payloadFile, "utf8"));
+          t.deepEqual(savedPayload, mockData.payload);
+        });
+      },
+    );
   }
 
-  test(`uploadPayload on ${analysis.name} wraps request errors using wrapApiConfigurationError`, async (t) => {
-    const { upload, requestStub } = uploadPayloadFixtures(analysis);
-    const wrapApiConfigurationErrorStub = sinon.stub(
-      api,
-      "wrapApiConfigurationError",
-    );
-    const originalError = new HTTPError(404);
-    const wrappedError = new Error("Wrapped error message");
-    requestStub.rejects(originalError);
-    wrapApiConfigurationErrorStub.withArgs(originalError).returns(wrappedError);
-    await t.throwsAsync(upload, {
-      is: wrappedError,
-    });
-  });
+  test.serial(
+    `uploadPayload on ${analysis.name} wraps request errors using wrapApiConfigurationError`,
+    async (t) => {
+      const { upload, requestStub } = uploadPayloadFixtures(analysis);
+      const wrapApiConfigurationErrorStub = sinon.stub(
+        api,
+        "wrapApiConfigurationError",
+      );
+      const originalError = new HTTPError(404);
+      const wrappedError = new Error("Wrapped error message");
+      requestStub.rejects(originalError);
+      wrapApiConfigurationErrorStub
+        .withArgs(originalError)
+        .returns(wrappedError);
+      await t.throwsAsync(upload, {
+        is: wrappedError,
+      });
+    },
+  );
 }

@@ -49,8 +49,7 @@ jobs:
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
-      security-events: write # needed to upload the SARIF file
-
+      security-events: write
     timeout-minutes: 45
     runs-on: ${{ matrix.os }}
     steps:
@@ -69,26 +68,20 @@ jobs:
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - name: Fail
-    # We want this job to pass if the Action correctly uploads the SARIF file for
-    # the failed run.
-    # Setting this step to continue on error means that it is marked as completing
-    # successfully, so will not fail the job.
+        # We want this job to pass if the Action correctly uploads the SARIF file for
+        # the failed run.
+        # Setting this step to continue on error means that it is marked as completing
+        # successfully, so will not fail the job.
         continue-on-error: true
         run: exit 1
       - uses: ./analyze
-    # In a real workflow, this step wouldn't run. Since we used `continue-on-error`
-    # above, we manually disable it with an `if` condition.
+        # In a real workflow, this step wouldn't run. Since we used `continue-on-error`
+        # above, we manually disable it with an `if` condition.
         if: false
         with:
-          category: /test-codeql-version:${{ matrix.version }}
+          category: '/test-codeql-version:${{ matrix.version }}'
     env:
-  # Internal-only environment variable used to indicate that the post-init Action
-  # should expect to upload a SARIF file for the failed run.
       CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF: true
-  # Make sure the uploading SARIF files feature is enabled.
       CODEQL_ACTION_UPLOAD_FAILED_SARIF: true
-  # Upload the failed SARIF file as an integration test of the API endpoint.
       CODEQL_ACTION_TEST_MODE: false
-  # Mark telemetry for this workflow so it can be treated separately.
       CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
-

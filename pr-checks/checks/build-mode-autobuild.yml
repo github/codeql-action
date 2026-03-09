@@ -2,8 +2,8 @@ name: "Build mode autobuild"
 description: "An end-to-end integration test of a Java repository built using 'build-mode: autobuild'"
 operatingSystems: ["ubuntu", "windows"]
 versions: ["linked", "nightly-latest"]
-installJava: "true"
-installYq: "true"
+installJava: true
+installYq: true
 steps:
   - name: Set up Java test repo configuration
     run: |

@@ -25,6 +25,7 @@ import { FeatureEnablement, Feature } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay";
+import type * as sarif from "./sarif";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
 import * as util from "./util";
@@ -594,7 +595,7 @@ export async function runQueries(
   function getPerQueryAlertCounts(sarifPath: string): Record<string, number> {
     const sarifObject = JSON.parse(
       fs.readFileSync(sarifPath, "utf8"),
-    ) as util.SarifFile;
+    ) as sarif.Log;
     // We do not need to compute fingerprints because we are not sending data based off of locations.
 
     // Generate the query: alert count object

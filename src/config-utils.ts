@@ -69,6 +69,9 @@ import {
   isInTestMode,
   joinAtMost,
   DiskUsage,
+  Result,
+  Success,
+  Failure,
 } from "./util";
 
 /**
@@ -92,12 +95,22 @@ const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB * 1_000_000;
 
 /**
- * The minimum memory (in MB) that must be available for CodeQL to perform overlay
- * analysis. If CodeQL will be given less memory than this threshold, then the
- * action will not perform overlay analysis unless overlay analysis has been
- * explicitly enabled via environment variable.
+ * The minimum memory (in MB) that must be available for CodeQL to perform overlay analysis. If
+ * CodeQL will be given less memory than this threshold, then the action will not perform overlay
+ * analysis unless overlay analysis has been explicitly enabled via environment variable.
+ *
+ * This check is not performed for CodeQL >= `CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE` since
+ * improved memory usage in that version makes the check unnecessary.
  */
 const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
+
+/**
+ * Versions 2.24.3+ of CodeQL reduce overlay analysis's peak RAM usage.
+ *
+ * In particular, RAM usage with overlay analysis enabled should generally be no higher than it is
+ * without overlay analysis for these versions.
+ */
+const CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE = "2.24.3";
 
 export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
   // Token to use when downloading packs from this registry.
@@ -643,14 +656,18 @@ const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
   swift: Feature.OverlayAnalysisCodeScanningSwift,
 };
 
-async function isOverlayAnalysisFeatureEnabled(
+/**
+ * Checks whether the overlay analysis feature is enabled for the given
+ * languages and configuration.
+ */
+async function checkOverlayAnalysisFeatureEnabled(
   features: FeatureEnablement,
   codeql: CodeQL,
   languages: Language[],
   codeScanningConfig: UserConfig,
-): Promise<boolean> {
+): Promise<Result<void, OverlayDisabledReason>> {
   if (!(await features.getValue(Feature.OverlayAnalysis, codeql))) {
-    return false;
+    return new Failure(OverlayDisabledReason.OverallFeatureNotEnabled);
   }
   let enableForCodeScanningOnly = false;
   for (const language of languages) {
@@ -667,49 +684,61 @@ async function isOverlayAnalysisFeatureEnabled(
       enableForCodeScanningOnly = true;
       continue;
     }
-    return false;
+    return new Failure(OverlayDisabledReason.LanguageNotEnabled);
   }
   if (enableForCodeScanningOnly) {
     // A code-scanning configuration runs only the (default) code-scanning suite
     // if the default queries are not disabled, and no packs, queries, or
     // query-filters are specified.
-    return (
+    const usesDefaultQueriesOnly =
       codeScanningConfig["disable-default-queries"] !== true &&
       codeScanningConfig.packs === undefined &&
       codeScanningConfig.queries === undefined &&
-      codeScanningConfig["query-filters"] === undefined
-    );
+      codeScanningConfig["query-filters"] === undefined;
+    if (!usesDefaultQueriesOnly) {
+      return new Failure(OverlayDisabledReason.NonDefaultQueries);
+    }
   }
-  return true;
+  return new Success(undefined);
 }
 
-/**
- * Checks if the runner supports overlay analysis based on available disk space
- * and the maximum memory CodeQL will be allowed to use.
- */
-async function runnerSupportsOverlayAnalysis(
-  diskUsage: DiskUsage | undefined,
-  ramInput: string | undefined,
+/** Checks if the runner has enough disk space for overlay analysis. */
+function runnerHasSufficientDiskSpace(
+  diskUsage: DiskUsage,
   logger: Logger,
   useV2ResourceChecks: boolean,
-): Promise<boolean> {
+): boolean {
   const minimumDiskSpaceBytes = useV2ResourceChecks
     ? OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES
     : OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
-  if (
-    diskUsage === undefined ||
-    diskUsage.numAvailableBytes < minimumDiskSpaceBytes
-  ) {
-    const diskSpaceMb =
-      diskUsage === undefined
-        ? 0
-        : Math.round(diskUsage.numAvailableBytes / 1_000_000);
+  if (diskUsage.numAvailableBytes < minimumDiskSpaceBytes) {
+    const diskSpaceMb = Math.round(diskUsage.numAvailableBytes / 1_000_000);
     const minimumDiskSpaceMb = Math.round(minimumDiskSpaceBytes / 1_000_000);
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
         `due to insufficient disk space (${diskSpaceMb} MB, needed ${minimumDiskSpaceMb} MB).`,
     );
     return false;
+  }
+  return true;
+}
+
+/** Checks if the runner has enough memory for overlay analysis. */
+async function runnerHasSufficientMemory(
+  codeql: CodeQL,
+  ramInput: string | undefined,
+  logger: Logger,
+): Promise<boolean> {
+  if (
+    await codeQlVersionAtLeast(
+      codeql,
+      CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE,
+    )
+  ) {
+    logger.debug(
+      `Skipping memory check for overlay analysis because CodeQL version is at least ${CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE}.`,
+    );
+    return true;
   }
 
   const memoryFlagValue = getCodeQLMemoryLimit(ramInput, logger);
@@ -721,7 +750,35 @@ async function runnerSupportsOverlayAnalysis(
     return false;
   }
 
+  logger.debug(
+    `Memory available for CodeQL analysis is ${memoryFlagValue} MB, which is above the minimum of ${OVERLAY_MINIMUM_MEMORY_MB} MB.`,
+  );
   return true;
+}
+
+/**
+ * Checks if the runner has sufficient disk space and memory for overlay
+ * analysis.
+ */
+async function checkRunnerResources(
+  codeql: CodeQL,
+  diskUsage: DiskUsage,
+  ramInput: string | undefined,
+  logger: Logger,
+  useV2ResourceChecks: boolean,
+): Promise<Result<void, OverlayDisabledReason>> {
+  if (!runnerHasSufficientDiskSpace(diskUsage, logger, useV2ResourceChecks)) {
+    return new Failure(OverlayDisabledReason.InsufficientDiskSpace);
+  }
+  if (!(await runnerHasSufficientMemory(codeql, ramInput, logger))) {
+    return new Failure(OverlayDisabledReason.InsufficientMemory);
+  }
+  return new Success(undefined);
+}
+
+interface EnabledOverlayConfig {
+  overlayDatabaseMode: Exclude<OverlayDatabaseMode, OverlayDatabaseMode.None>;
+  useOverlayDatabaseCaching: boolean;
 }
 
 /**
@@ -742,10 +799,11 @@ async function runnerSupportsOverlayAnalysis(
  * For `Overlay` and `OverlayBase`, the function performs further checks and
  * reverts to `None` if any check should fail.
  *
- * @returns An object containing the overlay database mode and whether the
- * action should perform overlay-base database caching.
+ * @returns A `Success` containing the overlay database mode and whether the
+ * action should perform overlay-base database caching, or a `Failure`
+ * containing the reason why overlay analysis is disabled.
  */
-export async function getOverlayDatabaseMode(
+export async function checkOverlayEnablement(
   codeql: CodeQL,
   features: FeatureEnablement,
   languages: Language[],
@@ -756,15 +814,7 @@ export async function getOverlayDatabaseMode(
   repositoryProperties: RepositoryProperties,
   gitVersion: GitVersionInfo | undefined,
   logger: Logger,
-): Promise<{
-  overlayDatabaseMode: OverlayDatabaseMode;
-  useOverlayDatabaseCaching: boolean;
-  disabledReason: OverlayDisabledReason | undefined;
-}> {
-  let overlayDatabaseMode = OverlayDatabaseMode.None;
-  let useOverlayDatabaseCaching = false;
-  let disabledReason: OverlayDisabledReason | undefined;
-
+): Promise<Result<EnabledOverlayConfig, OverlayDisabledReason>> {
   const modeEnv = process.env.CODEQL_OVERLAY_DATABASE_MODE;
   // Any unrecognized CODEQL_OVERLAY_DATABASE_MODE value will be ignored and
   // treated as if the environment variable was not set.
@@ -773,100 +823,132 @@ export async function getOverlayDatabaseMode(
     modeEnv === OverlayDatabaseMode.OverlayBase ||
     modeEnv === OverlayDatabaseMode.None
   ) {
-    overlayDatabaseMode = modeEnv;
     logger.info(
-      `Setting overlay database mode to ${overlayDatabaseMode} ` +
+      `Setting overlay database mode to ${modeEnv} ` +
         "from the CODEQL_OVERLAY_DATABASE_MODE environment variable.",
     );
-  } else if (
-    repositoryProperties[RepositoryPropertyName.DISABLE_OVERLAY] === true
-  ) {
+    if (modeEnv === OverlayDatabaseMode.None) {
+      return new Failure(OverlayDisabledReason.DisabledByEnvironmentVariable);
+    }
+    return validateOverlayDatabaseMode(
+      modeEnv,
+      false,
+      codeql,
+      languages,
+      sourceRoot,
+      buildMode,
+      gitVersion,
+      logger,
+    );
+  }
+
+  if (repositoryProperties[RepositoryPropertyName.DISABLE_OVERLAY] === true) {
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
         `because the ${RepositoryPropertyName.DISABLE_OVERLAY} repository property is set to true.`,
     );
-    overlayDatabaseMode = OverlayDatabaseMode.None;
-    disabledReason = OverlayDisabledReason.DisabledByRepositoryProperty;
-  } else if (
-    await isOverlayAnalysisFeatureEnabled(
-      features,
-      codeql,
-      languages,
-      codeScanningConfig,
-    )
+    return new Failure(OverlayDisabledReason.DisabledByRepositoryProperty);
+  }
+
+  const featureResult = await checkOverlayAnalysisFeatureEnabled(
+    features,
+    codeql,
+    languages,
+    codeScanningConfig,
+  );
+  if (featureResult.isFailure()) {
+    return featureResult;
+  }
+
+  const performResourceChecks = !(await features.getValue(
+    Feature.OverlayAnalysisSkipResourceChecks,
+    codeql,
+  ));
+  const useV2ResourceChecks = await features.getValue(
+    Feature.OverlayAnalysisResourceChecksV2,
+  );
+  const checkOverlayStatus = await features.getValue(
+    Feature.OverlayAnalysisStatusCheck,
+  );
+  const needDiskUsage = performResourceChecks || checkOverlayStatus;
+  const diskUsage = needDiskUsage ? await checkDiskUsage(logger) : undefined;
+  if (needDiskUsage && diskUsage === undefined) {
+    logger.warning(
+      `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
+    );
+    return new Failure(OverlayDisabledReason.UnableToDetermineDiskUsage);
+  }
+  const resourceResult =
+    performResourceChecks && diskUsage !== undefined
+      ? await checkRunnerResources(
+          codeql,
+          diskUsage,
+          ramInput,
+          logger,
+          useV2ResourceChecks,
+        )
+      : new Success<void>(undefined);
+  if (resourceResult.isFailure()) {
+    return resourceResult;
+  }
+  if (
+    checkOverlayStatus &&
+    diskUsage !== undefined &&
+    (await shouldSkipOverlayAnalysis(codeql, languages, diskUsage, logger))
   ) {
-    const performResourceChecks = !(await features.getValue(
-      Feature.OverlayAnalysisSkipResourceChecks,
-      codeql,
-    ));
-    const useV2ResourceChecks = await features.getValue(
-      Feature.OverlayAnalysisResourceChecksV2,
+    logger.info(
+      `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        "because overlay analysis previously failed with this combination of languages, " +
+        "disk space, and CodeQL version.",
     );
-    const checkOverlayStatus = await features.getValue(
-      Feature.OverlayAnalysisStatusCheck,
+    return new Failure(OverlayDisabledReason.SkippedDueToCachedStatus);
+  }
+
+  let overlayDatabaseMode: OverlayDatabaseMode;
+  if (isAnalyzingPullRequest()) {
+    overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+    logger.info(
+      `Setting overlay database mode to ${overlayDatabaseMode} ` +
+        "with caching because we are analyzing a pull request.",
     );
-    const diskUsage =
-      performResourceChecks || checkOverlayStatus
-        ? await checkDiskUsage(logger)
-        : undefined;
-    if (
-      performResourceChecks &&
-      !(await runnerSupportsOverlayAnalysis(
-        diskUsage,
-        ramInput,
-        logger,
-        useV2ResourceChecks,
-      ))
-    ) {
-      overlayDatabaseMode = OverlayDatabaseMode.None;
-      disabledReason = OverlayDisabledReason.InsufficientResources;
-    } else if (checkOverlayStatus && diskUsage === undefined) {
-      logger.warning(
-        `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
-      );
-      overlayDatabaseMode = OverlayDatabaseMode.None;
-      disabledReason = OverlayDisabledReason.UnableToDetermineDiskUsage;
-    } else if (
-      checkOverlayStatus &&
-      diskUsage &&
-      (await shouldSkipOverlayAnalysis(codeql, languages, diskUsage, logger))
-    ) {
-      logger.info(
-        `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
-          "because overlay analysis previously failed with this combination of languages, " +
-          "disk space, and CodeQL version.",
-      );
-      overlayDatabaseMode = OverlayDatabaseMode.None;
-      disabledReason = OverlayDisabledReason.SkippedDueToCachedStatus;
-    } else if (isAnalyzingPullRequest()) {
-      overlayDatabaseMode = OverlayDatabaseMode.Overlay;
-      useOverlayDatabaseCaching = true;
-      logger.info(
-        `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing a pull request.",
-      );
-    } else if (await isAnalyzingDefaultBranch()) {
-      overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
-      useOverlayDatabaseCaching = true;
-      logger.info(
-        `Setting overlay database mode to ${overlayDatabaseMode} ` +
-          "with caching because we are analyzing the default branch.",
-      );
-    }
+  } else if (await isAnalyzingDefaultBranch()) {
+    overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+    logger.info(
+      `Setting overlay database mode to ${overlayDatabaseMode} ` +
+        "with caching because we are analyzing the default branch.",
+    );
   } else {
-    disabledReason = OverlayDisabledReason.FeatureNotEnabled;
+    return new Failure(OverlayDisabledReason.NotPullRequestOrDefaultBranch);
   }
 
-  const disabledResult = (reason: OverlayDisabledReason | undefined) => ({
-    overlayDatabaseMode: OverlayDatabaseMode.None,
-    useOverlayDatabaseCaching: false,
-    disabledReason: reason,
-  });
+  return validateOverlayDatabaseMode(
+    overlayDatabaseMode,
+    true,
+    codeql,
+    languages,
+    sourceRoot,
+    buildMode,
+    gitVersion,
+    logger,
+  );
+}
 
-  if (overlayDatabaseMode === OverlayDatabaseMode.None) {
-    return disabledResult(disabledReason);
-  }
-
+/**
+ * Validates that the given overlay database mode is compatible with the current
+ * configuration (build mode, CodeQL version, git repository, git version). Returns
+ * the mode unchanged if all checks pass, or falls back to `None` with the
+ * appropriate disabled reason.
+ */
+async function validateOverlayDatabaseMode(
+  overlayDatabaseMode: Exclude<OverlayDatabaseMode, OverlayDatabaseMode.None>,
+  useOverlayDatabaseCaching: boolean,
+  codeql: CodeQL,
+  languages: Language[],
+  sourceRoot: string,
+  buildMode: BuildMode | undefined,
+  gitVersion: GitVersionInfo | undefined,
+  logger: Logger,
+): Promise<Result<EnabledOverlayConfig, OverlayDisabledReason>> {
   if (
     buildMode !== BuildMode.None &&
     (
@@ -887,7 +969,7 @@ export async function getOverlayDatabaseMode(
         `build-mode is set to "${buildMode}" instead of "none". ` +
         "Falling back to creating a normal full database instead.",
     );
-    return disabledResult(OverlayDisabledReason.IncompatibleBuildMode);
+    return new Failure(OverlayDisabledReason.IncompatibleBuildMode);
   }
   if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
     logger.warning(
@@ -895,7 +977,7 @@ export async function getOverlayDatabaseMode(
         `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return disabledResult(OverlayDisabledReason.IncompatibleCodeQl);
+    return new Failure(OverlayDisabledReason.IncompatibleCodeQl);
   }
   if ((await getGitRoot(sourceRoot)) === undefined) {
     logger.warning(
@@ -903,7 +985,7 @@ export async function getOverlayDatabaseMode(
         `the source root "${sourceRoot}" is not inside a git repository. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return disabledResult(OverlayDisabledReason.NoGitRoot);
+    return new Failure(OverlayDisabledReason.NoGitRoot);
   }
   if (gitVersion === undefined) {
     logger.warning(
@@ -911,7 +993,7 @@ export async function getOverlayDatabaseMode(
         "the Git version could not be determined. " +
         "Falling back to creating a normal full database instead.",
     );
-    return disabledResult(OverlayDisabledReason.IncompatibleGit);
+    return new Failure(OverlayDisabledReason.IncompatibleGit);
   }
   if (!gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
     logger.warning(
@@ -919,14 +1001,13 @@ export async function getOverlayDatabaseMode(
         `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
         "Falling back to creating a normal full database instead.",
     );
-    return disabledResult(OverlayDisabledReason.IncompatibleGit);
+    return new Failure(OverlayDisabledReason.IncompatibleGit);
   }
 
-  return {
+  return new Success({
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
-    disabledReason,
-  };
+  });
 }
 
 function dbLocationOrDefault(
@@ -1072,11 +1153,7 @@ export async function initConfig(
   // and queries, which in turn depends on the user config and the augmentation
   // properties. So we need to calculate the overlay database mode after the
   // rest of the config has been populated.
-  const {
-    overlayDatabaseMode,
-    useOverlayDatabaseCaching,
-    disabledReason: overlayDisabledReason,
-  } = await getOverlayDatabaseMode(
+  const overlayDatabaseModeResult = await checkOverlayEnablement(
     inputs.codeql,
     inputs.features,
     config.languages,
@@ -1088,14 +1165,22 @@ export async function initConfig(
     gitVersion,
     logger,
   );
-  logger.info(
-    `Using overlay database mode: ${overlayDatabaseMode} ` +
-      `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
-  );
-  config.overlayDatabaseMode = overlayDatabaseMode;
-  config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
-
-  if (overlayDisabledReason !== undefined) {
+  if (overlayDatabaseModeResult.isSuccess()) {
+    const { overlayDatabaseMode, useOverlayDatabaseCaching } =
+      overlayDatabaseModeResult.value;
+    logger.info(
+      `Using overlay database mode: ${overlayDatabaseMode} ` +
+        `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
+    );
+    config.overlayDatabaseMode = overlayDatabaseMode;
+    config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+  } else {
+    const overlayDisabledReason = overlayDatabaseModeResult.value;
+    logger.info(
+      `Using overlay database mode: ${OverlayDatabaseMode.None} without caching.`,
+    );
+    config.overlayDatabaseMode = OverlayDatabaseMode.None;
+    config.useOverlayDatabaseCaching = false;
     await addOverlayDisablementDiagnostics(
       config,
       inputs.codeql,
@@ -1104,7 +1189,7 @@ export async function initConfig(
   }
 
   if (
-    overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
+    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
     (await shouldPerformDiffInformedAnalysis(
       inputs.codeql,
       inputs.features,

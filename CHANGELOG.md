@@ -4,7 +4,12 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fixed [a bug](https://github.com/github/codeql-action/issues/3555) which caused the CodeQL Action to fail loading repository properties if a "Multi select" repository property was configured for the repository. [#3557](https://github.com/github/codeql-action/pull/3557)
+- The CodeQL Action now loads [custom repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) on GitHub Enterprise Server, enabling the customization of features such as `github-codeql-disable-overlay` that was previously only available on GitHub.com. [#3559](https://github.com/github/codeql-action/pull/3559)
+
+## 4.32.6 - 05 Mar 2026
+
+- Update default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3). [#3548](https://github.com/github/codeql-action/pull/3548)
 
 ## 4.32.5 - 02 Mar 2026
 

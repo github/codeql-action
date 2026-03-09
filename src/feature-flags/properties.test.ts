@@ -5,7 +5,6 @@ import * as api from "../api-client";
 import { getRunnerLogger } from "../logging";
 import { parseRepositoryNwo } from "../repository";
 import { setupTests } from "../testing-utils";
-import * as util from "../util";
 
 import * as properties from "./properties";
 
@@ -23,13 +22,7 @@ test.serial(
     const logger = getRunnerLogger(true);
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.throwsAsync(
-      properties.loadPropertiesFromApi(
-        {
-          type: util.GitHubVariant.DOTCOM,
-        },
-        logger,
-        mockRepositoryNwo,
-      ),
+      properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
       {
         message: /Expected repository properties API to return an array/,
       },
@@ -49,13 +42,7 @@ test.serial(
     const logger = getRunnerLogger(true);
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.throwsAsync(
-      properties.loadPropertiesFromApi(
-        {
-          type: util.GitHubVariant.DOTCOM,
-        },
-        logger,
-        mockRepositoryNwo,
-      ),
+      properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
       {
         message:
           /Expected repository property object to have a 'property_name'/,
@@ -79,40 +66,8 @@ test.serial(
     const logger = getRunnerLogger(true);
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.notThrowsAsync(
-      properties.loadPropertiesFromApi(
-        {
-          type: util.GitHubVariant.DOTCOM,
-        },
-        logger,
-        mockRepositoryNwo,
-      ),
+      properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
     );
-  },
-);
-
-test.serial(
-  "loadPropertiesFromApi returns empty object if on GHES",
-  async (t) => {
-    sinon.stub(api, "getRepositoryProperties").resolves({
-      headers: {},
-      status: 200,
-      url: "",
-      data: [
-        { property_name: "github-codeql-extra-queries", value: "+queries" },
-        { property_name: "unknown-property", value: "something" },
-      ] satisfies properties.GitHubPropertiesResponse,
-    });
-    const logger = getRunnerLogger(true);
-    const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
-    const response = await properties.loadPropertiesFromApi(
-      {
-        type: util.GitHubVariant.GHES,
-        version: "",
-      },
-      logger,
-      mockRepositoryNwo,
-    );
-    t.deepEqual(response, {});
   },
 );
 
@@ -129,9 +84,6 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
   const logger = getRunnerLogger(true);
   const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   const response = await properties.loadPropertiesFromApi(
-    {
-      type: util.GitHubVariant.DOTCOM,
-    },
     logger,
     mockRepositoryNwo,
   );
@@ -155,9 +107,6 @@ test.serial("loadPropertiesFromApi parses true boolean property", async (t) => {
   const warningSpy = sinon.spy(logger, "warning");
   const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   const response = await properties.loadPropertiesFromApi(
-    {
-      type: util.GitHubVariant.DOTCOM,
-    },
     logger,
     mockRepositoryNwo,
   );
@@ -186,9 +135,6 @@ test.serial(
     const warningSpy = sinon.spy(logger, "warning");
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     const response = await properties.loadPropertiesFromApi(
-      {
-        type: util.GitHubVariant.DOTCOM,
-      },
       logger,
       mockRepositoryNwo,
     );
@@ -211,13 +157,7 @@ test.serial(
     const logger = getRunnerLogger(true);
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.throwsAsync(
-      properties.loadPropertiesFromApi(
-        {
-          type: util.GitHubVariant.DOTCOM,
-        },
-        logger,
-        mockRepositoryNwo,
-      ),
+      properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
       {
         message:
           /Unexpected value for repository property 'github-codeql-extra-queries' \(number\), got: 123/,
@@ -244,9 +184,6 @@ test.serial(
     const warningSpy = sinon.spy(logger, "warning");
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     const response = await properties.loadPropertiesFromApi(
-      {
-        type: util.GitHubVariant.DOTCOM,
-      },
       logger,
       mockRepositoryNwo,
     );

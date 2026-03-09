@@ -1,7 +1,6 @@
 import { getRepositoryProperties } from "../api-client";
 import { Logger } from "../logging";
 import { RepositoryNwo } from "../repository";
-import { GitHubVariant, GitHubVersion, satisfiesGHESVersion } from "../util";
 
 /**
  * Enumerates repository property names that have some meaning to us.

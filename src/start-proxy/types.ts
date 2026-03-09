@@ -5,18 +5,38 @@
  */
 export type RawCredential = Partial<Credential>;
 
+/** Usernames may be present for both authentication with tokens or passwords. */
+export type Username = {
+  /** The username needed to authenticate to the package registry, if any. */
+  username?: string;
+};
+
+/**
+ * Fields expected for authentication based on a username and password.
+ * Both username and password are optional.
+ */
+export type UsernamePassword = {
+  /** The password needed to authenticate to the package registry, if any. */
+  password?: string;
+} & Username;
+
+/**
+ * Fields expected for token-based authentication.
+ * Both username and token are optional.
+ */
+export type Token = {
+  /** The token needed to authenticate to the package registry, if any. */
+  token?: string;
+} & Username;
+
+/** All authentication-related fields. */
+export type AuthConfig = UsernamePassword & Token;
+
 /**
  * A package registry configuration includes identifying information as well as
  * authentication credentials.
  */
-export type Credential = {
-  /** The username needed to authenticate to the package registry, if any. */
-  username?: string;
-  /** The password needed to authenticate to the package registry, if any. */
-  password?: string;
-  /** The token needed to authenticate to the package registry, if any. */
-  token?: string;
-} & Registry;
+export type Credential = AuthConfig & Registry;
 
 /** A package registry is identified by its type and address. */
 export type Registry = {

@@ -5,6 +5,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Fixed [a bug](https://github.com/github/codeql-action/issues/3555) which caused the CodeQL Action to fail loading repository properties if a "Multi select" repository property was configured for the repository. [#3557](https://github.com/github/codeql-action/pull/3557)
+- Added an experimental change which skips collecting file coverage information on pull requests to improve analysis performance. File coverage information will still be computed when analyzing the default branch and protected branches.
+
+  Repositories owned by an organization can opt out of this change by creating a custom repository property with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then setting this property to `true` in the repository's settings. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization).
+
+  We expect to roll this change out to everyone in March. [#TODO](https://github.com/github/codeql-action/pull/TODO)
 
 ## 4.32.6 - 05 Mar 2026
 

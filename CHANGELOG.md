@@ -9,7 +9,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
   Repositories owned by an organization can opt out of this change by creating a custom repository property with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then setting this property to `true` in the repository's settings. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization).
 
-  We expect to roll this change out to everyone in March. [#TODO](https://github.com/github/codeql-action/pull/TODO)
+  We expect to roll this change out to everyone in March. [#3562](https://github.com/github/codeql-action/pull/3562)
 
 ## 4.32.6 - 05 Mar 2026
 

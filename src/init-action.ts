@@ -403,6 +403,7 @@ async function run(startedAt: Date) {
     if (
       config.enableFileCoverageInformation &&
       isAnalyzingPullRequest() &&
+      (await features.getValue(Feature.SkipFileCoverageOnPrs, codeql)) &&
       repositoryPropertiesResult.orElse({})[
         RepositoryPropertyName.FILE_COVERAGE_ON_PRS
       ] === true

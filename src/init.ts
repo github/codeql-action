@@ -20,7 +20,6 @@ import {
 } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
-import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -300,7 +299,7 @@ export function cleanupDatabaseClusterDirectory(
 
 export async function getFileCoverageInformationEnabled(
   debugMode: boolean,
-  repositoryNwo: RepositoryNwo,
+  codeql: CodeQL,
   features: FeatureEnablement,
 ): Promise<boolean> {
   return (
@@ -310,8 +309,6 @@ export async function getFileCoverageInformationEnabled(
     // submitting file coverage information for the default branch since
     // it is used to populate the status page.
     !isAnalyzingPullRequest() ||
-    // For now, restrict this feature to the GitHub org
-    repositoryNwo.owner !== "github" ||
-    !(await features.getValue(Feature.SkipFileCoverageOnPrs))
+    !(await features.getValue(Feature.SkipFileCoverageOnPrs, codeql))
   );
 }

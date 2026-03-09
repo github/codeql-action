@@ -354,17 +354,14 @@ export function getCredentials(
       return str ? /^[\x20-\x7E]*$/.test(str) : true;
     };
 
-    if (
-      !isPrintable(e.type) ||
-      !isPrintable(e.host) ||
-      !isPrintable(e.url) ||
-      !isPrintable(e.username) ||
-      !isPrintable(e.password) ||
-      !isPrintable(e.token)
-    ) {
-      throw new ConfigurationError(
-        "Invalid credentials - fields must contain only printable characters",
-      );
+    // Ensure that all string fields only contain printable characters.
+    for (const key of Object.keys(e)) {
+      const val = e[key];
+      if (typeof val === "string" && !isPrintable(val)) {
+        throw new ConfigurationError(
+          "Invalid credentials - fields must contain only printable characters",
+        );
+      }
     }
 
     // If the password or token looks like a GitHub PAT, warn if no username is configured.

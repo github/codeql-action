@@ -71,7 +71,10 @@ test.serial(
       headers: {},
       status: 200,
       url: "",
-      data: [{ property_name: "not-used-by-us", value: { foo: "bar" } }],
+      data: [
+        { property_name: "not-used-by-us", value: { foo: "bar" } },
+        { property_name: "also-not-used-by-us", value: ["A", "B", "C"] },
+      ],
     });
     const logger = getRunnerLogger(true);
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");

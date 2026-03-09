@@ -198,7 +198,7 @@ const languageSetups: LanguageSetups = {
     steps: [
       {
         name: "Install Python",
-        if: "matrix.version != 'nightly-latest'",
+        if: "matrix.version != 'nightly-latest' || !matrix.version",
         uses: "actions/setup-python@v6",
         with: {
           "python-version":

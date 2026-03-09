@@ -387,6 +387,7 @@ function getSetupSteps(checkSpecification: JobSpecification): {
 function generateJob(
   specDocument: yaml.Document,
   checkSpecification: Specification,
+  checkName: string,
 ) {
   const matrix: Array<Record<string, any>> =
     generateJobMatrix(checkSpecification);
@@ -444,7 +445,8 @@ function generateJob(
       },
     },
     name: checkSpecification.name,
-    if: "github.triggering_actor != 'dependabot[bot]'",
+    needs: [`should-run-${checkName}`],
+    if: `needs.should-run-${checkName}.outputs.run-check == 'true'`,
     permissions: {
       contents: "read",
       "security-events": "read",
@@ -470,6 +472,74 @@ function generateJob(
   }
 
   return { checkJob, workflowInputs };
+}
+
+function generateChangedFilesJob(checkSpecification: Specification) {
+  const changedFilesJob: Record<string, any> = {
+    name: "Decide whether to run this check",
+    "timeout-minutes": 10,
+    "runs-on": "ubuntu-slim",
+    if: "github.triggering_actor != 'dependabot[bot]'",
+    outputs: {
+      "run-check":
+        "${{ steps.changed-files-check.outputs.run-check || steps.event-type-check.outputs.run-check }}",
+    },
+    steps: [
+      {
+        name: "Run check if this is not a PR",
+        id: "event-type-check",
+        if: "github.event_name != 'pull_request'",
+        run: 'echo "run-check=true" >> "$GITHUB_OUTPUT"',
+      },
+      {
+        name: "Check out repository",
+        if: "github.event_name == 'pull_request'",
+        uses: "actions/checkout@v6",
+      },
+      {
+        name: "Determine changed files",
+        id: "changed-files",
+        if: "github.event_name == 'pull_request'",
+        uses: "./.github/actions/changed-files",
+        with: {
+          "github-token": "${{ secrets.GITHUB_TOKEN }}",
+          exclude: JSON.stringify(["README.md"]),
+        },
+      },
+      {
+        name: "Run check because of changed files",
+        id: "changed-files-check",
+        if: "github.event_name != 'pull_request' && steps.changed-files.outputs.files != '[]'",
+        run: 'echo "run-check=true" >> "$GITHUB_OUTPUT"',
+      },
+    ],
+  };
+
+  return changedFilesJob;
+}
+
+function generateSkipJob(checkSpecification: Specification, checkName: string) {
+  const matrix: Array<Record<string, any>> =
+    generateJobMatrix(checkSpecification);
+
+  const skipJob: Record<string, any> = {
+    strategy: {
+      "fail-fast": false,
+      matrix: {
+        include: matrix,
+      },
+    },
+    // This has to be the same as for the main job.
+    name: checkSpecification.name,
+    needs: [`should-run-${checkName}`],
+    if: `needs.should-run-${checkName}.outputs.run-check != 'true'`,
+    "timeout-minutes": 5,
+    // Since we are not actually doing anything, we don't need to run on `matrix.os`
+    "runs-on": "ubuntu-slim",
+    steps: [{ name: "Success", run: "exit 0" }],
+  };
+
+  return skipJob;
 }
 
 /** Generates a validation job. */
@@ -593,6 +663,7 @@ function main(): void {
     const { checkJob, workflowInputs } = generateJob(
       specDocument,
       checkSpecification,
+      checkName,
     );
     const { validationJobs, workflowInputs: validationJobInputs } =
       generateValidationJobs(specDocument, checkSpecification, checkName);
@@ -610,6 +681,9 @@ function main(): void {
         inputs: combinedInputs,
       });
     }
+
+    const shouldRunJob = generateChangedFilesJob(checkSpecification);
+    const skipJob = generateSkipJob(checkSpecification, checkName);
 
     let extraGroupName = "";
     for (const inputName of Object.keys(combinedInputs)) {
@@ -654,7 +728,9 @@ function main(): void {
         group: checkName + "-${{github.ref}}" + extraGroupName,
       },
       jobs: {
+        ["should-run-" + checkName]: shouldRunJob,
         [checkName]: checkJob,
+        ["skip-" + checkName]: skipJob,
         ...validationJobs,
       },
     };

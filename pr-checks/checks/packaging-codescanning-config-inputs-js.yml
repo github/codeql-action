@@ -3,7 +3,6 @@ description: "Checks that specifying packages using a combination of a config fi
 versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
 installGo: true
 installNode: true
-installPython: true
 installDotNet: true
 steps:
   - uses: ./../action/init

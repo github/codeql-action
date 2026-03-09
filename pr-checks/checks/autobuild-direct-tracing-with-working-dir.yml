@@ -5,7 +5,7 @@ description: >
   autobuild Action.
 operatingSystems: ["ubuntu", "windows"]
 versions: ["linked", "nightly-latest"]
-installJava: "true"
+installJava: true
 env:
   CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING: true
 steps:

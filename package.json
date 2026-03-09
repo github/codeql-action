@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.32.5",
+  "version": "4.32.7",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -9,7 +9,7 @@
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 .",
     "lint-ci": "SARIF_ESLINT_IGNORE_SUPPRESSED=true eslint --report-unused-disable-directives --max-warnings=0 . --format @microsoft/eslint-formatter-sarif --output-file=eslint.sarif",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
-    "ava": "npm run transpile && ava --serial --verbose",
+    "ava": "npm run transpile && ava --verbose",
     "test": "npm run ava -- src/",
     "test-debug": "npm run test -- --timeout=20m",
     "transpile": "tsc --build --verbose"
@@ -58,6 +58,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.19.9",
     "@types/node-forge": "^1.3.14",
+    "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^21.0.0",
     "ava": "^6.4.1",
@@ -66,14 +67,14 @@
     "eslint-import-resolver-typescript": "^3.8.7",
     "eslint-plugin-github": "^6.0.0",
     "eslint-plugin-import-x": "^4.16.1",
-    "eslint-plugin-jsdoc": "^62.5.0",
+    "eslint-plugin-jsdoc": "^62.7.1",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^11.1.0",
-    "globals": "^16.5.0",
+    "globals": "^17.3.0",
     "nock": "^14.0.11",
     "sinon": "^21.0.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.0"
+    "typescript-eslint": "^8.56.1"
   },
   "overrides": {
     "@actions/tool-cache": {

@@ -62,24 +62,31 @@ export enum Feature {
   OverlayAnalysisCodeScanningSwift = "overlay_analysis_code_scanning_swift",
   OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
+  /** Controls whether the Actions cache is checked for overlay build outcomes. */
   OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
+  /** Controls whether overlay build failures on are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
   OverlayAnalysisPython = "overlay_analysis_python",
+  /**
+   * Controls whether lower disk space requirements are used for overlay hardware checks.
+   * Has no effect if `OverlayAnalysisSkipResourceChecks` is enabled.
+   */
   OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   OverlayAnalysisRust = "overlay_analysis_rust",
+  /** Controls whether hardware checks are skipped for overlay analysis. */
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
   OverlayAnalysisSwift = "overlay_analysis_swift",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
+  StartProxyRemoveUnusedRegistries = "start_proxy_remove_unused_registries",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
-  UseRepositoryProperties = "use_repository_properties_v2",
   ValidateDbConfig = "validate_db_config",
 }
 
@@ -328,6 +335,11 @@ export const featureConfig = {
     // cannot be found when interpreting results.
     minimumVersion: undefined,
   },
+  [Feature.StartProxyRemoveUnusedRegistries]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_START_PROXY_REMOVE_UNUSED_REGISTRIES",
+    minimumVersion: undefined,
+  },
   [Feature.StartProxyUseFeaturesRelease]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_START_PROXY_USE_FEATURES_RELEASE",
@@ -338,11 +350,6 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_UPLOAD_OVERLAY_DB_TO_API",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.BundleSupportsOverlay,
-  },
-  [Feature.UseRepositoryProperties]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_USE_REPOSITORY_PROPERTIES",
-    minimumVersion: undefined,
   },
   [Feature.ValidateDbConfig]: {
     defaultValue: false,

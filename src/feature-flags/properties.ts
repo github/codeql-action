@@ -1,7 +1,6 @@
 import { getRepositoryProperties } from "../api-client";
 import { Logger } from "../logging";
 import { RepositoryNwo } from "../repository";
-import { GitHubVariant, GitHubVersion } from "../util";
 
 /**
  * Enumerates repository property names that have some meaning to us.
@@ -12,7 +11,7 @@ export enum RepositoryPropertyName {
 }
 
 /** Parsed types of the known repository properties. */
-type AllRepositoryProperties = {
+export type AllRepositoryProperties = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
 };
@@ -20,16 +19,56 @@ type AllRepositoryProperties = {
 /** Parsed repository properties. */
 export type RepositoryProperties = Partial<AllRepositoryProperties>;
 
+/** Maps known repository properties to the type we expect to get from the API. */
+export type RepositoryPropertyApiType = {
+  [RepositoryPropertyName.DISABLE_OVERLAY]: string;
+  [RepositoryPropertyName.EXTRA_QUERIES]: string;
+};
+
+/** The type of functions which take the `value` from the API and try to convert it to the type we want. */
+export type PropertyParser<K extends RepositoryPropertyName> = (
+  name: K,
+  value: RepositoryPropertyApiType[K],
+  logger: Logger,
+) => AllRepositoryProperties[K];
+
+/** Possible types of `value`s we get from the API. */
+export type RepositoryPropertyValue = string | string[];
+
+/** The type of repository property configurations. */
+export type PropertyInfo<K extends RepositoryPropertyName> = {
+  /** A validator which checks that the value received from the API is what we expect. */
+  validate: (
+    value: RepositoryPropertyValue,
+  ) => value is RepositoryPropertyApiType[K];
+  /** A `PropertyParser` for the property. */
+  parse: PropertyParser<K>;
+};
+
+/** Determines whether a value from the API is a string or not. */
+function isString(value: RepositoryPropertyValue): value is string {
+  return typeof value === "string";
+}
+
+/** A repository property that we expect to contain a string value. */
+const stringProperty = {
+  validate: isString,
+  parse: parseStringRepositoryProperty,
+};
+
+/** A repository property that we expect to contain a boolean value. */
+const booleanProperty = {
+  // The value from the API should come as a string, which we then parse into a boolean.
+  validate: isString,
+  parse: parseBooleanRepositoryProperty,
+};
+
 /** Parsers that transform repository properties from the API response into typed values. */
 const repositoryPropertyParsers: {
-  [K in RepositoryPropertyName]: (
-    name: K,
-    value: string,
-    logger: Logger,
-  ) => AllRepositoryProperties[K];
+  [K in RepositoryPropertyName]: PropertyInfo<K>;
 } = {
-  [RepositoryPropertyName.DISABLE_OVERLAY]: parseBooleanRepositoryProperty,
-  [RepositoryPropertyName.EXTRA_QUERIES]: parseStringRepositoryProperty,
+  [RepositoryPropertyName.DISABLE_OVERLAY]: booleanProperty,
+  [RepositoryPropertyName.EXTRA_QUERIES]: stringProperty,
 };
 
 /**
@@ -37,7 +76,7 @@ const repositoryPropertyParsers: {
  */
 export interface GitHubRepositoryProperty {
   property_name: string;
-  value: string;
+  value: RepositoryPropertyValue;
 }
 
 /**
@@ -53,16 +92,9 @@ export type GitHubPropertiesResponse = GitHubRepositoryProperty[];
  * @returns Returns a partial mapping from `RepositoryPropertyName` to values.
  */
 export async function loadPropertiesFromApi(
-  gitHubVersion: GitHubVersion,
   logger: Logger,
   repositoryNwo: RepositoryNwo,
 ): Promise<RepositoryProperties> {
-  // TODO: To be safe for now; later we should replace this with a version check once we know
-  // which version of GHES we expect this to be supported by.
-  if (gitHubVersion.type === GitHubVariant.GHES) {
-    return {};
-  }
-
   try {
     const response = await getRepositoryProperties(repositoryNwo);
     const remoteProperties = response.data as GitHubPropertiesResponse;
@@ -82,12 +114,6 @@ export async function loadPropertiesFromApi(
       if (property.property_name === undefined) {
         throw new Error(
           `Expected repository property object to have a 'property_name', but got: ${JSON.stringify(property)}`,
-        );
-      }
-
-      if (typeof property.value !== "string") {
-        throw new Error(
-          `Expected repository property '${property.property_name}' to have a string value, but got: ${JSON.stringify(property)}`,
         );
       }
 
@@ -117,14 +143,30 @@ export async function loadPropertiesFromApi(
   }
 }
 
-/** Update the partial set of repository properties with the parsed value of the specified property. */
+/**
+ * Validate that `value` has the correct type for `K` and, if so, update the partial set of repository
+ * properties with the parsed value of the specified property.
+ */
 function setProperty<K extends RepositoryPropertyName>(
   properties: RepositoryProperties,
   name: K,
-  value: string,
+  value: RepositoryPropertyValue,
   logger: Logger,
 ): void {
-  properties[name] = repositoryPropertyParsers[name](name, value, logger);
+  const propertyOptions = repositoryPropertyParsers[name];
+
+  // We perform the validation here for two reasons:
+  // 1. This function is only called if `name` is a property we care about, to avoid throwing
+  //    on unrelated properties that may use representations we do not support.
+  // 2. The `propertyOptions.validate` function checks that the type of `value` we received from
+  //    the API is what expect and narrows the type accordingly, allowing us to call `parse`.
+  if (propertyOptions.validate(value)) {
+    properties[name] = propertyOptions.parse(name, value, logger);
+  } else {
+    throw new Error(
+      `Unexpected value for repository property '${name}' (${typeof value}), got: ${JSON.stringify(value)}`,
+    );
+  }
 }
 
 /** Parse a boolean repository property. */

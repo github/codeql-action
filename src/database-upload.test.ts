@@ -82,70 +82,76 @@ function getCodeQL() {
   });
 }
 
-test("Abort database upload if 'upload-database' input set to false", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("upload-database")
-      .returns("false");
-    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
+test.serial(
+  "Abort database upload if 'upload-database' input set to false",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getRequiredInput")
+        .withArgs("upload-database")
+        .returns("false");
+      sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
-    const loggedMessages = [];
-    await cleanupAndUploadDatabases(
-      testRepoName,
-      getCodeQL(),
-      getTestConfig(tmpDir),
-      testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
-    );
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "debug" &&
-          v.message ===
-            "Database upload disabled in workflow. Skipping upload.",
-      ) !== undefined,
-    );
-  });
-});
+      const loggedMessages = [];
+      await cleanupAndUploadDatabases(
+        testRepoName,
+        getCodeQL(),
+        getTestConfig(tmpDir),
+        testApiDetails,
+        createFeatures([]),
+        getRecordingLogger(loggedMessages),
+      );
+      t.assert(
+        loggedMessages.find(
+          (v: LoggedMessage) =>
+            v.type === "debug" &&
+            v.message ===
+              "Database upload disabled in workflow. Skipping upload.",
+        ) !== undefined,
+      );
+    });
+  },
+);
 
-test("Abort database upload if 'analysis-kinds: code-scanning' is not enabled", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("upload-database")
-      .returns("true");
-    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
+test.serial(
+  "Abort database upload if 'analysis-kinds: code-scanning' is not enabled",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getRequiredInput")
+        .withArgs("upload-database")
+        .returns("true");
+      sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
-    await mockHttpRequests(201);
+      await mockHttpRequests(201);
 
-    const loggedMessages = [];
-    await cleanupAndUploadDatabases(
-      testRepoName,
-      getCodeQL(),
-      {
-        ...getTestConfig(tmpDir),
-        analysisKinds: [AnalysisKind.CodeQuality],
-      },
-      testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
-    );
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "debug" &&
-          v.message ===
-            "Not uploading database because 'analysis-kinds: code-scanning' is not enabled.",
-      ) !== undefined,
-    );
-  });
-});
+      const loggedMessages = [];
+      await cleanupAndUploadDatabases(
+        testRepoName,
+        getCodeQL(),
+        {
+          ...getTestConfig(tmpDir),
+          analysisKinds: [AnalysisKind.CodeQuality],
+        },
+        testApiDetails,
+        createFeatures([]),
+        getRecordingLogger(loggedMessages),
+      );
+      t.assert(
+        loggedMessages.find(
+          (v: LoggedMessage) =>
+            v.type === "debug" &&
+            v.message ===
+              "Not uploading database because 'analysis-kinds: code-scanning' is not enabled.",
+        ) !== undefined,
+      );
+    });
+  },
+);
 
-test("Abort database upload if running against GHES", async (t) => {
+test.serial("Abort database upload if running against GHES", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     sinon
@@ -177,35 +183,38 @@ test("Abort database upload if running against GHES", async (t) => {
   });
 });
 
-test("Abort database upload if not analyzing default branch", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("upload-database")
-      .returns("true");
-    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
+test.serial(
+  "Abort database upload if not analyzing default branch",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getRequiredInput")
+        .withArgs("upload-database")
+        .returns("true");
+      sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
 
-    const loggedMessages = [];
-    await cleanupAndUploadDatabases(
-      testRepoName,
-      getCodeQL(),
-      getTestConfig(tmpDir),
-      testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
-    );
-    t.assert(
-      loggedMessages.find(
-        (v: LoggedMessage) =>
-          v.type === "debug" &&
-          v.message === "Not analyzing default branch. Skipping upload.",
-      ) !== undefined,
-    );
-  });
-});
+      const loggedMessages = [];
+      await cleanupAndUploadDatabases(
+        testRepoName,
+        getCodeQL(),
+        getTestConfig(tmpDir),
+        testApiDetails,
+        createFeatures([]),
+        getRecordingLogger(loggedMessages),
+      );
+      t.assert(
+        loggedMessages.find(
+          (v: LoggedMessage) =>
+            v.type === "debug" &&
+            v.message === "Not analyzing default branch. Skipping upload.",
+        ) !== undefined,
+      );
+    });
+  },
+);
 
-test("Don't crash if uploading a database fails", async (t) => {
+test.serial("Don't crash if uploading a database fails", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     sinon
@@ -237,7 +246,7 @@ test("Don't crash if uploading a database fails", async (t) => {
   });
 });
 
-test("Successfully uploading a database to github.com", async (t) => {
+test.serial("Successfully uploading a database to github.com", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     sinon
@@ -267,7 +276,7 @@ test("Successfully uploading a database to github.com", async (t) => {
   });
 });
 
-test("Successfully uploading a database to GHEC-DR", async (t) => {
+test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     sinon

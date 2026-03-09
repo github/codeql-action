@@ -14,7 +14,7 @@ test.beforeEach(() => {
   util.initializeEnvironment(actionsUtil.getActionVersion());
 });
 
-test("getApiClient", async (t) => {
+test.serial("getApiClient", async (t) => {
   const pluginStub: sinon.SinonStub = sinon.stub(githubUtils.GitHub, "plugin");
   const githubStub: sinon.SinonStub = sinon.stub();
   pluginStub.returns(githubStub);
@@ -61,7 +61,7 @@ function mockGetMetaVersionHeader(
   return spyGetContents;
 }
 
-test("getGitHubVersion for Dotcom", async (t) => {
+test.serial("getGitHubVersion for Dotcom", async (t) => {
   const apiDetails = {
     auth: "",
     url: "https://github.com",
@@ -75,7 +75,7 @@ test("getGitHubVersion for Dotcom", async (t) => {
   t.deepEqual(util.GitHubVariant.DOTCOM, v.type);
 });
 
-test("getGitHubVersion for GHES", async (t) => {
+test.serial("getGitHubVersion for GHES", async (t) => {
   mockGetMetaVersionHeader("2.0");
   const v2 = await api.getGitHubVersionFromApi(api.getApiClient(), {
     auth: "",
@@ -88,7 +88,7 @@ test("getGitHubVersion for GHES", async (t) => {
   );
 });
 
-test("getGitHubVersion for different domain", async (t) => {
+test.serial("getGitHubVersion for different domain", async (t) => {
   mockGetMetaVersionHeader(undefined);
   const v3 = await api.getGitHubVersionFromApi(api.getApiClient(), {
     auth: "",
@@ -98,7 +98,7 @@ test("getGitHubVersion for different domain", async (t) => {
   t.deepEqual({ type: util.GitHubVariant.DOTCOM }, v3);
 });
 
-test("getGitHubVersion for GHEC-DR", async (t) => {
+test.serial("getGitHubVersion for GHEC-DR", async (t) => {
   mockGetMetaVersionHeader("ghe.com");
   const gheDotcom = await api.getGitHubVersionFromApi(api.getApiClient(), {
     auth: "",
@@ -108,96 +108,99 @@ test("getGitHubVersion for GHEC-DR", async (t) => {
   t.deepEqual({ type: util.GitHubVariant.GHEC_DR }, gheDotcom);
 });
 
-test("wrapApiConfigurationError correctly wraps specific configuration errors", (t) => {
-  // We don't reclassify arbitrary errors
-  const arbitraryError = new Error("arbitrary error");
-  let res = api.wrapApiConfigurationError(arbitraryError);
-  t.is(res, arbitraryError);
+test.serial(
+  "wrapApiConfigurationError correctly wraps specific configuration errors",
+  (t) => {
+    // We don't reclassify arbitrary errors
+    const arbitraryError = new Error("arbitrary error");
+    let res = api.wrapApiConfigurationError(arbitraryError);
+    t.is(res, arbitraryError);
 
-  // Same goes for arbitrary errors
-  const configError = new util.ConfigurationError("arbitrary error");
-  res = api.wrapApiConfigurationError(configError);
-  t.is(res, configError);
+    // Same goes for arbitrary errors
+    const configError = new util.ConfigurationError("arbitrary error");
+    res = api.wrapApiConfigurationError(configError);
+    t.is(res, configError);
 
-  // If an HTTP error doesn't contain a specific error message, we don't
-  // wrap is an an API error.
-  const httpError = new util.HTTPError("arbitrary HTTP error", 456);
-  res = api.wrapApiConfigurationError(httpError);
-  t.is(res, httpError);
+    // If an HTTP error doesn't contain a specific error message, we don't
+    // wrap is an an API error.
+    const httpError = new util.HTTPError("arbitrary HTTP error", 456);
+    res = api.wrapApiConfigurationError(httpError);
+    t.is(res, httpError);
 
-  // For other HTTP errors, we wrap them as Configuration errors if they contain
-  // specific error messages.
-  const httpNotFoundError = new util.HTTPError("commit not found", 404);
-  res = api.wrapApiConfigurationError(httpNotFoundError);
-  t.deepEqual(res, new util.ConfigurationError("commit not found"));
+    // For other HTTP errors, we wrap them as Configuration errors if they contain
+    // specific error messages.
+    const httpNotFoundError = new util.HTTPError("commit not found", 404);
+    res = api.wrapApiConfigurationError(httpNotFoundError);
+    t.deepEqual(res, new util.ConfigurationError("commit not found"));
 
-  const refNotFoundError = new util.HTTPError(
-    "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
-    404,
-  );
-  res = api.wrapApiConfigurationError(refNotFoundError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError(
+    const refNotFoundError = new util.HTTPError(
       "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
-    ),
-  );
+      404,
+    );
+    res = api.wrapApiConfigurationError(refNotFoundError);
+    t.deepEqual(
+      res,
+      new util.ConfigurationError(
+        "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
+      ),
+    );
 
-  const apiRateLimitError = new util.HTTPError(
-    "API rate limit exceeded for installation",
-    403,
-  );
-  res = api.wrapApiConfigurationError(apiRateLimitError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError("API rate limit exceeded for installation"),
-  );
+    const apiRateLimitError = new util.HTTPError(
+      "API rate limit exceeded for installation",
+      403,
+    );
+    res = api.wrapApiConfigurationError(apiRateLimitError);
+    t.deepEqual(
+      res,
+      new util.ConfigurationError("API rate limit exceeded for installation"),
+    );
 
-  const tokenSuggestionMessage =
-    "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
-  const badCredentialsError = new util.HTTPError("Bad credentials", 401);
-  res = api.wrapApiConfigurationError(badCredentialsError);
-  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+    const tokenSuggestionMessage =
+      "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
+    const badCredentialsError = new util.HTTPError("Bad credentials", 401);
+    res = api.wrapApiConfigurationError(badCredentialsError);
+    t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
 
-  const notFoundError = new util.HTTPError("Not Found", 404);
-  res = api.wrapApiConfigurationError(notFoundError);
-  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+    const notFoundError = new util.HTTPError("Not Found", 404);
+    res = api.wrapApiConfigurationError(notFoundError);
+    t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
 
-  const resourceNotAccessibleError = new util.HTTPError(
-    "Resource not accessible by integration",
-    403,
-  );
-  res = api.wrapApiConfigurationError(resourceNotAccessibleError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError("Resource not accessible by integration"),
-  );
+    const resourceNotAccessibleError = new util.HTTPError(
+      "Resource not accessible by integration",
+      403,
+    );
+    res = api.wrapApiConfigurationError(resourceNotAccessibleError);
+    t.deepEqual(
+      res,
+      new util.ConfigurationError("Resource not accessible by integration"),
+    );
 
-  // Enablement errors.
-  const enablementErrorMessages = [
-    "Code Security must be enabled for this repository to use code scanning",
-    "Advanced Security must be enabled for this repository to use code scanning",
-    "Code Scanning is not enabled for this repository. Please enable code scanning in the repository settings.",
-  ];
-  const transforms = [
-    (msg: string) => msg,
-    (msg: string) => msg.toLowerCase(),
-    (msg: string) => msg.toLocaleUpperCase(),
-  ];
+    // Enablement errors.
+    const enablementErrorMessages = [
+      "Code Security must be enabled for this repository to use code scanning",
+      "Advanced Security must be enabled for this repository to use code scanning",
+      "Code Scanning is not enabled for this repository. Please enable code scanning in the repository settings.",
+    ];
+    const transforms = [
+      (msg: string) => msg,
+      (msg: string) => msg.toLowerCase(),
+      (msg: string) => msg.toLocaleUpperCase(),
+    ];
 
-  for (const enablementErrorMessage of enablementErrorMessages) {
-    for (const transform of transforms) {
-      const enablementError = new util.HTTPError(
-        transform(enablementErrorMessage),
-        403,
-      );
-      res = api.wrapApiConfigurationError(enablementError);
-      t.deepEqual(
-        res,
-        new util.ConfigurationError(
-          api.getFeatureEnablementError(enablementError.message),
-        ),
-      );
+    for (const enablementErrorMessage of enablementErrorMessages) {
+      for (const transform of transforms) {
+        const enablementError = new util.HTTPError(
+          transform(enablementErrorMessage),
+          403,
+        );
+        res = api.wrapApiConfigurationError(enablementError);
+        t.deepEqual(
+          res,
+          new util.ConfigurationError(
+            api.getFeatureEnablementError(enablementError.message),
+          ),
+        );
+      }
     }
-  }
-});
+  },
+);

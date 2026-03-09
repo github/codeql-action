@@ -72,101 +72,110 @@ test("getCacheKey rounds disk space down to nearest 10 GiB", async (t) => {
   );
 });
 
-test("shouldSkipOverlayAnalysis returns false when no cached status exists", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    process.env["RUNNER_TEMP"] = tmpDir;
-    const codeql = mockCodeQLVersion("2.20.0");
-    const messages: LoggedMessage[] = [];
-    const logger = getRecordingLogger(messages);
+test.serial(
+  "shouldSkipOverlayAnalysis returns false when no cached status exists",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      process.env["RUNNER_TEMP"] = tmpDir;
+      const codeql = mockCodeQLVersion("2.20.0");
+      const messages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(messages);
 
-    sinon.stub(actionsCache, "restoreCache").resolves(undefined);
+      sinon.stub(actionsCache, "restoreCache").resolves(undefined);
 
-    const result = await shouldSkipOverlayAnalysis(
-      codeql,
-      ["javascript"],
-      makeDiskUsage(50),
-      logger,
-    );
+      const result = await shouldSkipOverlayAnalysis(
+        codeql,
+        ["javascript"],
+        makeDiskUsage(50),
+        logger,
+      );
 
-    t.false(result);
-    t.true(
-      messages.some(
-        (m) =>
-          m.type === "debug" &&
-          typeof m.message === "string" &&
-          m.message.includes("No overlay status found in Actions cache."),
-      ),
-    );
-  });
-});
-
-test("shouldSkipOverlayAnalysis returns true when cached status indicates failed build", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    process.env["RUNNER_TEMP"] = tmpDir;
-    const codeql = mockCodeQLVersion("2.20.0");
-    const messages: LoggedMessage[] = [];
-    const logger = getRecordingLogger(messages);
-
-    const status = {
-      attemptedToBuildOverlayBaseDatabase: true,
-      builtOverlayBaseDatabase: false,
-    };
-
-    // Stub restoreCache to write the status file and return a key
-    sinon.stub(actionsCache, "restoreCache").callsFake(async (paths) => {
-      const statusFile = paths[0];
-      await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
-      await fs.promises.writeFile(statusFile, JSON.stringify(status));
-      return "found-key";
+      t.false(result);
+      t.true(
+        messages.some(
+          (m) =>
+            m.type === "debug" &&
+            typeof m.message === "string" &&
+            m.message.includes("No overlay status found in Actions cache."),
+        ),
+      );
     });
+  },
+);
 
-    const result = await shouldSkipOverlayAnalysis(
-      codeql,
-      ["javascript"],
-      makeDiskUsage(50),
-      logger,
-    );
+test.serial(
+  "shouldSkipOverlayAnalysis returns true when cached status indicates failed build",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      process.env["RUNNER_TEMP"] = tmpDir;
+      const codeql = mockCodeQLVersion("2.20.0");
+      const messages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(messages);
 
-    t.true(result);
-  });
-});
+      const status = {
+        attemptedToBuildOverlayBaseDatabase: true,
+        builtOverlayBaseDatabase: false,
+      };
 
-test("shouldSkipOverlayAnalysis returns false when cached status indicates successful build", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    process.env["RUNNER_TEMP"] = tmpDir;
-    const codeql = mockCodeQLVersion("2.20.0");
-    const messages: LoggedMessage[] = [];
-    const logger = getRecordingLogger(messages);
+      // Stub restoreCache to write the status file and return a key
+      sinon.stub(actionsCache, "restoreCache").callsFake(async (paths) => {
+        const statusFile = paths[0];
+        await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
+        await fs.promises.writeFile(statusFile, JSON.stringify(status));
+        return "found-key";
+      });
 
-    const status = {
-      attemptedToBuildOverlayBaseDatabase: true,
-      builtOverlayBaseDatabase: true,
-    };
+      const result = await shouldSkipOverlayAnalysis(
+        codeql,
+        ["javascript"],
+        makeDiskUsage(50),
+        logger,
+      );
 
-    sinon.stub(actionsCache, "restoreCache").callsFake(async (paths) => {
-      const statusFile = paths[0];
-      await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
-      await fs.promises.writeFile(statusFile, JSON.stringify(status));
-      return "found-key";
+      t.true(result);
     });
+  },
+);
 
-    const result = await shouldSkipOverlayAnalysis(
-      codeql,
-      ["javascript"],
-      makeDiskUsage(50),
-      logger,
-    );
+test.serial(
+  "shouldSkipOverlayAnalysis returns false when cached status indicates successful build",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      process.env["RUNNER_TEMP"] = tmpDir;
+      const codeql = mockCodeQLVersion("2.20.0");
+      const messages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(messages);
 
-    t.false(result);
-    t.true(
-      messages.some(
-        (m) =>
-          m.type === "debug" &&
-          typeof m.message === "string" &&
-          m.message.includes(
-            "Cached overlay status does not indicate a previous unsuccessful attempt",
-          ),
-      ),
-    );
-  });
-});
+      const status = {
+        attemptedToBuildOverlayBaseDatabase: true,
+        builtOverlayBaseDatabase: true,
+      };
+
+      sinon.stub(actionsCache, "restoreCache").callsFake(async (paths) => {
+        const statusFile = paths[0];
+        await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
+        await fs.promises.writeFile(statusFile, JSON.stringify(status));
+        return "found-key";
+      });
+
+      const result = await shouldSkipOverlayAnalysis(
+        codeql,
+        ["javascript"],
+        makeDiskUsage(50),
+        logger,
+      );
+
+      t.false(result);
+      t.true(
+        messages.some(
+          (m) =>
+            m.type === "debug" &&
+            typeof m.message === "string" &&
+            m.message.includes(
+              "Cached overlay status does not indicate a previous unsuccessful attempt",
+            ),
+        ),
+      );
+    });
+  },
+);

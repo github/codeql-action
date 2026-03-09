@@ -22,7 +22,11 @@ import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay";
-import { OverlayStatus, saveOverlayStatus } from "./overlay/status";
+import {
+  createOverlayStatus,
+  OverlayStatus,
+  saveOverlayStatus,
+} from "./overlay/status";
 import { RepositoryNwo, getRepositoryNwo } from "./repository";
 import { JobStatus } from "./status-report";
 import * as uploadLib from "./upload-lib";
@@ -424,10 +428,17 @@ async function recordOverlayStatus(
     return;
   }
 
-  const overlayStatus: OverlayStatus = {
-    attemptedToBuildOverlayBaseDatabase: true,
-    builtOverlayBaseDatabase: false,
-  };
+  const checkRunIdInput = actionsUtil.getOptionalInput("check-run-id");
+  const checkRunId =
+    checkRunIdInput !== undefined ? parseInt(checkRunIdInput, 10) : undefined;
+
+  const overlayStatus: OverlayStatus = createOverlayStatus(
+    {
+      attemptedToBuildOverlayBaseDatabase: true,
+      builtOverlayBaseDatabase: false,
+    },
+    checkRunId !== undefined && checkRunId >= 0 ? checkRunId : undefined,
+  );
 
   const diskUsage = await checkDiskUsage(logger);
   if (diskUsage === undefined) {
@@ -447,7 +458,7 @@ async function recordOverlayStatus(
 
   const blurb =
     "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
-    "This may have been due to disk space constraints: using improved incremental analysis can " +
+    "One possible reason for this is disk space constraints, since improved incremental analysis can " +
     "require a significant amount of disk space for some repositories.";
 
   if (saved) {
@@ -455,7 +466,7 @@ async function recordOverlayStatus(
       `${blurb} ` +
         "This failure has been recorded in the Actions cache, so the next CodeQL analysis will run " +
         "without improved incremental analysis. If you want to enable improved incremental analysis, " +
-        "increase the disk space available to the runner. " +
+        "try increasing the disk space available to the runner. " +
         "If that doesn't help, contact GitHub Support for further assistance.",
     );
   } else {

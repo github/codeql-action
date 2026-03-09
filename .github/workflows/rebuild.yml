@@ -73,24 +73,17 @@ jobs:
           npm run lint -- --fix
           npm run build
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: 3.11
-
       - name: Sync back version updates to generated workflows
         # Only sync back versions on Dependabot update PRs
         if: startsWith(env.HEAD_REF, 'dependabot/')
         working-directory: pr-checks
         run: |
-          python3 sync_back.py -v
+          npm ci
+          npx tsx sync_back.ts --verbose
 
       - name: Generate workflows
         working-directory: pr-checks
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruamel.yaml==0.17.31
-          python3 sync.py
+        run: ./sync.sh
 
       - name: "Merge in progress: Finish merge and push"
         if: steps.merge.outputs.merge-in-progress == 'true'

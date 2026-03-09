@@ -65,6 +65,29 @@ test.serial(
 );
 
 test.serial(
+  "loadPropertiesFromApi does not throw for unexpected value types of unknown properties",
+  async (t) => {
+    sinon.stub(api, "getRepositoryProperties").resolves({
+      headers: {},
+      status: 200,
+      url: "",
+      data: [{ property_name: "not-used-by-us", value: { foo: "bar" } }],
+    });
+    const logger = getRunnerLogger(true);
+    const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+    await t.notThrowsAsync(
+      properties.loadPropertiesFromApi(
+        {
+          type: util.GitHubVariant.DOTCOM,
+        },
+        logger,
+        mockRepositoryNwo,
+      ),
+    );
+  },
+);
+
+test.serial(
   "loadPropertiesFromApi returns empty object if on GHES",
   async (t) => {
     sinon.stub(api, "getRepositoryProperties").resolves({

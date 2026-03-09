@@ -85,13 +85,15 @@ export async function loadPropertiesFromApi(
         );
       }
 
-      if (typeof property.value !== "string") {
-        throw new Error(
-          `Expected repository property '${property.property_name}' to have a string value, but got: ${JSON.stringify(property)}`,
-        );
-      }
-
       if (isKnownPropertyName(property.property_name)) {
+        // Only validate the type of `value` if this is a property we care about, to avoid throwing
+        // on unrelated properties that may use representations we do not support.
+        if (typeof property.value !== "string") {
+          throw new Error(
+            `Expected repository property '${property.property_name}' to have a string value, but got: ${JSON.stringify(property)}`,
+          );
+        }
+
         setProperty(properties, property.property_name, property.value, logger);
       }
     }

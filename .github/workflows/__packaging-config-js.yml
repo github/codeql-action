@@ -75,13 +75,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Prepare test
-        id: prepare-test
-        uses: ./.github/actions/prepare-test
-        with:
-          version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
       - name: Install .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -98,6 +91,13 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - uses: ./../action/init
         with:
           config-file: '.github/codeql/codeql-config-packaging.yml'

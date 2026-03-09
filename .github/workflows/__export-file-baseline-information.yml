@@ -75,13 +75,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Prepare test
-        id: prepare-test
-        uses: ./.github/actions/prepare-test
-        with:
-          version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
       - name: Install .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -91,6 +84,13 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - uses: ./../action/init
         id: init
         with:

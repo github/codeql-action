@@ -67,6 +67,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+      - name: Install Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -74,11 +79,6 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Install Java
-        uses: actions/setup-java@v5
-        with:
-          java-version: ${{ inputs.java-version || '17' }}
-          distribution: temurin
       - name: Test setup
         run: |
           # Make sure that Gradle build succeeds in autobuild-dir ...

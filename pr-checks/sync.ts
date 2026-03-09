@@ -405,6 +405,7 @@ function generateJob(
       name: "Check out repository",
       uses: "actions/checkout@v6",
     },
+    ...setupInfo.steps,
     {
       name: "Prepare test",
       id: "prepare-test",
@@ -417,7 +418,6 @@ function generateJob(
         "setup-kotlin": "container" in checkSpecification ? "false" : "true",
       },
     },
-    ...setupInfo.steps,
   ];
 
   // Extract the sequence of steps from the YAML document to persist as much formatting as possible.

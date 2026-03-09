@@ -51,13 +51,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Prepare test
-        id: prepare-test
-        uses: ./.github/actions/prepare-test
-        with:
-          version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
@@ -65,6 +58,13 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - name: Copy queries into workspace
         run: |
           cp -a ../action/queries .

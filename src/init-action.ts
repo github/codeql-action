@@ -93,7 +93,6 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
-  GitHubVersion,
   Result,
   getOptionalEnvVar,
   Success,
@@ -250,7 +249,6 @@ async function run(startedAt: Date) {
     // Fetch the values of known repository properties that affect us.
     const repositoryPropertiesResult = await loadRepositoryProperties(
       repositoryNwo,
-      gitHubVersion,
       logger,
     );
 
@@ -819,7 +817,6 @@ async function run(startedAt: Date) {
  */
 async function loadRepositoryProperties(
   repositoryNwo: RepositoryNwo,
-  gitHubVersion: GitHubVersion,
   logger: Logger,
 ): Promise<Result<RepositoryProperties, unknown>> {
   // See if we can skip loading repository properties early. In particular,

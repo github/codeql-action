@@ -47,16 +47,7 @@ const GENERIC_404_MSG =
 // Checks whether the deprecation warning for combining SARIF files should be shown.
 export async function shouldShowCombineSarifFilesDeprecationWarning(
   sarifObjects: Array<Partial<sarif.Log>>,
-  githubVersion: GitHubVersion,
 ) {
-  // Do not show this warning on GHES versions before 3.14.0
-  if (
-    githubVersion.type === GitHubVariant.GHES &&
-    satisfiesGHESVersion(githubVersion.version, "<3.14", true)
-  ) {
-    return false;
-  }
-
   // Only give a deprecation warning when not all runs are unique and
   // we haven't already shown the warning.
   return (
@@ -131,12 +122,7 @@ async function combineSarifFilesUsingCLI(
       "Not all SARIF files were produced by CodeQL. Merging files in the action.",
     );
 
-    if (
-      await shouldShowCombineSarifFilesDeprecationWarning(
-        sarifObjects,
-        gitHubVersion,
-      )
-    ) {
+    if (await shouldShowCombineSarifFilesDeprecationWarning(sarifObjects)) {
       logger.warning(
         `Uploading multiple SARIF runs with the same category is deprecated ${deprecationWarningMessage}. Please update your workflow to upload a single run per category. ${deprecationMoreInformationMessage}`,
       );

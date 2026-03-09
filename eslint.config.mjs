@@ -161,6 +161,7 @@ export default [
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
+          "args": "all",
           "argsIgnorePattern": "^_",
         }
       ],

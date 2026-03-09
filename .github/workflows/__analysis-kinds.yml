@@ -92,7 +92,7 @@ jobs:
           post-processed-sarif-path: '${{ runner.temp }}/post-processed'
 
       - name: Upload SARIF files
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: |
             analysis-kinds-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}
@@ -100,7 +100,7 @@ jobs:
           retention-days: 7
 
       - name: Upload post-processed SARIF
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: |
             post-processed-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}

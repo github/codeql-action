@@ -35,11 +35,6 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
   workflow_call:
     inputs:
       dotnet-version:
@@ -52,17 +47,12 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: with-checkout-path-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}-${{inputs.python-version}}
+  group: with-checkout-path-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
   with-checkout-path:
     strategy:
@@ -91,11 +81,6 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
-      - name: Install Python
-        if: matrix.version != 'nightly-latest' || !matrix.version
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ inputs.python-version || '3.13' }}
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

@@ -14,6 +14,7 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
+  isAnalyzingPullRequest,
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
@@ -42,6 +43,7 @@ import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
   loadPropertiesFromApi,
   RepositoryProperties,
+  RepositoryPropertyName,
 } from "./feature-flags/properties";
 import {
   checkInstallPython311,
@@ -394,6 +396,23 @@ async function run(startedAt: Date) {
           {
             error: getErrorMessage(repositoryPropertiesResult.value),
           },
+        ),
+      );
+    }
+
+    if (
+      config.enableFileCoverageInformation &&
+      isAnalyzingPullRequest() &&
+      repositoryPropertiesResult.orElse({})[
+        RepositoryPropertyName.FILE_COVERAGE_ON_PRS
+      ] === true
+    ) {
+      addNoLanguageDiagnostic(
+        config,
+        makeTelemetryDiagnostic(
+          "codeql-action/file-coverage-on-prs-enabled-by-repository-property",
+          "File coverage on PRs enabled by repository property",
+          {},
         ),
       );
     }

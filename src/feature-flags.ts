@@ -330,11 +330,8 @@ export const featureConfig = {
   [Feature.SkipFileCoverageOnPrs]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS",
-    // For testing, this is not behind a CLI version check yet. However
-    // before rolling this out externally, we should set a minimum version here
-    // since current versions of the CodeQL CLI will log if baseline information
-    // cannot be found when interpreting results.
     minimumVersion: undefined,
+    toolsFeature: ToolsFeature.SuppressesMissingFileBaselineWarning,
   },
   [Feature.StartProxyRemoveUnusedRegistries]: {
     defaultValue: false,

@@ -13,7 +13,6 @@ import {
   getFileCoverageInformationEnabled,
 } from "./init";
 import { KnownLanguage } from "./languages";
-import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
   LoggedMessage,
@@ -456,7 +455,7 @@ test("file coverage information enabled when debugMode is true", async (t) => {
   t.true(
     await getFileCoverageInformationEnabled(
       true, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
+      createStubCodeQL({}),
       createFeatures([Feature.SkipFileCoverageOnPrs]),
     ),
   );
@@ -470,22 +469,7 @@ test.serial(
     t.true(
       await getFileCoverageInformationEnabled(
         false, // debugMode
-        parseRepositoryNwo("github/codeql-action"),
-        createFeatures([Feature.SkipFileCoverageOnPrs]),
-      ),
-    );
-  },
-);
-
-test.serial(
-  "file coverage information enabled when owner is not 'github'",
-  async (t) => {
-    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
-
-    t.true(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        parseRepositoryNwo("other-org/some-repo"),
+        createStubCodeQL({}),
         createFeatures([Feature.SkipFileCoverageOnPrs]),
       ),
     );
@@ -500,7 +484,7 @@ test.serial(
     t.true(
       await getFileCoverageInformationEnabled(
         false, // debugMode
-        parseRepositoryNwo("github/codeql-action"),
+        createStubCodeQL({}),
         createFeatures([]),
       ),
     );
@@ -515,7 +499,7 @@ test.serial(
     t.false(
       await getFileCoverageInformationEnabled(
         false, // debugMode
-        parseRepositoryNwo("github/codeql-action"),
+        createStubCodeQL({}),
         createFeatures([Feature.SkipFileCoverageOnPrs]),
       ),
     );

@@ -38,7 +38,7 @@ test.serial(
 );
 
 test.serial(
-  "loadPropertiesFromApi throws if response data contains unexpected objects",
+  "loadPropertiesFromApi throws if response data contains objects without `property_name`",
   async (t) => {
     sinon.stub(api, "getRepositoryProperties").resolves({
       headers: {},
@@ -60,6 +60,32 @@ test.serial(
         message:
           /Expected repository property object to have a 'property_name'/,
       },
+    );
+  },
+);
+
+test.serial(
+  "loadPropertiesFromApi does not throw for unexpected value types of unknown properties",
+  async (t) => {
+    sinon.stub(api, "getRepositoryProperties").resolves({
+      headers: {},
+      status: 200,
+      url: "",
+      data: [
+        { property_name: "not-used-by-us", value: { foo: "bar" } },
+        { property_name: "also-not-used-by-us", value: ["A", "B", "C"] },
+      ],
+    });
+    const logger = getRunnerLogger(true);
+    const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+    await t.notThrowsAsync(
+      properties.loadPropertiesFromApi(
+        {
+          type: util.GitHubVariant.DOTCOM,
+        },
+        logger,
+        mockRepositoryNwo,
+      ),
     );
   },
 );
@@ -174,7 +200,7 @@ test.serial(
 );
 
 test.serial(
-  "loadPropertiesFromApi throws if property value is not a string",
+  "loadPropertiesFromApi throws if known property value is not a string",
   async (t) => {
     sinon.stub(api, "getRepositoryProperties").resolves({
       headers: {},
@@ -194,7 +220,7 @@ test.serial(
       ),
       {
         message:
-          /Expected repository property 'github-codeql-extra-queries' to have a string value/,
+          /Unexpected value for repository property 'github-codeql-extra-queries' \(number\), got: 123/,
       },
     );
   },

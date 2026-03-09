@@ -1,7 +1,6 @@
 import { getRepositoryProperties } from "../api-client";
 import { Logger } from "../logging";
 import { RepositoryNwo } from "../repository";
-import { GitHubVariant, GitHubVersion } from "../util";
 
 /**
  * Enumerates repository property names that have some meaning to us.
@@ -93,16 +92,9 @@ export type GitHubPropertiesResponse = GitHubRepositoryProperty[];
  * @returns Returns a partial mapping from `RepositoryPropertyName` to values.
  */
 export async function loadPropertiesFromApi(
-  gitHubVersion: GitHubVersion,
   logger: Logger,
   repositoryNwo: RepositoryNwo,
 ): Promise<RepositoryProperties> {
-  // TODO: To be safe for now; later we should replace this with a version check once we know
-  // which version of GHES we expect this to be supported by.
-  if (gitHubVersion.type === GitHubVariant.GHES) {
-    return {};
-  }
-
   try {
     const response = await getRepositoryProperties(repositoryNwo);
     const remoteProperties = response.data as GitHubPropertiesResponse;

@@ -82,13 +82,6 @@ jobs:
       # This ensures we don't accidentally use the original checkout for any part of the test.
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Prepare test
-        id: prepare-test
-        uses: ./.github/actions/prepare-test
-        with:
-          version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
       - name: Install .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -103,6 +96,13 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version || '3.13' }}
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - name: Delete original checkout
         run: |
           # delete the original checkout so we don't accidentally use it.

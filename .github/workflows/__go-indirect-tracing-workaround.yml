@@ -61,6 +61,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -68,11 +73,6 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ inputs.go-version || '>=1.21.0' }}
-          cache: false
       - uses: ./../action/init
         with:
           languages: go

@@ -348,6 +348,7 @@ async function run(startedAt: Date) {
 
     analysisKinds = await getAnalysisKinds(logger);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
     config = await initConfig(features, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
@@ -377,12 +378,12 @@ async function run(startedAt: Date) {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
-      repositoryProperties: repositoryPropertiesResult.orElse({}),
+      repositoryProperties,
       enableFileCoverageInformation: await getFileCoverageInformationEnabled(
         debugMode,
         codeql,
         features,
-        repositoryPropertiesResult.orElse({}),
+        repositoryProperties,
       ),
       logger,
     });
@@ -404,9 +405,7 @@ async function run(startedAt: Date) {
       config.enableFileCoverageInformation &&
       isAnalyzingPullRequest() &&
       (await features.getValue(Feature.SkipFileCoverageOnPrs, codeql)) &&
-      repositoryPropertiesResult.orElse({})[
-        RepositoryPropertyName.FILE_COVERAGE_ON_PRS
-      ] === true
+      repositoryProperties[RepositoryPropertyName.FILE_COVERAGE_ON_PRS] === true
     ) {
       addNoLanguageDiagnostic(
         config,

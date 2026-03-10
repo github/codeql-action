@@ -309,29 +309,52 @@ export async function getFileCoverageInformationEnabled(
 ): Promise<{
   enabled: boolean;
   enabledByRepositoryProperty: boolean;
+  showDeprecationWarning: boolean;
 }> {
   // Always enable file coverage information in debug mode
   if (debugMode) {
-    return { enabled: true, enabledByRepositoryProperty: false };
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: false,
+      showDeprecationWarning: false,
+    };
   }
   // We're most interested in speeding up PRs, and we want to keep
   // submitting file coverage information for the default branch since
   // it is used to populate the status page.
   if (!isAnalyzingPullRequest()) {
-    return { enabled: true, enabledByRepositoryProperty: false };
-  }
-  // If the feature is disabled, then maintain the previous behavior of
-  // unconditionally computing file coverage information.
-  if (!(await features.getValue(Feature.SkipFileCoverageOnPrs, codeql))) {
-    return { enabled: true, enabledByRepositoryProperty: false };
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: false,
+      showDeprecationWarning: false,
+    };
   }
   // Allow repositories to opt in to file coverage information on PRs
-  // using a repository property.
+  // using a repository property. In this case, don't show the deprecation
+  // warning since the repository has explicitly opted in.
   if (
     repositoryProperties[RepositoryPropertyName.FILE_COVERAGE_ON_PRS] === true
   ) {
-    return { enabled: true, enabledByRepositoryProperty: true };
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: true,
+      showDeprecationWarning: false,
+    };
+  }
+  // If the feature is disabled, then maintain the previous behavior of
+  // unconditionally computing file coverage information, but warn that
+  // file coverage on PRs will be disabled in a future release.
+  if (!(await features.getValue(Feature.SkipFileCoverageOnPrs, codeql))) {
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: false,
+      showDeprecationWarning: true,
+    };
   }
   // Otherwise, disable file coverage information on PRs to speed up analysis.
-  return { enabled: false, enabledByRepositoryProperty: false };
+  return {
+    enabled: false,
+    enabledByRepositoryProperty: false,
+    showDeprecationWarning: false,
+  };
 }

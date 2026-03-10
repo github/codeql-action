@@ -143,10 +143,13 @@ export function credentialToStr(credential: Credential): string {
   }
 
   if ("password" in credential) {
-    appendIfDefined("Password", credential.password ? "***" : undefined);
+    appendIfDefined(
+      "Password",
+      isDefined(credential.password) ? "***" : undefined,
+    );
   }
   if (isToken(credential)) {
-    appendIfDefined("Token", credential.token ? "***" : undefined);
+    appendIfDefined("Token", isDefined(credential.token) ? "***" : undefined);
   }
 
   if (isAzureConfig(credential)) {

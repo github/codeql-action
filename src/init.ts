@@ -306,18 +306,32 @@ export async function getFileCoverageInformationEnabled(
   codeql: CodeQL,
   features: FeatureEnablement,
   repositoryProperties: RepositoryProperties,
-): Promise<boolean> {
-  return (
-    // Always enable file coverage information in debug mode
-    debugMode ||
-    // We're most interested in speeding up PRs, and we want to keep
-    // submitting file coverage information for the default branch since
-    // it is used to populate the status page.
-    !isAnalyzingPullRequest() ||
-    // Allow repositories to opt in to file coverage information on PRs
-    // using a repository property.
-    repositoryProperties[RepositoryPropertyName.FILE_COVERAGE_ON_PRS] ===
-      true ||
-    !(await features.getValue(Feature.SkipFileCoverageOnPrs, codeql))
-  );
+): Promise<{
+  enabled: boolean;
+  enabledByRepositoryProperty: boolean;
+}> {
+  // Always enable file coverage information in debug mode
+  if (debugMode) {
+    return { enabled: true, enabledByRepositoryProperty: false };
+  }
+  // We're most interested in speeding up PRs, and we want to keep
+  // submitting file coverage information for the default branch since
+  // it is used to populate the status page.
+  if (!isAnalyzingPullRequest()) {
+    return { enabled: true, enabledByRepositoryProperty: false };
+  }
+  // If the feature is disabled, then maintain the previous behavior of
+  // unconditionally computing file coverage information.
+  if (!(await features.getValue(Feature.SkipFileCoverageOnPrs, codeql))) {
+    return { enabled: true, enabledByRepositoryProperty: false };
+  }
+  // Allow repositories to opt in to file coverage information on PRs
+  // using a repository property.
+  if (
+    repositoryProperties[RepositoryPropertyName.FILE_COVERAGE_ON_PRS] === true
+  ) {
+    return { enabled: true, enabledByRepositoryProperty: true };
+  }
+  // Otherwise, disable file coverage information on PRs to speed up analysis.
+  return { enabled: false, enabledByRepositoryProperty: false };
 }

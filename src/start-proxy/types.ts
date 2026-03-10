@@ -1,3 +1,5 @@
+import type { UnvalidatedObject } from "../json";
+import * as json from "../json";
 import { isDefined } from "../util";
 
 /**
@@ -5,7 +7,7 @@ import { isDefined } from "../util";
  * present or not. This type is used to represent such values, which we expect to be
  * `Credential` values, but haven't validated yet.
  */
-export type RawCredential = Partial<Credential>;
+export type RawCredential = UnvalidatedObject<Credential>;
 
 /** Usernames may be present for both authentication with tokens or passwords. */
 export type Username = {
@@ -14,7 +16,7 @@ export type Username = {
 };
 
 /** Decides whether `config` has a username. */
-export function hasUsername(config: Partial<AuthConfig>): config is Username {
+export function hasUsername(config: AuthConfig): config is Username {
   return "username" in config;
 }
 
@@ -44,8 +46,10 @@ export type Token = {
 } & Username;
 
 /** Decides whether `config` is token-based. */
-export function isToken(config: Partial<AuthConfig>): config is Token {
-  return "token" in config;
+export function isToken(
+  config: UnvalidatedObject<AuthConfig>,
+): config is Token {
+  return "token" in config && json.isStringOrUndefined(config.token);
 }
 
 /** Configuration for Azure OIDC. */
@@ -53,13 +57,15 @@ export type AzureConfig = { tenant_id: string; client_id: string };
 
 /** Decides whether `config` is an Azure OIDC configuration. */
 export function isAzureConfig(
-  config: Partial<AuthConfig>,
+  config: UnvalidatedObject<AuthConfig>,
 ): config is AzureConfig {
   return (
     "tenant_id" in config &&
     "client_id" in config &&
     isDefined(config.tenant_id) &&
-    isDefined(config.client_id)
+    isDefined(config.client_id) &&
+    json.isString(config.tenant_id) &&
+    json.isString(config.client_id)
   );
 }
 
@@ -74,7 +80,9 @@ export type AWSConfig = {
 };
 
 /** Decides whether `config` is an AWS OIDC configuration. */
-export function isAWSConfig(config: Partial<AuthConfig>): config is AWSConfig {
+export function isAWSConfig(
+  config: UnvalidatedObject<AuthConfig>,
+): config is AWSConfig {
   // All of these properties are required.
   const requiredProperties = [
     "aws_region",
@@ -85,10 +93,20 @@ export function isAWSConfig(config: Partial<AuthConfig>): config is AWSConfig {
   ];
 
   for (const property of requiredProperties) {
-    if (!(property in config) || !isDefined(config[property])) {
+    if (
+      !(property in config) ||
+      !isDefined(config[property]) ||
+      !json.isString(config[property])
+    ) {
       return false;
     }
   }
+
+  // The "audience" field is optional, but should be a string if present.
+  if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
+    return false;
+  }
+
   return true;
 }
 
@@ -101,11 +119,23 @@ export type JFrogConfig = {
 
 /** Decides whether `config` is a JFrog OIDC configuration. */
 export function isJFrogConfig(
-  config: Partial<AuthConfig>,
+  config: UnvalidatedObject<AuthConfig>,
 ): config is JFrogConfig {
+  // The "audience" and "identity_mapping_name" fields is optional, but should be strings if present.
+  if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
+    return false;
+  }
+  if (
+    "identity_mapping_name" in config &&
+    !json.isStringOrUndefined(config.identity_mapping_name)
+  ) {
+    return false;
+  }
+
   return (
     "jfrog_oidc_provider_name" in config &&
-    isDefined(config.jfrog_oidc_provider_name)
+    isDefined(config.jfrog_oidc_provider_name) &&
+    json.isString(config.jfrog_oidc_provider_name)
   );
 }
 

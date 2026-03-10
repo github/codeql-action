@@ -452,14 +452,14 @@ test(
 );
 
 test("file coverage information enabled when debugMode is true", async (t) => {
-  t.true(
-    await getFileCoverageInformationEnabled(
-      true, // debugMode
-      createStubCodeQL({}),
-      createFeatures([Feature.SkipFileCoverageOnPrs]),
-      {},
-    ),
+  const result = await getFileCoverageInformationEnabled(
+    true, // debugMode
+    createStubCodeQL({}),
+    createFeatures([Feature.SkipFileCoverageOnPrs]),
+    {},
   );
+  t.true(result.enabled);
+  t.false(result.enabledByRepositoryProperty);
 });
 
 test.serial(
@@ -467,14 +467,14 @@ test.serial(
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(false);
 
-    t.true(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        createStubCodeQL({}),
-        createFeatures([Feature.SkipFileCoverageOnPrs]),
-        {},
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     );
+    t.true(result.enabled);
+    t.false(result.enabledByRepositoryProperty);
   },
 );
 
@@ -483,14 +483,14 @@ test.serial(
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
 
-    t.true(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        createStubCodeQL({}),
-        createFeatures([]),
-        {},
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([]),
+      {},
     );
+    t.true(result.enabled);
+    t.false(result.enabledByRepositoryProperty);
   },
 );
 
@@ -499,16 +499,16 @@ test.serial(
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
 
-    t.true(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        createStubCodeQL({}),
-        createFeatures([Feature.SkipFileCoverageOnPrs]),
-        {
-          "github-codeql-file-coverage-on-prs": true,
-        },
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {
+        "github-codeql-file-coverage-on-prs": true,
+      },
     );
+    t.true(result.enabled);
+    t.true(result.enabledByRepositoryProperty);
   },
 );
 
@@ -517,13 +517,13 @@ test.serial(
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
 
-    t.false(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        createStubCodeQL({}),
-        createFeatures([Feature.SkipFileCoverageOnPrs]),
-        {},
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     );
+    t.false(result.enabled);
+    t.false(result.enabledByRepositoryProperty);
   },
 );

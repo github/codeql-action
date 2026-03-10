@@ -14,7 +14,6 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  isAnalyzingPullRequest,
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
@@ -43,7 +42,6 @@ import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
   loadPropertiesFromApi,
   RepositoryProperties,
-  RepositoryPropertyName,
 } from "./feature-flags/properties";
 import {
   checkInstallPython311,
@@ -349,6 +347,13 @@ async function run(startedAt: Date) {
     analysisKinds = await getAnalysisKinds(logger);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
     const repositoryProperties = repositoryPropertiesResult.orElse({});
+    const fileCoverageResult = await getFileCoverageInformationEnabled(
+      debugMode,
+      codeql,
+      features,
+      repositoryProperties,
+    );
+
     config = await initConfig(features, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
@@ -379,12 +384,7 @@ async function run(startedAt: Date) {
       apiDetails,
       features,
       repositoryProperties,
-      enableFileCoverageInformation: await getFileCoverageInformationEnabled(
-        debugMode,
-        codeql,
-        features,
-        repositoryProperties,
-      ),
+      enableFileCoverageInformation: fileCoverageResult.enabled,
       logger,
     });
 
@@ -401,12 +401,7 @@ async function run(startedAt: Date) {
       );
     }
 
-    if (
-      config.enableFileCoverageInformation &&
-      isAnalyzingPullRequest() &&
-      (await features.getValue(Feature.SkipFileCoverageOnPrs, codeql)) &&
-      repositoryProperties[RepositoryPropertyName.FILE_COVERAGE_ON_PRS] === true
-    ) {
+    if (fileCoverageResult.enabledByRepositoryProperty) {
       addNoLanguageDiagnostic(
         config,
         makeTelemetryDiagnostic(

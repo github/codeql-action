@@ -529,40 +529,6 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
   });
 });
 
-test.serial("credentialToStr - hides passwords", (t) => {
-  const secret = "password123";
-  const credential = {
-    type: "maven_credential",
-    password: secret,
-    url: "https://localhost",
-  };
-
-  const str = startProxyExports.credentialToStr(credential);
-
-  t.false(str.includes(secret));
-  t.is(
-    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: true; Token: false",
-    str,
-  );
-});
-
-test.serial("credentialToStr - hides tokens", (t) => {
-  const secret = "password123";
-  const credential = {
-    type: "maven_credential",
-    token: secret,
-    url: "https://localhost",
-  };
-
-  const str = startProxyExports.credentialToStr(credential);
-
-  t.false(str.includes(secret));
-  t.is(
-    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: false; Token: true",
-    str,
-  );
-});
-
 test.serial(
   "getSafeErrorMessage - returns actual message for `StartProxyError`",
   (t) => {

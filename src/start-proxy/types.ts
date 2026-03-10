@@ -49,6 +49,12 @@ export type Token = {
 export function isToken(
   config: UnvalidatedObject<AuthConfig>,
 ): config is Token {
+  // The "username" field is optional, but should be a string if present.
+  if ("username" in config && !json.isStringOrUndefined(config.username)) {
+    return false;
+  }
+
+  // The "token" field is required, and must be a string or undefined.
   return "token" in config && json.isStringOrUndefined(config.token);
 }
 
@@ -121,7 +127,7 @@ export type JFrogConfig = {
 export function isJFrogConfig(
   config: UnvalidatedObject<AuthConfig>,
 ): config is JFrogConfig {
-  // The "audience" and "identity_mapping_name" fields is optional, but should be strings if present.
+  // The "audience" and "identity_mapping_name" fields are optional, but should be strings if present.
   if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
     return false;
   }

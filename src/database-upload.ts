@@ -85,18 +85,6 @@ export async function cleanupAndUploadDatabases(
     await codeql.databaseCleanupCluster(config, cleanupLevel);
   });
 
-  const client = getApiClient();
-
-  const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
-  uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;
-
-  // Octokit expects the baseUrl to not have a trailing slash,
-  // but it is included by default in a URL.
-  let uploadsBaseUrl = uploadsUrl.toString();
-  if (uploadsBaseUrl.endsWith("/")) {
-    uploadsBaseUrl = uploadsBaseUrl.slice(0, -1);
-  }
-
   const reports: DatabaseUploadResult[] = [];
   for (const language of config.languages) {
     let bundledDbSize: number | undefined = undefined;
@@ -118,30 +106,15 @@ export async function cleanupAndUploadDatabases(
       const maxAttempts = 4; // 1 initial attempt + 3 retries, identical to the default retry behavior of Octokit
       let uploadDurationMs: number | undefined;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const bundledDbReadStream = fs.createReadStream(bundledDb);
         try {
-          const attemptStartTime = performance.now();
-          await client.request(
-            `POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
-            {
-              baseUrl: uploadsBaseUrl,
-              owner: repositoryNwo.owner,
-              repo: repositoryNwo.repo,
-              language,
-              name: `${language}-database`,
-              commit_oid: commitOid,
-              data: bundledDbReadStream,
-              headers: {
-                authorization: `token ${apiDetails.auth}`,
-                "Content-Type": "application/zip",
-                "Content-Length": bundledDbSize,
-              },
-              request: {
-                retries: 0,
-              },
-            },
+          uploadDurationMs = await uploadBundledDatabase(
+            repositoryNwo,
+            language,
+            commitOid,
+            bundledDb,
+            bundledDbSize,
+            apiDetails,
           );
-          uploadDurationMs = performance.now() - attemptStartTime;
           break;
         } catch (e) {
           const httpError = asHTTPError(e);
@@ -160,8 +133,6 @@ export async function cleanupAndUploadDatabases(
             `Database upload attempt ${attempt} of ${maxAttempts} failed for ${language}: ${util.getErrorMessage(e)}. Retrying in ${backoffMs / 1000}s...`,
           );
           await new Promise((resolve) => setTimeout(resolve, backoffMs));
-        } finally {
-          bundledDbReadStream.close();
         }
       }
       reports.push({
@@ -186,4 +157,59 @@ export async function cleanupAndUploadDatabases(
     }
   }
   return reports;
+}
+
+/**
+ * Uploads a bundled database to the GitHub API.
+ *
+ * @returns the duration of the upload in milliseconds
+ */
+async function uploadBundledDatabase(
+  repositoryNwo: RepositoryNwo,
+  language: string,
+  commitOid: string,
+  bundledDb: string,
+  bundledDbSize: number,
+  apiDetails: GitHubApiDetails,
+): Promise<number> {
+  const client = getApiClient();
+
+  const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
+  uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;
+
+  // Octokit expects the baseUrl to not have a trailing slash,
+  // but it is included by default in a URL.
+  let uploadsBaseUrl = uploadsUrl.toString();
+  if (uploadsBaseUrl.endsWith("/")) {
+    uploadsBaseUrl = uploadsBaseUrl.slice(0, -1);
+  }
+
+  const bundledDbReadStream = fs.createReadStream(bundledDb);
+  try {
+    const startTime = performance.now();
+    await client.request(
+      `POST /repos/:owner/:repo/code-scanning/codeql/databases/:language?name=:name&commit_oid=:commit_oid`,
+      {
+        baseUrl: uploadsBaseUrl,
+        owner: repositoryNwo.owner,
+        repo: repositoryNwo.repo,
+        language,
+        name: `${language}-database`,
+        commit_oid: commitOid,
+        data: bundledDbReadStream,
+        headers: {
+          authorization: `token ${apiDetails.auth}`,
+          "Content-Type": "application/zip",
+          "Content-Length": bundledDbSize,
+        },
+        // Disable `octokit/plugin-retry.js`, since the request body is a ReadStream which can only be consumed once.
+        request: {
+          retries: 0,
+        },
+      },
+    );
+    return performance.now() - startTime;
+  } finally {
+    bundledDbReadStream.close();
+  }
 }

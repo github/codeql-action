@@ -323,7 +323,7 @@ export function getAuthConfig(
     // There are three scenarios for non-OIDC authentication based on the registry type:
     //
     // 1. `username`+`token`
-    // 2. A `token` that combines the username and actual token, seperated by ':'.
+    // 2. A `token` that combines the username and actual token, separated by ':'.
     // 3. `username`+`password`
     //
     // In all three cases, all fields are optional. If the `token` field is present,

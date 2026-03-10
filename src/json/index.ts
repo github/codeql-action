@@ -17,7 +17,7 @@ export function parseString(data: string): unknown {
 
 /** Asserts that `value` is an object, which is not yet validated, but expected to be of type `T`. */
 export function isObject<T>(value: unknown): value is UnvalidatedObject<T> {
-  return typeof value === "object";
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Asserts that `value` is an array, which is not yet validated. */

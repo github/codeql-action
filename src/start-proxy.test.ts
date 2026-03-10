@@ -281,9 +281,7 @@ test("getCredentials throws an error when non-printable characters are used", as
   ];
 
   for (const invalidCredential of invalidCredentials) {
-    const credentialsInput = Buffer.from(
-      JSON.stringify([invalidCredential]),
-    ).toString("base64");
+    const credentialsInput = toEncodedJSON([invalidCredential]);
 
     t.throws(
       () =>
@@ -299,6 +297,146 @@ test("getCredentials throws an error when non-printable characters are used", as
       },
     );
   }
+});
+
+const validAzureCredential: startProxyExports.AzureConfig = {
+  tenant_id: "12345678-1234-1234-1234-123456789012",
+  client_id: "abcdef01-2345-6789-abcd-ef0123456789",
+};
+
+const validAwsCredential: startProxyExports.AWSConfig = {
+  aws_region: "us-east-1",
+  account_id: "123456789012",
+  role_name: "MY_ROLE",
+  domain: "MY_DOMAIN",
+  domain_owner: "987654321098",
+  audience: "custom-audience",
+};
+
+const validJFrogCredential: startProxyExports.JFrogConfig = {
+  jfrog_oidc_provider_name: "MY_PROVIDER",
+  audience: "jfrog-audience",
+  identity_mapping_name: "my-mapping",
+};
+
+test("getCredentials throws an error when non-printable characters are used for Azure OIDC", (t) => {
+  for (const key of Object.keys(validAzureCredential)) {
+    const invalidAzureCredential = {
+      ...validAzureCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidAzureCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials throws an error when non-printable characters are used for AWS OIDC", (t) => {
+  for (const key of Object.keys(validAwsCredential)) {
+    const invalidAwsCredential = {
+      ...validAwsCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidAwsCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials throws an error when non-printable characters are used for JFrog OIDC", (t) => {
+  for (const key of Object.keys(validJFrogCredential)) {
+    const invalidJFrogCredential = {
+      ...validJFrogCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidJFrogCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials accepts OIDC configurations", (t) => {
+  const oidcConfigurations = [
+    {
+      type: "nuget_feed",
+      host: "azure.pkg.github.com",
+      ...validAzureCredential,
+    },
+    {
+      type: "nuget_feed",
+      host: "aws.pkg.github.com",
+      ...validAwsCredential,
+    },
+    {
+      type: "nuget_feed",
+      host: "jfrog.pkg.github.com",
+      ...validJFrogCredential,
+    },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(oidcConfigurations),
+    KnownLanguage.csharp,
+  );
+  t.is(credentials.length, 3);
+
+  t.assert(credentials.every((c) => c.type === "nuget_feed"));
+  t.assert(credentials.some((c) => startProxyExports.isAzureConfig(c)));
+  t.assert(credentials.some((c) => startProxyExports.isAWSConfig(c)));
+  t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
 });
 
 test("getCredentials logs a warning when a PAT is used without a username", async (t) => {

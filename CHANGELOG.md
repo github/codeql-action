@@ -6,7 +6,12 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - Upcoming change: Starting April 2026, the CodeQL Action will skip collecting file coverage information on pull requests to improve analysis performance. File coverage information will still be computed on non-PR analyses. Pull request analyses will log a warning about this upcoming change.
 
-  Repositories owned by an organization can opt out of this change by creating a custom repository property with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then setting this property to `true` in the repository's settings. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). [#3562](https://github.com/github/codeql-action/pull/3562)
+  To opt out of this change:
+  - **Repositories owned by an organization:** Create a custom repository property with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to `true` in the repository's settings. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). Alternatively, if you are using an advanced setup workflow, you can set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
+  - **User-owned repositories using default setup:** Switch to an advanced setup workflow and set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
+  - **User-owned repositories using advanced setup:** Set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
+
+  [#3562](https://github.com/github/codeql-action/pull/3562)
 - Fixed [a bug](https://github.com/github/codeql-action/issues/3555) which caused the CodeQL Action to fail loading repository properties if a "Multi select" repository property was configured for the repository. [#3557](https://github.com/github/codeql-action/pull/3557)
 - The CodeQL Action now loads [custom repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) on GitHub Enterprise Server, enabling the customization of features such as `github-codeql-disable-overlay` that was previously only available on GitHub.com. [#3559](https://github.com/github/codeql-action/pull/3559)
 

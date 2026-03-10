@@ -147,7 +147,12 @@ export async function cleanupAndUploadDatabases(
           const httpError = asHTTPError(e);
           const isRetryable =
             !httpError || !DO_NOT_RETRY_STATUSES.includes(httpError.status);
-          if (!isRetryable || attempt === maxAttempts) {
+          if (!isRetryable) {
+            throw e;
+          } else if (attempt === maxAttempts) {
+            logger.error(
+              `Maximum retry attempts exhausted (${attempt}), aborting database upload`,
+            );
             throw e;
           }
           const backoffMs = 15_000 * Math.pow(2, attempt - 1); // 15s, 30s, 60s

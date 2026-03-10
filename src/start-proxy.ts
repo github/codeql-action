@@ -17,11 +17,11 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
+import * as json from "./json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
   Address,
-  RawCredential,
   Registry,
   Credential,
   AuthConfig,
@@ -36,6 +36,7 @@ import {
   JFrogConfig,
   isUsernamePassword,
   hasUsername,
+  RawCredential,
 } from "./start-proxy/types";
 import {
   ActionName,
@@ -267,13 +268,19 @@ const NEW_LANGUAGE_TO_REGISTRY_TYPE: Required<RegistryMapping> = {
  *
  * @throws A `ConfigurationError` if the `Registry` value contains neither a `url` or `host` field.
  */
-function getRegistryAddress(registry: Partial<Registry>): Address {
-  if (isDefined(registry.url)) {
+function getRegistryAddress(
+  registry: json.UnvalidatedObject<Registry>,
+): Address {
+  if (
+    isDefined(registry.url) &&
+    json.isString(registry.url) &&
+    json.isStringOrUndefined(registry.host)
+  ) {
     return {
       url: registry.url,
       host: registry.host,
     };
-  } else if (isDefined(registry.host)) {
+  } else if (isDefined(registry.host) && json.isString(registry.host)) {
     return {
       url: undefined,
       host: registry.host,
@@ -287,7 +294,9 @@ function getRegistryAddress(registry: Partial<Registry>): Address {
 }
 
 /** Extracts an `AuthConfig` value from `config`. */
-export function getAuthConfig(config: Partial<AuthConfig>): AuthConfig {
+export function getAuthConfig(
+  config: json.UnvalidatedObject<AuthConfig>,
+): AuthConfig {
   // Start by checking for the OIDC configurations, since they have required properties
   // which we can use to identify them.
   if (isAzureConfig(config)) {
@@ -311,25 +320,44 @@ export function getAuthConfig(config: Partial<AuthConfig>): AuthConfig {
       audience: config.audience,
     } satisfies JFrogConfig;
   } else if (isToken(config)) {
-    // For token-based authentication, both the token and username are optional.
-    // If the token is absent, then it doesn't matter if we end up treating it
-    // as a `UsernamePassword` object internally.
+    // There are three scenarios for non-OIDC authentication based on the registry type:
+    //
+    // 1. `username`+`token`
+    // 2. A `token` that combines the username and actual token, seperated by ':'.
+    // 3. `username`+`password`
+    //
+    // In all three cases, all fields are optional. If the `token` field is present,
+    // we accept the configuration as a `Token` typed configuration, with the `token`
+    // value and an optional `username`. Otherwise, we accept the configuration
+    // typed as `UsernamePassword` (in the `else` clause below) with optional
+    // username and password. I.e. a private registry type that uses 1. or 2.,
+    // but has no `token` configured, will get accepted as `UsernamePassword` here.
 
-    // Mask token to reduce chance of accidental leakage in logs, if we have one.
     if (isDefined(config.token)) {
+      // Mask token to reduce chance of accidental leakage in logs, if we have one.
       core.setSecret(config.token);
     }
 
     return { username: config.username, token: config.token } satisfies Token;
   } else {
-    // Mask password to reduce chance of accidental leakage in logs, if we have one.
-    if ("password" in config && isDefined(config.password)) {
+    let username: string | undefined = undefined;
+    let password: string | undefined = undefined;
+
+    // Both "username" and "password" are optional. If we have reached this point, we need
+    // to validate which of them are present and that they have the correct type if so.
+    if ("password" in config && json.isString(config.password)) {
+      // Mask password to reduce chance of accidental leakage in logs, if we have one.
       core.setSecret(config.password);
+      password = config.password;
+    }
+    if ("username" in config && json.isString(config.username)) {
+      username = config.username;
     }
 
+    // Return the `UsernamePassword` object. Both username and password may be undefined.
     return {
-      username: "username" in config ? config.username : undefined,
-      password: "password" in config ? config.password : undefined,
+      username,
+      password,
     } satisfies UsernamePassword;
   }
 }
@@ -364,9 +392,9 @@ export function getCredentials(
   }
 
   // Parse and validate the credentials
-  let parsed: RawCredential[];
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(credentialsStr) as RawCredential[];
+    parsed = json.parseString(credentialsStr);
   } catch {
     // Don't log the error since it might contain sensitive information.
     logger.error("Failed to parse the credentials data.");
@@ -374,7 +402,7 @@ export function getCredentials(
   }
 
   // Check that the parsed data is indeed an array.
-  if (!Array.isArray(parsed)) {
+  if (!json.isArray(parsed)) {
     throw new ConfigurationError(
       "Expected credentials data to be an array of configurations, but it is not.",
     );
@@ -382,12 +410,12 @@ export function getCredentials(
 
   const out: Credential[] = [];
   for (const e of parsed) {
-    if (e === null || typeof e !== "object") {
+    if (e === null || !json.isObject<RawCredential>(e)) {
       throw new ConfigurationError("Invalid credentials - must be an object");
     }
 
     // The configuration must have a type.
-    if (!isDefined(e.type)) {
+    if (!isDefined(e.type) || !json.isString(e.type)) {
       throw new ConfigurationError("Invalid credentials - must have a type");
     }
 

@@ -1,3 +1,5 @@
+import { isDefined } from "../util";
+
 /**
  * After parsing configurations from JSON, we don't know whether all the keys we expect are
  * present or not. This type is used to represent such values, which we expect to be
@@ -11,6 +13,11 @@ export type Username = {
   username?: string;
 };
 
+/** Decides whether `config` has a username. */
+export function hasUsername(config: Partial<AuthConfig>): config is Username {
+  return "username" in config;
+}
+
 /**
  * Fields expected for authentication based on a username and password.
  * Both username and password are optional.
@@ -19,6 +26,13 @@ export type UsernamePassword = {
   /** The password needed to authenticate to the package registry, if any. */
   password?: string;
 } & Username;
+
+/** Decides whether `config` is based on a username and password. */
+export function isUsernamePassword(
+  config: AuthConfig,
+): config is UsernamePassword {
+  return hasUsername(config) && "password" in config;
+}
 
 /**
  * Fields expected for token-based authentication.
@@ -29,8 +43,25 @@ export type Token = {
   token?: string;
 } & Username;
 
+/** Decides whether `config` is token-based. */
+export function isToken(config: Partial<AuthConfig>): config is Token {
+  return "token" in config;
+}
+
 /** Configuration for Azure OIDC. */
 export type AzureConfig = { tenant_id: string; client_id: string };
+
+/** Decides whether `config` is an Azure OIDC configuration. */
+export function isAzureConfig(
+  config: Partial<AuthConfig>,
+): config is AzureConfig {
+  return (
+    "tenant_id" in config &&
+    "client_id" in config &&
+    isDefined(config.tenant_id) &&
+    isDefined(config.client_id)
+  );
+}
 
 /** Configuration for AWS OIDC. */
 export type AWSConfig = {
@@ -42,6 +73,25 @@ export type AWSConfig = {
   audience?: string;
 };
 
+/** Decides whether `config` is an AWS OIDC configuration. */
+export function isAWSConfig(config: Partial<AuthConfig>): config is AWSConfig {
+  // All of these properties are required.
+  const requiredProperties = [
+    "aws_region",
+    "account_id",
+    "role_name",
+    "domain",
+    "domain_owner",
+  ];
+
+  for (const property of requiredProperties) {
+    if (!(property in config) || !isDefined(config[property])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Configuration for JFrog OIDC. */
 export type JFrogConfig = {
   jfrog_oidc_provider_name: string;
@@ -49,11 +99,21 @@ export type JFrogConfig = {
   identity_mapping_name?: string;
 };
 
+/** Decides whether `config` is a JFrog OIDC configuration. */
+export function isJFrogConfig(
+  config: Partial<AuthConfig>,
+): config is JFrogConfig {
+  return (
+    "jfrog_oidc_provider_name" in config &&
+    isDefined(config.jfrog_oidc_provider_name)
+  );
+}
+
 /** Represents all supported OIDC configurations. */
 export type OIDC = AzureConfig | AWSConfig | JFrogConfig;
 
 /** All authentication-related fields. */
-export type AuthConfig = UsernamePassword & Token & OIDC;
+export type AuthConfig = UsernamePassword | Token | OIDC;
 
 /**
  * A package registry configuration includes identifying information as well as

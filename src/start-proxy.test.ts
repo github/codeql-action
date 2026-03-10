@@ -350,7 +350,12 @@ test.serial(
     t.is(results.length, 1);
     t.is(results[0].type, "git_server");
     t.is(results[0].host, "https://github.com/");
-    t.assert(results[0].password?.startsWith("ghp_"));
+
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
 
     // A warning should have been logged.
     checkExpectedLogMessages(t, loggedMessages, [

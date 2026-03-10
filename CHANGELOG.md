@@ -6,6 +6,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - Fixed [a bug](https://github.com/github/codeql-action/issues/3555) which caused the CodeQL Action to fail loading repository properties if a "Multi select" repository property was configured for the repository. [#3557](https://github.com/github/codeql-action/pull/3557)
 - The CodeQL Action now loads [custom repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) on GitHub Enterprise Server, enabling the customization of features such as `github-codeql-disable-overlay` that was previously only available on GitHub.com. [#3559](https://github.com/github/codeql-action/pull/3559)
+- Once [private package registries](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries) can be configured for organisations with OIDC-based authentication, the CodeQL Action will now be able to accept such configurations. [#3562](https://github.com/github/codeql-action/pull/3562)
 
 ## 4.32.6 - 05 Mar 2026
 

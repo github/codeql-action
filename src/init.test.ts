@@ -460,6 +460,7 @@ test("file coverage information enabled when debugMode is true", async (t) => {
   );
   t.true(result.enabled);
   t.false(result.enabledByRepositoryProperty);
+  t.false(result.showDeprecationWarning);
 });
 
 test.serial(
@@ -475,11 +476,12 @@ test.serial(
     );
     t.true(result.enabled);
     t.false(result.enabledByRepositoryProperty);
+    t.false(result.showDeprecationWarning);
   },
 );
 
 test.serial(
-  "file coverage information enabled when feature flag is not enabled",
+  "file coverage information enabled when feature flag is not enabled, with deprecation warning",
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
 
@@ -491,6 +493,7 @@ test.serial(
     );
     t.true(result.enabled);
     t.false(result.enabledByRepositoryProperty);
+    t.true(result.showDeprecationWarning);
   },
 );
 
@@ -509,6 +512,7 @@ test.serial(
     );
     t.true(result.enabled);
     t.true(result.enabledByRepositoryProperty);
+    t.false(result.showDeprecationWarning);
   },
 );
 
@@ -525,5 +529,6 @@ test.serial(
     );
     t.false(result.enabled);
     t.false(result.enabledByRepositoryProperty);
+    t.false(result.showDeprecationWarning);
   },
 );

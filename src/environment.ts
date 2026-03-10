@@ -47,6 +47,9 @@ export enum EnvVar {
   /** Whether the init action has been run. */
   INIT_ACTION_HAS_RUN = "CODEQL_ACTION_INIT_HAS_RUN",
 
+  /** Whether the deprecation warning for file coverage on PRs has been logged. */
+  DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION = "CODEQL_ACTION_DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION",
+
   /** Whether the error for a deprecated version of the CodeQL Action was logged. */
   LOG_VERSION_DEPRECATION = "CODEQL_ACTION_DID_LOG_VERSION_DEPRECATION",
 

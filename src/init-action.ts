@@ -409,6 +409,23 @@ async function run(startedAt: Date) {
       );
     }
 
+    if (
+      fileCoverageResult.showDeprecationWarning &&
+      !process.env[EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION]
+    ) {
+      logger.warning(
+        "Starting April 2026, the CodeQL Action will skip collecting file coverage information on pull requests " +
+          "to improve analysis performance. File coverage information will still be computed on non-PR analyses. " +
+          "Repositories owned by an organization can opt out of this change by creating a custom repository property " +
+          'with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then setting this property to ' +
+          "`true` in the repository's settings.",
+      );
+      core.exportVariable(
+        EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION,
+        "true",
+      );
+    }
+
     await checkInstallPython311(config.languages, codeql);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);

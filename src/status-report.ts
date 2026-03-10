@@ -356,7 +356,6 @@ export async function createStatusReportBase(
       statusReport.matrix_vars = matrix;
     }
     if ("RUNNER_ARCH" in process.env) {
-      // RUNNER_ARCH is available only in GHES 3.4 and later
       // Values other than X86, X64, ARM, or ARM64 are discarded server side
       statusReport.runner_arch = process.env["RUNNER_ARCH"];
     }

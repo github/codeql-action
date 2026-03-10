@@ -121,6 +121,53 @@ export type AuthConfig = UsernamePassword | Token | OIDC;
  */
 export type Credential = AuthConfig & Registry;
 
+/**
+ * Pretty-prints a `Credential` value to a string, but hides the actual password or token values.
+ *
+ * @param credential The credential to convert to a string.
+ */
+export function credentialToStr(credential: Credential): string {
+  let result: string = `Type: ${credential.type};`;
+
+  const appendIfDefined = (name: string, val: string | undefined) => {
+    if (isDefined(val)) {
+      result += ` ${name}: ${val};`;
+    }
+  };
+
+  appendIfDefined("Url", credential.url);
+  appendIfDefined("Host", credential.host);
+
+  if (hasUsername(credential)) {
+    appendIfDefined("Username", credential.username);
+  }
+
+  if ("password" in credential) {
+    appendIfDefined("Password", credential.password ? "***" : undefined);
+  }
+  if (isToken(credential)) {
+    appendIfDefined("Token", credential.token ? "***" : undefined);
+  }
+
+  if (isAzureConfig(credential)) {
+    appendIfDefined("Tenant", credential.tenant_id);
+    appendIfDefined("Client", credential.client_id);
+  } else if (isAWSConfig(credential)) {
+    appendIfDefined("AWS Region", credential.aws_region);
+    appendIfDefined("AWS Account", credential.account_id);
+    appendIfDefined("AWS Role", credential.role_name);
+    appendIfDefined("AWS Domain", credential.domain);
+    appendIfDefined("AWS Domain Owner", credential.domain_owner);
+    appendIfDefined("AWS Audience", credential.audience);
+  } else if (isJFrogConfig(credential)) {
+    appendIfDefined("JFrog Provider", credential.jfrog_oidc_provider_name);
+    appendIfDefined("JFrog Identity Mapping", credential.identity_mapping_name);
+    appendIfDefined("JFrog Audience", credential.audience);
+  }
+
+  return result;
+}
+
 /** A package registry is identified by its type and address. */
 export type Registry = {
   /** The type of the package registry. */

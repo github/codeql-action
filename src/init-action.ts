@@ -93,7 +93,6 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
-  GitHubVersion,
   Result,
   getOptionalEnvVar,
   Success,
@@ -250,8 +249,6 @@ async function run(startedAt: Date) {
     // Fetch the values of known repository properties that affect us.
     const repositoryPropertiesResult = await loadRepositoryProperties(
       repositoryNwo,
-      gitHubVersion,
-      features,
       logger,
     );
 
@@ -835,8 +832,6 @@ async function run(startedAt: Date) {
  */
 async function loadRepositoryProperties(
   repositoryNwo: RepositoryNwo,
-  gitHubVersion: GitHubVersion,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Result<RepositoryProperties, unknown>> {
   // See if we can skip loading repository properties early. In particular,
@@ -854,17 +849,8 @@ async function loadRepositoryProperties(
     return new Success({});
   }
 
-  if (!(await features.getValue(Feature.UseRepositoryProperties))) {
-    logger.debug(
-      "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
-    );
-    return new Success({});
-  }
-
   try {
-    return new Success(
-      await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
-    );
+    return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
   } catch (error) {
     logger.warning(
       `Failed to load repository properties: ${getErrorMessage(error)}`,

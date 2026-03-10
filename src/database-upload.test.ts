@@ -225,7 +225,7 @@ test.serial(
         .returns("true");
       sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
-      await mockHttpRequests(422);
+      const databaseUploadSpy = await mockHttpRequests(422);
 
       const loggedMessages = [] as LoggedMessage[];
       await cleanupAndUploadDatabases(
@@ -245,6 +245,9 @@ test.serial(
               "Failed to upload database for javascript: some error message",
         ) !== undefined,
       );
+
+      // Non-retryable errors should not be retried.
+      t.is(databaseUploadSpy.callCount, 1);
     });
   },
 );
@@ -260,11 +263,11 @@ test.serial(
         .returns("true");
       sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
-      await mockHttpRequests(500);
+      const databaseUploadSpy = await mockHttpRequests(500);
 
       // Stub setTimeout to fire immediately to avoid real delays from retry backoff.
       const originalSetTimeout = global.setTimeout;
-      sinon
+      const setTimeoutStub = sinon
         .stub(global, "setTimeout")
         .callsFake((fn: () => void) => originalSetTimeout(fn, 0));
 
@@ -286,6 +289,15 @@ test.serial(
               "Failed to upload database for javascript: some error message",
         ) !== undefined,
       );
+
+      // Retryable errors should be retried the expected number of times.
+      t.is(databaseUploadSpy.callCount, 4);
+
+      // setTimeout should have been called with the expected backoff delays.
+      const setTimeoutDelays = setTimeoutStub.args.map(
+        (args) => args[1] as number,
+      );
+      t.deepEqual(setTimeoutDelays, [15_000, 30_000, 60_000]);
     });
   },
 );

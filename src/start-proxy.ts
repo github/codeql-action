@@ -24,6 +24,18 @@ import {
   RawCredential,
   Registry,
   Credential,
+  AuthConfig,
+  isToken,
+  isAzureConfig,
+  Token,
+  UsernamePassword,
+  AzureConfig,
+  isAWSConfig,
+  AWSConfig,
+  isJFrogConfig,
+  JFrogConfig,
+  isUsernamePassword,
+  hasUsername,
 } from "./start-proxy/types";
 import {
   ActionName,
@@ -274,6 +286,54 @@ function getRegistryAddress(registry: Partial<Registry>): Address {
   }
 }
 
+/** Extracts an `AuthConfig` value from `config`. */
+export function getAuthConfig(config: Partial<AuthConfig>): AuthConfig {
+  // Start by checking for the OIDC configurations, since they have required properties
+  // which we can use to identify them.
+  if (isAzureConfig(config)) {
+    return {
+      tenant_id: config.tenant_id,
+      client_id: config.client_id,
+    } satisfies AzureConfig;
+  } else if (isAWSConfig(config)) {
+    return {
+      aws_region: config.aws_region,
+      account_id: config.account_id,
+      role_name: config.role_name,
+      domain: config.domain,
+      domain_owner: config.domain_owner,
+      audience: config.audience,
+    } satisfies AWSConfig;
+  } else if (isJFrogConfig(config)) {
+    return {
+      jfrog_oidc_provider_name: config.jfrog_oidc_provider_name,
+      identity_mapping_name: config.identity_mapping_name,
+      audience: config.audience,
+    } satisfies JFrogConfig;
+  } else if (isToken(config)) {
+    // For token-based authentication, both the token and username are optional.
+    // If the token is absent, then it doesn't matter if we end up treating it
+    // as a `UsernamePassword` object internally.
+
+    // Mask token to reduce chance of accidental leakage in logs, if we have one.
+    if (isDefined(config.token)) {
+      core.setSecret(config.token);
+    }
+
+    return { username: config.username, token: config.token } satisfies Token;
+  } else {
+    // Mask password to reduce chance of accidental leakage in logs, if we have one.
+    if ("password" in config && isDefined(config.password)) {
+      core.setSecret(config.password);
+    }
+
+    return {
+      username: "username" in config ? config.username : undefined,
+      password: "password" in config ? config.password : undefined,
+    } satisfies UsernamePassword;
+  }
+}
+
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
@@ -332,13 +392,7 @@ export function getCredentials(
     }
 
     // Mask credentials to reduce chance of accidental leakage in logs.
-    if (isDefined(e.password)) {
-      core.setSecret(e.password);
-    }
-    if (isDefined(e.token)) {
-      core.setSecret(e.token);
-    }
-
+    const authConfig = getAuthConfig(e);
     const address = getRegistryAddress(e);
 
     // Filter credentials based on language if specified. `type` is the registry type.
@@ -366,9 +420,13 @@ export function getCredentials(
 
     // If the password or token looks like a GitHub PAT, warn if no username is configured.
     if (
-      !isDefined(e.username) &&
-      ((isDefined(e.password) && isPAT(e.password)) ||
-        (isDefined(e.token) && isPAT(e.token)))
+      ((!hasUsername(authConfig) || !isDefined(authConfig.username)) &&
+        isUsernamePassword(authConfig) &&
+        isDefined(authConfig.password) &&
+        isPAT(authConfig.password)) ||
+      (isToken(authConfig) &&
+        isDefined(authConfig.token) &&
+        isPAT(authConfig.token))
     ) {
       logger.warning(
         `A ${e.type} private registry is configured for ${e.host || e.url} using a GitHub Personal Access Token (PAT), but no username was provided. ` +
@@ -379,9 +437,7 @@ export function getCredentials(
 
     out.push({
       type: e.type,
-      username: e.username,
-      password: e.password,
-      token: e.token,
+      ...authConfig,
       ...address,
     });
   }

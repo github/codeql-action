@@ -214,37 +214,81 @@ test.serial(
   },
 );
 
-test.serial("Don't crash if uploading a database fails", async (t) => {
-  await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
-    sinon
-      .stub(actionsUtil, "getRequiredInput")
-      .withArgs("upload-database")
-      .returns("true");
-    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
+test.serial(
+  "Don't crash if uploading a database fails with a non-retryable error",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getRequiredInput")
+        .withArgs("upload-database")
+        .returns("true");
+      sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
-    await mockHttpRequests(500);
+      await mockHttpRequests(422);
 
-    const loggedMessages = [] as LoggedMessage[];
-    await cleanupAndUploadDatabases(
-      testRepoName,
-      getCodeQL(),
-      getTestConfig(tmpDir),
-      testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
-    );
+      const loggedMessages = [] as LoggedMessage[];
+      await cleanupAndUploadDatabases(
+        testRepoName,
+        getCodeQL(),
+        getTestConfig(tmpDir),
+        testApiDetails,
+        createFeatures([]),
+        getRecordingLogger(loggedMessages),
+      );
 
-    t.assert(
-      loggedMessages.find(
-        (v) =>
-          v.type === "warning" &&
-          v.message ===
-            "Failed to upload database for javascript: some error message",
-      ) !== undefined,
-    );
-  });
-});
+      t.assert(
+        loggedMessages.find(
+          (v) =>
+            v.type === "warning" &&
+            v.message ===
+              "Failed to upload database for javascript: some error message",
+        ) !== undefined,
+      );
+    });
+  },
+);
+
+test.serial(
+  "Don't crash if uploading a database fails with a retryable error",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getRequiredInput")
+        .withArgs("upload-database")
+        .returns("true");
+      sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
+
+      await mockHttpRequests(500);
+
+      // Stub setTimeout to fire immediately to avoid real delays from retry backoff.
+      const originalSetTimeout = global.setTimeout;
+      sinon
+        .stub(global, "setTimeout")
+        .callsFake((fn: () => void) => originalSetTimeout(fn, 0));
+
+      const loggedMessages = [] as LoggedMessage[];
+      await cleanupAndUploadDatabases(
+        testRepoName,
+        getCodeQL(),
+        getTestConfig(tmpDir),
+        testApiDetails,
+        createFeatures([]),
+        getRecordingLogger(loggedMessages),
+      );
+
+      t.assert(
+        loggedMessages.find(
+          (v) =>
+            v.type === "warning" &&
+            v.message ===
+              "Failed to upload database for javascript: some error message",
+        ) !== undefined,
+      );
+    });
+  },
+);
 
 test.serial("Successfully uploading a database to github.com", async (t) => {
   await withTmpDir(async (tmpDir) => {

@@ -1002,11 +1002,11 @@ async function isTrapCachingEnabled(
   features: FeatureEnablement,
   overlayDatabaseMode: OverlayDatabaseMode,
 ): Promise<boolean> {
-  // If the workflow specified something always respect that
+  // If the workflow specified something, always respect that.
   const trapCaching = getOptionalInput("trap-caching");
   if (trapCaching !== undefined) return trapCaching === "true";
 
-  // On self-hosted runners which may have slow network access, disable TRAP caching by default
+  // On self-hosted runners which may have slow network access, disable TRAP caching by default.
   if (!isHostedRunner()) return false;
 
   // If overlay analysis is enabled, then disable TRAP caching since overlay analysis supersedes it.
@@ -1018,7 +1018,7 @@ async function isTrapCachingEnabled(
     return false;
   }
 
-  // Otherwise, enable TRAP caching
+  // Otherwise, enable TRAP caching.
   return true;
 }
 

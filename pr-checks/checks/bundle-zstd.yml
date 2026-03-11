@@ -3,8 +3,8 @@ description: "A Zstandard CodeQL bundle should be extracted on supported operati
 versions:
   - linked
 operatingSystems:
-  - macos
   - ubuntu
+  - macos
   - windows
 steps:
   - name: Remove CodeQL from toolcache

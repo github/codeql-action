@@ -1,7 +1,13 @@
 name: "Split workflow"
 description: "Tests a split-up workflow in which we first build a database and later analyze it"
-operatingSystems: ["ubuntu", "macos"]
-versions: ["linked", "default", "nightly-latest"] # This feature is not compatible with old CLIs
+operatingSystems:
+  - ubuntu
+  - macos
+# This feature is not compatible with old CLIs
+versions:
+  - linked
+  - default
+  - nightly-latest
 installGo: true
 installDotNet: true
 steps:

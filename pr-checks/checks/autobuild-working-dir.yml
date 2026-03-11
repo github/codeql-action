@@ -1,6 +1,7 @@
 name: "Autobuild working directory"
 description: "Tests working-directory input of autobuild action"
-versions: ["linked"]
+versions:
+  - linked
 steps:
   - name: Test setup
     run: |

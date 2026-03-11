@@ -64,7 +64,6 @@ function createTestInitConfigInputs(
       configInput: undefined,
       buildModeInput: undefined,
       ramInput: undefined,
-      trapCachingEnabled: false,
       dependencyCachingEnabled: CachingKind.None,
       debugMode: false,
       debugArtifactName: "",

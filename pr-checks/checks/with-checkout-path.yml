@@ -1,6 +1,7 @@
 name: "Use a custom `checkout_path`"
 description: "Checks that a custom `checkout_path` will find the proper commit_oid"
-versions: ["linked"]
+versions:
+  - linked
 installGo: true
 installDotNet: true
 steps:

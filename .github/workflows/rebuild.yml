@@ -29,6 +29,15 @@ jobs:
           fetch-depth: 0
           ref: ${{ env.HEAD_REF }}
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            pr-checks/package-lock.json
+
       - name: Remove label
         if: github.event_name == 'pull_request'
         env:
@@ -49,8 +58,17 @@ jobs:
           git fetch origin "$BASE_BRANCH"
 
           # Allow merge conflicts in `lib`, since rebuilding should resolve them.
-          git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected, continuing."
+          git merge "origin/$BASE_BRANCH"
           MERGE_RESULT=$?
+
+          if [ "$MERGE_RESULT" -eq 0 ]; then
+            echo "Merge succeeded cleanly."
+          elif [ "$MERGE_RESULT" -eq 1 ]; then
+            echo "Merge conflicts detected (exit code $MERGE_RESULT), continuing."
+          else
+            echo "git merge failed with unexpected exit code $MERGE_RESULT."
+            exit 1
+          fi
 
           if [ "$MERGE_RESULT" -ne 0 ]; then
             echo "merge-in-progress=true" >> $GITHUB_OUTPUT
@@ -104,7 +122,7 @@ jobs:
             # Otherwise, just commit the changes.
             if git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
               echo "In progress merge detected, finishing it up."
-              git merge --continue --no-edit
+              git commit --no-edit
             else
               echo "No in-progress merge detected, committing changes."
               git commit -m "Rebuild"

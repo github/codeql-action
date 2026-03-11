@@ -998,7 +998,7 @@ async function validateOverlayDatabaseMode(
   });
 }
 
-async function isTrapCachingEnabled(
+export async function isTrapCachingEnabled(
   features: FeatureEnablement,
   overlayDatabaseMode: OverlayDatabaseMode,
 ): Promise<boolean> {

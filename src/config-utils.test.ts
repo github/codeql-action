@@ -26,6 +26,7 @@ import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
+  setupActionsVars,
   mockLanguagesInRepo as mockLanguagesInRepo,
   createFeatures,
   getRecordingLogger,
@@ -2054,3 +2055,121 @@ test.serial("getPrimaryAnalysisConfig - Code Scanning + Code Quality", (t) => {
     AnalysisKind.CodeScanning,
   );
 });
+
+test.serial(
+  "isTrapCachingEnabled: explicit input true is respected",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns("true");
+      t.true(
+        await configUtils.isTrapCachingEnabled(
+          createFeatures([]),
+          OverlayDatabaseMode.None,
+        ),
+      );
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: disabled on self-hosted runner by default",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns(undefined);
+      t.false(
+        await configUtils.isTrapCachingEnabled(
+          createFeatures([]),
+          OverlayDatabaseMode.None,
+        ),
+      );
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: enabled on hosted runner by default",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
+      setupActionsVars(tmpDir, hostedToolCache);
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns(undefined);
+      t.true(
+        await configUtils.isTrapCachingEnabled(
+          createFeatures([]),
+          OverlayDatabaseMode.None,
+        ),
+      );
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: enabled on hosted runner when overlay enabled but feature flag off",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
+      setupActionsVars(tmpDir, hostedToolCache);
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns(undefined);
+      t.true(
+        await configUtils.isTrapCachingEnabled(
+          createFeatures([]),
+          OverlayDatabaseMode.Overlay,
+        ),
+      );
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: disabled on hosted runner when overlay enabled and feature flag on",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
+      setupActionsVars(tmpDir, hostedToolCache);
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns(undefined);
+      t.false(
+        await configUtils.isTrapCachingEnabled(
+          createFeatures([Feature.OverlayAnalysisDisableTrapCaching]),
+          OverlayDatabaseMode.Overlay,
+        ),
+      );
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: enabled on hosted runner when overlay is None even with feature flag on",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
+      setupActionsVars(tmpDir, hostedToolCache);
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns(undefined);
+      t.true(
+        await configUtils.isTrapCachingEnabled(
+          createFeatures([Feature.OverlayAnalysisDisableTrapCaching]),
+          OverlayDatabaseMode.None,
+        ),
+      );
+    });
+  },
+);

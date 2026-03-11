@@ -55,8 +55,12 @@ jobs:
           git fetch origin "$BASE_BRANCH"
 
           # Allow merge conflicts in `lib`, since rebuilding should resolve them.
-          git merge "origin/$BASE_BRANCH" || echo "Merge conflicts detected, continuing."
-          MERGE_RESULT=$?
+          if git merge "origin/$BASE_BRANCH"; then
+            MERGE_RESULT=0
+          else
+            MERGE_RESULT=$?
+            echo "Merge conflicts detected, continuing."
+          fi
 
           if [ "$MERGE_RESULT" -ne 0 ]; then
             echo "merge-in-progress=true" >> $GITHUB_OUTPUT

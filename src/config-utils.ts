@@ -999,8 +999,8 @@ async function validateOverlayDatabaseMode(
 }
 
 async function isTrapCachingEnabled(
-  _features: FeatureEnablement,
-  _overlayDatabaseMode: OverlayDatabaseMode,
+  features: FeatureEnablement,
+  overlayDatabaseMode: OverlayDatabaseMode,
 ): Promise<boolean> {
   // If the workflow specified something always respect that
   const trapCaching = getOptionalInput("trap-caching");
@@ -1008,6 +1008,15 @@ async function isTrapCachingEnabled(
 
   // On self-hosted runners which may have slow network access, disable TRAP caching by default
   if (!isHostedRunner()) return false;
+
+  // If overlay analysis is enabled, then disable TRAP caching since overlay analysis supersedes it.
+  // This change is gated behind a feature flag.
+  if (
+    overlayDatabaseMode !== OverlayDatabaseMode.None &&
+    (await features.getValue(Feature.OverlayAnalysisDisableTrapCaching))
+  ) {
+    return false;
+  }
 
   // Otherwise, enable TRAP caching
   return true;

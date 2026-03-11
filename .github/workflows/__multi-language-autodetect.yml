@@ -25,44 +25,34 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
-      go-version:
-        type: string
-        description: The version of Go to install
-        required: false
-        default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
       dotnet-version:
         type: string
         description: The version of .NET to install
         required: false
         default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
   workflow_call:
     inputs:
-      go-version:
-        type: string
-        description: The version of Go to install
-        required: false
-        default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
       dotnet-version:
         type: string
         description: The version of .NET to install
         required: false
         default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: multi-language-autodetect-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: multi-language-autodetect-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
   multi-language-autodetect:
     strategy:
@@ -115,6 +105,15 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -122,20 +121,14 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ inputs.go-version || '>=1.21.0' }}
-          cache: false
-      - name: Install Python
-        if: matrix.version != 'nightly-latest'
+      - name: Install Python 3.13 for older CLI versions
+        # We need Python 3.13 for older CLI versions because they are not compatible with Python 3.14 or newer.
+        # See https://github.com/github/codeql-action/pull/3212
+        if: matrix.version != 'nightly-latest' && matrix.version != 'linked'
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ inputs.python-version || '3.13' }}
-      - name: Install .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+          python-version: '3.13'
+
       - name: Use Xcode 16
         if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
         run: sudo xcode-select -s "/Applications/Xcode_16.app"

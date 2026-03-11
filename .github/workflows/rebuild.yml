@@ -34,6 +34,9 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            pr-checks/package-lock.json
 
       - name: Remove label
         if: github.event_name == 'pull_request'
@@ -55,11 +58,16 @@ jobs:
           git fetch origin "$BASE_BRANCH"
 
           # Allow merge conflicts in `lib`, since rebuilding should resolve them.
-          if git merge "origin/$BASE_BRANCH"; then
-            MERGE_RESULT=0
+          git merge "origin/$BASE_BRANCH"
+          MERGE_RESULT=$?
+
+          if [ "$MERGE_RESULT" -eq 0 ]; then
+            echo "Merge succeeded cleanly."
+          elif [ "$MERGE_RESULT" -eq 1 ]; then
+            echo "Merge conflicts detected (exit code $MERGE_RESULT), continuing."
           else
-            MERGE_RESULT=$?
-            echo "Merge conflicts detected, continuing."
+            echo "git merge failed with unexpected exit code $MERGE_RESULT."
+            exit 1
           fi
 
           if [ "$MERGE_RESULT" -ne 0 ]; then

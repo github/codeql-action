@@ -38,6 +38,8 @@ interface Specification extends JobSpecification {
   versions?: string[];
   /** Operating system prefixes used to select runner images (e.g. `["ubuntu", "macos"]`). */
   operatingSystems?: string[];
+  /** Per-OS version overrides. If specified for an OS, only those versions are tested on that OS. */
+  osCodeQlVersions?: Record<string, string[]>;
   /** Whether to use the all-platform CodeQL bundle. */
   useAllPlatformBundle?: string;
   /** Values for the `analysis-kinds` matrix dimension. */
@@ -317,6 +319,13 @@ function generateJobMatrix(
     const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
 
     for (const operatingSystem of operatingSystems) {
+      // If osCodeQlVersions is set for this OS, only include the specified CodeQL versions.
+      const allowedVersions =
+        checkSpecification.osCodeQlVersions?.[operatingSystem];
+      if (allowedVersions && !allowedVersions.includes(version)) {
+        continue;
+      }
+
       const runnerImagesForOs = runnerImages.filter((image) =>
         image.startsWith(operatingSystem),
       );

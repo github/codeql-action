@@ -1,8 +1,8 @@
 name: "Multi-language repository"
-description: "An end-to-end integration test of a multi-language repository using automatic language detection for macOS"
+description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems:
-  - macos
   - ubuntu
+  - macos
 env:
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true

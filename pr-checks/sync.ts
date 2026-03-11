@@ -78,7 +78,8 @@ interface JobSpecification {
 /** Describes language/framework-specific steps and inputs. */
 interface LanguageSetup {
   specProperty: keyof JobSpecification;
-  inputs?: WorkflowInputs;
+  /** The names of the known inputs which are required for this setup step. */
+  inputs?: KnownInputName[];
   steps: any[];
 }
 
@@ -118,6 +119,46 @@ const defaultLanguageVersions = {
   csharp: "9.x",
 } as const satisfies Partial<Record<KnownLanguage, string>>;
 
+/** A mapping from known input names to their specifications. */
+const inputSpecs: WorkflowInputs = {
+  [KnownInputName.GoVersion]: {
+    type: "string",
+    description: "The version of Go to install",
+    required: false,
+    default: defaultLanguageVersions.go,
+  },
+  [KnownInputName.JavaVersion]: {
+    type: "string",
+    description: "The version of Java to install",
+    required: false,
+    default: defaultLanguageVersions.java,
+  },
+  [KnownInputName.PythonVersion]: {
+    type: "string",
+    description: "The version of Python to install",
+    required: false,
+    default: defaultLanguageVersions.python,
+  },
+  [KnownInputName.DotnetVersion]: {
+    type: "string",
+    description: "The version of .NET to install",
+    required: false,
+    default: defaultLanguageVersions.csharp,
+  },
+};
+
+/** Obtains a `WorkflowInputs` object for all the inputs given by `requiredInputs`. */
+function getSetupInputs(requiredInputs: Set<KnownInputName>): WorkflowInputs {
+  const inputs: WorkflowInputs = {};
+
+  // Copy the input specifications for the requested inputs into the output.
+  for (const requiredInput of requiredInputs) {
+    inputs[requiredInput] = inputSpecs[requiredInput];
+  }
+
+  return inputs;
+}
+
 /** A partial mapping from known languages to their specific setup information. */
 const languageSetups: LanguageSetups = {
   javascript: {
@@ -139,14 +180,7 @@ const languageSetups: LanguageSetups = {
   },
   go: {
     specProperty: "installGo",
-    inputs: {
-      [KnownInputName.GoVersion]: {
-        type: "string",
-        description: "The version of Go to install",
-        required: false,
-        default: defaultLanguageVersions.go,
-      },
-    },
+    inputs: [KnownInputName.GoVersion],
     steps: [
       {
         name: "Install Go",
@@ -163,14 +197,7 @@ const languageSetups: LanguageSetups = {
   },
   java: {
     specProperty: "installJava",
-    inputs: {
-      [KnownInputName.JavaVersion]: {
-        type: "string",
-        description: "The version of Java to install",
-        required: false,
-        default: defaultLanguageVersions.java,
-      },
-    },
+    inputs: [KnownInputName.JavaVersion],
     steps: [
       {
         name: "Install Java",
@@ -187,14 +214,7 @@ const languageSetups: LanguageSetups = {
   },
   python: {
     specProperty: "installPython",
-    inputs: {
-      [KnownInputName.PythonVersion]: {
-        type: "string",
-        description: "The version of Python to install",
-        required: false,
-        default: defaultLanguageVersions.python,
-      },
-    },
+    inputs: [KnownInputName.PythonVersion],
     steps: [
       {
         name: "Install Python",
@@ -210,14 +230,7 @@ const languageSetups: LanguageSetups = {
   },
   csharp: {
     specProperty: "installDotNet",
-    inputs: {
-      [KnownInputName.DotnetVersion]: {
-        type: "string",
-        description: "The version of .NET to install",
-        required: false,
-        default: defaultLanguageVersions.csharp,
-      },
-    },
+    inputs: [KnownInputName.DotnetVersion],
     steps: [
       {
         name: "Install .NET",
@@ -248,6 +261,11 @@ const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
 function loadYaml(filePath: string): yaml.Document {
   const content = fs.readFileSync(filePath, "utf8");
   return yaml.parseDocument(content);
+}
+
+/** Computes the union of all given `sets`. */
+function unionAll<T>(sets: Array<Set<T>>): Set<T> {
+  return sets.reduce((prev, cur) => prev.union(cur), new Set<T>());
 }
 
 /**
@@ -332,13 +350,13 @@ function generateJobMatrix(
  * Retrieves setup steps and additional input definitions based on specific languages or frameworks
  * that are requested by the `checkSpecification`.
  *
- * @returns An object containing setup steps and additional input specifications.
+ * @returns An object containing setup steps and required input names.
  */
 function getSetupSteps(checkSpecification: JobSpecification): {
-  inputs: WorkflowInputs;
+  inputs: Set<KnownInputName>;
   steps: any[];
 } {
-  let inputs: WorkflowInputs = {};
+  const inputs: Array<Set<KnownInputName>> = [];
   const steps: any[] = [];
 
   for (const language of Object.values(KnownLanguage).sort()) {
@@ -352,7 +370,7 @@ function getSetupSteps(checkSpecification: JobSpecification): {
     }
 
     steps.push(...setupSpec.steps);
-    inputs = { ...inputs, ...setupSpec.inputs };
+    inputs.push(new Set(setupSpec.inputs));
   }
 
   const installYq = checkSpecification.installYq;
@@ -371,7 +389,7 @@ function getSetupSteps(checkSpecification: JobSpecification): {
     });
   }
 
-  return { inputs, steps };
+  return { inputs: unionAll(inputs), steps };
 }
 
 /**
@@ -527,13 +545,16 @@ function generateValidationJobs(
   specDocument: yaml.Document,
   checkSpecification: Specification,
   checkName: string,
-) {
+): {
+  validationJobs: Record<string, any>;
+  workflowInputs: Set<KnownInputName>;
+} {
   if (checkSpecification.validationJobs === undefined) {
-    return { validationJobs: {}, workflowInputs: {} };
+    return { validationJobs: {}, workflowInputs: new Set() };
   }
 
   const validationJobs: Record<string, any> = {};
-  let workflowInputs: WorkflowInputs = {};
+  const workflowInputs: Array<Set<KnownInputName>> = [];
 
   for (const [jobName, jobSpec] of Object.entries(
     checkSpecification.validationJobs,
@@ -551,10 +572,13 @@ function generateValidationJobs(
       jobName,
     );
     validationJobs[jobName] = validationJob;
-    workflowInputs = { ...workflowInputs, ...inputs };
+    workflowInputs.push(inputs);
   }
 
-  return { validationJobs, workflowInputs };
+  return {
+    validationJobs,
+    workflowInputs: unionAll(workflowInputs),
+  };
 }
 
 /**
@@ -595,7 +619,9 @@ function main(): void {
     );
     const { validationJobs, workflowInputs: validationJobInputs } =
       generateValidationJobs(specDocument, checkSpecification, checkName);
-    const combinedInputs = { ...workflowInputs, ...validationJobInputs };
+    const combinedInputs = getSetupInputs(
+      workflowInputs.union(validationJobInputs),
+    );
 
     // If this check belongs to a named collection, record it.
     if (checkSpecification.collection) {

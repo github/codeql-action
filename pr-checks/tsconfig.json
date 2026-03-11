@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     /* Basic Options */
-    "lib": ["ES2022"],
+    "lib": ["esnext"],
     "target": "ES2022",
     "module": "commonjs",
     "rootDir": "..",

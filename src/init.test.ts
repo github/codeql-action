@@ -1,6 +1,8 @@
 import * as fs from "fs";
 import path from "path";
 
+import * as core from "@actions/core";
+import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
@@ -11,9 +13,9 @@ import {
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
   getFileCoverageInformationEnabled,
+  logFileCoverageOnPrsDeprecationWarning,
 } from "./init";
 import { KnownLanguage } from "./languages";
-import { parseRepositoryNwo } from "./repository";
 import {
   createFeatures,
   LoggedMessage,
@@ -453,13 +455,15 @@ test(
 );
 
 test("file coverage information enabled when debugMode is true", async (t) => {
-  t.true(
-    await getFileCoverageInformationEnabled(
-      true, // debugMode
-      parseRepositoryNwo("github/codeql-action"),
-      createFeatures([Feature.SkipFileCoverageOnPrs]),
-    ),
+  const result = await getFileCoverageInformationEnabled(
+    true, // debugMode
+    createStubCodeQL({}),
+    createFeatures([Feature.SkipFileCoverageOnPrs]),
+    {},
   );
+  t.true(result.enabled);
+  t.false(result.enabledByRepositoryProperty);
+  t.false(result.showDeprecationWarning);
 });
 
 test.serial(
@@ -467,43 +471,69 @@ test.serial(
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(false);
 
-    t.true(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        parseRepositoryNwo("github/codeql-action"),
-        createFeatures([Feature.SkipFileCoverageOnPrs]),
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     );
+    t.true(result.enabled);
+    t.false(result.enabledByRepositoryProperty);
+    t.false(result.showDeprecationWarning);
   },
 );
 
 test.serial(
-  "file coverage information enabled when owner is not 'github'",
+  "file coverage information enabled when feature flag is not enabled, with deprecation warning",
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
 
-    t.true(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        parseRepositoryNwo("other-org/some-repo"),
-        createFeatures([Feature.SkipFileCoverageOnPrs]),
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([]),
+      {},
     );
+    t.true(result.enabled);
+    t.false(result.enabledByRepositoryProperty);
+    t.true(result.showDeprecationWarning);
   },
 );
 
 test.serial(
-  "file coverage information enabled when feature flag is not enabled",
+  "file coverage information enabled when repository property is set",
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
 
-    t.true(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        parseRepositoryNwo("github/codeql-action"),
-        createFeatures([]),
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {
+        "github-codeql-file-coverage-on-prs": true,
+      },
     );
+    t.true(result.enabled);
+    t.true(result.enabledByRepositoryProperty);
+    t.false(result.showDeprecationWarning);
+  },
+);
+
+test.serial(
+  "file coverage information enabled when env var opt-out is set",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+    process.env["CODEQL_ACTION_FILE_COVERAGE_ON_PRS"] = "true";
+
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
+    );
+    t.true(result.enabled);
+    t.false(result.enabledByRepositoryProperty);
+    t.false(result.showDeprecationWarning);
   },
 );
 
@@ -512,12 +542,174 @@ test.serial(
   async (t) => {
     sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
 
-    t.false(
-      await getFileCoverageInformationEnabled(
-        false, // debugMode
-        parseRepositoryNwo("github/codeql-action"),
-        createFeatures([Feature.SkipFileCoverageOnPrs]),
-      ),
+    const result = await getFileCoverageInformationEnabled(
+      false, // debugMode
+      createStubCodeQL({}),
+      createFeatures([Feature.SkipFileCoverageOnPrs]),
+      {},
     );
+    t.false(result.enabled);
+    t.false(result.enabledByRepositoryProperty);
+    t.false(result.showDeprecationWarning);
+  },
+);
+
+test.serial(
+  "file coverage deprecation warning for org-owned repo with default setup recommends repo property",
+  (t) => {
+    const exportVariableStub = sinon.stub(core, "exportVariable");
+    sinon.stub(actionsUtil, "isDefaultSetup").returns(true);
+    github.context.payload = {
+      repository: {
+        name: "test-repo",
+        owner: { login: "test-org", type: "Organization" },
+      },
+    };
+    const messages: LoggedMessage[] = [];
+    logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
+    t.is(messages.length, 1);
+    t.is(messages[0].type, "warning");
+    t.is(
+      messages[0].message,
+      "Starting April 2026, the CodeQL Action will skip computing file coverage information on pull requests " +
+        "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
+        "To opt out of this change, create a custom repository property " +
+        'with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to ' +
+        "`true` in the repository's settings.",
+    );
+    t.true(exportVariableStub.calledOnce);
+  },
+);
+
+test.serial(
+  "file coverage deprecation warning for org-owned repo with advanced setup recommends env var and repo property",
+  (t) => {
+    const exportVariableStub = sinon.stub(core, "exportVariable");
+    sinon.stub(actionsUtil, "isDefaultSetup").returns(false);
+    github.context.payload = {
+      repository: {
+        name: "test-repo",
+        owner: { login: "test-org", type: "Organization" },
+      },
+    };
+    const messages: LoggedMessage[] = [];
+    logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
+    t.is(messages.length, 1);
+    t.is(messages[0].type, "warning");
+    t.is(
+      messages[0].message,
+      "Starting April 2026, the CodeQL Action will skip computing file coverage information on pull requests " +
+        "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
+        "To opt out of this change, set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`. " +
+        "Alternatively, create a custom repository property " +
+        'with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to ' +
+        "`true` in the repository's settings.",
+    );
+    t.true(exportVariableStub.calledOnce);
+  },
+);
+
+test.serial(
+  "file coverage deprecation warning for user-owned repo with default setup recommends advanced setup",
+  (t) => {
+    const exportVariableStub = sinon.stub(core, "exportVariable");
+    sinon.stub(actionsUtil, "isDefaultSetup").returns(true);
+    github.context.payload = {
+      repository: {
+        name: "test-repo",
+        owner: { login: "test-user", type: "User" },
+      },
+    };
+    const messages: LoggedMessage[] = [];
+    logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
+    t.is(messages.length, 1);
+    t.is(messages[0].type, "warning");
+    t.is(
+      messages[0].message,
+      "Starting April 2026, the CodeQL Action will skip computing file coverage information on pull requests " +
+        "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
+        "To opt out of this change, switch to an advanced setup workflow and " +
+        "set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
+    );
+    t.true(exportVariableStub.calledOnce);
+  },
+);
+
+test.serial(
+  "file coverage deprecation warning for user-owned repo with advanced setup recommends env var",
+  (t) => {
+    const exportVariableStub = sinon.stub(core, "exportVariable");
+    sinon.stub(actionsUtil, "isDefaultSetup").returns(false);
+    github.context.payload = {
+      repository: {
+        name: "test-repo",
+        owner: { login: "test-user", type: "User" },
+      },
+    };
+    const messages: LoggedMessage[] = [];
+    logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
+    t.is(messages.length, 1);
+    t.is(messages[0].type, "warning");
+    t.is(
+      messages[0].message,
+      "Starting April 2026, the CodeQL Action will skip computing file coverage information on pull requests " +
+        "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
+        "To opt out of this change, set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
+    );
+    t.true(exportVariableStub.calledOnce);
+  },
+);
+
+test.serial(
+  "file coverage deprecation warning for unknown owner type with default setup recommends advanced setup",
+  (t) => {
+    const exportVariableStub = sinon.stub(core, "exportVariable");
+    sinon.stub(actionsUtil, "isDefaultSetup").returns(true);
+    github.context.payload = { repository: undefined };
+    const messages: LoggedMessage[] = [];
+    logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
+    t.is(messages.length, 1);
+    t.is(messages[0].type, "warning");
+    t.is(
+      messages[0].message,
+      "Starting April 2026, the CodeQL Action will skip computing file coverage information on pull requests " +
+        "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
+        "To opt out of this change, switch to an advanced setup workflow and " +
+        "set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
+    );
+    t.true(exportVariableStub.calledOnce);
+  },
+);
+
+test.serial(
+  "file coverage deprecation warning for unknown owner type with advanced setup recommends env var",
+  (t) => {
+    const exportVariableStub = sinon.stub(core, "exportVariable");
+    sinon.stub(actionsUtil, "isDefaultSetup").returns(false);
+    github.context.payload = { repository: undefined };
+    const messages: LoggedMessage[] = [];
+    logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
+    t.is(messages.length, 1);
+    t.is(messages[0].type, "warning");
+    t.is(
+      messages[0].message,
+      "Starting April 2026, the CodeQL Action will skip computing file coverage information on pull requests " +
+        "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
+        "To opt out of this change, set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
+    );
+    t.true(exportVariableStub.calledOnce);
+  },
+);
+
+test.serial(
+  "logFileCoverageOnPrsDeprecationWarning does not log if already logged",
+  (t) => {
+    process.env["CODEQL_ACTION_DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION"] =
+      "true";
+    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const messages: LoggedMessage[] = [];
+    logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
+    t.is(messages.length, 0);
+    t.true(exportVariableStub.notCalled);
   },
 );

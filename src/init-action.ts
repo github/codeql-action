@@ -48,6 +48,7 @@ import {
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
   getFileCoverageInformationEnabled,
+  logFileCoverageOnPrsDeprecationWarning,
   initCodeQL,
   initConfig,
   runDatabaseInitCluster,
@@ -343,6 +344,14 @@ async function run(startedAt: Date) {
 
     analysisKinds = await getAnalysisKinds(logger);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
+    const fileCoverageResult = await getFileCoverageInformationEnabled(
+      debugMode,
+      codeql,
+      features,
+      repositoryProperties,
+    );
+
     config = await initConfig(features, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
@@ -372,12 +381,8 @@ async function run(startedAt: Date) {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
-      repositoryProperties: repositoryPropertiesResult.orElse({}),
-      enableFileCoverageInformation: await getFileCoverageInformationEnabled(
-        debugMode,
-        repositoryNwo,
-        features,
-      ),
+      repositoryProperties,
+      enableFileCoverageInformation: fileCoverageResult.enabled,
       logger,
     });
 
@@ -392,6 +397,21 @@ async function run(startedAt: Date) {
           },
         ),
       );
+    }
+
+    if (fileCoverageResult.enabledByRepositoryProperty) {
+      addNoLanguageDiagnostic(
+        config,
+        makeTelemetryDiagnostic(
+          "codeql-action/file-coverage-on-prs-enabled-by-repository-property",
+          "File coverage on PRs enabled by repository property",
+          {},
+        ),
+      );
+    }
+
+    if (fileCoverageResult.showDeprecationWarning) {
+      logFileCoverageOnPrsDeprecationWarning(logger);
     }
 
     await checkInstallPython311(config.languages, codeql);

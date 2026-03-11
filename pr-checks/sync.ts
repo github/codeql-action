@@ -5,6 +5,8 @@ import * as path from "path";
 
 import * as yaml from "yaml";
 
+import { KnownLanguage } from "../src/languages";
+
 /** Known workflow input names. */
 enum KnownInputName {
   GoVersion = "go-version",
@@ -29,11 +31,7 @@ type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 /**
  * Represents PR check specifications.
  */
-interface Specification {
-  /** The display name for the check. */
-  name: string;
-  /** The workflow steps specific to this check. */
-  steps: any[];
+interface Specification extends JobSpecification {
   /** Workflow-level input definitions forwarded to `workflow_dispatch`/`workflow_call`. */
   inputs?: Record<string, WorkflowInput>;
   /** CodeQL bundle versions to test against. Defaults to `DEFAULT_TEST_VERSIONS`. */
@@ -45,26 +43,48 @@ interface Specification {
   /** Values for the `analysis-kinds` matrix dimension. */
   analysisKinds?: string[];
 
+  /** Container image configuration for the job. */
+  container?: any;
+  /** Service containers for the job. */
+  services?: any;
+
+  /** Additional jobs to run after the main PR check job. */
+  validationJobs?: Record<string, JobSpecification>;
+
+  /** If set, this check is part of a named collection that gets its own caller workflow. */
+  collection?: string;
+}
+
+/** Represents job specifications. */
+interface JobSpecification {
+  /** The display name for the check. */
+  name: string;
+  /** Custom permissions override for the job. */
+  permissions?: Record<string, string>;
+  /** Extra environment variables for the job. */
+  env?: Record<string, any>;
+
+  /** The workflow steps specific to this check. */
+  steps: any[];
+
   installNode?: boolean;
   installGo?: boolean;
   installJava?: boolean;
   installPython?: boolean;
   installDotNet?: boolean;
   installYq?: boolean;
-
-  /** Container image configuration for the job. */
-  container?: any;
-  /** Service containers for the job. */
-  services?: any;
-
-  /** Custom permissions override for the job. */
-  permissions?: Record<string, string>;
-  /** Extra environment variables for the job. */
-  env?: Record<string, any>;
-
-  /** If set, this check is part of a named collection that gets its own caller workflow. */
-  collection?: string;
 }
+
+/** Describes language/framework-specific steps and inputs. */
+interface LanguageSetup {
+  specProperty: keyof JobSpecification;
+  /** The names of the known inputs which are required for this setup step. */
+  inputs?: KnownInputName[];
+  steps: any[];
+}
+
+/** Describes partial mappings from known languages to their specific setup information. */
+type LanguageSetups = Partial<Record<KnownLanguage, LanguageSetup>>;
 
 // The default set of CodeQL Bundle versions to use for the PR checks.
 const defaultTestVersions = [
@@ -90,6 +110,147 @@ const defaultTestVersions = [
   "nightly-latest",
 ];
 
+/** The default versions we use for languages / frameworks, if not specified as a workflow input. */
+const defaultLanguageVersions = {
+  javascript: "20.x",
+  go: ">=1.21.0",
+  java: "17",
+  python: "3.13",
+  csharp: "9.x",
+} as const satisfies Partial<Record<KnownLanguage, string>>;
+
+/** A mapping from known input names to their specifications. */
+const inputSpecs: WorkflowInputs = {
+  [KnownInputName.GoVersion]: {
+    type: "string",
+    description: "The version of Go to install",
+    required: false,
+    default: defaultLanguageVersions.go,
+  },
+  [KnownInputName.JavaVersion]: {
+    type: "string",
+    description: "The version of Java to install",
+    required: false,
+    default: defaultLanguageVersions.java,
+  },
+  [KnownInputName.PythonVersion]: {
+    type: "string",
+    description: "The version of Python to install",
+    required: false,
+    default: defaultLanguageVersions.python,
+  },
+  [KnownInputName.DotnetVersion]: {
+    type: "string",
+    description: "The version of .NET to install",
+    required: false,
+    default: defaultLanguageVersions.csharp,
+  },
+};
+
+/** Obtains a `WorkflowInputs` object for all the inputs given by `requiredInputs`. */
+function getSetupInputs(requiredInputs: Set<KnownInputName>): WorkflowInputs {
+  const inputs: WorkflowInputs = {};
+
+  // Copy the input specifications for the requested inputs into the output.
+  for (const requiredInput of requiredInputs) {
+    inputs[requiredInput] = inputSpecs[requiredInput];
+  }
+
+  return inputs;
+}
+
+/** A partial mapping from known languages to their specific setup information. */
+const languageSetups: LanguageSetups = {
+  javascript: {
+    specProperty: "installNode",
+    steps: [
+      {
+        name: "Install Node.js",
+        uses: "actions/setup-node@v6",
+        with: {
+          "node-version": defaultLanguageVersions.javascript,
+          cache: "npm",
+        },
+      },
+      {
+        name: "Install dependencies",
+        run: "npm ci",
+      },
+    ],
+  },
+  go: {
+    specProperty: "installGo",
+    inputs: [KnownInputName.GoVersion],
+    steps: [
+      {
+        name: "Install Go",
+        uses: "actions/setup-go@v6",
+        with: {
+          "go-version":
+            "${{ inputs.go-version || '" + defaultLanguageVersions.go + "' }}",
+          // to avoid potentially misleading autobuilder results where we expect it to download
+          // dependencies successfully, but they actually come from a warm cache
+          cache: false,
+        },
+      },
+    ],
+  },
+  java: {
+    specProperty: "installJava",
+    inputs: [KnownInputName.JavaVersion],
+    steps: [
+      {
+        name: "Install Java",
+        uses: "actions/setup-java@v5",
+        with: {
+          "java-version":
+            "${{ inputs.java-version || '" +
+            defaultLanguageVersions.java +
+            "' }}",
+          distribution: "temurin",
+        },
+      },
+    ],
+  },
+  python: {
+    specProperty: "installPython",
+    inputs: [KnownInputName.PythonVersion],
+    steps: [
+      {
+        name: "Install Python",
+        uses: "actions/setup-python@v6",
+        with: {
+          "python-version":
+            "${{ inputs.python-version || '" +
+            defaultLanguageVersions.python +
+            "' }}",
+        },
+      },
+    ],
+  },
+  csharp: {
+    specProperty: "installDotNet",
+    inputs: [KnownInputName.DotnetVersion],
+    steps: [
+      {
+        name: "Install .NET",
+        uses: "actions/setup-dotnet@v5",
+        with: {
+          "dotnet-version":
+            "${{ inputs.dotnet-version || '" +
+            defaultLanguageVersions.csharp +
+            "' }}",
+        },
+      },
+    ],
+  },
+};
+
+// This is essentially an arbitrary version of `yq`, which happened to be the one that
+// `choco` fetched when we moved away from using that here.
+// See https://github.com/github/codeql-action/pull/3423
+const YQ_VERSION = "v4.50.1";
+
 const THIS_DIR = __dirname;
 const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
@@ -100,6 +261,11 @@ const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
 function loadYaml(filePath: string): yaml.Document {
   const content = fs.readFileSync(filePath, "utf8");
   return yaml.parseDocument(content);
+}
+
+/** Computes the union of all given `sets`. */
+function unionAll<T>(sets: Array<Set<T>>): Set<T> {
+  return sets.reduce((prev, cur) => prev.union(cur), new Set<T>());
 }
 
 /**
@@ -134,6 +300,287 @@ function stripTrailingWhitespace(content: string): string {
     .join("\n");
 }
 
+/** Generates the matrix for a job. */
+function generateJobMatrix(
+  checkSpecification: Specification,
+): Array<Record<string, any>> {
+  let matrix: Array<Record<string, any>> = [];
+
+  for (const version of checkSpecification.versions ?? defaultTestVersions) {
+    if (version === "latest") {
+      throw new Error(
+        `Did not recognise "version: ${version}". Did you mean "version: linked"?`,
+      );
+    }
+
+    const runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"];
+    const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
+
+    for (const operatingSystem of operatingSystems) {
+      const runnerImagesForOs = runnerImages.filter((image) =>
+        image.startsWith(operatingSystem),
+      );
+
+      for (const runnerImage of runnerImagesForOs) {
+        matrix.push({
+          os: runnerImage,
+          version,
+        });
+      }
+    }
+  }
+
+  if (checkSpecification.analysisKinds) {
+    const newMatrix: Array<Record<string, any>> = [];
+    for (const matrixInclude of matrix) {
+      for (const analysisKind of checkSpecification.analysisKinds) {
+        newMatrix.push({
+          ...matrixInclude,
+          "analysis-kinds": analysisKind,
+        });
+      }
+    }
+    matrix = newMatrix;
+  }
+
+  return matrix;
+}
+
+/**
+ * Retrieves setup steps and additional input definitions based on specific languages or frameworks
+ * that are requested by the `checkSpecification`.
+ *
+ * @returns An object containing setup steps and required input names.
+ */
+function getSetupSteps(checkSpecification: JobSpecification): {
+  inputs: Set<KnownInputName>;
+  steps: any[];
+} {
+  const inputs: Array<Set<KnownInputName>> = [];
+  const steps: any[] = [];
+
+  for (const language of Object.values(KnownLanguage).sort()) {
+    const setupSpec = languageSetups[language];
+
+    if (
+      setupSpec === undefined ||
+      checkSpecification[setupSpec.specProperty] !== true
+    ) {
+      continue;
+    }
+
+    steps.push(...setupSpec.steps);
+    inputs.push(new Set(setupSpec.inputs));
+  }
+
+  const installYq = checkSpecification.installYq;
+
+  if (installYq) {
+    steps.push({
+      name: "Install yq",
+      if: "runner.os == 'Windows'",
+      env: {
+        YQ_PATH: "${{ runner.temp }}/yq",
+        YQ_VERSION,
+      },
+      run:
+        'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n' +
+        'echo "$YQ_PATH" >> "$GITHUB_PATH"',
+    });
+  }
+
+  return { inputs: unionAll(inputs), steps };
+}
+
+/**
+ * Generates an Actions job from the `checkSpecification`.
+ *
+ * @param specDocument
+ * The raw YAML document of the PR check specification.
+ * Used to extract `jobs` without losing the original formatting.
+ * @param checkSpecification The PR check specification.
+ * @returns The job and additional workflow inputs.
+ */
+function generateJob(
+  specDocument: yaml.Document,
+  checkSpecification: Specification,
+) {
+  const matrix: Array<Record<string, any>> =
+    generateJobMatrix(checkSpecification);
+
+  const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
+    ? checkSpecification.useAllPlatformBundle
+    : "false";
+
+  // Determine which languages or frameworks have to be installed.
+  const setupInfo = getSetupSteps(checkSpecification);
+  const workflowInputs = setupInfo.inputs;
+
+  // Construct the workflow steps needed for this check.
+  const steps: any[] = [
+    {
+      name: "Check out repository",
+      uses: "actions/checkout@v6",
+    },
+    ...setupInfo.steps,
+    {
+      name: "Prepare test",
+      id: "prepare-test",
+      uses: "./.github/actions/prepare-test",
+      with: {
+        version: "${{ matrix.version }}",
+        "use-all-platform-bundle": useAllPlatformBundle,
+        // If the action is being run from a container, then do not setup kotlin.
+        // This is because the kotlin binaries cannot be downloaded from the container.
+        "setup-kotlin": "container" in checkSpecification ? "false" : "true",
+      },
+    },
+  ];
+
+  // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
+  const specSteps = specDocument.get("steps") as yaml.YAMLSeq;
+
+  // A handful of workflow specifications use double quotes for values, while we generally use single quotes.
+  // This replaces double quotes with single quotes for consistency.
+  yaml.visit(specSteps, {
+    Scalar(_key, node) {
+      if (node.type === "QUOTE_DOUBLE") {
+        node.type = "QUOTE_SINGLE";
+      }
+    },
+  });
+
+  // Add the generated steps in front of the ones from the specification.
+  specSteps.items.unshift(...steps);
+
+  const checkJob: Record<string, any> = {
+    strategy: {
+      "fail-fast": false,
+      matrix: {
+        include: matrix,
+      },
+    },
+    name: checkSpecification.name,
+    if: "github.triggering_actor != 'dependabot[bot]'",
+    permissions: {
+      contents: "read",
+      "security-events": "read",
+    },
+    "timeout-minutes": 45,
+    "runs-on": "${{ matrix.os }}",
+    steps: specSteps,
+  };
+
+  if (checkSpecification.permissions) {
+    checkJob.permissions = checkSpecification.permissions;
+  }
+
+  for (const key of ["env", "container", "services"] as const) {
+    if (checkSpecification[key] !== undefined) {
+      checkJob[key] = checkSpecification[key];
+    }
+  }
+
+  checkJob.env = checkJob.env ?? {};
+  if (!("CODEQL_ACTION_TEST_MODE" in checkJob.env)) {
+    checkJob.env.CODEQL_ACTION_TEST_MODE = true;
+  }
+
+  return { checkJob, workflowInputs };
+}
+
+/** Generates a validation job. */
+function generateValidationJob(
+  specDocument: yaml.Document,
+  jobSpecification: JobSpecification,
+  checkName: string,
+  name: string,
+) {
+  // Determine which languages or frameworks have to be installed.
+  const { inputs, steps } = getSetupSteps(jobSpecification);
+
+  // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
+  const specSteps = specDocument.getIn([
+    "validationJobs",
+    name,
+    "steps",
+  ]) as yaml.YAMLSeq;
+
+  // Add the generated steps in front of the ones from the specification.
+  specSteps.items.unshift(...steps);
+
+  const validationJob: Record<string, any> = {
+    name: jobSpecification.name,
+    if: "github.triggering_actor != 'dependabot[bot]'",
+    needs: [checkName],
+    permissions: {
+      contents: "read",
+      "security-events": "read",
+    },
+    "timeout-minutes": 5,
+    "runs-on": "ubuntu-slim",
+    steps: specSteps,
+  };
+
+  if (jobSpecification.permissions) {
+    validationJob.permissions = jobSpecification.permissions;
+  }
+
+  for (const key of ["env"] as const) {
+    if (jobSpecification[key] !== undefined) {
+      validationJob[key] = jobSpecification[key];
+    }
+  }
+
+  validationJob.env = validationJob.env ?? {};
+  if (!("CODEQL_ACTION_TEST_MODE" in validationJob.env)) {
+    validationJob.env.CODEQL_ACTION_TEST_MODE = true;
+  }
+
+  return { validationJob, inputs };
+}
+
+/** Generates additional jobs that run after the main check job, based on the `validationJobs` property. */
+function generateValidationJobs(
+  specDocument: yaml.Document,
+  checkSpecification: Specification,
+  checkName: string,
+): {
+  validationJobs: Record<string, any>;
+  workflowInputs: Set<KnownInputName>;
+} {
+  if (checkSpecification.validationJobs === undefined) {
+    return { validationJobs: {}, workflowInputs: new Set() };
+  }
+
+  const validationJobs: Record<string, any> = {};
+  const workflowInputs: Array<Set<KnownInputName>> = [];
+
+  for (const [jobName, jobSpec] of Object.entries(
+    checkSpecification.validationJobs,
+  )) {
+    if (checkName === jobName) {
+      throw new Error(
+        `Validation job '${jobName}' cannot have the same name as the main job.`,
+      );
+    }
+
+    const { validationJob, inputs } = generateValidationJob(
+      specDocument,
+      jobSpec,
+      checkName,
+      jobName,
+    );
+    validationJobs[jobName] = validationJob;
+    workflowInputs.push(inputs);
+  }
+
+  return {
+    validationJobs,
+    workflowInputs: unionAll(workflowInputs),
+  };
+}
+
 /**
  * Main entry point for the sync script.
  */
@@ -166,248 +613,15 @@ function main(): void {
 
     console.log(`Processing: ${checkName} — "${checkSpecification.name}"`);
 
-    const workflowInputs: WorkflowInputs = {};
-    let matrix: Array<Record<string, any>> = [];
-
-    for (const version of checkSpecification.versions ?? defaultTestVersions) {
-      if (version === "latest") {
-        throw new Error(
-          'Did not recognise "version: latest". Did you mean "version: linked"?',
-        );
-      }
-
-      const runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"];
-      const operatingSystems = checkSpecification.operatingSystems ?? [
-        "ubuntu",
-      ];
-
-      for (const operatingSystem of operatingSystems) {
-        const runnerImagesForOs = runnerImages.filter((image) =>
-          image.startsWith(operatingSystem),
-        );
-
-        for (const runnerImage of runnerImagesForOs) {
-          matrix.push({
-            os: runnerImage,
-            version,
-          });
-        }
-      }
-    }
-
-    const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
-      ? checkSpecification.useAllPlatformBundle
-      : "false";
-
-    if (checkSpecification.analysisKinds) {
-      const newMatrix: Array<Record<string, any>> = [];
-      for (const matrixInclude of matrix) {
-        for (const analysisKind of checkSpecification.analysisKinds) {
-          newMatrix.push({
-            ...matrixInclude,
-            "analysis-kinds": analysisKind,
-          });
-        }
-      }
-      matrix = newMatrix;
-    }
-
-    // Construct the workflow steps needed for this check.
-    const steps: any[] = [
-      {
-        name: "Check out repository",
-        uses: "actions/checkout@v6",
-      },
-    ];
-
-    const installNode = checkSpecification.installNode;
-
-    if (installNode) {
-      steps.push(
-        {
-          name: "Install Node.js",
-          uses: "actions/setup-node@v6",
-          with: {
-            "node-version": "20.x",
-            cache: "npm",
-          },
-        },
-        {
-          name: "Install dependencies",
-          run: "npm ci",
-        },
-      );
-    }
-
-    steps.push({
-      name: "Prepare test",
-      id: "prepare-test",
-      uses: "./.github/actions/prepare-test",
-      with: {
-        version: "${{ matrix.version }}",
-        "use-all-platform-bundle": useAllPlatformBundle,
-        // If the action is being run from a container, then do not setup kotlin.
-        // This is because the kotlin binaries cannot be downloaded from the container.
-        "setup-kotlin": "container" in checkSpecification ? "false" : "true",
-      },
-    });
-
-    const installGo = checkSpecification.installGo;
-
-    if (installGo) {
-      const baseGoVersionExpr = ">=1.21.0";
-      workflowInputs[KnownInputName.GoVersion] = {
-        type: "string",
-        description: "The version of Go to install",
-        required: false,
-        default: baseGoVersionExpr,
-      };
-
-      steps.push({
-        name: "Install Go",
-        uses: "actions/setup-go@v6",
-        with: {
-          "go-version":
-            "${{ inputs.go-version || '" + baseGoVersionExpr + "' }}",
-          // to avoid potentially misleading autobuilder results where we expect it to download
-          // dependencies successfully, but they actually come from a warm cache
-          cache: false,
-        },
-      });
-    }
-
-    const installJava = checkSpecification.installJava;
-
-    if (installJava) {
-      const baseJavaVersionExpr = "17";
-      workflowInputs[KnownInputName.JavaVersion] = {
-        type: "string",
-        description: "The version of Java to install",
-        required: false,
-        default: baseJavaVersionExpr,
-      };
-
-      steps.push({
-        name: "Install Java",
-        uses: "actions/setup-java@v5",
-        with: {
-          "java-version":
-            "${{ inputs.java-version || '" + baseJavaVersionExpr + "' }}",
-          distribution: "temurin",
-        },
-      });
-    }
-
-    const installPython = checkSpecification.installPython;
-
-    if (installPython) {
-      const basePythonVersionExpr = "3.13";
-      workflowInputs[KnownInputName.PythonVersion] = {
-        type: "string",
-        description: "The version of Python to install",
-        required: false,
-        default: basePythonVersionExpr,
-      };
-
-      steps.push({
-        name: "Install Python",
-        if: "matrix.version != 'nightly-latest'",
-        uses: "actions/setup-python@v6",
-        with: {
-          "python-version":
-            "${{ inputs.python-version || '" + basePythonVersionExpr + "' }}",
-        },
-      });
-    }
-
-    const installDotNet = checkSpecification.installDotNet;
-
-    if (installDotNet) {
-      const baseDotNetVersionExpr = "9.x";
-      workflowInputs[KnownInputName.DotnetVersion] = {
-        type: "string",
-        description: "The version of .NET to install",
-        required: false,
-        default: baseDotNetVersionExpr,
-      };
-
-      steps.push({
-        name: "Install .NET",
-        uses: "actions/setup-dotnet@v5",
-        with: {
-          "dotnet-version":
-            "${{ inputs.dotnet-version || '" + baseDotNetVersionExpr + "' }}",
-        },
-      });
-    }
-
-    const installYq = checkSpecification.installYq;
-
-    if (installYq) {
-      steps.push({
-        name: "Install yq",
-        if: "runner.os == 'Windows'",
-        env: {
-          YQ_PATH: "${{ runner.temp }}/yq",
-          // This is essentially an arbitrary version of `yq`, which happened to be the one that
-          // `choco` fetched when we moved away from using that here.
-          // See https://github.com/github/codeql-action/pull/3423
-          YQ_VERSION: "v4.50.1",
-        },
-        run:
-          'gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"\n' +
-          'echo "$YQ_PATH" >> "$GITHUB_PATH"',
-      });
-    }
-
-    // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
-    const specSteps = specDocument.get("steps") as yaml.YAMLSeq;
-
-    // A handful of workflow specifications use double quotes for values, while we generally use single quotes.
-    // This replaces double quotes with single quotes for consistency.
-    yaml.visit(specSteps, {
-      Scalar(_key, node) {
-        if (node.type === "QUOTE_DOUBLE") {
-          node.type = "QUOTE_SINGLE";
-        }
-      },
-    });
-
-    // Add the generated steps in front of the ones from the specification.
-    specSteps.items.unshift(...steps);
-
-    const checkJob: Record<string, any> = {
-      strategy: {
-        "fail-fast": false,
-        matrix: {
-          include: matrix,
-        },
-      },
-      name: checkSpecification.name,
-      if: "github.triggering_actor != 'dependabot[bot]'",
-      permissions: {
-        contents: "read",
-        "security-events": "read",
-      },
-      "timeout-minutes": 45,
-      "runs-on": "${{ matrix.os }}",
-      steps: specSteps,
-    };
-
-    if (checkSpecification.permissions) {
-      checkJob.permissions = checkSpecification.permissions;
-    }
-
-    for (const key of ["env", "container", "services"] as const) {
-      if (checkSpecification[key] !== undefined) {
-        checkJob[key] = checkSpecification[key];
-      }
-    }
-
-    checkJob.env = checkJob.env ?? {};
-    if (!("CODEQL_ACTION_TEST_MODE" in checkJob.env)) {
-      checkJob.env.CODEQL_ACTION_TEST_MODE = true;
-    }
+    const { checkJob, workflowInputs } = generateJob(
+      specDocument,
+      checkSpecification,
+    );
+    const { validationJobs, workflowInputs: validationJobInputs } =
+      generateValidationJobs(specDocument, checkSpecification, checkName);
+    const combinedInputs = getSetupInputs(
+      workflowInputs.union(validationJobInputs),
+    );
 
     // If this check belongs to a named collection, record it.
     if (checkSpecification.collection) {
@@ -418,12 +632,12 @@ function main(): void {
       collections[collectionName].push({
         specification: checkSpecification,
         checkName,
-        inputs: workflowInputs,
+        inputs: combinedInputs,
       });
     }
 
     let extraGroupName = "";
-    for (const inputName of Object.keys(workflowInputs)) {
+    for (const inputName of Object.keys(combinedInputs)) {
       extraGroupName += "-${{inputs." + inputName + "}}";
     }
 
@@ -448,10 +662,10 @@ function main(): void {
         },
         schedule: [{ cron }],
         workflow_dispatch: {
-          inputs: workflowInputs,
+          inputs: combinedInputs,
         },
         workflow_call: {
-          inputs: workflowInputs,
+          inputs: combinedInputs,
         },
       },
       defaults: {
@@ -466,6 +680,7 @@ function main(): void {
       },
       jobs: {
         [checkName]: checkJob,
+        ...validationJobs,
       },
     };
 

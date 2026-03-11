@@ -5,6 +5,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
+import { DO_NOT_RETRY_STATUSES } from "./api-client";
 import { setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -37,7 +38,7 @@ test.serial("getApiClient", async (t) => {
       log: sinon.match.any,
       userAgent: `CodeQL-Action/${actionsUtil.getActionVersion()}`,
       retry: {
-        doNotRetry: [400, 410, 422, 451],
+        doNotRetry: DO_NOT_RETRY_STATUSES,
       },
     }),
   );

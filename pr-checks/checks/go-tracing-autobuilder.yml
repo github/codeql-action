@@ -1,7 +1,9 @@
 name: "Go: tracing with autobuilder step"
 description: "Checks that Go tracing works when using an autobuilder step"
 collection: go
-operatingSystems: ["ubuntu", "macos"]
+operatingSystems:
+  - ubuntu
+  - macos
 osCodeQlVersions:
   macos:
     - linked

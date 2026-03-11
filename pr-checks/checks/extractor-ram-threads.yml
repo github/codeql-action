@@ -1,6 +1,7 @@
 name: "Extractor ram and threads options test"
 description: "Tests passing RAM and threads limits to extractors"
-versions: ["linked"]
+versions:
+  - linked
 steps:
   - uses: ./../action/init
     with:

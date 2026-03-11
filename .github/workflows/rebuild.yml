@@ -29,6 +29,12 @@ jobs:
           fetch-depth: 0
           ref: ${{ env.HEAD_REF }}
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+
       - name: Remove label
         if: github.event_name == 'pull_request'
         env:

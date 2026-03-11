@@ -1,5 +1,5 @@
 name: "Autobuild direct tracing (custom working directory)"
-description: >
+description: |
   An end-to-end integration test of a Java repository built using 'build-mode: autobuild',
   with direct tracing enabled and a custom working directory specified as the input to the
   autobuild Action.

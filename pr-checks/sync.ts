@@ -5,6 +5,8 @@ import * as path from "path";
 
 import * as yaml from "yaml";
 
+import { ACTION_VERSIONS } from "./action-versions";
+
 /** Known workflow input names. */
 enum KnownInputName {
   GoVersion = "go-version",
@@ -12,6 +14,9 @@ enum KnownInputName {
   PythonVersion = "python-version",
   DotnetVersion = "dotnet-version",
 }
+
+/** Known Action names that we have version information for. */
+type KnownAction = keyof typeof ACTION_VERSIONS;
 
 /**
  * Represents workflow input definitions.
@@ -93,6 +98,12 @@ const defaultTestVersions = [
 const THIS_DIR = __dirname;
 const CHECKS_DIR = path.join(THIS_DIR, "checks");
 const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
+
+/** Gets an `actionName@ref` string for `actionName`. */
+function getActionRef(actionName: KnownAction): string {
+  const versionInfo = ACTION_VERSIONS[actionName];
+  return `${actionName}@${versionInfo.version}`;
+}
 
 /**
  * Loads and parses a YAML file.
@@ -216,7 +227,7 @@ function main(): void {
     const steps: any[] = [
       {
         name: "Check out repository",
-        uses: "actions/checkout@v6",
+        uses: getActionRef("actions/checkout"),
       },
     ];
 
@@ -226,7 +237,7 @@ function main(): void {
       steps.push(
         {
           name: "Install Node.js",
-          uses: "actions/setup-node@v6",
+          uses: getActionRef("actions/setup-node"),
           with: {
             "node-version": "20.x",
             cache: "npm",
@@ -265,7 +276,7 @@ function main(): void {
 
       steps.push({
         name: "Install Go",
-        uses: "actions/setup-go@v6",
+        uses: getActionRef("actions/setup-go"),
         with: {
           "go-version":
             "${{ inputs.go-version || '" + baseGoVersionExpr + "' }}",
@@ -289,7 +300,7 @@ function main(): void {
 
       steps.push({
         name: "Install Java",
-        uses: "actions/setup-java@v5",
+        uses: getActionRef("actions/setup-java"),
         with: {
           "java-version":
             "${{ inputs.java-version || '" + baseJavaVersionExpr + "' }}",
@@ -312,7 +323,7 @@ function main(): void {
       steps.push({
         name: "Install Python",
         if: "matrix.version != 'nightly-latest'",
-        uses: "actions/setup-python@v6",
+        uses: getActionRef("actions/setup-python"),
         with: {
           "python-version":
             "${{ inputs.python-version || '" + basePythonVersionExpr + "' }}",
@@ -333,7 +344,7 @@ function main(): void {
 
       steps.push({
         name: "Install .NET",
-        uses: "actions/setup-dotnet@v5",
+        uses: getActionRef("actions/setup-dotnet"),
         with: {
           "dotnet-version":
             "${{ inputs.dotnet-version || '" + baseDotNetVersionExpr + "' }}",

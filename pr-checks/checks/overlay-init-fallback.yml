@@ -4,7 +4,7 @@ versions: ["linked", "nightly-latest"]
 steps:
   - uses: ./../action/init
     with:
-      languages: actions   # Any language without overlay support will do
+      languages: actions # Any language without overlay support will do
       tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       CODEQL_OVERLAY_DATABASE_MODE: overlay-base

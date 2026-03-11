@@ -144,6 +144,8 @@ test.serial("load empty config", async (t) => {
     const logger = getRunnerLogger(true);
     const languages = "javascript,python";
 
+    setupActionsVars(tempDir, tempDir);
+
     const codeql = createStubCodeQL({
       async betterResolveLanguages() {
         return {
@@ -184,6 +186,8 @@ test.serial("load code quality config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = getRunnerLogger(true);
     const languages = "actions";
+
+    setupActionsVars(tempDir, tempDir);
 
     const codeql = createStubCodeQL({
       async betterResolveLanguages() {
@@ -236,6 +240,8 @@ test.serial(
     return await withTmpDir(async (tempDir) => {
       const logger = getRunnerLogger(true);
       const languages = "javascript";
+
+      setupActionsVars(tempDir, tempDir);
 
       const codeql = createStubCodeQL({
         async betterResolveLanguages() {
@@ -475,6 +481,8 @@ test.serial("load non-existent input", async (t) => {
 
 test.serial("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
+    setupActionsVars(tempDir, tempDir);
+
     const codeql = createStubCodeQL({
       async betterResolveLanguages() {
         return {

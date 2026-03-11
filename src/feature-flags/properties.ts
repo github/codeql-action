@@ -8,12 +8,14 @@ import { RepositoryNwo } from "../repository";
 export enum RepositoryPropertyName {
   DISABLE_OVERLAY = "github-codeql-disable-overlay",
   EXTRA_QUERIES = "github-codeql-extra-queries",
+  FILE_COVERAGE_ON_PRS = "github-codeql-file-coverage-on-prs",
 }
 
 /** Parsed types of the known repository properties. */
 export type AllRepositoryProperties = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
+  [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: boolean;
 };
 
 /** Parsed repository properties. */
@@ -23,6 +25,7 @@ export type RepositoryProperties = Partial<AllRepositoryProperties>;
 export type RepositoryPropertyApiType = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: string;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
+  [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: string;
 };
 
 /** The type of functions which take the `value` from the API and try to convert it to the type we want. */
@@ -69,6 +72,7 @@ const repositoryPropertyParsers: {
 } = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: booleanProperty,
   [RepositoryPropertyName.EXTRA_QUERIES]: stringProperty,
+  [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: booleanProperty,
 };
 
 /**

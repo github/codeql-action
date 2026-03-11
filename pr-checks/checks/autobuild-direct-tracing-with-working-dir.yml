@@ -3,8 +3,12 @@ description: >
   An end-to-end integration test of a Java repository built using 'build-mode: autobuild',
   with direct tracing enabled and a custom working directory specified as the input to the
   autobuild Action.
-operatingSystems: ["ubuntu", "windows"]
-versions: ["linked", "nightly-latest"]
+operatingSystems:
+  - ubuntu
+  - windows
+versions:
+  - linked
+  - nightly-latest
 installJava: true
 env:
   CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING: true

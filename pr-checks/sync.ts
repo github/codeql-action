@@ -309,7 +309,7 @@ function generateJobMatrix(
   for (const version of checkSpecification.versions ?? defaultTestVersions) {
     if (version === "latest") {
       throw new Error(
-        'Did not recognise "version: latest". Did you mean "version: linked"?',
+        `Did not recognise "version: ${version}". Did you mean "version: linked"?`,
       );
     }
 

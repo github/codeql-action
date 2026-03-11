@@ -80,7 +80,7 @@ export enum Feature {
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
   /** Controls whether the Actions cache is checked for overlay build outcomes. */
   OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
-  /** Controls whether overlay build failures on are stored in the Actions cache. */
+  /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",

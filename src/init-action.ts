@@ -88,7 +88,6 @@ import {
   getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,
-  isHostedRunner,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -362,7 +361,6 @@ async function run(startedAt: Date) {
       configFile,
       dbLocation: getOptionalInput("db-location"),
       configInput: getOptionalInput("config"),
-      trapCachingEnabled: getTrapCachingEnabled(),
       dependencyCachingEnabled: getDependencyCachingEnabled(),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.
@@ -613,24 +611,6 @@ async function run(startedAt: Date) {
       core.exportVariable(kotlinLimitVar, "2.1.20");
     }
 
-    if (config.languages.includes(KnownLanguage.cpp)) {
-      const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
-      if (process.env[envVar]) {
-        logger.info(
-          `Environment variable ${envVar} already set. Not en/disabling CodeQL C++ TRAP caching support`,
-        );
-      } else if (
-        getTrapCachingEnabled() &&
-        (await codeQlVersionAtLeast(codeql, "2.17.5"))
-      ) {
-        logger.info("Enabling CodeQL C++ TRAP caching support");
-        core.exportVariable(envVar, "true");
-      } else {
-        logger.info("Disabling CodeQL C++ TRAP caching support");
-        core.exportVariable(envVar, "false");
-      }
-    }
-
     // Restore dependency cache(s), if they exist.
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
       const dependencyCachingResult = await downloadDependencyCaches(
@@ -862,18 +842,6 @@ async function loadRepositoryProperties(
     );
     return new Failure(error);
   }
-}
-
-function getTrapCachingEnabled(): boolean {
-  // If the workflow specified something always respect that
-  const trapCaching = getOptionalInput("trap-caching");
-  if (trapCaching !== undefined) return trapCaching === "true";
-
-  // On self-hosted runners which may have slow network access, disable TRAP caching by default
-  if (!isHostedRunner()) return false;
-
-  // On hosted runners, enable TRAP caching by default
-  return true;
 }
 
 async function recordZstdAvailability(

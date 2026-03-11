@@ -2011,6 +2011,23 @@ for (const language in KnownLanguage) {
   );
 }
 
+// Verify that a language without a per-language overlay feature flag cannot have
+// overlay analysis enabled, even when the base overlay feature flag is on.
+// Using cpp here as it doesn't currently have overlay support — update this if
+// cpp gains overlay support.
+test.serial(
+  checkOverlayEnablementMacro,
+  "No overlay analysis for language without per-language overlay feature flag",
+  {
+    languages: [KnownLanguage.cpp],
+    features: [Feature.OverlayAnalysis],
+    isPullRequest: true,
+  },
+  {
+    disabledReason: OverlayDisabledReason.LanguageNotEnabled,
+  },
+);
+
 test.serial(
   "hasActionsWorkflows doesn't throw if workflows folder doesn't exist",
   async (t) => {

@@ -2,6 +2,10 @@ name: "Go: tracing with custom build steps"
 description: "Checks that Go tracing traces the build when using custom build steps"
 collection: go
 operatingSystems: ["ubuntu", "macos"]
+osCodeQlVersions:
+  macos:
+    - linked
+    - nightly-latest
 installGo: true
 steps:
   - uses: ./../action/init

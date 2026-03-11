@@ -1,6 +1,9 @@
 name: "C/C++: autoinstalling dependencies (Linux)"
 description: "Checks that running C/C++ autobuild with autoinstalling dependencies works"
-versions: ["linked", "default", "nightly-latest"]
+versions:
+  - linked
+  - default
+  - nightly-latest
 env:
   DOTNET_GENERATE_ASPNET_CERTIFICATE: "false"
 steps:

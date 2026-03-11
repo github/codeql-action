@@ -1,6 +1,7 @@
 name: "Local CodeQL bundle"
 description: "Tests using a CodeQL bundle from a local file rather than a URL"
-versions: ["linked"]
+versions:
+  - linked
 installGo: true
 installDotNet: true
 steps:

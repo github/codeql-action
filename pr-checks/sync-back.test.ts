@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 
 /*
-Tests for the sync_back.ts script
+Tests for the sync-back.ts script
 */
 
 import * as assert from "node:assert/strict";
@@ -14,7 +14,7 @@ import {
   scanGeneratedWorkflows,
   updateSyncTs,
   updateTemplateFiles,
-} from "./sync_back";
+} from "./sync-back";
 
 let testDir: string;
 let workflowDir: string;

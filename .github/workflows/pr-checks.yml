@@ -41,6 +41,9 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            pr-checks/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -91,6 +94,9 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            pr-checks/package-lock.json
 
       - name: Verify PR checks up to date
         if: always()

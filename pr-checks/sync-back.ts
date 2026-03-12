@@ -17,9 +17,8 @@ those changes are properly synced back to the source templates. Regular workflow
 files are updated directly by Dependabot and don't need sync-back.
 */
 
-import { parseArgs } from "node:util";
-
 import * as fs from "fs";
+import { parseArgs } from "node:util";
 import * as path from "path";
 
 const THIS_DIR = __dirname;
@@ -33,7 +32,9 @@ const SYNC_TS_PATH = path.join(THIS_DIR, "sync.ts");
  * @param workflowDir - Path to .github/workflows directory
  * @returns Map from action names to their latest versions (including comments)
  */
-export function scanGeneratedWorkflows(workflowDir: string): Record<string, string> {
+export function scanGeneratedWorkflows(
+  workflowDir: string,
+): Record<string, string> {
   const actionVersions: Record<string, string> = {};
 
   const generatedFiles = fs
@@ -96,10 +97,7 @@ export function updateSyncTs(
     // variable - that's a risk we're happy to take since in that case the
     // PR checks will just fail.
     const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(
-      `(uses:\\s*")${escaped}@(?:[^"]+)(")`,
-      "g",
-    );
+    const pattern = new RegExp(`(uses:\\s*")${escaped}@(?:[^"]+)(")`, "g");
     content = content.replace(pattern, `$1${actionName}@${version}$2`);
   }
 
@@ -141,10 +139,7 @@ export function updateTemplateFiles(
     )) {
       // Look for patterns like 'uses: actions/setup-node@v4' or 'uses: actions/setup-node@sha # comment'
       const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const pattern = new RegExp(
-        `(uses:\\s+${escaped})@(?:[^@\n]+)`,
-        "g",
-      );
+      const pattern = new RegExp(`(uses:\\s+${escaped})@(?:[^@\n]+)`, "g");
       content = content.replace(pattern, `$1@${versionWithComment}`);
     }
 

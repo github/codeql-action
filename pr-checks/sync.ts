@@ -194,8 +194,7 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: "actions/setup-go@v6",
         with: {
-          "go-version":
-            "${{ inputs.go-version || '" + defaultLanguageVersions.go + "' }}",
+          "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
           // to avoid potentially misleading autobuilder results where we expect it to download
           // dependencies successfully, but they actually come from a warm cache
           cache: false,
@@ -211,10 +210,7 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: "actions/setup-java@v5",
         with: {
-          "java-version":
-            "${{ inputs.java-version || '" +
-            defaultLanguageVersions.java +
-            "' }}",
+          "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
           distribution: "temurin",
         },
       },
@@ -228,10 +224,7 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: "actions/setup-python@v6",
         with: {
-          "python-version":
-            "${{ inputs.python-version || '" +
-            defaultLanguageVersions.python +
-            "' }}",
+          "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
         },
       },
     ],
@@ -244,10 +237,7 @@ const languageSetups: LanguageSetups = {
         name: "Install .NET",
         uses: "actions/setup-dotnet@v5",
         with: {
-          "dotnet-version":
-            "${{ inputs.dotnet-version || '" +
-            defaultLanguageVersions.csharp +
-            "' }}",
+          "dotnet-version": `\${{ inputs.dotnet-version || '${defaultLanguageVersions.csharp}' }}`,
         },
       },
     ],
@@ -653,7 +643,7 @@ function main(): void {
 
     let extraGroupName = "";
     for (const inputName of Object.keys(combinedInputs)) {
-      extraGroupName += "-${{inputs." + inputName + "}}";
+      extraGroupName += `-\${{inputs.${inputName}}}`;
     }
 
     const cron = new yaml.Scalar("0 5 * * *");
@@ -691,7 +681,7 @@ function main(): void {
       concurrency: {
         "cancel-in-progress":
           "${{ github.event_name == 'pull_request' || false }}",
-        group: checkName + "-${{github.ref}}" + extraGroupName,
+        group: `${checkName}-\${{github.ref}}${extraGroupName}`,
       },
       jobs: {
         [checkName]: checkJob,
@@ -715,7 +705,7 @@ function main(): void {
       combinedInputs = { ...combinedInputs, ...checkInputs };
 
       for (const inputName of Object.keys(checkInputs)) {
-        checkWith[inputName] = "${{ inputs." + inputName + " }}";
+        checkWith[inputName] = `\${{ inputs.${inputName} }}`;
       }
 
       jobs[checkName] = {

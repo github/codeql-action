@@ -1,0 +1,33 @@
+name: Risk Assessment analysis failure uploads SARIF artifact
+description: Check that a SARIF file is uploaded as artifact if Risk Assessment fails
+versions: ["default"]
+
+permissions:
+  contents: read
+  security-events: write # needed to upload the SARIF file
+
+steps:
+  - name: Initialise CodeQL
+    uses: ./../action/init
+    id: init
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+      languages: javascript
+      analysis-kinds: risk-assessment
+
+  - name: Fail
+    run: exit 1
+
+validationJobs:
+  artifact-present:
+    name: Check artifact
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v7
+        with:
+          pattern: sarif-artifact-*
+          path: ${{ runner.temp }}/results
+          merge-multiple: true
+      - name: List contents
+        run: |
+          ls -lr

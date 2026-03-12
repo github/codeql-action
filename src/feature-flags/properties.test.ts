@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as api from "../api-client";
 import { getRunnerLogger } from "../logging";
 import { parseRepositoryNwo } from "../repository";
-import { setupTests } from "../testing-utils";
+import { RecordingLogger, setupTests } from "../testing-utils";
 
 import * as properties from "./properties";
 
@@ -194,6 +194,41 @@ test.serial(
     t.is(
       warningSpy.firstCall.args[0],
       "Repository property 'github-codeql-disable-overlay' has unexpected value 'yes'. Expected 'true' or 'false'. Defaulting to false.",
+    );
+  },
+);
+
+test.serial(
+  "loadPropertiesFromApi warns if a repository property name starts with the common prefix, but is not recognised by us",
+  async (t) => {
+    process.env["GITHUB_EVENT_NAME"] = "push";
+    const propertyName: string = `${properties.GITHUB_CODEQL_PROPERTY_PREFIX}unknown`;
+    sinon.stub(api, "getRepositoryProperties").resolves({
+      headers: {},
+      status: 200,
+      url: "",
+      data: [
+        {
+          property_name: propertyName,
+          value: "true",
+        },
+      ] satisfies properties.GitHubPropertiesResponse,
+    });
+    const logger = new RecordingLogger();
+    const warningSpy = sinon.spy(logger, "warning");
+    const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+    const response = await properties.loadPropertiesFromApi(
+      logger,
+      mockRepositoryNwo,
+    );
+    t.deepEqual(response, {});
+    t.true(warningSpy.calledOnce);
+    t.assert(
+      warningSpy.firstCall.args[0]
+        .toString()
+        .startsWith(
+          `Found a repository property named '${propertyName}', which looks like a CodeQL Action repository property`,
+        ),
     );
   },
 );

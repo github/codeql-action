@@ -20,6 +20,7 @@ export default [
       "tests/**/*",
       "build.mjs",
       "ava.config.mjs",
+      "ava.setup.mjs",
       "eslint.config.mjs",
       ".github/**/*",
       "pr-checks/**/*",

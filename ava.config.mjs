@@ -5,4 +5,5 @@ export default {
     },
     compile: false,
   },
+  require: ["./ava.setup.mjs"],
 };

@@ -97,7 +97,7 @@ jobs:
         working-directory: pr-checks
         run: |
           npm ci
-          npx tsx sync_back.ts --verbose
+          npx tsx sync-back.ts --verbose
 
       - name: Generate workflows
         working-directory: pr-checks

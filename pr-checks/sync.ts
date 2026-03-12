@@ -57,6 +57,12 @@ interface Specification extends JobSpecification {
   collection?: string;
 }
 
+/** Minimal type to represent steps in Actions workflows. */
+interface Step {
+  name?: string;
+  [other: string]: any;
+}
+
 /** Represents job specifications. */
 interface JobSpecification {
   /** The display name for the check. */
@@ -67,7 +73,7 @@ interface JobSpecification {
   env?: Record<string, any>;
 
   /** The workflow steps specific to this check. */
-  steps: any[];
+  steps: Step[];
 
   installNode?: boolean;
   installGo?: boolean;
@@ -82,7 +88,7 @@ interface LanguageSetup {
   specProperty: keyof JobSpecification;
   /** The names of the known inputs which are required for this setup step. */
   inputs?: KnownInputName[];
-  steps: any[];
+  steps: Step[];
 }
 
 /** Describes partial mappings from known languages to their specific setup information. */
@@ -363,10 +369,10 @@ function generateJobMatrix(
  */
 function getSetupSteps(checkSpecification: JobSpecification): {
   inputs: Set<KnownInputName>;
-  steps: any[];
+  steps: Step[];
 } {
   const inputs: Array<Set<KnownInputName>> = [];
-  const steps: any[] = [];
+  const steps: Step[] = [];
 
   for (const language of Object.values(KnownLanguage).sort()) {
     const setupSpec = languageSetups[language];
@@ -426,7 +432,7 @@ function generateJob(
   const workflowInputs = setupInfo.inputs;
 
   // Construct the workflow steps needed for this check.
-  const steps: any[] = [
+  const steps: Step[] = [
     {
       name: "Check out repository",
       uses: "actions/checkout@v6",

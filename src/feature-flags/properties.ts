@@ -1,6 +1,10 @@
+import { isDynamicWorkflow } from "../actions-util";
 import { getRepositoryProperties } from "../api-client";
 import { Logger } from "../logging";
 import { RepositoryNwo } from "../repository";
+
+/** The common prefix that we expect all of our repository properties to have. */
+export const GITHUB_CODEQL_PROPERTY_PREFIX = "github-codeql-";
 
 /**
  * Enumerates repository property names that have some meaning to us.
@@ -123,6 +127,16 @@ export async function loadPropertiesFromApi(
 
       if (isKnownPropertyName(property.property_name)) {
         setProperty(properties, property.property_name, property.value, logger);
+      } else if (
+        property.property_name.startsWith(GITHUB_CODEQL_PROPERTY_PREFIX) &&
+        !isDynamicWorkflow()
+      ) {
+        logger.warning(
+          `Found a repository property named '${property.property_name}', ` +
+            "which looks like a CodeQL Action repository property, " +
+            "but which is not understood by this version of the CodeQL Action. " +
+            "Do you need to update to a newer version?",
+        );
       }
     }
 

@@ -14,14 +14,6 @@
     "test-debug": "npm run test -- --timeout=20m",
     "transpile": "tsc --build --verbose"
   },
-  "ava": {
-    "typescript": {
-      "rewritePaths": {
-        "src/": "build/"
-      },
-      "compile": false
-    }
-  },
   "license": "MIT",
   "dependencies": {
     "@actions/artifact": "^5.0.3",

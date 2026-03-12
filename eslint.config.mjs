@@ -19,6 +19,7 @@ export default [
       "src/testdata/**/*",
       "tests/**/*",
       "build.mjs",
+      "ava.config.mjs",
       "eslint.config.mjs",
       ".github/**/*",
       "pr-checks/**/*",

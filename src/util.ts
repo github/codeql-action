@@ -14,6 +14,7 @@ import type { CodeQL, VersionInfo } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
@@ -603,19 +604,15 @@ export class HTTPError extends Error {
 export class ConfigurationError extends Error {}
 
 export function asHTTPError(arg: any): HTTPError | undefined {
-  if (
-    typeof arg !== "object" ||
-    arg === null ||
-    typeof arg.message !== "string"
-  ) {
+  if (!json.isObject<any>(arg) || !json.isString(arg.message)) {
     return undefined;
   }
   if (Number.isInteger(arg.status)) {
-    return new HTTPError(arg.message as string, arg.status as number);
+    return new HTTPError(arg.message, arg.status as number);
   }
   // See https://github.com/actions/toolkit/blob/acb230b99a46ed33a3f04a758cd68b47b9a82908/packages/tool-cache/src/tool-cache.ts#L19
   if (Number.isInteger(arg.httpStatusCode)) {
-    return new HTTPError(arg.message as string, arg.httpStatusCode as number);
+    return new HTTPError(arg.message, arg.httpStatusCode as number);
   }
   return undefined;
 }

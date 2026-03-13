@@ -30,8 +30,23 @@ export function computeBackportBranches(
   latestTag: string,
   oldestSupportedMajorVersion: number,
 ): BackportInfo {
-  const majorVersionNumber = Number.parseInt(majorVersion.substring(1));
-  const latestTagMajor = Number.parseInt(latestTag.split(".")[0].substring(1));
+  // Perform some sanity checks on the inputs.
+  // For `majorVersion`, we expect exactly `vN` for some `N`.
+  const majorVersionMatch = majorVersion.match(/^v(\d+)$/);
+  if (!majorVersionMatch) {
+    throw new Error("--major-version value must be in `vN` format.");
+  }
+
+  // For latestTag, we expect something starting with `vN.M.P`
+  const latestTagMatch = latestTag.match(/^v(\d+)\.\d+\.\d+/);
+  if (!latestTagMatch) {
+    throw new Error(
+      `--latest-tag value must be in 'vN.M.P' format, but '${latestTag}' is not.`,
+    );
+  }
+
+  const majorVersionNumber = Number.parseInt(majorVersionMatch[1]);
+  const latestTagMajor = Number.parseInt(latestTagMatch[1]);
 
   // If this is a primary release, we backport to all supported branches,
   // so we check whether the majorVersion taken from the package.json
@@ -60,11 +75,11 @@ export function computeBackportBranches(
 async function main() {
   const { values: options } = parseArgs({
     options: {
-      // The major version of the release
+      // The major version of the release in `vN` format (e.g. `v4`).
       "major-version": {
         type: "string",
       },
-      // The most recent tag published to the repository
+      // The most recent tag published to the repository (e.g. `v4.28.0`).
       "latest-tag": {
         type: "string",
       },

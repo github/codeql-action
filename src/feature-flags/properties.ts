@@ -118,6 +118,8 @@ export async function loadPropertiesFromApi(
     );
 
     const properties: RepositoryProperties = {};
+    const unrecognisedProperties: string[] = [];
+
     for (const property of remoteProperties) {
       if (property.property_name === undefined) {
         throw new Error(
@@ -131,12 +133,7 @@ export async function loadPropertiesFromApi(
         property.property_name.startsWith(GITHUB_CODEQL_PROPERTY_PREFIX) &&
         !isDynamicWorkflow()
       ) {
-        logger.warning(
-          `Found a repository property named '${property.property_name}', ` +
-            "which looks like a CodeQL Action repository property, " +
-            "but which is not understood by this version of the CodeQL Action. " +
-            "Do you need to update to a newer version?",
-        );
+        unrecognisedProperties.push(property.property_name);
       }
     }
 
@@ -151,6 +148,20 @@ export async function loadPropertiesFromApi(
       )) {
         logger.debug(`  ${property}: ${value}`);
       }
+    }
+
+    // Emit a warning if we encountered unrecognised properties that have our prefix.
+    if (unrecognisedProperties.length > 0) {
+      const unrecognisedPropertyList = unrecognisedProperties
+        .map((name) => `'${name}'`)
+        .join(", ");
+
+      logger.warning(
+        `Found repository properties (${unrecognisedPropertyList}), ` +
+          "which look like CodeQL Action repository properties, " +
+          "but which are not understood by this version of the CodeQL Action. " +
+          "Do you need to update to a newer version?",
+      );
     }
 
     return properties;

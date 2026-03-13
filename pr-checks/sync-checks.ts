@@ -130,6 +130,46 @@ async function getReleaseBranches(client: ApiClient): Promise<string[]> {
   return refs.data.map((ref) => ref.ref).sort();
 }
 
+/** Sets `checkNames` as required checks for `branch`. */
+async function updateBranch(
+  client: ApiClient,
+  branch: string,
+  checkNames: Set<string>,
+) {
+  // Query the current set of required checks for this branch.
+  const currentContexts = await client.rest.repos.getAllStatusCheckContexts({
+    ...codeqlActionRepo,
+    branch,
+  });
+
+  // Identify which required checks we will remove and which ones we will add.
+  const currentCheckNames = new Set(currentContexts.data);
+  let additions = 0;
+  let removals = 0;
+  let unchanged = 0;
+
+  for (const currentCheck of currentCheckNames) {
+    if (!checkNames.has(currentCheck)) {
+      console.info(`- Removing '${currentCheck}' for branch '${branch}'`);
+      removals++;
+    } else {
+      unchanged++;
+    }
+  }
+  for (const newCheck of checkNames) {
+    if (!currentCheckNames.has(newCheck)) {
+      console.info(`+ Adding '${newCheck}' for branch '${branch}'`);
+      additions++;
+    }
+  }
+
+  console.info(
+    `For '${branch}': ${removals} removals; ${additions} additions; ${unchanged} unchanged`,
+  );
+
+  // TODO: actually perform the update
+}
+
 async function main(): Promise<void> {
   const { values: options } = parseArgs({
     options: {
@@ -197,7 +237,7 @@ async function main(): Promise<void> {
       continue;
     } else {
       console.info(`Updating '${releaseBranch}'...`);
-
+      await updateBranch(client, releaseBranch, checkNames);
     }
   }
 

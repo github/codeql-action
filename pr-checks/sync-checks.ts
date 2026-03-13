@@ -136,6 +136,8 @@ async function updateBranch(
   branch: string,
   checkNames: Set<string>,
 ) {
+  console.info(`Updating '${branch}'...`);
+
   // Query the current set of required checks for this branch.
   const currentContexts = await client.rest.repos.getAllStatusCheckContexts({
     ...codeqlActionRepo,
@@ -209,6 +211,9 @@ async function main(): Promise<void> {
   const checkInfos = await getChecksFor(client, options.ref);
   const checkNames = new Set(checkInfos.map((info) => info.context));
 
+  // Update the main branch.
+  await updateBranch(client, "main", checkNames);
+
   // Retrieve the refs of the release branches.
   const releaseBranches = await getReleaseBranches(client);
   console.info(
@@ -236,7 +241,6 @@ async function main(): Promise<void> {
       );
       continue;
     } else {
-      console.info(`Updating '${releaseBranch}'...`);
       await updateBranch(client, releaseBranch, checkNames);
     }
   }

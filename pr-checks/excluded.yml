@@ -1,0 +1,16 @@
+# PR checks to exclude from required checks
+contains:
+  - "https://"
+  - "Update"
+  - "ESLint"
+  - "update"
+  - "test-setup-python-scripts"
+is:
+  - "CodeQL"
+  - "Dependabot"
+  - "check-expected-release-files"
+  - "Agent"
+  - "Cleanup artifacts"
+  - "Prepare"
+  - "Upload results"
+  - "Label PR with size"

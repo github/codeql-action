@@ -34,9 +34,6 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            pr-checks/package-lock.json
 
       - name: Remove label
         if: github.event_name == 'pull_request'

@@ -6,6 +6,57 @@ import * as core from "@actions/core";
 
 import { OLDEST_SUPPORTED_MAJOR_VERSION } from "./config";
 
+/** The results of checking which release branches to backport to.  */
+export interface BackportInfo {
+  /** The source release branch. */
+  backportSourceBranch: string;
+  /**
+   * The computed release branches we should backport to.
+   * Will be empty if there are no branches we need to backport to.
+   */
+  backportTargetBranches: string[];
+}
+
+/**
+ * Compute the backport source and target branches for a release.
+ *
+ * @param majorVersion - The major version string (e.g. "v4").
+ * @param latestTag - The most recent tag published to the repository (e.g. "v4.32.6").
+ * @param oldestSupportedMajorVersion - The oldest supported major version number.
+ * @returns The names of the source branch and target branches.
+ */
+export function computeBackportBranches(
+  majorVersion: string,
+  latestTag: string,
+  oldestSupportedMajorVersion: number,
+): BackportInfo {
+  const majorVersionNumber = Number.parseInt(majorVersion.substring(1));
+  const latestTagMajor = Number.parseInt(latestTag.split(".")[0].substring(1));
+
+  // If this is a primary release, we backport to all supported branches,
+  // so we check whether the majorVersion taken from the package.json
+  // is greater than or equal to the latest tag pulled from the repo.
+  // For example...
+  //     'v1' >= 'v2' is False # we're operating from an older release branch and should not backport
+  //     'v2' >= 'v2' is True  # the normal case where we're updating the current version
+  //     'v3' >= 'v2' is True  # in this case we are making the first release of a new major version
+  const considerBackports = majorVersionNumber >= latestTagMajor;
+
+  const backportSourceBranch = `releases/v${majorVersionNumber}`;
+  const backportTargetBranches: string[] = [];
+
+  if (considerBackports) {
+    for (let i = majorVersionNumber - 1; i > 0; i--) {
+      const branch_name = `releases/v${i}`;
+      if (i >= oldestSupportedMajorVersion) {
+        backportTargetBranches.push(branch_name);
+      }
+    }
+  }
+
+  return { backportSourceBranch, backportTargetBranches };
+}
+
 async function main() {
   const { values: options } = parseArgs({
     options: {
@@ -28,38 +79,22 @@ async function main() {
     throw Error("--latest-tag is required");
   }
 
-  const majorVersion = Number.parseInt(options["major-version"].substring(1));
+  const majorVersion = options["major-version"];
   const latestTag = options["latest-tag"];
 
-  console.log(`major_version: v${majorVersion}`);
-  console.log(`latest_tag: ${latestTag}`);
+  console.log(`Major version: ${majorVersion}`);
+  console.log(`Latest tag: ${latestTag}`);
 
-  // If this is a primary release, we backport to all supported branches,
-  // so we check whether the major_version taken from the package.json
-  // is greater than or equal to the latest tag pulled from the repo.
-  // For example...
-  //     'v1' >= 'v2' is False # we're operating from an older release branch and should not backport
-  //     'v2' >= 'v2' is True  # the normal case where we're updating the current version
-  //     'v3' >= 'v2' is True  # in this case we are making the first release of a new major version
-  const latestTagMajor = Number.parseInt(latestTag.split(".")[0].substring(1));
-  const considerBackports = majorVersion >= latestTagMajor;
+  const result = computeBackportBranches(
+    majorVersion,
+    latestTag,
+    OLDEST_SUPPORTED_MAJOR_VERSION,
+  );
 
-  core.setOutput("backport_source_branch", `releases/v${majorVersion}`);
-
-  const backportTargetBranches: string[] = [];
-
-  if (considerBackports) {
-    for (let i = latestTagMajor - 1; i > 0; i--) {
-      const branch_name = `releases/v${i}`;
-      if (i >= OLDEST_SUPPORTED_MAJOR_VERSION) {
-        backportTargetBranches.push(branch_name);
-      }
-    }
-  }
-
+  core.setOutput("backport_source_branch", result.backportSourceBranch);
   core.setOutput(
     "backport_target_branches",
-    JSON.stringify(backportTargetBranches),
+    JSON.stringify(result.backportTargetBranches),
   );
 
   process.exit(0);

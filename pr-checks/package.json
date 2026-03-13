@@ -6,6 +6,10 @@
   },
   "devDependencies": {
     "@actions/core": "*",
+    "@actions/github": "*",
+    "@octokit/core": "*",
+    "@octokit/plugin-paginate-rest": "*",
+    "@octokit/plugin-rest-endpoint-methods": "*",
     "@types/node": "^20.19.9",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

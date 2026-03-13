@@ -227,7 +227,7 @@ test.serial(
       warningSpy.firstCall.args[0]
         .toString()
         .startsWith(
-          `Found a repository property named '${propertyName}', which looks like a CodeQL Action repository property`,
+          `Found repository properties ('${propertyName}'), which look like CodeQL Action repository properties`,
         ),
     );
   },

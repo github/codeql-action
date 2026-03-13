@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 
 /*
-Tests for the sync_back.ts script
+Tests for the sync-back.ts script
 */
 
 import * as assert from "node:assert/strict";
@@ -14,7 +14,7 @@ import {
   scanGeneratedWorkflows,
   updateSyncTs,
   updateTemplateFiles,
-} from "./sync_back";
+} from "./sync-back";
 
 let testDir: string;
 let workflowDir: string;
@@ -38,8 +38,8 @@ afterEach(() => {
   fs.rmSync(testDir, { recursive: true, force: true });
 });
 
-describe("scanGeneratedWorkflows", () => {
-  it("basic workflow scanning", () => {
+describe("scanGeneratedWorkflows", async () => {
+  await it("basic workflow scanning", () => {
     /** Test basic workflow scanning functionality */
     const workflowContent = `
 name: Test Workflow
@@ -61,7 +61,7 @@ jobs:
     assert.equal(result["actions/setup-go"], "v6");
   });
 
-  it("scanning workflows with version comments", () => {
+  await it("scanning workflows with version comments", () => {
     /** Test scanning workflows with version comments */
     const workflowContent = `
 name: Test Workflow
@@ -86,7 +86,7 @@ jobs:
     assert.equal(result["actions/setup-python"], "v6 # Latest Python");
   });
 
-  it("ignores local actions", () => {
+  await it("ignores local actions", () => {
     /** Test that local actions (starting with ./) are ignored */
     const workflowContent = `
 name: Test Workflow
@@ -109,8 +109,8 @@ jobs:
   });
 });
 
-describe("updateSyncTs", () => {
-  it("updates sync.ts file", () => {
+describe("updateSyncTs", async () => {
+  await it("updates sync.ts file", () => {
     /** Test updating sync.ts file */
     const syncTsContent = `
 const steps = [
@@ -141,7 +141,7 @@ const steps = [
     assert.ok(updatedContent.includes('uses: "actions/setup-go@v6"'));
   });
 
-  it("strips comments from versions", () => {
+  await it("strips comments from versions", () => {
     /** Test updating sync.ts file when versions have comments */
     const syncTsContent = `
 const steps = [
@@ -168,7 +168,7 @@ const steps = [
     assert.ok(!updatedContent.includes("# Latest version"));
   });
 
-  it("returns false when no changes are needed", () => {
+  await it("returns false when no changes are needed", () => {
     /** Test that updateSyncTs returns false when no changes are needed */
     const syncTsContent = `
 const steps = [
@@ -190,8 +190,8 @@ const steps = [
   });
 });
 
-describe("updateTemplateFiles", () => {
-  it("updates template files", () => {
+describe("updateTemplateFiles", async () => {
+  await it("updates template files", () => {
     /** Test updating template files */
     const templateContent = `
 name: Test Template
@@ -220,7 +220,7 @@ steps:
     assert.ok(updatedContent.includes("uses: actions/setup-node@v5 # Latest"));
   });
 
-  it("preserves version comments", () => {
+  await it("preserves version comments", () => {
     /** Test that updating template files preserves version comments */
     const templateContent = `
 name: Test Template
@@ -232,8 +232,7 @@ steps:
     fs.writeFileSync(templatePath, templateContent);
 
     const actionVersions = {
-      "ruby/setup-ruby":
-        "55511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
+      "ruby/setup-ruby": "55511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
     };
 
     const result = updateTemplateFiles(checksDir, actionVersions);

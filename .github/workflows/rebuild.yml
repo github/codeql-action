@@ -34,9 +34,6 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            pr-checks/package-lock.json
 
       - name: Remove label
         if: github.event_name == 'pull_request'
@@ -97,7 +94,7 @@ jobs:
         working-directory: pr-checks
         run: |
           npm ci
-          npx tsx sync_back.ts --verbose
+          npx tsx sync-back.ts --verbose
 
       - name: Generate workflows
         working-directory: pr-checks

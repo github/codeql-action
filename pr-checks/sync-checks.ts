@@ -30,7 +30,7 @@ const codeqlActionRepo = {
 };
 
 /** Represents a configuration of which checks should not be set up as required checks. */
-interface Exclusions {
+export interface Exclusions {
   /** A list of strings that, if contained in a check name, are excluded. */
   contains: string[];
   /** A list of check names that are excluded if their name is an exact match. */
@@ -55,7 +55,7 @@ function getApiClient(token: string): ApiClient {
  * Represents information about a check run. We track the `app_id` that generated the check,
  * because the API will require it in addition to the name in the future.
  */
-interface CheckInfo {
+export interface CheckInfo {
   /** The display name of the check. */
   context: string;
   /** The ID of the app that generated the check. */

@@ -2,14 +2,29 @@
 
 /** Update the required checks based on the current branch. */
 
+import * as fs from "fs";
 import { parseArgs } from "node:util";
 
 import * as githubUtils from "@actions/github/lib/utils";
 import { type Octokit } from "@octokit/core";
 import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
 import { type Api } from "@octokit/plugin-rest-endpoint-methods";
+import * as yaml from "yaml";
 
 import { OLDEST_SUPPORTED_MAJOR_VERSION } from "./config";
+
+/** Represents a configuration of which checks should not be set up as required checks. */
+interface Exclusions {
+  /** A list of strings that, if contained in a check name, are excluded. */
+  contains: string[];
+  /** A list of check names that are excluded if their name is an exact match. */
+  is: string[];
+}
+
+/** Loads the configuration for which checks to exclude. */
+function loadExclusions(): Exclusions {
+  return yaml.parse(fs.readFileSync("excluded.yml", "utf-8")) as Exclusions;
+}
 
 /** The type of the Octokit client. */
 type ApiClient = Octokit & Api & { paginate: PaginateInterface };

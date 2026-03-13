@@ -13,6 +13,16 @@ import * as yaml from "yaml";
 
 import { OLDEST_SUPPORTED_MAJOR_VERSION } from "./config";
 
+/** Represents the command-line options. */
+interface Options {
+  /** The token to use to authenticate to the GitHub API. */
+  token?: string;
+  /** The git ref to use the checks for. */
+  ref?: string;
+  /** Whether to actually apply the changes or not. */
+  apply: boolean;
+}
+
 /** Identifies the CodeQL Action repository. */
 const codeqlActionRepo = {
   owner: "github",
@@ -130,8 +140,22 @@ async function getReleaseBranches(client: ApiClient): Promise<string[]> {
   return refs.data.map((ref) => ref.ref).sort();
 }
 
+/** Updates the required status checks for `branch` to `checks`. */
+async function patchBranchProtectionRule(
+  client: ApiClient,
+  branch: string,
+  checks: Set<string>,
+) {
+  await client.rest.repos.setStatusCheckContexts({
+    ...codeqlActionRepo,
+    branch,
+    contexts: Array.from(checks),
+  });
+}
+
 /** Sets `checkNames` as required checks for `branch`. */
 async function updateBranch(
+  options: Options,
   client: ApiClient,
   branch: string,
   checkNames: Set<string>,
@@ -169,7 +193,14 @@ async function updateBranch(
     `For '${branch}': ${removals} removals; ${additions} additions; ${unchanged} unchanged`,
   );
 
-  // TODO: actually perform the update
+  // Perform the update if there are changes and `--apply` was specified.
+  if (unchanged === checkNames.size && removals === 0 && additions === 0) {
+    console.info("Not applying changes because there is nothing to do.");
+  } else if (options.apply) {
+    await patchBranchProtectionRule(client, branch, checkNames);
+  } else {
+    console.info("Not applying changes because `--apply` was not specified.");
+  }
 }
 
 async function main(): Promise<void> {
@@ -212,7 +243,7 @@ async function main(): Promise<void> {
   const checkNames = new Set(checkInfos.map((info) => info.context));
 
   // Update the main branch.
-  await updateBranch(client, "main", checkNames);
+  await updateBranch(options, client, "main", checkNames);
 
   // Retrieve the refs of the release branches.
   const releaseBranches = await getReleaseBranches(client);
@@ -241,7 +272,7 @@ async function main(): Promise<void> {
       );
       continue;
     } else {
-      await updateBranch(client, releaseBranch, checkNames);
+      await updateBranch(options, client, releaseBranch, checkNames);
     }
   }
 

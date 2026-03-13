@@ -13,6 +13,12 @@ import * as yaml from "yaml";
 
 import { OLDEST_SUPPORTED_MAJOR_VERSION } from "./config";
 
+/** Identifies the CodeQL Action repository. */
+const codeqlActionRepo = {
+  owner: "github",
+  repo: "codeql-action",
+};
+
 /** Represents a configuration of which checks should not be set up as required checks. */
 interface Exclusions {
   /** A list of strings that, if contained in a check name, are excluded. */
@@ -33,6 +39,86 @@ type ApiClient = Octokit & Api & { paginate: PaginateInterface };
 function getApiClient(token: string): ApiClient {
   const opts = githubUtils.getOctokitOptions(token);
   return new githubUtils.GitHub(opts);
+}
+
+/**
+ * Represents information about a check run. We track the `app_id` that generated the check,
+ * because the API will require it in addition to the name in the future.
+ */
+interface CheckInfo {
+  /** The display name of the check. */
+  context: string;
+  /** The ID of the app that generated the check. */
+  app_id: number;
+}
+
+/** Removes entries from `checkInfos` based the configuration. */
+export function removeExcluded(
+  exclusions: Exclusions,
+  checkInfos: CheckInfo[],
+): CheckInfo[] {
+  console.log(exclusions);
+
+  return checkInfos.filter((checkInfo) => {
+    if (exclusions.is.includes(checkInfo.context)) {
+      console.info(
+        `Excluding '${checkInfo.context}' because it is an exact exclusion.`,
+      );
+      return false;
+    }
+
+    for (const containsStr of exclusions.contains) {
+      if (checkInfo.context.includes(containsStr)) {
+        console.info(
+          `Excluding '${checkInfo.context}' because it contains '${containsStr}'.`,
+        );
+        return false;
+      }
+    }
+
+    // Keep.
+    return true;
+  });
+}
+
+/** Gets a list of check run names for `ref`. */
+async function getChecksFor(
+  client: ApiClient,
+  ref: string,
+): Promise<CheckInfo[]> {
+  console.info(`Getting checks for '${ref}'`);
+
+  const response = await client.paginate(
+    "GET /repos/{owner}/{repo}/commits/{ref}/check-runs",
+    {
+      ...codeqlActionRepo,
+      ref,
+    },
+  );
+
+  if (response.length === 0) {
+    throw new Error(`No checks found for '${ref}'.`);
+  }
+
+  console.info(`Retrieved ${response.length} check runs.`);
+
+  const notSkipped = response.filter(
+    (checkRun) => checkRun.conclusion !== "skipped",
+  );
+  console.info(`Of those: ${notSkipped.length} were not skipped.`);
+
+  // We use the ID of the app that generated the check run when returned by the API,
+  // but default to -1 to tell the API that any check with the given name should be
+  // required.
+  const checkInfos = notSkipped.map((check) => ({
+    context: check.name,
+    app_id: check.app?.id || -1,
+  }));
+
+  // Load the configuration for which checks to exclude and apply it before
+  // returning the checks.
+  const exclusions = loadExclusions();
+  return removeExcluded(exclusions, checkInfos);
 }
 
 async function main(): Promise<void> {
@@ -68,6 +154,11 @@ async function main(): Promise<void> {
 
   // Initialise the API client.
   const client = getApiClient(options.token);
+
+  // Find the check runs for the specified `ref` that we will later set as the required checks
+  // for the main and release branches.
+  const checkInfos = await getChecksFor(client, options.ref);
+  const checkNames = new Set(checkInfos.map((info) => info.context));
 
   process.exit(0);
 }

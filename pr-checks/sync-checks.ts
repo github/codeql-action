@@ -121,6 +121,15 @@ async function getChecksFor(
   return removeExcluded(exclusions, checkInfos);
 }
 
+/** Gets the current list of release branches. */
+async function getReleaseBranches(client: ApiClient): Promise<string[]> {
+  const refs = await client.rest.git.listMatchingRefs({
+    ...codeqlActionRepo,
+    ref: "heads/releases/v",
+  });
+  return refs.data.map((ref) => ref.ref).sort();
+}
+
 async function main(): Promise<void> {
   const { values: options } = parseArgs({
     options: {
@@ -159,6 +168,38 @@ async function main(): Promise<void> {
   // for the main and release branches.
   const checkInfos = await getChecksFor(client, options.ref);
   const checkNames = new Set(checkInfos.map((info) => info.context));
+
+  // Retrieve the refs of the release branches.
+  const releaseBranches = await getReleaseBranches(client);
+  console.info(
+    `Found ${releaseBranches.length} release branches: ${releaseBranches.join(", ")}`,
+  );
+
+  for (const releaseBranchRef of releaseBranches) {
+    // Sanity check that the ref name is in the expected format and extract the major version.
+    const releaseBranchMatch = releaseBranchRef.match(
+      /^refs\/heads\/(releases\/v(\d+))/,
+    );
+    if (!releaseBranchMatch) {
+      console.warn(
+        `Branch ref '${releaseBranchRef}' not in the expected format.`,
+      );
+      continue;
+    }
+    const releaseBranch = releaseBranchMatch[1];
+    const releaseBranchMajor = Number.parseInt(releaseBranchMatch[2]);
+
+    // Update the required checks for this major version if it is still supported.
+    if (releaseBranchMajor < OLDEST_SUPPORTED_MAJOR_VERSION) {
+      console.info(
+        `Skipping '${releaseBranch}' since it is older than v${OLDEST_SUPPORTED_MAJOR_VERSION}`,
+      );
+      continue;
+    } else {
+      console.info(`Updating '${releaseBranch}'...`);
+
+    }
+  }
 
   process.exit(0);
 }

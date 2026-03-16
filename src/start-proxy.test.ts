@@ -440,16 +440,17 @@ test("getCredentials accepts OIDC configurations", (t) => {
 });
 
 const testPATWarning = test.macro({
-  exec: async (t: ExecutionContext<unknown>) => {
+  exec: async (
+    t: ExecutionContext<unknown>,
+    credentials: startProxyExports.RawCredential[],
+    checkAccepted: (
+      t: ExecutionContext<unknown>,
+      results: startProxyExports.Credential[],
+    ) => void,
+  ) => {
     const loggedMessages = [];
     const logger = getRecordingLogger(loggedMessages);
-    const likelyWrongCredentials = toEncodedJSON([
-      {
-        type: "git_server",
-        host: "https://github.com/",
-        password: `ghp_${makeTestToken()}`,
-      },
-    ]);
+    const likelyWrongCredentials = toEncodedJSON(credentials);
 
     const results = startProxyExports.getCredentials(
       logger,
@@ -458,17 +459,7 @@ const testPATWarning = test.macro({
       undefined,
     );
 
-    // The configuration should be accepted, despite the likely problem.
-    t.assert(results);
-    t.is(results.length, 1);
-    t.is(results[0].type, "git_server");
-    t.is(results[0].host, "https://github.com/");
-
-    if (startProxyExports.isUsernamePassword(results[0])) {
-      t.assert(results[0].password?.startsWith("ghp_"));
-    } else {
-      t.fail("Expected a `UsernamePassword`-based credential.");
-    }
+    checkAccepted(t, results);
 
     // A warning should have been logged.
     checkExpectedLogMessages(t, loggedMessages, [
@@ -480,7 +471,30 @@ const testPATWarning = test.macro({
     `getCredentials logs a warning when a PAT is used - ${providedTitle}`,
 });
 
-test("password without a username", testPATWarning);
+test(
+  "password without a username",
+  testPATWarning,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      password: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
+  },
+);
 
 test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);

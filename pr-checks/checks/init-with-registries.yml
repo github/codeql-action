@@ -4,12 +4,11 @@
 # basic mechanics of multi-registry auth is working.
 name: "Packaging: Download using registries"
 description: "Checks that specifying a registries block and associated auth works as expected"
-versions: [
-    # This feature is not compatible with older CLIs
-    "default",
-    "linked",
-    "nightly-latest",
-]
+versions:
+  # This feature is not compatible with older CLIs
+  - default
+  - linked
+  - nightly-latest
 
 permissions:
   contents: read

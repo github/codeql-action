@@ -1,6 +1,8 @@
 name: "Build mode none"
 description: "An end-to-end integration test of a Java repository built using 'build-mode: none'"
-versions: ["linked", "nightly-latest"]
+versions:
+  - linked
+  - nightly-latest
 steps:
   - uses: ./../action/init
     id: init

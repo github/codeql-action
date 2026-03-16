@@ -1,9 +1,12 @@
 name: "Test different uses of `upload-sarif`"
 description: "Checks that uploading SARIFs to the code quality endpoint works"
-versions: ["default"]
-analysisKinds: ["code-scanning", "code-quality", "code-scanning,code-quality"]
+versions:
+  - default
+analysisKinds:
+  - code-scanning
+  - code-quality
+  - code-scanning,code-quality
 installGo: true
-installPython: true
 installDotNet: true
 steps:
   - uses: ./../action/init

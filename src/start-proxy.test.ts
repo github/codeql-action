@@ -496,6 +496,31 @@ test(
   },
 );
 
+test(
+  "token without a username",
+  testPATWarning,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      token: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isToken(results[0])) {
+      t.assert(results[0].token?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `Token`-based credential.");
+    }
+  },
+);
+
 test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);
 

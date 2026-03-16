@@ -14,6 +14,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - The CodeQL Action now loads [custom repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) on GitHub Enterprise Server, enabling the customization of features such as `github-codeql-disable-overlay` that was previously only available on GitHub.com. [#3559](https://github.com/github/codeql-action/pull/3559)
 - Once [private package registries](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries) can be configured with OIDC-based authentication for organizations, the CodeQL Action will now be able to accept such configurations. [#3563](https://github.com/github/codeql-action/pull/3563)
 - Fixed the retry mechanism for database uploads. Previously this would fail with the error "Response body object should not be disturbed or locked". [#3564](https://github.com/github/codeql-action/pull/3564)
+- A warning is now emitted if the CodeQL Action detects a repository property whose name suggests that it relates to the CodeQL Action, but which is not one of the properties recognised by the current version of the CodeQL Action. [#3570](https://github.com/github/codeql-action/pull/3570)
 
 ## 4.32.6 - 05 Mar 2026
 

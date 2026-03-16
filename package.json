@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.32.6",
+  "version": "4.33.0",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -14,15 +14,10 @@
     "test-debug": "npm run test -- --timeout=20m",
     "transpile": "tsc --build --verbose"
   },
-  "ava": {
-    "typescript": {
-      "rewritePaths": {
-        "src/": "build/"
-      },
-      "compile": false
-    }
-  },
   "license": "MIT",
+  "workspaces": [
+    "pr-checks"
+  ],
   "dependencies": {
     "@actions/artifact": "^5.0.3",
     "@actions/artifact-legacy": "npm:@actions/artifact@^1.1.2",
@@ -61,7 +56,7 @@
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^21.0.0",
-    "ava": "^6.4.1",
+    "ava": "^7.0.0",
     "esbuild": "^0.27.3",
     "eslint": "^9.39.2",
     "eslint-import-resolver-typescript": "^3.8.7",
@@ -70,9 +65,9 @@
     "eslint-plugin-jsdoc": "^62.7.1",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^11.1.0",
-    "globals": "^17.3.0",
+    "globals": "^17.4.0",
     "nock": "^14.0.11",
-    "sinon": "^21.0.1",
+    "sinon": "^21.0.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1"
   },

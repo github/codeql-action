@@ -17,13 +17,26 @@ import {
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
+import * as json from "./json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
   Address,
-  RawCredential,
   Registry,
   Credential,
+  AuthConfig,
+  isToken,
+  isAzureConfig,
+  Token,
+  UsernamePassword,
+  AzureConfig,
+  isAWSConfig,
+  AWSConfig,
+  isJFrogConfig,
+  JFrogConfig,
+  isUsernamePassword,
+  hasUsername,
+  RawCredential,
 } from "./start-proxy/types";
 import {
   ActionName,
@@ -255,13 +268,19 @@ const NEW_LANGUAGE_TO_REGISTRY_TYPE: Required<RegistryMapping> = {
  *
  * @throws A `ConfigurationError` if the `Registry` value contains neither a `url` or `host` field.
  */
-function getRegistryAddress(registry: Partial<Registry>): Address {
-  if (isDefined(registry.url)) {
+function getRegistryAddress(
+  registry: json.UnvalidatedObject<Registry>,
+): Address {
+  if (
+    isDefined(registry.url) &&
+    json.isString(registry.url) &&
+    json.isStringOrUndefined(registry.host)
+  ) {
     return {
       url: registry.url,
       host: registry.host,
     };
-  } else if (isDefined(registry.host)) {
+  } else if (isDefined(registry.host) && json.isString(registry.host)) {
     return {
       url: undefined,
       host: registry.host,
@@ -271,6 +290,75 @@ function getRegistryAddress(registry: Partial<Registry>): Address {
     throw new ConfigurationError(
       "Invalid credentials - must specify host or url",
     );
+  }
+}
+
+/** Extracts an `AuthConfig` value from `config`. */
+export function getAuthConfig(
+  config: json.UnvalidatedObject<AuthConfig>,
+): AuthConfig {
+  // Start by checking for the OIDC configurations, since they have required properties
+  // which we can use to identify them.
+  if (isAzureConfig(config)) {
+    return {
+      tenant_id: config.tenant_id,
+      client_id: config.client_id,
+    } satisfies AzureConfig;
+  } else if (isAWSConfig(config)) {
+    return {
+      aws_region: config.aws_region,
+      account_id: config.account_id,
+      role_name: config.role_name,
+      domain: config.domain,
+      domain_owner: config.domain_owner,
+      audience: config.audience,
+    } satisfies AWSConfig;
+  } else if (isJFrogConfig(config)) {
+    return {
+      jfrog_oidc_provider_name: config.jfrog_oidc_provider_name,
+      identity_mapping_name: config.identity_mapping_name,
+      audience: config.audience,
+    } satisfies JFrogConfig;
+  } else if (isToken(config)) {
+    // There are three scenarios for non-OIDC authentication based on the registry type:
+    //
+    // 1. `username`+`token`
+    // 2. A `token` that combines the username and actual token, separated by ':'.
+    // 3. `username`+`password`
+    //
+    // In all three cases, all fields are optional. If the `token` field is present,
+    // we accept the configuration as a `Token` typed configuration, with the `token`
+    // value and an optional `username`. Otherwise, we accept the configuration
+    // typed as `UsernamePassword` (in the `else` clause below) with optional
+    // username and password. I.e. a private registry type that uses 1. or 2.,
+    // but has no `token` configured, will get accepted as `UsernamePassword` here.
+
+    if (isDefined(config.token)) {
+      // Mask token to reduce chance of accidental leakage in logs, if we have one.
+      core.setSecret(config.token);
+    }
+
+    return { username: config.username, token: config.token } satisfies Token;
+  } else {
+    let username: string | undefined = undefined;
+    let password: string | undefined = undefined;
+
+    // Both "username" and "password" are optional. If we have reached this point, we need
+    // to validate which of them are present and that they have the correct type if so.
+    if ("password" in config && json.isString(config.password)) {
+      // Mask password to reduce chance of accidental leakage in logs, if we have one.
+      core.setSecret(config.password);
+      password = config.password;
+    }
+    if ("username" in config && json.isString(config.username)) {
+      username = config.username;
+    }
+
+    // Return the `UsernamePassword` object. Both username and password may be undefined.
+    return {
+      username,
+      password,
+    } satisfies UsernamePassword;
   }
 }
 
@@ -304,9 +392,9 @@ export function getCredentials(
   }
 
   // Parse and validate the credentials
-  let parsed: RawCredential[];
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(credentialsStr) as RawCredential[];
+    parsed = json.parseString(credentialsStr);
   } catch {
     // Don't log the error since it might contain sensitive information.
     logger.error("Failed to parse the credentials data.");
@@ -314,7 +402,7 @@ export function getCredentials(
   }
 
   // Check that the parsed data is indeed an array.
-  if (!Array.isArray(parsed)) {
+  if (!json.isArray(parsed)) {
     throw new ConfigurationError(
       "Expected credentials data to be an array of configurations, but it is not.",
     );
@@ -322,23 +410,17 @@ export function getCredentials(
 
   const out: Credential[] = [];
   for (const e of parsed) {
-    if (e === null || typeof e !== "object") {
+    if (e === null || !json.isObject<RawCredential>(e)) {
       throw new ConfigurationError("Invalid credentials - must be an object");
     }
 
     // The configuration must have a type.
-    if (!isDefined(e.type)) {
+    if (!isDefined(e.type) || !json.isString(e.type)) {
       throw new ConfigurationError("Invalid credentials - must have a type");
     }
 
     // Mask credentials to reduce chance of accidental leakage in logs.
-    if (isDefined(e.password)) {
-      core.setSecret(e.password);
-    }
-    if (isDefined(e.token)) {
-      core.setSecret(e.token);
-    }
-
+    const authConfig = getAuthConfig(e);
     const address = getRegistryAddress(e);
 
     // Filter credentials based on language if specified. `type` is the registry type.
@@ -354,24 +436,25 @@ export function getCredentials(
       return str ? /^[\x20-\x7E]*$/.test(str) : true;
     };
 
-    if (
-      !isPrintable(e.type) ||
-      !isPrintable(e.host) ||
-      !isPrintable(e.url) ||
-      !isPrintable(e.username) ||
-      !isPrintable(e.password) ||
-      !isPrintable(e.token)
-    ) {
-      throw new ConfigurationError(
-        "Invalid credentials - fields must contain only printable characters",
-      );
+    // Ensure that all string fields only contain printable characters.
+    for (const key of Object.keys(e)) {
+      const val = e[key];
+      if (typeof val === "string" && !isPrintable(val)) {
+        throw new ConfigurationError(
+          "Invalid credentials - fields must contain only printable characters",
+        );
+      }
     }
 
     // If the password or token looks like a GitHub PAT, warn if no username is configured.
     if (
-      !isDefined(e.username) &&
-      ((isDefined(e.password) && isPAT(e.password)) ||
-        (isDefined(e.token) && isPAT(e.token)))
+      ((!hasUsername(authConfig) || !isDefined(authConfig.username)) &&
+        isUsernamePassword(authConfig) &&
+        isDefined(authConfig.password) &&
+        isPAT(authConfig.password)) ||
+      (isToken(authConfig) &&
+        isDefined(authConfig.token) &&
+        isPAT(authConfig.token))
     ) {
       logger.warning(
         `A ${e.type} private registry is configured for ${e.host || e.url} using a GitHub Personal Access Token (PAT), but no username was provided. ` +
@@ -382,9 +465,7 @@ export function getCredentials(
 
     out.push({
       type: e.type,
-      username: e.username,
-      password: e.password,
-      token: e.token,
+      ...authConfig,
       ...address,
     });
   }
@@ -496,17 +577,6 @@ export async function getDownloadUrl(
     url: getFallbackUrl(proxyPackage),
     version: UPDATEJOB_PROXY_VERSION,
   };
-}
-
-/**
- * Pretty-prints a `Credential` value to a string, but hides the actual password or token values.
- *
- * @param c The credential to convert to a string.
- */
-export function credentialToStr(c: Credential): string {
-  return `Type: ${c.type}; Host: ${c.host}; Url: ${c.url} Username: ${
-    c.username
-  }; Password: ${c.password !== undefined}; Token: ${c.token !== undefined}`;
 }
 
 /**

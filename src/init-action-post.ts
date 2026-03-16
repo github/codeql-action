@@ -77,7 +77,7 @@ async function run(startedAt: Date) {
     } else {
       const codeql = await getCodeQL(config.codeQLCmd);
 
-      uploadFailedSarifResult = await initActionPostHelper.run(
+      uploadFailedSarifResult = await initActionPostHelper.uploadFailureInfo(
         debugArtifacts.tryUploadAllAvailableDebugArtifacts,
         printDebugLogs,
         codeql,

@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
 import { globSync } from "glob";
 
+import pkg from "./package.json" with { type: "json" };
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -13,7 +15,7 @@ const OUT_DIR = join(__dirname, "lib");
 
 /**
  * Clean the output directory before building.
- * 
+ *
  * @type {esbuild.Plugin}
  */
 const cleanPlugin = {
@@ -27,7 +29,7 @@ const cleanPlugin = {
 
 /**
  * Copy defaults.json to the output directory since other projects depend on it.
- * 
+ *
  * @type {esbuild.Plugin}
  */
 const copyDefaultsPlugin = {
@@ -69,6 +71,9 @@ const context = await esbuild.context({
   platform: "node",
   plugins: [cleanPlugin, copyDefaultsPlugin, onEndPlugin],
   target: ["node20"],
+  define: {
+    __CODEQL_ACTION_VERSION__: JSON.stringify(pkg.version),
+  },
 });
 
 await context.rebuild();

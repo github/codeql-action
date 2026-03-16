@@ -10,6 +10,7 @@ export enum ToolsFeature {
   ForceOverwrite = "forceOverwrite",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   PythonDefaultIsToNotExtractStdlib = "pythonDefaultIsToNotExtractStdlib",
+  SuppressesMissingFileBaselineWarning = "suppressesMissingFileBaselineWarning",
 }
 
 /**

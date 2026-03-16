@@ -48,6 +48,7 @@ import {
   checkPacksForOverlayCompatibility,
   cleanupDatabaseClusterDirectory,
   getFileCoverageInformationEnabled,
+  logFileCoverageOnPrsDeprecationWarning,
   initCodeQL,
   initConfig,
   runDatabaseInitCluster,
@@ -93,7 +94,6 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
-  GitHubVersion,
   Result,
   getOptionalEnvVar,
   Success,
@@ -250,8 +250,6 @@ async function run(startedAt: Date) {
     // Fetch the values of known repository properties that affect us.
     const repositoryPropertiesResult = await loadRepositoryProperties(
       repositoryNwo,
-      gitHubVersion,
-      features,
       logger,
     );
 
@@ -346,6 +344,14 @@ async function run(startedAt: Date) {
 
     analysisKinds = await getAnalysisKinds(logger);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
+    const fileCoverageResult = await getFileCoverageInformationEnabled(
+      debugMode,
+      codeql,
+      features,
+      repositoryProperties,
+    );
+
     config = await initConfig(features, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
@@ -375,12 +381,8 @@ async function run(startedAt: Date) {
       githubVersion: gitHubVersion,
       apiDetails,
       features,
-      repositoryProperties: repositoryPropertiesResult.orElse({}),
-      enableFileCoverageInformation: await getFileCoverageInformationEnabled(
-        debugMode,
-        repositoryNwo,
-        features,
-      ),
+      repositoryProperties,
+      enableFileCoverageInformation: fileCoverageResult.enabled,
       logger,
     });
 
@@ -395,6 +397,21 @@ async function run(startedAt: Date) {
           },
         ),
       );
+    }
+
+    if (fileCoverageResult.enabledByRepositoryProperty) {
+      addNoLanguageDiagnostic(
+        config,
+        makeTelemetryDiagnostic(
+          "codeql-action/file-coverage-on-prs-enabled-by-repository-property",
+          "File coverage on PRs enabled by repository property",
+          {},
+        ),
+      );
+    }
+
+    if (fileCoverageResult.showDeprecationWarning) {
+      logFileCoverageOnPrsDeprecationWarning(logger);
     }
 
     await checkInstallPython311(config.languages, codeql);
@@ -820,8 +837,6 @@ async function run(startedAt: Date) {
  */
 async function loadRepositoryProperties(
   repositoryNwo: RepositoryNwo,
-  gitHubVersion: GitHubVersion,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<Result<RepositoryProperties, unknown>> {
   // See if we can skip loading repository properties early. In particular,
@@ -839,17 +854,8 @@ async function loadRepositoryProperties(
     return new Success({});
   }
 
-  if (!(await features.getValue(Feature.UseRepositoryProperties))) {
-    logger.debug(
-      "Skipping loading repository properties because the UseRepositoryProperties feature flag is disabled.",
-    );
-    return new Success({});
-  }
-
   try {
-    return new Success(
-      await loadPropertiesFromApi(gitHubVersion, logger, repositoryNwo),
-    );
+    return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
   } catch (error) {
     logger.warning(
       `Failed to load repository properties: ${getErrorMessage(error)}`,

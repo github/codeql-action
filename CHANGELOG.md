@@ -2,6 +2,20 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.33.0 - 16 Mar 2026
+
+- Upcoming change: Starting April 2026, the CodeQL Action will skip collecting file coverage information on pull requests to improve analysis performance. File coverage information will still be computed on non-PR analyses. Pull request analyses will log a warning about this upcoming change. [#3562](https://github.com/github/codeql-action/pull/3562)
+
+  To opt out of this change:
+  - **Repositories owned by an organization:** Create a custom repository property with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to `true` in the repository's settings. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). Alternatively, if you are using an advanced setup workflow, you can set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
+  - **User-owned repositories using default setup:** Switch to an advanced setup workflow and set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
+  - **User-owned repositories using advanced setup:** Set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
+- Fixed [a bug](https://github.com/github/codeql-action/issues/3555) which caused the CodeQL Action to fail loading repository properties if a "Multi select" repository property was configured for the repository. [#3557](https://github.com/github/codeql-action/pull/3557)
+- The CodeQL Action now loads [custom repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) on GitHub Enterprise Server, enabling the customization of features such as `github-codeql-disable-overlay` that was previously only available on GitHub.com. [#3559](https://github.com/github/codeql-action/pull/3559)
+- Once [private package registries](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries) can be configured with OIDC-based authentication for organizations, the CodeQL Action will now be able to accept such configurations. [#3563](https://github.com/github/codeql-action/pull/3563)
+- Fixed the retry mechanism for database uploads. Previously this would fail with the error "Response body object should not be disturbed or locked". [#3564](https://github.com/github/codeql-action/pull/3564)
+- A warning is now emitted if the CodeQL Action detects a repository property whose name suggests that it relates to the CodeQL Action, but which is not one of the properties recognised by the current version of the CodeQL Action. [#3570](https://github.com/github/codeql-action/pull/3570)
+
 ## 4.32.6 - 05 Mar 2026
 
 - Update default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3). [#3548](https://github.com/github/codeql-action/pull/3548)

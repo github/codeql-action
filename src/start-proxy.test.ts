@@ -124,125 +124,110 @@ const mixedCredentials = [
   { type: "git_source", host: "github.com/github", token: "mno" },
 ];
 
-test.serial(
-  "getCredentials prefers registriesCredentials over registrySecrets",
-  async (t) => {
-    const registryCredentials = Buffer.from(
-      JSON.stringify([
-        { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
-      ]),
-    ).toString("base64");
-    const registrySecrets = JSON.stringify([
-      { type: "npm_registry", host: "registry.npmjs.org", token: "def" },
-    ]);
+test("getCredentials prefers registriesCredentials over registrySecrets", async (t) => {
+  const registryCredentials = Buffer.from(
+    JSON.stringify([
+      { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
+    ]),
+  ).toString("base64");
+  const registrySecrets = JSON.stringify([
+    { type: "npm_registry", host: "registry.npmjs.org", token: "def" },
+  ]);
 
-    const credentials = startProxyExports.getCredentials(
-      getRunnerLogger(true),
-      registrySecrets,
-      registryCredentials,
-      undefined,
-    );
-    t.is(credentials.length, 1);
-    t.is(credentials[0].host, "npm.pkg.github.com");
-  },
-);
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    registrySecrets,
+    registryCredentials,
+    undefined,
+  );
+  t.is(credentials.length, 1);
+  t.is(credentials[0].host, "npm.pkg.github.com");
+});
 
-test.serial(
-  "getCredentials throws an error when configurations are not an array",
-  async (t) => {
-    const registryCredentials = Buffer.from(
-      JSON.stringify({ type: "npm_registry", token: "abc" }),
-    ).toString("base64");
+test("getCredentials throws an error when configurations are not an array", async (t) => {
+  const registryCredentials = Buffer.from(
+    JSON.stringify({ type: "npm_registry", token: "abc" }),
+  ).toString("base64");
 
+  t.throws(
+    () =>
+      startProxyExports.getCredentials(
+        getRunnerLogger(true),
+        undefined,
+        registryCredentials,
+        undefined,
+      ),
+    {
+      message:
+        "Expected credentials data to be an array of configurations, but it is not.",
+    },
+  );
+});
+
+test("getCredentials throws error when credential is not an object", async (t) => {
+  const testCredentials = [["foo"], [null]].map(toEncodedJSON);
+
+  for (const testCredential of testCredentials) {
     t.throws(
       () =>
         startProxyExports.getCredentials(
           getRunnerLogger(true),
           undefined,
-          registryCredentials,
+          testCredential,
           undefined,
         ),
       {
-        message:
-          "Expected credentials data to be an array of configurations, but it is not.",
+        message: "Invalid credentials - must be an object",
       },
     );
-  },
-);
+  }
+});
 
-test.serial(
-  "getCredentials throws error when credential is not an object",
-  async (t) => {
-    const testCredentials = [["foo"], [null]].map(toEncodedJSON);
+test("getCredentials throws error when credential is missing type", async (t) => {
+  const testCredentials = [[{ token: "abc", url: "https://localhost" }]].map(
+    toEncodedJSON,
+  );
 
-    for (const testCredential of testCredentials) {
-      t.throws(
-        () =>
-          startProxyExports.getCredentials(
-            getRunnerLogger(true),
-            undefined,
-            testCredential,
-            undefined,
-          ),
-        {
-          message: "Invalid credentials - must be an object",
-        },
-      );
-    }
-  },
-);
-
-test.serial(
-  "getCredentials throws error when credential is missing type",
-  async (t) => {
-    const testCredentials = [[{ token: "abc", url: "https://localhost" }]].map(
-      toEncodedJSON,
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must have a type",
+      },
     );
+  }
+});
 
-    for (const testCredential of testCredentials) {
-      t.throws(
-        () =>
-          startProxyExports.getCredentials(
-            getRunnerLogger(true),
-            undefined,
-            testCredential,
-            undefined,
-          ),
-        {
-          message: "Invalid credentials - must have a type",
-        },
-      );
-    }
-  },
-);
+test("getCredentials throws error when credential missing host and url", async (t) => {
+  const testCredentials = [
+    [{ type: "npm_registry", token: "abc" }],
+    [{ type: "npm_registry", token: "abc", host: null }],
+    [{ type: "npm_registry", token: "abc", url: null }],
+  ].map(toEncodedJSON);
 
-test.serial(
-  "getCredentials throws error when credential missing host and url",
-  async (t) => {
-    const testCredentials = [
-      [{ type: "npm_registry", token: "abc" }],
-      [{ type: "npm_registry", token: "abc", host: null }],
-      [{ type: "npm_registry", token: "abc", url: null }],
-    ].map(toEncodedJSON);
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must specify host or url",
+      },
+    );
+  }
+});
 
-    for (const testCredential of testCredentials) {
-      t.throws(
-        () =>
-          startProxyExports.getCredentials(
-            getRunnerLogger(true),
-            undefined,
-            testCredential,
-            undefined,
-          ),
-        {
-          message: "Invalid credentials - must specify host or url",
-        },
-      );
-    }
-  },
-);
-
-test.serial("getCredentials filters by language when specified", async (t) => {
+test("getCredentials filters by language when specified", async (t) => {
   const credentials = startProxyExports.getCredentials(
     getRunnerLogger(true),
     undefined,
@@ -253,145 +238,270 @@ test.serial("getCredentials filters by language when specified", async (t) => {
   t.is(credentials[0].type, "maven_repository");
 });
 
-test.serial(
-  "getCredentials returns all for a language when specified",
-  async (t) => {
-    const credentials = startProxyExports.getCredentials(
-      getRunnerLogger(true),
-      undefined,
-      toEncodedJSON(mixedCredentials),
-      KnownLanguage.go,
-    );
-    t.is(credentials.length, 2);
+test("getCredentials returns all for a language when specified", async (t) => {
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(mixedCredentials),
+    KnownLanguage.go,
+  );
+  t.is(credentials.length, 2);
 
-    const credentialsTypes = credentials.map((c) => c.type);
-    t.assert(credentialsTypes.includes("goproxy_server"));
-    t.assert(credentialsTypes.includes("git_source"));
-  },
-);
+  const credentialsTypes = credentials.map((c) => c.type);
+  t.assert(credentialsTypes.includes("goproxy_server"));
+  t.assert(credentialsTypes.includes("git_source"));
+});
 
-test.serial(
-  "getCredentials returns all credentials when no language specified",
-  async (t) => {
-    const credentialsInput = toEncodedJSON(mixedCredentials);
+test("getCredentials returns all credentials when no language specified", async (t) => {
+  const credentialsInput = toEncodedJSON(mixedCredentials);
 
-    const credentials = startProxyExports.getCredentials(
-      getRunnerLogger(true),
-      undefined,
-      credentialsInput,
-      undefined,
-    );
-    t.is(credentials.length, mixedCredentials.length);
-  },
-);
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    credentialsInput,
+    undefined,
+  );
+  t.is(credentials.length, mixedCredentials.length);
+});
 
-test.serial(
-  "getCredentials throws an error when non-printable characters are used",
-  async (t) => {
-    const invalidCredentials = [
-      { type: "nuget_feed", host: "1nuget.pkg.github.com", token: "abc\u0000" }, // Non-printable character in token
-      { type: "nuget_feed", host: "2nuget.pkg.github.com\u0001" }, // Non-printable character in host
+test("getCredentials throws an error when non-printable characters are used", async (t) => {
+  const invalidCredentials: startProxyExports.RawCredential[] = [
+    { type: "nuget_feed", host: "1nuget.pkg.github.com", token: "abc\u0000" }, // Non-printable character in token
+    { type: "nuget_feed", host: "2nuget.pkg.github.com\u0001" }, // Non-printable character in host
+    {
+      type: "nuget_feed",
+      host: "3nuget.pkg.github.com",
+      password: "ghi\u0002",
+    }, // Non-printable character in password
+    {
+      type: "nuget_feed",
+      host: "4nuget.pkg.github.com",
+      token: "ghi\x00",
+    }, // Non-printable character in token
+  ];
+
+  for (const invalidCredential of invalidCredentials) {
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
       {
-        type: "nuget_feed",
-        host: "3nuget.pkg.github.com",
-        password: "ghi\u0002",
-      }, // Non-printable character in password
-      {
-        type: "nuget_feed",
-        host: "4nuget.pkg.github.com",
-        password: "ghi\x00",
-      }, // Non-printable character in password
-    ];
-
-    for (const invalidCredential of invalidCredentials) {
-      const credentialsInput = Buffer.from(
-        JSON.stringify([invalidCredential]),
-      ).toString("base64");
-
-      t.throws(
-        () =>
-          startProxyExports.getCredentials(
-            getRunnerLogger(true),
-            undefined,
-            credentialsInput,
-            undefined,
-          ),
-        {
-          message:
-            "Invalid credentials - fields must contain only printable characters",
-        },
-      );
-    }
-  },
-);
-
-test.serial(
-  "getCredentials logs a warning when a PAT is used without a username",
-  async (t) => {
-    const loggedMessages = [];
-    const logger = getRecordingLogger(loggedMessages);
-    const likelyWrongCredentials = toEncodedJSON([
-      {
-        type: "git_server",
-        host: "https://github.com/",
-        password: `ghp_${makeTestToken()}`,
+        message:
+          "Invalid credentials - fields must contain only printable characters",
       },
-    ]);
-
-    const results = startProxyExports.getCredentials(
-      logger,
-      undefined,
-      likelyWrongCredentials,
-      undefined,
     );
+  }
+});
 
-    // The configuration should be accepted, despite the likely problem.
-    t.assert(results);
-    t.is(results.length, 1);
-    t.is(results[0].type, "git_server");
-    t.is(results[0].host, "https://github.com/");
+const validAzureCredential: startProxyExports.AzureConfig = {
+  tenant_id: "12345678-1234-1234-1234-123456789012",
+  client_id: "abcdef01-2345-6789-abcd-ef0123456789",
+};
+
+const validAwsCredential: startProxyExports.AWSConfig = {
+  aws_region: "us-east-1",
+  account_id: "123456789012",
+  role_name: "MY_ROLE",
+  domain: "MY_DOMAIN",
+  domain_owner: "987654321098",
+  audience: "custom-audience",
+};
+
+const validJFrogCredential: startProxyExports.JFrogConfig = {
+  jfrog_oidc_provider_name: "MY_PROVIDER",
+  audience: "jfrog-audience",
+  identity_mapping_name: "my-mapping",
+};
+
+test("getCredentials throws an error when non-printable characters are used for Azure OIDC", (t) => {
+  for (const key of Object.keys(validAzureCredential)) {
+    const invalidAzureCredential = {
+      ...validAzureCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidAzureCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials throws an error when non-printable characters are used for AWS OIDC", (t) => {
+  for (const key of Object.keys(validAwsCredential)) {
+    const invalidAwsCredential = {
+      ...validAwsCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidAwsCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials throws an error when non-printable characters are used for JFrog OIDC", (t) => {
+  for (const key of Object.keys(validJFrogCredential)) {
+    const invalidJFrogCredential = {
+      ...validJFrogCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidJFrogCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials accepts OIDC configurations", (t) => {
+  const oidcConfigurations = [
+    {
+      type: "nuget_feed",
+      host: "azure.pkg.github.com",
+      ...validAzureCredential,
+    },
+    {
+      type: "nuget_feed",
+      host: "aws.pkg.github.com",
+      ...validAwsCredential,
+    },
+    {
+      type: "nuget_feed",
+      host: "jfrog.pkg.github.com",
+      ...validJFrogCredential,
+    },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(oidcConfigurations),
+    KnownLanguage.csharp,
+  );
+  t.is(credentials.length, 3);
+
+  t.assert(credentials.every((c) => c.type === "nuget_feed"));
+  t.assert(credentials.some((c) => startProxyExports.isAzureConfig(c)));
+  t.assert(credentials.some((c) => startProxyExports.isAWSConfig(c)));
+  t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
+});
+
+test("getCredentials logs a warning when a PAT is used without a username", async (t) => {
+  const loggedMessages = [];
+  const logger = getRecordingLogger(loggedMessages);
+  const likelyWrongCredentials = toEncodedJSON([
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      password: `ghp_${makeTestToken()}`,
+    },
+  ]);
+
+  const results = startProxyExports.getCredentials(
+    logger,
+    undefined,
+    likelyWrongCredentials,
+    undefined,
+  );
+
+  // The configuration should be accepted, despite the likely problem.
+  t.assert(results);
+  t.is(results.length, 1);
+  t.is(results[0].type, "git_server");
+  t.is(results[0].host, "https://github.com/");
+
+  if (startProxyExports.isUsernamePassword(results[0])) {
     t.assert(results[0].password?.startsWith("ghp_"));
+  } else {
+    t.fail("Expected a `UsernamePassword`-based credential.");
+  }
 
-    // A warning should have been logged.
-    checkExpectedLogMessages(t, loggedMessages, [
-      "using a GitHub Personal Access Token (PAT), but no username was provided",
-    ]);
-  },
-);
+  // A warning should have been logged.
+  checkExpectedLogMessages(t, loggedMessages, [
+    "using a GitHub Personal Access Token (PAT), but no username was provided",
+  ]);
+});
 
-test.serial(
-  "getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE",
-  async (t) => {
-    const credentialsInput = toEncodedJSON(mixedCredentials);
+test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
+  const credentialsInput = toEncodedJSON(mixedCredentials);
 
-    const credentials = startProxyExports.getCredentials(
-      getRunnerLogger(true),
-      undefined,
-      credentialsInput,
-      KnownLanguage.actions,
-      false,
-    );
-    t.is(credentials.length, mixedCredentials.length);
-  },
-);
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    credentialsInput,
+    KnownLanguage.actions,
+    false,
+  );
+  t.is(credentials.length, mixedCredentials.length);
+});
 
-test.serial(
-  "getCredentials returns no credentials for Actions when using NEW_LANGUAGE_TO_REGISTRY_TYPE",
-  async (t) => {
-    const credentialsInput = toEncodedJSON(mixedCredentials);
+test("getCredentials returns no credentials for Actions when using NEW_LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
+  const credentialsInput = toEncodedJSON(mixedCredentials);
 
-    const credentials = startProxyExports.getCredentials(
-      getRunnerLogger(true),
-      undefined,
-      credentialsInput,
-      KnownLanguage.actions,
-      true,
-    );
-    t.deepEqual(credentials, []);
-  },
-);
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    credentialsInput,
+    KnownLanguage.actions,
+    true,
+  );
+  t.deepEqual(credentials, []);
+});
 
-test.serial("parseLanguage", async (t) => {
+test("parseLanguage", async (t) => {
   // Exact matches
   t.deepEqual(parseLanguage("csharp"), KnownLanguage.csharp);
   t.deepEqual(parseLanguage("cpp"), KnownLanguage.cpp);
@@ -522,40 +632,6 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
     t.is(info.version, defaults.cliVersion);
     t.is(info.url, "url-we-want");
   });
-});
-
-test.serial("credentialToStr - hides passwords", (t) => {
-  const secret = "password123";
-  const credential = {
-    type: "maven_credential",
-    password: secret,
-    url: "https://localhost",
-  };
-
-  const str = startProxyExports.credentialToStr(credential);
-
-  t.false(str.includes(secret));
-  t.is(
-    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: true; Token: false",
-    str,
-  );
-});
-
-test.serial("credentialToStr - hides tokens", (t) => {
-  const secret = "password123";
-  const credential = {
-    type: "maven_credential",
-    token: secret,
-    url: "https://localhost",
-  };
-
-  const str = startProxyExports.credentialToStr(credential);
-
-  t.false(str.includes(secret));
-  t.is(
-    "Type: maven_credential; Host: undefined; Url: https://localhost Username: undefined; Password: false; Token: true",
-    str,
-  );
 });
 
 test.serial(

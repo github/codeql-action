@@ -1,26 +1,33 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
 import {
   getOptionalInput,
   isAnalyzingPullRequest,
+  isDefaultSetup,
   isSelfHostedRunner,
 } from "./actions-util";
 import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
+import {
+  RepositoryProperties,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
-import { RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -300,18 +307,112 @@ export function cleanupDatabaseClusterDirectory(
 
 export async function getFileCoverageInformationEnabled(
   debugMode: boolean,
-  repositoryNwo: RepositoryNwo,
+  codeql: CodeQL,
   features: FeatureEnablement,
-): Promise<boolean> {
-  return (
-    // Always enable file coverage information in debug mode
-    debugMode ||
-    // We're most interested in speeding up PRs, and we want to keep
-    // submitting file coverage information for the default branch since
-    // it is used to populate the status page.
-    !isAnalyzingPullRequest() ||
-    // For now, restrict this feature to the GitHub org
-    repositoryNwo.owner !== "github" ||
-    !(await features.getValue(Feature.SkipFileCoverageOnPrs))
-  );
+  repositoryProperties: RepositoryProperties,
+): Promise<{
+  enabled: boolean;
+  enabledByRepositoryProperty: boolean;
+  showDeprecationWarning: boolean;
+}> {
+  // Always enable file coverage information in debug mode
+  if (debugMode) {
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: false,
+      showDeprecationWarning: false,
+    };
+  }
+  // We're most interested in speeding up PRs, and we want to keep
+  // submitting file coverage information for the default branch since
+  // it is used to populate the status page.
+  if (!isAnalyzingPullRequest()) {
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: false,
+      showDeprecationWarning: false,
+    };
+  }
+  // If the user has explicitly opted out via an environment variable, don't
+  // show the deprecation warning.
+  if (
+    (process.env[EnvVar.FILE_COVERAGE_ON_PRS] || "").toLocaleLowerCase() ===
+    "true"
+  ) {
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: false,
+      showDeprecationWarning: false,
+    };
+  }
+  // Allow repositories to opt in to file coverage information on PRs
+  // using a repository property. In this case, don't show the deprecation
+  // warning since the repository has explicitly opted in.
+  if (
+    repositoryProperties[RepositoryPropertyName.FILE_COVERAGE_ON_PRS] === true
+  ) {
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: true,
+      showDeprecationWarning: false,
+    };
+  }
+  // If the feature is disabled, then maintain the previous behavior of
+  // unconditionally computing file coverage information, but warn that
+  // file coverage on PRs will be disabled in a future release.
+  if (!(await features.getValue(Feature.SkipFileCoverageOnPrs, codeql))) {
+    return {
+      enabled: true,
+      enabledByRepositoryProperty: false,
+      showDeprecationWarning: true,
+    };
+  }
+  // Otherwise, disable file coverage information on PRs to speed up analysis.
+  return {
+    enabled: false,
+    enabledByRepositoryProperty: false,
+    showDeprecationWarning: false,
+  };
+}
+
+/**
+ * Log a warning about the deprecation of file coverage information on PRs, including how to opt
+ * back in via an environment variable or repository property.
+ */
+export function logFileCoverageOnPrsDeprecationWarning(logger: Logger): void {
+  if (process.env[EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION]) {
+    return;
+  }
+
+  const repositoryOwnerType: string | undefined =
+    github.context.payload.repository?.owner.type;
+
+  let message =
+    "Starting April 2026, the CodeQL Action will skip computing file coverage information on pull requests " +
+    "to improve analysis performance. File coverage information will still be computed on non-PR analyses.";
+  const envVarOptOut =
+    "set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.";
+  const repoPropertyOptOut =
+    "create a custom repository property with the name " +
+    '`github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to ' +
+    "`true` in the repository's settings.";
+
+  if (repositoryOwnerType === "Organization") {
+    // Org-owned repo: can use the repository property
+    if (isDefaultSetup()) {
+      message += `\n\nTo opt out of this change, ${repoPropertyOptOut}`;
+    } else {
+      message += `\n\nTo opt out of this change, ${envVarOptOut} Alternatively, ${repoPropertyOptOut}`;
+    }
+  } else if (isDefaultSetup()) {
+    // User-owned repo on default setup: no repo property available and
+    // no way to set env vars, so need to switch to advanced setup.
+    message += `\n\nTo opt out of this change, switch to an advanced setup workflow and ${envVarOptOut}`;
+  } else {
+    // User-owned repo on advanced setup: can set the env var
+    message += `\n\nTo opt out of this change, ${envVarOptOut}`;
+  }
+
+  logger.warning(message);
+  core.exportVariable(EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION, "true");
 }

@@ -11,7 +11,10 @@ import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
 import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 import * as yaml from "yaml";
 
-import { OLDEST_SUPPORTED_MAJOR_VERSION } from "./config";
+import {
+  OLDEST_SUPPORTED_MAJOR_VERSION,
+  PR_CHECK_EXCLUDED_FILE,
+} from "./config";
 
 /** Represents the command-line options. */
 interface Options {
@@ -39,7 +42,9 @@ export interface Exclusions {
 
 /** Loads the configuration for which checks to exclude. */
 function loadExclusions(): Exclusions {
-  return yaml.parse(fs.readFileSync("excluded.yml", "utf-8")) as Exclusions;
+  return yaml.parse(
+    fs.readFileSync(PR_CHECK_EXCLUDED_FILE, "utf-8"),
+  ) as Exclusions;
 }
 
 /** The type of the Octokit client. */

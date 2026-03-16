@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    /* Basic Options */
+    "lib": ["esnext"],
+    "rootDir": "..",
+    "sourceMap": false,
+    "noEmit": true,
+  },
+  "include": ["./*.ts", "../src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

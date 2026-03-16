@@ -630,30 +630,29 @@ async function loadUserConfig(
   }
 }
 
-const OVERLAY_ANALYSIS_FEATURES: Record<Language, Feature> = {
-  actions: Feature.OverlayAnalysisActions,
-  cpp: Feature.OverlayAnalysisCpp,
+/**
+ * Maps languages to their overlay analysis feature flags. Only languages that
+ * are GA or in staff-ship for overlay analysis are included here. Languages
+ * without an entry will have overlay analysis disabled.
+ */
+const OVERLAY_ANALYSIS_FEATURES: Partial<Record<Language, Feature>> = {
   csharp: Feature.OverlayAnalysisCsharp,
   go: Feature.OverlayAnalysisGo,
   java: Feature.OverlayAnalysisJava,
   javascript: Feature.OverlayAnalysisJavascript,
   python: Feature.OverlayAnalysisPython,
   ruby: Feature.OverlayAnalysisRuby,
-  rust: Feature.OverlayAnalysisRust,
-  swift: Feature.OverlayAnalysisSwift,
 };
 
-const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Record<Language, Feature> = {
-  actions: Feature.OverlayAnalysisCodeScanningActions,
-  cpp: Feature.OverlayAnalysisCodeScanningCpp,
+const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Partial<
+  Record<Language, Feature>
+> = {
   csharp: Feature.OverlayAnalysisCodeScanningCsharp,
   go: Feature.OverlayAnalysisCodeScanningGo,
   java: Feature.OverlayAnalysisCodeScanningJava,
   javascript: Feature.OverlayAnalysisCodeScanningJavascript,
   python: Feature.OverlayAnalysisCodeScanningPython,
   ruby: Feature.OverlayAnalysisCodeScanningRuby,
-  rust: Feature.OverlayAnalysisCodeScanningRust,
-  swift: Feature.OverlayAnalysisCodeScanningSwift,
 };
 
 /**
@@ -1553,6 +1552,13 @@ export function isCodeScanningEnabled(config: Config): boolean {
  */
 export function isCodeQualityEnabled(config: Config): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeQuality);
+}
+
+/**
+ * Returns `true` if Code Scanning Risk Assessment analysis is enabled, or `false` if not.
+ */
+export function isRiskAssessmentEnabled(config: Config): boolean {
+  return config.analysisKinds.includes(AnalysisKind.RiskAssessment);
 }
 
 /**

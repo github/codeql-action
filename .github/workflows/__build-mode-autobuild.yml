@@ -67,13 +67,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-      - name: Prepare test
-        id: prepare-test
-        uses: ./.github/actions/prepare-test
-        with:
-          version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
       - name: Install Java
         uses: actions/setup-java@v5
         with:
@@ -87,6 +80,13 @@ jobs:
         run: |-
           gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"
           echo "$YQ_PATH" >> "$GITHUB_PATH"
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
       - name: Set up Java test repo configuration
         run: |
           mv * .github ../action/tests/multi-language-repo/

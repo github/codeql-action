@@ -19,6 +19,7 @@ import {
   getWorkflowRunID,
 } from "../actions-util";
 import { type CodeQL } from "../codeql";
+import * as json from "../json";
 import { Logger } from "../logging";
 import {
   DiskUsage,
@@ -149,8 +150,7 @@ export async function getOverlayStatus(
     const contents = await fs.promises.readFile(statusFile, "utf-8");
     const parsed: unknown = JSON.parse(contents);
     if (
-      typeof parsed !== "object" ||
-      parsed === null ||
+      !json.isObject<OverlayStatus>(parsed) ||
       typeof parsed["attemptedToBuildOverlayBaseDatabase"] !== "boolean" ||
       typeof parsed["builtOverlayBaseDatabase"] !== "boolean"
     ) {

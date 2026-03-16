@@ -1,22 +1,211 @@
+import type { UnvalidatedObject } from "../json";
+import * as json from "../json";
+import { isDefined } from "../util";
+
 /**
  * After parsing configurations from JSON, we don't know whether all the keys we expect are
  * present or not. This type is used to represent such values, which we expect to be
  * `Credential` values, but haven't validated yet.
  */
-export type RawCredential = Partial<Credential>;
+export type RawCredential = UnvalidatedObject<Credential>;
+
+/** Usernames may be present for both authentication with tokens or passwords. */
+export type Username = {
+  /** The username needed to authenticate to the package registry, if any. */
+  username?: string;
+};
+
+/** Decides whether `config` has a username. */
+export function hasUsername(config: AuthConfig): config is Username {
+  return "username" in config;
+}
+
+/**
+ * Fields expected for authentication based on a username and password.
+ * Both username and password are optional.
+ */
+export type UsernamePassword = {
+  /** The password needed to authenticate to the package registry, if any. */
+  password?: string;
+} & Username;
+
+/** Decides whether `config` is based on a username and password. */
+export function isUsernamePassword(
+  config: AuthConfig,
+): config is UsernamePassword {
+  return hasUsername(config) && "password" in config;
+}
+
+/**
+ * Fields expected for token-based authentication.
+ * Both username and token are optional.
+ */
+export type Token = {
+  /** The token needed to authenticate to the package registry, if any. */
+  token?: string;
+} & Username;
+
+/** Decides whether `config` is token-based. */
+export function isToken(
+  config: UnvalidatedObject<AuthConfig>,
+): config is Token {
+  // The "username" field is optional, but should be a string if present.
+  if ("username" in config && !json.isStringOrUndefined(config.username)) {
+    return false;
+  }
+
+  // The "token" field is required, and must be a string or undefined.
+  return "token" in config && json.isStringOrUndefined(config.token);
+}
+
+/** Configuration for Azure OIDC. */
+export type AzureConfig = { tenant_id: string; client_id: string };
+
+/** Decides whether `config` is an Azure OIDC configuration. */
+export function isAzureConfig(
+  config: UnvalidatedObject<AuthConfig>,
+): config is AzureConfig {
+  return (
+    "tenant_id" in config &&
+    "client_id" in config &&
+    isDefined(config.tenant_id) &&
+    isDefined(config.client_id) &&
+    json.isString(config.tenant_id) &&
+    json.isString(config.client_id)
+  );
+}
+
+/** Configuration for AWS OIDC. */
+export type AWSConfig = {
+  aws_region: string;
+  account_id: string;
+  role_name: string;
+  domain: string;
+  domain_owner: string;
+  audience?: string;
+};
+
+/** Decides whether `config` is an AWS OIDC configuration. */
+export function isAWSConfig(
+  config: UnvalidatedObject<AuthConfig>,
+): config is AWSConfig {
+  // All of these properties are required.
+  const requiredProperties = [
+    "aws_region",
+    "account_id",
+    "role_name",
+    "domain",
+    "domain_owner",
+  ];
+
+  for (const property of requiredProperties) {
+    if (
+      !(property in config) ||
+      !isDefined(config[property]) ||
+      !json.isString(config[property])
+    ) {
+      return false;
+    }
+  }
+
+  // The "audience" field is optional, but should be a string if present.
+  if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
+    return false;
+  }
+
+  return true;
+}
+
+/** Configuration for JFrog OIDC. */
+export type JFrogConfig = {
+  jfrog_oidc_provider_name: string;
+  audience?: string;
+  identity_mapping_name?: string;
+};
+
+/** Decides whether `config` is a JFrog OIDC configuration. */
+export function isJFrogConfig(
+  config: UnvalidatedObject<AuthConfig>,
+): config is JFrogConfig {
+  // The "audience" and "identity_mapping_name" fields are optional, but should be strings if present.
+  if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
+    return false;
+  }
+  if (
+    "identity_mapping_name" in config &&
+    !json.isStringOrUndefined(config.identity_mapping_name)
+  ) {
+    return false;
+  }
+
+  return (
+    "jfrog_oidc_provider_name" in config &&
+    isDefined(config.jfrog_oidc_provider_name) &&
+    json.isString(config.jfrog_oidc_provider_name)
+  );
+}
+
+/** Represents all supported OIDC configurations. */
+export type OIDC = AzureConfig | AWSConfig | JFrogConfig;
+
+/** All authentication-related fields. */
+export type AuthConfig = UsernamePassword | Token | OIDC;
 
 /**
  * A package registry configuration includes identifying information as well as
  * authentication credentials.
  */
-export type Credential = {
-  /** The username needed to authenticate to the package registry, if any. */
-  username?: string;
-  /** The password needed to authenticate to the package registry, if any. */
-  password?: string;
-  /** The token needed to authenticate to the package registry, if any. */
-  token?: string;
-} & Registry;
+export type Credential = AuthConfig & Registry;
+
+/**
+ * Pretty-prints a `Credential` value to a string, but hides the actual password or token values.
+ *
+ * @param credential The credential to convert to a string.
+ */
+export function credentialToStr(credential: Credential): string {
+  let result: string = `Type: ${credential.type};`;
+
+  const appendIfDefined = (name: string, val: string | undefined) => {
+    if (isDefined(val)) {
+      result += ` ${name}: ${val};`;
+    }
+  };
+
+  appendIfDefined("Url", credential.url);
+  appendIfDefined("Host", credential.host);
+
+  if (hasUsername(credential)) {
+    appendIfDefined("Username", credential.username);
+  }
+
+  if ("password" in credential) {
+    appendIfDefined(
+      "Password",
+      isDefined(credential.password) ? "***" : undefined,
+    );
+  }
+  if (isToken(credential)) {
+    appendIfDefined("Token", isDefined(credential.token) ? "***" : undefined);
+  }
+
+  if (isAzureConfig(credential)) {
+    appendIfDefined("Tenant", credential.tenant_id);
+    appendIfDefined("Client", credential.client_id);
+  } else if (isAWSConfig(credential)) {
+    appendIfDefined("AWS Region", credential.aws_region);
+    appendIfDefined("AWS Account", credential.account_id);
+    appendIfDefined("AWS Role", credential.role_name);
+    appendIfDefined("AWS Domain", credential.domain);
+    appendIfDefined("AWS Domain Owner", credential.domain_owner);
+    appendIfDefined("AWS Audience", credential.audience);
+  } else if (isJFrogConfig(credential)) {
+    appendIfDefined("JFrog Provider", credential.jfrog_oidc_provider_name);
+    appendIfDefined("JFrog Identity Mapping", credential.identity_mapping_name);
+    appendIfDefined("JFrog Audience", credential.audience);
+  }
+
+  return result;
+}
 
 /** A package registry is identified by its type and address. */
 export type Registry = {

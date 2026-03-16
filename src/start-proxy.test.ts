@@ -439,41 +439,48 @@ test("getCredentials accepts OIDC configurations", (t) => {
   t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
 });
 
-test("getCredentials logs a warning when a PAT is used without a username", async (t) => {
-  const loggedMessages = [];
-  const logger = getRecordingLogger(loggedMessages);
-  const likelyWrongCredentials = toEncodedJSON([
-    {
-      type: "git_server",
-      host: "https://github.com/",
-      password: `ghp_${makeTestToken()}`,
-    },
-  ]);
+const testPATWarning = test.macro({
+  exec: async (t: ExecutionContext<unknown>) => {
+    const loggedMessages = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const likelyWrongCredentials = toEncodedJSON([
+      {
+        type: "git_server",
+        host: "https://github.com/",
+        password: `ghp_${makeTestToken()}`,
+      },
+    ]);
 
-  const results = startProxyExports.getCredentials(
-    logger,
-    undefined,
-    likelyWrongCredentials,
-    undefined,
-  );
+    const results = startProxyExports.getCredentials(
+      logger,
+      undefined,
+      likelyWrongCredentials,
+      undefined,
+    );
 
-  // The configuration should be accepted, despite the likely problem.
-  t.assert(results);
-  t.is(results.length, 1);
-  t.is(results[0].type, "git_server");
-  t.is(results[0].host, "https://github.com/");
+    // The configuration should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
 
-  if (startProxyExports.isUsernamePassword(results[0])) {
-    t.assert(results[0].password?.startsWith("ghp_"));
-  } else {
-    t.fail("Expected a `UsernamePassword`-based credential.");
-  }
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
 
-  // A warning should have been logged.
-  checkExpectedLogMessages(t, loggedMessages, [
-    "using a GitHub Personal Access Token (PAT), but no username was provided",
-  ]);
+    // A warning should have been logged.
+    checkExpectedLogMessages(t, loggedMessages, [
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    ]);
+  },
+
+  title: (providedTitle = "") =>
+    `getCredentials logs a warning when a PAT is used - ${providedTitle}`,
 });
+
+test("password without a username", testPATWarning);
 
 test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);

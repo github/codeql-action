@@ -24,6 +24,8 @@ interface Options {
   ref?: string;
   /** Whether to actually apply the changes or not. */
   apply: boolean;
+  /** Whether to output additional information. */
+  verbose: boolean;
 }
 
 /** Identifies the CodeQL Action repository. */
@@ -69,10 +71,13 @@ export interface CheckInfo {
 
 /** Removes entries from `checkInfos` based the configuration. */
 export function removeExcluded(
+  options: Options,
   exclusions: Exclusions,
   checkInfos: CheckInfo[],
 ): CheckInfo[] {
-  console.log(exclusions);
+  if (options.verbose) {
+    console.log(exclusions);
+  }
 
   return checkInfos.filter((checkInfo) => {
     if (exclusions.is.includes(checkInfo.context)) {
@@ -98,6 +103,7 @@ export function removeExcluded(
 
 /** Gets a list of check run names for `ref`. */
 async function getChecksFor(
+  options: Options,
   client: ApiClient,
   ref: string,
 ): Promise<CheckInfo[]> {
@@ -133,7 +139,7 @@ async function getChecksFor(
   // Load the configuration for which checks to exclude and apply it before
   // returning the checks.
   const exclusions = loadExclusions();
-  return removeExcluded(exclusions, checkInfos);
+  return removeExcluded(options, exclusions, checkInfos);
 }
 
 /** Gets the current list of release branches. */
@@ -224,6 +230,11 @@ async function main(): Promise<void> {
         type: "boolean",
         default: false,
       },
+      // Whether to output additional information.
+      verbose: {
+        type: "boolean",
+        default: false,
+      },
     },
     strict: true,
   });
@@ -244,7 +255,7 @@ async function main(): Promise<void> {
 
   // Find the check runs for the specified `ref` that we will later set as the required checks
   // for the main and release branches.
-  const checkInfos = await getChecksFor(client, options.ref);
+  const checkInfos = await getChecksFor(options, client, options.ref);
   const checkNames = new Set(checkInfos.map((info) => info.context));
 
   // Update the main branch.

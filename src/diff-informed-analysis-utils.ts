@@ -71,6 +71,7 @@ export async function getDiffInformedAnalysisBranches(
 }
 
 export interface DiffThunkRange {
+  /** Relative path from the repository root, using forward slashes as separators. */
   path: string;
   startLine: number;
   endLine: number;
@@ -112,8 +113,9 @@ export function readDiffRangesJsonFile(
  *
  * @param branches The base and head branches of the pull request.
  * @param logger
- * @returns An array of tuples, where each tuple contains the absolute path of a
- * file, the start line and the end line (both 1-based and inclusive) of an
+ * @returns An array of tuples, where each tuple contains the relative path of a
+ * file (relative to the repository root, as returned by the GitHub compare API),
+ * the start line and the end line (both 1-based and inclusive) of an
  * added or modified range in that file. Returns `undefined` if the action was
  * not triggered by a pull request or if there was an error.
  */
@@ -191,13 +193,6 @@ function getDiffRanges(
   fileDiff: FileDiff,
   logger: Logger,
 ): DiffThunkRange[] | undefined {
-  // Diff-informed queries expect the file path to be absolute. CodeQL always
-  // uses forward slashes as the path separator, so on Windows we need to
-  // replace any backslashes with forward slashes.
-  const filename = path
-    .join(actionsUtil.getRequiredInput("checkout_path"), fileDiff.filename)
-    .replaceAll(path.sep, "/");
-
   if (fileDiff.patch === undefined) {
     if (fileDiff.changes === 0) {
       // There are situations where a changed file legitimately has no diff.
@@ -212,7 +207,7 @@ function getDiffRanges(
     // to a special diff range that covers the entire file.
     return [
       {
-        path: filename,
+        path: fileDiff.filename,
         startLine: 0,
         endLine: 0,
       },
@@ -247,7 +242,7 @@ function getDiffRanges(
       // Any line that does not start with a "+" or "-" terminates the current
       // range of added lines.
       diffRanges.push({
-        path: filename,
+        path: fileDiff.filename,
         startLine: additionRangeStartLine,
         endLine: currentLine - 1,
       });

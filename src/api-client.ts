@@ -19,6 +19,15 @@ import {
 
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 
+/**
+ * HTTP status codes that should not be retried.
+ *
+ * The default Octokit list is 400, 401, 403, 404, 410, 422, and 451. We have
+ * observed transient errors with authentication, so we remove 401, 403, and 404
+ * from the default list to ensure that these errors are retried.
+ */
+export const DO_NOT_RETRY_STATUSES = [400, 410, 422, 451];
+
 export type GitHubApiCombinedDetails = GitHubApiDetails &
   GitHubApiExternalRepoDetails;
 
@@ -52,10 +61,7 @@ function createApiClientWithDetails(
         error: core.error,
       },
       retry: {
-        // The default is 400, 401, 403, 404, 410, 422, and 451. We have observed transient errors
-        // with authentication, so we remove 401, 403, and 404 from the default list to ensure that
-        // these errors are retried.
-        doNotRetry: [400, 410, 422, 451],
+        doNotRetry: DO_NOT_RETRY_STATUSES,
       },
     }),
   );

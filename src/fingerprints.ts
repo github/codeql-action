@@ -4,6 +4,7 @@ import path from "path";
 import Long from "long";
 
 import { DocUrl } from "./doc-url";
+import * as json from "./json";
 import { Logger } from "./logging";
 import type * as sarif from "./sarif";
 
@@ -189,7 +190,7 @@ export function resolveUriToFile(
       typeof location.index !== "number" ||
       location.index < 0 ||
       location.index >= artifacts.length ||
-      typeof artifacts[location.index].location !== "object"
+      !json.isObject(artifacts[location.index].location)
     ) {
       logger.debug(`Ignoring location as index "${location.index}" is invalid`);
       return undefined;

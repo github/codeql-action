@@ -1,8 +1,8 @@
 name: "Use a custom `checkout_path`"
 description: "Checks that a custom `checkout_path` will find the proper commit_oid"
-versions: ["linked"]
+versions:
+  - linked
 installGo: true
-installPython: true
 installDotNet: true
 steps:
   # This ensures we don't accidentally use the original checkout for any part of the test.

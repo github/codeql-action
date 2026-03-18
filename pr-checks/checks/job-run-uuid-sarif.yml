@@ -1,6 +1,7 @@
 name: "Job run UUID added to SARIF"
 description: "Tests that the job run UUID is added to the SARIF output"
-versions: ["nightly-latest"]
+versions:
+  - nightly-latest
 steps:
   - uses: ./../action/init
     id: init

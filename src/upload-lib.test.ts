@@ -632,57 +632,10 @@ test.serial(
   "shouldShowCombineSarifFilesDeprecationWarning when on dotcom",
   async (t) => {
     t.true(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-        {
-          type: GitHubVariant.DOTCOM,
-        },
-      ),
-    );
-  },
-);
-
-test.serial(
-  "shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.13",
-  async (t) => {
-    t.false(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-        {
-          type: GitHubVariant.GHES,
-          version: "3.13.2",
-        },
-      ),
-    );
-  },
-);
-
-test.serial(
-  "shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.14",
-  async (t) => {
-    t.true(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-        {
-          type: GitHubVariant.GHES,
-          version: "3.14.0",
-        },
-      ),
-    );
-  },
-);
-
-test.serial(
-  "shouldShowCombineSarifFilesDeprecationWarning when on GHES 3.16 pre",
-  async (t) => {
-    t.true(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-        {
-          type: GitHubVariant.GHES,
-          version: "3.16.0.pre1",
-        },
-      ),
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning([
+        createMockSarif("abc", "def"),
+        createMockSarif("abc", "def"),
+      ]),
     );
   },
 );
@@ -691,12 +644,9 @@ test.serial(
   "shouldShowCombineSarifFilesDeprecationWarning with only 1 run",
   async (t) => {
     t.false(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "def")],
-        {
-          type: GitHubVariant.DOTCOM,
-        },
-      ),
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning([
+        createMockSarif("abc", "def"),
+      ]),
     );
   },
 );
@@ -705,12 +655,10 @@ test.serial(
   "shouldShowCombineSarifFilesDeprecationWarning with distinct categories",
   async (t) => {
     t.false(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "def"), createMockSarif("def", "def")],
-        {
-          type: GitHubVariant.DOTCOM,
-        },
-      ),
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning([
+        createMockSarif("abc", "def"),
+        createMockSarif("def", "def"),
+      ]),
     );
   },
 );
@@ -719,12 +667,10 @@ test.serial(
   "shouldShowCombineSarifFilesDeprecationWarning with distinct tools",
   async (t) => {
     t.false(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "abc"), createMockSarif("abc", "def")],
-        {
-          type: GitHubVariant.DOTCOM,
-        },
-      ),
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning([
+        createMockSarif("abc", "abc"),
+        createMockSarif("abc", "def"),
+      ]),
     );
   },
 );
@@ -735,12 +681,10 @@ test.serial(
     process.env["CODEQL_MERGE_SARIF_DEPRECATION_WARNING"] = "true";
 
     t.false(
-      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning(
-        [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-        {
-          type: GitHubVariant.DOTCOM,
-        },
-      ),
+      await uploadLib.shouldShowCombineSarifFilesDeprecationWarning([
+        createMockSarif("abc", "def"),
+        createMockSarif("abc", "def"),
+      ]),
     );
   },
 );
@@ -757,18 +701,6 @@ test.serial("throwIfCombineSarifFilesDisabled when on dotcom", async (t) => {
       message:
         /The CodeQL Action does not support uploading multiple SARIF runs with the same category/,
     },
-  );
-});
-
-test.serial("throwIfCombineSarifFilesDisabled when on GHES 3.13", async (t) => {
-  await t.notThrowsAsync(
-    uploadLib.throwIfCombineSarifFilesDisabled(
-      [createMockSarif("abc", "def"), createMockSarif("abc", "def")],
-      {
-        type: GitHubVariant.GHES,
-        version: "3.13.2",
-      },
-    ),
   );
 });
 

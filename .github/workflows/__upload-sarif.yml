@@ -25,44 +25,34 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
-      go-version:
-        type: string
-        description: The version of Go to install
-        required: false
-        default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
       dotnet-version:
         type: string
         description: The version of .NET to install
         required: false
         default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
   workflow_call:
     inputs:
-      go-version:
-        type: string
-        description: The version of Go to install
-        required: false
-        default: '>=1.21.0'
-      python-version:
-        type: string
-        description: The version of Python to install
-        required: false
-        default: '3.13'
       dotnet-version:
         type: string
         description: The version of .NET to install
         required: false
         default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: upload-sarif-${{github.ref}}-${{inputs.go-version}}-${{inputs.python-version}}-${{inputs.dotnet-version}}
+  group: upload-sarif-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
   upload-sarif:
     strategy:
@@ -88,6 +78,15 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -95,20 +94,6 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Install Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: ${{ inputs.go-version || '>=1.21.0' }}
-          cache: false
-      - name: Install Python
-        if: matrix.version != 'nightly-latest'
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ inputs.python-version || '3.13' }}
-      - name: Install .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}

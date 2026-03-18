@@ -1,7 +1,11 @@
 name: "autobuild-action"
 description: "Tests that the C# autobuild action works"
-operatingSystems: ["ubuntu", "macos", "windows"]
-versions: ["linked"]
+operatingSystems:
+  - ubuntu
+  - macos
+  - windows
+versions:
+  - linked
 installDotNet: true
 steps:
   - uses: ./../action/init

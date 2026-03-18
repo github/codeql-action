@@ -12,6 +12,7 @@ import { scanArtifactsForTokens } from "./artifact-scanner";
 import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
+import * as json from "./json";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
 import {
@@ -261,7 +262,7 @@ export function getArtifactSuffix(matrix: string | undefined): string {
   if (matrix) {
     try {
       const matrixObject = JSON.parse(matrix);
-      if (matrixObject !== null && typeof matrixObject === "object") {
+      if (json.isObject(matrixObject)) {
         for (const matrixKey of Object.keys(matrixObject as object).sort())
           suffix += `-${matrixObject[matrixKey]}`;
       } else {

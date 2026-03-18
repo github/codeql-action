@@ -19,9 +19,10 @@ export default [
       "src/testdata/**/*",
       "tests/**/*",
       "build.mjs",
+      "ava.config.mjs",
+      "ava.setup.mjs",
       "eslint.config.mjs",
       ".github/**/*",
-      "pr-checks/**/*",
     ],
   },
   // eslint recommended config
@@ -166,6 +167,31 @@ export default [
         }
       ],
       "func-style": "off",
+    },
+  },
+  {
+    files: ["pr-checks/**/*.ts"],
+
+    languageOptions: {
+      parserOptions: {
+        // Use the correct `tsconfig.json` for `pr-checks`.
+        project: "./pr-checks/tsconfig.json",
+      },
+    },
+
+    rules: {
+      // The scripts in `pr-checks` are expected to output to the console.
+      "no-console": "off",
+
+      "@typescript-eslint/no-floating-promises": [
+        "error",
+        {
+          allowForKnownSafeCalls: [
+            // Avoid needing explicit `void` in front of `describe` calls in test files.
+            { from: "package", name: ["describe"], package: "node:test" },
+          ],
+        },
+      ],
     },
   },
 ];

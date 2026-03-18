@@ -1,6 +1,10 @@
+import { isDynamicWorkflow } from "../actions-util";
 import { getRepositoryProperties } from "../api-client";
 import { Logger } from "../logging";
 import { RepositoryNwo } from "../repository";
+
+/** The common prefix that we expect all of our repository properties to have. */
+export const GITHUB_CODEQL_PROPERTY_PREFIX = "github-codeql-";
 
 /**
  * Enumerates repository property names that have some meaning to us.
@@ -114,6 +118,8 @@ export async function loadPropertiesFromApi(
     );
 
     const properties: RepositoryProperties = {};
+    const unrecognisedProperties: string[] = [];
+
     for (const property of remoteProperties) {
       if (property.property_name === undefined) {
         throw new Error(
@@ -123,6 +129,11 @@ export async function loadPropertiesFromApi(
 
       if (isKnownPropertyName(property.property_name)) {
         setProperty(properties, property.property_name, property.value, logger);
+      } else if (
+        property.property_name.startsWith(GITHUB_CODEQL_PROPERTY_PREFIX) &&
+        !isDynamicWorkflow()
+      ) {
+        unrecognisedProperties.push(property.property_name);
       }
     }
 
@@ -137,6 +148,20 @@ export async function loadPropertiesFromApi(
       )) {
         logger.debug(`  ${property}: ${value}`);
       }
+    }
+
+    // Emit a warning if we encountered unrecognised properties that have our prefix.
+    if (unrecognisedProperties.length > 0) {
+      const unrecognisedPropertyList = unrecognisedProperties
+        .map((name) => `'${name}'`)
+        .join(", ");
+
+      logger.warning(
+        `Found repository properties (${unrecognisedPropertyList}), ` +
+          "which look like CodeQL Action repository properties, " +
+          "but which are not understood by this version of the CodeQL Action. " +
+          "Do you need to update to a newer version?",
+      );
     }
 
     return properties;

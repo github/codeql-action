@@ -1032,9 +1032,12 @@ async function setCppTrapCachingEnvironmentVariables(
       logger.info(
         `Environment variable ${envVar} already set, leaving it unchanged.`,
       );
-    } else {
-      logger.info("Enabling CodeQL C++ TRAP caching support.");
+    } else if (config.trapCaches[KnownLanguage.cpp]) {
+      logger.info("Enabling TRAP caching for C/C++.");
       core.exportVariable(envVar, "true");
+    } else {
+      logger.debug(`Disabling TRAP caching for C/C++.`);
+      core.exportVariable(envVar, "false");
     }
   }
 }
@@ -1238,9 +1241,9 @@ export async function initConfig(
     );
     config.trapCaches = trapCaches;
     config.trapCacheDownloadTime = trapCacheDownloadTime;
-
-    await setCppTrapCachingEnvironmentVariables(config, logger);
   }
+
+  await setCppTrapCachingEnvironmentVariables(config, logger);
 
   return config;
 }

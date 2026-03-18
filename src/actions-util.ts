@@ -5,7 +5,6 @@ import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as github from "@actions/github";
 import * as io from "@actions/io";
-import { JSONSchemaForNPMPackageJsonFiles } from "@schemastore/package";
 
 import type { Config } from "./config-utils";
 import { Logger } from "./logging";
@@ -16,8 +15,11 @@ import {
   ConfigurationError,
 } from "./util";
 
-// eslint-disable-next-line import/no-commonjs, @typescript-eslint/no-require-imports
-const pkg = require("../package.json") as JSONSchemaForNPMPackageJsonFiles;
+/**
+ * This constant is set to the value of the `"version"` property in `package.json` by `esbuild`.
+ * It is also set in `ava.setup.mjs` for tests.
+ */
+declare const __CODEQL_ACTION_VERSION__: string;
 
 /**
  * Wrapper around core.getInput for inputs that always have a value.
@@ -52,7 +54,7 @@ export function getTemporaryDirectory(): string {
 }
 
 export function getActionVersion(): string {
-  return pkg.version!;
+  return __CODEQL_ACTION_VERSION__;
 }
 
 /**

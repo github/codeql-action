@@ -38,6 +38,8 @@ interface Specification extends JobSpecification {
   versions?: string[];
   /** Operating system prefixes used to select runner images (e.g. `["ubuntu", "macos"]`). */
   operatingSystems?: string[];
+  /** Per-OS version overrides. If specified for an OS, only those versions are tested on that OS. */
+  osCodeQlVersions?: Record<string, string[]>;
   /** Whether to use the all-platform CodeQL bundle. */
   useAllPlatformBundle?: string;
   /** Values for the `analysis-kinds` matrix dimension. */
@@ -55,6 +57,12 @@ interface Specification extends JobSpecification {
   collection?: string;
 }
 
+/** Minimal type to represent steps in Actions workflows. */
+interface Step {
+  name?: string;
+  [other: string]: any;
+}
+
 /** Represents job specifications. */
 interface JobSpecification {
   /** The display name for the check. */
@@ -65,7 +73,7 @@ interface JobSpecification {
   env?: Record<string, any>;
 
   /** The workflow steps specific to this check. */
-  steps: any[];
+  steps: Step[];
 
   installNode?: boolean;
   installGo?: boolean;
@@ -80,7 +88,7 @@ interface LanguageSetup {
   specProperty: keyof JobSpecification;
   /** The names of the known inputs which are required for this setup step. */
   inputs?: KnownInputName[];
-  steps: any[];
+  steps: Step[];
 }
 
 /** Describes partial mappings from known languages to their specific setup information. */
@@ -186,8 +194,7 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: "actions/setup-go@v6",
         with: {
-          "go-version":
-            "${{ inputs.go-version || '" + defaultLanguageVersions.go + "' }}",
+          "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
           // to avoid potentially misleading autobuilder results where we expect it to download
           // dependencies successfully, but they actually come from a warm cache
           cache: false,
@@ -203,10 +210,7 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: "actions/setup-java@v5",
         with: {
-          "java-version":
-            "${{ inputs.java-version || '" +
-            defaultLanguageVersions.java +
-            "' }}",
+          "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
           distribution: "temurin",
         },
       },
@@ -220,10 +224,7 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: "actions/setup-python@v6",
         with: {
-          "python-version":
-            "${{ inputs.python-version || '" +
-            defaultLanguageVersions.python +
-            "' }}",
+          "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
         },
       },
     ],
@@ -236,10 +237,7 @@ const languageSetups: LanguageSetups = {
         name: "Install .NET",
         uses: "actions/setup-dotnet@v5",
         with: {
-          "dotnet-version":
-            "${{ inputs.dotnet-version || '" +
-            defaultLanguageVersions.csharp +
-            "' }}",
+          "dotnet-version": `\${{ inputs.dotnet-version || '${defaultLanguageVersions.csharp}' }}`,
         },
       },
     ],
@@ -317,6 +315,13 @@ function generateJobMatrix(
     const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
 
     for (const operatingSystem of operatingSystems) {
+      // If osCodeQlVersions is set for this OS, only include the specified CodeQL versions.
+      const allowedVersions =
+        checkSpecification.osCodeQlVersions?.[operatingSystem];
+      if (allowedVersions && !allowedVersions.includes(version)) {
+        continue;
+      }
+
       const runnerImagesForOs = runnerImages.filter((image) =>
         image.startsWith(operatingSystem),
       );
@@ -354,10 +359,10 @@ function generateJobMatrix(
  */
 function getSetupSteps(checkSpecification: JobSpecification): {
   inputs: Set<KnownInputName>;
-  steps: any[];
+  steps: Step[];
 } {
   const inputs: Array<Set<KnownInputName>> = [];
-  const steps: any[] = [];
+  const steps: Step[] = [];
 
   for (const language of Object.values(KnownLanguage).sort()) {
     const setupSpec = languageSetups[language];
@@ -417,7 +422,7 @@ function generateJob(
   const workflowInputs = setupInfo.inputs;
 
   // Construct the workflow steps needed for this check.
-  const steps: any[] = [
+  const steps: Step[] = [
     {
       name: "Check out repository",
       uses: "actions/checkout@v6",
@@ -638,7 +643,7 @@ function main(): void {
 
     let extraGroupName = "";
     for (const inputName of Object.keys(combinedInputs)) {
-      extraGroupName += "-${{inputs." + inputName + "}}";
+      extraGroupName += `-\${{inputs.${inputName}}}`;
     }
 
     const cron = new yaml.Scalar("0 5 * * *");
@@ -676,7 +681,7 @@ function main(): void {
       concurrency: {
         "cancel-in-progress":
           "${{ github.event_name == 'pull_request' || false }}",
-        group: checkName + "-${{github.ref}}" + extraGroupName,
+        group: `${checkName}-\${{github.ref}}${extraGroupName}`,
       },
       jobs: {
         [checkName]: checkJob,
@@ -700,7 +705,7 @@ function main(): void {
       combinedInputs = { ...combinedInputs, ...checkInputs };
 
       for (const inputName of Object.keys(checkInputs)) {
-        checkWith[inputName] = "${{ inputs." + inputName + " }}";
+        checkWith[inputName] = `\${{ inputs.${inputName} }}`;
       }
 
       jobs[checkName] = {

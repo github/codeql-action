@@ -3,8 +3,8 @@ description: "The CodeQL bundle should be cached within the toolcache"
 versions:
   - linked
 operatingSystems:
-  - macos
   - ubuntu
+  - macos
   - windows
 steps:
   - name: Remove CodeQL from toolcache

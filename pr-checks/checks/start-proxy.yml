@@ -1,7 +1,11 @@
 name: "Start proxy"
 description: "Tests that the proxy can be initialised on all platforms"
-operatingSystems: ["ubuntu", "macos", "windows"]
-versions: ["linked"]
+operatingSystems:
+  - ubuntu
+  - macos
+  - windows
+versions:
+  - linked
 steps:
   - uses: ./../action/init
     with:

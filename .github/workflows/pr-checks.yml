@@ -92,6 +92,9 @@ jobs:
           node-version: 24
           cache: 'npm'
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Verify PR checks up to date
         if: always()
         run: .github/workflows/script/verify-pr-checks.sh
@@ -99,7 +102,7 @@ jobs:
       - name: Run pr-checks tests
         if: always()
         working-directory: pr-checks
-        run: npm ci && npx tsx --test
+        run: npx tsx --test
 
   check-node-version:
     if: github.triggering_actor != 'dependabot[bot]'

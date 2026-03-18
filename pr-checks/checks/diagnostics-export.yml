@@ -1,6 +1,8 @@
 name: "Diagnostic export"
 description: "Tests that manually added diagnostics are correctly exported to SARIF."
-versions: ["linked", "nightly-latest"]
+versions:
+  - linked
+  - nightly-latest
 env:
   CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
 steps:

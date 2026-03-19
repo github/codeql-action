@@ -2,10 +2,12 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
+import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
 import {
   getActionVersion,
+  getOptionalInput,
   isAnalyzingPullRequest,
   isDynamicWorkflow,
 } from "./actions-util";
@@ -72,6 +74,7 @@ import {
   Result,
   Success,
   Failure,
+  isHostedRunner,
 } from "./util";
 
 /**
@@ -452,7 +455,6 @@ export interface InitConfigInputs {
   configInput: string | undefined;
   buildModeInput: string | undefined;
   ramInput: string | undefined;
-  trapCachingEnabled: boolean;
   dependencyCachingEnabled: string | undefined;
   debugMode: boolean;
   debugArtifactName: string;
@@ -482,7 +484,6 @@ export async function initActionState(
     packsInput,
     buildModeInput,
     dbLocation,
-    trapCachingEnabled,
     dependencyCachingEnabled,
     debugMode,
     debugArtifactName,
@@ -540,13 +541,6 @@ export async function initActionState(
     };
   }
 
-  const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
-    trapCachingEnabled,
-    codeql,
-    languages,
-    logger,
-  );
-
   // Compute the full Code Scanning configuration that combines the configuration from the
   // configuration file / `config` input with other inputs, such as `queries`.
   const computedConfig = generateCodeScanningConfig(
@@ -569,8 +563,8 @@ export async function initActionState(
     debugMode,
     debugArtifactName,
     debugDatabaseName,
-    trapCaches,
-    trapCacheDownloadTime,
+    trapCaches: {},
+    trapCacheDownloadTime: 0,
     dependencyCachingEnabled: getCachingKind(dependencyCachingEnabled),
     dependencyCachingRestoredKeys: [],
     extraQueryExclusions: [],
@@ -582,7 +576,6 @@ export async function initActionState(
 }
 
 async function downloadCacheWithTime(
-  trapCachingEnabled: boolean,
   codeQL: CodeQL,
   languages: Language[],
   logger: Logger,
@@ -590,13 +583,9 @@ async function downloadCacheWithTime(
   trapCaches: { [language: string]: string };
   trapCacheDownloadTime: number;
 }> {
-  let trapCaches: { [language: string]: string } = {};
-  let trapCacheDownloadTime = 0;
-  if (trapCachingEnabled) {
-    const start = performance.now();
-    trapCaches = await downloadTrapCaches(codeQL, languages, logger);
-    trapCacheDownloadTime = performance.now() - start;
-  }
+  const start = performance.now();
+  const trapCaches = await downloadTrapCaches(codeQL, languages, logger);
+  const trapCacheDownloadTime = performance.now() - start;
   return { trapCaches, trapCacheDownloadTime };
 }
 
@@ -1009,6 +998,50 @@ async function validateOverlayDatabaseMode(
   });
 }
 
+export async function isTrapCachingEnabled(
+  features: FeatureEnablement,
+  overlayDatabaseMode: OverlayDatabaseMode,
+): Promise<boolean> {
+  // If the workflow specified something, always respect that.
+  const trapCaching = getOptionalInput("trap-caching");
+  if (trapCaching !== undefined) return trapCaching === "true";
+
+  // On self-hosted runners which may have slow network access, disable TRAP caching by default.
+  if (!isHostedRunner()) return false;
+
+  // If overlay analysis is enabled, then disable TRAP caching since overlay analysis supersedes it.
+  // This change is gated behind a feature flag.
+  if (
+    overlayDatabaseMode !== OverlayDatabaseMode.None &&
+    (await features.getValue(Feature.OverlayAnalysisDisableTrapCaching))
+  ) {
+    return false;
+  }
+
+  // Otherwise, enable TRAP caching.
+  return true;
+}
+
+async function setCppTrapCachingEnvironmentVariables(
+  config: Config,
+  logger: Logger,
+): Promise<void> {
+  if (config.languages.includes(KnownLanguage.cpp)) {
+    const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
+    if (process.env[envVar]) {
+      logger.info(
+        `Environment variable ${envVar} already set, leaving it unchanged.`,
+      );
+    } else if (config.trapCaches[KnownLanguage.cpp]) {
+      logger.info("Enabling TRAP caching for C/C++.");
+      core.exportVariable(envVar, "true");
+    } else {
+      logger.debug(`Disabling TRAP caching for C/C++.`);
+      core.exportVariable(envVar, "false");
+    }
+  }
+}
+
 function dbLocationOrDefault(
   dbLocation: string | undefined,
   tempDir: string,
@@ -1199,6 +1232,19 @@ export async function initConfig(
       exclude: { tags: "exclude-from-incremental" },
     });
   }
+
+  if (await isTrapCachingEnabled(features, config.overlayDatabaseMode)) {
+    const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
+      inputs.codeql,
+      config.languages,
+      logger,
+    );
+    config.trapCaches = trapCaches;
+    config.trapCacheDownloadTime = trapCacheDownloadTime;
+  }
+
+  await setCppTrapCachingEnvironmentVariables(config, logger);
+
   return config;
 }
 

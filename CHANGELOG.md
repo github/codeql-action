@@ -4,7 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- Added an experimental change which disables TRAP caching when [improved incremental analysis](https://github.com/github/roadmap/issues/1158) is enabled, since improved incremental analysis supersedes TRAP caching. This will improve performance and reduce Actions cache usage. We expect to roll this change out to everyone in March. [#3569](https://github.com/github/codeql-action/pull/3569)
+No user facing changes.
+
+## v4.33.1 - 19 Mar 2026
+
+This release rolls back 4.33.0 due to issues with that release. It is identical to 0.0.0.
 
 ## 4.33.0 - 16 Mar 2026
 
@@ -1166,3 +1170,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

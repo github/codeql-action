@@ -9,6 +9,7 @@ import * as defaults from "./defaults.json";
 import { Logger } from "./logging";
 import {
   CODEQL_OVERLAY_MINIMUM_VERSION,
+  CODEQL_OVERLAY_MINIMUM_VERSION_CPP,
   CODEQL_OVERLAY_MINIMUM_VERSION_CSHARP,
   CODEQL_OVERLAY_MINIMUM_VERSION_GO,
   CODEQL_OVERLAY_MINIMUM_VERSION_JAVA,
@@ -57,12 +58,14 @@ export enum Feature {
   IgnoreGeneratedFiles = "ignore_generated_files",
   JavaNetworkDebugging = "java_network_debugging",
   OverlayAnalysis = "overlay_analysis",
+  OverlayAnalysisCodeScanningCpp = "overlay_analysis_code_scanning_cpp",
   OverlayAnalysisCodeScanningCsharp = "overlay_analysis_code_scanning_csharp",
   OverlayAnalysisCodeScanningGo = "overlay_analysis_code_scanning_go",
   OverlayAnalysisCodeScanningJava = "overlay_analysis_code_scanning_java",
   OverlayAnalysisCodeScanningJavascript = "overlay_analysis_code_scanning_javascript",
   OverlayAnalysisCodeScanningPython = "overlay_analysis_code_scanning_python",
   OverlayAnalysisCodeScanningRuby = "overlay_analysis_code_scanning_ruby",
+  OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
   /** Disable TRAP caching when overlay analysis is enabled. */
   OverlayAnalysisDisableTrapCaching = "overlay_analysis_disable_trap_caching",
@@ -199,6 +202,11 @@ export const featureConfig = {
   // Per-language overlay feature flags. Each has minimumVersion set to the
   // minimum CLI version that supports overlay analysis for that language.
   // Only languages that are GA or in staff-ship should have feature flags here.
+  [Feature.OverlayAnalysisCodeScanningCpp]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_CPP",
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_CPP,
+  },
   [Feature.OverlayAnalysisCodeScanningCsharp]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_CSHARP",
@@ -228,6 +236,11 @@ export const featureConfig = {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CODE_SCANNING_RUBY",
     minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_RUBY,
+  },
+  [Feature.OverlayAnalysisCpp]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_CPP",
+    minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_CPP,
   },
   [Feature.OverlayAnalysisCsharp]: {
     defaultValue: false,

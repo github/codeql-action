@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - Added an experimental change which disables TRAP caching when [improved incremental analysis](https://github.com/github/roadmap/issues/1158) is enabled, since improved incremental analysis supersedes TRAP caching. This will improve performance and reduce Actions cache usage. We expect to roll this change out to everyone in March. [#3569](https://github.com/github/codeql-action/pull/3569)
+- Update default CodeQL bundle version to [2.25.0](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.0). [#3585](https://github.com/github/codeql-action/pull/3585)
 
 ## 4.33.0 - 16 Mar 2026
 

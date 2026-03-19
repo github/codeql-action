@@ -2021,13 +2021,13 @@ for (const language in KnownLanguage) {
 
 // Verify that a language without a per-language overlay feature flag cannot have
 // overlay analysis enabled, even when the base overlay feature flag is on.
-// Using cpp here as it doesn't currently have overlay support — update this if
-// cpp gains overlay support.
+// Using swift here as it doesn't currently have overlay support — update this if
+// swift gains overlay support.
 test.serial(
   checkOverlayEnablementMacro,
   "No overlay analysis for language without per-language overlay feature flag",
   {
-    languages: [KnownLanguage.cpp],
+    languages: [KnownLanguage.swift],
     features: [Feature.OverlayAnalysis],
     isPullRequest: true,
   },

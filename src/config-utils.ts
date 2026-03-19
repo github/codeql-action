@@ -625,6 +625,7 @@ async function loadUserConfig(
  * without an entry will have overlay analysis disabled.
  */
 const OVERLAY_ANALYSIS_FEATURES: Partial<Record<Language, Feature>> = {
+  cpp: Feature.OverlayAnalysisCpp,
   csharp: Feature.OverlayAnalysisCsharp,
   go: Feature.OverlayAnalysisGo,
   java: Feature.OverlayAnalysisJava,
@@ -636,6 +637,7 @@ const OVERLAY_ANALYSIS_FEATURES: Partial<Record<Language, Feature>> = {
 const OVERLAY_ANALYSIS_CODE_SCANNING_FEATURES: Partial<
   Record<Language, Feature>
 > = {
+  cpp: Feature.OverlayAnalysisCodeScanningCpp,
   csharp: Feature.OverlayAnalysisCodeScanningCsharp,
   go: Feature.OverlayAnalysisCodeScanningGo,
   java: Feature.OverlayAnalysisCodeScanningJava,

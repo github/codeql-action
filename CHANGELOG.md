@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.34.1 - 20 Mar 2026
+
+- Downgrade default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3) due to issues with a small percentage of Actions and JavaScript analyses. [#3762](https://github.com/github/codeql-action/pull/3762)
+
 ## 4.34.0 - 20 Mar 2026
 
 - Added an experimental change which disables TRAP caching when [improved incremental analysis](https://github.com/github/roadmap/issues/1158) is enabled, since improved incremental analysis supersedes TRAP caching. This will improve performance and reduce Actions cache usage. We expect to roll this change out to everyone in March. [#3569](https://github.com/github/codeql-action/pull/3569)

@@ -300,6 +300,19 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2025-06-19";
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
 
+/*
+ * Deprecated in favor of ToolsFeature.
+ *
+ * Versions of CodeQL that version-flag certain functionality in the Action.
+ * For convenience, please keep these in descending order. Once a version
+ * flag is older than the oldest supported version above, it may be removed.
+ */
+
+/**
+ * Versions 2.17.1+ of the CodeQL CLI support the `--cache-cleanup` option.
+ */
+const CODEQL_VERSION_CACHE_CLEANUP = "2.17.1";
+
 /**
  * Set up CodeQL CLI access.
  *
@@ -878,13 +891,19 @@ async function getCodeQLForCmd(
       config: Config,
       cleanupLevel: CleanupLevel,
     ): Promise<void> {
+      const cacheCleanupFlag = (await util.codeQlVersionAtLeast(
+        this,
+        CODEQL_VERSION_CACHE_CLEANUP,
+      ))
+        ? "--cache-cleanup"
+        : "--mode";
       for (const language of config.languages) {
         const databasePath = util.getCodeQLDatabasePath(config, language);
         const codeqlArgs = [
           "database",
           "cleanup",
           databasePath,
-          `--cache-cleanup=${cleanupLevel}`,
+          `${cacheCleanupFlag}=${cleanupLevel}`,
           ...getExtraOptionsFromEnv(["database", "cleanup"]),
         ];
         await runCli(cmd, codeqlArgs);

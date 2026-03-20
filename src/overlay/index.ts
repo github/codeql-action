@@ -35,7 +35,6 @@ export const CODEQL_OVERLAY_MINIMUM_VERSION = "2.23.8";
 
 // Per-language minimum CLI versions for overlay analysis, based on release
 // validation data.
-export const CODEQL_OVERLAY_MINIMUM_VERSION_CPP = "2.25.0";
 export const CODEQL_OVERLAY_MINIMUM_VERSION_CSHARP = "2.24.1";
 export const CODEQL_OVERLAY_MINIMUM_VERSION_GO = "2.24.2";
 export const CODEQL_OVERLAY_MINIMUM_VERSION_JAVA = "2.23.8";

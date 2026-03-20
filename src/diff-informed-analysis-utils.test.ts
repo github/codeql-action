@@ -188,6 +188,10 @@ test.serial(
 );
 
 function runGetDiffRanges(changes: number, patch: string[] | undefined): any {
+  sinon
+    .stub(actionsUtil, "getRequiredInput")
+    .withArgs("checkout_path")
+    .returns("/checkout/path");
   return exportedForTesting.getDiffRanges(
     {
       filename: "test.txt",
@@ -207,7 +211,7 @@ test.serial("getDiffRanges: file diff too large", async (t) => {
   const diffRanges = runGetDiffRanges(1000000, undefined);
   t.deepEqual(diffRanges, [
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 0,
       endLine: 0,
     },
@@ -230,7 +234,7 @@ test.serial(
     ]);
     t.deepEqual(diffRanges, [
       {
-        path: "test.txt",
+        path: "/checkout/path/test.txt",
         startLine: 53,
         endLine: 54,
       },
@@ -270,7 +274,7 @@ test.serial("getDiffRanges: diff thunk with single update range", async (t) => {
   ]);
   t.deepEqual(diffRanges, [
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 53,
       endLine: 53,
     },
@@ -292,12 +296,12 @@ test.serial("getDiffRanges: diff thunk with addition ranges", async (t) => {
   ]);
   t.deepEqual(diffRanges, [
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 53,
       endLine: 53,
     },
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 55,
       endLine: 55,
     },
@@ -324,12 +328,12 @@ test.serial("getDiffRanges: diff thunk with mixed ranges", async (t) => {
   ]);
   t.deepEqual(diffRanges, [
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 54,
       endLine: 54,
     },
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 57,
       endLine: 58,
     },
@@ -359,12 +363,12 @@ test.serial("getDiffRanges: multiple diff thunks", async (t) => {
   ]);
   t.deepEqual(diffRanges, [
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 53,
       endLine: 54,
     },
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 153,
       endLine: 154,
     },
@@ -375,7 +379,7 @@ test.serial("getDiffRanges: no diff context lines", async (t) => {
   const diffRanges = runGetDiffRanges(2, ["@@ -30 +50,2 @@", "+1", "+2"]);
   t.deepEqual(diffRanges, [
     {
-      path: "test.txt",
+      path: "/checkout/path/test.txt",
       startLine: 50,
       endLine: 51,
     },

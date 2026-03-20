@@ -156,7 +156,6 @@ export const DEFAULT_ACTIONS_VARS = {
   GITHUB_SERVER_URL: "https://github.com",
   GITHUB_SHA: "0".repeat(40),
   GITHUB_WORKFLOW: "test-workflow",
-  RUNNER_NAME: "my-runner",
   RUNNER_OS: "Linux",
 } as const satisfies Record<string, string>;
 

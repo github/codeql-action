@@ -5,11 +5,7 @@ import { performance } from "perf_hooks";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
-import {
-  getTemporaryDirectory,
-  getRequiredInput,
-  PullRequestBranches,
-} from "./actions-util";
+import { getTemporaryDirectory, PullRequestBranches } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -247,12 +243,7 @@ export async function setupDiffInformedQueryRun(
         `Calculating diff ranges for ${branches.base}...${branches.head}`,
       );
       const diffRanges = await getPullRequestEditedDiffRanges(branches, logger);
-      const checkoutPath = getRequiredInput("checkout_path");
-      const packDir = writeDiffRangeDataExtensionPack(
-        logger,
-        diffRanges,
-        checkoutPath,
-      );
+      const packDir = writeDiffRangeDataExtensionPack(logger, diffRanges);
       if (packDir === undefined) {
         logger.warning(
           "Cannot create diff range extension pack for diff-informed queries; " +
@@ -268,46 +259,6 @@ export async function setupDiffInformedQueryRun(
   );
 }
 
-export function diffRangeExtensionPackContents(
-  ranges: DiffThunkRange[],
-  checkoutPath: string,
-): string {
-  const header = `
-extensions:
-  - addsTo:
-      pack: codeql/util
-      extensible: restrictAlertsTo
-      checkPresence: false
-    data:
-`;
-
-  let data = ranges
-    .map((range) => {
-      // Diff-informed queries expect the file path to be absolute. CodeQL always
-      // uses forward slashes as the path separator, so on Windows we need to
-      // replace any backslashes with forward slashes.
-      const filename = path
-        .join(checkoutPath, range.path)
-        .replaceAll(path.sep, "/");
-
-      // Using yaml.dump() with `forceQuotes: true` ensures that all special
-      // characters are escaped, and that the path is always rendered as a
-      // quoted string on a single line.
-      return (
-        `      - [${yaml.dump(filename, { forceQuotes: true }).trim()}, ` +
-        `${range.startLine}, ${range.endLine}]\n`
-      );
-    })
-    .join("");
-  if (!data) {
-    // Ensure that the data extension is not empty, so that a pull request with
-    // no edited lines would exclude (instead of accepting) all alerts.
-    data = '      - ["", 0, 0]\n';
-  }
-
-  return header + data;
-}
-
 /**
  * Create an extension pack in the temporary directory that contains the file
  * line ranges that were added or modified in the pull request.
@@ -315,14 +266,12 @@ extensions:
  * @param logger
  * @param ranges The file line ranges, as returned by
  * `getPullRequestEditedDiffRanges`.
- * @param checkoutPath The path at which the repository was checked out.
  * @returns The absolute path of the directory containing the extension pack, or
  * `undefined` if no extension pack was created.
  */
 function writeDiffRangeDataExtensionPack(
   logger: Logger,
   ranges: DiffThunkRange[] | undefined,
-  checkoutPath: string,
 ): string | undefined {
   if (ranges === undefined) {
     return undefined;
@@ -358,10 +307,32 @@ dataExtensions:
 `,
   );
 
-  const extensionContents = diffRangeExtensionPackContents(
-    ranges,
-    checkoutPath,
-  );
+  const header = `
+extensions:
+  - addsTo:
+      pack: codeql/util
+      extensible: restrictAlertsTo
+      checkPresence: false
+    data:
+`;
+
+  let data = ranges
+    .map(
+      (range) =>
+        // Using yaml.dump() with `forceQuotes: true` ensures that all special
+        // characters are escaped, and that the path is always rendered as a
+        // quoted string on a single line.
+        `      - [${yaml.dump(range.path, { forceQuotes: true }).trim()}, ` +
+        `${range.startLine}, ${range.endLine}]\n`,
+    )
+    .join("");
+  if (!data) {
+    // Ensure that the data extension is not empty, so that a pull request with
+    // no edited lines would exclude (instead of accepting) all alerts.
+    data = '      - ["", 0, 0]\n';
+  }
+
+  const extensionContents = header + data;
   const extensionFilePath = path.join(diffRangeDir, "pr-diff-range.yml");
   fs.writeFileSync(extensionFilePath, extensionContents);
   logger.debug(

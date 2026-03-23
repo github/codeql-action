@@ -566,6 +566,115 @@ test.serial(
 );
 
 test.serial(
+  "getCodeQLSource correctly returns latest version from toolcache when set via repository property",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([]);
+
+    const latestToolcacheVersion = "3.2.1";
+    const latestVersionPath = "/path/to/latest";
+    const testVersions = ["2.3.1", latestToolcacheVersion, "1.2.3"];
+    const findAllVersionsStub = sinon
+      .stub(toolcache, "findAllVersions")
+      .returns(testVersions);
+    const findStub = sinon.stub(toolcache, "find");
+    findStub
+      .withArgs("CodeQL", latestToolcacheVersion)
+      .returns(latestVersionPath);
+
+    await withTmpDir(async (tmpDir) => {
+      // Note: GITHUB_EVENT_NAME is not "dynamic", and the feature flag is not enabled.
+      // The repository property should bypass these restrictions.
+      setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "pull_request" });
+
+      const source = await setupCodeql.getCodeQLSource(
+        "toolcache",
+        SAMPLE_DEFAULT_CLI_VERSION,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        logger,
+        true, // toolsInputFromRepositoryProperty
+      );
+
+      t.assert(
+        findAllVersionsStub.calledOnceWith("CodeQL"),
+        `toolcache.findAllVersions("CodeQL") wasn't called`,
+      );
+      t.assert(
+        findStub.calledOnceWith("CodeQL", latestToolcacheVersion),
+        `toolcache.find("CodeQL", ${latestToolcacheVersion}) wasn't called`,
+      );
+
+      t.is(source.sourceType, "toolcache");
+      t.is(source.toolsVersion, latestToolcacheVersion);
+
+      const expectedMessages: string[] = [
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the 'github-codeql-tools' repository property.`,
+        `CLI version ${latestToolcacheVersion} is the latest version in the toolcache.`,
+        `Using CodeQL CLI version ${latestToolcacheVersion} from toolcache at ${latestVersionPath}`,
+      ];
+      for (const expectedMessage of expectedMessages) {
+        t.assert(
+          loggedMessages.some(
+            (msg) =>
+              typeof msg.message === "string" &&
+              msg.message.includes(expectedMessage),
+          ),
+          `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${loggedMessages.map((m) => ` - '${m.message}'`).join("\n")}`,
+        );
+      }
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource falls back to downloading CLI if toolcache is empty when set via repository property",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([]);
+
+    sinon.stub(toolcache, "findAllVersions").returns([]);
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "pull_request" });
+
+      const source = await setupCodeql.getCodeQLSource(
+        "toolcache",
+        SAMPLE_DEFAULT_CLI_VERSION,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        logger,
+        true, // toolsInputFromRepositoryProperty
+      );
+
+      t.is(source.sourceType, "download");
+      t.is(source.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+
+      const expectedMessages: string[] = [
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the 'github-codeql-tools' repository property.`,
+        `Found no CodeQL CLI in the toolcache, ignoring the 'github-codeql-tools' repository property...`,
+      ];
+      for (const expectedMessage of expectedMessages) {
+        t.assert(
+          loggedMessages.some(
+            (msg) =>
+              typeof msg.message === "string" &&
+              msg.message.includes(expectedMessage),
+          ),
+          `Expected '${expectedMessage}' in the logger output, but didn't find it in:\n ${loggedMessages.map((m) => ` - '${m.message}'`).join("\n")}`,
+        );
+      }
+    });
+  },
+);
+
+test.serial(
   'tryGetTagNameFromUrl extracts the right tag name for a repo name containing "codeql-bundle"',
   (t) => {
     t.is(

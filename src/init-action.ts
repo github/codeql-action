@@ -42,6 +42,7 @@ import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
   loadPropertiesFromApi,
   RepositoryProperties,
+  RepositoryPropertyName,
 } from "./feature-flags/properties";
 import {
   checkInstallPython311,
@@ -297,14 +298,26 @@ async function run(startedAt: Date) {
       gitHubVersion.type,
     );
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+
+    // Determine the effective tools input.
+    // The explicit `tools` workflow input takes precedence. If none is provided,
+    // fall back to the 'github-codeql-tools' repository property (if set).
+    const toolsWorkflowInput = getOptionalInput("tools");
+    const toolsPropertyValue: string | undefined =
+      repositoryPropertiesResult.orElse({})[RepositoryPropertyName.TOOLS];
+    const effectiveToolsInput = toolsWorkflowInput ?? toolsPropertyValue;
+    const toolsInputFromRepositoryProperty =
+      toolsWorkflowInput === undefined && toolsPropertyValue !== undefined;
+
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      effectiveToolsInput,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       features,
       logger,
+      toolsInputFromRepositoryProperty,
     );
     codeql = initCodeQLResult.codeql;
     toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;

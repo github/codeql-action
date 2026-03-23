@@ -286,6 +286,7 @@ export async function getCodeQLSource(
   tarSupportsZstd: boolean,
   features: FeatureEnablement,
   logger: Logger,
+  toolsInputFromRepositoryProperty = false,
 ): Promise<CodeQLToolsSource> {
   // If there is an explicit `tools` input, it's not one of the reserved values, and it doesn't appear
   // to point to a URL, then we assume it is a local path and use the CLI from there.
@@ -401,19 +402,27 @@ export async function getCodeQLSource(
 
     // We only allow `toolsInput === "toolcache"` for `dynamic` events. In general, using `toolsInput === "toolcache"`
     // can lead to alert wobble and so it shouldn't be used for an analysis where results are intended to be uploaded.
-    // We also allow this in test mode.
+    // We also allow this in test mode, and when the value was set via a repository property (in which case the
+    // organization admin has explicitly opted in to this behavior).
     const allowToolcacheValueFF = await features.getValue(
       Feature.AllowToolcacheInput,
     );
     const allowToolcacheValue =
-      allowToolcacheValueFF && (isDynamicWorkflow() || util.isInTestMode());
+      toolsInputFromRepositoryProperty ||
+      (allowToolcacheValueFF && (isDynamicWorkflow() || util.isInTestMode()));
     if (allowToolcacheValue) {
       // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
       // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
       // the linked version.
-      logger.info(
-        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: ${toolsInput}'.`,
-      );
+      if (toolsInputFromRepositoryProperty) {
+        logger.info(
+          `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the 'github-codeql-tools' repository property.`,
+        );
+      } else {
+        logger.info(
+          `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: ${toolsInput}'.`,
+        );
+      }
 
       latestToolcacheVersion = getLatestToolcacheVersion(logger);
       if (latestToolcacheVersion) {
@@ -423,9 +432,15 @@ export async function getCodeQLSource(
 
     if (latestToolcacheVersion === undefined) {
       if (allowToolcacheValue) {
-        logger.info(
-          `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
-        );
+        if (toolsInputFromRepositoryProperty) {
+          logger.info(
+            `Found no CodeQL CLI in the toolcache, ignoring the 'github-codeql-tools' repository property...`,
+          );
+        } else {
+          logger.info(
+            `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
+          );
+        }
       } else {
         if (allowToolcacheValueFF) {
           logger.warning(
@@ -793,6 +808,7 @@ export async function setupCodeQLBundle(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   features: FeatureEnablement,
   logger: Logger,
+  toolsInputFromRepositoryProperty = false,
 ): Promise<SetupCodeQLResult> {
   if (!(await util.isBinaryAccessible("tar", logger))) {
     throw new util.ConfigurationError(
@@ -809,6 +825,7 @@ export async function setupCodeQLBundle(
     zstdAvailability.available,
     features,
     logger,
+    toolsInputFromRepositoryProperty,
   );
 
   let codeqlFolder: string;

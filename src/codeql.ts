@@ -323,6 +323,7 @@ export async function setupCodeQL(
   features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
+  toolsInputFromRepositoryProperty = false,
 ): Promise<{
   codeql: CodeQL;
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
@@ -345,6 +346,7 @@ export async function setupCodeQL(
       defaultCliVersion,
       features,
       logger,
+      toolsInputFromRepositoryProperty,
     );
 
     logger.debug(

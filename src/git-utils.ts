@@ -14,10 +14,11 @@ import {
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 /**
- * Minimum Git version required for overlay analysis. The `git ls-files --format`
- * option, which is used by `getFileOidsUnderPath`, was introduced in Git 2.38.0.
+ * Minimum Git version required for overlay analysis. The
+ * `git ls-files --recurse-submodules` option, which is used by
+ * `getFileOidsUnderPath`, was introduced in Git 2.11.0.
  */
-export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.11.0";
 
 /**
  * Git version information

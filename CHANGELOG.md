@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Reduced the minimum Git version required for [improved incremental analysis](https://github.com/github/roadmap/issues/1158) from 2.38.0 to 2.11.0. [#3767](https://github.com/github/codeql-action/pull/3767)
 
 ## 4.34.1 - 20 Mar 2026
 

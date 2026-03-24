@@ -1936,7 +1936,7 @@ test.serial(
   "Fallback due to old git version",
   {
     overlayDatabaseEnvVar: "overlay",
-    gitVersion: new GitVersionInfo("2.30.0", "2.30.0"), // Version below required 2.38.0
+    gitVersion: new GitVersionInfo("2.10.0", "2.10.0"), // Version below required 2.11.0
   },
   {
     disabledReason: OverlayDisabledReason.IncompatibleGit,

@@ -69,7 +69,7 @@ export interface CheckInfo {
   app_id: number;
 }
 
-/** Removes entries from `checkInfos` based the configuration. */
+/** Removes entries from `checkInfos` based on the configuration. */
 export function removeExcluded(
   options: Options,
   exclusions: Exclusions,

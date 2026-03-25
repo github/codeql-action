@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
 
+import * as actionsUtil from "../actions-util";
 import {
   getRequiredInput,
   getTemporaryDirectory,
@@ -175,15 +176,18 @@ async function getDiffRangeFilePaths(
   sourceRoot: string,
   logger: Logger,
 ): Promise<string[]> {
-  const jsonFilePath = path.join(getTemporaryDirectory(), "pr-diff-range.json");
-  if (!fs.existsSync(jsonFilePath)) {
+  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
+
+  let contents: string;
+  try {
+    contents = await fs.promises.readFile(jsonFilePath, "utf8");
+  } catch {
     return [];
   }
+
   let diffRanges: Array<{ path: string }>;
   try {
-    diffRanges = JSON.parse(fs.readFileSync(jsonFilePath, "utf8")) as Array<{
-      path: string;
-    }>;
+    diffRanges = JSON.parse(contents) as Array<{ path: string }>;
   } catch (e) {
     logger.warning(
       `Failed to parse diff ranges JSON file at ${jsonFilePath}: ${e}`,
@@ -193,7 +197,6 @@ async function getDiffRangeFilePaths(
   logger.debug(
     `Read ${diffRanges.length} diff range(s) from ${jsonFilePath} for overlay changes.`,
   );
-  const repoRelativePaths = [...new Set(diffRanges.map((r) => r.path))];
 
   // Diff-range paths are relative to the repo root (from the GitHub compare
   // API), but overlay changed files must be relative to sourceRoot (to match
@@ -203,31 +206,17 @@ async function getDiffRangeFilePaths(
     logger.warning(
       "Cannot determine git root; returning diff range paths as-is.",
     );
-    return repoRelativePaths;
+    return [...new Set(diffRanges.map((r) => r.path))];
   }
 
-  // e.g. if repoRoot=/workspace and sourceRoot=/workspace/src, prefix="src"
-  const sourceRootRelPrefix = path
-    .relative(repoRoot, sourceRoot)
-    .replaceAll(path.sep, "/");
-
-  // If sourceRoot IS the repo root, prefix is "" and all paths pass through.
-  if (sourceRootRelPrefix === "") {
-    return repoRelativePaths;
-  }
-
-  const prefixWithSlash = `${sourceRootRelPrefix}/`;
-  const result: string[] = [];
-  for (const p of repoRelativePaths) {
-    if (p.startsWith(prefixWithSlash)) {
-      result.push(p.slice(prefixWithSlash.length));
-    } else {
-      logger.debug(
-        `Skipping diff range path "${p}" (not under source root "${sourceRootRelPrefix}").`,
-      );
-    }
-  }
-  return result;
+  const relativePaths = diffRanges
+    .map((r) =>
+      path
+        .relative(sourceRoot, path.join(repoRoot, r.path))
+        .replaceAll(path.sep, "/"),
+    )
+    .filter((rel) => !rel.startsWith(".."));
+  return [...new Set(relativePaths)];
 }
 
 // Constants for database caching

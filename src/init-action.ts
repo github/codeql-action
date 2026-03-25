@@ -849,8 +849,8 @@ async function computeAndPersistDiffRanges(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<void> {
-  try {
-    await withGroupAsync("Compute PR diff ranges", async () => {
+  await withGroupAsync("Computing PR diff ranges", async () => {
+    try {
       const branches = await getDiffInformedAnalysisBranches(
         codeql,
         features,
@@ -868,12 +868,12 @@ async function computeAndPersistDiffRanges(
       logger.info(
         `Persisted ${ranges.length} diff range(s) across ${distinctFiles} file(s).`,
       );
-    });
-  } catch (e) {
-    logger.warning(
-      `Failed to compute and persist PR diff ranges: ${getErrorMessage(e)}`,
-    );
-  }
+    } catch (e) {
+      logger.warning(
+        `Failed to compute and persist PR diff ranges: ${getErrorMessage(e)}`,
+      );
+    }
+  });
 }
 async function recordZstdAvailability(
   config: configUtils.Config,

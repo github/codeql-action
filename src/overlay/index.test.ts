@@ -72,9 +72,13 @@ test.serial(
 
       // Write the overlay changes file, which uses the mocked overlay OIDs
       // and the base database OIDs file
+      const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       const getTempDirStub = sinon
         .stub(actionsUtil, "getTemporaryDirectory")
         .returns(tempDir);
+      const getDiffRangesStub = sinon
+        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .returns(diffRangeFilePath);
       const getGitRootStub = sinon
         .stub(gitUtils, "getGitRoot")
         .resolves(sourceRoot);
@@ -85,6 +89,7 @@ test.serial(
       );
       getFileOidsStubForOverlay.restore();
       getTempDirStub.restore();
+      getDiffRangesStub.restore();
       getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
@@ -143,9 +148,13 @@ test.serial(
         .stub(gitUtils, "getFileOidsUnderPath")
         .resolves(currentOids);
 
+      const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       const getTempDirStub = sinon
         .stub(actionsUtil, "getTemporaryDirectory")
         .returns(tempDir);
+      const getDiffRangesStub = sinon
+        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .returns(diffRangeFilePath);
       const getGitRootStub = sinon
         .stub(gitUtils, "getGitRoot")
         .resolves(sourceRoot);
@@ -153,7 +162,7 @@ test.serial(
       // Write a pr-diff-range.json file with diff ranges including
       // "reverted.js" (unchanged OIDs) and "modified.js" (already in OID changes)
       await fs.promises.writeFile(
-        path.join(tempDir, "pr-diff-range.json"),
+        diffRangeFilePath,
         JSON.stringify([
           { path: "reverted.js", startLine: 1, endLine: 10 },
           { path: "modified.js", startLine: 1, endLine: 5 },
@@ -168,6 +177,7 @@ test.serial(
       );
       getFileOidsStubForOverlay.restore();
       getTempDirStub.restore();
+      getDiffRangesStub.restore();
       getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
@@ -218,9 +228,13 @@ test.serial(
         .stub(gitUtils, "getFileOidsUnderPath")
         .resolves(currentOids);
 
+      const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       const getTempDirStub = sinon
         .stub(actionsUtil, "getTemporaryDirectory")
         .returns(tempDir);
+      const getDiffRangesStub = sinon
+        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .returns(diffRangeFilePath);
       const getGitRootStub = sinon
         .stub(gitUtils, "getGitRoot")
         .resolves(sourceRoot);
@@ -233,6 +247,7 @@ test.serial(
       );
       getFileOidsStubForOverlay.restore();
       getTempDirStub.restore();
+      getDiffRangesStub.restore();
       getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
@@ -286,9 +301,13 @@ test.serial(
         .stub(gitUtils, "getFileOidsUnderPath")
         .resolves(currentOids);
 
+      const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       const getTempDirStub = sinon
         .stub(actionsUtil, "getTemporaryDirectory")
         .returns(tempDir);
+      const getDiffRangesStub = sinon
+        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .returns(diffRangeFilePath);
       // getGitRoot returns the repo root (parent of sourceRoot)
       const getGitRootStub = sinon
         .stub(gitUtils, "getGitRoot")
@@ -296,7 +315,7 @@ test.serial(
 
       // Diff ranges use repo-root-relative paths (as returned by the GitHub compare API)
       await fs.promises.writeFile(
-        path.join(tempDir, "pr-diff-range.json"),
+        diffRangeFilePath,
         JSON.stringify([
           { path: "src/app.js", startLine: 1, endLine: 10 },
           { path: "src/lib/util.js", startLine: 5, endLine: 8 },
@@ -311,6 +330,7 @@ test.serial(
       );
       getFileOidsStubForOverlay.restore();
       getTempDirStub.restore();
+      getDiffRangesStub.restore();
       getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");

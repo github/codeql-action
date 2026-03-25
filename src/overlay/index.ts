@@ -5,6 +5,7 @@ import * as actionsCache from "@actions/cache";
 
 import * as actionsUtil from "../actions-util";
 import {
+  getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
   getWorkflowRunAttempt,
@@ -178,10 +179,20 @@ async function getDiffRangeFilePaths(
 ): Promise<string[]> {
   const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
 
+  if (!fs.existsSync(jsonFilePath)) {
+    logger.debug(
+      `No diff ranges JSON file found at ${jsonFilePath}; skipping.`,
+    );
+    return [];
+  }
+
   let contents: string;
   try {
     contents = await fs.promises.readFile(jsonFilePath, "utf8");
-  } catch {
+  } catch (e) {
+    logger.warning(
+      `Failed to read diff ranges JSON file at ${jsonFilePath}: ${e}`,
+    );
     return [];
   }
 
@@ -203,6 +214,12 @@ async function getDiffRangeFilePaths(
   // getFileOidsUnderPath output). Convert and filter accordingly.
   const repoRoot = await getGitRoot(sourceRoot);
   if (repoRoot === undefined) {
+    if (getOptionalInput("source-root")) {
+      throw new Error(
+        "Cannot determine git root to convert diff range paths relative to source-root. " +
+          "Failing to avoid omitting files from the analysis.",
+      );
+    }
     logger.warning(
       "Cannot determine git root; returning diff range paths as-is.",
     );

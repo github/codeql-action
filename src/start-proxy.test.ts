@@ -439,7 +439,7 @@ test("getCredentials accepts OIDC configurations", (t) => {
   t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
 });
 
-const testPATWarning = test.macro({
+const getCredentialsMacro = test.macro({
   exec: async (
     t: ExecutionContext<unknown>,
     credentials: startProxyExports.RawCredential[],
@@ -450,25 +450,24 @@ const testPATWarning = test.macro({
     ) => void,
   ) => {
     const logger = new RecordingLogger();
-    const likelyWrongCredentials = toEncodedJSON(credentials);
+    const credentialsString = toEncodedJSON(credentials);
 
     const results = startProxyExports.getCredentials(
       logger,
       undefined,
-      likelyWrongCredentials,
+      credentialsString,
       undefined,
     );
 
     checkAccepted(t, logger, results);
   },
 
-  title: (providedTitle = "") =>
-    `getCredentials logs a warning when a PAT is used - ${providedTitle}`,
+  title: (providedTitle = "") => `getCredentials - ${providedTitle}`,
 });
 
 test(
-  "password without a username",
-  testPATWarning,
+  "warns for PAT-like password without a username",
+  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -497,8 +496,8 @@ test(
 );
 
 test(
-  "password with a username",
-  testPATWarning,
+  "no warning for PAT-like password with a username",
+  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -529,8 +528,8 @@ test(
 );
 
 test(
-  "token without a username",
-  testPATWarning,
+  "warns for PAT-like token without a username",
+  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -559,8 +558,8 @@ test(
 );
 
 test(
-  "token with a username",
-  testPATWarning,
+  "no warning for PAT-like token with a username",
+  getCredentialsMacro,
   [
     {
       type: "git_server",

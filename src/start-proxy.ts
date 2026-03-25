@@ -447,15 +447,18 @@ export function getCredentials(
     }
 
     // If the password or token looks like a GitHub PAT, warn if no username is configured.
-    if (
-      ((!hasUsername(authConfig) || !isDefined(authConfig.username)) &&
-        isUsernamePassword(authConfig) &&
-        isDefined(authConfig.password) &&
-        isPAT(authConfig.password)) ||
-      (isToken(authConfig) &&
-        isDefined(authConfig.token) &&
-        isPAT(authConfig.token))
-    ) {
+    const noUsername =
+      !hasUsername(authConfig) || !isDefined(authConfig.username);
+    const passwordIsPAT =
+      isUsernamePassword(authConfig) &&
+      isDefined(authConfig.password) &&
+      isPAT(authConfig.password);
+    const tokenIsPAT =
+      isToken(authConfig) &&
+      isDefined(authConfig.token) &&
+      isPAT(authConfig.token);
+
+    if (noUsername && (passwordIsPAT || tokenIsPAT)) {
       logger.warning(
         `A ${e.type} private registry is configured for ${e.host || e.url} using a GitHub Personal Access Token (PAT), but no username was provided. ` +
           `This may not work correctly. When configuring a private registry using a PAT, select "Username and password" and enter the username of the user ` +

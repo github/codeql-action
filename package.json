@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.33.1",
+  "version": "4.34.2",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -45,7 +45,7 @@
   },
   "devDependencies": {
     "@ava/typescript": "6.0.0",
-    "@eslint/compat": "^2.0.2",
+    "@eslint/compat": "^2.0.3",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@octokit/types": "^16.0.0",
     "@types/archiver": "^7.0.0",
@@ -69,7 +69,7 @@
     "nock": "^14.0.11",
     "sinon": "^21.0.2",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "^8.57.0"
   },
   "overrides": {
     "@actions/tool-cache": {

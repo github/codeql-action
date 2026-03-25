@@ -224,6 +224,7 @@ async function main(): Promise<void> {
       // The git ref for which to retrieve the check runs.
       ref: {
         type: "string",
+        default: "main",
       },
       // By default, we perform a dry-run. Setting `apply` to `true` actually applies the changes.
       apply: {
@@ -241,9 +242,6 @@ async function main(): Promise<void> {
 
   if (options.token === undefined) {
     throw new Error("Missing --token");
-  }
-  if (options.ref === undefined) {
-    throw new Error("Missing --ref");
   }
 
   console.info(

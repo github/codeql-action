@@ -4,6 +4,20 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+- Reduced the minimum Git version required for [improved incremental analysis](https://github.com/github/roadmap/issues/1158) from 2.38.0 to 2.11.0. [#3767](https://github.com/github/codeql-action/pull/3767)
+
+## 4.34.1 - 20 Mar 2026
+
+- Downgrade default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3) due to issues with a small percentage of Actions and JavaScript analyses. [#3762](https://github.com/github/codeql-action/pull/3762)
+
+## 4.34.0 - 20 Mar 2026
+
+- Added an experimental change which disables TRAP caching when [improved incremental analysis](https://github.com/github/roadmap/issues/1158) is enabled, since improved incremental analysis supersedes TRAP caching. This will improve performance and reduce Actions cache usage. We expect to roll this change out to everyone in March. [#3569](https://github.com/github/codeql-action/pull/3569)
+- We are rolling out improved incremental analysis to C/C++ analyses that use build mode `none`. We expect this rollout to be complete by the end of April 2026. [#3584](https://github.com/github/codeql-action/pull/3584)
+- Update default CodeQL bundle version to [2.25.0](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.0). [#3585](https://github.com/github/codeql-action/pull/3585)
+
+## 4.33.0 - 16 Mar 2026
+
 - Upcoming change: Starting April 2026, the CodeQL Action will skip collecting file coverage information on pull requests to improve analysis performance. File coverage information will still be computed on non-PR analyses. Pull request analyses will log a warning about this upcoming change. [#3562](https://github.com/github/codeql-action/pull/3562)
 
   To opt out of this change:
@@ -14,6 +28,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - The CodeQL Action now loads [custom repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) on GitHub Enterprise Server, enabling the customization of features such as `github-codeql-disable-overlay` that was previously only available on GitHub.com. [#3559](https://github.com/github/codeql-action/pull/3559)
 - Once [private package registries](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries) can be configured with OIDC-based authentication for organizations, the CodeQL Action will now be able to accept such configurations. [#3563](https://github.com/github/codeql-action/pull/3563)
 - Fixed the retry mechanism for database uploads. Previously this would fail with the error "Response body object should not be disturbed or locked". [#3564](https://github.com/github/codeql-action/pull/3564)
+- A warning is now emitted if the CodeQL Action detects a repository property whose name suggests that it relates to the CodeQL Action, but which is not one of the properties recognised by the current version of the CodeQL Action. [#3570](https://github.com/github/codeql-action/pull/3570)
 
 ## 4.32.6 - 05 Mar 2026
 

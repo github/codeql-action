@@ -74,7 +74,7 @@ Since the `codeql-action` runs most of its testing through individual Actions wo
 - At a minimum, you must provide an argument for the `--token` input. For example, `--token "$(gh auth token)"` to use the same token that `gh` uses. If no token is provided or the token has insufficient permissions, the script will fail.
 - By default, the script performs a dry run and outputs information about the changes it would make to the branch protection rules. To actually apply the changes, specify the `--apply` flag.
 - If you run the script without any other arguments, it will retrieve the set of workflows that ran for the latest commit on `main`.
-- You can specify a different git ref with the `--ref` input. You will likely want to use this if you have a PR that removes or adds PR checks. For example, `--ref "some/branch/name` to use the HEAD of the `some/branch/name` branch.
+- You can specify a different git ref with the `--ref` input. You will likely want to use this if you have a PR that removes or adds PR checks. For example, `--ref "some/branch/name"` to use the HEAD of the `some/branch/name` branch.
 
 After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v4`, and any other currently supported major versions have been updated.
 

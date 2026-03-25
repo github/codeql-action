@@ -62,9 +62,9 @@ export function computeBackportBranches(
 
   if (considerBackports) {
     for (let i = majorVersionNumber - 1; i > 0; i--) {
-      const branch_name = `releases/v${i}`;
+      const branchName = `releases/v${i}`;
       if (i >= oldestSupportedMajorVersion) {
-        backportTargetBranches.push(branch_name);
+        backportTargetBranches.push(branchName);
       }
     }
   }

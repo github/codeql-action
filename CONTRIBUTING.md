@@ -69,12 +69,14 @@ Once the mergeback and backport pull request have been merged, the release is co
 
 ## Keeping the PR checks up to date (admin access required)
 
-Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred required jobs that need to pass in order for a PR to turn green. It would be too tedious to maintain that list manually. You can regenerate the set of required checks automatically by running the [update-required-checks.sh](.github/workflows/script/update-required-checks.sh) script:
+Since the `codeql-action` runs most of its testing through individual Actions workflows, there are over two hundred required jobs that need to pass in order for a PR to turn green. It would be too tedious to maintain that list manually. You can regenerate the set of required checks automatically by running the [sync-checks.ts](pr-checks/sync-checks.ts) script:
 
-- If you run the script without an argument, it will retrieve the set of workflows that ran for the latest commit on `main`. Make sure that your local `main` branch is up to date before running the script.
-- You can specify a commit SHA as argument to retrieve the set of workflows for that commit instead. You will likely want to use this if you have a PR that removes or adds PR checks.
+- At a minimum, you must provide an argument for the `--token` input. For example, `--token "$(gh auth token)"` to use the same token that `gh` uses. If no token is provided or the token has insufficient permissions, the script will fail.
+- By default, the script performs a dry run and outputs information about the changes it would make to the branch protection rules. To actually apply the changes, specify the `--apply` flag.
+- If you run the script without any other arguments, it will retrieve the set of workflows that ran for the latest commit on `main`.
+- You can specify a different git ref with the `--ref` input. You will likely want to use this if you have a PR that removes or adds PR checks. For example, `--ref "some/branch/name` to use the HEAD of the `some/branch/name` branch.
 
-After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v3`, and any other currently supported major versions have been updated.
+After running, go to the [branch protection rules settings page](https://github.com/github/codeql-action/settings/branches) and validate that the rules for `main`, `v4`, and any other currently supported major versions have been updated.
 
 Note that any updates to checks on `main` need to be backported to all currently supported major version branches, in order to maintain the same set of names for required checks.
 

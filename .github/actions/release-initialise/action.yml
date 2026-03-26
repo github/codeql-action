@@ -15,6 +15,12 @@ runs:
       run: echo "$GITHUB_CONTEXT"
       shell: bash
 
+    - name: Set up Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: 20
+        cache: 'npm'
+
     - name: Set up Python
       uses: actions/setup-python@v6
       with:

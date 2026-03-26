@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import * as path from "path";
 
 import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
@@ -77,16 +76,12 @@ export interface DiffThunkRange {
   endLine: number;
 }
 
-function getDiffRangesJsonFilePath(): string {
-  return path.join(actionsUtil.getTemporaryDirectory(), "pr-diff-range.json");
-}
-
 export function writeDiffRangesJsonFile(
   logger: Logger,
   ranges: DiffThunkRange[],
 ): void {
   const jsonContents = JSON.stringify(ranges, null, 2);
-  const jsonFilePath = getDiffRangesJsonFilePath();
+  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
   fs.writeFileSync(jsonFilePath, jsonContents);
   logger.debug(
     `Wrote pr-diff-range JSON file to ${jsonFilePath}:\n${jsonContents}`,
@@ -96,7 +91,7 @@ export function writeDiffRangesJsonFile(
 export function readDiffRangesJsonFile(
   logger: Logger,
 ): DiffThunkRange[] | undefined {
-  const jsonFilePath = getDiffRangesJsonFilePath();
+  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
   if (!fs.existsSync(jsonFilePath)) {
     logger.debug(`Diff ranges JSON file does not exist at ${jsonFilePath}`);
     return undefined;
@@ -105,7 +100,14 @@ export function readDiffRangesJsonFile(
   logger.debug(
     `Read pr-diff-range JSON file from ${jsonFilePath}:\n${jsonContents}`,
   );
-  return JSON.parse(jsonContents) as DiffThunkRange[];
+  try {
+    return JSON.parse(jsonContents) as DiffThunkRange[];
+  } catch (e) {
+    logger.warning(
+      `Failed to parse diff ranges JSON file at ${jsonFilePath}: ${e}`,
+    );
+    return undefined;
+  }
 }
 
 /**

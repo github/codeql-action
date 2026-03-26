@@ -7,7 +7,11 @@ import noAsyncForeach from "eslint-plugin-no-async-foreach";
 import jsdoc from "eslint-plugin-jsdoc";
 import tseslint from "typescript-eslint";
 import globals from "globals";
+import path from "path";
+import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const githubFlatConfigs = github.getFlatConfigs();
 
 export default [
@@ -43,7 +47,7 @@ export default [
     plugins: {
       "import-x": importX,
       "no-async-foreach": fixupPluginRules(noAsyncForeach),
-      "jsdoc": jsdoc,
+      jsdoc: jsdoc,
     },
 
     languageOptions: {
@@ -67,7 +71,13 @@ export default [
 
         typescript: {},
       },
-      "import/ignore": ["sinon", "uuid", "@octokit/plugin-retry", "del", "get-folder-size"],
+      "import/ignore": [
+        "sinon",
+        "uuid",
+        "@octokit/plugin-retry",
+        "del",
+        "get-folder-size",
+      ],
       "import-x/resolver-next": [
         createTypeScriptImportResolver(),
         createNodeResolver({
@@ -143,7 +153,7 @@ export default [
           // We don't currently require full JSDoc coverage, so this rule
           // should not error on missing @param annotations.
           disableMissingParamChecks: true,
-        }
+        },
       ],
     },
   },
@@ -162,9 +172,9 @@ export default [
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
-          "args": "all",
-          "argsIgnorePattern": "^_",
-        }
+          args: "all",
+          argsIgnorePattern: "^_",
+        },
       ],
       "func-style": "off",
     },
@@ -182,6 +192,11 @@ export default [
     rules: {
       // The scripts in `pr-checks` are expected to output to the console.
       "no-console": "off",
+
+      "import/no-extraneous-dependencies": [
+        "error",
+        { packageDir: [__dirname, path.resolve(__dirname, "pr-checks")] },
+      ],
 
       "@typescript-eslint/no-floating-promises": [
         "error",

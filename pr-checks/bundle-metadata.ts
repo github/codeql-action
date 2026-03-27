@@ -16,7 +16,7 @@ interface Output {
 }
 
 interface Metadata {
-  outputs: Output[];
+  outputs: Record<string, Output>;
 }
 
 function toMB(bytes: number): string {

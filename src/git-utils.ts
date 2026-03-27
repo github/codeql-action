@@ -14,10 +14,11 @@ import {
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 /**
- * Minimum Git version required for overlay analysis. The `git ls-files --format`
- * option, which is used by `getFileOidsUnderPath`, was introduced in Git 2.38.0.
+ * Minimum Git version required for overlay analysis. The
+ * `git ls-files --recurse-submodules` option, which is used by
+ * `getFileOidsUnderPath`, was introduced in Git 2.11.0.
  */
-export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.38.0";
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.11.0";
 
 /**
  * Git version information
@@ -252,24 +253,28 @@ export const getGitRoot = async function (
  *
  * @param basePath A path into the Git repository.
  * @returns a map from file paths (relative to `basePath`) to Git OIDs.
- * @throws {Error} if "git ls-tree" produces unexpected output.
+ * @throws {Error} if "git ls-files" produces unexpected output.
  */
 export const getFileOidsUnderPath = async function (
   basePath: string,
 ): Promise<{ [key: string]: string }> {
   // Without the --full-name flag, the path is relative to the current working
   // directory of the git command, which is basePath.
+  //
+  // We use --stage rather than --format here because --stage has been available since Git 2.11.0,
+  // while --format was only introduced in Git 2.38.0, which would limit overlay rollout.
   const stdout = await runGitCommand(
     basePath,
-    ["ls-files", "--recurse-submodules", "--format=%(objectname)_%(path)"],
+    ["ls-files", "--recurse-submodules", "--stage"],
     "Cannot list Git OIDs of tracked files.",
   );
 
   const fileOidMap: { [key: string]: string } = {};
-  // With --format=%(objectname)_%(path), the output is a list of lines like:
-  // 30d998ded095371488be3a729eb61d86ed721a18_lib/git-utils.js
-  // d89514599a9a99f22b4085766d40af7b99974827_lib/git-utils.js.map
-  const regex = /^([0-9a-f]{40})_(.+)$/;
+  // With --stage, the output is a list of lines like:
+  // 100644 4c51bc1d9e86cd86e01b0f340cb8ce095c33b283 0\tsrc/git-utils.test.ts
+  // 100644 6b792ea543ce75d7a8a03df591e3c85311ecb64f 0\tsrc/git-utils.ts
+  // The fields are: <mode> <oid> <stage>\t<path>
+  const regex = /^[0-9]+ ([0-9a-f]{40}) [0-9]+\t(.+)$/;
   for (const line of stdout.split("\n")) {
     if (line) {
       const match = line.match(regex);

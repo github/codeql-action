@@ -14,9 +14,9 @@ import * as startProxyExports from "./start-proxy";
 import { parseLanguage } from "./start-proxy";
 import * as statusReport from "./status-report";
 import {
+  assertNotLogged,
   checkExpectedLogMessages,
   createFeatures,
-  getRecordingLogger,
   makeTestToken,
   RecordingLogger,
   setupTests,
@@ -439,41 +439,155 @@ test("getCredentials accepts OIDC configurations", (t) => {
   t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
 });
 
-test("getCredentials logs a warning when a PAT is used without a username", async (t) => {
-  const loggedMessages = [];
-  const logger = getRecordingLogger(loggedMessages);
-  const likelyWrongCredentials = toEncodedJSON([
+const getCredentialsMacro = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    credentials: startProxyExports.RawCredential[],
+    checkAccepted: (
+      t: ExecutionContext<unknown>,
+      logger: RecordingLogger,
+      results: startProxyExports.Credential[],
+    ) => void,
+  ) => {
+    const logger = new RecordingLogger();
+    const credentialsString = toEncodedJSON(credentials);
+
+    const results = startProxyExports.getCredentials(
+      logger,
+      undefined,
+      credentialsString,
+      undefined,
+    );
+
+    checkAccepted(t, logger, results);
+  },
+
+  title: (providedTitle = "") => `getCredentials - ${providedTitle}`,
+});
+
+test(
+  "warns for PAT-like password without a username",
+  getCredentialsMacro,
+  [
     {
       type: "git_server",
       host: "https://github.com/",
       password: `ghp_${makeTestToken()}`,
     },
-  ]);
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
 
-  const results = startProxyExports.getCredentials(
-    logger,
-    undefined,
-    likelyWrongCredentials,
-    undefined,
-  );
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
 
-  // The configuration should be accepted, despite the likely problem.
-  t.assert(results);
-  t.is(results.length, 1);
-  t.is(results[0].type, "git_server");
-  t.is(results[0].host, "https://github.com/");
+    // A warning should have been logged.
+    checkExpectedLogMessages(t, logger.messages, [
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    ]);
+  },
+);
 
-  if (startProxyExports.isUsernamePassword(results[0])) {
-    t.assert(results[0].password?.startsWith("ghp_"));
-  } else {
-    t.fail("Expected a `UsernamePassword`-based credential.");
-  }
+test(
+  "no warning for PAT-like password with a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      username: "someone",
+      password: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
 
-  // A warning should have been logged.
-  checkExpectedLogMessages(t, loggedMessages, [
-    "using a GitHub Personal Access Token (PAT), but no username was provided",
-  ]);
-});
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
+
+    assertNotLogged(
+      t,
+      logger,
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    );
+  },
+);
+
+test(
+  "warns for PAT-like token without a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      token: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isToken(results[0])) {
+      t.assert(results[0].token?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `Token`-based credential.");
+    }
+
+    // A warning should have been logged.
+    checkExpectedLogMessages(t, logger.messages, [
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    ]);
+  },
+);
+
+test(
+  "no warning for PAT-like token with a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      username: "someone",
+      token: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isToken(results[0])) {
+      t.assert(results[0].token?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `Token`-based credential.");
+    }
+
+    assertNotLogged(
+      t,
+      logger,
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    );
+  },
+);
 
 test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);

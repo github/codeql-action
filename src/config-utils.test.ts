@@ -1004,6 +1004,7 @@ interface OverlayDatabaseModeTestSetup {
   codeqlVersion: string;
   gitRoot: string | undefined;
   gitVersion: GitVersionInfo | undefined;
+  hasSubmodules: boolean;
   codeScanningConfig: UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
@@ -1020,10 +1021,8 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
-  gitVersion: new GitVersionInfo(
-    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
-    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
-  ),
+  gitVersion: new GitVersionInfo("2.39.0", "2.39.0"),
+  hasSubmodules: false,
   codeScanningConfig: {},
   diskUsage: {
     numAvailableBytes: 50_000_000_000,
@@ -1098,6 +1097,9 @@ const checkOverlayEnablementMacro = test.macro({
         if (setup.gitRoot !== undefined) {
           sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
         }
+
+        // Mock submodule detection
+        sinon.stub(gitUtils, "hasSubmodules").resolves(setup.hasSubmodules);
 
         // Mock default branch detection
         sinon
@@ -1933,10 +1935,11 @@ test.serial(
 
 test.serial(
   checkOverlayEnablementMacro,
-  "Fallback due to old git version",
+  "Fallback due to old git version with submodules",
   {
     overlayDatabaseEnvVar: "overlay",
-    gitVersion: new GitVersionInfo("2.10.0", "2.10.0"), // Version below required 2.11.0
+    gitVersion: new GitVersionInfo("2.34.1", "2.34.1"), // Above 2.11.0 but below 2.36.0
+    hasSubmodules: true,
   },
   {
     disabledReason: OverlayDisabledReason.IncompatibleGit,

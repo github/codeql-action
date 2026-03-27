@@ -43,8 +43,9 @@ import {
   getGeneratedFiles,
   getGitRoot,
   getGitVersionOrThrow,
-  GIT_MINIMUM_VERSION_FOR_OVERLAY,
+  GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES,
   GitVersionInfo,
+  hasSubmodules,
   isAnalyzingDefaultBranch,
 } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
@@ -985,10 +986,14 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.IncompatibleGit);
   }
-  if (!gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY)) {
+  if (
+    (await hasSubmodules(sourceRoot)) &&
+    !gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES)
+  ) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
-        `the installed Git version is older than ${GIT_MINIMUM_VERSION_FOR_OVERLAY}. ` +
+        "the repository has submodules and the installed Git version is older " +
+        `than ${GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES}. ` +
         "Falling back to creating a normal full database instead.",
     );
     return new Failure(OverlayDisabledReason.IncompatibleGit);

@@ -2,6 +2,11 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.35.0 - 27 Mar 2026
+
+- Reduced the minimum Git version required for [improved incremental analysis](https://github.com/github/roadmap/issues/1158) from 2.38.0 to 2.11.0. [#3767](https://github.com/github/codeql-action/pull/3767)
+- Update default CodeQL bundle version to [2.25.1](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.1). [#3773](https://github.com/github/codeql-action/pull/3773)
+
 ## 4.34.1 - 20 Mar 2026
 
 - Downgrade default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3) due to issues with a small percentage of Actions and JavaScript analyses. [#3762](https://github.com/github/codeql-action/pull/3762)

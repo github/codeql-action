@@ -978,25 +978,26 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.NoGitRoot);
   }
-  if (gitVersion === undefined) {
-    logger.warning(
-      `Cannot build an ${overlayDatabaseMode} database because ` +
-        "the Git version could not be determined. " +
-        "Falling back to creating a normal full database instead.",
-    );
-    return new Failure(OverlayDisabledReason.IncompatibleGit);
-  }
-  if (
-    (await hasSubmodules(sourceRoot)) &&
-    !gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES)
-  ) {
-    logger.warning(
-      `Cannot build an ${overlayDatabaseMode} database because ` +
-        "the repository has submodules and the installed Git version is older " +
-        `than ${GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES}. ` +
-        "Falling back to creating a normal full database instead.",
-    );
-    return new Failure(OverlayDisabledReason.IncompatibleGit);
+  if (await hasSubmodules(sourceRoot)) {
+    if (gitVersion === undefined) {
+      logger.warning(
+        `Cannot build an ${overlayDatabaseMode} database because ` +
+          "the repository has submodules and the Git version could not be determined. " +
+          "Falling back to creating a normal full database instead.",
+      );
+      return new Failure(OverlayDisabledReason.IncompatibleGit);
+    }
+    if (
+      !gitVersion.isAtLeast(GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES)
+    ) {
+      logger.warning(
+        `Cannot build an ${overlayDatabaseMode} database because ` +
+          "the repository has submodules and the installed Git version is older " +
+          `than ${GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES}. ` +
+          "Falling back to creating a normal full database instead.",
+      );
+      return new Failure(OverlayDisabledReason.IncompatibleGit);
+    }
   }
 
   return new Success({

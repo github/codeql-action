@@ -143,7 +143,7 @@ test("scanArtifactsForTokens handles files without tokens", async (t) => {
 
 if (os.platform() !== "win32") {
   test("scanArtifactsForTokens finds token in debug artifacts", async (t) => {
-    t.timeout(15000); // 15 seconds
+    t.timeout(30 * 1000); // 30 seconds
     const messages: LoggedMessage[] = [];
     const logger = getRecordingLogger(messages, { logToConsole: false });
     // The zip here is a regression test based on

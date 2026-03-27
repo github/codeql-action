@@ -12,7 +12,9 @@
     "ava": "npm run transpile && ava --verbose",
     "test": "npm run ava -- src/",
     "test-debug": "npm run test -- --timeout=20m",
-    "transpile": "tsc --build --verbose"
+    "test-coverage": "c8 npm run test",
+    "transpile": "tsc --build --verbose",
+    "coverage": "c8 report --check-coverage"
   },
   "license": "MIT",
   "workspaces": [
@@ -56,6 +58,7 @@
     "@types/semver": "^7.7.1",
     "@types/sinon": "^21.0.0",
     "ava": "^7.0.0",
+    "c8": "^11.0.0",
     "esbuild": "^0.27.4",
     "eslint": "^9.39.2",
     "eslint-import-resolver-typescript": "^3.8.7",
@@ -91,5 +94,10 @@
     },
     "brace-expansion@2.0.1": "2.0.2",
     "glob": "^11.1.0"
+  },
+  "c8": {
+    "functions": 80,
+    "lines": 80,
+    "branches": 80
   }
 }

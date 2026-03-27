@@ -64,7 +64,11 @@ const onEndPlugin = {
 
 const context = await esbuild.context({
   // Include upload-lib.ts as an entry point for use in testing environments.
-  entryPoints: globSync([`${SRC_DIR}/*-action.ts`, `${SRC_DIR}/*-action-post.ts`, "src/upload-lib.ts"]),
+  entryPoints: globSync([
+    `${SRC_DIR}/*-action.ts`,
+    `${SRC_DIR}/*-action-post.ts`,
+    "src/upload-lib.ts",
+  ]),
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,
@@ -78,6 +82,6 @@ const context = await esbuild.context({
 });
 
 const result = await context.rebuild();
-await writeFile("meta.json", JSON.stringify(result.metafile));
+await writeFile(join(__dirname, "meta.json"), JSON.stringify(result.metafile));
 
 await context.dispose();

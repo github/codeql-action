@@ -14,11 +14,11 @@ import {
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 /**
- * Minimum Git version required for overlay analysis. The
- * `git ls-files --recurse-submodules` option, which is used by
- * `getFileOidsUnderPath`, was introduced in Git 2.11.0.
+ * Minimum Git version required for overlay analysis. Support for using the `git ls-files
+ * --recurse-submodules` option with `--stage` was added in Git 2.36.0. For more information, see
+ * `getFileOidsUnderPath`.
  */
-export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.11.0";
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.36.0";
 
 /**
  * Git version information
@@ -261,8 +261,8 @@ export const getFileOidsUnderPath = async function (
   // Without the --full-name flag, the path is relative to the current working
   // directory of the git command, which is basePath.
   //
-  // We use --stage rather than --format here because --stage has been available since Git 2.11.0,
-  // while --format was only introduced in Git 2.38.0, which would limit overlay rollout.
+  // We use --stage rather than --format here because --stage has been available since Git 2.36.0,
+  // while --format was only introduced in Git 2.38.0.
   const stdout = await runGitCommand(
     basePath,
     ["ls-files", "--recurse-submodules", "--stage"],

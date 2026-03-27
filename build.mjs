@@ -1,4 +1,4 @@
-import { copyFile, rm } from "node:fs/promises";
+import { copyFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -74,7 +74,10 @@ const context = await esbuild.context({
   define: {
     __CODEQL_ACTION_VERSION__: JSON.stringify(pkg.version),
   },
+  metafile: true,
 });
 
-await context.rebuild();
+const result = await context.rebuild();
+await writeFile("meta.json", JSON.stringify(result.metafile));
+
 await context.dispose();

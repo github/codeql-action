@@ -1948,10 +1948,11 @@ test.serial(
 
 test.serial(
   checkOverlayEnablementMacro,
-  "Fallback when git version cannot be determined",
+  "Fallback when git version cannot be determined and repo has submodules",
   {
     overlayDatabaseEnvVar: "overlay",
     gitVersion: undefined,
+    hasSubmodules: true,
   },
   {
     disabledReason: OverlayDisabledReason.IncompatibleGit,

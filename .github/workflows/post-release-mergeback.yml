@@ -24,7 +24,7 @@ defaults:
 
 jobs:
   merge-back:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     environment: Automation
     if: github.repository == 'github/codeql-action'
     env:

@@ -248,16 +248,12 @@ export const getGitRoot = async function (
 };
 
 /**
- * Returns true if the Git repository containing `basePath` has submodules
- * registered (i.e. a `.gitmodules` file exists at the repository root).
+ * Returns true if the Git repository has submodules registered (i.e. a
+ * `.gitmodules` file exists at the repository root).
+ *
+ * @param gitRoot The root of the Git repository.
  */
-export async function hasSubmodules(basePath: string): Promise<boolean> {
-  const gitRoot = await getGitRoot(basePath);
-  if (gitRoot === undefined) {
-    throw new Error(
-      `Cannot determine whether the repository has submodules because the Git root could not be found from ${basePath}.`,
-    );
-  }
+export function hasSubmodules(gitRoot: string): boolean {
   return fs.existsSync(path.join(gitRoot, ".gitmodules"));
 }
 
@@ -283,7 +279,10 @@ export const getFileOidsUnderPath = async function (
   // We only pass --recurse-submodules when the repository actually has
   // submodules, because the combination of --recurse-submodules and --stage is
   // only supported since Git 2.36.0.
-  const args = (await hasSubmodules(basePath))
+  const gitRoot = await getGitRoot(basePath);
+  const mayHaveSubmodules =
+    gitRoot === undefined ? true : hasSubmodules(gitRoot);
+  const args = mayHaveSubmodules
     ? ["ls-files", "--recurse-submodules", "--stage"]
     : ["ls-files", "--stage"];
   const stdout = await runGitCommand(

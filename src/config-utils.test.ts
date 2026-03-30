@@ -1099,7 +1099,7 @@ const checkOverlayEnablementMacro = test.macro({
         }
 
         // Mock submodule detection
-        sinon.stub(gitUtils, "hasSubmodules").resolves(setup.hasSubmodules);
+        sinon.stub(gitUtils, "hasSubmodules").returns(setup.hasSubmodules);
 
         // Mock default branch detection
         sinon

@@ -970,7 +970,8 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.IncompatibleCodeQl);
   }
-  if ((await getGitRoot(sourceRoot)) === undefined) {
+  const gitRoot = await getGitRoot(sourceRoot);
+  if (gitRoot === undefined) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the source root "${sourceRoot}" is not inside a git repository. ` +
@@ -978,7 +979,7 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.NoGitRoot);
   }
-  if (await hasSubmodules(sourceRoot)) {
+  if (hasSubmodules(gitRoot)) {
     if (gitVersion === undefined) {
       logger.warning(
         `Cannot build an ${overlayDatabaseMode} database because ` +

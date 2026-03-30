@@ -1961,6 +1961,20 @@ test.serial(
 
 test.serial(
   checkOverlayEnablementMacro,
+  "Overlay enabled when git version cannot be determined and repo has no submodules",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: undefined,
+    hasSubmodules: false,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
+  },
+);
+
+test.serial(
+  checkOverlayEnablementMacro,
   "No overlay when disabled via repository property",
   {
     languages: [KnownLanguage.javascript],

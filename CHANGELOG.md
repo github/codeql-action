@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The Git version 2.36.0 requirement for improved incremental analysis now only applies to repositories that contain submodules. [#3789](https://github.com/github/codeql-action/pull/3789)
 
 ## 4.35.1 - 27 Mar 2026
 

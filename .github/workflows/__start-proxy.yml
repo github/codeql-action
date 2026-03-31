@@ -96,8 +96,8 @@ jobs:
       - name: Fail if proxy_urls does not contain all registries
         if: |
           join(fromJSON(steps.proxy.outputs.proxy_urls)[*].type, ',') != 'maven_repository,maven_repository'
-          || !contains(fromJSON(steps.proxy.outputs.proxy_urls)[*].url, 'https://repo.maven.apache.org/maven2/')
-          || !contains(fromJSON(steps.proxy.outputs.proxy_urls)[*].url, 'https://repo1.maven.org/maven2')
+          || !contains(steps.proxy.outputs.proxy_urls, 'https://repo.maven.apache.org/maven2/')
+          || !contains(steps.proxy.outputs.proxy_urls, 'https://repo1.maven.org/maven2')
         run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

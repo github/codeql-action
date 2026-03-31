@@ -93,7 +93,7 @@ jobs:
         if: (!steps.proxy.outputs.proxy_host) || (!steps.proxy.outputs.proxy_port) || (!steps.proxy.outputs.proxy_ca_certificate) || (!steps.proxy.outputs.proxy_urls)
         run: exit 1
 
-      - name: Validate proxy_urls contains expected registries
+      - name: Fail if proxy_urls does not contain all registries
         if: |
           join(fromJSON(steps.proxy.outputs.proxy_urls)[*].type, ',') != 'maven_repository,maven_repository'
           || !contains(fromJSON(steps.proxy.outputs.proxy_urls)[*].url, 'https://repo.maven.apache.org/maven2/')

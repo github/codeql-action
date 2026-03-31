@@ -75,7 +75,7 @@ jobs:
             [
               {
                 "type": "maven_repository",
-                "url": "https://acme.jfrog.io/artifactory/my-maven-registry"
+                "url": "https://repo.maven.apache.org/maven2/"
               },
               {
                 "type": "maven_repository",
@@ -96,7 +96,7 @@ jobs:
       - name: Validate proxy_urls contains expected registries
         if: |
           join(fromJSON(steps.proxy.outputs.proxy_urls)[*].type, ',') != 'maven_repository,maven_repository'
-          || !contains(fromJSON(steps.proxy.outputs.proxy_urls)[*].url, 'https://acme.jfrog.io/artifactory/my-maven-registry')
+          || !contains(fromJSON(steps.proxy.outputs.proxy_urls)[*].url, 'https://repo.maven.apache.org/maven2/')
           || !contains(fromJSON(steps.proxy.outputs.proxy_urls)[*].url, 'https://repo1.maven.org/maven2')
         run: exit 1
     env:

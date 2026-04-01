@@ -85,7 +85,6 @@ export enum Feature {
   OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
   /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
-  PythonDefaultIsToNotExtractStdlib = "python_default_is_to_not_extract_stdlib",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
@@ -297,12 +296,6 @@ export const featureConfig = {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
     minimumVersion: undefined,
-  },
-  [Feature.PythonDefaultIsToNotExtractStdlib]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_DISABLE_PYTHON_STANDARD_LIBRARY_EXTRACTION",
-    minimumVersion: undefined,
-    toolsFeature: ToolsFeature.PythonDefaultIsToNotExtractStdlib,
   },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,

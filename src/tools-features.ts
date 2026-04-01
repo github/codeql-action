@@ -9,7 +9,6 @@ export enum ToolsFeature {
   DatabaseInterpretResultsSupportsSarifRunProperty = "databaseInterpretResultsSupportsSarifRunProperty",
   ForceOverwrite = "forceOverwrite",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
-  PythonDefaultIsToNotExtractStdlib = "pythonDefaultIsToNotExtractStdlib",
   SuppressesMissingFileBaselineWarning = "suppressesMissingFileBaselineWarning",
 }
 

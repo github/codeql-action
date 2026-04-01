@@ -645,27 +645,6 @@ async function run(startedAt: Date) {
       );
     }
 
-    if (
-      await codeql.supportsFeature(
-        ToolsFeature.PythonDefaultIsToNotExtractStdlib,
-      )
-    ) {
-      if (process.env["CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB"]) {
-        logger.debug(
-          "CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB is already set, so the Action will not override it.",
-        );
-      } else if (
-        !(await features.getValue(
-          Feature.PythonDefaultIsToNotExtractStdlib,
-          codeql,
-        ))
-      ) {
-        // We are in a situation where the feature flag is not rolled out,
-        // so we need to suppress the new default CLI behavior.
-        core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
-      }
-    }
-
     // If we are doing a Java `build-mode: none` analysis, then set the environment variable that
     // enables the option in the Java extractor to minimize dependency jars. We also only do this if
     // dependency caching is enabled, since the option is intended to reduce the size of dependency

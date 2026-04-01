@@ -5,12 +5,9 @@
 import * as fs from "fs";
 import { parseArgs } from "node:util";
 
-import * as githubUtils from "@actions/github/lib/utils";
-import { type Octokit } from "@octokit/core";
-import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
-import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 import * as yaml from "yaml";
 
+import { type ApiClient, getApiClient } from "./api-client";
 import {
   OLDEST_SUPPORTED_MAJOR_VERSION,
   PR_CHECK_EXCLUDED_FILE,
@@ -47,15 +44,6 @@ function loadExclusions(): Exclusions {
   return yaml.parse(
     fs.readFileSync(PR_CHECK_EXCLUDED_FILE, "utf-8"),
   ) as Exclusions;
-}
-
-/** The type of the Octokit client. */
-type ApiClient = Octokit & Api & { paginate: PaginateInterface };
-
-/** Constructs an `ApiClient` using `token` for authentication. */
-function getApiClient(token: string): ApiClient {
-  const opts = githubUtils.getOctokitOptions(token);
-  return new githubUtils.GitHub(opts);
 }
 
 /**

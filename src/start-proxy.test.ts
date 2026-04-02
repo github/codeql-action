@@ -252,6 +252,47 @@ test("getCredentials returns all for a language when specified", async (t) => {
   t.assert(credentialsTypes.includes("git_source"));
 });
 
+test("getCredentials returns all goproxy_servers for a language when specified", async (t) => {
+  const multipleGoproxyServers = [
+    { type: "goproxy_server", host: "goproxy1.example.com", token: "token1" },
+    { type: "goproxy_server", host: "goproxy2.example.com", token: "token2" },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleGoproxyServers),
+    KnownLanguage.go,
+  );
+  t.is(credentials.length, 3);
+
+  const goproxyServers = credentials.filter((c) => c.type === "goproxy_server");
+  t.is(goproxyServers.length, 2);
+  t.assert(goproxyServers.some((c) => c.host === "goproxy1.example.com"));
+  t.assert(goproxyServers.some((c) => c.host === "goproxy2.example.com"));
+});
+
+test("getCredentials returns all maven_repositories for a language when specified", async (t) => {
+  const multipleMavenRepositories = [
+    { type: "maven_repository", host: "maven1.pkg.github.com", token: "token1" },
+    { type: "maven_repository", host: "maven2.pkg.github.com", token: "token2" },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleMavenRepositories),
+    KnownLanguage.java,
+  );
+  t.is(credentials.length, 2);
+
+  const mavenRepositories = credentials.filter((c) => c.type === "maven_repository");
+  t.assert(mavenRepositories.some((c) => c.host === "maven1.pkg.github.com"));
+  t.assert(mavenRepositories.some((c) => c.host === "maven2.pkg.github.com"));
+});
+
 test("getCredentials returns all credentials when no language specified", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);
 

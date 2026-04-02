@@ -275,8 +275,16 @@ test("getCredentials returns all goproxy_servers for a language when specified",
 
 test("getCredentials returns all maven_repositories for a language when specified", async (t) => {
   const multipleMavenRepositories = [
-    { type: "maven_repository", host: "maven1.pkg.github.com", token: "token1" },
-    { type: "maven_repository", host: "maven2.pkg.github.com", token: "token2" },
+    {
+      type: "maven_repository",
+      host: "maven1.pkg.github.com",
+      token: "token1",
+    },
+    {
+      type: "maven_repository",
+      host: "maven2.pkg.github.com",
+      token: "token2",
+    },
     { type: "git_source", host: "github.com/github", token: "mno" },
   ];
 
@@ -288,7 +296,9 @@ test("getCredentials returns all maven_repositories for a language when specifie
   );
   t.is(credentials.length, 2);
 
-  const mavenRepositories = credentials.filter((c) => c.type === "maven_repository");
+  const mavenRepositories = credentials.filter(
+    (c) => c.type === "maven_repository",
+  );
   t.assert(mavenRepositories.some((c) => c.host === "maven1.pkg.github.com"));
   t.assert(mavenRepositories.some((c) => c.host === "maven2.pkg.github.com"));
 });

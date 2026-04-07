@@ -273,7 +273,7 @@ test("getCredentials returns all goproxy_servers for Go when specified", async (
   t.assert(goproxyServers.some((c) => c.host === "goproxy2.example.com"));
 });
 
-test("getCredentials returns all maven_repositories for a language when specified", async (t) => {
+test("getCredentials returns all maven_repositories for Java when specified", async (t) => {
   const multipleMavenRepositories = [
     {
       type: "maven_repository",

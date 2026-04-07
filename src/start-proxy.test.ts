@@ -252,7 +252,7 @@ test("getCredentials returns all for a language when specified", async (t) => {
   t.assert(credentialsTypes.includes("git_source"));
 });
 
-test("getCredentials returns all goproxy_servers for a language when specified", async (t) => {
+test("getCredentials returns all goproxy_servers for Go when specified", async (t) => {
   const multipleGoproxyServers = [
     { type: "goproxy_server", host: "goproxy1.example.com", token: "token1" },
     { type: "goproxy_server", host: "goproxy2.example.com", token: "token2" },

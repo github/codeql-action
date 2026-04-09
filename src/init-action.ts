@@ -391,10 +391,10 @@ async function run(startedAt: Date) {
 
     if (
       config.languages.includes(KnownLanguage.swift) &&
-      process.platform === "linux"
+      process.platform !== "darwin"
     ) {
       throw new ConfigurationError(
-        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner.`,
+        `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
       );
     }
 

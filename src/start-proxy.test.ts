@@ -351,23 +351,23 @@ test("getCredentials throws an error when non-printable characters are used", as
 });
 
 const validAzureCredential: startProxyExports.AzureConfig = {
-  tenant_id: "12345678-1234-1234-1234-123456789012",
-  client_id: "abcdef01-2345-6789-abcd-ef0123456789",
+  "tenant-id": "12345678-1234-1234-1234-123456789012",
+  "client-id": "abcdef01-2345-6789-abcd-ef0123456789",
 };
 
 const validAwsCredential: startProxyExports.AWSConfig = {
-  aws_region: "us-east-1",
-  account_id: "123456789012",
-  role_name: "MY_ROLE",
+  "aws-region": "us-east-1",
+  "account-id": "123456789012",
+  "role-name": "MY_ROLE",
   domain: "MY_DOMAIN",
-  domain_owner: "987654321098",
+  "domain-owner": "987654321098",
   audience: "custom-audience",
 };
 
 const validJFrogCredential: startProxyExports.JFrogConfig = {
-  jfrog_oidc_provider_name: "MY_PROVIDER",
+  "jfrog-oidc-provider-name": "MY_PROVIDER",
   audience: "jfrog-audience",
-  identity_mapping_name: "my-mapping",
+  "identity-mapping-name": "my-mapping",
 };
 
 test("getCredentials throws an error when non-printable characters are used for Azure OIDC", (t) => {

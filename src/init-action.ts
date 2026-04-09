@@ -389,6 +389,15 @@ async function run(startedAt: Date) {
       logger,
     });
 
+    if (
+      config.languages.includes(KnownLanguage.swift) &&
+      process.platform !== "darwin"
+    ) {
+      throw new ConfigurationError(
+        `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
+      );
+    }
+
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(
         config,
@@ -496,15 +505,6 @@ async function run(startedAt: Date) {
       core.exportVariable("GOFLAGS", goFlags);
       core.warning(
         "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
-      );
-    }
-
-    if (
-      config.languages.includes(KnownLanguage.swift) &&
-      process.platform === "linux"
-    ) {
-      logger.warning(
-        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you.`,
       );
     }
 

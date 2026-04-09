@@ -299,6 +299,20 @@ test("wrapCliConfigurationError - swift build failed", (t) => {
   t.true(wrappedError instanceof ConfigurationError);
 });
 
+test("wrapCliConfigurationError - swift incompatible os", (t) => {
+  const commandError = new CommandInvocationError(
+    "codeql",
+    ["swift/tools/autobuild.sh"],
+    1,
+    "2026-04-01 18:35:00 EST ERRO [extractor/main] [incompatible-os] Currently, Swift analysis is only supported on macOS. (IncompatibleOs.cpp:26)",
+  );
+  const cliError = new CliError(commandError);
+
+  const wrappedError = wrapCliConfigurationError(cliError);
+
+  t.true(wrappedError instanceof ConfigurationError);
+});
+
 test("wrapCliConfigurationError - pack cannot be found", (t) => {
   const commandError = new CommandInvocationError(
     "codeql",

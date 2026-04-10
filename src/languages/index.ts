@@ -1,3 +1,5 @@
+import knownLanguagesData from "./builtin.json";
+
 /** A language to analyze with CodeQL. */
 export type Language = string;
 
@@ -26,4 +28,27 @@ export enum JavaEnvVars {
   JAVA_TOOL_OPTIONS = "JAVA_TOOL_OPTIONS",
   JDK_JAVA_OPTIONS = "JDK_JAVA_OPTIONS",
   _JAVA_OPTIONS = "_JAVA_OPTIONS",
+}
+
+const knownLanguageSet = new Set<string>(knownLanguagesData.languages);
+
+export function isKnownLanguage(language: string): language is KnownLanguage {
+  return knownLanguageSet.has(language);
+}
+
+/**
+ * Parses a built-in language name or alias.
+ */
+export function parseBuiltInLanguage(
+  language: string,
+): KnownLanguage | undefined {
+  language = language.trim().toLowerCase();
+  language =
+    knownLanguagesData.aliases[
+      language as keyof typeof knownLanguagesData.aliases
+    ] ?? language;
+  if (isKnownLanguage(language)) {
+    return language;
+  }
+  return undefined;
 }

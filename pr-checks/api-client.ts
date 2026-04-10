@@ -5,6 +5,12 @@ import { type Octokit } from "@octokit/core";
 import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
 import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 
+/** Identifies the CodeQL Action repository. */
+export const CODEQL_ACTION_REPO = {
+  owner: "github",
+  repo: "codeql-action",
+};
+
 /** The type of the Octokit client. */
 export type ApiClient = Octokit & Api & { paginate: PaginateInterface };
 

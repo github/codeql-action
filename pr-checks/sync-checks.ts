@@ -9,6 +9,7 @@ import * as yaml from "yaml";
 
 import {
   type ApiClient,
+  CODEQL_ACTION_REPO,
   getApiClient,
   TOKEN_OPTION_CONFIG,
   TokenOption,
@@ -27,12 +28,6 @@ export interface Options extends TokenOption {
   /** Whether to output additional information. */
   verbose: boolean;
 }
-
-/** Identifies the CodeQL Action repository. */
-const codeqlActionRepo = {
-  owner: "github",
-  repo: "codeql-action",
-};
 
 /** Represents a configuration of which checks should not be set up as required checks. */
 export interface Exclusions {
@@ -103,7 +98,7 @@ async function getChecksFor(
   const response = await client.paginate(
     "GET /repos/{owner}/{repo}/commits/{ref}/check-runs",
     {
-      ...codeqlActionRepo,
+      ...CODEQL_ACTION_REPO,
       ref,
     },
   );
@@ -136,7 +131,7 @@ async function getChecksFor(
 /** Gets the current list of release branches. */
 async function getReleaseBranches(client: ApiClient): Promise<string[]> {
   const refs = await client.rest.git.listMatchingRefs({
-    ...codeqlActionRepo,
+    ...CODEQL_ACTION_REPO,
     ref: "heads/releases/v",
   });
   return refs.data.map((ref) => ref.ref).sort();
@@ -149,7 +144,7 @@ async function patchBranchProtectionRule(
   checks: Set<string>,
 ) {
   await client.rest.repos.setStatusCheckContexts({
-    ...codeqlActionRepo,
+    ...CODEQL_ACTION_REPO,
     branch,
     contexts: Array.from(checks),
   });
@@ -166,7 +161,7 @@ async function updateBranch(
 
   // Query the current set of required checks for this branch.
   const currentContexts = await client.rest.repos.getAllStatusCheckContexts({
-    ...codeqlActionRepo,
+    ...CODEQL_ACTION_REPO,
     branch,
   });
 

@@ -7,16 +7,19 @@ import { parseArgs } from "node:util";
 
 import * as yaml from "yaml";
 
-import { type ApiClient, getApiClient } from "./api-client";
+import {
+  type ApiClient,
+  getApiClient,
+  TOKEN_OPTION_CONFIG,
+  TokenOption,
+} from "./api-client";
 import {
   OLDEST_SUPPORTED_MAJOR_VERSION,
   PR_CHECK_EXCLUDED_FILE,
 } from "./config";
 
 /** Represents the command-line options. */
-export interface Options {
-  /** The token to use to authenticate to the GitHub API. */
-  token?: string;
+export interface Options extends TokenOption {
   /** The git ref to use the checks for. */
   ref?: string;
   /** Whether to actually apply the changes or not. */
@@ -205,10 +208,7 @@ async function updateBranch(
 async function main(): Promise<void> {
   const { values: options } = parseArgs({
     options: {
-      // The token to use to authenticate to the API.
-      token: {
-        type: "string",
-      },
+      ...TOKEN_OPTION_CONFIG,
       // The git ref for which to retrieve the check runs.
       ref: {
         type: "string",

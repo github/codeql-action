@@ -1090,7 +1090,7 @@ const checkOverlayEnablementMacro = test.macro({
         sinon
           .stub(codeql, "isTracedLanguage")
           .callsFake(async (lang: Language) => {
-            return [KnownLanguage.java].includes(lang as KnownLanguage);
+            return lang === KnownLanguage.java;
           });
 
         // Mock git root detection

@@ -6,7 +6,7 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import { KnownLanguage } from "./languages";
+import { KnownLanguage, parseBuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
@@ -14,7 +14,6 @@ import {
   getCredentials,
   getProxyBinaryPath,
   getSafeErrorMessage,
-  parseLanguage,
   ProxyInfo,
   sendFailedStatusReport,
   sendSuccessStatusReport,
@@ -56,7 +55,7 @@ async function run(startedAt: Date) {
 
     // Get the language input.
     const languageInput = actionsUtil.getOptionalInput("language");
-    language = languageInput ? parseLanguage(languageInput) : undefined;
+    language = languageInput ? parseBuiltInLanguage(languageInput) : undefined;
 
     // Query the FF for whether we should use the reduced registry mapping.
     const skipUnusedRegistries = await features.getValue(
@@ -119,7 +118,7 @@ async function run(startedAt: Date) {
     await sendSuccessStatusReport(
       startedAt,
       {
-        languages: language && [language],
+        languages: language === undefined ? undefined : [language],
       },
       proxyConfig.all_credentials.map((c) => c.type),
       logger,

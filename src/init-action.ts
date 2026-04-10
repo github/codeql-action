@@ -63,8 +63,8 @@ import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
-  OverlayDatabaseMode,
-} from "./overlay";
+} from "./overlay/caching";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {

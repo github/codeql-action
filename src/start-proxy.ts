@@ -289,22 +289,22 @@ export function getAuthConfig(
   // which we can use to identify them.
   if (isAzureConfig(config)) {
     return {
-      tenant_id: config.tenant_id,
-      client_id: config.client_id,
+      "tenant-id": config["tenant-id"],
+      "client-id": config["client-id"],
     } satisfies AzureConfig;
   } else if (isAWSConfig(config)) {
     return {
-      aws_region: config.aws_region,
-      account_id: config.account_id,
-      role_name: config.role_name,
+      "aws-region": config["aws-region"],
+      "account-id": config["account-id"],
+      "role-name": config["role-name"],
       domain: config.domain,
-      domain_owner: config.domain_owner,
+      "domain-owner": config["domain-owner"],
       audience: config.audience,
     } satisfies AWSConfig;
   } else if (isJFrogConfig(config)) {
     return {
-      jfrog_oidc_provider_name: config.jfrog_oidc_provider_name,
-      identity_mapping_name: config.identity_mapping_name,
+      "jfrog-oidc-provider-name": config["jfrog-oidc-provider-name"],
+      "identity-mapping-name": config["identity-mapping-name"],
       audience: config.audience,
     } satisfies JFrogConfig;
   } else if (isToken(config)) {

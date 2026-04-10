@@ -6,7 +6,7 @@ import * as sinon from "sinon";
 
 import { CodeQL, getCodeQLForTesting } from "./codeql";
 import * as configUtils from "./config-utils";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { createTestConfig, makeVersionInfo, setupTests } from "./testing-utils";
 import { ToolsFeature } from "./tools-features";
 import { getCombinedTracerConfig } from "./tracer-config";
@@ -16,7 +16,7 @@ setupTests(test);
 
 function getTestConfig(tempDir: string): configUtils.Config {
   return createTestConfig({
-    languages: [KnownLanguage.java],
+    languages: [BuiltInLanguage.java],
     tempDir,
     dbLocation: path.resolve(tempDir, "codeql_databases"),
   });
@@ -36,7 +36,7 @@ async function stubCodeql(
     );
   sinon
     .stub(codeqlObject, "isTracedLanguage")
-    .withArgs(KnownLanguage.java)
+    .withArgs(BuiltInLanguage.java)
     .resolves(true);
   return codeqlObject;
 }
@@ -45,7 +45,7 @@ test("getCombinedTracerConfig - return undefined when no languages are traced la
   await util.withTmpDir(async (tmpDir) => {
     const config = getTestConfig(tmpDir);
     // No traced languages
-    config.languages = [KnownLanguage.javascript, KnownLanguage.python];
+    config.languages = [BuiltInLanguage.javascript, BuiltInLanguage.python];
     t.deepEqual(
       await getCombinedTracerConfig(await stubCodeql(), config),
       undefined,

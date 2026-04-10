@@ -6,7 +6,7 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import { KnownLanguage, parseBuiltInLanguage } from "./languages";
+import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
@@ -32,7 +32,7 @@ async function run(startedAt: Date) {
 
   const logger = getActionsLogger();
   let features: FeatureEnablement | undefined;
-  let language: KnownLanguage | undefined;
+  let language: BuiltInLanguage | undefined;
 
   try {
     // Make inputs accessible in the `post` step.

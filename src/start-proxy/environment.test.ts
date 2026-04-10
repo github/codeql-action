@@ -7,7 +7,7 @@ import * as io from "@actions/io";
 import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
 
-import { JavaEnvVars, KnownLanguage } from "../languages";
+import { JavaEnvVars, BuiltInLanguage } from "../languages";
 import {
   checkExpectedLogMessages,
   getRecordingLogger,
@@ -182,11 +182,11 @@ test.serial("checkProxyEnvVars - credentials are removed from URLs", (t) => {
 });
 
 test.serial(
-  "checkProxyEnvironment - includes base checks for all known languages",
+  "checkProxyEnvironment - includes base checks for all built-in languages",
   async (t) => {
     stubToolrunner();
 
-    for (const language of Object.values(KnownLanguage)) {
+    for (const language of Object.values(BuiltInLanguage)) {
       const messages: LoggedMessage[] = [];
       const logger = getRecordingLogger(messages);
 
@@ -204,7 +204,7 @@ test.serial(
 
     stubToolrunner();
 
-    await checkProxyEnvironment(logger, KnownLanguage.java);
+    await checkProxyEnvironment(logger, BuiltInLanguage.java);
     assertEnvVarLogMessages(t, Object.keys(ProxyEnvVars), messages, false);
     assertEnvVarLogMessages(t, JAVA_PROXY_ENV_VARS, messages, false);
   },

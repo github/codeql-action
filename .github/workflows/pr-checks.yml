@@ -52,6 +52,12 @@ jobs:
       - name: Verify compiled JS up to date
         run: .github/workflows/script/check-js.sh
 
+      - name: Upload esbuild metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: bundle-metadata-${{ matrix.os }}-${{ matrix.node-version }}
+          path: meta.json
+
       - name: Run unit tests
         if: always()
         run: npm test

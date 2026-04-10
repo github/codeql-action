@@ -64,7 +64,7 @@ steps:
 
   - name: Check quality query does not appear in security SARIF
     if: contains(matrix.analysis-kinds, 'code-scanning')
-    uses: actions/github-script@v8
+    uses: actions/github-script@v9
     env:
       SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
       EXPECT_PRESENT: "false"
@@ -72,7 +72,7 @@ steps:
       script: ${{ env.CHECK_SCRIPT }}
   - name: Check quality query appears in quality SARIF
     if: contains(matrix.analysis-kinds, 'code-quality')
-    uses: actions/github-script@v8
+    uses: actions/github-script@v9
     env:
       SARIF_PATH: "${{ runner.temp }}/results/javascript.quality.sarif"
       EXPECT_PRESENT: "true"

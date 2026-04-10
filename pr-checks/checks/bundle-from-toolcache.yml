@@ -7,7 +7,7 @@ steps:
     run: npm install @actions/tool-cache@3
   - name: Check toolcache contains CodeQL
     continue-on-error: true
-    uses: actions/github-script@v8
+    uses: actions/github-script@v9
     with:
       script: |
         const toolcache = require('@actions/tool-cache');
@@ -20,7 +20,7 @@ steps:
     with:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
   - name: Check CodeQL is installed within the toolcache
-    uses: actions/github-script@v8
+    uses: actions/github-script@v9
     with:
       script: |
         const toolcache = require('@actions/tool-cache');

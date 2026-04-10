@@ -3,6 +3,7 @@
   "compilerOptions": {
     /* Basic Options */
     "lib": ["esnext"],
+    "module": "preserve",
     "rootDir": "..",
     "sourceMap": false,
     "noEmit": true,

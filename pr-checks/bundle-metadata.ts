@@ -135,17 +135,48 @@ async function main() {
   const fileContents = await fs.readFile(BUNDLE_METADATA_FILE);
   const metadata = JSON.parse(String(fileContents)) as Metadata;
 
+  console.info("Comparing bundle metadata to baseline...");
+
+  const filesInBaseline = new Set(Object.keys(baselineMetadata.outputs));
+  const filesInCurrent = new Set(Object.keys(metadata.outputs));
+
+  const filesNotPresent = filesInBaseline.difference(filesInCurrent);
+  if (filesNotPresent.size > 0) {
+    console.info(`Found ${filesNotPresent.size} file(s) which were removed:`);
+    for (const removedFile of filesNotPresent) {
+      console.info(`  - ${removedFile}`);
+    }
+  }
+
   for (const [outputFile, outputData] of Object.entries(
     metadata.outputs,
   ).reverse()) {
-    console.info(`${outputFile}: ${toMB(outputData.bytes)}`);
+    const baselineOutputData = baselineMetadata.outputs[outputFile];
 
-    for (const [inputName, inputData] of Object.entries(outputData.inputs)) {
-      // Ignore any inputs that make up less than 5% of the output.
-      const percentage = (inputData.bytesInOutput / outputData.bytes) * 100.0;
-      if (percentage < 5.0) continue;
+    if (baselineOutputData === undefined) {
+      console.info(`${outputFile}: New file (${toMB(outputData.bytes)})`);
+    } else {
+      const percentageDifference =
+        ((outputData.bytes - baselineOutputData.bytes) /
+          baselineOutputData.bytes) *
+        100.0;
 
-      console.info(`  ${inputName}: ${toMB(inputData.bytesInOutput)}`);
+      if (Math.abs(percentageDifference) >= 5) {
+        console.info(
+          `${outputFile}: ${toMB(outputData.bytes)} (${percentageDifference.toFixed(2)}%)`,
+        );
+
+        for (const [inputName, inputData] of Object.entries(
+          outputData.inputs,
+        )) {
+          // Ignore any inputs that make up less than 5% of the output.
+          const percentage =
+            (inputData.bytesInOutput / outputData.bytes) * 100.0;
+          if (percentage < 5.0) continue;
+
+          console.info(`  ${inputName}: ${toMB(inputData.bytesInOutput)}`);
+        }
+      }
     }
   }
 }

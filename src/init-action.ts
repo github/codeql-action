@@ -58,7 +58,7 @@ import {
   initConfig,
   runDatabaseInitCluster,
 } from "./init";
-import { JavaEnvVars, KnownLanguage } from "./languages";
+import { JavaEnvVars, BuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -330,7 +330,7 @@ async function run(startedAt: Date) {
       // requested rust - don't enable it via language autodetection.
       configUtils
         .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
-        .includes(KnownLanguage.rust)
+        .includes(BuiltInLanguage.rust)
     ) {
       const experimental = "2.19.3";
       const publicPreview = "2.22.1";
@@ -390,7 +390,7 @@ async function run(startedAt: Date) {
     });
 
     if (
-      config.languages.includes(KnownLanguage.swift) &&
+      config.languages.includes(BuiltInLanguage.swift) &&
       process.platform !== "darwin"
     ) {
       throw new ConfigurationError(
@@ -509,7 +509,7 @@ async function run(startedAt: Date) {
     }
 
     if (
-      config.languages.includes(KnownLanguage.go) &&
+      config.languages.includes(BuiltInLanguage.go) &&
       process.platform === "linux"
     ) {
       try {
@@ -567,7 +567,7 @@ async function run(startedAt: Date) {
         if (e instanceof FileCmdNotFoundError) {
           addDiagnostic(
             config,
-            KnownLanguage.go,
+            BuiltInLanguage.go,
             makeDiagnostic(
               "go/workflow/file-program-unavailable",
               "The `file` program is required on Linux, but does not appear to be installed",
@@ -661,7 +661,7 @@ async function run(startedAt: Date) {
       (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
-      config.languages.includes(KnownLanguage.java)
+      config.languages.includes(BuiltInLanguage.java)
     ) {
       core.exportVariable(
         EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS,

@@ -3,13 +3,8 @@ import knownLanguagesData from "./builtin.json";
 /** A language to analyze with CodeQL. */
 export type Language = string;
 
-/**
- * A language supported by CodeQL that is treated specially by the Action.
- *
- * This is not an exhaustive list of languages supported by CodeQL and new
- * languages do not need to be added here.
- */
-export enum KnownLanguage {
+/** A language built into the `defaults.json` CodeQL distribution. */
+export enum BuiltInLanguage {
   actions = "actions",
   cpp = "cpp",
   csharp = "csharp",
@@ -30,10 +25,12 @@ export enum JavaEnvVars {
   _JAVA_OPTIONS = "_JAVA_OPTIONS",
 }
 
-const knownLanguageSet = new Set<string>(knownLanguagesData.languages);
+const builtInLanguageSet = new Set<string>(knownLanguagesData.languages);
 
-export function isKnownLanguage(language: string): language is KnownLanguage {
-  return knownLanguageSet.has(language);
+export function isBuiltInLanguage(
+  language: string,
+): language is BuiltInLanguage {
+  return builtInLanguageSet.has(language);
 }
 
 /**
@@ -41,13 +38,13 @@ export function isKnownLanguage(language: string): language is KnownLanguage {
  */
 export function parseBuiltInLanguage(
   language: string,
-): KnownLanguage | undefined {
+): BuiltInLanguage | undefined {
   language = language.trim().toLowerCase();
   language =
     knownLanguagesData.aliases[
       language as keyof typeof knownLanguagesData.aliases
     ] ?? language;
-  if (isKnownLanguage(language)) {
+  if (isBuiltInLanguage(language)) {
     return language;
   }
   return undefined;

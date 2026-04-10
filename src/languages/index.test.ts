@@ -4,43 +4,43 @@ import { setupTests } from "../testing-utils";
 
 import knownLanguagesData from "./builtin.json";
 
-import { isKnownLanguage, KnownLanguage, parseBuiltInLanguage } from ".";
+import { isBuiltInLanguage, BuiltInLanguage, parseBuiltInLanguage } from ".";
 
 setupTests(test);
 
 test("parseBuiltInLanguage", (t) => {
   // Exact matches
-  t.is(parseBuiltInLanguage("csharp"), KnownLanguage.csharp);
-  t.is(parseBuiltInLanguage("cpp"), KnownLanguage.cpp);
-  t.is(parseBuiltInLanguage("go"), KnownLanguage.go);
-  t.is(parseBuiltInLanguage("java"), KnownLanguage.java);
-  t.is(parseBuiltInLanguage("javascript"), KnownLanguage.javascript);
-  t.is(parseBuiltInLanguage("python"), KnownLanguage.python);
-  t.is(parseBuiltInLanguage("rust"), KnownLanguage.rust);
+  t.is(parseBuiltInLanguage("csharp"), BuiltInLanguage.csharp);
+  t.is(parseBuiltInLanguage("cpp"), BuiltInLanguage.cpp);
+  t.is(parseBuiltInLanguage("go"), BuiltInLanguage.go);
+  t.is(parseBuiltInLanguage("java"), BuiltInLanguage.java);
+  t.is(parseBuiltInLanguage("javascript"), BuiltInLanguage.javascript);
+  t.is(parseBuiltInLanguage("python"), BuiltInLanguage.python);
+  t.is(parseBuiltInLanguage("rust"), BuiltInLanguage.rust);
 
   // Aliases
-  t.is(parseBuiltInLanguage("  \t\nCsHaRp\t\t"), KnownLanguage.csharp);
-  t.is(parseBuiltInLanguage("c"), KnownLanguage.cpp);
-  t.is(parseBuiltInLanguage("c++"), KnownLanguage.cpp);
-  t.is(parseBuiltInLanguage("kotlin"), KnownLanguage.java);
-  t.is(parseBuiltInLanguage("typescript"), KnownLanguage.javascript);
+  t.is(parseBuiltInLanguage("  \t\nCsHaRp\t\t"), BuiltInLanguage.csharp);
+  t.is(parseBuiltInLanguage("c"), BuiltInLanguage.cpp);
+  t.is(parseBuiltInLanguage("c++"), BuiltInLanguage.cpp);
+  t.is(parseBuiltInLanguage("kotlin"), BuiltInLanguage.java);
+  t.is(parseBuiltInLanguage("typescript"), BuiltInLanguage.javascript);
 
   // spaces and case-insensitivity
-  t.is(parseBuiltInLanguage("  \t\nkOtLin\t\t"), KnownLanguage.java);
+  t.is(parseBuiltInLanguage("  \t\nkOtLin\t\t"), BuiltInLanguage.java);
 
   // Not matches
-  t.is(parseBuiltInLanguage(KnownLanguage.python), KnownLanguage.python);
+  t.is(parseBuiltInLanguage(BuiltInLanguage.python), BuiltInLanguage.python);
   t.is(parseBuiltInLanguage("foo"), undefined);
   t.is(parseBuiltInLanguage(" "), undefined);
   t.is(parseBuiltInLanguage(""), undefined);
 });
 
-test("isKnownLanguage matches the curated known-language set", (t) => {
-  t.true(isKnownLanguage(KnownLanguage.actions));
-  t.true(isKnownLanguage(KnownLanguage.swift));
-  t.false(isKnownLanguage("typescript"));
+test("isBuiltInLanguage matches the curated built-in language set", (t) => {
+  t.true(isBuiltInLanguage(BuiltInLanguage.actions));
+  t.true(isBuiltInLanguage(BuiltInLanguage.swift));
+  t.false(isBuiltInLanguage("typescript"));
 });
 
-test("KnownLanguage enum matches builtin.json", (t) => {
-  t.deepEqual(Object.values(KnownLanguage), knownLanguagesData.languages);
+test("BuiltInLanguage enum matches builtin.json", (t) => {
+  t.deepEqual(Object.values(BuiltInLanguage), knownLanguagesData.languages);
 });

@@ -18,7 +18,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import * as json from "./json";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
   Address,
@@ -156,7 +156,7 @@ export function getSafeErrorMessage(error: Error): string {
 export async function sendFailedStatusReport(
   logger: Logger,
   startedAt: Date,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   unwrappedError: unknown,
 ) {
   const error = util.wrapError(unwrappedError);
@@ -195,7 +195,7 @@ function isPAT(value: string) {
   ]);
 }
 
-type RegistryMapping = Partial<Record<KnownLanguage, string[]>>;
+type RegistryMapping = Partial<Record<BuiltInLanguage, string[]>>;
 
 const LANGUAGE_TO_REGISTRY_TYPE: RegistryMapping = {
   java: ["maven_repository"],
@@ -327,7 +327,7 @@ export function getCredentials(
   logger: Logger,
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   skipUnusedRegistries: boolean = false,
 ): Credential[] {
   const registryMapping = skipUnusedRegistries

@@ -4,10 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- The undocumented TRAP cache cleanup feature that could be enabled using the `CODEQL_ACTION_CLEANUP_TRAP_CACHES` environment variable is deprecated and will be removed in May 2026. If you are affected by this, we recommend disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action. [#3795](https://github.com/github/codeql-action/pull/3795)
-- The Git version 2.36.0 requirement for improved incremental analysis now only applies to repositories that contain submodules. [#3789](https://github.com/github/codeql-action/pull/3789)
-- Python analysis on GHES no longer extracts the standard library, relying instead on models of the standard library. This should result in significantly faster extraction and analysis times, while the effect on alerts should be minimal. [#3794](https://github.com/github/codeql-action/pull/3794)
-- Fixed a bug in the validation of OIDC configurations for private registries that was added in CodeQL Action 4.33.0 / 3.33.0. [#3807](https://github.com/github/codeql-action/pull/3807)
+No user facing changes.
+
+## v4.35.2 - 13 Apr 2026
+
+This release rolls back 4.35.1 due to issues with that release. It is identical to 0.0.0.
 
 ## 4.35.1 - 27 Mar 2026
 
@@ -1188,3 +1189,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

@@ -17,6 +17,8 @@ import * as path from "node:path";
 
 import * as yaml from "yaml";
 
+import { BUILTIN_LANGUAGES_FILE } from "./config";
+
 const codeqlPath = process.argv[2] || "codeql";
 
 // Step 1: Resolve all language extractor directories.
@@ -75,19 +77,11 @@ const aliases: Record<string, string> = Object.fromEntries(
     .sort(([a], [b]) => a.localeCompare(b)),
 );
 
-// Step 4: Write builtin.json.
-const outputPath = path.join(
-  __dirname,
-  "..",
-  "src",
-  "languages",
-  "builtin.json",
-);
-
+// Step 4: Update the built-in languages file.
 const content = `${JSON.stringify({ languages, aliases }, null, 2)}\n`;
-fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-fs.writeFileSync(outputPath, content);
+fs.mkdirSync(path.dirname(BUILTIN_LANGUAGES_FILE), { recursive: true });
+fs.writeFileSync(BUILTIN_LANGUAGES_FILE, content);
 
-console.log(`\nWrote ${outputPath}`);
+console.log(`\nWrote ${BUILTIN_LANGUAGES_FILE}`);
 console.log(`  Languages: ${languages.join(", ")}`);
 console.log(`  Aliases: ${Object.keys(aliases).join(", ")}`);

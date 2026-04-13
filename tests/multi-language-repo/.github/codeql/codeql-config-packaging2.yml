@@ -2,5 +2,6 @@ name: Pack testing in the CodeQL Action
 
 disable-default-queries: true
 paths-ignore:
-  - tests
   - lib
+  - pr-checks
+  - tests

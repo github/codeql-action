@@ -12,7 +12,7 @@ import { Config } from "./config-utils";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
-import { OverlayDatabaseMode } from "./overlay";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
 import { asHTTPError, bundleDb, CleanupLevel, parseGitHubUrl } from "./util";

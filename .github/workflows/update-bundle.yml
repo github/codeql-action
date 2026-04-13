@@ -64,7 +64,7 @@ jobs:
           tools: https://github.com/github/codeql-action/releases/download/${{ github.event.release.tag_name }}/codeql-bundle-linux64.tar.gz
 
       - name: Update built-in languages
-        run: npx tsx .github/workflows/script/update-builtin-languages.ts "$CODEQL_PATH"
+        run: npx tsx pr-checks/update-builtin-languages.ts "$CODEQL_PATH"
         env:
           CODEQL_PATH: ${{ steps.setup-codeql.outputs.codeql-path }}
 

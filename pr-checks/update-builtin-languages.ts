@@ -6,7 +6,7 @@
  * - Language aliases (via `codeql resolve languages --format=betterjson --extractor-include-aliases`)
  *
  * Usage:
- *   npx tsx .github/workflows/script/update-builtin-languages.ts [path-to-codeql]
+ *   npx tsx pr-checks/update-builtin-languages.ts [path-to-codeql]
  *
  * If no path is given, falls back to "codeql".
  */
@@ -21,11 +21,9 @@ const codeqlPath = process.argv[2] || "codeql";
 
 // Step 1: Resolve all language extractor directories.
 const resolveJson: Record<string, string[]> = JSON.parse(
-  execFileSync(
-    codeqlPath,
-    ["resolve", "languages", "--format=json"],
-    { encoding: "utf8" },
-  ),
+  execFileSync(codeqlPath, ["resolve", "languages", "--format=json"], {
+    encoding: "utf8",
+  }),
 );
 
 // Step 2: For each language, read codeql-extractor.yml and check default_queries.
@@ -36,14 +34,18 @@ for (const [language, dirs] of Object.entries(resolveJson)) {
   const extractorYmlPath = path.join(extractorDir, "codeql-extractor.yml");
 
   if (!fs.existsSync(extractorYmlPath)) {
-    throw new Error(`Extractor YAML not found for language '${language}' at expected path: ${extractorYmlPath}`);
+    throw new Error(
+      `Extractor YAML not found for language '${language}' at expected path: ${extractorYmlPath}`,
+    );
   }
 
   const extractorYml = yaml.parse(fs.readFileSync(extractorYmlPath, "utf8"));
   const defaultQueries: unknown[] | undefined = extractorYml.default_queries;
 
   if (Array.isArray(defaultQueries) && defaultQueries.length > 0) {
-    console.log(`  ✅ ${language}: included (default_queries: ${JSON.stringify(defaultQueries)})`);
+    console.log(
+      `  ✅ ${language}: included (default_queries: ${JSON.stringify(defaultQueries)})`,
+    );
     languages.push(language);
   } else {
     console.log(`  ❌ ${language}: excluded (no default queries)`);
@@ -56,7 +58,12 @@ languages.sort();
 const betterjsonOutput = JSON.parse(
   execFileSync(
     codeqlPath,
-    ["resolve", "languages", "--format=betterjson", "--extractor-include-aliases"],
+    [
+      "resolve",
+      "languages",
+      "--format=betterjson",
+      "--extractor-include-aliases",
+    ],
     { encoding: "utf8" },
   ),
 );
@@ -72,14 +79,12 @@ const aliases: Record<string, string> = Object.fromEntries(
 const outputPath = path.join(
   __dirname,
   "..",
-  "..",
-  "..",
   "src",
   "languages",
   "builtin.json",
 );
 
-const content = JSON.stringify({ languages, aliases }, null, 2) + "\n";
+const content = `${JSON.stringify({ languages, aliases }, null, 2)}\n`;
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, content);
 

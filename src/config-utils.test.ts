@@ -20,8 +20,9 @@ import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import { OverlayDisabledReason } from "./overlay/diagnostics";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {

@@ -21,7 +21,7 @@ import * as dependencyCaching from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import {
   createOverlayStatus,
   OverlayStatus,

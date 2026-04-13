@@ -50,11 +50,12 @@ import {
 } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import {
   addOverlayDisablementDiagnostics,
   OverlayDisabledReason,
 } from "./overlay/diagnostics";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";

@@ -23,7 +23,7 @@ import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
-import { OverlayDatabaseMode } from "./overlay";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import type * as sarif from "./sarif";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";

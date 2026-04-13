@@ -54,7 +54,11 @@ jobs:
 
       - name: Run unit tests
         if: always()
-        run: npm test
+        run: npm run test-coverage
+
+      - name: Check code coverage
+        if: always()
+        run: npm run coverage
 
       - name: Lint
         if: always() && matrix.os != 'windows-latest'

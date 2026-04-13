@@ -44,7 +44,7 @@ for (const [language, dirs] of Object.entries(resolveJson)) {
 
   if (Array.isArray(defaultQueries) && defaultQueries.length > 0) {
     console.log(
-      `  ✅ ${language}: included (default_queries: ${JSON.stringify(defaultQueries)})`,
+      `  ✅ ${language}: included (default queries: ${JSON.stringify(defaultQueries)})`,
     );
     languages.push(language);
   } else {

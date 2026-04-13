@@ -34,7 +34,13 @@ export function isBuiltInLanguage(
 }
 
 /**
- * Parses a built-in language name or alias.
+ * Parse a language input corresponding to a built-in language into its canonical CodeQL language
+ * name.
+ *
+ * This uses the language aliases shipped with the Action and will not be able to resolve aliases
+ * added by third-party CodeQL language support or versions of the CodeQL CLI newer than the one
+ * mentioned in `defaults.json`. Therefore, this function should only be used when the CodeQL CLI is
+ * not available.
  */
 export function parseBuiltInLanguage(
   language: string,

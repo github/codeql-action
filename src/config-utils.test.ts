@@ -2200,3 +2200,80 @@ test.serial(
     });
   },
 );
+
+test.serial(
+  "applyIncrementalAnalysisSettings: no-op when mode is not Overlay and diff-informed is unavailable",
+  (t) => {
+    const config = createTestConfig({});
+    config.overlayDatabaseMode = OverlayDatabaseMode.None;
+    const logger = getRunnerLogger(true);
+
+    configUtils.applyIncrementalAnalysisSettings(
+      config,
+      { shouldRun: false, isAvailable: false },
+      logger,
+    );
+
+    t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+    t.deepEqual(config.extraQueryExclusions, []);
+  },
+);
+
+test.serial(
+  "applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions when diff-informed analysis is disabled",
+  (t) => {
+    const config = createTestConfig({});
+    config.overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+    const logger = getRunnerLogger(true);
+
+    configUtils.applyIncrementalAnalysisSettings(
+      config,
+      { shouldRun: false, isAvailable: false },
+      logger,
+    );
+
+    t.is(config.overlayDatabaseMode, OverlayDatabaseMode.Overlay);
+    t.deepEqual(config.extraQueryExclusions, [
+      { exclude: { tags: "exclude-from-incremental" } },
+    ]);
+  },
+);
+
+test.serial(
+  "applyIncrementalAnalysisSettings: reverts to None without exclusions when diff-informed analysis is unavailable",
+  (t) => {
+    const config = createTestConfig({});
+    config.overlayDatabaseMode =
+      OverlayDatabaseMode.Overlay as OverlayDatabaseMode;
+    const logger = getRunnerLogger(true);
+
+    configUtils.applyIncrementalAnalysisSettings(
+      config,
+      { shouldRun: true, isAvailable: false },
+      logger,
+    );
+
+    t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+    t.deepEqual(config.extraQueryExclusions, []);
+  },
+);
+
+test.serial(
+  "applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only runs",
+  (t) => {
+    const config = createTestConfig({});
+    config.overlayDatabaseMode = OverlayDatabaseMode.None;
+    const logger = getRunnerLogger(true);
+
+    configUtils.applyIncrementalAnalysisSettings(
+      config,
+      { shouldRun: true, isAvailable: true },
+      logger,
+    );
+
+    t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+    t.deepEqual(config.extraQueryExclusions, [
+      { exclude: { tags: "exclude-from-incremental" } },
+    ]);
+  },
+);

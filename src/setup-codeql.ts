@@ -427,8 +427,10 @@ export async function getCodeQLSource(
       Feature.AllowToolcacheInput,
     );
     const allowToolcacheValue =
-      toolsInputFromRepositoryProperty ||
-      (allowToolcacheValueFF && (isDynamicWorkflow() || util.isInTestMode()));
+      allowToolcacheValueFF &&
+      (toolsInputFromRepositoryProperty ||
+        isDynamicWorkflow() ||
+        util.isInTestMode());
     if (allowToolcacheValue) {
       // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
       // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to

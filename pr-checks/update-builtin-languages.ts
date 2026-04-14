@@ -17,6 +17,8 @@ import * as path from "node:path";
 
 import * as yaml from "yaml";
 
+import { EnvVar } from "../src/environment";
+
 import { BUILTIN_LANGUAGES_FILE } from "./config";
 
 /** Resolve all known language extractor directories. */
@@ -24,6 +26,10 @@ function resolveLanguages(codeqlPath: string): Record<string, string[]> {
   return JSON.parse(
     execFileSync(codeqlPath, ["resolve", "languages", "--format=json"], {
       encoding: "utf8",
+      env: {
+        ...process.env,
+        [EnvVar.EXPERIMENTAL_FEATURES]: "true", // include experimental languages
+      },
     }),
   ) as Record<string, string[]>;
 }

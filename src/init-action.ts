@@ -15,6 +15,7 @@ import {
   getRequiredInput,
   getTemporaryDirectory,
   persistInputs,
+  resolveToolsInput,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion, GitHubApiCombinedDetails } from "./api-client";
@@ -141,6 +142,7 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  effectiveToolsInput: string | undefined,
   overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
   dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined,
   logger: Logger,
@@ -165,7 +167,7 @@ async function sendCompletedStatusReport(
 
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
-    tools_input: getOptionalInput("tools") || "",
+    tools_input: effectiveToolsInput || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: workflowLanguages || "",
@@ -220,6 +222,7 @@ async function run(startedAt: Date) {
   let toolsSource: ToolsSource;
   let toolsVersion: string;
   let zstdAvailability: ZstdAvailability | undefined;
+  let effectiveToolsInput: string | undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -302,12 +305,13 @@ async function run(startedAt: Date) {
     // Determine the effective tools input.
     // The explicit `tools` workflow input takes precedence. If none is provided,
     // fall back to the 'github-codeql-tools' repository property (if set).
-    const toolsWorkflowInput = getOptionalInput("tools");
-    const toolsPropertyValue: string | undefined =
-      repositoryPropertiesResult.orElse({})[RepositoryPropertyName.TOOLS];
-    const effectiveToolsInput = toolsWorkflowInput ?? toolsPropertyValue;
+    const resolvedToolsInput = resolveToolsInput(
+      repositoryPropertiesResult.orElse({}),
+      RepositoryPropertyName.TOOLS,
+    );
+    effectiveToolsInput = resolvedToolsInput.effectiveToolsInput;
     const toolsInputFromRepositoryProperty =
-      toolsWorkflowInput === undefined && toolsPropertyValue !== undefined;
+      resolvedToolsInput.toolsInputFromRepositoryProperty;
 
     const initCodeQLResult = await initCodeQL(
       effectiveToolsInput,
@@ -791,6 +795,7 @@ async function run(startedAt: Date) {
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
+      effectiveToolsInput,
       overlayBaseDatabaseStats,
       dependencyCachingStatus,
       logger,
@@ -808,6 +813,7 @@ async function run(startedAt: Date) {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    effectiveToolsInput,
     overlayBaseDatabaseStats,
     dependencyCachingStatus,
     logger,

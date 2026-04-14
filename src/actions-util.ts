@@ -46,6 +46,35 @@ export const getOptionalInput = function (name: string): string | undefined {
   return value.length > 0 ? value : undefined;
 };
 
+/**
+ * Resolves the effective tools input by combining workflow input and repository properties.
+ * The explicit `tools` workflow input takes precedence. If none is provided,
+ * fall back to the repository property (if set).
+ *
+ * @param repositoryProperties - The loaded repository properties object
+ * @param toolsPropertyName - The name of the tools property to look up
+ * @returns An object containing the effective tools input and whether it came from repository property
+ */
+export function resolveToolsInput(
+  repositoryProperties: Record<string, any>,
+  toolsPropertyName: string,
+): {
+  effectiveToolsInput: string | undefined;
+  toolsInputFromRepositoryProperty: boolean;
+} {
+  const toolsWorkflowInput = getOptionalInput("tools");
+  const toolsPropertyValue: string | undefined =
+    repositoryProperties[toolsPropertyName];
+  const effectiveToolsInput = toolsWorkflowInput ?? toolsPropertyValue;
+  const toolsInputFromRepositoryProperty =
+    toolsWorkflowInput === undefined && toolsPropertyValue !== undefined;
+
+  return {
+    effectiveToolsInput,
+    toolsInputFromRepositoryProperty,
+  };
+}
+
 export function getTemporaryDirectory(): string {
   const value = process.env["CODEQL_ACTION_TEMP"];
   return value !== undefined && value !== ""

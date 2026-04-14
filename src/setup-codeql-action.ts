@@ -6,11 +6,16 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
+  resolveToolsInput,
 } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
+import {
+  loadPropertiesFromApi,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -46,6 +51,7 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  effectiveToolsInput: string | undefined,
   logger: Logger,
   error?: Error,
 ): Promise<void> {
@@ -66,7 +72,7 @@ async function sendCompletedStatusReport(
 
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
-    tools_input: getOptionalInput("tools") || "",
+    tools_input: effectiveToolsInput || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: "",
@@ -97,6 +103,7 @@ async function run(startedAt: Date): Promise<void> {
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
+  let effectiveToolsInput: string | undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -121,6 +128,11 @@ async function run(startedAt: Date): Promise<void> {
       logger,
     );
 
+    const repositoryPropertiesResult = await loadPropertiesFromApi(
+      logger,
+      repositoryNwo,
+    );
+
     const jobRunUuid = uuidV4();
     logger.info(`Job run UUID is ${jobRunUuid}.`);
     core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
@@ -140,14 +152,27 @@ async function run(startedAt: Date): Promise<void> {
       gitHubVersion.type,
     );
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+
+    // Determine the effective tools input.
+    // The explicit `tools` workflow input takes precedence. If none is provided,
+    // fall back to the 'github-codeql-tools' repository property (if set).
+    const resolvedToolsInput = resolveToolsInput(
+      repositoryPropertiesResult,
+      RepositoryPropertyName.TOOLS,
+    );
+    effectiveToolsInput = resolvedToolsInput.effectiveToolsInput;
+    const toolsInputFromRepositoryProperty =
+      resolvedToolsInput.toolsInputFromRepositoryProperty;
+
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      effectiveToolsInput,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       features,
       logger,
+      toolsInputFromRepositoryProperty,
     );
     codeql = initCodeQLResult.codeql;
     toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;
@@ -183,6 +208,7 @@ async function run(startedAt: Date): Promise<void> {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    effectiveToolsInput,
     logger,
   );
 }

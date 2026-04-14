@@ -78,6 +78,7 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
     url: "",
     data: [
       { property_name: "github-codeql-extra-queries", value: "+queries" },
+      { property_name: "github-codeql-tools", value: "toolcache" },
       { property_name: "unknown-property", value: "something" },
     ] satisfies properties.GitHubPropertiesResponse,
   });
@@ -87,29 +88,11 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
     logger,
     mockRepositoryNwo,
   );
-  t.deepEqual(response, { "github-codeql-extra-queries": "+queries" });
+  t.deepEqual(response, {
+    "github-codeql-extra-queries": "+queries",
+    "github-codeql-tools": "toolcache",
+  });
 });
-
-test.serial(
-  "loadPropertiesFromApi loads github-codeql-tools property",
-  async (t) => {
-    sinon.stub(api, "getRepositoryProperties").resolves({
-      headers: {},
-      status: 200,
-      url: "",
-      data: [
-        { property_name: "github-codeql-tools", value: "toolcache" },
-      ] satisfies properties.GitHubPropertiesResponse,
-    });
-    const logger = getRunnerLogger(true);
-    const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
-    const response = await properties.loadPropertiesFromApi(
-      logger,
-      mockRepositoryNwo,
-    );
-    t.deepEqual(response, { "github-codeql-tools": "toolcache" });
-  },
-);
 
 test.serial("loadPropertiesFromApi parses true boolean property", async (t) => {
   sinon.stub(api, "getRepositoryProperties").resolves({

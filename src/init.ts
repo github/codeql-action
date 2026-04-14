@@ -41,7 +41,7 @@ export async function initCodeQL(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   features: FeatureEnablement,
   logger: Logger,
-  toolsInputFromRepositoryProperty = false,
+  toolsInputFromRepositoryProperty: boolean,
 ): Promise<{
   codeql: CodeQL;
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;

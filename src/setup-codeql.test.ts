@@ -8,6 +8,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { Feature, FeatureEnablement } from "./feature-flags";
+import { RepositoryPropertyName } from "./feature-flags/properties";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import * as tar from "./tar";
@@ -112,6 +113,7 @@ test.serial(
         false,
         features,
         getRunnerLogger(true),
+        false,
       );
 
       t.is(source.sourceType, "download");
@@ -135,6 +137,7 @@ test.serial(
         false,
         features,
         getRunnerLogger(true),
+        false,
       );
 
       t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
@@ -160,6 +163,7 @@ test.serial(
         false,
         features,
         logger,
+        false,
       );
 
       // First, ensure that the CLI version is the linked version, so that backwards
@@ -213,6 +217,7 @@ test.serial(
         SAMPLE_DEFAULT_CLI_VERSION,
         features,
         logger,
+        false,
       );
 
       // Basic sanity check that the version we got back is indeed
@@ -268,6 +273,7 @@ test.serial(
         SAMPLE_DEFAULT_CLI_VERSION,
         features,
         logger,
+        false,
       );
 
       // Basic sanity check that the version we got back is indeed the version that the
@@ -322,6 +328,7 @@ test.serial(
         false,
         features,
         logger,
+        false,
       );
 
       // Check that the `CodeQLToolsSource` object matches our expectations.
@@ -383,6 +390,7 @@ test.serial(
         false,
         features,
         logger,
+        false,
       );
 
       // Check that the `CodeQLToolsSource` object matches our expectations.
@@ -437,6 +445,7 @@ test.serial(
         false,
         features,
         logger,
+        false,
       );
 
       // Check that the toolcache functions were called with the expected arguments
@@ -504,6 +513,7 @@ const toolcacheInputFallbackMacro = test.macro({
         false,
         features,
         logger,
+        false,
       );
 
       // Check that the toolcache functions were called with the expected arguments
@@ -612,7 +622,7 @@ test.serial(
       t.is(source.toolsVersion, latestToolcacheVersion);
 
       const expectedMessages: string[] = [
-        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the 'github-codeql-tools' repository property.`,
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the '${RepositoryPropertyName.TOOLS}' repository property.`,
         `CLI version ${latestToolcacheVersion} is the latest version in the toolcache.`,
         `Using CodeQL CLI version ${latestToolcacheVersion} from toolcache at ${latestVersionPath}`,
       ];
@@ -657,8 +667,8 @@ test.serial(
       t.is(source.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
 
       const expectedMessages: string[] = [
-        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the 'github-codeql-tools' repository property.`,
-        `Found no CodeQL CLI in the toolcache, ignoring the 'github-codeql-tools' repository property...`,
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the '${RepositoryPropertyName.TOOLS}' repository property.`,
+        `Found no CodeQL CLI in the toolcache, ignoring the '${RepositoryPropertyName.TOOLS}' repository property...`,
       ];
       for (const expectedMessage of expectedMessages) {
         t.assert(

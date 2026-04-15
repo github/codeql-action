@@ -71,7 +71,17 @@ jobs:
         id: proxy
         uses: ./../action/start-proxy
         with:
-          registry_secrets: '[{ "type": "nuget_feed", "url": "https://api.nuget.org/v3/index.json" }]'
+          registry_secrets: |
+            [
+              {
+                "type": "maven_repository",
+                "url": "https://repo.maven.apache.org/maven2/"
+              },
+              {
+                "type": "maven_repository",
+                "url": "https://repo1.maven.org/maven2"
+              }
+            ]
 
       - name: Print proxy outputs
         run: |
@@ -81,6 +91,13 @@ jobs:
 
       - name: Fail if proxy outputs are not set
         if: (!steps.proxy.outputs.proxy_host) || (!steps.proxy.outputs.proxy_port) || (!steps.proxy.outputs.proxy_ca_certificate) || (!steps.proxy.outputs.proxy_urls)
+        run: exit 1
+
+      - name: Fail if proxy_urls does not contain all registries
+        if: |
+          join(fromJSON(steps.proxy.outputs.proxy_urls)[*].type, ',') != 'maven_repository,maven_repository'
+          || !contains(steps.proxy.outputs.proxy_urls, 'https://repo.maven.apache.org/maven2/')
+          || !contains(steps.proxy.outputs.proxy_urls, 'https://repo1.maven.org/maven2')
         run: exit 1
     env:
       CODEQL_ACTION_TEST_MODE: true

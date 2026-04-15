@@ -63,8 +63,8 @@ import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
-  OverlayDatabaseMode,
-} from "./overlay";
+} from "./overlay/caching";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -389,6 +389,15 @@ async function run(startedAt: Date) {
       logger,
     });
 
+    if (
+      config.languages.includes(KnownLanguage.swift) &&
+      process.platform !== "darwin"
+    ) {
+      throw new ConfigurationError(
+        `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
+      );
+    }
+
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(
         config,
@@ -496,15 +505,6 @@ async function run(startedAt: Date) {
       core.exportVariable("GOFLAGS", goFlags);
       core.warning(
         "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
-      );
-    }
-
-    if (
-      config.languages.includes(KnownLanguage.swift) &&
-      process.platform === "linux"
-    ) {
-      logger.warning(
-        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you.`,
       );
     }
 
@@ -643,27 +643,6 @@ async function run(startedAt: Date) {
       logger.warning(
         "The CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION environment variable is deprecated and no longer has any effect. We recommend removing any references from your workflows. See https://github.blog/changelog/2024-01-23-codeql-2-16-python-dependency-installation-disabled-new-queries-and-bug-fixes/ for more information.",
       );
-    }
-
-    if (
-      await codeql.supportsFeature(
-        ToolsFeature.PythonDefaultIsToNotExtractStdlib,
-      )
-    ) {
-      if (process.env["CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB"]) {
-        logger.debug(
-          "CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB is already set, so the Action will not override it.",
-        );
-      } else if (
-        !(await features.getValue(
-          Feature.PythonDefaultIsToNotExtractStdlib,
-          codeql,
-        ))
-      ) {
-        // We are in a situation where the feature flag is not rolled out,
-        // so we need to suppress the new default CLI behavior.
-        core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
-      }
     }
 
     // If we are doing a Java `build-mode: none` analysis, then set the environment variable that

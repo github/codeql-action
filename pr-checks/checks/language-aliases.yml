@@ -5,12 +5,12 @@ versions:
 steps:
   - uses: ./../action/init
     with:
-      languages: C#,java-kotlin,swift,typescript
+      languages: C#,java-kotlin,typescript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
 
   - name: "Check languages"
     run: |
-      expected_languages="csharp,java,swift,javascript"
+      expected_languages="csharp,java,javascript"
       actual_languages=$(jq -r '.languages | join(",")' "$RUNNER_TEMP"/config)
 
       if [ "$expected_languages" != "$actual_languages" ]; then

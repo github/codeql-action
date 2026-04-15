@@ -12,7 +12,7 @@ import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getRunnerLogger } from "./logging";
-import { OverlayDatabaseMode } from "./overlay";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {

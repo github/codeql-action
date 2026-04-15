@@ -266,24 +266,6 @@ async function findOverridingToolsInCache(
 }
 
 /**
- * Creates a user-friendly description of the tools input origin for log messages.
- * 
- * @param toolsInput The tools input value
- * @param toolsInputFromRepositoryProperty Whether the tools input came from repository property
- * @returns A description like "'tools: toolcache'" or "the 'github-codeql-tools' repository property"
- */
-function getToolsInputOriginDescription(
-  toolsInput: string | undefined,
-  toolsInputFromRepositoryProperty: boolean,
-): string {
-  if (toolsInputFromRepositoryProperty) {
-    return `the '${RepositoryPropertyName.TOOLS}' repository property`;
-  } else {
-    return `'tools: ${toolsInput}'`;
-  }
-}
-
-/**
  * Determines where the CodeQL CLI we want to use comes from. This can be from a local file,
  * the Actions toolcache, or a download.
  *
@@ -305,7 +287,7 @@ export async function getCodeQLSource(
   tarSupportsZstd: boolean,
   features: FeatureEnablement,
   logger: Logger,
-  toolsInputFromRepositoryProperty: boolean,
+  toolsInputFromRepositoryProperty: boolean = false,
 ): Promise<CodeQLToolsSource> {
   // If there is an explicit `tools` input, it's not one of the reserved values, and it doesn't appear
   // to point to a URL, then we assume it is a local path and use the CLI from there.
@@ -380,7 +362,7 @@ export async function getCodeQLSource(
       );
     } else {
       logger.info(
-        `Using the latest CodeQL CLI nightly, as requested by ${getToolsInputOriginDescription(toolsInput, toolsInputFromRepositoryProperty)}.`,
+        `Using the latest CodeQL CLI nightly, as requested.`,
       );
     }
     toolsInput = await getNightlyToolsUrl(logger);
@@ -405,7 +387,7 @@ export async function getCodeQLSource(
     tagName = defaults.bundleVersion;
 
     logger.info(
-      `${getToolsInputOriginDescription(toolsInput, toolsInputFromRepositoryProperty)} was requested, so using CodeQL version ${cliVersion}, the version shipped with the Action.`,
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${cliVersion}, the version shipped with the Action.`,
     );
 
     if (toolsInput === "latest") {
@@ -421,23 +403,27 @@ export async function getCodeQLSource(
 
     // We only allow `toolsInput === "toolcache"` for `dynamic` events. In general, using `toolsInput === "toolcache"`
     // can lead to alert wobble and so it shouldn't be used for an analysis where results are intended to be uploaded.
-    // We also allow this in test mode, and when the value was set via a repository property (in which case the
-    // organization admin has explicitly opted in to this behavior).
+    // We also allow this in test mode or when the input comes from a repository property.
     const allowToolcacheValueFF = await features.getValue(
       Feature.AllowToolcacheInput,
     );
     const allowToolcacheValue =
-      allowToolcacheValueFF &&
-      (toolsInputFromRepositoryProperty ||
-        isDynamicWorkflow() ||
-        util.isInTestMode());
+      toolsInputFromRepositoryProperty || // Repository properties bypass all restrictions
+      (allowToolcacheValueFF &&
+        (isDynamicWorkflow() || util.isInTestMode()));
     if (allowToolcacheValue) {
       // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
       // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
       // the linked version.
-      logger.info(
-        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by ${getToolsInputOriginDescription(toolsInput, toolsInputFromRepositoryProperty)}.`,
-      );
+      if (toolsInputFromRepositoryProperty) {
+        logger.info(
+          `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by the '${RepositoryPropertyName.TOOLS}' repository property.`,
+        );
+      } else {
+        logger.info(
+          `Attempting to use the latest CodeQL CLI version in the toolcache, as requested.`,
+        );
+      }
 
       latestToolcacheVersion = getLatestToolcacheVersion(logger);
       if (latestToolcacheVersion) {
@@ -447,17 +433,23 @@ export async function getCodeQLSource(
 
     if (latestToolcacheVersion === undefined) {
       if (allowToolcacheValue) {
-        logger.info(
-          `Found no CodeQL CLI in the toolcache, ignoring ${getToolsInputOriginDescription(toolsInput, toolsInputFromRepositoryProperty)}...`,
-        );
+        if (toolsInputFromRepositoryProperty) {
+          logger.info(
+            `Found no CodeQL CLI in the toolcache, ignoring the '${RepositoryPropertyName.TOOLS}' repository property...`,
+          );
+        } else {
+          logger.info(
+            `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
+          );
+        }
       } else {
         if (allowToolcacheValueFF) {
           logger.warning(
-            `Ignoring ${getToolsInputOriginDescription(toolsInput, toolsInputFromRepositoryProperty)} because the workflow was not triggered dynamically.`,
+            `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
           );
         } else {
           logger.warning(
-            `Ignoring ${getToolsInputOriginDescription(toolsInput, toolsInputFromRepositoryProperty)} because the feature is not enabled.`,
+            `Ignoring 'tools: ${toolsInput}' because the feature is not enabled.`,
           );
         }
       }
@@ -817,7 +809,7 @@ export async function setupCodeQLBundle(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   features: FeatureEnablement,
   logger: Logger,
-  toolsInputFromRepositoryProperty: boolean,
+  toolsInputFromRepositoryProperty: boolean = false,
 ): Promise<SetupCodeQLResult> {
   if (!(await util.isBinaryAccessible("tar", logger))) {
     throw new util.ConfigurationError(

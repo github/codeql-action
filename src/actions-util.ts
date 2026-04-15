@@ -53,26 +53,29 @@ export const getOptionalInput = function (name: string): string | undefined {
  *
  * @param repositoryProperties - The loaded repository properties object
  * @param toolsPropertyName - The name of the tools property to look up
- * @returns An object containing the effective tools input and whether it came from repository property
+ * @param logger - Logger for outputting resolution messages
+ * @returns The effective tools input value
  */
 export function resolveToolsInput(
   repositoryProperties: Record<string, any>,
   toolsPropertyName: string,
-): {
-  effectiveToolsInput: string | undefined;
-  toolsInputFromRepositoryProperty: boolean;
-} {
+  logger: Logger,
+): string | undefined {
   const toolsWorkflowInput = getOptionalInput("tools");
   const toolsPropertyValue: string | undefined =
     repositoryProperties[toolsPropertyName];
   const effectiveToolsInput = toolsWorkflowInput ?? toolsPropertyValue;
-  const toolsInputFromRepositoryProperty =
-    toolsWorkflowInput === undefined && toolsPropertyValue !== undefined;
-
-  return {
-    effectiveToolsInput,
-    toolsInputFromRepositoryProperty,
-  };
+  
+  // Log the source of the tools input for transparency
+  if (effectiveToolsInput) {
+    if (toolsWorkflowInput) {
+      logger.info(`Setting tools: ${effectiveToolsInput} based on workflow input.`);
+    } else {
+      logger.info(`Setting tools: ${effectiveToolsInput} based on the '${toolsPropertyName}' repository property.`);
+    }
+  }
+  
+  return effectiveToolsInput;
 }
 
 export function getTemporaryDirectory(): string {

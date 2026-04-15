@@ -113,7 +113,6 @@ test.serial(
         false,
         features,
         getRunnerLogger(true),
-        false,
       );
 
       t.is(source.sourceType, "download");
@@ -137,7 +136,6 @@ test.serial(
         false,
         features,
         getRunnerLogger(true),
-        false,
       );
 
       t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
@@ -163,7 +161,6 @@ test.serial(
         false,
         features,
         logger,
-        false,
       );
 
       // First, ensure that the CLI version is the linked version, so that backwards
@@ -217,7 +214,6 @@ test.serial(
         SAMPLE_DEFAULT_CLI_VERSION,
         features,
         logger,
-        false,
       );
 
       // Basic sanity check that the version we got back is indeed
@@ -273,7 +269,6 @@ test.serial(
         SAMPLE_DEFAULT_CLI_VERSION,
         features,
         logger,
-        false,
       );
 
       // Basic sanity check that the version we got back is indeed the version that the
@@ -328,7 +323,6 @@ test.serial(
         false,
         features,
         logger,
-        false,
       );
 
       // Check that the `CodeQLToolsSource` object matches our expectations.
@@ -345,7 +339,7 @@ test.serial(
 
       // Afterwards, ensure that we see the expected messages in the log.
       checkExpectedLogMessages(t, loggedMessages, [
-        "Using the latest CodeQL CLI nightly, as requested by 'tools: nightly'.",
+        "Using the latest CodeQL CLI nightly, as requested.",
         `Bundle version ${expectedDate} is not in SemVer format. Will treat it as pre-release ${expectedVersion}.`,
         `Attempting to obtain CodeQL tools. CLI version: unknown, bundle tag name: ${expectedTag}`,
         `Using CodeQL CLI sourced from ${expectedURL}`,
@@ -390,7 +384,6 @@ test.serial(
         false,
         features,
         logger,
-        false,
       );
 
       // Check that the `CodeQLToolsSource` object matches our expectations.
@@ -445,7 +438,6 @@ test.serial(
         false,
         features,
         logger,
-        false,
       );
 
       // Check that the toolcache functions were called with the expected arguments
@@ -464,7 +456,7 @@ test.serial(
 
       // Check that key messages we would expect to find in the log are present.
       const expectedMessages: string[] = [
-        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: toolcache'.`,
+        `Attempting to use the latest CodeQL CLI version in the toolcache, as requested.`,
         `CLI version ${latestToolcacheVersion} is the latest version in the toolcache.`,
         `Using CodeQL CLI version ${latestToolcacheVersion} from toolcache at ${latestVersionPath}`,
       ];
@@ -513,7 +505,6 @@ const toolcacheInputFallbackMacro = test.macro({
         false,
         features,
         logger,
-        false,
       );
 
       // Check that the toolcache functions were called with the expected arguments
@@ -550,7 +541,7 @@ test.serial(
   { GITHUB_EVENT_NAME: "dynamic" },
   [],
   [
-    `Attempting to use the latest CodeQL CLI version in the toolcache, as requested by 'tools: toolcache'.`,
+    `Attempting to use the latest CodeQL CLI version in the toolcache, as requested.`,
     `Found no CodeQL CLI in the toolcache, ignoring 'tools: toolcache'...`,
   ],
 );

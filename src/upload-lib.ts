@@ -883,6 +883,12 @@ export async function waitForProcessing(
         );
         break;
       }
+      if (!response) {
+        logger.warning(
+          "Unable to check analysis status due to missing response. It should still be processed in the background.",
+        );
+        break;
+      }
       const status = response.data.processing_status as ProcessingStatus;
       logger.info(`Analysis upload status is ${status}.`);
 
@@ -891,15 +897,22 @@ export async function waitForProcessing(
       } else if (options.isUnsuccessfulExecution) {
         // We expect a specific processing error for unsuccessful executions, so
         // handle these separately.
-        handleProcessingResultForUnsuccessfulExecution(
-          response,
-          status,
-          logger,
-        );
+        if (response) {
+          handleProcessingResultForUnsuccessfulExecution(
+            response,
+            status,
+            logger,
+          );
+        }
         break;
       } else if (status === "complete") {
         break;
       } else if (status === "failed") {
+        if (!response) {
+          throw new Error(
+            "Code Scanning could not process the submitted SARIF file: Unable to retrieve error details.",
+          );
+        }
         const message = `Code Scanning could not process the submitted SARIF file:\n${response.data.errors}`;
         const processingErrors = response.data.errors as string[];
         throw shouldConsiderConfigurationError(processingErrors)

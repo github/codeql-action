@@ -156,13 +156,11 @@ async function run(startedAt: Date): Promise<void> {
     // Determine the effective tools input.
     // The explicit `tools` workflow input takes precedence. If none is provided,
     // fall back to the 'github-codeql-tools' repository property (if set).
-    const resolvedToolsInput = resolveToolsInput(
+    effectiveToolsInput = resolveToolsInput(
       repositoryPropertiesResult,
       RepositoryPropertyName.TOOLS,
+      logger,
     );
-    effectiveToolsInput = resolvedToolsInput.effectiveToolsInput;
-    const toolsInputFromRepositoryProperty =
-      resolvedToolsInput.toolsInputFromRepositoryProperty;
 
     const initCodeQLResult = await initCodeQL(
       effectiveToolsInput,
@@ -172,7 +170,6 @@ async function run(startedAt: Date): Promise<void> {
       codeQLDefaultVersionInfo,
       features,
       logger,
-      toolsInputFromRepositoryProperty,
     );
     codeql = initCodeQLResult.codeql;
     toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;

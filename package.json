@@ -50,7 +50,7 @@
     "@types/archiver": "^7.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.19.9",
+    "@types/node": "^25.5.2",
     "@types/node-forge": "^1.3.14",
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",

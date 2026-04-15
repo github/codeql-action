@@ -4,7 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- Organizations can now create a custom repository property with the name `github-codeql-tools` to control the CodeQL CLI tools input at the repository level. When this property is set to a valid tools input value (such as `"toolcache"`, `"latest"`, or a specific version), it will override the default tools configuration for that repository. This allows organization administrators to standardize CodeQL CLI versions across repositories or enable toolcache usage on repositories where it would otherwise be restricted. For more information on creating custom repository properties, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization).
+No user facing changes.
+
+## v4.35.3 - 15 Apr 2026
+
+This release rolls back 4.35.2 due to issues with that release. It is identical to 0.0.0.
 
 ## 4.35.2 - 15 Apr 2026
 
@@ -1193,3 +1197,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

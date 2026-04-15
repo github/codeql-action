@@ -8,6 +8,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - The Git version 2.36.0 requirement for improved incremental analysis now only applies to repositories that contain submodules. [#3789](https://github.com/github/codeql-action/pull/3789)
 - Python analysis on GHES no longer extracts the standard library, relying instead on models of the standard library. This should result in significantly faster extraction and analysis times, while the effect on alerts should be minimal. [#3794](https://github.com/github/codeql-action/pull/3794)
 - Fixed a bug in the validation of OIDC configurations for private registries that was added in CodeQL Action 4.33.0 / 3.33.0. [#3807](https://github.com/github/codeql-action/pull/3807)
+- Update default CodeQL bundle version to [2.25.2](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.2). [#3823](https://github.com/github/codeql-action/pull/3823)
 
 ## 4.35.1 - 27 Mar 2026
 

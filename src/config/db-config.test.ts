@@ -1,7 +1,7 @@
 import test, { ExecutionContext } from "ava";
 
 import { RepositoryProperties } from "../feature-flags/properties";
-import { KnownLanguage, Language } from "../languages";
+import { BuiltInLanguage, Language } from "../languages";
 import { getRunnerLogger } from "../logging";
 import {
   checkExpectedLogMessages,
@@ -54,7 +54,7 @@ const invalidPackNameMacro = test.macro({
     parsePacksErrorMacro.exec(
       t,
       name,
-      [KnownLanguage.cpp],
+      [BuiltInLanguage.cpp],
       new RegExp(`^"${name}" is not a valid pack$`),
     ),
   title: (_providedTitle: string | undefined, arg: string | undefined) =>
@@ -62,23 +62,23 @@ const invalidPackNameMacro = test.macro({
 });
 
 test("no packs", parsePacksMacro, "", [], undefined);
-test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [KnownLanguage.cpp], {
-  [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
+test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [BuiltInLanguage.cpp], {
+  [BuiltInLanguage.cpp]: ["a/b", "c/d@1.2.3"],
 });
 test(
   "two packs with spaces",
   parsePacksMacro,
   " a/b , c/d@1.2.3 ",
-  [KnownLanguage.cpp],
+  [BuiltInLanguage.cpp],
   {
-    [KnownLanguage.cpp]: ["a/b", "c/d@1.2.3"],
+    [BuiltInLanguage.cpp]: ["a/b", "c/d@1.2.3"],
   },
 );
 test(
   "two packs with language",
   parsePacksErrorMacro,
   "a/b,c/d@1.2.3",
-  [KnownLanguage.cpp, KnownLanguage.java],
+  [BuiltInLanguage.cpp, BuiltInLanguage.java],
   new RegExp(
     "Cannot specify a 'packs' input in a multi-language analysis. " +
       "Use a codeql-config.yml file instead and specify packs by language.",
@@ -106,9 +106,9 @@ test(
     // (globbing is not done)
     "c/d@1.2.3:+*)_(",
   ].join(","),
-  [KnownLanguage.cpp],
+  [BuiltInLanguage.cpp],
   {
-    [KnownLanguage.cpp]: [
+    [BuiltInLanguage.cpp]: [
       "c/d@1.0",
       "c/d@~1.0.0",
       "c/d@~1.0.0:a/b",
@@ -215,7 +215,7 @@ test(
   "All empty",
   undefined,
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   {
     ...dbConfig.defaultAugmentationProperties,
@@ -227,7 +227,7 @@ test(
   "With queries",
   undefined,
   " a, b , c, d",
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   {
     ...dbConfig.defaultAugmentationProperties,
@@ -240,7 +240,7 @@ test(
   "With queries combining",
   undefined,
   "   +   a, b , c, d ",
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   {
     ...dbConfig.defaultAugmentationProperties,
@@ -254,7 +254,7 @@ test(
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   {
     ...dbConfig.defaultAugmentationProperties,
@@ -267,7 +267,7 @@ test(
   "With packs combining",
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   {
     ...dbConfig.defaultAugmentationProperties,
@@ -281,7 +281,7 @@ test(
   "With repo property queries",
   undefined,
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {
     "github-codeql-extra-queries": "a, b, c, d",
   },
@@ -299,7 +299,7 @@ test(
   "With repo property queries combining",
   undefined,
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {
     "github-codeql-extra-queries": "+ a, b, c, d",
   },
@@ -341,7 +341,7 @@ test(
   "Plus (+) with nothing else (queries)",
   undefined,
   "   +   ",
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   /The workflow property "queries" is invalid/,
 );
@@ -351,7 +351,7 @@ test(
   "Plus (+) with nothing else (packs)",
   "   +   ",
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   /The workflow property "packs" is invalid/,
 );
@@ -361,7 +361,7 @@ test(
   "Plus (+) with nothing else (repo property queries)",
   undefined,
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {
     "github-codeql-extra-queries": "    + ",
   },
@@ -373,7 +373,7 @@ test(
   "Packs input with multiple languages",
   "   +  a/b, c/d ",
   undefined,
-  [KnownLanguage.javascript, KnownLanguage.java],
+  [BuiltInLanguage.javascript, BuiltInLanguage.java],
   {},
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
@@ -393,7 +393,7 @@ test(
   "Invalid packs",
   " a-pack-without-a-scope ",
   undefined,
-  [KnownLanguage.javascript],
+  [BuiltInLanguage.javascript],
   {},
   /"a-pack-without-a-scope" is not a valid pack/,
 );

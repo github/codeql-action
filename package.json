@@ -12,7 +12,7 @@
     "ava": "npm run transpile && ava --verbose",
     "test": "npm run ava -- src/",
     "test-debug": "npm run test -- --timeout=20m",
-    "transpile": "tsc --build --verbose"
+    "transpile": "tsc --build --verbose tsconfig.json"
   },
   "license": "MIT",
   "workspaces": [

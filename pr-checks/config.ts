@@ -8,3 +8,6 @@ export const PR_CHECKS_DIR = __dirname;
 
 /** The path of the file configuring which checks shouldn't be required. */
 export const PR_CHECK_EXCLUDED_FILE = path.join(PR_CHECKS_DIR, "excluded.yml");
+
+/** The path to the esbuild metadata file. */
+export const BUNDLE_METADATA_FILE = path.join(PR_CHECKS_DIR, "..", "meta.json");

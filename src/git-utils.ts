@@ -1,4 +1,6 @@
+import * as fs from "fs";
 import * as os from "os";
+import * as path from "path";
 
 import * as core from "@actions/core";
 import { ExecOptions } from "@actions/exec";
@@ -14,11 +16,11 @@ import {
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 /**
- * Minimum Git version required for overlay analysis. Support for using the `git ls-files
- * --recurse-submodules` option with `--stage` was added in Git 2.36.0. For more information, see
- * `getFileOidsUnderPath`.
+ * Minimum Git version required for overlay analysis in repositories that
+ * contain submodules. Support for using the `git ls-files
+ * --recurse-submodules` option with `--stage` was added in Git 2.36.0.
  */
-export const GIT_MINIMUM_VERSION_FOR_OVERLAY = "2.36.0";
+export const GIT_MINIMUM_VERSION_FOR_OVERLAY_WITH_SUBMODULES = "2.36.0";
 
 /**
  * Git version information
@@ -246,6 +248,16 @@ export const getGitRoot = async function (
 };
 
 /**
+ * Returns true if the Git repository has submodules registered (i.e. a
+ * `.gitmodules` file exists at the repository root).
+ *
+ * @param gitRoot The root of the Git repository.
+ */
+export function hasSubmodules(gitRoot: string): boolean {
+  return fs.existsSync(path.join(gitRoot, ".gitmodules"));
+}
+
+/**
  * Returns the Git OIDs of all tracked files (in the index and in the working
  * tree) that are under the given base path, including files in active
  * submodules. Untracked files and files not under the given base path are
@@ -261,11 +273,21 @@ export const getFileOidsUnderPath = async function (
   // Without the --full-name flag, the path is relative to the current working
   // directory of the git command, which is basePath.
   //
-  // We use --stage rather than --format here because --stage has been available since Git 2.36.0,
-  // while --format was only introduced in Git 2.38.0.
+  // We use --stage rather than --format here because --format was only
+  // introduced in Git 2.38.0, which would limit overlay rollout.
+  //
+  // We only pass --recurse-submodules when the repository actually has
+  // submodules, because the combination of --recurse-submodules and --stage is
+  // only supported since Git 2.36.0.
+  const gitRoot = await getGitRoot(basePath);
+  const mayHaveSubmodules =
+    gitRoot === undefined ? true : hasSubmodules(gitRoot);
+  const args = mayHaveSubmodules
+    ? ["ls-files", "--recurse-submodules", "--stage"]
+    : ["ls-files", "--stage"];
   const stdout = await runGitCommand(
     basePath,
-    ["ls-files", "--recurse-submodules", "--stage"],
+    args,
     "Cannot list Git OIDs of tracked files.",
   );
 
@@ -280,8 +302,8 @@ export const getFileOidsUnderPath = async function (
       const match = line.match(regex);
       if (match) {
         const oid = match[1];
-        const path = decodeGitFilePath(match[2]);
-        fileOidMap[path] = oid;
+        const filePath = decodeGitFilePath(match[2]);
+        fileOidMap[filePath] = oid;
       } else {
         throw new Error(`Unexpected "git ls-files" output: ${line}`);
       }

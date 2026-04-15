@@ -144,6 +144,7 @@ export enum CliConfigErrorCategory {
   OutOfMemoryOrDisk = "OutOfMemoryOrDisk",
   PackCannotBeFound = "PackCannotBeFound",
   PackMissingAuth = "PackMissingAuth",
+  SwiftIncompatibleOs = "SwiftIncompatibleOs",
   SwiftBuildFailed = "SwiftBuildFailed",
   UnsupportedBuildMode = "UnsupportedBuildMode",
 }
@@ -279,6 +280,12 @@ const cliErrorsConfig: Record<CliConfigErrorCategory, CliErrorConfiguration> = {
       new RegExp(
         "\\[autobuilder/build\\] \\[build-command-failed\\] `autobuild` failed to run the build command",
       ),
+    ],
+  },
+  [CliConfigErrorCategory.SwiftIncompatibleOs]: {
+    cliErrorMessageCandidates: [
+      new RegExp("\\[incompatible-os\\]"),
+      new RegExp("Swift analysis is only supported on macOS"),
     ],
   },
   [CliConfigErrorCategory.UnsupportedBuildMode]: {

@@ -5,7 +5,7 @@ import * as path from "path";
 
 import * as yaml from "yaml";
 
-import { KnownLanguage } from "../src/languages";
+import { BuiltInLanguage } from "../src/languages";
 
 /** Known workflow input names. */
 enum KnownInputName {
@@ -91,8 +91,8 @@ interface LanguageSetup {
   steps: Step[];
 }
 
-/** Describes partial mappings from known languages to their specific setup information. */
-type LanguageSetups = Partial<Record<KnownLanguage, LanguageSetup>>;
+/** Describes partial mappings from built-in languages to their specific setup information. */
+type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 
 // The default set of CodeQL Bundle versions to use for the PR checks.
 const defaultTestVersions = [
@@ -125,7 +125,7 @@ const defaultLanguageVersions = {
   java: "17",
   python: "3.13",
   csharp: "9.x",
-} as const satisfies Partial<Record<KnownLanguage, string>>;
+} as const satisfies Partial<Record<BuiltInLanguage, string>>;
 
 /** A mapping from known input names to their specifications. */
 const inputSpecs: WorkflowInputs = {
@@ -364,7 +364,7 @@ function getSetupSteps(checkSpecification: JobSpecification): {
   const inputs: Array<Set<KnownInputName>> = [];
   const steps: Step[] = [];
 
-  for (const language of Object.values(KnownLanguage).sort()) {
+  for (const language of Object.values(BuiltInLanguage).sort()) {
     const setupSpec = languageSetups[language];
 
     if (

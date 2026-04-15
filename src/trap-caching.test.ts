@@ -15,7 +15,7 @@ import {
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
   createFeatures,
@@ -41,7 +41,7 @@ const stubCodeql = createStubCodeQL({
   async betterResolveLanguages() {
     return {
       extractors: {
-        [KnownLanguage.javascript]: [
+        [BuiltInLanguage.javascript]: [
           {
             extractor_root: "some_root",
             extractor_options: {
@@ -65,7 +65,7 @@ const stubCodeql = createStubCodeQL({
             },
           },
         ],
-        [KnownLanguage.cpp]: [
+        [BuiltInLanguage.cpp]: [
           {
             extractor_root: "other_root",
           },
@@ -76,7 +76,7 @@ const stubCodeql = createStubCodeQL({
 });
 
 const testConfigWithoutTmpDir = createTestConfig({
-  languages: [KnownLanguage.javascript, KnownLanguage.cpp],
+  languages: [BuiltInLanguage.javascript, BuiltInLanguage.cpp],
   trapCaches: {
     javascript: "/some/cache/dir",
   },
@@ -84,7 +84,7 @@ const testConfigWithoutTmpDir = createTestConfig({
 
 function getTestConfigWithTempDir(tempDir: string): configUtils.Config {
   return createTestConfig({
-    languages: [KnownLanguage.javascript, KnownLanguage.ruby],
+    languages: [BuiltInLanguage.javascript, BuiltInLanguage.ruby],
     tempDir,
     dbLocation: path.resolve(tempDir, "codeql_databases"),
     trapCaches: {
@@ -100,7 +100,7 @@ test.serial("check flags for JS, analyzing default branch", async (t) => {
     sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
     const result = await getTrapCachingExtractorConfigArgsForLang(
       config,
-      KnownLanguage.javascript,
+      BuiltInLanguage.javascript,
     );
     t.deepEqual(result, [
       `-O=javascript.trap.cache.dir=${path.resolve(tmpDir, "jsCache")}`,
@@ -131,10 +131,10 @@ test("get languages that support TRAP caching", async (t) => {
   const logger = getRecordingLogger(loggedMessages);
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
     stubCodeql,
-    [KnownLanguage.javascript, KnownLanguage.cpp],
+    [BuiltInLanguage.javascript, BuiltInLanguage.cpp],
     logger,
   );
-  t.deepEqual(languagesSupportingCaching, [KnownLanguage.javascript]);
+  t.deepEqual(languagesSupportingCaching, [BuiltInLanguage.javascript]);
 });
 
 test.serial("upload cache key contains right fields", async (t) => {
@@ -180,7 +180,7 @@ test.serial(
       );
       await downloadTrapCaches(
         stubCodeql,
-        [KnownLanguage.javascript, KnownLanguage.cpp],
+        [BuiltInLanguage.javascript, BuiltInLanguage.cpp],
         logger,
       );
       t.assert(

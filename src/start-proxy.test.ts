@@ -8,10 +8,9 @@ import sinon from "sinon";
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
 import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
 import * as startProxyExports from "./start-proxy";
-import { parseLanguage } from "./start-proxy";
 import * as statusReport from "./status-report";
 import {
   assertNotLogged,
@@ -232,7 +231,7 @@ test("getCredentials filters by language when specified", async (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(mixedCredentials),
-    KnownLanguage.java,
+    BuiltInLanguage.java,
   );
   t.is(credentials.length, 1);
   t.is(credentials[0].type, "maven_repository");
@@ -243,7 +242,7 @@ test("getCredentials returns all for a language when specified", async (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(mixedCredentials),
-    KnownLanguage.go,
+    BuiltInLanguage.go,
   );
   t.is(credentials.length, 2);
 
@@ -263,7 +262,7 @@ test("getCredentials returns all goproxy_servers for Go when specified", async (
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(multipleGoproxyServers),
-    KnownLanguage.go,
+    BuiltInLanguage.go,
   );
   t.is(credentials.length, 3);
 
@@ -292,7 +291,7 @@ test("getCredentials returns all maven_repositories for Java when specified", as
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(multipleMavenRepositories),
-    KnownLanguage.java,
+    BuiltInLanguage.java,
   );
   t.is(credentials.length, 2);
 
@@ -480,7 +479,7 @@ test("getCredentials accepts OIDC configurations", (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(oidcConfigurations),
-    KnownLanguage.csharp,
+    BuiltInLanguage.csharp,
   );
   t.is(credentials.length, 3);
 
@@ -647,7 +646,7 @@ test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_
     getRunnerLogger(true),
     undefined,
     credentialsInput,
-    KnownLanguage.actions,
+    BuiltInLanguage.actions,
     false,
   );
   t.is(credentials.length, mixedCredentials.length);
@@ -660,37 +659,10 @@ test("getCredentials returns no credentials for Actions when using NEW_LANGUAGE_
     getRunnerLogger(true),
     undefined,
     credentialsInput,
-    KnownLanguage.actions,
+    BuiltInLanguage.actions,
     true,
   );
   t.deepEqual(credentials, []);
-});
-
-test("parseLanguage", async (t) => {
-  // Exact matches
-  t.deepEqual(parseLanguage("csharp"), KnownLanguage.csharp);
-  t.deepEqual(parseLanguage("cpp"), KnownLanguage.cpp);
-  t.deepEqual(parseLanguage("go"), KnownLanguage.go);
-  t.deepEqual(parseLanguage("java"), KnownLanguage.java);
-  t.deepEqual(parseLanguage("javascript"), KnownLanguage.javascript);
-  t.deepEqual(parseLanguage("python"), KnownLanguage.python);
-  t.deepEqual(parseLanguage("rust"), KnownLanguage.rust);
-
-  // Aliases
-  t.deepEqual(parseLanguage("c"), KnownLanguage.cpp);
-  t.deepEqual(parseLanguage("c++"), KnownLanguage.cpp);
-  t.deepEqual(parseLanguage("c#"), KnownLanguage.csharp);
-  t.deepEqual(parseLanguage("kotlin"), KnownLanguage.java);
-  t.deepEqual(parseLanguage("typescript"), KnownLanguage.javascript);
-
-  // spaces and case-insensitivity
-  t.deepEqual(parseLanguage("  \t\nCsHaRp\t\t"), KnownLanguage.csharp);
-  t.deepEqual(parseLanguage("  \t\nkOtLin\t\t"), KnownLanguage.java);
-
-  // Not matches
-  t.deepEqual(parseLanguage("foo"), undefined);
-  t.deepEqual(parseLanguage(" "), undefined);
-  t.deepEqual(parseLanguage(""), undefined);
 });
 
 function mockGetApiClient(endpoints: any) {

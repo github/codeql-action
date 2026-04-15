@@ -9,7 +9,7 @@ import * as actionsUtil from "../actions-util";
 import * as apiClient from "../api-client";
 import { ResolveDatabaseOutput } from "../codeql";
 import * as gitUtils from "../git-utils";
-import { KnownLanguage } from "../languages";
+import { BuiltInLanguage } from "../languages";
 import { getRunnerLogger } from "../logging";
 import {
   createTestConfig,
@@ -65,7 +65,7 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
       const testCase = { ...defaultDownloadTestCase, ...partialTestCase };
       const config = createTestConfig({
         dbLocation,
-        languages: [KnownLanguage.java],
+        languages: [BuiltInLanguage.java],
       });
 
       config.overlayDatabaseMode = testCase.overlayDatabaseMode;

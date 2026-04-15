@@ -1,9 +1,9 @@
 {
   "c": "cpp",
-  "c-c++": "cpp",
-  "c-cpp": "cpp",
   "c#": "csharp",
   "c++": "cpp",
+  "c-c++": "cpp",
+  "c-cpp": "cpp",
   "java-kotlin": "java",
   "javascript-typescript": "javascript",
   "kotlin": "java",

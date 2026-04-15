@@ -343,75 +343,142 @@ test.serial("decodeGitFilePath quoted strings", async (t) => {
   );
 });
 
-test.serial("getFileOidsUnderPath returns correct file mapping", async (t) => {
-  const runGitCommandStub = sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .resolves(
-      "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/git-utils.js\n" +
-        "100644 d89514599a9a99f22b4085766d40af7b99974827 0\tlib/git-utils.js.map\n" +
-        "100644 a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96 0\tsrc/git-utils.ts",
-    );
+test.serial(
+  "getFileOidsUnderPath uses --recurse-submodules when submodules exist",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      fs.writeFileSync(path.join(tmpDir, ".gitmodules"), "");
+      const runGitCommandStub = sinon
+        .stub(gitUtils as any, "runGitCommand")
+        .callsFake(async (_cwd: any, args: any) => {
+          if (args[0] === "rev-parse") {
+            return `${tmpDir}\n`;
+          }
+          return (
+            "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/git-utils.js\n" +
+            "100644 d89514599a9a99f22b4085766d40af7b99974827 0\tlib/git-utils.js.map\n" +
+            "100644 a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96 0\tsrc/git-utils.ts"
+          );
+        });
 
-  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+      const result = await gitUtils.getFileOidsUnderPath("/fake/path");
 
-  t.deepEqual(result, {
-    "lib/git-utils.js": "30d998ded095371488be3a729eb61d86ed721a18",
-    "lib/git-utils.js.map": "d89514599a9a99f22b4085766d40af7b99974827",
-    "src/git-utils.ts": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
-  });
+      t.deepEqual(result, {
+        "lib/git-utils.js": "30d998ded095371488be3a729eb61d86ed721a18",
+        "lib/git-utils.js.map": "d89514599a9a99f22b4085766d40af7b99974827",
+        "src/git-utils.ts": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+      });
 
-  t.deepEqual(runGitCommandStub.firstCall.args, [
-    "/fake/path",
-    ["ls-files", "--recurse-submodules", "--stage"],
-    "Cannot list Git OIDs of tracked files.",
-  ]);
-});
+      // Second call (after getGitRoot) should include --recurse-submodules
+      t.deepEqual(runGitCommandStub.secondCall.args[1], [
+        "ls-files",
+        "--recurse-submodules",
+        "--stage",
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "getFileOidsUnderPath omits --recurse-submodules when no submodules exist",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const runGitCommandStub = sinon
+        .stub(gitUtils as any, "runGitCommand")
+        .callsFake(async (_cwd: any, args: any) => {
+          if (args[0] === "rev-parse") {
+            return `${tmpDir}\n`;
+          }
+          return (
+            "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/git-utils.js\n" +
+            "100644 a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96 0\tsrc/git-utils.ts"
+          );
+        });
+
+      const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+      t.deepEqual(result, {
+        "lib/git-utils.js": "30d998ded095371488be3a729eb61d86ed721a18",
+        "src/git-utils.ts": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+      });
+
+      // Second call (after getGitRoot) should NOT include --recurse-submodules
+      t.deepEqual(runGitCommandStub.secondCall.args[1], [
+        "ls-files",
+        "--stage",
+      ]);
+    });
+  },
+);
 
 test.serial("getFileOidsUnderPath handles quoted paths", async (t) => {
-  sinon
-    .stub(gitUtils as any, "runGitCommand")
-    .resolves(
-      "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/normal-file.js\n" +
-        '100644 d89514599a9a99f22b4085766d40af7b99974827 0\t"lib/file with spaces.js"\n' +
-        '100644 a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96 0\t"lib/file\\twith\\ttabs.js"',
-    );
+  await withTmpDir(async (tmpDir) => {
+    sinon
+      .stub(gitUtils as any, "runGitCommand")
+      .callsFake(async (_cwd: any, args: any) => {
+        if (args[0] === "rev-parse") {
+          return `${tmpDir}\n`;
+        }
+        return (
+          "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/normal-file.js\n" +
+          '100644 d89514599a9a99f22b4085766d40af7b99974827 0\t"lib/file with spaces.js"\n' +
+          '100644 a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96 0\t"lib/file\\twith\\ttabs.js"'
+        );
+      });
 
-  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
 
-  t.deepEqual(result, {
-    "lib/normal-file.js": "30d998ded095371488be3a729eb61d86ed721a18",
-    "lib/file with spaces.js": "d89514599a9a99f22b4085766d40af7b99974827",
-    "lib/file\twith\ttabs.js": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+    t.deepEqual(result, {
+      "lib/normal-file.js": "30d998ded095371488be3a729eb61d86ed721a18",
+      "lib/file with spaces.js": "d89514599a9a99f22b4085766d40af7b99974827",
+      "lib/file\twith\ttabs.js": "a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96",
+    });
   });
 });
 
 test.serial("getFileOidsUnderPath handles empty output", async (t) => {
-  sinon.stub(gitUtils as any, "runGitCommand").resolves("");
+  await withTmpDir(async (tmpDir) => {
+    sinon
+      .stub(gitUtils as any, "runGitCommand")
+      .callsFake(async (_cwd: any, args: any) => {
+        if (args[0] === "rev-parse") {
+          return `${tmpDir}\n`;
+        }
+        return "";
+      });
 
-  const result = await gitUtils.getFileOidsUnderPath("/fake/path");
-  t.deepEqual(result, {});
+    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+    t.deepEqual(result, {});
+  });
 });
 
 test.serial(
   "getFileOidsUnderPath throws on unexpected output format",
   async (t) => {
-    sinon
-      .stub(gitUtils as any, "runGitCommand")
-      .resolves(
-        "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/git-utils.js\n" +
-          "invalid-line-format\n" +
-          "100644 a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96 0\tsrc/git-utils.ts",
-      );
+    await withTmpDir(async (tmpDir) => {
+      sinon
+        .stub(gitUtils as any, "runGitCommand")
+        .callsFake(async (_cwd: any, args: any) => {
+          if (args[0] === "rev-parse") {
+            return `${tmpDir}\n`;
+          }
+          return (
+            "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/git-utils.js\n" +
+            "invalid-line-format\n" +
+            "100644 a47c11f5bfdca7661942d2c8f1b7209fb0dfdf96 0\tsrc/git-utils.ts"
+          );
+        });
 
-    await t.throwsAsync(
-      async () => {
-        await gitUtils.getFileOidsUnderPath("/fake/path");
-      },
-      {
-        instanceOf: Error,
-        message: 'Unexpected "git ls-files" output: invalid-line-format',
-      },
-    );
+      await t.throwsAsync(
+        async () => {
+          await gitUtils.getFileOidsUnderPath("/fake/path");
+        },
+        {
+          instanceOf: Error,
+          message: 'Unexpected "git ls-files" output: invalid-line-format',
+        },
+      );
+    });
   },
 );
 

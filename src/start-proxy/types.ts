@@ -59,29 +59,29 @@ export function isToken(
 }
 
 /** Configuration for Azure OIDC. */
-export type AzureConfig = { tenant_id: string; client_id: string };
+export type AzureConfig = { "tenant-id": string; "client-id": string };
 
 /** Decides whether `config` is an Azure OIDC configuration. */
 export function isAzureConfig(
   config: UnvalidatedObject<AuthConfig>,
 ): config is AzureConfig {
   return (
-    "tenant_id" in config &&
-    "client_id" in config &&
-    isDefined(config.tenant_id) &&
-    isDefined(config.client_id) &&
-    json.isString(config.tenant_id) &&
-    json.isString(config.client_id)
+    "tenant-id" in config &&
+    "client-id" in config &&
+    isDefined(config["tenant-id"]) &&
+    isDefined(config["client-id"]) &&
+    json.isString(config["tenant-id"]) &&
+    json.isString(config["client-id"])
   );
 }
 
 /** Configuration for AWS OIDC. */
 export type AWSConfig = {
-  aws_region: string;
-  account_id: string;
-  role_name: string;
+  "aws-region": string;
+  "account-id": string;
+  "role-name": string;
   domain: string;
-  domain_owner: string;
+  "domain-owner": string;
   audience?: string;
 };
 
@@ -91,11 +91,11 @@ export function isAWSConfig(
 ): config is AWSConfig {
   // All of these properties are required.
   const requiredProperties = [
-    "aws_region",
-    "account_id",
-    "role_name",
+    "aws-region",
+    "account-id",
+    "role-name",
     "domain",
-    "domain_owner",
+    "domain-owner",
   ];
 
   for (const property of requiredProperties) {
@@ -118,30 +118,30 @@ export function isAWSConfig(
 
 /** Configuration for JFrog OIDC. */
 export type JFrogConfig = {
-  jfrog_oidc_provider_name: string;
+  "jfrog-oidc-provider-name": string;
   audience?: string;
-  identity_mapping_name?: string;
+  "identity-mapping-name"?: string;
 };
 
 /** Decides whether `config` is a JFrog OIDC configuration. */
 export function isJFrogConfig(
   config: UnvalidatedObject<AuthConfig>,
 ): config is JFrogConfig {
-  // The "audience" and "identity_mapping_name" fields are optional, but should be strings if present.
+  // The "audience" and "identity-mapping-name" fields are optional, but should be strings if present.
   if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
     return false;
   }
   if (
-    "identity_mapping_name" in config &&
-    !json.isStringOrUndefined(config.identity_mapping_name)
+    "identity-mapping-name" in config &&
+    !json.isStringOrUndefined(config["identity-mapping-name"])
   ) {
     return false;
   }
 
   return (
-    "jfrog_oidc_provider_name" in config &&
-    isDefined(config.jfrog_oidc_provider_name) &&
-    json.isString(config.jfrog_oidc_provider_name)
+    "jfrog-oidc-provider-name" in config &&
+    isDefined(config["jfrog-oidc-provider-name"]) &&
+    json.isString(config["jfrog-oidc-provider-name"])
   );
 }
 
@@ -189,18 +189,21 @@ export function credentialToStr(credential: Credential): string {
   }
 
   if (isAzureConfig(credential)) {
-    appendIfDefined("Tenant", credential.tenant_id);
-    appendIfDefined("Client", credential.client_id);
+    appendIfDefined("Tenant", credential["tenant-id"]);
+    appendIfDefined("Client", credential["client-id"]);
   } else if (isAWSConfig(credential)) {
-    appendIfDefined("AWS Region", credential.aws_region);
-    appendIfDefined("AWS Account", credential.account_id);
-    appendIfDefined("AWS Role", credential.role_name);
+    appendIfDefined("AWS Region", credential["aws-region"]);
+    appendIfDefined("AWS Account", credential["account-id"]);
+    appendIfDefined("AWS Role", credential["role-name"]);
     appendIfDefined("AWS Domain", credential.domain);
-    appendIfDefined("AWS Domain Owner", credential.domain_owner);
+    appendIfDefined("AWS Domain Owner", credential["domain-owner"]);
     appendIfDefined("AWS Audience", credential.audience);
   } else if (isJFrogConfig(credential)) {
-    appendIfDefined("JFrog Provider", credential.jfrog_oidc_provider_name);
-    appendIfDefined("JFrog Identity Mapping", credential.identity_mapping_name);
+    appendIfDefined("JFrog Provider", credential["jfrog-oidc-provider-name"]);
+    appendIfDefined(
+      "JFrog Identity Mapping",
+      credential["identity-mapping-name"],
+    );
     appendIfDefined("JFrog Audience", credential.audience);
   }
 

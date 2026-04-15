@@ -18,6 +18,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import * as json from "./json";
+import * as knownLanguageAliases from "./known-language-aliases.json";
 import { KnownLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -188,43 +189,30 @@ export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 
-/*
- * Language aliases supported by the start-proxy Action.
- *
- * In general, the CodeQL CLI is the source of truth for language aliases, and to
- * allow us to more easily support new languages, we want to avoid hardcoding these
- * aliases in the Action itself.  However this is difficult to do in the start-proxy
- * Action since this Action does not use CodeQL, so we're accepting some hardcoding
- * for this Action.
- */
-const LANGUAGE_ALIASES: { [lang: string]: KnownLanguage } = {
-  c: KnownLanguage.cpp,
-  "c++": KnownLanguage.cpp,
-  "c#": KnownLanguage.csharp,
-  kotlin: KnownLanguage.java,
-  typescript: KnownLanguage.javascript,
-  "javascript-typescript": KnownLanguage.javascript,
-  "java-kotlin": KnownLanguage.java,
-};
-
 /**
  * Parse the start-proxy language input into its canonical CodeQL language name.
  *
- * Exported for testing. Do not use this outside of the start-proxy Action
- * to avoid complicating the process of adding new CodeQL languages.
+ * This uses the language aliases shipped with the Action and will not be able to resolve aliases
+ * added by versions of the CodeQL CLI newer than the one mentioned in `defaults.json`. However,
+ * this is sufficient for the start-proxy Action since we are already specifying proxy
+ * configurations on a per-language basis.
  */
 export function parseLanguage(language: string): KnownLanguage | undefined {
   // Normalize to lower case
   language = language.trim().toLowerCase();
 
   // See if it's an exact match
-  if (language in KnownLanguage) {
+  if (Object.hasOwn(KnownLanguage, language)) {
     return language as KnownLanguage;
   }
 
   // Check language aliases
-  if (language in LANGUAGE_ALIASES) {
-    return LANGUAGE_ALIASES[language];
+  if (Object.hasOwn(knownLanguageAliases, language)) {
+    language =
+      knownLanguageAliases[language as keyof typeof knownLanguageAliases];
+    if (Object.hasOwn(KnownLanguage, language)) {
+      return language as KnownLanguage;
+    }
   }
 
   return undefined;
@@ -301,22 +289,22 @@ export function getAuthConfig(
   // which we can use to identify them.
   if (isAzureConfig(config)) {
     return {
-      tenant_id: config.tenant_id,
-      client_id: config.client_id,
+      "tenant-id": config["tenant-id"],
+      "client-id": config["client-id"],
     } satisfies AzureConfig;
   } else if (isAWSConfig(config)) {
     return {
-      aws_region: config.aws_region,
-      account_id: config.account_id,
-      role_name: config.role_name,
+      "aws-region": config["aws-region"],
+      "account-id": config["account-id"],
+      "role-name": config["role-name"],
       domain: config.domain,
-      domain_owner: config.domain_owner,
+      "domain-owner": config["domain-owner"],
       audience: config.audience,
     } satisfies AWSConfig;
   } else if (isJFrogConfig(config)) {
     return {
-      jfrog_oidc_provider_name: config.jfrog_oidc_provider_name,
-      identity_mapping_name: config.identity_mapping_name,
+      "jfrog-oidc-provider-name": config["jfrog-oidc-provider-name"],
+      "identity-mapping-name": config["identity-mapping-name"],
       audience: config.audience,
     } satisfies JFrogConfig;
   } else if (isToken(config)) {
@@ -447,15 +435,18 @@ export function getCredentials(
     }
 
     // If the password or token looks like a GitHub PAT, warn if no username is configured.
-    if (
-      ((!hasUsername(authConfig) || !isDefined(authConfig.username)) &&
-        isUsernamePassword(authConfig) &&
-        isDefined(authConfig.password) &&
-        isPAT(authConfig.password)) ||
-      (isToken(authConfig) &&
-        isDefined(authConfig.token) &&
-        isPAT(authConfig.token))
-    ) {
+    const noUsername =
+      !hasUsername(authConfig) || !isDefined(authConfig.username);
+    const passwordIsPAT =
+      isUsernamePassword(authConfig) &&
+      isDefined(authConfig.password) &&
+      isPAT(authConfig.password);
+    const tokenIsPAT =
+      isToken(authConfig) &&
+      isDefined(authConfig.token) &&
+      isPAT(authConfig.token);
+
+    if (noUsername && (passwordIsPAT || tokenIsPAT)) {
       logger.warning(
         `A ${e.type} private registry is configured for ${e.host || e.url} using a GitHub Personal Access Token (PAT), but no username was provided. ` +
           `This may not work correctly. When configuring a private registry using a PAT, select "Username and password" and enter the username of the user ` +

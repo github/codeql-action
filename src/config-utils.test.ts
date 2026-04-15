@@ -20,8 +20,9 @@ import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
 import { KnownLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import { OverlayDisabledReason } from "./overlay/diagnostics";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
 import {
@@ -1004,6 +1005,7 @@ interface OverlayDatabaseModeTestSetup {
   codeqlVersion: string;
   gitRoot: string | undefined;
   gitVersion: GitVersionInfo | undefined;
+  hasSubmodules: boolean;
   codeScanningConfig: UserConfig;
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
@@ -1020,10 +1022,8 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   languages: [KnownLanguage.javascript],
   codeqlVersion: CODEQL_OVERLAY_MINIMUM_VERSION,
   gitRoot: "/some/git/root",
-  gitVersion: new GitVersionInfo(
-    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
-    gitUtils.GIT_MINIMUM_VERSION_FOR_OVERLAY,
-  ),
+  gitVersion: new GitVersionInfo("2.39.0", "2.39.0"),
+  hasSubmodules: false,
   codeScanningConfig: {},
   diskUsage: {
     numAvailableBytes: 50_000_000_000,
@@ -1098,6 +1098,9 @@ const checkOverlayEnablementMacro = test.macro({
         if (setup.gitRoot !== undefined) {
           sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
         }
+
+        // Mock submodule detection
+        sinon.stub(gitUtils, "hasSubmodules").returns(setup.hasSubmodules);
 
         // Mock default branch detection
         sinon
@@ -1933,10 +1936,11 @@ test.serial(
 
 test.serial(
   checkOverlayEnablementMacro,
-  "Fallback due to old git version",
+  "Fallback due to old git version with submodules",
   {
     overlayDatabaseEnvVar: "overlay",
-    gitVersion: new GitVersionInfo("2.30.0", "2.30.0"), // Version below required 2.38.0
+    gitVersion: new GitVersionInfo("2.34.1", "2.34.1"), // Above 2.11.0 but below 2.36.0
+    hasSubmodules: true,
   },
   {
     disabledReason: OverlayDisabledReason.IncompatibleGit,
@@ -1945,13 +1949,28 @@ test.serial(
 
 test.serial(
   checkOverlayEnablementMacro,
-  "Fallback when git version cannot be determined",
+  "Fallback when git version cannot be determined and repo has submodules",
   {
     overlayDatabaseEnvVar: "overlay",
     gitVersion: undefined,
+    hasSubmodules: true,
   },
   {
     disabledReason: OverlayDisabledReason.IncompatibleGit,
+  },
+);
+
+test.serial(
+  checkOverlayEnablementMacro,
+  "Overlay enabled when git version cannot be determined and repo has no submodules",
+  {
+    overlayDatabaseEnvVar: "overlay",
+    gitVersion: undefined,
+    hasSubmodules: false,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    useOverlayDatabaseCaching: false,
   },
 );
 

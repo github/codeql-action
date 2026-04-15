@@ -6,6 +6,23 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - Organizations can now create a custom repository property with the name `github-codeql-tools` to control the CodeQL CLI tools input at the repository level. When this property is set to a valid tools input value (such as `"toolcache"`, `"latest"`, or a specific version), it will override the default tools configuration for that repository. This allows organization administrators to standardize CodeQL CLI versions across repositories or enable toolcache usage on repositories where it would otherwise be restricted. For more information on creating custom repository properties, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization).
 
+## 4.35.2 - 15 Apr 2026
+
+- The undocumented TRAP cache cleanup feature that could be enabled using the `CODEQL_ACTION_CLEANUP_TRAP_CACHES` environment variable is deprecated and will be removed in May 2026. If you are affected by this, we recommend disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action. [#3795](https://github.com/github/codeql-action/pull/3795)
+- The Git version 2.36.0 requirement for improved incremental analysis now only applies to repositories that contain submodules. [#3789](https://github.com/github/codeql-action/pull/3789)
+- Python analysis on GHES no longer extracts the standard library, relying instead on models of the standard library. This should result in significantly faster extraction and analysis times, while the effect on alerts should be minimal. [#3794](https://github.com/github/codeql-action/pull/3794)
+- Fixed a bug in the validation of OIDC configurations for private registries that was added in CodeQL Action 4.33.0 / 3.33.0. [#3807](https://github.com/github/codeql-action/pull/3807)
+- Update default CodeQL bundle version to [2.25.2](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.2). [#3823](https://github.com/github/codeql-action/pull/3823)
+
+## 4.35.1 - 27 Mar 2026
+
+- Fix incorrect minimum required Git version for [improved incremental analysis](https://github.com/github/roadmap/issues/1158): it should have been 2.36.0, not 2.11.0. [#3781](https://github.com/github/codeql-action/pull/3781)
+
+## 4.35.0 - 27 Mar 2026
+
+- Reduced the minimum Git version required for [improved incremental analysis](https://github.com/github/roadmap/issues/1158) from 2.38.0 to 2.11.0. [#3767](https://github.com/github/codeql-action/pull/3767)
+- Update default CodeQL bundle version to [2.25.1](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.1). [#3773](https://github.com/github/codeql-action/pull/3773)
+
 ## 4.34.1 - 20 Mar 2026
 
 - Downgrade default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3) due to issues with a small percentage of Actions and JavaScript analyses. [#3762](https://github.com/github/codeql-action/pull/3762)

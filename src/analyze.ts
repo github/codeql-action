@@ -5,11 +5,7 @@ import { performance } from "perf_hooks";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
-import {
-  getTemporaryDirectory,
-  getRequiredInput,
-  PullRequestBranches,
-} from "./actions-util";
+import { getTemporaryDirectory, getRequiredInput } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -21,14 +17,13 @@ import {
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   DiffThunkRange,
-  writeDiffRangesJsonFile,
-  getPullRequestEditedDiffRanges,
+  readDiffRangesJsonFile,
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { KnownLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
-import { OverlayDatabaseMode } from "./overlay";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import type * as sarif from "./sarif";
 import { DatabaseCreationTimings, EventReport } from "./status-report";
 import { endTracingForCluster } from "./tracer-config";
@@ -237,16 +232,19 @@ async function finalizeDatabaseCreation(
  * the diff range information, or `undefined` if the feature is disabled.
  */
 export async function setupDiffInformedQueryRun(
-  branches: PullRequestBranches,
   logger: Logger,
 ): Promise<string | undefined> {
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {
-      logger.info(
-        `Calculating diff ranges for ${branches.base}...${branches.head}`,
-      );
-      const diffRanges = await getPullRequestEditedDiffRanges(branches, logger);
+      const diffRanges = readDiffRangesJsonFile(logger);
+      if (diffRanges === undefined) {
+        logger.info(
+          "No precomputed diff ranges found; skipping diff-informed analysis stage.",
+        );
+        return undefined;
+      }
+
       const checkoutPath = getRequiredInput("checkout_path");
       const packDir = writeDiffRangeDataExtensionPack(
         logger,
@@ -367,10 +365,6 @@ dataExtensions:
   logger.debug(
     `Wrote pr-diff-range extension pack to ${extensionFilePath}:\n${extensionContents}`,
   );
-
-  // Write the diff ranges to a JSON file, for action-side alert filtering by the
-  // upload-lib module.
-  writeDiffRangesJsonFile(logger, ranges);
 
   return diffRangeDir;
 }

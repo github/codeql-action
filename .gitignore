@@ -11,3 +11,5 @@ build/
 eslint.sarif
 # for local incremental compilation
 tsconfig.tsbuildinfo
+# esbuild metadata file
+meta.json

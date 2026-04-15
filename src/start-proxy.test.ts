@@ -14,9 +14,9 @@ import * as startProxyExports from "./start-proxy";
 import { parseLanguage } from "./start-proxy";
 import * as statusReport from "./status-report";
 import {
+  assertNotLogged,
   checkExpectedLogMessages,
   createFeatures,
-  getRecordingLogger,
   makeTestToken,
   RecordingLogger,
   setupTests,
@@ -252,6 +252,57 @@ test("getCredentials returns all for a language when specified", async (t) => {
   t.assert(credentialsTypes.includes("git_source"));
 });
 
+test("getCredentials returns all goproxy_servers for Go when specified", async (t) => {
+  const multipleGoproxyServers = [
+    { type: "goproxy_server", host: "goproxy1.example.com", token: "token1" },
+    { type: "goproxy_server", host: "goproxy2.example.com", token: "token2" },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleGoproxyServers),
+    KnownLanguage.go,
+  );
+  t.is(credentials.length, 3);
+
+  const goproxyServers = credentials.filter((c) => c.type === "goproxy_server");
+  t.is(goproxyServers.length, 2);
+  t.assert(goproxyServers.some((c) => c.host === "goproxy1.example.com"));
+  t.assert(goproxyServers.some((c) => c.host === "goproxy2.example.com"));
+});
+
+test("getCredentials returns all maven_repositories for Java when specified", async (t) => {
+  const multipleMavenRepositories = [
+    {
+      type: "maven_repository",
+      host: "maven1.pkg.github.com",
+      token: "token1",
+    },
+    {
+      type: "maven_repository",
+      host: "maven2.pkg.github.com",
+      token: "token2",
+    },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleMavenRepositories),
+    KnownLanguage.java,
+  );
+  t.is(credentials.length, 2);
+
+  const mavenRepositories = credentials.filter(
+    (c) => c.type === "maven_repository",
+  );
+  t.assert(mavenRepositories.some((c) => c.host === "maven1.pkg.github.com"));
+  t.assert(mavenRepositories.some((c) => c.host === "maven2.pkg.github.com"));
+});
+
 test("getCredentials returns all credentials when no language specified", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);
 
@@ -300,23 +351,23 @@ test("getCredentials throws an error when non-printable characters are used", as
 });
 
 const validAzureCredential: startProxyExports.AzureConfig = {
-  tenant_id: "12345678-1234-1234-1234-123456789012",
-  client_id: "abcdef01-2345-6789-abcd-ef0123456789",
+  "tenant-id": "12345678-1234-1234-1234-123456789012",
+  "client-id": "abcdef01-2345-6789-abcd-ef0123456789",
 };
 
 const validAwsCredential: startProxyExports.AWSConfig = {
-  aws_region: "us-east-1",
-  account_id: "123456789012",
-  role_name: "MY_ROLE",
+  "aws-region": "us-east-1",
+  "account-id": "123456789012",
+  "role-name": "MY_ROLE",
   domain: "MY_DOMAIN",
-  domain_owner: "987654321098",
+  "domain-owner": "987654321098",
   audience: "custom-audience",
 };
 
 const validJFrogCredential: startProxyExports.JFrogConfig = {
-  jfrog_oidc_provider_name: "MY_PROVIDER",
+  "jfrog-oidc-provider-name": "MY_PROVIDER",
   audience: "jfrog-audience",
-  identity_mapping_name: "my-mapping",
+  "identity-mapping-name": "my-mapping",
 };
 
 test("getCredentials throws an error when non-printable characters are used for Azure OIDC", (t) => {
@@ -439,41 +490,155 @@ test("getCredentials accepts OIDC configurations", (t) => {
   t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
 });
 
-test("getCredentials logs a warning when a PAT is used without a username", async (t) => {
-  const loggedMessages = [];
-  const logger = getRecordingLogger(loggedMessages);
-  const likelyWrongCredentials = toEncodedJSON([
+const getCredentialsMacro = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    credentials: startProxyExports.RawCredential[],
+    checkAccepted: (
+      t: ExecutionContext<unknown>,
+      logger: RecordingLogger,
+      results: startProxyExports.Credential[],
+    ) => void,
+  ) => {
+    const logger = new RecordingLogger();
+    const credentialsString = toEncodedJSON(credentials);
+
+    const results = startProxyExports.getCredentials(
+      logger,
+      undefined,
+      credentialsString,
+      undefined,
+    );
+
+    checkAccepted(t, logger, results);
+  },
+
+  title: (providedTitle = "") => `getCredentials - ${providedTitle}`,
+});
+
+test(
+  "warns for PAT-like password without a username",
+  getCredentialsMacro,
+  [
     {
       type: "git_server",
       host: "https://github.com/",
       password: `ghp_${makeTestToken()}`,
     },
-  ]);
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
 
-  const results = startProxyExports.getCredentials(
-    logger,
-    undefined,
-    likelyWrongCredentials,
-    undefined,
-  );
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
 
-  // The configuration should be accepted, despite the likely problem.
-  t.assert(results);
-  t.is(results.length, 1);
-  t.is(results[0].type, "git_server");
-  t.is(results[0].host, "https://github.com/");
+    // A warning should have been logged.
+    checkExpectedLogMessages(t, logger.messages, [
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    ]);
+  },
+);
 
-  if (startProxyExports.isUsernamePassword(results[0])) {
-    t.assert(results[0].password?.startsWith("ghp_"));
-  } else {
-    t.fail("Expected a `UsernamePassword`-based credential.");
-  }
+test(
+  "no warning for PAT-like password with a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      username: "someone",
+      password: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
 
-  // A warning should have been logged.
-  checkExpectedLogMessages(t, loggedMessages, [
-    "using a GitHub Personal Access Token (PAT), but no username was provided",
-  ]);
-});
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
+
+    assertNotLogged(
+      t,
+      logger,
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    );
+  },
+);
+
+test(
+  "warns for PAT-like token without a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      token: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isToken(results[0])) {
+      t.assert(results[0].token?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `Token`-based credential.");
+    }
+
+    // A warning should have been logged.
+    checkExpectedLogMessages(t, logger.messages, [
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    ]);
+  },
+);
+
+test(
+  "no warning for PAT-like token with a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      username: "someone",
+      token: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isToken(results[0])) {
+      t.assert(results[0].token?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `Token`-based credential.");
+    }
+
+    assertNotLogged(
+      t,
+      logger,
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    );
+  },
+);
 
 test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);

@@ -31,7 +31,10 @@ import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import {
+  type DiffInformedAnalysisPreparation,
+  prepareDiffInformedAnalysis,
+} from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -1077,6 +1080,42 @@ function hasQueryCustomisation(userConfig: UserConfig): boolean {
 }
 
 /**
+ * Finalize the incremental-analysis configuration for this run.
+ *
+ * If overlay mode was selected for a PR but diff-informed analysis should have
+ * run and could not be prepared, fall back to a full non-overlay analysis.
+ * Query exclusions for incremental-only queries are applied only when the final
+ * configuration still uses overlay analysis or diff-informed analysis is
+ * actually available.
+ */
+export function applyIncrementalAnalysisSettings(
+  config: Config,
+  diffInformedAnalysis: DiffInformedAnalysisPreparation,
+  logger: Logger,
+): void {
+  if (
+    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
+    diffInformedAnalysis.shouldRun &&
+    !diffInformedAnalysis.isAvailable
+  ) {
+    logger.warning(
+      "Diff-informed analysis is not available for this pull request. " +
+        `Reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
+    );
+    config.overlayDatabaseMode = OverlayDatabaseMode.None;
+  }
+
+  if (
+    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
+    diffInformedAnalysis.isAvailable
+  ) {
+    config.extraQueryExclusions.push({
+      exclude: { tags: "exclude-from-incremental" },
+    });
+  }
+}
+
+/**
  * Load and return the config.
  *
  * This will parse the config from the user input if present, or generate
@@ -1230,18 +1269,13 @@ export async function initConfig(
     );
   }
 
-  if (
-    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
-    (await shouldPerformDiffInformedAnalysis(
-      inputs.codeql,
-      inputs.features,
-      logger,
-    ))
-  ) {
-    config.extraQueryExclusions.push({
-      exclude: { tags: "exclude-from-incremental" },
-    });
-  }
+  const diffInformedAnalysis = await prepareDiffInformedAnalysis(
+    inputs.codeql,
+    inputs.features,
+    logger,
+  );
+
+  applyIncrementalAnalysisSettings(config, diffInformedAnalysis, logger);
 
   if (await isTrapCachingEnabled(features, config.overlayDatabaseMode)) {
     const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(

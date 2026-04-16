@@ -5,7 +5,7 @@ import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
 import * as apiClient from "./api-client";
 import {
-  shouldPerformDiffInformedAnalysis,
+  getDiffInformedAnalysisBranches,
   exportedForTesting,
 } from "./diff-informed-analysis-utils";
 import { Feature, initFeatures } from "./feature-flags";
@@ -80,13 +80,13 @@ const testShouldPerformDiffInformedAnalysis = test.macro({
         .stub(actionsUtil, "getPullRequestBranches")
         .returns(testCase.pullRequestBranches);
 
-      const result = await shouldPerformDiffInformedAnalysis(
+      const branches = await getDiffInformedAnalysisBranches(
         codeql,
         features,
         logger,
       );
 
-      t.is(result, expectedResult);
+      t.is(branches !== undefined, expectedResult);
 
       delete process.env.CODEQL_ACTION_DIFF_INFORMED_QUERIES;
 
@@ -94,7 +94,7 @@ const testShouldPerformDiffInformedAnalysis = test.macro({
       getPullRequestBranchesStub.restore();
     });
   },
-  title: (_, title) => `shouldPerformDiffInformedAnalysis: ${title}`,
+  title: (_, title) => `getDiffInformedAnalysisBranches: ${title}`,
 });
 
 test.serial(

@@ -12,7 +12,7 @@ import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { cleanupAndUploadDatabases } from "./database-upload";
 import * as gitUtils from "./git-utils";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { RepositoryNwo } from "./repository";
 import {
   checkExpectedLogMessages,
@@ -45,7 +45,7 @@ const testApiDetails: GitHubApiDetails = {
 
 function getTestConfig(tmpDir: string): Config {
   return createTestConfig({
-    languages: [KnownLanguage.javascript],
+    languages: [BuiltInLanguage.javascript],
     dbLocation: tmpDir,
   });
 }

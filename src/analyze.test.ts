@@ -14,7 +14,7 @@ import {
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import {
   setupTests,
@@ -41,7 +41,7 @@ test.serial("status report fields", async (t) => {
     const threadsFlag = "";
     sinon.stub(uploadLib, "validateSarifFileSchema");
 
-    for (const language of Object.values(KnownLanguage)) {
+    for (const language of Object.values(BuiltInLanguage)) {
       const codeql = createStubCodeQL({
         databaseRunQueries: async () => {},
         databaseInterpretResults: async (
@@ -130,13 +130,13 @@ test.serial("status report fields", async (t) => {
 test("resolveQuerySuiteAlias", (t) => {
   // default query suite names should resolve to something language-specific ending in `.qls`.
   for (const suite of defaultSuites) {
-    const resolved = resolveQuerySuiteAlias(KnownLanguage.go, suite);
+    const resolved = resolveQuerySuiteAlias(BuiltInLanguage.go, suite);
     t.assert(
       path.extname(resolved) === ".qls",
       "Resolved default suite doesn't end in .qls",
     );
     t.assert(
-      resolved.indexOf(KnownLanguage.go) >= 0,
+      resolved.indexOf(BuiltInLanguage.go) >= 0,
       "Resolved default suite doesn't contain language name",
     );
   }
@@ -145,12 +145,12 @@ test("resolveQuerySuiteAlias", (t) => {
   const names = ["foo", "bar", "codeql/go-queries@1.0"];
 
   for (const name of names) {
-    t.deepEqual(resolveQuerySuiteAlias(KnownLanguage.go, name), name);
+    t.deepEqual(resolveQuerySuiteAlias(BuiltInLanguage.go, name), name);
   }
 });
 
 test("addSarifExtension", (t) => {
-  for (const language of Object.values(KnownLanguage)) {
+  for (const language of Object.values(BuiltInLanguage)) {
     t.deepEqual(addSarifExtension(CodeScanning, language), `${language}.sarif`);
     t.deepEqual(
       addSarifExtension(CodeQuality, language),

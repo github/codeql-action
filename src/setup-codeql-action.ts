@@ -14,6 +14,7 @@ import { initFeatures } from "./feature-flags";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
+import { resolveToolsInput } from "./resolve-tools-input";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -46,6 +47,7 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  effectiveToolsInput: string | undefined,
   logger: Logger,
   error?: Error,
 ): Promise<void> {
@@ -67,6 +69,7 @@ async function sendCompletedStatusReport(
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
     tools_input: getOptionalInput("tools") || "",
+    computed_tools_input: effectiveToolsInput || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: "",
@@ -97,6 +100,7 @@ async function run(startedAt: Date): Promise<void> {
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
+  let effectiveToolsInput: string | undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -140,8 +144,14 @@ async function run(startedAt: Date): Promise<void> {
       gitHubVersion.type,
     );
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+
+    // Determine the effective tools input.
+    // The explicit `tools` workflow input takes precedence. If none is provided,
+    // fall back to the 'github-codeql-tools' repository property (if set).
+    effectiveToolsInput = await resolveToolsInput(repositoryNwo, logger);
+
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      effectiveToolsInput,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
@@ -183,6 +193,7 @@ async function run(startedAt: Date): Promise<void> {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    effectiveToolsInput,
     logger,
   );
 }

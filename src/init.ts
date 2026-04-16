@@ -26,7 +26,7 @@ import {
   RepositoryProperties,
   RepositoryPropertyName,
 } from "./feature-flags/properties";
-import { KnownLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
@@ -235,7 +235,7 @@ export async function checkInstallPython311(
   codeql: CodeQL,
 ) {
   if (
-    languages.includes(KnownLanguage.python) &&
+    languages.includes(BuiltInLanguage.python) &&
     process.platform === "win32" &&
     !(await codeql.getVersion()).features?.supportsPython312
   ) {

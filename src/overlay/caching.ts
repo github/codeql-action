@@ -437,9 +437,9 @@ async function getCacheKeyPrefixBase(
 
 /**
  * Searches the GitHub Actions cache for overlay-base databases matching the given languages, and
- * returns all CodeQL versions found across matching cache entries.
+ * returns all stable CodeQL versions found across matching cache entries.
  *
- * @returns Unique CodeQL versions found in cached overlay-base databases, sorted from latest to
+ * @returns Unique stable CodeQL versions found in cached overlay-base databases, sorted from latest to
  * earliest, or undefined if one of the languages is not a built-in language.
  */
 export async function getCodeQlVersionsForOverlayBaseDatabases(
@@ -475,9 +475,14 @@ export async function getCodeQlVersionsForOverlayBaseDatabases(
       `${caches.length === 1 ? "database" : "databases"} in the Actions cache.`,
   );
 
-  // Parse CodeQL versions from cache keys.
-  // After the prefix, the remaining key format starts with
-  // `${codeQlVersion}-`.
+  // Parse CodeQL versions from cache keys, matching only stable releases.
+  //
+  // After the prefix, the remaining key format starts with `${codeQlVersion}-`. Nightlies will have
+  // a suffix like `+202604201548` that will break the match.
+  //
+  // Caveat: this relies on the fact that we haven't released any CodeQL bundles with the
+  // `x.y.z-<pre-release>` semver format which does not interact well with the current overlay base
+  // DB cache key format.
   const versionRegex = /^([\d.]+)-/;
   const versionSet = new Set<string>();
 

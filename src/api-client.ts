@@ -249,6 +249,7 @@ export interface ActionsCacheItem {
   created_at?: string;
   id?: number;
   key?: string;
+  last_accessed_at?: string;
   size_in_bytes?: number;
 }
 

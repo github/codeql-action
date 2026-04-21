@@ -8,7 +8,11 @@ import {
   getWorkflowRunAttempt,
   getWorkflowRunID,
 } from "../actions-util";
-import { getAutomationID, listActionsCaches } from "../api-client";
+import {
+  type ActionsCacheItem,
+  getAutomationID,
+  listActionsCaches,
+} from "../api-client";
 import { createCacheKeyHash } from "../caching-utils";
 import { type CodeQL } from "../codeql";
 import { type Config } from "../config-utils";
@@ -47,6 +51,12 @@ const OVERLAY_BASE_DATABASE_MAX_UPLOAD_SIZE_BYTES =
 // Constants for database caching
 const CACHE_VERSION = 1;
 const CACHE_PREFIX = "codeql-overlay-base-database";
+
+// The Actions cache evicts entries that have not been accessed in the past 7
+// days. We conservatively set a limit of 6 days to avoid using a cached base DB
+// that may be evicted before we can download it.
+const CACHE_ENTRY_MAX_AGE_DAYS = 6;
+const CACHE_ENTRY_MAX_AGE_MS = CACHE_ENTRY_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
 
 // The purpose of this ten-minute limit is to guard against the possibility
 // that the cache service is unresponsive, which would otherwise cause the
@@ -436,6 +446,39 @@ async function getCacheKeyPrefixBase(
 }
 
 /**
+ * Lists overlay-base database cache entries with the given key prefix, ignoring entries that are
+ * old enough that they may be evicted by the Actions cache before we attempt to download them.
+ */
+async function listRecentOverlayBaseDatabaseCaches(
+  cacheKeyPrefix: string,
+  logger: Logger,
+): Promise<ActionsCacheItem[]> {
+  const allCaches = await listActionsCaches(cacheKeyPrefix);
+
+  if (allCaches.length === 0) {
+    logger.info("No overlay-base databases found in Actions cache.");
+    return [];
+  }
+
+  const cutoffMs = Date.now() - CACHE_ENTRY_MAX_AGE_MS;
+  const recentCaches = allCaches.filter((cache) => {
+    if (!cache.last_accessed_at) return true;
+    const lastAccessedMs = Date.parse(cache.last_accessed_at);
+    return Number.isNaN(lastAccessedMs) || lastAccessedMs >= cutoffMs;
+  });
+  const numTooOldDatabases = allCaches.length - recentCaches.length;
+  const tooOldSuffix =
+    numTooOldDatabases > 0
+      ? ` (ignoring ${numTooOldDatabases} that may be evicted soon)`
+      : "";
+  logger.info(
+    `Found ${allCaches.length} overlay-base ${allCaches.length === 1 ? "database" : "databases"} in the Actions cache${tooOldSuffix}.`,
+  );
+
+  return recentCaches;
+}
+
+/**
  * Searches the GitHub Actions cache for overlay-base databases matching the given languages, and
  * returns all stable CodeQL versions found across matching cache entries.
  *
@@ -448,7 +491,7 @@ export async function getCodeQlVersionsForOverlayBaseDatabases(
 ): Promise<string[] | undefined> {
   const languages = rawLanguages.map(parseBuiltInLanguage);
   if (languages.includes(undefined)) {
-    logger.warning(
+    logger.info(
       "One or more provided languages are not recognized as built-in languages. " +
         "Skipping searching for overlay-base databases in cache.",
     );
@@ -463,22 +506,19 @@ export async function getCodeQlVersionsForOverlayBaseDatabases(
       `prefix ${cacheKeyPrefix}`,
   );
 
-  const caches = await listActionsCaches(cacheKeyPrefix);
+  const caches = await listRecentOverlayBaseDatabaseCaches(
+    cacheKeyPrefix,
+    logger,
+  );
 
   if (caches.length === 0) {
-    logger.info("No overlay-base databases found in Actions cache.");
     return [];
   }
 
-  logger.info(
-    `Found ${caches.length} overlay-base ` +
-      `${caches.length === 1 ? "database" : "databases"} in the Actions cache.`,
-  );
-
   // Parse CodeQL versions from cache keys, matching only stable releases.
   //
-  // After the prefix, the remaining key format starts with `${codeQlVersion}-`. Nightlies will have
-  // a suffix like `+202604201548` that will break the match.
+  // After the prefix, the remaining key format starts with `${codeQlVersion}-`. Nightlies have a
+  // suffix like `+202604201548` that will prevent a match.
   //
   // Caveat: this relies on the fact that we haven't released any CodeQL bundles with the
   // `x.y.z-<pre-release>` semver format which does not interact well with the current overlay base
@@ -506,7 +546,7 @@ export async function getCodeQlVersionsForOverlayBaseDatabases(
   const versions = [...versionSet].sort(semver.rcompare);
 
   logger.info(
-    `Found overlay databases for the following CodeQL versions in the Actions cache: ${versions.join(", ")}`,
+    `Found overlay-base databases for the following CodeQL versions in the Actions cache: ${versions.join(", ")}`,
   );
 
   return versions;

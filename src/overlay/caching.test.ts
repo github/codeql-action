@@ -390,3 +390,30 @@ test.serial(
     t.deepEqual(result, ["2.25.0"]);
   },
 );
+
+test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases ignores nightly versions with build metadata",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    sinon.stub(apiClient, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.25.0-abc123-1-1",
+      },
+      {
+        // Nightly release with semver build metadata; should be ignored.
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.26.0+202604211234-def456-2-1",
+      },
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.24.0-ghi789-3-1",
+      },
+    ]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["python"],
+      logger,
+    );
+    t.deepEqual(result, ["2.25.0", "2.24.0"]);
+  },
+);

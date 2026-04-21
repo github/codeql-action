@@ -7,7 +7,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "../actions-util";
 import * as apiClient from "../api-client";
-import { ResolveDatabaseOutput } from "../codeql";
+import { type ResolveDatabaseOutput } from "../codeql";
 import * as gitUtils from "../git-utils";
 import { BuiltInLanguage } from "../languages";
 import { getRunnerLogger } from "../logging";

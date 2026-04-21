@@ -13,8 +13,8 @@ import { createCacheKeyHash } from "../caching-utils";
 import { type CodeQL } from "../codeql";
 import { type Config } from "../config-utils";
 import { getCommitOid } from "../git-utils";
-import { Language, parseBuiltInLanguage } from "../languages";
-import { Logger, withGroupAsync } from "../logging";
+import { type Language, parseBuiltInLanguage } from "../languages";
+import { type Logger, withGroupAsync } from "../logging";
 import {
   CleanupLevel,
   getBaseDatabaseOidsFilePath,

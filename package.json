@@ -40,7 +40,7 @@
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
     "semver": "^7.7.4",
-    "uuid": "^13.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@ava/typescript": "6.0.0",

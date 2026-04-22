@@ -2,7 +2,7 @@
   "private": true,
   "description": "Dependencies for the sync.ts",
   "dependencies": {
-    "@actions/core": "^2.0.3",
+    "@actions/core": "^3.0.1",
     "@actions/github": "^8.0.1",
     "@octokit/core": "^7.0.6",
     "@octokit/plugin-paginate-rest": ">=9.2.2",

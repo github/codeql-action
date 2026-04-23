@@ -1085,8 +1085,14 @@ function hasQueryCustomisation(userConfig: UserConfig): boolean {
  * If overlay mode was selected for a PR but diff-informed analysis should have
  * run and could not be prepared, fall back to a full non-overlay analysis.
  * Query exclusions for incremental-only queries are applied only when the final
- * configuration still uses overlay analysis or diff-informed analysis is
- * actually available.
+ * configuration still uses overlay analysis or the diff ranges are available.
+ *
+ * Note that `overlayDatabaseMode === Overlay` does not imply
+ * `diffInformedAnalysis.shouldRun`. Overlay mode is selected based on language
+ * and feature-flag state and can apply outside of pull-request contexts (e.g.
+ * on branch pushes that build up the overlay cache), whereas diff-informed
+ * analysis only runs for pull requests where we can compute a diff. Each
+ * combination is therefore handled explicitly.
  */
 export function applyIncrementalAnalysisSettings(
   config: Config,
@@ -1096,9 +1102,9 @@ export function applyIncrementalAnalysisSettings(
   if (
     config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
     diffInformedAnalysis.shouldRun &&
-    !diffInformedAnalysis.isAvailable
+    !diffInformedAnalysis.hasDiffRanges
   ) {
-    logger.warning(
+    logger.info(
       "Diff-informed analysis is not available for this pull request. " +
         `Reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
     );
@@ -1107,7 +1113,7 @@ export function applyIncrementalAnalysisSettings(
 
   if (
     config.overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
-    diffInformedAnalysis.isAvailable
+    diffInformedAnalysis.hasDiffRanges
   ) {
     config.extraQueryExclusions.push({
       exclude: { tags: "exclude-from-incremental" },

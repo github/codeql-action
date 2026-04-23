@@ -6,13 +6,15 @@ import type { PullRequestBranches } from "./actions-util";
 import * as apiClient from "./api-client";
 import {
   getDiffInformedAnalysisBranches,
+  prepareDiffInformedAnalysis,
   exportedForTesting,
 } from "./diff-informed-analysis-utils";
-import { Feature, initFeatures } from "./feature-flags";
+import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
+  createFeatures,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
   setupActionsVars,
@@ -185,6 +187,135 @@ test.serial(
     pullRequestBranches: undefined,
   },
   false,
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns shouldRun=false when not a pull request",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      const features = createFeatures([Feature.DiffInformedQueries]);
+
+      sinon.stub(actionsUtil, "getPullRequestBranches").returns(undefined);
+      sinon
+        .stub(apiClient, "getGitHubVersion")
+        .resolves({ type: GitHubVariant.DOTCOM });
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.deepEqual(result, { shouldRun: false, hasDiffRanges: false });
+    });
+  },
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns shouldRun=false when applicability check throws",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      // A features implementation whose getValue rejects, simulating an
+      // unexpected failure when determining whether diff-informed analysis
+      // should run.
+      const features: FeatureEnablement = {
+        getDefaultCliVersion: async () => {
+          throw new Error("not implemented");
+        },
+        getValue: async () => {
+          throw new Error("feature flag lookup failed");
+        },
+      };
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.deepEqual(result, { shouldRun: false, hasDiffRanges: false });
+    });
+  },
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns hasDiffRanges=true when the diff is fetched successfully",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      const features = createFeatures([Feature.DiffInformedQueries]);
+
+      sinon
+        .stub(actionsUtil, "getPullRequestBranches")
+        .returns({ base: "main", head: "feature" });
+      sinon
+        .stub(apiClient, "getGitHubVersion")
+        .resolves({ type: GitHubVariant.DOTCOM });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      sinon.stub(apiClient, "getApiClient").returns({
+        rest: {
+          repos: {
+            compareCommitsWithBasehead: sinon
+              .stub()
+              .resolves({ data: { files: [] } }),
+          },
+        },
+      } as any);
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.deepEqual(result, { shouldRun: true, hasDiffRanges: true });
+    });
+  },
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns hasDiffRanges=false when the diff API call fails",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      const features = createFeatures([Feature.DiffInformedQueries]);
+
+      sinon
+        .stub(actionsUtil, "getPullRequestBranches")
+        .returns({ base: "main", head: "feature" });
+      sinon
+        .stub(apiClient, "getGitHubVersion")
+        .resolves({ type: GitHubVariant.DOTCOM });
+      const notFoundError: any = new Error("Not Found");
+      notFoundError.status = 404;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      sinon.stub(apiClient, "getApiClient").returns({
+        rest: {
+          repos: {
+            compareCommitsWithBasehead: sinon.stub().rejects(notFoundError),
+          },
+        },
+      } as any);
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.deepEqual(result, { shouldRun: true, hasDiffRanges: false });
+    });
+  },
 );
 
 function runGetDiffRanges(changes: number, patch: string[] | undefined): any {

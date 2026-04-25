@@ -1,5 +1,6 @@
 import test from "ava";
 
+import { makeFromSchema } from "../json/testing-util";
 import { setupTests } from "../testing-utils";
 
 import * as types from "./types";
@@ -103,6 +104,24 @@ test("credentialToStr - pretty-prints valid JFrog OIDC configurations", (t) => {
 
   t.is(
     "Type: maven_credential; Url: https://localhost; JFrog Provider: MY_PROVIDER; JFrog Identity Mapping: my-mapping; JFrog Audience: jfrog-audience;",
+    str,
+  );
+});
+
+test("credentialToStr - pretty-prints valid Cloudsmith OIDC configurations", (t) => {
+  const credential: types.Credential = {
+    type: "maven_credential",
+    url: "https://localhost",
+    ...(makeFromSchema(
+      true,
+      types.cloudsmithConfigSchema,
+    ) as types.CloudsmithConfig),
+  };
+
+  const str = types.credentialToStr(credential);
+
+  t.is(
+    "Type: maven_credential; Url: https://localhost; Cloudsmith Namespace: value-for-namespace; Cloudsmith Service Slug: value-for-service-slug; Cloudsmith API Host: value-for-api-host;",
     str,
   );
 });

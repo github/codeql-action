@@ -9,53 +9,60 @@ import { isDefined } from "../util";
  */
 export type RawCredential = UnvalidatedObject<Credential>;
 
-/** Usernames may be present for both authentication with tokens or passwords. */
-export type Username = {
+/** A schema for credential objects with a username. */
+export const usernameSchema = {
   /** The username needed to authenticate to the package registry, if any. */
-  username?: string;
-};
+  username: json.optional(json.string),
+} as const satisfies json.Schema;
+
+/** Usernames may be present for both authentication with tokens or passwords. */
+export type Username = json.FromSchema<typeof usernameSchema>;
 
 /** Decides whether `config` has a username. */
-export function hasUsername(config: AuthConfig): config is Username {
+export function hasUsername(
+  config: UnvalidatedObject<unknown>,
+): config is Username {
   return "username" in config;
 }
+
+/** A schema for credential objects with a username and password. */
+export const usernamePasswordSchema = {
+  /** The password needed to authenticate to the package registry, if any. */
+  password: json.optional(json.string),
+  ...usernameSchema,
+} as const satisfies json.Schema;
 
 /**
  * Fields expected for authentication based on a username and password.
  * Both username and password are optional.
  */
-export type UsernamePassword = {
-  /** The password needed to authenticate to the package registry, if any. */
-  password?: string;
-} & Username;
+export type UsernamePassword = json.FromSchema<typeof usernamePasswordSchema>;
 
 /** Decides whether `config` is based on a username and password. */
 export function isUsernamePassword(
   config: AuthConfig,
 ): config is UsernamePassword {
-  return hasUsername(config) && "password" in config;
+  return json.validateSchema(usernamePasswordSchema, config);
 }
+
+/** A schema for credential objects for token-based authentication. */
+export const tokenSchema = {
+  /** The token needed to authenticate to the package registry, if any. */
+  token: json.optional(json.string),
+  ...usernameSchema,
+} as const satisfies json.Schema;
 
 /**
  * Fields expected for token-based authentication.
  * Both username and token are optional.
  */
-export type Token = {
-  /** The token needed to authenticate to the package registry, if any. */
-  token?: string;
-} & Username;
+export type Token = json.FromSchema<typeof tokenSchema>;
 
 /** Decides whether `config` is token-based. */
 export function isToken(
   config: UnvalidatedObject<AuthConfig>,
 ): config is Token {
-  // The "username" field is optional, but should be a string if present.
-  if ("username" in config && !json.isStringOrUndefined(config.username)) {
-    return false;
-  }
-
-  // The "token" field is required, and must be a string or undefined.
-  return "token" in config && json.isStringOrUndefined(config.token);
+  return "token" in config && json.validateSchema(tokenSchema, config);
 }
 
 /** A schema for Azure OIDC configurations. */

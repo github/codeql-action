@@ -3,7 +3,7 @@ import * as core from "@actions/core";
 import * as json from "../json";
 import { isDefined } from "../util";
 
-import type { AuthConfig, Token, UsernamePassword } from "./types";
+import type { AuthConfig, UsernamePassword } from "./types";
 import * as types from "./types";
 
 /** Constructs a new object from `obj` with only keys that exist in `schema`. */
@@ -55,7 +55,7 @@ export function getAuthConfig(
       core.setSecret(config.token);
     }
 
-    return { username: config.username, token: config.token } satisfies Token;
+    return cloneCredential(types.tokenSchema, config);
   } else {
     let username: string | undefined = undefined;
     let password: string | undefined = undefined;

@@ -126,6 +126,21 @@ test("credentialToStr - pretty-prints valid Cloudsmith OIDC configurations", (t)
   );
 });
 
+test("credentialToStr - pretty-prints valid GCP OIDC configurations", (t) => {
+  const credential: types.Credential = {
+    type: "maven_credential",
+    url: "https://localhost",
+    ...(makeFromSchema(true, types.gcpConfigSchema) as types.GCPConfig),
+  };
+
+  const str = types.credentialToStr(credential);
+
+  t.is(
+    "Type: maven_credential; Url: https://localhost; GCP Workload Identity Provider: value-for-workload-identity-provider; GCP Service Account: value-for-service-account; GCP Audience: value-for-audience;",
+    str,
+  );
+});
+
 test("credentialToStr - hides passwords", (t) => {
   const secret = "password123";
   const credential = {

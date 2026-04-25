@@ -135,16 +135,39 @@ export function isCloudsmithConfig(
   return json.validateSchema(cloudsmithConfigSchema, config);
 }
 
+/** A schema for GCP OIDC configurations. */
+export const gcpConfigSchema = {
+  "workload-identity-provider": json.string,
+  "service-account": json.optional(json.string),
+  audience: json.optional(json.string),
+} as const satisfies json.Schema;
+
+/** Configuration for GCP OIDC. */
+export type GCPConfig = json.FromSchema<typeof gcpConfigSchema>;
+
+/** Decides whether `config` is a GCP OIDC configuration. */
+export function isGCPConfig(
+  config: UnvalidatedObject<AuthConfig>,
+): config is GCPConfig {
+  return json.validateSchema(gcpConfigSchema, config);
+}
+
 /** An array of all OIDC configuration schemas along with output-friendly names. */
 export const oidcSchemas = [
   { schema: azureConfigSchema, name: "Azure" },
   { schema: awsConfigSchema, name: "AWS" },
   { schema: jfrogConfigSchema, name: "JFrog" },
   { schema: cloudsmithConfigSchema, name: "Cloudsmith" },
+  { schema: gcpConfigSchema, name: "GCP" },
 ];
 
 /** Represents all supported OIDC configurations. */
-export type OIDC = AzureConfig | AWSConfig | JFrogConfig | CloudsmithConfig;
+export type OIDC =
+  | AzureConfig
+  | AWSConfig
+  | JFrogConfig
+  | CloudsmithConfig
+  | GCPConfig;
 
 /** All authentication-related fields. */
 export type AuthConfig = UsernamePassword | Token | OIDC;
@@ -207,6 +230,13 @@ export function credentialToStr(credential: Credential): string {
     appendIfDefined("Cloudsmith Namespace", credential.namespace);
     appendIfDefined("Cloudsmith Service Slug", credential["service-slug"]);
     appendIfDefined("Cloudsmith API Host", credential["api-host"]);
+  } else if (isGCPConfig(credential)) {
+    appendIfDefined(
+      "GCP Workload Identity Provider",
+      credential["workload-identity-provider"],
+    );
+    appendIfDefined("GCP Service Account", credential["service-account"]);
+    appendIfDefined("GCP Audience", credential.audience);
   }
 
   return result;

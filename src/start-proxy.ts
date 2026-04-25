@@ -347,8 +347,21 @@ export function getCredentials(
       );
     }
 
+    // Construct the base credential object.
+    const baseCredential: Omit<Registry, keyof Address> = { type: e.type };
+
+    if (isDefined(e["replaces-base"])) {
+      if (typeof e["replaces-base"] === "boolean") {
+        baseCredential["replaces-base"] = e["replaces-base"];
+      } else {
+        throw new ConfigurationError(
+          "Invalid credentials - 'replaces-base' must be a boolean",
+        );
+      }
+    }
+
     out.push({
-      type: e.type,
+      ...baseCredential,
       ...authConfig,
       ...address,
     });

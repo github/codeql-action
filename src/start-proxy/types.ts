@@ -246,6 +246,8 @@ export function credentialToStr(credential: Credential): string {
 export type Registry = {
   /** The type of the package registry. */
   type: string;
+  /** Whether the registry replaces the base registry for the ecosystem. */
+  "replaces-base"?: boolean;
 } & Address;
 
 // If a registry has an `url`, then that takes precedence over the `host` which may or may

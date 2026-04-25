@@ -1,5 +1,5 @@
 name: "CodeQL config"
-queries: 
+queries:
   - name: Run custom queries
     uses: ./queries
   # Run all extra query suites, both because we want to
@@ -13,3 +13,5 @@ queries:
 paths-ignore:
   - lib
   - tests
+  - "**/*.test.ts"
+  - "**/testing-util.ts"

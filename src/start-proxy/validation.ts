@@ -3,15 +3,26 @@ import * as core from "@actions/core";
 import * as json from "../json";
 import { isDefined } from "../util";
 
-import type {
-  AuthConfig,
-  AWSConfig,
-  AzureConfig,
-  JFrogConfig,
-  Token,
-  UsernamePassword,
-} from "./types";
+import type { AuthConfig, Token, UsernamePassword } from "./types";
 import * as types from "./types";
+
+/** Constructs a new object from `obj` with only keys that exist in `schema`. */
+export function cloneCredential<
+  T extends json.FromSchema<S>,
+  S extends json.Schema,
+>(schema: S, obj: T): T {
+  const result = {};
+
+  for (const key of Object.keys(schema)) {
+    // Skip keys that don't exist or don't have a value.
+    if (!isDefined(obj[key])) {
+      continue;
+    }
+    result[key] = obj[key];
+  }
+
+  return result as T;
+}
 
 /** Extracts an `AuthConfig` value from `config`. */
 export function getAuthConfig(
@@ -20,25 +31,11 @@ export function getAuthConfig(
   // Start by checking for the OIDC configurations, since they have required properties
   // which we can use to identify them.
   if (types.isAzureConfig(config)) {
-    return {
-      "tenant-id": config["tenant-id"],
-      "client-id": config["client-id"],
-    } satisfies AzureConfig;
+    return cloneCredential(types.azureConfigSchema, config);
   } else if (types.isAWSConfig(config)) {
-    return {
-      "aws-region": config["aws-region"],
-      "account-id": config["account-id"],
-      "role-name": config["role-name"],
-      domain: config.domain,
-      "domain-owner": config["domain-owner"],
-      audience: config.audience,
-    } satisfies AWSConfig;
+    return cloneCredential(types.awsConfigSchema, config);
   } else if (types.isJFrogConfig(config)) {
-    return {
-      "jfrog-oidc-provider-name": config["jfrog-oidc-provider-name"],
-      "identity-mapping-name": config["identity-mapping-name"],
-      audience: config.audience,
-    } satisfies JFrogConfig;
+    return cloneCredential(types.jfrogConfigSchema, config);
   } else if (types.isToken(config)) {
     // There are three scenarios for non-OIDC authentication based on the registry type:
     //

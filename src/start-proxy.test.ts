@@ -8,6 +8,7 @@ import sinon from "sinon";
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
 import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
+import { makeFromSchema } from "./json/testing-util";
 import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
 import * as startProxyExports from "./start-proxy";
@@ -457,23 +458,13 @@ test("getCredentials throws an error when non-printable characters are used for 
 });
 
 test("getCredentials accepts OIDC configurations", (t) => {
-  const oidcConfigurations = [
-    {
+  const oidcConfigurations = startProxyExports.oidcSchemas.map(
+    (schemaInfo) => ({
       type: "nuget_feed",
-      host: "azure.pkg.github.com",
-      ...validAzureCredential,
-    },
-    {
-      type: "nuget_feed",
-      host: "aws.pkg.github.com",
-      ...validAwsCredential,
-    },
-    {
-      type: "nuget_feed",
-      host: "jfrog.pkg.github.com",
-      ...validJFrogCredential,
-    },
-  ];
+      host: `${schemaInfo.name.toLowerCase()}.pkg.github.com`,
+      ...makeFromSchema(true, schemaInfo.schema),
+    }),
+  );
 
   const credentials = startProxyExports.getCredentials(
     getRunnerLogger(true),

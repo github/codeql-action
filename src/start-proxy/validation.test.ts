@@ -1,6 +1,7 @@
 import test from "ava";
 
 import * as json from "../json";
+import { makeFromSchema } from "../json/testing-util";
 import { setupTests } from "../testing-utils";
 
 import * as types from "./types";
@@ -8,27 +9,7 @@ import { getAuthConfig } from "./validation";
 
 setupTests(test);
 
-function makeFromSchema(
-  includeOptional: boolean,
-  schema: json.Schema,
-): json.FromSchema<typeof schema> {
-  const result = {};
-  for (const [key, validator] of Object.entries(schema)) {
-    if (!validator.required && !includeOptional) {
-      continue;
-    }
-    result[key] = `value-for-${key}`;
-  }
-  return result;
-}
-
-const schemaTests = [
-  { schema: types.azureConfigSchema, name: "isAzureConfig" },
-  { schema: types.awsConfigSchema, name: "isAWSConfig" },
-  { schema: types.jfrogConfigSchema, name: "isJFrogConfig" },
-] as Array<{ schema: json.Schema; name: string }>;
-
-for (const schemaTest of schemaTests) {
+for (const schemaTest of types.oidcSchemas) {
   for (const includeOptional of [true, false]) {
     const minimalName = includeOptional ? "full" : "minimal";
 
@@ -39,7 +20,7 @@ for (const schemaTest of schemaTests) {
         getAuthConfig({
           ...config,
           unexpected: "unexpected-value",
-        } as json.UnvalidatedObject<types.AuthConfig>),
+        } as unknown as json.UnvalidatedObject<types.AuthConfig>),
         config,
       );
     });

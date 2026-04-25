@@ -30,13 +30,14 @@ export function getAuthConfig(
 ): AuthConfig {
   // Start by checking for the OIDC configurations, since they have required properties
   // which we can use to identify them.
-  if (types.isAzureConfig(config)) {
-    return cloneCredential(types.azureConfigSchema, config);
-  } else if (types.isAWSConfig(config)) {
-    return cloneCredential(types.awsConfigSchema, config);
-  } else if (types.isJFrogConfig(config)) {
-    return cloneCredential(types.jfrogConfigSchema, config);
-  } else if (types.isToken(config)) {
+  for (const oidcSchema of types.oidcSchemas) {
+    if (json.validateSchema(oidcSchema.schema, config)) {
+      return cloneCredential(oidcSchema.schema, config);
+    }
+  }
+
+  // Otherwise, try the basic configuration types.
+  if (types.isToken(config)) {
     // There are three scenarios for non-OIDC authentication based on the registry type:
     //
     // 1. `username`+`token`

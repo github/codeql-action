@@ -8,6 +8,7 @@ import sinon from "sinon";
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
 import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
+import { UnvalidatedObject, validateSchema } from "./json";
 import { makeFromSchema } from "./json/testing-util";
 import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
@@ -472,12 +473,20 @@ test("getCredentials accepts OIDC configurations", (t) => {
     toEncodedJSON(oidcConfigurations),
     BuiltInLanguage.csharp,
   );
-  t.is(credentials.length, 3);
+  t.is(credentials.length, startProxyExports.oidcSchemas.length);
 
   t.assert(credentials.every((c) => c.type === "nuget_feed"));
-  t.assert(credentials.some((c) => startProxyExports.isAzureConfig(c)));
-  t.assert(credentials.some((c) => startProxyExports.isAWSConfig(c)));
-  t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
+
+  for (const oidcSchemaInfo of startProxyExports.oidcSchemas) {
+    t.assert(
+      credentials.some((c) =>
+        validateSchema(
+          oidcSchemaInfo.schema,
+          c as unknown as UnvalidatedObject<any>,
+        ),
+      ),
+    );
+  }
 });
 
 const getCredentialsMacro = test.macro({

@@ -118,15 +118,33 @@ export function isJFrogConfig(
   return json.validateSchema(jfrogConfigSchema, config);
 }
 
+/** A schema for Cloudsmith OIDC configurations. */
+export const cloudsmithConfigSchema = {
+  namespace: json.string,
+  "service-slug": json.string,
+  "api-host": json.string,
+} as const satisfies json.Schema;
+
+/** Configuration for Cloudsmith OIDC. */
+export type CloudsmithConfig = json.FromSchema<typeof cloudsmithConfigSchema>;
+
+/** Decides whether `config` is a Cloudsmith OIDC configuration. */
+export function isCloudsmithConfig(
+  config: UnvalidatedObject<AuthConfig>,
+): config is CloudsmithConfig {
+  return json.validateSchema(cloudsmithConfigSchema, config);
+}
+
 /** An array of all OIDC configuration schemas along with output-friendly names. */
 export const oidcSchemas = [
   { schema: azureConfigSchema, name: "Azure" },
   { schema: awsConfigSchema, name: "AWS" },
   { schema: jfrogConfigSchema, name: "JFrog" },
+  { schema: cloudsmithConfigSchema, name: "Cloudsmith" },
 ];
 
 /** Represents all supported OIDC configurations. */
-export type OIDC = AzureConfig | AWSConfig | JFrogConfig;
+export type OIDC = AzureConfig | AWSConfig | JFrogConfig | CloudsmithConfig;
 
 /** All authentication-related fields. */
 export type AuthConfig = UsernamePassword | Token | OIDC;
@@ -185,6 +203,10 @@ export function credentialToStr(credential: Credential): string {
       credential["identity-mapping-name"],
     );
     appendIfDefined("JFrog Audience", credential.audience);
+  } else if (isCloudsmithConfig(credential)) {
+    appendIfDefined("Cloudsmith Namespace", credential.namespace);
+    appendIfDefined("Cloudsmith Service Slug", credential["service-slug"]);
+    appendIfDefined("Cloudsmith API Host", credential["api-host"]);
   }
 
   return result;

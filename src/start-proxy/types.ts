@@ -118,6 +118,13 @@ export function isJFrogConfig(
   return json.validateSchema(jfrogConfigSchema, config);
 }
 
+/** An array of all OIDC configuration schemas along with output-friendly names. */
+export const oidcSchemas = [
+  { schema: azureConfigSchema, name: "Azure" },
+  { schema: awsConfigSchema, name: "AWS" },
+  { schema: jfrogConfigSchema, name: "JFrog" },
+];
+
 /** Represents all supported OIDC configurations. */
 export type OIDC = AzureConfig | AWSConfig | JFrogConfig;
 

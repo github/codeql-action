@@ -58,91 +58,57 @@ export function isToken(
   return "token" in config && json.isStringOrUndefined(config.token);
 }
 
+/** A schema for Azure OIDC configurations. */
+export const azureConfigSchema = {
+  "tenant-id": json.string,
+  "client-id": json.string,
+} as const satisfies json.Schema;
+
 /** Configuration for Azure OIDC. */
-export type AzureConfig = { "tenant-id": string; "client-id": string };
+export type AzureConfig = json.FromSchema<typeof azureConfigSchema>;
 
 /** Decides whether `config` is an Azure OIDC configuration. */
 export function isAzureConfig(
   config: UnvalidatedObject<AuthConfig>,
 ): config is AzureConfig {
-  return (
-    "tenant-id" in config &&
-    "client-id" in config &&
-    isDefined(config["tenant-id"]) &&
-    isDefined(config["client-id"]) &&
-    json.isString(config["tenant-id"]) &&
-    json.isString(config["client-id"])
-  );
+  return json.validateSchema(azureConfigSchema, config);
 }
 
+/** A schema for AWS OIDC configurations. */
+export const awsConfigSchema = {
+  "aws-region": json.string,
+  "account-id": json.string,
+  "role-name": json.string,
+  domain: json.string,
+  "domain-owner": json.string,
+  audience: json.optional(json.string),
+} as const satisfies json.Schema;
+
 /** Configuration for AWS OIDC. */
-export type AWSConfig = {
-  "aws-region": string;
-  "account-id": string;
-  "role-name": string;
-  domain: string;
-  "domain-owner": string;
-  audience?: string;
-};
+export type AWSConfig = json.FromSchema<typeof awsConfigSchema>;
 
 /** Decides whether `config` is an AWS OIDC configuration. */
 export function isAWSConfig(
   config: UnvalidatedObject<AuthConfig>,
 ): config is AWSConfig {
-  // All of these properties are required.
-  const requiredProperties = [
-    "aws-region",
-    "account-id",
-    "role-name",
-    "domain",
-    "domain-owner",
-  ];
-
-  for (const property of requiredProperties) {
-    if (
-      !(property in config) ||
-      !isDefined(config[property]) ||
-      !json.isString(config[property])
-    ) {
-      return false;
-    }
-  }
-
-  // The "audience" field is optional, but should be a string if present.
-  if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
-    return false;
-  }
-
-  return true;
+  return json.validateSchema(awsConfigSchema, config);
 }
 
+/** A schema for JFrog OIDC configurations. */
+export const jfrogConfigSchema = {
+  "jfrog-oidc-provider-name": json.string,
+  audience: json.optional(json.string),
+  "identity-mapping-name": json.optional(json.string),
+} as const satisfies json.Schema;
+
 /** Configuration for JFrog OIDC. */
-export type JFrogConfig = {
-  "jfrog-oidc-provider-name": string;
-  audience?: string;
-  "identity-mapping-name"?: string;
-};
+export type JFrogConfig = json.FromSchema<typeof jfrogConfigSchema>;
 
 /** Decides whether `config` is a JFrog OIDC configuration. */
 export function isJFrogConfig(
   config: UnvalidatedObject<AuthConfig>,
 ): config is JFrogConfig {
-  // The "audience" and "identity-mapping-name" fields are optional, but should be strings if present.
-  if ("audience" in config && !json.isStringOrUndefined(config.audience)) {
-    return false;
-  }
-  if (
-    "identity-mapping-name" in config &&
-    !json.isStringOrUndefined(config["identity-mapping-name"])
-  ) {
-    return false;
-  }
-
-  return (
-    "jfrog-oidc-provider-name" in config &&
-    isDefined(config["jfrog-oidc-provider-name"]) &&
-    json.isString(config["jfrog-oidc-provider-name"])
-  );
+  return json.validateSchema(jfrogConfigSchema, config);
 }
 
 /** Represents all supported OIDC configurations. */
@@ -165,7 +131,7 @@ export type Credential = AuthConfig & Registry;
 export function credentialToStr(credential: Credential): string {
   let result: string = `Type: ${credential.type};`;
 
-  const appendIfDefined = (name: string, val: string | undefined) => {
+  const appendIfDefined = (name: string, val: string | undefined | null) => {
     if (isDefined(val)) {
       result += ` ${name}: ${val};`;
     }

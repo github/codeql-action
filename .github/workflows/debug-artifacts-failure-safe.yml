@@ -66,6 +66,7 @@ jobs:
         uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init
         with:
+          languages: cpp,csharp,go,java,javascript,python
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           debug: true
           debug-artifact-name: my-debug-artifacts

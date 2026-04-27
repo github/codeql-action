@@ -8,3 +8,16 @@ export const PR_CHECKS_DIR = __dirname;
 
 /** The path of the file configuring which checks shouldn't be required. */
 export const PR_CHECK_EXCLUDED_FILE = path.join(PR_CHECKS_DIR, "excluded.yml");
+
+/** The path to the esbuild metadata file. */
+export const BUNDLE_METADATA_FILE = path.join(PR_CHECKS_DIR, "..", "meta.json");
+
+/** The `src` directory. */
+const SOURCE_ROOT = path.join(PR_CHECKS_DIR, "..", "src");
+
+/** The path to the built-in languages file. */
+export const BUILTIN_LANGUAGES_FILE = path.join(
+  SOURCE_ROOT,
+  "languages",
+  "builtin.json",
+);

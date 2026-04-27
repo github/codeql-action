@@ -18,7 +18,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import * as json from "./json";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
   Address,
@@ -156,7 +156,7 @@ export function getSafeErrorMessage(error: Error): string {
 export async function sendFailedStatusReport(
   logger: Logger,
   startedAt: Date,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   unwrappedError: unknown,
 ) {
   const error = util.wrapError(unwrappedError);
@@ -172,7 +172,7 @@ export async function sendFailedStatusReport(
     getActionsStatus(error),
     startedAt,
     {
-      languages: language && [language],
+      languages: language === undefined ? undefined : [language],
     },
     await util.checkDiskUsage(logger),
     logger,
@@ -188,48 +188,6 @@ export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 
-/*
- * Language aliases supported by the start-proxy Action.
- *
- * In general, the CodeQL CLI is the source of truth for language aliases, and to
- * allow us to more easily support new languages, we want to avoid hardcoding these
- * aliases in the Action itself.  However this is difficult to do in the start-proxy
- * Action since this Action does not use CodeQL, so we're accepting some hardcoding
- * for this Action.
- */
-const LANGUAGE_ALIASES: { [lang: string]: KnownLanguage } = {
-  c: KnownLanguage.cpp,
-  "c++": KnownLanguage.cpp,
-  "c#": KnownLanguage.csharp,
-  kotlin: KnownLanguage.java,
-  typescript: KnownLanguage.javascript,
-  "javascript-typescript": KnownLanguage.javascript,
-  "java-kotlin": KnownLanguage.java,
-};
-
-/**
- * Parse the start-proxy language input into its canonical CodeQL language name.
- *
- * Exported for testing. Do not use this outside of the start-proxy Action
- * to avoid complicating the process of adding new CodeQL languages.
- */
-export function parseLanguage(language: string): KnownLanguage | undefined {
-  // Normalize to lower case
-  language = language.trim().toLowerCase();
-
-  // See if it's an exact match
-  if (language in KnownLanguage) {
-    return language as KnownLanguage;
-  }
-
-  // Check language aliases
-  if (language in LANGUAGE_ALIASES) {
-    return LANGUAGE_ALIASES[language];
-  }
-
-  return undefined;
-}
-
 function isPAT(value: string) {
   return artifactScanner.isAuthToken(value, [
     artifactScanner.GITHUB_PAT_CLASSIC_PATTERN,
@@ -237,7 +195,7 @@ function isPAT(value: string) {
   ]);
 }
 
-type RegistryMapping = Partial<Record<KnownLanguage, string[]>>;
+type RegistryMapping = Partial<Record<BuiltInLanguage, string[]>>;
 
 const LANGUAGE_TO_REGISTRY_TYPE: RegistryMapping = {
   java: ["maven_repository"],
@@ -301,22 +259,22 @@ export function getAuthConfig(
   // which we can use to identify them.
   if (isAzureConfig(config)) {
     return {
-      tenant_id: config.tenant_id,
-      client_id: config.client_id,
+      "tenant-id": config["tenant-id"],
+      "client-id": config["client-id"],
     } satisfies AzureConfig;
   } else if (isAWSConfig(config)) {
     return {
-      aws_region: config.aws_region,
-      account_id: config.account_id,
-      role_name: config.role_name,
+      "aws-region": config["aws-region"],
+      "account-id": config["account-id"],
+      "role-name": config["role-name"],
       domain: config.domain,
-      domain_owner: config.domain_owner,
+      "domain-owner": config["domain-owner"],
       audience: config.audience,
     } satisfies AWSConfig;
   } else if (isJFrogConfig(config)) {
     return {
-      jfrog_oidc_provider_name: config.jfrog_oidc_provider_name,
-      identity_mapping_name: config.identity_mapping_name,
+      "jfrog-oidc-provider-name": config["jfrog-oidc-provider-name"],
+      "identity-mapping-name": config["identity-mapping-name"],
       audience: config.audience,
     } satisfies JFrogConfig;
   } else if (isToken(config)) {
@@ -369,7 +327,7 @@ export function getCredentials(
   logger: Logger,
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   skipUnusedRegistries: boolean = false,
 ): Credential[] {
   const registryMapping = skipUnusedRegistries

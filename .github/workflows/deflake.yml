@@ -1,0 +1,106 @@
+# Workflow runs on main, on a release branch, and that were triggered as part of a merge group have
+# already passed CI before being merged. Therefore if they fail, we should make sure that there
+# wasn't a transient failure by rerunning the failed jobs once before investigating further.
+name: Deflake
+
+on:
+  workflow_run:
+    types: [completed]
+    # Exclude workflows that have significant side effects, like publishing releases. It's OK to
+    # retry CodeQL analysis.
+    workflows:
+      - Check Expected Release Files
+      - Code-Scanning config CLI tests
+      - CodeQL action
+      - Manual Check - go
+      - "PR Check - All-platform bundle"
+      - "PR Check - Analysis kinds"
+      - "PR Check - Analyze: 'ref' and 'sha' from inputs"
+      - "PR Check - autobuild-action"
+      - "PR Check - Autobuild direct tracing (custom working directory)"
+      - "PR Check - Autobuild working directory"
+      - "PR Check - Build mode autobuild"
+      - "PR Check - Build mode manual"
+      - "PR Check - Build mode none"
+      - "PR Check - Build mode rollback"
+      - "PR Check - Bundle: Caching checks"
+      - "PR Check - Bundle: From nightly"
+      - "PR Check - Bundle: From toolcache"
+      - "PR Check - Bundle: Zstandard checks"
+      - "PR Check - C/C\\+\\+: autoinstalling dependencies (Linux)"
+      - "PR Check - C/C\\+\\+: autoinstalling dependencies is skipped (macOS)"
+      - "PR Check - C/C\\+\\+: disabling autoinstalling dependencies (Linux)"
+      - "PR Check - Clean up database cluster directory"
+      - "PR Check - CodeQL Bundle All"
+      - "PR Check - Config export"
+      - "PR Check - Config input"
+      - "PR Check - Custom source root"
+      - "PR Check - Debug artifact upload"
+      - "PR Check - Debug artifacts after failure"
+      - "PR Check - Diagnostic export"
+      - "PR Check - Export file baseline information"
+      - "PR Check - Extractor ram and threads options test"
+      - "PR Check - Go: Custom queries"
+      - "PR Check - Go: diagnostic when Go is changed after init step"
+      - "PR Check - Go: diagnostic when `file` is not installed"
+      - "PR Check - Go: tracing with autobuilder step"
+      - "PR Check - Go: tracing with custom build steps"
+      - "PR Check - Go: tracing with legacy workflow"
+      - "PR Check - Go: workaround for indirect tracing"
+      - "PR Check - Job run UUID added to SARIF"
+      - "PR Check - Language aliases"
+      - "PR Check - Local CodeQL bundle"
+      - "PR Check - Multi-language repository"
+      - "PR Check - Overlay database init fallback"
+      - "PR Check - Packaging: Action input"
+      - "PR Check - Packaging: Config and input"
+      - "PR Check - Packaging: Config and input passed to the CLI"
+      - "PR Check - Packaging: Config file"
+      - "PR Check - Packaging: Download using registries"
+      - "PR Check - Proxy test"
+      - "PR Check - Remote config file"
+      - "PR Check - Resolve environment"
+      - "PR Check - RuboCop multi-language"
+      - "PR Check - Ruby analysis"
+      - "PR Check - Rust analysis"
+      - "PR Check - Split workflow"
+      - "PR Check - Start proxy"
+      - "PR Check - Submit SARIF after failure"
+      - "PR Check - Swift analysis using a custom build command"
+      - "PR Check - Swift analysis using autobuild"
+      - "PR Check - Test different uses of `upload-sarif`"
+      - "PR Check - Test unsetting environment variables"
+      - "PR Check - Upload-sarif: ref and sha from inputs"
+      - "PR Check - Use a custom `checkout_path`"
+      - PR Checks
+      - Query filters tests
+      - Test that the workaround for python 3.12 on windows works
+
+jobs:
+  rerun-on-failure:
+    name: Rerun failed jobs
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.run_attempt == 1 &&
+      (
+        github.event.workflow_run.head_branch == 'main' ||
+        startsWith(github.event.workflow_run.head_branch, 'releases/') ||
+        github.event.workflow_run.event == 'merge_group'
+      )
+    runs-on: ubuntu-slim
+    permissions:
+      actions: write
+    steps:
+      - name: Rerun failed jobs in ${{ github.event.workflow_run.name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          echo "Rerunning failed jobs for workflow run ${RUN_ID}"
+          gh run rerun "${RUN_ID}" --failed
+          echo "### Reran failed jobs :recycle:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Workflow: [${RUN_NAME}](${RUN_URL})" >> "$GITHUB_STEP_SUMMARY"

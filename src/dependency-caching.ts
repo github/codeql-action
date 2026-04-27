@@ -11,7 +11,7 @@ import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { KnownLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages";
 import { Logger } from "./logging";
 import { getErrorMessage, getRequiredEnvParam } from "./util";
 
@@ -541,7 +541,7 @@ export async function getFeaturePrefix(
     }
   };
 
-  if (language === KnownLanguage.csharp) {
+  if (language === BuiltInLanguage.csharp) {
     await addFeatureIfEnabled(Feature.CsharpNewCacheKey);
     await addFeatureIfEnabled(Feature.CsharpCacheBuildModeNone);
   }

@@ -58,13 +58,13 @@ import {
   initConfig,
   runDatabaseInitCluster,
 } from "./init";
-import { JavaEnvVars, KnownLanguage } from "./languages";
+import { JavaEnvVars, BuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
-  OverlayDatabaseMode,
-} from "./overlay";
+} from "./overlay/caching";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -330,7 +330,7 @@ async function run(startedAt: Date) {
       // requested rust - don't enable it via language autodetection.
       configUtils
         .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
-        .includes(KnownLanguage.rust)
+        .includes(BuiltInLanguage.rust)
     ) {
       const experimental = "2.19.3";
       const publicPreview = "2.22.1";
@@ -388,6 +388,15 @@ async function run(startedAt: Date) {
       enableFileCoverageInformation: fileCoverageResult.enabled,
       logger,
     });
+
+    if (
+      config.languages.includes(BuiltInLanguage.swift) &&
+      process.platform !== "darwin"
+    ) {
+      throw new ConfigurationError(
+        `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
+      );
+    }
 
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(
@@ -500,16 +509,7 @@ async function run(startedAt: Date) {
     }
 
     if (
-      config.languages.includes(KnownLanguage.swift) &&
-      process.platform === "linux"
-    ) {
-      logger.warning(
-        `Swift analysis on Ubuntu runner images is no longer supported. Please migrate to a macOS runner if this affects you.`,
-      );
-    }
-
-    if (
-      config.languages.includes(KnownLanguage.go) &&
+      config.languages.includes(BuiltInLanguage.go) &&
       process.platform === "linux"
     ) {
       try {
@@ -567,7 +567,7 @@ async function run(startedAt: Date) {
         if (e instanceof FileCmdNotFoundError) {
           addDiagnostic(
             config,
-            KnownLanguage.go,
+            BuiltInLanguage.go,
             makeDiagnostic(
               "go/workflow/file-program-unavailable",
               "The `file` program is required on Linux, but does not appear to be installed",
@@ -645,27 +645,6 @@ async function run(startedAt: Date) {
       );
     }
 
-    if (
-      await codeql.supportsFeature(
-        ToolsFeature.PythonDefaultIsToNotExtractStdlib,
-      )
-    ) {
-      if (process.env["CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB"]) {
-        logger.debug(
-          "CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB is already set, so the Action will not override it.",
-        );
-      } else if (
-        !(await features.getValue(
-          Feature.PythonDefaultIsToNotExtractStdlib,
-          codeql,
-        ))
-      ) {
-        // We are in a situation where the feature flag is not rolled out,
-        // so we need to suppress the new default CLI behavior.
-        core.exportVariable("CODEQL_EXTRACTOR_PYTHON_EXTRACT_STDLIB", "true");
-      }
-    }
-
     // If we are doing a Java `build-mode: none` analysis, then set the environment variable that
     // enables the option in the Java extractor to minimize dependency jars. We also only do this if
     // dependency caching is enabled, since the option is intended to reduce the size of dependency
@@ -682,7 +661,7 @@ async function run(startedAt: Date) {
       (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
-      config.languages.includes(KnownLanguage.java)
+      config.languages.includes(BuiltInLanguage.java)
     ) {
       core.exportVariable(
         EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS,

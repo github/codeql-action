@@ -30,9 +30,9 @@ import {
 } from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
-import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay";
+import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";
 import * as statusReport from "./status-report";
 import {
@@ -135,9 +135,13 @@ function hasBadExpectErrorInput(): boolean {
 function doesGoExtractionOutputExist(config: Config): boolean {
   const golangDbDirectory = util.getCodeQLDatabasePath(
     config,
-    KnownLanguage.go,
+    BuiltInLanguage.go,
   );
-  const trapDirectory = path.join(golangDbDirectory, "trap", KnownLanguage.go);
+  const trapDirectory = path.join(
+    golangDbDirectory,
+    "trap",
+    BuiltInLanguage.go,
+  );
   return (
     fs.existsSync(trapDirectory) &&
     fs
@@ -169,7 +173,7 @@ function doesGoExtractionOutputExist(config: Config): boolean {
  * whether any extraction output already exists for Go.
  */
 async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
-  if (!config.languages.includes(KnownLanguage.go)) {
+  if (!config.languages.includes(BuiltInLanguage.go)) {
     return;
   }
   if (config.buildMode) {
@@ -182,7 +186,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
     logger.debug("Won't run Go autobuild since it has already been run.");
     return;
   }
-  if (dbIsFinalized(config, KnownLanguage.go, logger)) {
+  if (dbIsFinalized(config, BuiltInLanguage.go, logger)) {
     logger.debug(
       "Won't run Go autobuild since there is already a finalized database for Go.",
     );
@@ -205,7 +209,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   logger.debug(
     "Running Go autobuild because extraction output (TRAP files) for Go code has not been found.",
   );
-  await runAutobuild(config, KnownLanguage.go, logger);
+  await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
 async function run(startedAt: Date) {

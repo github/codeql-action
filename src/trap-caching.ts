@@ -185,6 +185,10 @@ export async function cleanupTrapCaches(
       trap_cache_cleanup_skipped_because: "feature disabled",
     };
   }
+  logger.warning(
+    "TRAP cache cleanup is deprecated and will be removed in May 2026. " +
+      "We recommend instead disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action.",
+  );
   if (!(await gitUtils.isAnalyzingDefaultBranch())) {
     return {
       trap_cache_cleanup_skipped_because: "not analyzing default branch",

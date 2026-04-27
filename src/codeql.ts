@@ -24,11 +24,8 @@ import {
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import {
-  OverlayDatabaseMode,
-  writeBaseDatabaseOidsFile,
-  writeOverlayChangesFile,
-} from "./overlay";
+import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";

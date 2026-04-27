@@ -6,5 +6,6 @@ packs:
     - codeql-testing/codeql-pack2
     - codeql-testing/codeql-pack3:other-query.ql
 paths-ignore:
-  - tests
   - lib
+  - pr-checks
+  - tests

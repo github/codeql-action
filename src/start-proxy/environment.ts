@@ -4,7 +4,7 @@ import * as path from "path";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 
-import { JavaEnvVars, KnownLanguage, Language } from "../languages";
+import { JavaEnvVars, BuiltInLanguage, Language } from "../languages";
 import { Logger } from "../logging";
 import { getErrorMessage, isDefined } from "../util";
 
@@ -196,7 +196,7 @@ export async function checkProxyEnvironment(
 
   // Check language-specific configurations. If we don't know the language,
   // then we perform all checks.
-  if (language === undefined || language === KnownLanguage.java) {
+  if (language === undefined || language === BuiltInLanguage.java) {
     checkJavaEnvVars(logger);
 
     await showJavaSettings(logger);

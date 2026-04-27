@@ -8,10 +8,9 @@ import sinon from "sinon";
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
 import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
 import * as startProxyExports from "./start-proxy";
-import { parseLanguage } from "./start-proxy";
 import * as statusReport from "./status-report";
 import {
   assertNotLogged,
@@ -232,7 +231,7 @@ test("getCredentials filters by language when specified", async (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(mixedCredentials),
-    KnownLanguage.java,
+    BuiltInLanguage.java,
   );
   t.is(credentials.length, 1);
   t.is(credentials[0].type, "maven_repository");
@@ -243,13 +242,64 @@ test("getCredentials returns all for a language when specified", async (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(mixedCredentials),
-    KnownLanguage.go,
+    BuiltInLanguage.go,
   );
   t.is(credentials.length, 2);
 
   const credentialsTypes = credentials.map((c) => c.type);
   t.assert(credentialsTypes.includes("goproxy_server"));
   t.assert(credentialsTypes.includes("git_source"));
+});
+
+test("getCredentials returns all goproxy_servers for Go when specified", async (t) => {
+  const multipleGoproxyServers = [
+    { type: "goproxy_server", host: "goproxy1.example.com", token: "token1" },
+    { type: "goproxy_server", host: "goproxy2.example.com", token: "token2" },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleGoproxyServers),
+    BuiltInLanguage.go,
+  );
+  t.is(credentials.length, 3);
+
+  const goproxyServers = credentials.filter((c) => c.type === "goproxy_server");
+  t.is(goproxyServers.length, 2);
+  t.assert(goproxyServers.some((c) => c.host === "goproxy1.example.com"));
+  t.assert(goproxyServers.some((c) => c.host === "goproxy2.example.com"));
+});
+
+test("getCredentials returns all maven_repositories for Java when specified", async (t) => {
+  const multipleMavenRepositories = [
+    {
+      type: "maven_repository",
+      host: "maven1.pkg.github.com",
+      token: "token1",
+    },
+    {
+      type: "maven_repository",
+      host: "maven2.pkg.github.com",
+      token: "token2",
+    },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleMavenRepositories),
+    BuiltInLanguage.java,
+  );
+  t.is(credentials.length, 2);
+
+  const mavenRepositories = credentials.filter(
+    (c) => c.type === "maven_repository",
+  );
+  t.assert(mavenRepositories.some((c) => c.host === "maven1.pkg.github.com"));
+  t.assert(mavenRepositories.some((c) => c.host === "maven2.pkg.github.com"));
 });
 
 test("getCredentials returns all credentials when no language specified", async (t) => {
@@ -300,23 +350,23 @@ test("getCredentials throws an error when non-printable characters are used", as
 });
 
 const validAzureCredential: startProxyExports.AzureConfig = {
-  tenant_id: "12345678-1234-1234-1234-123456789012",
-  client_id: "abcdef01-2345-6789-abcd-ef0123456789",
+  "tenant-id": "12345678-1234-1234-1234-123456789012",
+  "client-id": "abcdef01-2345-6789-abcd-ef0123456789",
 };
 
 const validAwsCredential: startProxyExports.AWSConfig = {
-  aws_region: "us-east-1",
-  account_id: "123456789012",
-  role_name: "MY_ROLE",
+  "aws-region": "us-east-1",
+  "account-id": "123456789012",
+  "role-name": "MY_ROLE",
   domain: "MY_DOMAIN",
-  domain_owner: "987654321098",
+  "domain-owner": "987654321098",
   audience: "custom-audience",
 };
 
 const validJFrogCredential: startProxyExports.JFrogConfig = {
-  jfrog_oidc_provider_name: "MY_PROVIDER",
+  "jfrog-oidc-provider-name": "MY_PROVIDER",
   audience: "jfrog-audience",
-  identity_mapping_name: "my-mapping",
+  "identity-mapping-name": "my-mapping",
 };
 
 test("getCredentials throws an error when non-printable characters are used for Azure OIDC", (t) => {
@@ -429,7 +479,7 @@ test("getCredentials accepts OIDC configurations", (t) => {
     getRunnerLogger(true),
     undefined,
     toEncodedJSON(oidcConfigurations),
-    KnownLanguage.csharp,
+    BuiltInLanguage.csharp,
   );
   t.is(credentials.length, 3);
 
@@ -596,7 +646,7 @@ test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_
     getRunnerLogger(true),
     undefined,
     credentialsInput,
-    KnownLanguage.actions,
+    BuiltInLanguage.actions,
     false,
   );
   t.is(credentials.length, mixedCredentials.length);
@@ -609,37 +659,10 @@ test("getCredentials returns no credentials for Actions when using NEW_LANGUAGE_
     getRunnerLogger(true),
     undefined,
     credentialsInput,
-    KnownLanguage.actions,
+    BuiltInLanguage.actions,
     true,
   );
   t.deepEqual(credentials, []);
-});
-
-test("parseLanguage", async (t) => {
-  // Exact matches
-  t.deepEqual(parseLanguage("csharp"), KnownLanguage.csharp);
-  t.deepEqual(parseLanguage("cpp"), KnownLanguage.cpp);
-  t.deepEqual(parseLanguage("go"), KnownLanguage.go);
-  t.deepEqual(parseLanguage("java"), KnownLanguage.java);
-  t.deepEqual(parseLanguage("javascript"), KnownLanguage.javascript);
-  t.deepEqual(parseLanguage("python"), KnownLanguage.python);
-  t.deepEqual(parseLanguage("rust"), KnownLanguage.rust);
-
-  // Aliases
-  t.deepEqual(parseLanguage("c"), KnownLanguage.cpp);
-  t.deepEqual(parseLanguage("c++"), KnownLanguage.cpp);
-  t.deepEqual(parseLanguage("c#"), KnownLanguage.csharp);
-  t.deepEqual(parseLanguage("kotlin"), KnownLanguage.java);
-  t.deepEqual(parseLanguage("typescript"), KnownLanguage.javascript);
-
-  // spaces and case-insensitivity
-  t.deepEqual(parseLanguage("  \t\nCsHaRp\t\t"), KnownLanguage.csharp);
-  t.deepEqual(parseLanguage("  \t\nkOtLin\t\t"), KnownLanguage.java);
-
-  // Not matches
-  t.deepEqual(parseLanguage("foo"), undefined);
-  t.deepEqual(parseLanguage(" "), undefined);
-  t.deepEqual(parseLanguage(""), undefined);
 });
 
 function mockGetApiClient(endpoints: any) {

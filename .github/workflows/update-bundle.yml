@@ -20,7 +20,7 @@ defaults:
 jobs:
   update-bundle:
     if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     permissions:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull requests
@@ -56,6 +56,17 @@ jobs:
 
       - name: Update bundle
         uses: ./.github/actions/update-bundle
+
+      - name: Set up CodeQL CLI from new bundle
+        id: setup-codeql
+        uses: ./setup-codeql
+        with:
+          tools: https://github.com/github/codeql-action/releases/download/${{ github.event.release.tag_name }}/codeql-bundle-linux64.tar.gz
+
+      - name: Update built-in languages
+        run: npx tsx pr-checks/update-builtin-languages.ts "$CODEQL_PATH"
+        env:
+          CODEQL_PATH: ${{ steps.setup-codeql.outputs.codeql-path }}
 
       - name: Bump Action minor version if new CodeQL minor version series
         id: bump-action-version

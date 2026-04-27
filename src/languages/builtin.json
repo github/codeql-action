@@ -1,0 +1,25 @@
+{
+  "languages": [
+    "actions",
+    "cpp",
+    "csharp",
+    "go",
+    "java",
+    "javascript",
+    "python",
+    "ruby",
+    "rust",
+    "swift"
+  ],
+  "aliases": {
+    "c": "cpp",
+    "c-c++": "cpp",
+    "c-cpp": "cpp",
+    "c#": "csharp",
+    "c++": "cpp",
+    "java-kotlin": "java",
+    "javascript-typescript": "javascript",
+    "kotlin": "java",
+    "typescript": "javascript"
+  }
+}

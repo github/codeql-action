@@ -1,4 +1,4 @@
-import { copyFile, rm } from "node:fs/promises";
+import { copyFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -64,7 +64,11 @@ const onEndPlugin = {
 
 const context = await esbuild.context({
   // Include upload-lib.ts as an entry point for use in testing environments.
-  entryPoints: globSync([`${SRC_DIR}/*-action.ts`, `${SRC_DIR}/*-action-post.ts`, "src/upload-lib.ts"]),
+  entryPoints: globSync([
+    `${SRC_DIR}/*-action.ts`,
+    `${SRC_DIR}/*-action-post.ts`,
+    "src/upload-lib.ts",
+  ]),
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,
@@ -74,7 +78,10 @@ const context = await esbuild.context({
   define: {
     __CODEQL_ACTION_VERSION__: JSON.stringify(pkg.version),
   },
+  metafile: true,
 });
 
-await context.rebuild();
+const result = await context.rebuild();
+await writeFile(join(__dirname, "meta.json"), JSON.stringify(result.metafile));
+
 await context.dispose();

@@ -173,10 +173,15 @@ function writeDiagnostic(
     const uniqueSuffix = Math.floor(Math.random() * 0x100000000)
       .toString(16)
       .padStart(8, "0");
+    // We should only need to remove colons, but to be defensive, only allow a restricted set of
+    // characters.
+    const sanitizedTimestamp = diagnostic.timestamp.replace(
+      /[^a-zA-Z0-9.-]/g,
+      "",
+    );
     const jsonPath = path.resolve(
       diagnosticsPath,
-      // Remove colons from the timestamp as these are not allowed in Windows filenames.
-      `codeql-action-${diagnostic.timestamp.replaceAll(":", "")}-${uniqueSuffix}.json`,
+      `codeql-action-${sanitizedTimestamp}-${uniqueSuffix}.json`,
     );
 
     writeFileSync(jsonPath, JSON.stringify(diagnostic));

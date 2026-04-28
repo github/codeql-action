@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Fixed a bug where two diagnostics produced within the same millisecond could overwrite each other on disk, causing one of them to be lost. [#3852](https://github.com/github/codeql-action/pull/3852)
 
 ## 4.35.2 - 15 Apr 2026
 

@@ -73,6 +73,13 @@ let unwrittenDiagnostics: UnwrittenDiagnostic[] = [];
 let unwrittenDefaultLanguageDiagnostics: DiagnosticMessage[] = [];
 
 /**
+ * Counter used to generate a unique suffix for each diagnostic filename, so that
+ * two diagnostics produced within the same millisecond do not overwrite each
+ * other on disk.
+ */
+let diagnosticCounter = 0;
+
+/**
  * Constructs a new diagnostic message with the specified id and name, as well as optional additional data.
  *
  * @param id An identifier under which it makes sense to group this diagnostic message.
@@ -167,12 +174,9 @@ function writeDiagnostic(
     // Create the directory if it doesn't exist yet.
     mkdirSync(diagnosticsPath, { recursive: true });
 
-    // Include a random suffix to avoid filename collisions between diagnostics
-    // produced within the same millisecond. This doesn't need to be
-    // cryptographically secure, so `Math.random` is fine.
-    const uniqueSuffix = Math.floor(Math.random() * 0x100000000)
-      .toString(16)
-      .padStart(8, "0");
+    // Include a monotonically increasing suffix to avoid filename collisions
+    // between diagnostics produced within the same millisecond.
+    const uniqueSuffix = (diagnosticCounter++).toString();
     // We should only need to remove colons, but to be defensive, only allow a restricted set of
     // characters.
     const sanitizedTimestamp = diagnostic.timestamp.replace(

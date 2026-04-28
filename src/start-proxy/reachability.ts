@@ -41,7 +41,7 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
         url,
         {
           agent: this.agent,
-          method: "HEAD",
+          method: "GET",
           ca: this.proxy.cert,
           timeout: 5 * 1000, // 5 seconds
         },

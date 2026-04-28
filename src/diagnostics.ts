@@ -167,10 +167,16 @@ function writeDiagnostic(
     // Create the directory if it doesn't exist yet.
     mkdirSync(diagnosticsPath, { recursive: true });
 
+    // Include a random suffix to avoid filename collisions between diagnostics
+    // produced within the same millisecond. This doesn't need to be
+    // cryptographically secure, so `Math.random` is fine.
+    const uniqueSuffix = Math.floor(Math.random() * 0x100000000)
+      .toString(16)
+      .padStart(8, "0");
     const jsonPath = path.resolve(
       diagnosticsPath,
       // Remove colons from the timestamp as these are not allowed in Windows filenames.
-      `codeql-action-${diagnostic.timestamp.replaceAll(":", "")}.json`,
+      `codeql-action-${diagnostic.timestamp.replaceAll(":", "")}-${uniqueSuffix}.json`,
     );
 
     writeFileSync(jsonPath, JSON.stringify(diagnostic));

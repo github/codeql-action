@@ -2,6 +2,7 @@ import * as https from "https";
 
 import { HttpsProxyAgent } from "https-proxy-agent";
 
+import { DocUrl } from "../doc-url";
 import { Logger } from "../logging";
 import { getErrorMessage } from "../util";
 
@@ -114,6 +115,13 @@ export async function checkConnections(
   // Don't do anything if there are no registries.
   if (proxy.registries.length === 0) return result;
 
+  // Start a log group and print a message with a disclaimer with a link to the
+  // relevant documentation that these checks are a best-effort process.
+  logger.startGroup("Testing connections via the proxy");
+  logger.info(
+    `The connection tests performed here are best-effort only and failures here may not affect the subsequent analysis. See ${DocUrl.PRIVATE_REGISTRY_LOGS} for more information.`,
+  );
+
   try {
     // Initialise a networking backend if no backend was provided.
     if (backend === undefined) {
@@ -158,5 +166,6 @@ export async function checkConnections(
     );
   }
 
+  logger.endGroup();
   return result;
 }

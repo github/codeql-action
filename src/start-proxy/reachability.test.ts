@@ -8,6 +8,7 @@ import {
 } from "./../testing-utils";
 import {
   checkConnections,
+  connectionTestConfig,
   ReachabilityBackend,
   ReachabilityError,
 } from "./reachability";
@@ -117,4 +118,35 @@ test("checkConnections - handles invalid URLs", async (t) => {
     `Skipping check for localhost since it is not a valid URL.`,
     `Finished testing connections`,
   ]);
+});
+
+test("checkConnections - appends extra paths", async (t) => {
+  const backend = new MockReachabilityBackend();
+  const checkConnection = sinon.stub(backend, "checkConnection").resolves(200);
+
+  const messages = await withRecordingLoggerAsync(async (logger) => {
+    const reachable = await checkConnections(
+      logger,
+      {
+        ...proxyInfo,
+        registries: [{ ...nugetFeed, url: "https://api.nuget.org/" }],
+      },
+      backend,
+    );
+  });
+  checkExpectedLogMessages(t, messages, [
+    `Testing connection to https://api.nuget.org/`,
+    `Successfully tested connection to https://api.nuget.org/`,
+    `Finished testing connections`,
+  ]);
+
+  t.true(
+    checkConnection.calledWith(
+      sinon.match(
+        new URL(
+          `https://api.nuget.org/${connectionTestConfig["nuget_feed"]?.path}`,
+        ),
+      ),
+    ),
+  );
 });

@@ -7,6 +7,35 @@ import { getErrorMessage } from "../util";
 
 import { getAddressString, ProxyInfo, Registry } from "./types";
 
+/** Represents registry-specific connection test configurations. */
+export interface ConnectionTestConfig {
+  /** An optional path to append to the end of the base url. */
+  path?: string;
+}
+
+/** A partial mapping of registry types to extra connection test configurations. */
+export const connectionTestConfig: Partial<
+  Record<string, ConnectionTestConfig>
+> = {
+  nuget_feed: { path: "v3/index.json" },
+};
+
+/**
+ * Applies the registry-specific check configuration to the base URL, if any and applicable.
+ */
+export function makeTestUrl(
+  config: ConnectionTestConfig | undefined,
+  base: URL,
+): URL {
+  if (config?.path === undefined) {
+    return base;
+  }
+  if (base.pathname.endsWith(config.path)) {
+    return base;
+  }
+  return new URL(config.path, base);
+}
+
 export class ReachabilityError extends Error {
   constructor(public readonly statusCode?: number | undefined) {
     super();
@@ -92,6 +121,7 @@ export async function checkConnections(
     }
 
     for (const registry of proxy.registries) {
+      const config = connectionTestConfig[registry.type];
       const address = getAddressString(registry);
       const url = URL.parse(address);
 
@@ -102,9 +132,11 @@ export async function checkConnections(
         continue;
       }
 
+      const testUrl = makeTestUrl(config, url);
+
       try {
         logger.debug(`Testing connection to ${url}...`);
-        const statusCode = await backend.checkConnection(url);
+        const statusCode = await backend.checkConnection(testUrl);
 
         logger.info(`Successfully tested connection to ${url} (${statusCode})`);
         result.add(registry);

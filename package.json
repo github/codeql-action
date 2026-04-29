@@ -65,10 +65,10 @@
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^11.1.0",
     "globals": "^17.5.0",
-    "nock": "^14.0.12",
+    "nock": "^14.0.13",
     "sinon": "^21.1.2",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.2"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.0"
   },
   "overrides": {
     "@actions/tool-cache": {

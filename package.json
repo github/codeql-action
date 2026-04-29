@@ -57,7 +57,7 @@
     "@types/sinon": "^21.0.1",
     "ava": "^7.0.0",
     "esbuild": "^0.28.0",
-    "eslint": "^9.39.2",
+    "eslint": "^10.2.1",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-github": "^6.0.0",
     "eslint-plugin-import-x": "^4.16.2",

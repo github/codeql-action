@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Configurations for private registries that use Cloudsmith or GCP OIDC are now accepted. [#3850](https://github.com/github/codeql-action/pull/3850)
 
 ## 4.35.2 - 15 Apr 2026
 

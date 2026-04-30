@@ -198,6 +198,7 @@ async function startProxy(
     .map((credential) => ({
       type: credential.type,
       url: credential.url,
+      "replaces-base": credential["replaces-base"],
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
 

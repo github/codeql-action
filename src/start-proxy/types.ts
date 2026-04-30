@@ -18,10 +18,11 @@ export const usernameSchema = {
 /** Usernames may be present for both authentication with tokens or passwords. */
 export type Username = json.FromSchema<typeof usernameSchema>;
 
-/** Decides whether `config` has a username. */
-export function hasUsername(
-  config: UnvalidatedObject<unknown>,
-): config is Username {
+/**
+ * Narrows `config` to `Username` if `config` has a `username` property.
+ * Not used for validation. Assumes that `config` is already a validated `AuthConfig`.
+ */
+export function hasUsername(config: AuthConfig): config is Username {
   return "username" in config;
 }
 
@@ -38,11 +39,14 @@ export const usernamePasswordSchema = {
  */
 export type UsernamePassword = json.FromSchema<typeof usernamePasswordSchema>;
 
-/** Decides whether `config` is based on a username and password. */
-export function isUsernamePassword(
+/**
+ * Narrows `config` to `UsernamePassword` if it has a `username` and `password` property.
+ * Not used for validation. Assumes that `config` is already a validated `AuthConfig`.
+ */
+export function hasUsernameAndPassword(
   config: AuthConfig,
 ): config is UsernamePassword {
-  return json.validateSchema(usernamePasswordSchema, config);
+  return hasUsername(config) && "password" in config;
 }
 
 /** A schema for credential objects for token-based authentication. */
@@ -57,6 +61,14 @@ export const tokenSchema = {
  * Both username and token are optional.
  */
 export type Token = json.FromSchema<typeof tokenSchema>;
+
+/**
+ * Narrows `config` to `Token` if it has a `token` property.
+ * Not used for validation. Assumes that `config` is already a validated `AuthConfig`.
+ */
+export function hasToken(config: AuthConfig): config is Token {
+  return "token" in config;
+}
 
 /** Decides whether `config` is token-based. */
 export function isToken(
@@ -205,7 +217,7 @@ export function credentialToStr(credential: Credential): string {
       isDefined(credential.password) ? "***" : undefined,
     );
   }
-  if (isToken(credential)) {
+  if (hasToken(credential)) {
     appendIfDefined("Token", isDefined(credential.token) ? "***" : undefined);
   }
 

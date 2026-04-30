@@ -532,7 +532,7 @@ test(
     t.is(results[0].type, "git_server");
     t.is(results[0].host, "https://github.com/");
 
-    if (startProxyExports.isUsernamePassword(results[0])) {
+    if (startProxyExports.hasUsernameAndPassword(results[0])) {
       t.assert(results[0].password?.startsWith("ghp_"));
     } else {
       t.fail("Expected a `UsernamePassword`-based credential.");
@@ -563,7 +563,7 @@ test(
     t.is(results[0].type, "git_server");
     t.is(results[0].host, "https://github.com/");
 
-    if (startProxyExports.isUsernamePassword(results[0])) {
+    if (startProxyExports.hasUsernameAndPassword(results[0])) {
       t.assert(results[0].password?.startsWith("ghp_"));
     } else {
       t.fail("Expected a `UsernamePassword`-based credential.");

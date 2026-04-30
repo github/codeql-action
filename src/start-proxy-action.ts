@@ -111,7 +111,7 @@ async function run(startedAt: Date) {
       logger,
     );
 
-    // Check that the private registries are reachable.
+    // Perform best-effort checks that the private registries are reachable.
     await checkConnections(logger, proxyInfo);
 
     // Report success if we have reached this point.

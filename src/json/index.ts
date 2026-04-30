@@ -47,12 +47,7 @@ export type Validator<T> = {
 };
 
 /** Extracts `T` from `Validator<T>`. */
-export type UnwrapValidator<V> =
-  V extends Validator<infer A>
-    ? V["required"] extends true
-      ? A
-      : A | undefined
-    : never;
+export type UnwrapValidator<V> = V extends Validator<infer A> ? A : never;
 
 /** A validator for string fields in schemas. */
 export const string = {
@@ -73,10 +68,20 @@ export function optional<T>(validator: Validator<T>) {
 /** Represents an arbitrary object schema. */
 export type Schema = Record<string, Validator<any>>;
 
+/** Extracts the required keys from `S`. */
+export type RequiredKeys<S extends Schema> = {
+  [K in keyof S]: S[K]["required"] extends true ? K : never;
+}[keyof S];
+
+/** Extracts optional keys from `S`. */
+export type OptionalKeys<S extends Schema> = {
+  [K in keyof S]: S[K]["required"] extends true ? never : K;
+}[keyof S];
+
 /** Constructs an object type corresponding to a schema. */
 export type FromSchema<S extends Schema> = {
-  [K in keyof S]: UnwrapValidator<S[K]>;
-};
+  [K in RequiredKeys<S>]: UnwrapValidator<S[K]>;
+} & { [K in OptionalKeys<S>]?: UnwrapValidator<S[K]> };
 
 /**
  * Validates that `obj` satisfies at least `schema`. Additional keys are accepted.

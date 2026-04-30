@@ -639,6 +639,76 @@ test(
   },
 );
 
+test("getCredentials validates 'replaces-base' correctly", async (t) => {
+  // Valid cases.
+  const credentialsInput = toEncodedJSON([
+    {
+      type: "maven_repository",
+      host: "maven1.pkg.github.com",
+      token: "abc",
+      "replaces-base": false,
+    },
+    {
+      type: "maven_repository",
+      host: "maven2.pkg.github.com",
+      token: "def",
+      "replaces-base": true,
+    },
+    {
+      type: "maven_repository",
+      host: "maven3.pkg.github.com",
+      token: "ghi",
+    },
+  ]);
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    credentialsInput,
+    BuiltInLanguage.java,
+    false,
+  );
+
+  t.is(credentials.length, 3);
+  t.true(credentials.some((c) => c["replaces-base"] === true));
+  t.true(credentials.some((c) => c["replaces-base"] === false));
+  t.true(credentials.some((c) => c["replaces-base"] === undefined));
+
+  // Invalid cases.
+  const baseInvalid = {
+    type: "maven_repository",
+    host: "maven4.pkg.github.com",
+    token: "jkl",
+  };
+  t.throws(() =>
+    startProxyExports.getCredentials(
+      getRunnerLogger(true),
+      undefined,
+      toEncodedJSON([{ ...baseInvalid, "replaces-base": null }]),
+      BuiltInLanguage.actions,
+      false,
+    ),
+  );
+  t.throws(() =>
+    startProxyExports.getCredentials(
+      getRunnerLogger(true),
+      undefined,
+      toEncodedJSON([{ ...baseInvalid, "replaces-base": 123 }]),
+      BuiltInLanguage.actions,
+      false,
+    ),
+  );
+  t.throws(() =>
+    startProxyExports.getCredentials(
+      getRunnerLogger(true),
+      undefined,
+      toEncodedJSON([{ ...baseInvalid, "replaces-base": "true" }]),
+      BuiltInLanguage.actions,
+      false,
+    ),
+  );
+});
+
 test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);
 

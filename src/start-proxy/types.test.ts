@@ -1,5 +1,6 @@
 import test from "ava";
 
+import { makeFromSchema, withSchemaMatrix } from "../json/testing-util";
 import { setupTests } from "../testing-utils";
 
 import * as types from "./types";
@@ -25,6 +26,38 @@ const validJFrogCredential: types.JFrogConfig = {
   audience: "jfrog-audience",
   "identity-mapping-name": "my-mapping",
 };
+
+test("hasUsername", (t) => {
+  // Reject the case where `username` is missing.
+  t.false(types.hasUsername({}));
+
+  // Test all cases where `username` is present.
+  withSchemaMatrix(
+    t,
+    types.usernameSchema,
+    { excludeAbsent: true },
+    (value) => {
+      t.true(types.hasUsername(value));
+    },
+  );
+});
+
+test("hasUsernameAndPassword", (t) => {
+  // Reject cases where `username` or `password` are missing.
+  t.false(types.hasUsernameAndPassword({}));
+  t.false(types.hasUsernameAndPassword({ username: "foo" }));
+  t.false(types.hasUsernameAndPassword({ password: "foo" }));
+
+  // Test all cases where both `username` and `password` are present.
+  withSchemaMatrix(
+    t,
+    types.usernamePasswordSchema,
+    { excludeAbsent: true },
+    (value) => {
+      t.true(types.hasUsernameAndPassword(value));
+    },
+  );
+});
 
 test("credentialToStr - pretty-prints valid username+password configurations", (t) => {
   const secret = "password123";
@@ -107,13 +140,46 @@ test("credentialToStr - pretty-prints valid JFrog OIDC configurations", (t) => {
   );
 });
 
+test("credentialToStr - pretty-prints valid Cloudsmith OIDC configurations", (t) => {
+  const credential: types.Credential = {
+    type: "maven_credential",
+    url: "https://localhost",
+    ...(makeFromSchema(
+      true,
+      types.cloudsmithConfigSchema,
+    ) as types.CloudsmithConfig),
+  };
+
+  const str = types.credentialToStr(credential);
+
+  t.is(
+    "Type: maven_credential; Url: https://localhost; Cloudsmith Namespace: value-for-namespace; Cloudsmith Service Slug: value-for-service-slug; Cloudsmith API Host: value-for-api-host;",
+    str,
+  );
+});
+
+test("credentialToStr - pretty-prints valid GCP OIDC configurations", (t) => {
+  const credential: types.Credential = {
+    type: "maven_credential",
+    url: "https://localhost",
+    ...(makeFromSchema(true, types.gcpConfigSchema) as types.GCPConfig),
+  };
+
+  const str = types.credentialToStr(credential);
+
+  t.is(
+    "Type: maven_credential; Url: https://localhost; GCP Workload Identity Provider: value-for-workload-identity-provider; GCP Service Account: value-for-service-account; GCP Audience: value-for-audience;",
+    str,
+  );
+});
+
 test("credentialToStr - hides passwords", (t) => {
   const secret = "password123";
   const credential = {
     type: "maven_credential",
     password: secret,
     url: "https://localhost",
-  };
+  } satisfies types.Credential;
 
   const str = types.credentialToStr(credential);
 
@@ -127,7 +193,7 @@ test("credentialToStr - hides tokens", (t) => {
     type: "maven_credential",
     token: secret,
     url: "https://localhost",
-  };
+  } satisfies types.Credential;
 
   const str = types.credentialToStr(credential);
 

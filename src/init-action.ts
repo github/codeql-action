@@ -459,18 +459,23 @@ async function run(startedAt: Date) {
       // necessary preparations. So, in that mode, we would assume that
       // everything is in order and let the analysis fail if that turns out not
       // to be the case.
-      overlayBaseDatabaseStats = await downloadOverlayBaseDatabaseFromCache(
-        codeql,
-        config,
-        logger,
+      await withGroupAsync(
+        "Checking cache for overlay-base database",
+        async () => {
+          overlayBaseDatabaseStats = await downloadOverlayBaseDatabaseFromCache(
+            codeql,
+            config,
+            logger,
+          );
+          if (!overlayBaseDatabaseStats) {
+            config.overlayDatabaseMode = OverlayDatabaseMode.None;
+            logger.info(
+              "No overlay-base database found in cache, " +
+                `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
+            );
+          }
+        },
       );
-      if (!overlayBaseDatabaseStats) {
-        config.overlayDatabaseMode = OverlayDatabaseMode.None;
-        logger.info(
-          "No overlay-base database found in cache, " +
-            `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
-        );
-      }
     }
 
     if (config.overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {

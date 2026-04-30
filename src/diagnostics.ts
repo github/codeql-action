@@ -73,6 +73,13 @@ let unwrittenDiagnostics: UnwrittenDiagnostic[] = [];
 let unwrittenDefaultLanguageDiagnostics: DiagnosticMessage[] = [];
 
 /**
+ * Counter used to generate a unique suffix for each diagnostic filename, so that
+ * two diagnostics produced within the same millisecond do not overwrite each
+ * other on disk.
+ */
+let diagnosticCounter = 0;
+
+/**
  * Constructs a new diagnostic message with the specified id and name, as well as optional additional data.
  *
  * @param id An identifier under which it makes sense to group this diagnostic message.
@@ -167,10 +174,18 @@ function writeDiagnostic(
     // Create the directory if it doesn't exist yet.
     mkdirSync(diagnosticsPath, { recursive: true });
 
+    // Include a monotonically increasing suffix to avoid filename collisions
+    // between diagnostics produced within the same millisecond.
+    const uniqueSuffix = (diagnosticCounter++).toString();
+    // We should only need to remove colons, but to be defensive, only allow a restricted set of
+    // characters.
+    const sanitizedTimestamp = diagnostic.timestamp.replace(
+      /[^a-zA-Z0-9.-]/g,
+      "",
+    );
     const jsonPath = path.resolve(
       diagnosticsPath,
-      // Remove colons from the timestamp as these are not allowed in Windows filenames.
-      `codeql-action-${diagnostic.timestamp.replaceAll(":", "")}.json`,
+      `codeql-action-${sanitizedTimestamp}-${uniqueSuffix}.json`,
     );
 
     writeFileSync(jsonPath, JSON.stringify(diagnostic));

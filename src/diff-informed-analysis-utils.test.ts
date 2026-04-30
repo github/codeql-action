@@ -190,7 +190,7 @@ test.serial(
 );
 
 test.serial(
-  "prepareDiffInformedAnalysis: returns shouldRun=false when not a pull request",
+  "prepareDiffInformedAnalysis: returns false when not a pull request",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -209,13 +209,13 @@ test.serial(
         logger,
       );
 
-      t.deepEqual(result, { shouldRun: false, hasDiffRanges: false });
+      t.false(result);
     });
   },
 );
 
 test.serial(
-  "prepareDiffInformedAnalysis: returns shouldRun=false when applicability check throws",
+  "prepareDiffInformedAnalysis: returns false when applicability check throws",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -239,13 +239,13 @@ test.serial(
         logger,
       );
 
-      t.deepEqual(result, { shouldRun: false, hasDiffRanges: false });
+      t.false(result);
     });
   },
 );
 
 test.serial(
-  "prepareDiffInformedAnalysis: returns hasDiffRanges=true when the diff is fetched successfully",
+  "prepareDiffInformedAnalysis: returns true when the diff is fetched successfully",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -276,13 +276,13 @@ test.serial(
         logger,
       );
 
-      t.deepEqual(result, { shouldRun: true, hasDiffRanges: true });
+      t.true(result);
     });
   },
 );
 
 test.serial(
-  "prepareDiffInformedAnalysis: returns hasDiffRanges=false when the diff API call fails",
+  "prepareDiffInformedAnalysis: returns false when the diff API call fails",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -313,7 +313,7 @@ test.serial(
         logger,
       );
 
-      t.deepEqual(result, { shouldRun: true, hasDiffRanges: false });
+      t.false(result);
     });
   },
 );

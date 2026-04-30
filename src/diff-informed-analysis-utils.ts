@@ -55,30 +55,18 @@ export async function getDiffInformedAnalysisBranches(
   return branches;
 }
 
-export interface DiffInformedAnalysisPreparation {
-  /**
-   * Whether diff-informed analysis applies to this workflow run.
-   */
-  shouldRun: boolean;
-  /**
-   * Whether the diff ranges were successfully computed and persisted, and are
-   * therefore available for use.
-   */
-  hasDiffRanges: boolean;
-}
-
 /**
  * Prepares the diff ranges needed for diff-informed analysis for the current
  * run.
  *
- * @returns Whether diff-informed analysis applies to this run, and whether the
- *   diff ranges were successfully computed and persisted.
+ * @returns `true` if the diff ranges were successfully computed and persisted
+ *   and are therefore available for use, `false` otherwise.
  */
 export async function prepareDiffInformedAnalysis(
   codeql: CodeQL,
   features: FeatureEnablement,
   logger: Logger,
-): Promise<DiffInformedAnalysisPreparation> {
+): Promise<boolean> {
   let branches: PullRequestBranches | undefined;
   try {
     branches = await getDiffInformedAnalysisBranches(codeql, features, logger);
@@ -89,26 +77,22 @@ export async function prepareDiffInformedAnalysis(
     logger.warning(
       `Failed to determine branch information for diff-informed analysis: ${getErrorMessage(e)}`,
     );
-    return { shouldRun: false, hasDiffRanges: false };
+    return false;
   }
   if (!branches) {
-    return { shouldRun: false, hasDiffRanges: false };
+    return false;
   }
 
-  const hasDiffRanges = await withGroupAsync(
-    "Computing PR diff ranges",
-    async () => {
-      try {
-        return await computeAndPersistDiffRanges(branches, logger);
-      } catch (e) {
-        logger.warning(
-          `Failed to compute diff-informed analysis ranges: ${getErrorMessage(e)}`,
-        );
-        return false;
-      }
-    },
-  );
-  return { shouldRun: true, hasDiffRanges };
+  return await withGroupAsync("Computing PR diff ranges", async () => {
+    try {
+      return await computeAndPersistDiffRanges(branches, logger);
+    } catch (e) {
+      logger.warning(
+        `Failed to compute diff-informed analysis ranges: ${getErrorMessage(e)}`,
+      );
+      return false;
+    }
+  });
 }
 
 export interface DiffThunkRange {

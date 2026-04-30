@@ -31,10 +31,7 @@ import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import {
-  type DiffInformedAnalysisPreparation,
-  prepareDiffInformedAnalysis,
-} from "./diff-informed-analysis-utils";
+import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -1082,39 +1079,39 @@ function hasQueryCustomisation(userConfig: UserConfig): boolean {
 /**
  * Finalize the incremental-analysis configuration for this run.
  *
- * If overlay mode was selected for a PR but diff-informed analysis should have
- * run and could not be prepared, fall back to a full non-overlay analysis.
- * Query exclusions for incremental-only queries are applied only when the final
- * configuration still uses overlay analysis or the diff ranges are available.
+ * Overlay analysis has only been validated in combination with diff-informed
+ * analysis, so if `Overlay` mode was selected for a pull request but the diff
+ * ranges could not be computed, fall back to a full non-overlay analysis.
  *
- * Note that `overlayDatabaseMode === Overlay` does not imply
- * `diffInformedAnalysis.shouldRun`. Overlay mode is selected based on language
- * and feature-flag state and can apply outside of pull-request contexts (e.g.
- * on branch pushes that build up the overlay cache), whereas diff-informed
- * analysis only runs for pull requests where we can compute a diff. Each
- * combination is therefore handled explicitly.
+ * Query exclusions for incremental-only queries are then applied whenever the
+ * diff ranges are available — which, after the fallback above, is exactly the
+ * set of runs where any kind of incremental analysis (overlay or
+ * diff-informed) is in effect.
  */
-export function applyIncrementalAnalysisSettings(
+export async function applyIncrementalAnalysisSettings(
   config: Config,
-  diffInformedAnalysis: DiffInformedAnalysisPreparation,
+  hasDiffRanges: boolean,
+  codeql: CodeQL,
   logger: Logger,
-): void {
+): Promise<void> {
   if (
     config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
-    diffInformedAnalysis.shouldRun &&
-    !diffInformedAnalysis.hasDiffRanges
+    !hasDiffRanges
   ) {
     logger.info(
-      "Diff-informed analysis is not available for this pull request. " +
-        `Reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
+      `Reverting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        "because the PR diff ranges could not be computed.",
     );
     config.overlayDatabaseMode = OverlayDatabaseMode.None;
+    config.useOverlayDatabaseCaching = false;
+    await addOverlayDisablementDiagnostics(
+      config,
+      codeql,
+      OverlayDisabledReason.PrDiffRangesNotComputed,
+    );
   }
 
-  if (
-    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
-    diffInformedAnalysis.hasDiffRanges
-  ) {
+  if (hasDiffRanges) {
     config.extraQueryExclusions.push({
       exclude: { tags: "exclude-from-incremental" },
     });
@@ -1275,13 +1272,18 @@ export async function initConfig(
     );
   }
 
-  const diffInformedAnalysis = await prepareDiffInformedAnalysis(
+  const hasDiffRanges = await prepareDiffInformedAnalysis(
     inputs.codeql,
     inputs.features,
     logger,
   );
 
-  applyIncrementalAnalysisSettings(config, diffInformedAnalysis, logger);
+  await applyIncrementalAnalysisSettings(
+    config,
+    hasDiffRanges,
+    inputs.codeql,
+    logger,
+  );
 
   if (await isTrapCachingEnabled(features, config.overlayDatabaseMode)) {
     const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(

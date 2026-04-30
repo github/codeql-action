@@ -79,7 +79,7 @@ export type FromSchema<S extends Schema> = {
 };
 
 /**
- * Validates `obj` against `schema`.
+ * Validates that `obj` satisfies at least `schema`. Additional keys are accepted.
  *
  * @param schema The schema to validate against.
  * @param obj The object to validate.

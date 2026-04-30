@@ -43,7 +43,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@ava/typescript": "6.0.0",
+    "@ava/typescript": "7.0.0",
     "@eslint/compat": "^2.0.5",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@octokit/types": "^16.0.0",

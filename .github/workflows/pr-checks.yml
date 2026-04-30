@@ -56,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: bundle-metadata-${{ matrix.os }}-${{ matrix.node-version }}
-          path: meta.json
+          path: build-metadata.json
           retention-days: ${{ (github.ref_name == github.event.repository.default_branch && 90) || 7 }}
           if-no-files-found: error
 

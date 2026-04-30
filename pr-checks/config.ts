@@ -10,12 +10,16 @@ export const PR_CHECKS_DIR = __dirname;
 export const PR_CHECK_EXCLUDED_FILE = path.join(PR_CHECKS_DIR, "excluded.yml");
 
 /** The path to the esbuild metadata file. */
-export const BUNDLE_METADATA_FILE = path.join(PR_CHECKS_DIR, "..", "meta.json");
+export const BUNDLE_METADATA_FILE = path.join(
+  PR_CHECKS_DIR,
+  "..",
+  "build-metadata.json",
+);
 
 /** The path of the baseline esbuild metadata file, once extracted from a workflow artifact. */
 export const BASELINE_BUNDLE_METADATA_FILE = path.join(
   PR_CHECKS_DIR,
-  "meta.json",
+  "build-metadata.json",
 );
 
 /** The `src` directory. */

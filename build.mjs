@@ -82,6 +82,6 @@ const context = await esbuild.context({
 });
 
 const result = await context.rebuild();
-await writeFile(join(__dirname, "meta.json"), JSON.stringify(result.metafile));
+await writeFile(join(__dirname, "build-metadata.json"), JSON.stringify(result.metafile));
 
 await context.dispose();

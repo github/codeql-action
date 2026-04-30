@@ -86,7 +86,7 @@ function wrapOutput(context: TestContext) {
 }
 
 export function setupTests(test: TestFn<any>) {
-  const typedTest = test as TestFn<TestContext>;
+  const typedTest: TestFn<TestContext> = test;
 
   typedTest.beforeEach((t) => {
     // Set an empty CodeQL object so that all method calls will fail

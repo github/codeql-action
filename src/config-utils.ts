@@ -331,8 +331,8 @@ async function getRawLanguagesInRepo(
   });
 
   logger.debug(`Languages API response: ${JSON.stringify(response)}`);
-  const result = Object.keys(response.data as Record<string, number>).map(
-    (language) => language.trim().toLowerCase(),
+  const result = Object.keys(response.data).map((language) =>
+    language.trim().toLowerCase(),
   );
 
   if (hasActionsWorkflows(sourceRoot)) {

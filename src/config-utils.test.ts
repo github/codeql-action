@@ -1214,7 +1214,7 @@ test.serial(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1464,7 +1464,7 @@ test.serial(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1483,7 +1483,7 @@ test.serial(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1502,7 +1502,7 @@ test.serial(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1521,7 +1521,7 @@ test.serial(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1590,7 +1590,7 @@ test.serial(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1741,7 +1741,7 @@ test.serial(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1760,7 +1760,7 @@ test.serial(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1779,7 +1779,7 @@ test.serial(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1798,7 +1798,7 @@ test.serial(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {

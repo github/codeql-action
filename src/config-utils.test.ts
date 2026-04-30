@@ -2201,14 +2201,16 @@ test.serial(
   },
 );
 
-test("applyIncrementalAnalysisSettings: no-op when mode is not Overlay and diff-informed is unavailable", (t) => {
+test("applyIncrementalAnalysisSettings: no-op when mode is not Overlay and diff ranges are unavailable", async (t) => {
   const config = createTestConfig({});
   config.overlayDatabaseMode = OverlayDatabaseMode.None;
+  const codeql = createStubCodeQL({});
   const logger = getRunnerLogger(true);
 
-  configUtils.applyIncrementalAnalysisSettings(
+  await configUtils.applyIncrementalAnalysisSettings(
     config,
-    { shouldRun: false, hasDiffRanges: false },
+    false,
+    codeql,
     logger,
   );
 
@@ -2216,14 +2218,17 @@ test("applyIncrementalAnalysisSettings: no-op when mode is not Overlay and diff-
   t.deepEqual(config.extraQueryExclusions, []);
 });
 
-test("applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions when diff-informed analysis shouldn't run", (t) => {
-  const config = createTestConfig({});
-  config.overlayDatabaseMode = OverlayDatabaseMode.Overlay;
+test("applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions when diff ranges are available", async (t) => {
+  const config = createTestConfig({
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+  });
+  const codeql = createStubCodeQL({});
   const logger = getRunnerLogger(true);
 
-  configUtils.applyIncrementalAnalysisSettings(
+  await configUtils.applyIncrementalAnalysisSettings(
     config,
-    { shouldRun: false, hasDiffRanges: false },
+    true,
+    codeql,
     logger,
   );
 
@@ -2233,30 +2238,36 @@ test("applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions w
   ]);
 });
 
-test("applyIncrementalAnalysisSettings: disables overlay analysis when diff-informed analysis is unavailable", (t) => {
+test("applyIncrementalAnalysisSettings: disables overlay analysis when diff ranges are unavailable", async (t) => {
   const config = createTestConfig({
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
   });
+  config.useOverlayDatabaseCaching = true;
+  const codeql = createStubCodeQL({});
   const logger = getRunnerLogger(true);
 
-  configUtils.applyIncrementalAnalysisSettings(
+  await configUtils.applyIncrementalAnalysisSettings(
     config,
-    { shouldRun: true, hasDiffRanges: false },
+    false,
+    codeql,
     logger,
   );
 
   t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+  t.is(config.useOverlayDatabaseCaching, false);
   t.deepEqual(config.extraQueryExclusions, []);
 });
 
-test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only runs", (t) => {
+test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only runs", async (t) => {
   const config = createTestConfig({});
   config.overlayDatabaseMode = OverlayDatabaseMode.None;
+  const codeql = createStubCodeQL({});
   const logger = getRunnerLogger(true);
 
-  configUtils.applyIncrementalAnalysisSettings(
+  await configUtils.applyIncrementalAnalysisSettings(
     config,
-    { shouldRun: true, hasDiffRanges: true },
+    true,
+    codeql,
     logger,
   );
 

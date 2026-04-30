@@ -7,10 +7,10 @@ import type { AuthConfig, UsernamePassword } from "./types";
 import * as types from "./types";
 
 /** Constructs a new object from `obj` with only keys that exist in `schema`. */
-export function cloneCredential<
-  T extends json.FromSchema<S>,
-  S extends json.Schema,
->(schema: S, obj: T): T {
+export function cloneCredential<S extends json.Schema>(
+  schema: S,
+  obj: json.FromSchema<S>,
+): json.FromSchema<S> {
   const result = {};
 
   for (const key of Object.keys(schema)) {
@@ -21,7 +21,7 @@ export function cloneCredential<
     result[key] = obj[key];
   }
 
-  return result as T;
+  return result as json.FromSchema<S>;
 }
 
 /** Extracts an `AuthConfig` value from `config`. */

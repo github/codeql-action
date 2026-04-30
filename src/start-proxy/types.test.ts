@@ -1,6 +1,6 @@
 import test from "ava";
 
-import { makeFromSchema } from "../json/testing-util";
+import { makeFromSchema, withSchemaMatrix } from "../json/testing-util";
 import { setupTests } from "../testing-utils";
 
 import * as types from "./types";
@@ -26,6 +26,38 @@ const validJFrogCredential: types.JFrogConfig = {
   audience: "jfrog-audience",
   "identity-mapping-name": "my-mapping",
 };
+
+test("hasUsername", (t) => {
+  // Reject the case where `username` is missing.
+  t.false(types.hasUsername({}));
+
+  // Test all cases where `username` is present.
+  withSchemaMatrix(
+    t,
+    types.usernameSchema,
+    { excludeAbsent: true },
+    (value) => {
+      t.true(types.hasUsername(value));
+    },
+  );
+});
+
+test("hasUsernameAndPassword", (t) => {
+  // Reject cases where `username` or `password` are missing.
+  t.false(types.hasUsernameAndPassword({}));
+  t.false(types.hasUsernameAndPassword({ username: "foo" }));
+  t.false(types.hasUsernameAndPassword({ password: "foo" }));
+
+  // Test all cases where both `username` and `password` are present.
+  withSchemaMatrix(
+    t,
+    types.usernamePasswordSchema,
+    { excludeAbsent: true },
+    (value) => {
+      t.true(types.hasUsernameAndPassword(value));
+    },
+  );
+});
 
 test("credentialToStr - pretty-prints valid username+password configurations", (t) => {
   const secret = "password123";

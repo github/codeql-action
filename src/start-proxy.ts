@@ -24,8 +24,8 @@ import {
   Address,
   Registry,
   Credential,
-  isToken,
-  isUsernamePassword,
+  hasToken,
+  hasUsernameAndPassword,
   hasUsername,
   RawCredential,
 } from "./start-proxy/types";
@@ -331,11 +331,11 @@ export function getCredentials(
     const noUsername =
       !hasUsername(authConfig) || !isDefined(authConfig.username);
     const passwordIsPAT =
-      isUsernamePassword(authConfig) &&
+      hasUsernameAndPassword(authConfig) &&
       isDefined(authConfig.password) &&
       isPAT(authConfig.password);
     const tokenIsPAT =
-      isToken(authConfig) &&
+      hasToken(authConfig) &&
       isDefined(authConfig.token) &&
       isPAT(authConfig.token);
 

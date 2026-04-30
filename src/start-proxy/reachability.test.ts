@@ -125,7 +125,7 @@ test("checkConnections - appends extra paths", async (t) => {
   const checkConnection = sinon.stub(backend, "checkConnection").resolves(200);
 
   const messages = await withRecordingLoggerAsync(async (logger) => {
-    const reachable = await checkConnections(
+    await checkConnections(
       logger,
       {
         ...proxyInfo,

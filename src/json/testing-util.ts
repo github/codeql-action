@@ -61,8 +61,17 @@ export function withSchemaMatrix<S extends json.Schema>(
     `value-for-${String(key)}`,
   ];
 
-  // Constructs an array of test objects, starting with `required` and adding
-  // acceptable values for any
+  // Constructs an array of test objects, starting with `required` and combining it with all
+  // possible states of each optional property. For example, with default settings:
+  //
+  // For { requiredKey: string }, we get: `[{ requiredKey: "some-string-value" }]`
+  //
+  // For { requiredKey: string, optionalKey?: string }, we get:
+  // [ { requiredKey: "some-string-value" },
+  //   { requiredKey: "some-string-value", optionalKey: undefined },
+  //   { requiredKey: "some-string-value", optionalKey: null },
+  //   { requiredKey: "some-string-value", optionalKey: "some-value" },
+  // ]
   const permutations = (keys: Array<keyof S>) => {
     if (keys.length === 0) return [required];
 

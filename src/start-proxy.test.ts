@@ -351,112 +351,37 @@ test("getCredentials throws an error when non-printable characters are used", as
   }
 });
 
-const validAzureCredential: startProxyExports.AzureConfig = {
-  "tenant-id": "12345678-1234-1234-1234-123456789012",
-  "client-id": "abcdef01-2345-6789-abcd-ef0123456789",
-};
+for (const oidcSchemaInfo of startProxyExports.oidcSchemas) {
+  test(`getCredentials throws when non-printable characters are used (${oidcSchemaInfo.name} OIDC)`, (t) => {
+    const validCredential = makeFromSchema(true, oidcSchemaInfo.schema);
+    for (const key of Object.keys(validCredential)) {
+      const invalidAuthConfig = {
+        ...validCredential,
+        [key]: "123\x00",
+      };
+      const invalidCredential: startProxyExports.RawCredential = {
+        type: "nuget_feed",
+        host: `${key}.nuget.pkg.github.com`,
+        ...invalidAuthConfig,
+      };
+      const credentialsInput = toEncodedJSON([invalidCredential]);
 
-const validAwsCredential: startProxyExports.AWSConfig = {
-  "aws-region": "us-east-1",
-  "account-id": "123456789012",
-  "role-name": "MY_ROLE",
-  domain: "MY_DOMAIN",
-  "domain-owner": "987654321098",
-  audience: "custom-audience",
-};
-
-const validJFrogCredential: startProxyExports.JFrogConfig = {
-  "jfrog-oidc-provider-name": "MY_PROVIDER",
-  audience: "jfrog-audience",
-  "identity-mapping-name": "my-mapping",
-};
-
-test("getCredentials throws an error when non-printable characters are used for Azure OIDC", (t) => {
-  for (const key of Object.keys(validAzureCredential)) {
-    const invalidAzureCredential = {
-      ...validAzureCredential,
-      [key]: "123\x00",
-    };
-    const invalidCredential: startProxyExports.RawCredential = {
-      type: "nuget_feed",
-      host: `${key}.nuget.pkg.github.com`,
-      ...invalidAzureCredential,
-    };
-    const credentialsInput = toEncodedJSON([invalidCredential]);
-
-    t.throws(
-      () =>
-        startProxyExports.getCredentials(
-          getRunnerLogger(true),
-          undefined,
-          credentialsInput,
-          undefined,
-        ),
-      {
-        message:
-          "Invalid credentials - fields must contain only printable characters",
-      },
-    );
-  }
-});
-
-test("getCredentials throws an error when non-printable characters are used for AWS OIDC", (t) => {
-  for (const key of Object.keys(validAwsCredential)) {
-    const invalidAwsCredential = {
-      ...validAwsCredential,
-      [key]: "123\x00",
-    };
-    const invalidCredential: startProxyExports.RawCredential = {
-      type: "nuget_feed",
-      host: `${key}.nuget.pkg.github.com`,
-      ...invalidAwsCredential,
-    };
-    const credentialsInput = toEncodedJSON([invalidCredential]);
-
-    t.throws(
-      () =>
-        startProxyExports.getCredentials(
-          getRunnerLogger(true),
-          undefined,
-          credentialsInput,
-          undefined,
-        ),
-      {
-        message:
-          "Invalid credentials - fields must contain only printable characters",
-      },
-    );
-  }
-});
-
-test("getCredentials throws an error when non-printable characters are used for JFrog OIDC", (t) => {
-  for (const key of Object.keys(validJFrogCredential)) {
-    const invalidJFrogCredential = {
-      ...validJFrogCredential,
-      [key]: "123\x00",
-    };
-    const invalidCredential: startProxyExports.RawCredential = {
-      type: "nuget_feed",
-      host: `${key}.nuget.pkg.github.com`,
-      ...invalidJFrogCredential,
-    };
-    const credentialsInput = toEncodedJSON([invalidCredential]);
-
-    t.throws(
-      () =>
-        startProxyExports.getCredentials(
-          getRunnerLogger(true),
-          undefined,
-          credentialsInput,
-          undefined,
-        ),
-      {
-        message:
-          "Invalid credentials - fields must contain only printable characters",
-      },
-    );
-  }
-});
+      t.throws(
+        () =>
+          startProxyExports.getCredentials(
+            getRunnerLogger(true),
+            undefined,
+            credentialsInput,
+            undefined,
+          ),
+        {
+          message:
+            "Invalid credentials - fields must contain only printable characters",
+        },
+      );
+    }
+  });
+}
 
 test("getCredentials accepts OIDC configurations", (t) => {
   const oidcConfigurations = startProxyExports.oidcSchemas.map(

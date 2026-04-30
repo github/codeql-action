@@ -17,3 +17,13 @@ export const BASELINE_BUNDLE_METADATA_FILE = path.join(
   PR_CHECKS_DIR,
   "meta.json",
 );
+
+/** The `src` directory. */
+const SOURCE_ROOT = path.join(PR_CHECKS_DIR, "..", "src");
+
+/** The path to the built-in languages file. */
+export const BUILTIN_LANGUAGES_FILE = path.join(
+  SOURCE_ROOT,
+  "languages",
+  "builtin.json",
+);

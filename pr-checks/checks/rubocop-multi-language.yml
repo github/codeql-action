@@ -5,7 +5,7 @@ versions:
   - default
 steps:
   - name: Set up Ruby
-    uses: ruby/setup-ruby@319994f95fa847cf3fb3cd3dbe89f6dcde9f178f # v1.295.0
+    uses: ruby/setup-ruby@0cb964fd540e0a24c900370abf38a33466142735 # v1.305.0
     with:
       ruby-version: 2.6
   - name: Install Code Scanning integration

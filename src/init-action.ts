@@ -58,13 +58,13 @@ import {
   initConfig,
   runDatabaseInitCluster,
 } from "./init";
-import { JavaEnvVars, KnownLanguage } from "./languages";
+import { JavaEnvVars, BuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
-  OverlayDatabaseMode,
-} from "./overlay";
+} from "./overlay/caching";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -330,7 +330,7 @@ async function run(startedAt: Date) {
       // requested rust - don't enable it via language autodetection.
       configUtils
         .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
-        .includes(KnownLanguage.rust)
+        .includes(BuiltInLanguage.rust)
     ) {
       const experimental = "2.19.3";
       const publicPreview = "2.22.1";
@@ -390,7 +390,7 @@ async function run(startedAt: Date) {
     });
 
     if (
-      config.languages.includes(KnownLanguage.swift) &&
+      config.languages.includes(BuiltInLanguage.swift) &&
       process.platform !== "darwin"
     ) {
       throw new ConfigurationError(
@@ -465,18 +465,23 @@ async function run(startedAt: Date) {
       // necessary preparations. So, in that mode, we would assume that
       // everything is in order and let the analysis fail if that turns out not
       // to be the case.
-      overlayBaseDatabaseStats = await downloadOverlayBaseDatabaseFromCache(
-        codeql,
-        config,
-        logger,
+      await withGroupAsync(
+        "Checking cache for overlay-base database",
+        async () => {
+          overlayBaseDatabaseStats = await downloadOverlayBaseDatabaseFromCache(
+            codeql,
+            config,
+            logger,
+          );
+          if (!overlayBaseDatabaseStats) {
+            config.overlayDatabaseMode = OverlayDatabaseMode.None;
+            logger.info(
+              "No overlay-base database found in cache, " +
+                `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
+            );
+          }
+        },
       );
-      if (!overlayBaseDatabaseStats) {
-        config.overlayDatabaseMode = OverlayDatabaseMode.None;
-        logger.info(
-          "No overlay-base database found in cache, " +
-            `reverting overlay database mode to ${OverlayDatabaseMode.None}.`,
-        );
-      }
     }
 
     if (config.overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
@@ -509,7 +514,7 @@ async function run(startedAt: Date) {
     }
 
     if (
-      config.languages.includes(KnownLanguage.go) &&
+      config.languages.includes(BuiltInLanguage.go) &&
       process.platform === "linux"
     ) {
       try {
@@ -567,7 +572,7 @@ async function run(startedAt: Date) {
         if (e instanceof FileCmdNotFoundError) {
           addDiagnostic(
             config,
-            KnownLanguage.go,
+            BuiltInLanguage.go,
             makeDiagnostic(
               "go/workflow/file-program-unavailable",
               "The `file` program is required on Linux, but does not appear to be installed",
@@ -661,7 +666,7 @@ async function run(startedAt: Date) {
       (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
-      config.languages.includes(KnownLanguage.java)
+      config.languages.includes(BuiltInLanguage.java)
     ) {
       core.exportVariable(
         EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS,

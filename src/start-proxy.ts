@@ -18,8 +18,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import * as json from "./json";
-import * as knownLanguageAliases from "./known-language-aliases.json";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
   Address,
@@ -157,7 +156,7 @@ export function getSafeErrorMessage(error: Error): string {
 export async function sendFailedStatusReport(
   logger: Logger,
   startedAt: Date,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   unwrappedError: unknown,
 ) {
   const error = util.wrapError(unwrappedError);
@@ -173,7 +172,7 @@ export async function sendFailedStatusReport(
     getActionsStatus(error),
     startedAt,
     {
-      languages: language && [language],
+      languages: language === undefined ? undefined : [language],
     },
     await util.checkDiskUsage(logger),
     logger,
@@ -189,35 +188,6 @@ export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 
-/**
- * Parse the start-proxy language input into its canonical CodeQL language name.
- *
- * This uses the language aliases shipped with the Action and will not be able to resolve aliases
- * added by versions of the CodeQL CLI newer than the one mentioned in `defaults.json`. However,
- * this is sufficient for the start-proxy Action since we are already specifying proxy
- * configurations on a per-language basis.
- */
-export function parseLanguage(language: string): KnownLanguage | undefined {
-  // Normalize to lower case
-  language = language.trim().toLowerCase();
-
-  // See if it's an exact match
-  if (Object.hasOwn(KnownLanguage, language)) {
-    return language as KnownLanguage;
-  }
-
-  // Check language aliases
-  if (Object.hasOwn(knownLanguageAliases, language)) {
-    language =
-      knownLanguageAliases[language as keyof typeof knownLanguageAliases];
-    if (Object.hasOwn(KnownLanguage, language)) {
-      return language as KnownLanguage;
-    }
-  }
-
-  return undefined;
-}
-
 function isPAT(value: string) {
   return artifactScanner.isAuthToken(value, [
     artifactScanner.GITHUB_PAT_CLASSIC_PATTERN,
@@ -225,7 +195,7 @@ function isPAT(value: string) {
   ]);
 }
 
-type RegistryMapping = Partial<Record<KnownLanguage, string[]>>;
+type RegistryMapping = Partial<Record<BuiltInLanguage, string[]>>;
 
 const LANGUAGE_TO_REGISTRY_TYPE: RegistryMapping = {
   java: ["maven_repository"],
@@ -357,7 +327,7 @@ export function getCredentials(
   logger: Logger,
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   skipUnusedRegistries: boolean = false,
 ): Credential[] {
   const registryMapping = skipUnusedRegistries

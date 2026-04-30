@@ -48,13 +48,14 @@ import {
   hasSubmodules,
   isAnalyzingDefaultBranch,
 } from "./git-utils";
-import { KnownLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages";
 import { Logger } from "./logging";
-import { CODEQL_OVERLAY_MINIMUM_VERSION, OverlayDatabaseMode } from "./overlay";
+import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import {
   addOverlayDisablementDiagnostics,
   OverlayDisabledReason,
 } from "./overlay/diagnostics";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
@@ -273,10 +274,10 @@ async function getSupportedLanguageMap(
   for (const extractor of Object.keys(resolveResult.extractors)) {
     // If the CLI supports resolving languages with default queries, use these
     // as the set of supported languages. Otherwise, require the language to be
-    // a known language.
+    // a built-in language.
     if (
       resolveSupportedLanguagesUsingCli ||
-      KnownLanguage[extractor] !== undefined
+      BuiltInLanguage[extractor] !== undefined
     ) {
       supportedLanguages[extractor] = extractor;
     }
@@ -946,7 +947,7 @@ async function validateOverlayDatabaseMode(
       await Promise.all(
         languages.map(
           async (l) =>
-            l !== KnownLanguage.go && // Workaround to allow overlay analysis for Go with any build
+            l !== BuiltInLanguage.go && // Workaround to allow overlay analysis for Go with any build
             // mode, since it does not yet support BMN. The Go autobuilder and/or extractor will
             // ensure that overlay-base databases are only created for supported Go build setups,
             // and that we'll fall back to full databases in other cases.
@@ -1035,13 +1036,13 @@ async function setCppTrapCachingEnvironmentVariables(
   config: Config,
   logger: Logger,
 ): Promise<void> {
-  if (config.languages.includes(KnownLanguage.cpp)) {
+  if (config.languages.includes(BuiltInLanguage.cpp)) {
     const envVar = "CODEQL_EXTRACTOR_CPP_TRAP_CACHING";
     if (process.env[envVar]) {
       logger.info(
         `Environment variable ${envVar} already set, leaving it unchanged.`,
       );
-    } else if (config.trapCaches[KnownLanguage.cpp]) {
+    } else if (config.trapCaches[BuiltInLanguage.cpp]) {
       logger.info("Enabling TRAP caching for C/C++.");
       core.exportVariable(envVar, "true");
     } else {
@@ -1538,7 +1539,7 @@ export async function parseBuildModeInput(
   }
 
   if (
-    languages.includes(KnownLanguage.csharp) &&
+    languages.includes(BuiltInLanguage.csharp) &&
     (await features.getValue(Feature.DisableCsharpBuildless))
   ) {
     logger.warning(
@@ -1548,7 +1549,7 @@ export async function parseBuildModeInput(
   }
 
   if (
-    languages.includes(KnownLanguage.java) &&
+    languages.includes(BuiltInLanguage.java) &&
     (await features.getValue(Feature.DisableJavaBuildlessEnabled))
   ) {
     logger.warning(

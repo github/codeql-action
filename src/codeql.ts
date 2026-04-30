@@ -24,11 +24,8 @@ import {
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import {
-  OverlayDatabaseMode,
-  writeBaseDatabaseOidsFile,
-  writeOverlayChangesFile,
-} from "./overlay";
+import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
+import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as setupCodeql from "./setup-codeql";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -285,17 +282,17 @@ const CODEQL_MINIMUM_VERSION = "2.17.6";
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.17.6";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.19.4";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.13";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.15";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2025-06-19";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-04-09";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";

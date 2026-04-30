@@ -145,7 +145,6 @@ test("credentialToStr - hides passwords", (t) => {
   const secret = "password123";
   const credential = {
     type: "maven_credential",
-    username: null,
     password: secret,
     url: "https://localhost",
   } satisfies types.Credential;
@@ -160,7 +159,6 @@ test("credentialToStr - hides tokens", (t) => {
   const secret = "password123";
   const credential = {
     type: "maven_credential",
-    username: null,
     token: secret,
     url: "https://localhost",
   } satisfies types.Credential;

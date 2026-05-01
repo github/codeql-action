@@ -27,7 +27,7 @@ import {
   CacheStoreResult,
 } from "./dependency-caching";
 import { Feature } from "./feature-flags";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import {
   setupTests,
   createFeatures,
@@ -179,7 +179,7 @@ test("checkHashPatterns - logs when no patterns match", async (t) => {
   const result = await checkHashPatterns(
     codeql,
     features,
-    KnownLanguage.csharp,
+    BuiltInLanguage.csharp,
     config,
     "download",
     getRecordingLogger(messages),
@@ -208,7 +208,7 @@ test("checkHashPatterns - returns patterns when patterns match", async (t) => {
     const result = await checkHashPatterns(
       codeql,
       features,
-      KnownLanguage.csharp,
+      BuiltInLanguage.csharp,
       config,
       "upload",
       getRecordingLogger(messages),
@@ -270,7 +270,7 @@ test.serial(
     const keyWithFeature = await cacheKey(
       codeql,
       createFeatures([Feature.CsharpNewCacheKey]),
-      KnownLanguage.csharp,
+      BuiltInLanguage.csharp,
       // Patterns don't matter here because we have stubbed `hashFiles` to always return a specific hash above.
       [],
     );
@@ -288,12 +288,12 @@ test.serial(
     const result = await downloadDependencyCaches(
       codeql,
       createFeatures([]),
-      [KnownLanguage.csharp],
+      [BuiltInLanguage.csharp],
       logger,
     );
     const statusReport = result.statusReport;
     t.is(statusReport.length, 1);
-    t.is(statusReport[0].language, KnownLanguage.csharp);
+    t.is(statusReport[0].language, BuiltInLanguage.csharp);
     t.is(statusReport[0].hit_kind, CacheHitKind.Miss);
     t.deepEqual(result.restoredKeys, []);
     t.assert(restoreCacheStub.calledOnce);
@@ -316,7 +316,7 @@ test.serial(
     const keyWithFeature = await cacheKey(
       codeql,
       features,
-      KnownLanguage.csharp,
+      BuiltInLanguage.csharp,
       // Patterns don't matter here because we have stubbed `hashFiles` to always return a specific hash above.
       [],
     );
@@ -334,14 +334,14 @@ test.serial(
     const result = await downloadDependencyCaches(
       codeql,
       features,
-      [KnownLanguage.csharp],
+      [BuiltInLanguage.csharp],
       logger,
     );
 
     // Check that the status report for telemetry indicates that one cache was restored with an exact match.
     const statusReport = result.statusReport;
     t.is(statusReport.length, 1);
-    t.is(statusReport[0].language, KnownLanguage.csharp);
+    t.is(statusReport[0].language, BuiltInLanguage.csharp);
     t.is(statusReport[0].hit_kind, CacheHitKind.Exact);
 
     // Check that the restored key has been returned.
@@ -380,7 +380,7 @@ test.serial(
     const keyWithFeature = await cacheKey(
       codeql,
       features,
-      KnownLanguage.csharp,
+      BuiltInLanguage.csharp,
       // Patterns don't matter here because we have stubbed `hashFiles` to always return a specific hash above.
       [],
     );
@@ -398,14 +398,14 @@ test.serial(
     const result = await downloadDependencyCaches(
       codeql,
       features,
-      [KnownLanguage.csharp],
+      [BuiltInLanguage.csharp],
       logger,
     );
 
     // Check that the status report for telemetry indicates that one cache was restored with a partial match.
     const statusReport = result.statusReport;
     t.is(statusReport.length, 1);
-    t.is(statusReport[0].language, KnownLanguage.csharp);
+    t.is(statusReport[0].language, BuiltInLanguage.csharp);
     t.is(statusReport[0].hit_kind, CacheHitKind.Partial);
 
     // Check that the restored key has been returned.
@@ -426,7 +426,7 @@ test("uploadDependencyCaches - skips upload for a language with no cache config"
   const logger = getRecordingLogger(messages);
   const features = createFeatures([]);
   const config = createTestConfig({
-    languages: [KnownLanguage.actions],
+    languages: [BuiltInLanguage.actions],
   });
 
   const result = await uploadDependencyCaches(codeql, features, config, logger);
@@ -444,7 +444,7 @@ test.serial(
     const logger = getRecordingLogger(messages);
     const features = createFeatures([]);
     const config = createTestConfig({
-      languages: [KnownLanguage.go],
+      languages: [BuiltInLanguage.go],
     });
 
     const makePatternCheckStub = sinon.stub(internal, "makePatternCheck");
@@ -457,7 +457,7 @@ test.serial(
       logger,
     );
     t.is(result.length, 1);
-    t.is(result[0].language, KnownLanguage.go);
+    t.is(result[0].language, BuiltInLanguage.go);
     t.is(result[0].result, CacheStoreResult.NoHash);
   },
 );
@@ -483,12 +483,12 @@ test.serial(
     const primaryCacheKey = await cacheKey(
       codeql,
       features,
-      KnownLanguage.csharp,
+      BuiltInLanguage.csharp,
       CSHARP_BASE_PATTERNS,
     );
 
     const config = createTestConfig({
-      languages: [KnownLanguage.csharp],
+      languages: [BuiltInLanguage.csharp],
       dependencyCachingRestoredKeys: [primaryCacheKey],
     });
 
@@ -499,7 +499,7 @@ test.serial(
       logger,
     );
     t.is(result.length, 1);
-    t.is(result[0].language, KnownLanguage.csharp);
+    t.is(result[0].language, BuiltInLanguage.csharp);
     t.is(result[0].result, CacheStoreResult.Duplicate);
   },
 );
@@ -525,7 +525,7 @@ test.serial(
     sinon.stub(cachingUtils, "getTotalCacheSize").resolves(0);
 
     const config = createTestConfig({
-      languages: [KnownLanguage.csharp],
+      languages: [BuiltInLanguage.csharp],
     });
 
     const result = await uploadDependencyCaches(
@@ -535,7 +535,7 @@ test.serial(
       logger,
     );
     t.is(result.length, 1);
-    t.is(result[0].language, KnownLanguage.csharp);
+    t.is(result[0].language, BuiltInLanguage.csharp);
     t.is(result[0].result, CacheStoreResult.Empty);
 
     checkExpectedLogMessages(t, messages, [
@@ -566,7 +566,7 @@ test.serial(
     sinon.stub(actionsCache, "saveCache").resolves();
 
     const config = createTestConfig({
-      languages: [KnownLanguage.csharp],
+      languages: [BuiltInLanguage.csharp],
     });
 
     const result = await uploadDependencyCaches(
@@ -576,7 +576,7 @@ test.serial(
       logger,
     );
     t.is(result.length, 1);
-    t.is(result[0].language, KnownLanguage.csharp);
+    t.is(result[0].language, BuiltInLanguage.csharp);
     t.is(result[0].result, CacheStoreResult.Stored);
     t.is(result[0].upload_size_bytes, 1024);
 
@@ -608,7 +608,7 @@ test.serial(
       .throws(new actionsCache.ReserveCacheError("Already in use"));
 
     const config = createTestConfig({
-      languages: [KnownLanguage.csharp],
+      languages: [BuiltInLanguage.csharp],
     });
 
     await t.notThrowsAsync(async () => {
@@ -619,7 +619,7 @@ test.serial(
         logger,
       );
       t.is(result.length, 1);
-      t.is(result[0].language, KnownLanguage.csharp);
+      t.is(result[0].language, BuiltInLanguage.csharp);
       t.is(result[0].result, CacheStoreResult.Duplicate);
 
       checkExpectedLogMessages(t, messages, ["Not uploading cache for"]);
@@ -647,7 +647,7 @@ test.serial("uploadDependencyCaches - throws other exceptions", async (t) => {
   sinon.stub(actionsCache, "saveCache").throws();
 
   const config = createTestConfig({
-    languages: [KnownLanguage.csharp],
+    languages: [BuiltInLanguage.csharp],
   });
 
   await t.throwsAsync(async () => {
@@ -659,7 +659,7 @@ test("getFeaturePrefix - returns empty string if no features are enabled", async
   const codeql = createStubCodeQL({});
   const features = createFeatures([]);
 
-  for (const knownLanguage of Object.values(KnownLanguage)) {
+  for (const knownLanguage of Object.values(BuiltInLanguage)) {
     const result = await getFeaturePrefix(codeql, features, knownLanguage);
     t.deepEqual(result, "", `Expected no feature prefix for ${knownLanguage}`);
   }
@@ -669,7 +669,11 @@ test("getFeaturePrefix - C# - returns prefix if CsharpNewCacheKey is enabled", a
   const codeql = createStubCodeQL({});
   const features = createFeatures([Feature.CsharpNewCacheKey]);
 
-  const result = await getFeaturePrefix(codeql, features, KnownLanguage.csharp);
+  const result = await getFeaturePrefix(
+    codeql,
+    features,
+    BuiltInLanguage.csharp,
+  );
   t.notDeepEqual(result, "");
   t.assert(result.endsWith("-"));
   // Check the length of the prefix, which should correspond to `cacheKeyHashLength` + 1 for the trailing `-`.
@@ -680,9 +684,9 @@ test("getFeaturePrefix - non-C# - returns '' if CsharpNewCacheKey is enabled", a
   const codeql = createStubCodeQL({});
   const features = createFeatures([Feature.CsharpNewCacheKey]);
 
-  for (const knownLanguage of Object.values(KnownLanguage)) {
+  for (const knownLanguage of Object.values(BuiltInLanguage)) {
     // Skip C# since we expect a result for it, which is tested in the previous test.
-    if (knownLanguage === KnownLanguage.csharp) {
+    if (knownLanguage === BuiltInLanguage.csharp) {
       continue;
     }
     const result = await getFeaturePrefix(codeql, features, knownLanguage);
@@ -694,7 +698,11 @@ test("getFeaturePrefix - C# - returns prefix if CsharpCacheBuildModeNone is enab
   const codeql = createStubCodeQL({});
   const features = createFeatures([Feature.CsharpCacheBuildModeNone]);
 
-  const result = await getFeaturePrefix(codeql, features, KnownLanguage.csharp);
+  const result = await getFeaturePrefix(
+    codeql,
+    features,
+    BuiltInLanguage.csharp,
+  );
   t.notDeepEqual(result, "");
   t.assert(result.endsWith("-"));
   // Check the length of the prefix, which should correspond to `cacheKeyHashLength` + 1 for the trailing `-`.
@@ -705,9 +713,9 @@ test("getFeaturePrefix - non-C# - returns '' if CsharpCacheBuildModeNone is enab
   const codeql = createStubCodeQL({});
   const features = createFeatures([Feature.CsharpCacheBuildModeNone]);
 
-  for (const knownLanguage of Object.values(KnownLanguage)) {
+  for (const knownLanguage of Object.values(BuiltInLanguage)) {
     // Skip C# since we expect a result for it, which is tested in the previous test.
-    if (knownLanguage === KnownLanguage.csharp) {
+    if (knownLanguage === BuiltInLanguage.csharp) {
       continue;
     }
     const result = await getFeaturePrefix(codeql, features, knownLanguage);

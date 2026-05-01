@@ -18,27 +18,18 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import * as json from "./json";
-import * as knownLanguageAliases from "./known-language-aliases.json";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import {
   Address,
   Registry,
   Credential,
-  AuthConfig,
-  isToken,
-  isAzureConfig,
-  Token,
-  UsernamePassword,
-  AzureConfig,
-  isAWSConfig,
-  AWSConfig,
-  isJFrogConfig,
-  JFrogConfig,
-  isUsernamePassword,
+  hasToken,
+  hasUsernameAndPassword,
   hasUsername,
   RawCredential,
 } from "./start-proxy/types";
+import { getAuthConfig } from "./start-proxy/validation";
 import {
   ActionName,
   createStatusReportBase,
@@ -157,7 +148,7 @@ export function getSafeErrorMessage(error: Error): string {
 export async function sendFailedStatusReport(
   logger: Logger,
   startedAt: Date,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   unwrappedError: unknown,
 ) {
   const error = util.wrapError(unwrappedError);
@@ -173,7 +164,7 @@ export async function sendFailedStatusReport(
     getActionsStatus(error),
     startedAt,
     {
-      languages: language && [language],
+      languages: language === undefined ? undefined : [language],
     },
     await util.checkDiskUsage(logger),
     logger,
@@ -189,35 +180,6 @@ export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
 const UPDATEJOB_PROXY_URL_PREFIX =
   "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 
-/**
- * Parse the start-proxy language input into its canonical CodeQL language name.
- *
- * This uses the language aliases shipped with the Action and will not be able to resolve aliases
- * added by versions of the CodeQL CLI newer than the one mentioned in `defaults.json`. However,
- * this is sufficient for the start-proxy Action since we are already specifying proxy
- * configurations on a per-language basis.
- */
-export function parseLanguage(language: string): KnownLanguage | undefined {
-  // Normalize to lower case
-  language = language.trim().toLowerCase();
-
-  // See if it's an exact match
-  if (Object.hasOwn(KnownLanguage, language)) {
-    return language as KnownLanguage;
-  }
-
-  // Check language aliases
-  if (Object.hasOwn(knownLanguageAliases, language)) {
-    language =
-      knownLanguageAliases[language as keyof typeof knownLanguageAliases];
-    if (Object.hasOwn(KnownLanguage, language)) {
-      return language as KnownLanguage;
-    }
-  }
-
-  return undefined;
-}
-
 function isPAT(value: string) {
   return artifactScanner.isAuthToken(value, [
     artifactScanner.GITHUB_PAT_CLASSIC_PATTERN,
@@ -225,7 +187,7 @@ function isPAT(value: string) {
   ]);
 }
 
-type RegistryMapping = Partial<Record<KnownLanguage, string[]>>;
+type RegistryMapping = Partial<Record<BuiltInLanguage, string[]>>;
 
 const LANGUAGE_TO_REGISTRY_TYPE: RegistryMapping = {
   java: ["maven_repository"],
@@ -281,75 +243,6 @@ function getRegistryAddress(
   }
 }
 
-/** Extracts an `AuthConfig` value from `config`. */
-export function getAuthConfig(
-  config: json.UnvalidatedObject<AuthConfig>,
-): AuthConfig {
-  // Start by checking for the OIDC configurations, since they have required properties
-  // which we can use to identify them.
-  if (isAzureConfig(config)) {
-    return {
-      "tenant-id": config["tenant-id"],
-      "client-id": config["client-id"],
-    } satisfies AzureConfig;
-  } else if (isAWSConfig(config)) {
-    return {
-      "aws-region": config["aws-region"],
-      "account-id": config["account-id"],
-      "role-name": config["role-name"],
-      domain: config.domain,
-      "domain-owner": config["domain-owner"],
-      audience: config.audience,
-    } satisfies AWSConfig;
-  } else if (isJFrogConfig(config)) {
-    return {
-      "jfrog-oidc-provider-name": config["jfrog-oidc-provider-name"],
-      "identity-mapping-name": config["identity-mapping-name"],
-      audience: config.audience,
-    } satisfies JFrogConfig;
-  } else if (isToken(config)) {
-    // There are three scenarios for non-OIDC authentication based on the registry type:
-    //
-    // 1. `username`+`token`
-    // 2. A `token` that combines the username and actual token, separated by ':'.
-    // 3. `username`+`password`
-    //
-    // In all three cases, all fields are optional. If the `token` field is present,
-    // we accept the configuration as a `Token` typed configuration, with the `token`
-    // value and an optional `username`. Otherwise, we accept the configuration
-    // typed as `UsernamePassword` (in the `else` clause below) with optional
-    // username and password. I.e. a private registry type that uses 1. or 2.,
-    // but has no `token` configured, will get accepted as `UsernamePassword` here.
-
-    if (isDefined(config.token)) {
-      // Mask token to reduce chance of accidental leakage in logs, if we have one.
-      core.setSecret(config.token);
-    }
-
-    return { username: config.username, token: config.token } satisfies Token;
-  } else {
-    let username: string | undefined = undefined;
-    let password: string | undefined = undefined;
-
-    // Both "username" and "password" are optional. If we have reached this point, we need
-    // to validate which of them are present and that they have the correct type if so.
-    if ("password" in config && json.isString(config.password)) {
-      // Mask password to reduce chance of accidental leakage in logs, if we have one.
-      core.setSecret(config.password);
-      password = config.password;
-    }
-    if ("username" in config && json.isString(config.username)) {
-      username = config.username;
-    }
-
-    // Return the `UsernamePassword` object. Both username and password may be undefined.
-    return {
-      username,
-      password,
-    } satisfies UsernamePassword;
-  }
-}
-
 // getCredentials returns registry credentials from action inputs.
 // It prefers `registries_credentials` over `registry_secrets`.
 // If neither is set, it returns an empty array.
@@ -357,7 +250,7 @@ export function getCredentials(
   logger: Logger,
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
-  language: KnownLanguage | undefined,
+  language: BuiltInLanguage | undefined,
   skipUnusedRegistries: boolean = false,
 ): Credential[] {
   const registryMapping = skipUnusedRegistries
@@ -438,11 +331,11 @@ export function getCredentials(
     const noUsername =
       !hasUsername(authConfig) || !isDefined(authConfig.username);
     const passwordIsPAT =
-      isUsernamePassword(authConfig) &&
+      hasUsernameAndPassword(authConfig) &&
       isDefined(authConfig.password) &&
       isPAT(authConfig.password);
     const tokenIsPAT =
-      isToken(authConfig) &&
+      hasToken(authConfig) &&
       isDefined(authConfig.token) &&
       isPAT(authConfig.token);
 
@@ -454,8 +347,25 @@ export function getCredentials(
       );
     }
 
+    // Construct the base credential object.
+    const baseCredential: Omit<Registry, keyof Address> = { type: e.type };
+
+    // If "replaces-base" is present, it must be a boolean.
+    if ("replaces-base" in e) {
+      if (
+        isDefined(e["replaces-base"]) &&
+        typeof e["replaces-base"] === "boolean"
+      ) {
+        baseCredential["replaces-base"] = e["replaces-base"];
+      } else {
+        throw new ConfigurationError(
+          "Invalid credentials - 'replaces-base' must be a boolean",
+        );
+      }
+    }
+
     out.push({
-      type: e.type,
+      ...baseCredential,
       ...authConfig,
       ...address,
     });

@@ -6,6 +6,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.19.3 and earlier. These versions of CodeQL were discontinued on 9 April 2026 alongside GitHub Enterprise Server 3.15, and will be unsupported by the next minor release of the CodeQL Action. [#3837](https://github.com/github/codeql-action/pull/3837)
 - Configurations for private registries that use Cloudsmith or GCP OIDC are now accepted. [#3850](https://github.com/github/codeql-action/pull/3850)
+- Best-effort connection tests for private registries now use `GET` requests instead of `HEAD` for better compatibility with various registry implementations. For NuGet feeds, the test is now always performed against the service index. [#3853](https://github.com/github/codeql-action/pull/3853)
 - Fixed a bug where two diagnostics produced within the same millisecond could overwrite each other on disk, causing one of them to be lost. [#3852](https://github.com/github/codeql-action/pull/3852)
 - Update default CodeQL bundle version to [2.25.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.3). [#3865](https://github.com/github/codeql-action/pull/3865)
 

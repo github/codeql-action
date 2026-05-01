@@ -2,10 +2,40 @@ import * as https from "https";
 
 import { HttpsProxyAgent } from "https-proxy-agent";
 
+import { DocUrl } from "../doc-url";
 import { Logger } from "../logging";
 import { getErrorMessage } from "../util";
 
 import { getAddressString, ProxyInfo, Registry } from "./types";
+
+/** Represents registry-specific connection test configurations. */
+export interface ConnectionTestConfig {
+  /** An optional path to append to the end of the base url. */
+  path?: string;
+}
+
+/** A partial mapping of registry types to extra connection test configurations. */
+export const connectionTestConfig: Partial<
+  Record<string, ConnectionTestConfig>
+> = {
+  nuget_feed: { path: "v3/index.json" },
+};
+
+/**
+ * Applies the registry-specific check configuration to the base URL, if any and applicable.
+ */
+export function makeTestUrl(
+  config: ConnectionTestConfig | undefined,
+  base: URL,
+): URL {
+  if (config?.path === undefined) {
+    return base;
+  }
+  if (base.pathname.endsWith(config.path)) {
+    return base;
+  }
+  return new URL(config.path, base);
+}
 
 export class ReachabilityError extends Error {
   constructor(public readonly statusCode?: number | undefined) {
@@ -41,7 +71,7 @@ class NetworkReachabilityBackend implements ReachabilityBackend {
         url,
         {
           agent: this.agent,
-          method: "HEAD",
+          method: "GET",
           ca: this.proxy.cert,
           timeout: 5 * 1000, // 5 seconds
         },
@@ -85,6 +115,13 @@ export async function checkConnections(
   // Don't do anything if there are no registries.
   if (proxy.registries.length === 0) return result;
 
+  // Start a log group and print a message with a disclaimer with a link to the
+  // relevant documentation that these checks are a best-effort process.
+  logger.startGroup("Testing connections via the proxy");
+  logger.info(
+    `The connection tests performed here are best-effort only and failures here may not affect the subsequent analysis. See ${DocUrl.PRIVATE_REGISTRY_LOGS} for more information.`,
+  );
+
   try {
     // Initialise a networking backend if no backend was provided.
     if (backend === undefined) {
@@ -92,6 +129,7 @@ export async function checkConnections(
     }
 
     for (const registry of proxy.registries) {
+      const config = connectionTestConfig[registry.type];
       const address = getAddressString(registry);
       const url = URL.parse(address);
 
@@ -102,9 +140,11 @@ export async function checkConnections(
         continue;
       }
 
+      const testUrl = makeTestUrl(config, url);
+
       try {
         logger.debug(`Testing connection to ${url}...`);
-        const statusCode = await backend.checkConnection(url);
+        const statusCode = await backend.checkConnection(testUrl);
 
         logger.info(`Successfully tested connection to ${url} (${statusCode})`);
         result.add(registry);
@@ -126,5 +166,6 @@ export async function checkConnections(
     );
   }
 
+  logger.endGroup();
   return result;
 }

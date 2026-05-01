@@ -2,6 +2,14 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.35.3 - 01 May 2026
+
+- _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.19.3 and earlier. These versions of CodeQL were discontinued on 9 April 2026 alongside GitHub Enterprise Server 3.15, and will be unsupported by the next minor release of the CodeQL Action. [#3837](https://github.com/github/codeql-action/pull/3837)
+- Configurations for private registries that use Cloudsmith or GCP OIDC are now accepted. [#3850](https://github.com/github/codeql-action/pull/3850)
+- Best-effort connection tests for private registries now use `GET` requests instead of `HEAD` for better compatibility with various registry implementations. For NuGet feeds, the test is now always performed against the service index. [#3853](https://github.com/github/codeql-action/pull/3853)
+- Fixed a bug where two diagnostics produced within the same millisecond could overwrite each other on disk, causing one of them to be lost. [#3852](https://github.com/github/codeql-action/pull/3852)
+- Update default CodeQL bundle version to [2.25.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.3). [#3865](https://github.com/github/codeql-action/pull/3865)
+
 ## 3.35.2 - 15 Apr 2026
 
 - The undocumented TRAP cache cleanup feature that could be enabled using the `CODEQL_ACTION_CLEANUP_TRAP_CACHES` environment variable is deprecated and will be removed in May 2026. If you are affected by this, we recommend disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action. [#3795](https://github.com/github/codeql-action/pull/3795)

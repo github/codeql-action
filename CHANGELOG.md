@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## 4.35.3 - 01 May 2026
+## 3.35.3 - 01 May 2026
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.19.3 and earlier. These versions of CodeQL were discontinued on 9 April 2026 alongside GitHub Enterprise Server 3.15, and will be unsupported by the next minor release of the CodeQL Action. [#3837](https://github.com/github/codeql-action/pull/3837)
 - Configurations for private registries that use Cloudsmith or GCP OIDC are now accepted. [#3850](https://github.com/github/codeql-action/pull/3850)
@@ -10,7 +10,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - Fixed a bug where two diagnostics produced within the same millisecond could overwrite each other on disk, causing one of them to be lost. [#3852](https://github.com/github/codeql-action/pull/3852)
 - Update default CodeQL bundle version to [2.25.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.3). [#3865](https://github.com/github/codeql-action/pull/3865)
 
-## 4.35.2 - 15 Apr 2026
+## 3.35.2 - 15 Apr 2026
 
 - The undocumented TRAP cache cleanup feature that could be enabled using the `CODEQL_ACTION_CLEANUP_TRAP_CACHES` environment variable is deprecated and will be removed in May 2026. If you are affected by this, we recommend disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action. [#3795](https://github.com/github/codeql-action/pull/3795)
 - The Git version 2.36.0 requirement for improved incremental analysis now only applies to repositories that contain submodules. [#3789](https://github.com/github/codeql-action/pull/3789)
@@ -18,29 +18,28 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - Fixed a bug in the validation of OIDC configurations for private registries that was added in CodeQL Action 4.33.0 / 3.33.0. [#3807](https://github.com/github/codeql-action/pull/3807)
 - Update default CodeQL bundle version to [2.25.2](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.2). [#3823](https://github.com/github/codeql-action/pull/3823)
 
-## 4.35.1 - 27 Mar 2026
+## 3.35.1 - 27 Mar 2026
 
 - Fix incorrect minimum required Git version for [improved incremental analysis](https://github.com/github/roadmap/issues/1158): it should have been 2.36.0, not 2.11.0. [#3781](https://github.com/github/codeql-action/pull/3781)
 
-## 4.35.0 - 27 Mar 2026
+## 3.35.0 - 27 Mar 2026
 
 - Reduced the minimum Git version required for [improved incremental analysis](https://github.com/github/roadmap/issues/1158) from 2.38.0 to 2.11.0. [#3767](https://github.com/github/codeql-action/pull/3767)
 - Update default CodeQL bundle version to [2.25.1](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.1). [#3773](https://github.com/github/codeql-action/pull/3773)
 
-## 4.34.1 - 20 Mar 2026
+## 3.34.1 - 20 Mar 2026
 
 - Downgrade default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3) due to issues with a small percentage of Actions and JavaScript analyses. [#3762](https://github.com/github/codeql-action/pull/3762)
 
-## 4.34.0 - 20 Mar 2026
+## 3.34.0 - 20 Mar 2026
 
 - Added an experimental change which disables TRAP caching when [improved incremental analysis](https://github.com/github/roadmap/issues/1158) is enabled, since improved incremental analysis supersedes TRAP caching. This will improve performance and reduce Actions cache usage. We expect to roll this change out to everyone in March. [#3569](https://github.com/github/codeql-action/pull/3569)
 - We are rolling out improved incremental analysis to C/C++ analyses that use build mode `none`. We expect this rollout to be complete by the end of April 2026. [#3584](https://github.com/github/codeql-action/pull/3584)
 - Update default CodeQL bundle version to [2.25.0](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.0). [#3585](https://github.com/github/codeql-action/pull/3585)
 
-## 4.33.0 - 16 Mar 2026
+## 3.33.0 - 16 Mar 2026
 
 - Upcoming change: Starting April 2026, the CodeQL Action will skip collecting file coverage information on pull requests to improve analysis performance. File coverage information will still be computed on non-PR analyses. Pull request analyses will log a warning about this upcoming change. [#3562](https://github.com/github/codeql-action/pull/3562)
-
   To opt out of this change:
   - **Repositories owned by an organization:** Create a custom repository property with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to `true` in the repository's settings. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). Alternatively, if you are using an advanced setup workflow, you can set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
   - **User-owned repositories using default setup:** Switch to an advanced setup workflow and set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
@@ -51,11 +50,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - Fixed the retry mechanism for database uploads. Previously this would fail with the error "Response body object should not be disturbed or locked". [#3564](https://github.com/github/codeql-action/pull/3564)
 - A warning is now emitted if the CodeQL Action detects a repository property whose name suggests that it relates to the CodeQL Action, but which is not one of the properties recognised by the current version of the CodeQL Action. [#3570](https://github.com/github/codeql-action/pull/3570)
 
-## 4.32.6 - 05 Mar 2026
+## 3.32.6 - 05 Mar 2026
 
 - Update default CodeQL bundle version to [2.24.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.3). [#3548](https://github.com/github/codeql-action/pull/3548)
 
-## 4.32.5 - 02 Mar 2026
+## 3.32.5 - 02 Mar 2026
 
 - Repositories owned by an organization can now set up the `github-codeql-disable-overlay` custom repository property to disable [improved incremental analysis for CodeQL](https://github.com/github/roadmap/issues/1158). First, create a custom repository property with the name `github-codeql-disable-overlay` and the type "True/false" in the organization's settings. Then in the repository's settings, set this property to `true` to disable improved incremental analysis. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). This feature is not yet available on GitHub Enterprise Server. [#3507](https://github.com/github/codeql-action/pull/3507)
 - Added an experimental change so that when [improved incremental analysis](https://github.com/github/roadmap/issues/1158) fails on a runner — potentially due to insufficient disk space — the failure is recorded in the Actions cache so that subsequent runs will automatically skip improved incremental analysis until something changes (e.g. a larger runner is provisioned or a new CodeQL version is released). We expect to roll this change out to everyone in March. [#3487](https://github.com/github/codeql-action/pull/3487)
@@ -65,7 +64,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - Added an experimental change which allows the `start-proxy` action to resolve the CodeQL CLI version from feature flags instead of using the linked CLI bundle version. We expect to roll this change out to everyone in March. [#3512](https://github.com/github/codeql-action/pull/3512)
 - The previously experimental changes from versions 4.32.3, 4.32.4, 3.32.3 and 3.32.4 are now enabled by default. [#3503](https://github.com/github/codeql-action/pull/3503), [#3504](https://github.com/github/codeql-action/pull/3504)
 
-## 4.32.4 - 20 Feb 2026
+## 3.32.4 - 20 Feb 2026
 
 - Update default CodeQL bundle version to [2.24.2](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.2). [#3493](https://github.com/github/codeql-action/pull/3493)
 - Added an experimental change which improves how certificates are generated for the authentication proxy that is used by the CodeQL Action in Default Setup when [private package registries are configured](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries). This is expected to generate more widely compatible certificates and should have no impact on analyses which are working correctly already. We expect to roll this change out to everyone in February. [#3473](https://github.com/github/codeql-action/pull/3473)
@@ -73,88 +72,88 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 - Added a setting which allows the CodeQL Action to enable network debugging for Java programs. This will help GitHub staff support customers with troubleshooting issues in GitHub-managed CodeQL workflows, such as Default Setup. This setting can only be enabled by GitHub staff. [#3485](https://github.com/github/codeql-action/pull/3485)
 - Added a setting which enables GitHub-managed workflows, such as Default Setup, to use a [nightly CodeQL CLI release](https://github.com/dsp-testing/codeql-cli-nightlies) instead of the latest, stable release that is used by default. This will help GitHub staff support customers whose analyses for a given repository or organization require early access to a change in an upcoming CodeQL CLI release. This setting can only be enabled by GitHub staff. [#3484](https://github.com/github/codeql-action/pull/3484)
 
-## 4.32.3 - 13 Feb 2026
+## 3.32.3 - 13 Feb 2026
 
 - Added experimental support for testing connections to [private package registries](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries). This feature is not currently enabled for any analysis. In the future, it may be enabled by default for Default Setup. [#3466](https://github.com/github/codeql-action/pull/3466)
 
-## 4.32.2 - 05 Feb 2026
+## 3.32.2 - 05 Feb 2026
 
 - Update default CodeQL bundle version to [2.24.1](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.1). [#3460](https://github.com/github/codeql-action/pull/3460)
 
-## 4.32.1 - 02 Feb 2026
+## 3.32.1 - 02 Feb 2026
 
 - A warning is now shown in Default Setup workflow logs if a [private package registry is configured](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries) using a GitHub Personal Access Token (PAT), but no username is configured. [#3422](https://github.com/github/codeql-action/pull/3422)
 - Fixed a bug which caused the CodeQL Action to fail when repository properties cannot successfully be retrieved. [#3421](https://github.com/github/codeql-action/pull/3421)
 
-## 4.32.0 - 26 Jan 2026
+## 3.32.0 - 26 Jan 2026
 
 - Update default CodeQL bundle version to [2.24.0](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.24.0). [#3425](https://github.com/github/codeql-action/pull/3425)
 
-## 4.31.11 - 23 Jan 2026
+## 3.31.11 - 23 Jan 2026
 
 - When running a Default Setup workflow with [Actions debugging enabled](https://docs.github.com/en/actions/how-tos/monitor-workflows/enable-debug-logging), the CodeQL Action will now use more unique names when uploading logs from the Dependabot authentication proxy as workflow artifacts. This ensures that the artifact names do not clash between multiple jobs in a build matrix. [#3409](https://github.com/github/codeql-action/pull/3409)
 - Improved error handling throughout the CodeQL Action. [#3415](https://github.com/github/codeql-action/pull/3415)
 - Added experimental support for automatically excluding [generated files](https://docs.github.com/en/repositories/working-with-files/managing-files/customizing-how-changed-files-appear-on-github) from the analysis. This feature is not currently enabled for any analysis. In the future, it may be enabled by default for some GitHub-managed analyses. [#3318](https://github.com/github/codeql-action/pull/3318)
 - The changelog extracts that are included with releases of the CodeQL Action are now shorter to avoid duplicated information from appearing in Dependabot PRs. [#3403](https://github.com/github/codeql-action/pull/3403)
 
-## 4.31.10 - 12 Jan 2026
+## 3.31.10 - 12 Jan 2026
 
 - Update default CodeQL bundle version to 2.23.9. [#3393](https://github.com/github/codeql-action/pull/3393)
 
-## 4.31.9 - 16 Dec 2025
+## 3.31.9 - 16 Dec 2025
 
 No user facing changes.
 
-## 4.31.8 - 11 Dec 2025
+## 3.31.8 - 11 Dec 2025
 
 - Update default CodeQL bundle version to 2.23.8. [#3354](https://github.com/github/codeql-action/pull/3354)
 
-## 4.31.7 - 05 Dec 2025
+## 3.31.7 - 05 Dec 2025
 
 - Update default CodeQL bundle version to 2.23.7. [#3343](https://github.com/github/codeql-action/pull/3343)
 
-## 4.31.6 - 01 Dec 2025
+## 3.31.6 - 01 Dec 2025
 
 No user facing changes.
 
-## 4.31.5 - 24 Nov 2025
+## 3.31.5 - 24 Nov 2025
 
 - Update default CodeQL bundle version to 2.23.6. [#3321](https://github.com/github/codeql-action/pull/3321)
 
-## 4.31.4 - 18 Nov 2025
+## 3.31.4 - 18 Nov 2025
 
 No user facing changes.
 
-## 4.31.3 - 13 Nov 2025
+## 3.31.3 - 13 Nov 2025
 
 - CodeQL Action v3 will be deprecated in December 2026.  The Action now logs a warning for customers who are running v3 but could be running v4. For more information, see [Upcoming deprecation of CodeQL Action v3](https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/).
 - Update default CodeQL bundle version to 2.23.5. [#3288](https://github.com/github/codeql-action/pull/3288)
 
-## 4.31.2 - 30 Oct 2025
+## 3.31.2 - 30 Oct 2025
 
 No user facing changes.
 
-## 4.31.1 - 30 Oct 2025
+## 3.31.1 - 30 Oct 2025
 
 - The `add-snippets` input has been removed from the `analyze` action. This input has been deprecated since CodeQL Action 3.26.4 in August 2024 when this removal was announced.
 
-## 4.31.0 - 24 Oct 2025
+## 3.31.0 - 24 Oct 2025
 
 - Bump minimum CodeQL bundle version to 2.17.6. [#3223](https://github.com/github/codeql-action/pull/3223)
 - When SARIF files are uploaded by the `analyze` or `upload-sarif` actions, the CodeQL Action automatically performs post-processing steps to prepare the data for the upload. Previously, these post-processing steps were only performed before an upload took place. We are now changing this so that the post-processing steps will always be performed, even when the SARIF files are not uploaded. This does not change anything for the `upload-sarif` action. For `analyze`, this may affect Advanced Setup for CodeQL users who specify a value other than `always` for the `upload` input. [#3222](https://github.com/github/codeql-action/pull/3222)
 
-## 4.30.9 - 17 Oct 2025
+## 3.30.9 - 17 Oct 2025
 
 - Update default CodeQL bundle version to 2.23.3. [#3205](https://github.com/github/codeql-action/pull/3205)
 - Experimental: A new `setup-codeql` action has been added which is similar to `init`, except it only installs the CodeQL CLI and does not initialize a database. Do not use this in production as it is part of an internal experiment and subject to change at any time. [#3204](https://github.com/github/codeql-action/pull/3204)
 
-## 4.30.8 - 10 Oct 2025
+## 3.30.8 - 10 Oct 2025
 
 No user facing changes.
 
-## 4.30.7 - 06 Oct 2025
+## 3.30.7 - 06 Oct 2025
 
-- [v4+ only] The CodeQL Action now runs on Node.js v24. [#3169](https://github.com/github/codeql-action/pull/3169)
+No user facing changes.
 
 ## 3.30.6 - 02 Oct 2025
 
@@ -390,17 +389,13 @@ No user facing changes.
 ## 3.26.12 - 07 Oct 2024
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.14.5 and earlier. These versions of CodeQL were discontinued on 24 September 2024 alongside GitHub Enterprise Server 3.10, and will be unsupported by CodeQL Action versions 3.27.0 and later and versions 2.27.0 and later. [#2520](https://github.com/github/codeql-action/pull/2520)
-
   - If you are using one of these versions, please update to CodeQL CLI version 2.14.6 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
-
   - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.13.5 and 2.14.5, you can replace `github/codeql-action/*@v3` by `github/codeql-action/*@v3.26.11` and `github/codeql-action/*@v2` by `github/codeql-action/*@v2.26.11` in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
 
 ## 3.26.11 - 03 Oct 2024
 
 - _Upcoming breaking change_: Add support for using `actions/download-artifact@v4` to programmatically consume CodeQL Action debug artifacts.
-
   Starting November 30, 2024, GitHub.com customers will [no longer be able to use `actions/download-artifact@v3`](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/). Therefore, to avoid breakage, customers who programmatically download the CodeQL Action debug artifacts should set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to `true` and bump `actions/download-artifact@v3` to `actions/download-artifact@v4` in their workflows. The CodeQL Action will enable this behavior by default in early November and workflows that have not yet bumped `actions/download-artifact@v3` to `actions/download-artifact@v4` will begin failing then.
-
   This change is currently unavailable for GitHub Enterprise Server customers, as `actions/upload-artifact@v4` and `actions/download-artifact@v4` are not yet compatible with GHES.
 - Update default CodeQL bundle version to 2.19.1. [#2519](https://github.com/github/codeql-action/pull/2519)
 
@@ -523,12 +518,9 @@ No user facing changes.
 ## 3.25.0 - 15 Apr 2024
 
 - The deprecated feature for extracting dependencies for a Python analysis has been removed. [#2224](https://github.com/github/codeql-action/pull/2224)
-
   As a result, the following inputs and environment variables are now ignored:
-
   - The `setup-python-dependencies` input to the `init` Action
   - The `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION` environment variable
-
   We recommend removing any references to these from your workflows. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0.
 - Automatically overwrite an existing database if found on the filesystem. [#2229](https://github.com/github/codeql-action/pull/2229)
 - Bump the minimum CodeQL bundle version to 2.12.6. [#2232](https://github.com/github/codeql-action/pull/2232)

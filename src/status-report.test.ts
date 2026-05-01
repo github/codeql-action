@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -48,7 +48,7 @@ test.serial("createStatusReportBase", async (t) => {
       new Date("May 19, 2023 05:19:00"),
       createTestConfig({
         buildMode: BuildMode.None,
-        languages: [KnownLanguage.java, KnownLanguage.swift],
+        languages: [BuiltInLanguage.java, BuiltInLanguage.swift],
       }),
       { numAvailableBytes: 100, numTotalBytes: 500 },
       getRunnerLogger(false),
@@ -345,7 +345,7 @@ test.serial(
   "returns a value",
   createTestConfig({
     buildMode: BuildMode.None,
-    languages: [KnownLanguage.java, KnownLanguage.swift],
+    languages: [BuiltInLanguage.java, BuiltInLanguage.swift],
   }),
   {
     trap_cache_download_size_bytes: 1024,
@@ -360,7 +360,7 @@ test.serial(
   "includes packs for a single language",
   createTestConfig({
     buildMode: BuildMode.None,
-    languages: [KnownLanguage.java],
+    languages: [BuiltInLanguage.java],
     computedConfig: {
       packs: ["foo", "bar"],
     },
@@ -377,7 +377,7 @@ test.serial(
   "includes packs for multiple languages",
   createTestConfig({
     buildMode: BuildMode.None,
-    languages: [KnownLanguage.java, KnownLanguage.swift],
+    languages: [BuiltInLanguage.java, BuiltInLanguage.swift],
     computedConfig: {
       packs: { java: ["java-foo", "java-bar"], swift: ["swift-bar"] },
     },

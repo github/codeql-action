@@ -6,7 +6,7 @@ import * as core from "@actions/core";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import { KnownLanguage } from "./languages";
+import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
@@ -14,7 +14,6 @@ import {
   getCredentials,
   getProxyBinaryPath,
   getSafeErrorMessage,
-  parseLanguage,
   ProxyInfo,
   sendFailedStatusReport,
   sendSuccessStatusReport,
@@ -33,7 +32,7 @@ async function run(startedAt: Date) {
 
   const logger = getActionsLogger();
   let features: FeatureEnablement | undefined;
-  let language: KnownLanguage | undefined;
+  let language: BuiltInLanguage | undefined;
 
   try {
     // Make inputs accessible in the `post` step.
@@ -56,7 +55,7 @@ async function run(startedAt: Date) {
 
     // Get the language input.
     const languageInput = actionsUtil.getOptionalInput("language");
-    language = languageInput ? parseLanguage(languageInput) : undefined;
+    language = languageInput ? parseBuiltInLanguage(languageInput) : undefined;
 
     // Query the FF for whether we should use the reduced registry mapping.
     const skipUnusedRegistries = await features.getValue(
@@ -112,14 +111,14 @@ async function run(startedAt: Date) {
       logger,
     );
 
-    // Check that the private registries are reachable.
+    // Perform best-effort checks that the private registries are reachable.
     await checkConnections(logger, proxyInfo);
 
     // Report success if we have reached this point.
     await sendSuccessStatusReport(
       startedAt,
       {
-        languages: language && [language],
+        languages: language === undefined ? undefined : [language],
       },
       proxyConfig.all_credentials.map((c) => c.type),
       logger,
@@ -199,6 +198,7 @@ async function startProxy(
     .map((credential) => ({
       type: credential.type,
       url: credential.url,
+      "replaces-base": credential["replaces-base"],
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
 

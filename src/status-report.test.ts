@@ -316,6 +316,7 @@ const testCreateInitWithConfigStatusReport = test.macro({
         const initStatusReport: InitStatusReport = {
           ...statusReportBase,
           tools_input: "",
+          computed_tools_input: "",
           tools_resolved_version: "foo",
           tools_source: ToolsSource.Unknown,
           workflow_languages: "actions",

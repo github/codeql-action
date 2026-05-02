@@ -482,6 +482,8 @@ export async function sendStatusReport<S extends StatusReportBase>(
 export interface InitStatusReport extends StatusReportBase {
   /** Value given by the user as the "tools" input. */
   tools_input: string;
+  /** The effective tools input that was used, after applying defaults and repository properties. */
+  computed_tools_input: string;
   /** Version of the bundle used. */
   tools_resolved_version: string;
   /** Where the bundle originated from. */

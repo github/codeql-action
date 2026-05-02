@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Organizations can now create a custom repository property with the name `github-codeql-tools` to control the CodeQL CLI tools input at the repository level. When this property is set to a valid tools input value (such as `"toolcache"`, `"latest"`, or a specific version), it will override the default tools configuration for that repository. This allows organization administrators to standardize CodeQL CLI versions across repositories or enable toolcache usage on repositories where it would otherwise be restricted. For more information on creating custom repository properties, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization).
 
 ## 4.35.3 - 01 May 2026
 

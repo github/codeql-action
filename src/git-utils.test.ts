@@ -8,7 +8,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as gitUtils from "./git-utils";
-import { setupActionsVars, setupTests } from "./testing-utils";
+import { setupActionsVars, setupTests, SHA256_GITHUB_SHA } from "./testing-utils";
 import { withTmpDir } from "./util";
 
 setupTests(test);
@@ -193,6 +193,94 @@ test.serial(
   },
 );
 
+test.serial(
+  "getRef() returns merge PR ref if GITHUB_SHA still checked out (SHA-256)",
+  async (t) => {
+    await withTmpDir(async (tmpDir: string) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const expectedRef = "refs/pull/1/merge";
+      const currentSha = "a".repeat(64);
+      process.env["GITHUB_REF"] = expectedRef;
+      process.env["GITHUB_SHA"] = currentSha;
+
+      const callback = sinon.stub(gitUtils, "getCommitOid");
+      callback.withArgs("HEAD").resolves(currentSha);
+
+      const actualRef = await gitUtils.getRef();
+      t.deepEqual(actualRef, expectedRef);
+      callback.restore();
+    });
+  },
+);
+
+test.serial(
+  "getRef() returns merge PR ref if GITHUB_REF still checked out but sha has changed (actions checkout@v1) (SHA-256)",
+  async (t) => {
+    await withTmpDir(async (tmpDir: string) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const expectedRef = "refs/pull/1/merge";
+      process.env["GITHUB_REF"] = expectedRef;
+      process.env["GITHUB_SHA"] = "b".repeat(64);
+      const sha = "a".repeat(64);
+
+      const callback = sinon.stub(gitUtils, "getCommitOid");
+      callback.withArgs("refs/remotes/pull/1/merge").resolves(sha);
+      callback.withArgs("HEAD").resolves(sha);
+
+      const actualRef = await gitUtils.getRef();
+      t.deepEqual(actualRef, expectedRef);
+      callback.restore();
+    });
+  },
+);
+
+test.serial(
+  "getRef() returns head PR ref if GITHUB_REF no longer checked out (SHA-256)",
+  async (t) => {
+    await withTmpDir(async (tmpDir: string) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env["GITHUB_REF"] = "refs/pull/1/merge";
+      process.env["GITHUB_SHA"] = "a".repeat(64);
+
+      const callback = sinon.stub(gitUtils, "getCommitOid");
+      callback.withArgs(tmpDir, "refs/pull/1/merge").resolves("a".repeat(64));
+      callback.withArgs(tmpDir, "HEAD").resolves("b".repeat(64));
+
+      const actualRef = await gitUtils.getRef();
+      t.deepEqual(actualRef, "refs/pull/1/head");
+      callback.restore();
+    });
+  },
+);
+
+test.serial(
+  "getRef() returns ref provided as an input and ignores current HEAD (SHA-256)",
+  async (t) => {
+    await withTmpDir(async (tmpDir: string) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const getAdditionalInputStub = sinon.stub(
+        actionsUtil,
+        "getOptionalInput",
+      );
+      getAdditionalInputStub.withArgs("ref").resolves("refs/pull/2/merge");
+      getAdditionalInputStub.withArgs("sha").resolves("b".repeat(64));
+
+      // These values are be ignored
+      process.env["GITHUB_REF"] = "refs/pull/1/merge";
+      process.env["GITHUB_SHA"] = "a".repeat(64);
+
+      const callback = sinon.stub(gitUtils, "getCommitOid");
+      callback.withArgs("refs/pull/1/merge").resolves("b".repeat(64));
+      callback.withArgs("HEAD").resolves("b".repeat(64));
+
+      const actualRef = await gitUtils.getRef();
+      t.deepEqual(actualRef, "refs/pull/2/merge");
+      callback.restore();
+      getAdditionalInputStub.restore();
+    });
+  },
+);
+
 test.serial("isAnalyzingDefaultBranch()", async (t) => {
   process.env["GITHUB_EVENT_NAME"] = "push";
   process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "true";
@@ -304,6 +392,27 @@ test.serial("determineBaseBranchHeadCommitOid other error", async (t) => {
 
   infoStub.restore();
 });
+
+test.serial(
+  "determineBaseBranchHeadCommitOid returns baseOid for SHA-256 merge commit",
+  async (t) => {
+    const mergeSha = "a".repeat(64);
+    const baseOid = "b".repeat(64);
+    const headOid = "c".repeat(64);
+
+    process.env["GITHUB_EVENT_NAME"] = "pull_request";
+    process.env["GITHUB_SHA"] = mergeSha;
+
+    sinon
+      .stub(gitUtils as any, "runGitCommand")
+      .resolves(
+        `commit ${mergeSha}\nparent ${baseOid}\nparent ${headOid}\n`,
+      );
+
+    const result = await gitUtils.determineBaseBranchHeadCommitOid(__dirname);
+    t.deepEqual(result, baseOid);
+  },
+);
 
 test.serial("decodeGitFilePath unquoted strings", async (t) => {
   t.deepEqual(gitUtils.decodeGitFilePath("foo"), "foo");
@@ -478,6 +587,61 @@ test.serial(
           message: 'Unexpected "git ls-files" output: invalid-line-format',
         },
       );
+    });
+  },
+);
+
+test.serial(
+  "getFileOidsUnderPath handles SHA-256 OIDs (64-char)",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      sinon
+        .stub(gitUtils as any, "runGitCommand")
+        .callsFake(async (_cwd: any, args: any) => {
+          if (args[0] === "rev-parse") {
+            return `${tmpDir}\n`;
+          }
+          return (
+            "100644 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2c0d4b7e8f9a1234567890ab 0\tlib/git-utils.js\n" +
+            "100644 aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899 0\tsrc/git-utils.ts"
+          );
+        });
+
+      const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+      t.deepEqual(result, {
+        "lib/git-utils.js":
+          "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2c0d4b7e8f9a1234567890ab",
+        "src/git-utils.ts":
+          "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+      });
+    });
+  },
+);
+
+test.serial(
+  "getFileOidsUnderPath handles mixed SHA-1 and SHA-256 OIDs",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      sinon
+        .stub(gitUtils as any, "runGitCommand")
+        .callsFake(async (_cwd: any, args: any) => {
+          if (args[0] === "rev-parse") {
+            return `${tmpDir}\n`;
+          }
+          return (
+            "100644 30d998ded095371488be3a729eb61d86ed721a18 0\tlib/sha1-file.js\n" +
+            "100644 aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899 0\tsrc/sha256-file.ts"
+          );
+        });
+
+      const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+      t.deepEqual(result, {
+        "lib/sha1-file.js": "30d998ded095371488be3a729eb61d86ed721a18",
+        "src/sha256-file.ts":
+          "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899",
+      });
     });
   },
 );

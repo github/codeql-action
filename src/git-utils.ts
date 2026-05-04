@@ -166,8 +166,8 @@ export const determineBaseBranchHeadCommitOid = async function (
     // Let's confirm our assumptions: We had a merge commit and the parsed parent data looks correct
     if (
       commitOid === mergeSha &&
-      headOid.length === 40 &&
-      baseOid.length === 40
+      (headOid.length === 40 || headOid.length === 64) &&
+      (baseOid.length === 40 || baseOid.length === 64)
     ) {
       return baseOid;
     }
@@ -296,7 +296,7 @@ export const getFileOidsUnderPath = async function (
   // 100644 4c51bc1d9e86cd86e01b0f340cb8ce095c33b283 0\tsrc/git-utils.test.ts
   // 100644 6b792ea543ce75d7a8a03df591e3c85311ecb64f 0\tsrc/git-utils.ts
   // The fields are: <mode> <oid> <stage>\t<path>
-  const regex = /^[0-9]+ ([0-9a-f]{40}) [0-9]+\t(.+)$/;
+  const regex = /^[0-9]+ ([0-9a-f]{40,64}) [0-9]+\t(.+)$/;
   for (const line of stdout.split("\n")) {
     if (line) {
       const match = line.match(regex);

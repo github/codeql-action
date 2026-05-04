@@ -12,7 +12,7 @@ import * as api from "./api-client";
 import * as diffUtils from "./diff-informed-analysis-utils";
 import { getRunnerLogger, Logger } from "./logging";
 import * as sarif from "./sarif";
-import { setupTests } from "./testing-utils";
+import { setupTests, SHA256_GITHUB_SHA } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { UploadPayload } from "./upload-lib/types";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
@@ -107,6 +107,35 @@ test.serial(
       prHeadPayload.base_sha,
       "f95f852bd8fca8fcc58a9a2d6c842781e32a215e",
     );
+  },
+);
+
+test.serial(
+  "validate correct payload used for PR merge commit with SHA-256 OIDs",
+  async (t) => {
+    process.env["GITHUB_EVENT_NAME"] = "pull_request";
+    process.env["GITHUB_SHA"] = SHA256_GITHUB_SHA;
+    process.env["GITHUB_BASE_REF"] = "master";
+    process.env["GITHUB_EVENT_PATH"] =
+      `${__dirname}/../src/testdata/pull_request.json`;
+
+    const sha256MergeBase = "b".repeat(64);
+    const prMergePayload: any = uploadLib.buildPayload(
+      SHA256_GITHUB_SHA,
+      "refs/pull/123/merge",
+      "key",
+      undefined,
+      "",
+      1234,
+      1,
+      "/opt/src",
+      undefined,
+      ["CodeQL", "eslint"],
+      sha256MergeBase,
+    );
+    // Uploads for a merge commit use the merge base (SHA-256)
+    t.deepEqual(prMergePayload.base_ref, "refs/heads/master");
+    t.deepEqual(prMergePayload.base_sha, sha256MergeBase);
   },
 );
 

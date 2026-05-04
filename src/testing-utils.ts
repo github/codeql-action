@@ -160,6 +160,9 @@ export const DEFAULT_ACTIONS_VARS = {
   RUNNER_OS: "Linux",
 } as const satisfies Record<string, string>;
 
+/** A 64-character SHA-256 Git OID for use in SHA-256 repository test scenarios. */
+export const SHA256_GITHUB_SHA = "0".repeat(64);
+
 // Sets environment variables that make using some libraries designed for
 // use only on actions safe to use outside of actions.
 export function setupActionsVars(

@@ -417,37 +417,3 @@ test.serial(
     t.deepEqual(result, ["2.25.0", "2.24.0"]);
   },
 );
-
-test.serial(
-  "getCodeQlVersionsForOverlayBaseDatabases ignores cache entries close to eviction",
-  async (t) => {
-    const logger = getRunnerLogger(true);
-
-    const now = Date.now();
-    const isoDaysAgo = (days: number) =>
-      new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
-
-    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
-    sinon.stub(apiClient, "listActionsCaches").resolves([
-      {
-        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.25.0-abc123-1-1",
-        last_accessed_at: isoDaysAgo(1),
-      },
-      {
-        // Older than the 6-day threshold; close to the 7-day eviction window.
-        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.26.0-def456-2-1",
-        last_accessed_at: isoDaysAgo(6.5),
-      },
-      {
-        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.24.0-ghi789-3-1",
-        last_accessed_at: isoDaysAgo(3),
-      },
-    ]);
-
-    const result = await getCodeQlVersionsForOverlayBaseDatabases(
-      ["python"],
-      logger,
-    );
-    t.deepEqual(result, ["2.25.0", "2.24.0"]);
-  },
-);

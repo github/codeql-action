@@ -439,6 +439,13 @@ async function getCacheKeyPrefixBase(
  * Searches the GitHub Actions cache for overlay-base databases matching the given languages, and
  * returns all stable CodeQL versions found across matching cache entries.
  *
+ * Note that we do not guarantee that the cache entry for these versions of CodeQL will still be
+ * present by the time we attempt to restore the cache. We could achieve that with a download retry
+ * loop, but we expect that if there is sufficient Actions cache contention that an overlay-base
+ * cache entry for a particular CodeQL version is evicted before we can use it, then it is likely
+ * that the same thing will happen to other overlay-base cache entries, and therefore we will not be
+ * able to use overlay.
+ *
  * @returns Unique stable CodeQL versions found in cached overlay-base databases, sorted from latest to
  * earliest, or undefined if one of the languages is not a built-in language.
  */

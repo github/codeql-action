@@ -252,9 +252,9 @@ export interface ActionsCacheItem {
   size_in_bytes?: number;
 }
 
-/** List all Actions cache entries matching the provided key and ref. */
+/** List all Actions cache entries starting with the provided key prefix and matching the provided ref. */
 export async function listActionsCaches(
-  key: string,
+  keyPrefix: string,
   ref?: string,
 ): Promise<ActionsCacheItem[]> {
   const repositoryNwo = getRepositoryNwo();
@@ -264,7 +264,7 @@ export async function listActionsCaches(
     {
       owner: repositoryNwo.owner,
       repo: repositoryNwo.repo,
-      key,
+      key: keyPrefix,
       ref,
     },
   );

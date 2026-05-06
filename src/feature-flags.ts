@@ -97,6 +97,12 @@ export enum Feature {
    * database exists in the cache.
    */
   OverlayAnalysisMatchCodeqlVersion = "overlay_analysis_match_codeql_version",
+  /**
+   * Like `OverlayAnalysisMatchCodeqlVersion`, but only logs a diagnostic with the version that
+   * would have been chosen instead of actually changing the default CodeQL CLI version.
+   * `OverlayAnalysisMatchCodeqlVersion` overrides this flag.
+   */
+  OverlayAnalysisMatchCodeqlVersionDryRun = "overlay_analysis_match_codeql_version_dry_run",
   OverlayAnalysisPython = "overlay_analysis_python",
   /**
    * Controls whether lower disk space requirements are used for overlay hardware checks.
@@ -305,6 +311,11 @@ export const featureConfig = {
   [Feature.OverlayAnalysisMatchCodeqlVersion]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMatchCodeqlVersionDryRun]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION_DRY_RUN",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisResourceChecksV2]: {

@@ -611,16 +611,20 @@ test.serial(
   },
 );
 
-function makeOverlayMatchFeatures(
-  matchFlagEnabled: boolean,
-): FeatureEnablement {
+function makeOverlayMatchFeatures(opts: {
+  matchFlagEnabled?: boolean;
+  dryRunFlagEnabled?: boolean;
+}): FeatureEnablement {
   return {
     getEnabledDefaultCliVersions: async () => {
       throw new Error("not implemented");
     },
     getValue: async (feature) => {
       if (feature === Feature.OverlayAnalysisMatchCodeqlVersion) {
-        return matchFlagEnabled;
+        return opts.matchFlagEnabled ?? false;
+      }
+      if (feature === Feature.OverlayAnalysisMatchCodeqlVersionDryRun) {
+        return opts.dryRunFlagEnabled ?? false;
       }
       return false;
     },
@@ -657,7 +661,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures(true),
+      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
       getRunnerLogger(true),
     );
     t.deepEqual(result, [
@@ -680,29 +684,10 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures(true),
+      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
-  },
-);
-
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases does not list caches when gate is off",
-  async (t) => {
-    const listStub = sinon.stub(api, "listActionsCaches").resolves([]);
-
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      makeOverlayMatchFeatures(false),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, []);
-    t.assert(
-      listStub.notCalled,
-      "Should not list Actions caches when the gating feature flag is off.",
-    );
   },
 );
 
@@ -714,7 +699,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       undefined,
-      makeOverlayMatchFeatures(true),
+      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -734,7 +719,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures(true),
+      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -754,11 +739,83 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures(true),
+      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
       getRunnerLogger(true),
     );
     t.deepEqual(result, [
       { cliVersion: "2.20.2", tagName: "codeql-bundle-v2.20.2" },
+    ]);
+  },
+);
+
+test.serial(
+  "getEnabledVersionsWithOverlayBaseDatabases does not list caches when both gates are off",
+  async (t) => {
+    const listStub = sinon.stub(api, "listActionsCaches").resolves([]);
+
+    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+      overlayMatchEnabledVersions,
+      ["javascript"],
+      makeOverlayMatchFeatures({}),
+      getRunnerLogger(true),
+    );
+    t.deepEqual(result, []);
+    t.assert(
+      listStub.notCalled,
+      "Should not list Actions caches when both gating feature flags are off.",
+    );
+  },
+);
+
+test.serial(
+  "getEnabledVersionsWithOverlayBaseDatabases dry-run returns empty but lists caches",
+  async (t) => {
+    sinon.stub(api, "getAutomationID").resolves("test/");
+    const listStub = sinon.stub(api, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+      },
+    ]);
+
+    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+      overlayMatchEnabledVersions,
+      ["javascript"],
+      makeOverlayMatchFeatures({ dryRunFlagEnabled: true }),
+      getRunnerLogger(true),
+    );
+    t.deepEqual(
+      result,
+      [],
+      "Dry-run should return an empty list so the caller falls back.",
+    );
+    t.assert(
+      listStub.calledOnce,
+      "Dry-run should still list Actions caches to populate the diagnostic.",
+    );
+  },
+);
+
+test.serial(
+  "getEnabledVersionsWithOverlayBaseDatabases match flag wins over dry-run",
+  async (t) => {
+    sinon.stub(api, "getAutomationID").resolves("test/");
+    sinon.stub(api, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+      },
+    ]);
+
+    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+      overlayMatchEnabledVersions,
+      ["javascript"],
+      makeOverlayMatchFeatures({
+        matchFlagEnabled: true,
+        dryRunFlagEnabled: true,
+      }),
+      getRunnerLogger(true),
+    );
+    t.deepEqual(result, [
+      { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
     ]);
   },
 );

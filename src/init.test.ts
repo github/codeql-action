@@ -158,7 +158,7 @@ type PackInfo = {
   qlpackFileName?: string;
 };
 
-const testCheckPacksForOverlayCompatibility = test.macro({
+const checkPacksForOverlayCompatibilityMacro = test.macro({
   exec: async (
     t: ExecutionContext,
     _title: string,
@@ -237,8 +237,25 @@ const testCheckPacksForOverlayCompatibility = test.macro({
   title: (_, title) => `checkPacksForOverlayCompatibility: ${title}`,
 });
 
-test(
-  testCheckPacksForOverlayCompatibility,
+/**
+ * Wraps `checkPacksForOverlayCompatibilityMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testCheckPacksForOverlayCompatibility(
+  title: string,
+  args: {
+    cliOverlayVersion: number | undefined;
+    languages: BuiltInLanguage[];
+    packs: Record<string, PackInfo>;
+    expectedResult: boolean;
+  },
+) {
+  test(checkPacksForOverlayCompatibilityMacro, title, args);
+}
+
+testCheckPacksForOverlayCompatibility(
   "returns false when CLI does not support overlay",
   {
     cliOverlayVersion: undefined,
@@ -253,8 +270,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns true when there are no query packs",
   {
     cliOverlayVersion: 2,
@@ -264,8 +280,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns true when query pack has not been compiled",
   {
     cliOverlayVersion: 2,
@@ -281,8 +296,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns true when query pack has expected overlay version",
   {
     cliOverlayVersion: 2,
@@ -297,8 +311,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns true when query packs for all languages to analyze are compatible",
   {
     cliOverlayVersion: 2,
@@ -317,8 +330,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns true when query pack for a language not analyzed is incompatible",
   {
     cliOverlayVersion: 2,
@@ -337,8 +349,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns false when query pack for a language to analyze is incompatible",
   {
     cliOverlayVersion: 2,
@@ -357,8 +368,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns false when query pack is missing .packinfo",
   {
     cliOverlayVersion: 2,
@@ -377,8 +387,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns false when query pack has different overlay version",
   {
     cliOverlayVersion: 2,
@@ -397,8 +406,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns false when query pack is missing overlayVersion in .packinfo",
   {
     cliOverlayVersion: 2,
@@ -417,8 +425,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns false when .packinfo is not valid JSON",
   {
     cliOverlayVersion: 2,
@@ -437,8 +444,7 @@ test(
   },
 );
 
-test(
-  testCheckPacksForOverlayCompatibility,
+testCheckPacksForOverlayCompatibility(
   "returns true when query pack uses codeql-pack.yml filename",
   {
     cliOverlayVersion: 2,

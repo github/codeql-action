@@ -828,7 +828,7 @@ test.serial(
   },
 );
 
-const wrapFailureTest = test.macro({
+const wrapFailureMacro = test.macro({
   exec: async (
     t: ExecutionContext<unknown>,
     setup: () => void,
@@ -845,6 +845,20 @@ const wrapFailureTest = test.macro({
   title: (providedTitle) => `${providedTitle} - wraps errors on failure`,
 });
 
+/**
+ * Wraps `wrapFailureMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testWrapFailure(
+  title: string,
+  setup: () => void,
+  fn: (logger: Logger) => Promise<void>,
+) {
+  test.serial(title, wrapFailureMacro, setup, fn);
+}
+
 test.serial("downloadProxy - returns file path on success", async (t) => {
   await withRecordingLoggerAsync(async (logger) => {
     const testPath = "/some/path";
@@ -859,9 +873,8 @@ test.serial("downloadProxy - returns file path on success", async (t) => {
   });
 });
 
-test.serial(
+testWrapFailure(
   "downloadProxy",
-  wrapFailureTest,
   () => {
     sinon.stub(toolcache, "downloadTool").throws();
   },
@@ -880,9 +893,8 @@ test.serial("extractProxy - returns file path on success", async (t) => {
   });
 });
 
-test.serial(
+testWrapFailure(
   "extractProxy",
-  wrapFailureTest,
   () => {
     sinon.stub(toolcache, "extractTar").throws();
   },
@@ -906,9 +918,8 @@ test.serial("cacheProxy - returns file path on success", async (t) => {
   });
 });
 
-test.serial(
+testWrapFailure(
   "cacheProxy",
-  wrapFailureTest,
   () => {
     sinon.stub(toolcache, "cacheDir").throws();
   },

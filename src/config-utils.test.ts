@@ -1134,8 +1134,28 @@ const checkOverlayEnablementMacro = test.macro({
   title: (_, title) => `checkOverlayEnablement: ${title}`,
 });
 
-test.serial(
-  checkOverlayEnablementMacro,
+/**
+ * Wraps `checkOverlayEnablementMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testCheckOverlayEnablement(
+  title: string,
+  setupOverrides: Partial<OverlayDatabaseModeTestSetup>,
+  expected:
+    | {
+        overlayDatabaseMode: OverlayDatabaseMode;
+        useOverlayDatabaseCaching: boolean;
+      }
+    | {
+        disabledReason: OverlayDisabledReason;
+      },
+) {
+  test.serial(checkOverlayEnablementMacro, title, setupOverrides, expected);
+}
+
+testCheckOverlayEnablement(
   "Environment variable override - Overlay",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1146,8 +1166,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Environment variable override - OverlayBase",
   {
     overlayDatabaseEnvVar: "overlay-base",
@@ -1158,8 +1177,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Environment variable override - None",
   {
     overlayDatabaseEnvVar: "none",
@@ -1169,8 +1187,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Ignore invalid environment variable",
   {
     overlayDatabaseEnvVar: "invalid-mode",
@@ -1180,8 +1197,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Ignore feature flag when analyzing non-default branch",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1192,8 +1208,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay-base database on default branch when feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1206,8 +1221,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay-base database on default branch when feature enabled with custom analysis",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1223,8 +1237,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay-base database on default branch when code-scanning feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1240,8 +1253,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch if runner disk space is too low",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1260,8 +1272,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch if we can't determine runner disk space",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1277,8 +1288,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay-base database on default branch if runner disk space is too low and skip resource checks flag is enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1299,8 +1309,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1320,8 +1329,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1342,8 +1350,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1362,8 +1369,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch if memory flag is too low",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1379,8 +1385,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay-base database on default branch if memory flag is too low but CodeQL >= 2.24.3",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1398,8 +1403,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay-base database on default branch if memory flag is too low and skip resource checks flag is enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1417,8 +1421,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when cached status indicates previous failure",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1435,8 +1438,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when cached status indicates previous failure",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1453,8 +1455,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when code-scanning feature enabled with disable-default-queries",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1472,8 +1473,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when code-scanning feature enabled with packs",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1491,8 +1491,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when code-scanning feature enabled with queries",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1510,8 +1509,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when code-scanning feature enabled with query-filters",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1529,8 +1527,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when only language-specific feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1542,8 +1539,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when only code-scanning feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1555,8 +1551,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay-base database on default branch when language-specific feature disabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1568,8 +1563,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay analysis on PR when feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1582,8 +1576,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay analysis on PR when feature enabled with custom analysis",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1599,8 +1592,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay analysis on PR when code-scanning feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1616,8 +1608,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR if runner disk space is too low",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1636,8 +1627,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay analysis on PR if runner disk space is too low and skip resource checks flag is enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1658,8 +1648,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR if we can't determine runner disk space",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1675,8 +1664,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR if memory flag is too low",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1692,8 +1680,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay analysis on PR if memory flag is too low but CodeQL >= 2.24.3",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1711,8 +1698,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay analysis on PR if memory flag is too low and skip resource checks flag is enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1730,8 +1716,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when code-scanning feature enabled with disable-default-queries",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1749,8 +1734,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when code-scanning feature enabled with packs",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1768,8 +1752,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when code-scanning feature enabled with queries",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1787,8 +1770,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when code-scanning feature enabled with query-filters",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1806,8 +1788,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when only language-specific feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1819,8 +1800,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when only code-scanning feature enabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1832,8 +1812,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis on PR when language-specific feature disabled",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1845,8 +1824,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay PR analysis by env",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1857,8 +1835,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay PR analysis by env on a runner with low disk space",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1870,8 +1847,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay PR analysis by feature flag",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1884,8 +1860,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Fallback due to autobuild with traced language",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1897,8 +1872,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Fallback due to no build mode with traced language",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1910,8 +1884,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Fallback due to old CodeQL version",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1922,8 +1895,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Fallback due to missing git root",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1934,8 +1906,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Fallback due to old git version with submodules",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1947,8 +1918,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Fallback when git version cannot be determined and repo has submodules",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1960,8 +1930,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay enabled when git version cannot be determined and repo has no submodules",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -1974,8 +1943,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay when disabled via repository property",
   {
     languages: [BuiltInLanguage.javascript],
@@ -1990,8 +1958,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Overlay not disabled when repository property is false",
   {
     languages: [BuiltInLanguage.javascript],
@@ -2007,8 +1974,7 @@ test.serial(
   },
 );
 
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "Environment variable override takes precedence over repository property",
   {
     overlayDatabaseEnvVar: "overlay",
@@ -2023,9 +1989,8 @@ test.serial(
 );
 
 // Exercise language-specific overlay analysis features code paths
-for (const language in BuiltInLanguage) {
-  test.serial(
-    checkOverlayEnablementMacro,
+for (const language of Object.values(BuiltInLanguage)) {
+  testCheckOverlayEnablement(
     `Check default overlay analysis feature for ${language}`,
     {
       languages: [language],
@@ -2042,8 +2007,7 @@ for (const language in BuiltInLanguage) {
 // overlay analysis enabled, even when the base overlay feature flag is on.
 // Using swift here as it doesn't currently have overlay support — update this if
 // swift gains overlay support.
-test.serial(
-  checkOverlayEnablementMacro,
+testCheckOverlayEnablement(
   "No overlay analysis for language without per-language overlay feature flag",
   {
     languages: [BuiltInLanguage.swift],

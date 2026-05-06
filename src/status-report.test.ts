@@ -291,7 +291,7 @@ test.serial(
   },
 );
 
-const testCreateInitWithConfigStatusReport = test.macro({
+const createInitWithConfigStatusReportMacro = test.macro({
   exec: async (
     t,
     _title: string,
@@ -340,8 +340,26 @@ const testCreateInitWithConfigStatusReport = test.macro({
   title: (_, title) => `createInitWithConfigStatusReport: ${title}`,
 });
 
-test.serial(
-  testCreateInitWithConfigStatusReport,
+/**
+ * Wraps `createInitWithConfigStatusReportMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testCreateInitWithConfigStatusReport(
+  title: string,
+  config: Config,
+  expectedReportProperties: Partial<InitWithConfigStatusReport>,
+) {
+  test.serial(
+    createInitWithConfigStatusReportMacro,
+    title,
+    config,
+    expectedReportProperties,
+  );
+}
+
+testCreateInitWithConfigStatusReport(
   "returns a value",
   createTestConfig({
     buildMode: BuildMode.None,
@@ -355,8 +373,7 @@ test.serial(
   },
 );
 
-test.serial(
-  testCreateInitWithConfigStatusReport,
+testCreateInitWithConfigStatusReport(
   "includes packs for a single language",
   createTestConfig({
     buildMode: BuildMode.None,
@@ -372,8 +389,7 @@ test.serial(
   },
 );
 
-test.serial(
-  testCreateInitWithConfigStatusReport,
+testCreateInitWithConfigStatusReport(
   "includes packs for multiple languages",
   createTestConfig({
     buildMode: BuildMode.None,

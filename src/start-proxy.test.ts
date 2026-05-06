@@ -32,7 +32,7 @@ import {
 
 setupTests(test);
 
-const sendFailedStatusReportTest = test.macro({
+const sendFailedStatusReportMacro = test.macro({
   exec: async (
     t: ExecutionContext<unknown>,
     err: Error,
@@ -88,16 +88,35 @@ const sendFailedStatusReportTest = test.macro({
   title: (providedTitle = "") => `sendFailedStatusReport - ${providedTitle}`,
 });
 
-test.serial(
+/**
+ * Wraps `sendFailedStatusReportMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testSendFailedStatusReport(
+  title: string,
+  err: Error,
+  expectedMessage: string,
+  expectedStatus: statusReport.ActionStatus = "failure",
+) {
+  test.serial(
+    title,
+    sendFailedStatusReportMacro,
+    err,
+    expectedMessage,
+    expectedStatus,
+  );
+}
+
+testSendFailedStatusReport(
   "reports generic error message for non-StartProxyError error",
-  sendFailedStatusReportTest,
   new Error("Something went wrong today"),
   "Error from start-proxy Action omitted (Error).",
 );
 
-test.serial(
+testSendFailedStatusReport(
   "reports generic error message for non-StartProxyError error with safe error message",
-  sendFailedStatusReportTest,
   new Error(
     startProxyExports.getStartProxyErrorMessage(
       startProxyExports.StartProxyErrorType.DownloadFailed,
@@ -106,9 +125,8 @@ test.serial(
   "Error from start-proxy Action omitted (Error).",
 );
 
-test.serial(
+testSendFailedStatusReport(
   "reports generic error message for ConfigurationError error",
-  sendFailedStatusReportTest,
   new ConfigurationError("Something went wrong today"),
   "Error from start-proxy Action omitted (ConfigurationError).",
   "user-error",

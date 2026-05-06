@@ -128,6 +128,8 @@ export async function getGitHubVersionFromApi(
 
   // Doesn't strictly have to be the meta endpoint as we're only
   // using the response headers which are available on every request.
+  //
+  // See https://docs.github.com/en/rest/meta/meta#get-github-meta-information.
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const response = await apiClient.rest.meta.get();
 
@@ -164,6 +166,9 @@ export async function getGitHubVersion(): Promise<GitHubVersion> {
 
 /**
  * Get the path of the currently executing workflow relative to the repository root.
+ *
+ * See https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run
+ * and https://docs.github.com/en/rest/actions/workflows#get-a-workflow.
  */
 export async function getWorkflowRelativePath(): Promise<string> {
   const repo_nwo = getRepositoryNwo();
@@ -252,9 +257,13 @@ export interface ActionsCacheItem {
   size_in_bytes?: number;
 }
 
-/** List all Actions cache entries matching the provided key and ref. */
+/**
+ * List all Actions cache entries starting with the provided key prefix and matching the provided ref.
+ *
+ * See https://docs.github.com/en/rest/actions/cache#list-github-actions-caches-for-a-repository.
+ */
 export async function listActionsCaches(
-  key: string,
+  keyPrefix: string,
   ref?: string,
 ): Promise<ActionsCacheItem[]> {
   const repositoryNwo = getRepositoryNwo();
@@ -264,13 +273,17 @@ export async function listActionsCaches(
     {
       owner: repositoryNwo.owner,
       repo: repositoryNwo.repo,
-      key,
+      key: keyPrefix,
       ref,
     },
   );
 }
 
-/** Delete an Actions cache item by its ID. */
+/**
+ * Delete an Actions cache item by its ID.
+ *
+ * See https://docs.github.com/en/rest/actions/cache#delete-a-github-actions-cache-for-a-repository-using-a-cache-id.
+ */
 export async function deleteActionsCache(id: number) {
   const repositoryNwo = getRepositoryNwo();
 
@@ -281,7 +294,11 @@ export async function deleteActionsCache(id: number) {
   });
 }
 
-/** Retrieve all custom repository properties. */
+/**
+ * Retrieve all custom repository properties.
+ *
+ * See https://docs.github.com/en/rest/repos/custom-properties#get-all-custom-property-values-for-a-repository.
+ */
 export async function getRepositoryProperties(repositoryNwo: RepositoryNwo) {
   return getApiClient().request("GET /repos/:owner/:repo/properties/values", {
     owner: repositoryNwo.owner,

@@ -70,7 +70,7 @@ async function installIntoToolcache({
     tmpDir,
     util.GitHubVariant.GHES,
     cliVersion !== undefined
-      ? { cliVersion, tagName }
+      ? { enabledVersions: [{ cliVersion, tagName }] }
       : SAMPLE_DEFAULT_CLI_VERSION,
     createFeatures([]),
     getRunnerLogger(true),
@@ -284,11 +284,11 @@ for (const {
 for (const toolcacheVersion of [
   // Test that we use the tools from the toolcache when `SAMPLE_DEFAULT_CLI_VERSION` is requested
   // and `SAMPLE_DEFAULT_CLI_VERSION-` is in the toolcache.
-  SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
-  `${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`,
+  SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+  `${SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion}-20230101`,
 ]) {
   test.serial(
-    `uses tools from toolcache when ${SAMPLE_DEFAULT_CLI_VERSION.cliVersion} is requested and ` +
+    `uses tools from toolcache when ${SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion} is requested and ` +
       `${toolcacheVersion} is installed`,
     async (t) => {
       const features = createFeatures([]);
@@ -312,7 +312,10 @@ for (const toolcacheVersion of [
           getRunnerLogger(true),
           false,
         );
-        t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+        t.is(
+          result.toolsVersion,
+          SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+        );
         t.is(result.toolsSource, ToolsSource.Toolcache);
         t.is(result.toolsDownloadStatusReport?.combinedDurationMs, undefined);
         t.is(result.toolsDownloadStatusReport?.downloadDurationMs, undefined);
@@ -342,8 +345,12 @@ test.serial(
         tmpDir,
         util.GitHubVariant.GHES,
         {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
+          enabledVersions: [
+            {
+              cliVersion: defaults.cliVersion,
+              tagName: defaults.bundleVersion,
+            },
+          ],
         },
         features,
         getRunnerLogger(true),
@@ -384,8 +391,12 @@ test.serial(
         tmpDir,
         util.GitHubVariant.GHES,
         {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
+          enabledVersions: [
+            {
+              cliVersion: defaults.cliVersion,
+              tagName: defaults.bundleVersion,
+            },
+          ],
         },
         features,
         getRunnerLogger(true),

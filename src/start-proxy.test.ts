@@ -1019,8 +1019,10 @@ test.serial(
         return true;
       });
       const getDefaultCliVersion = sinon
-        .stub(features, "getDefaultCliVersion")
-        .resolves({ cliVersion: "2.20.1", tagName: expectedTag });
+        .stub(features, "getEnabledDefaultCliVersions")
+        .resolves({
+          enabledVersions: [{ cliVersion: "2.20.1", tagName: expectedTag }],
+        });
       const path = await startProxyExports.getProxyBinaryPath(logger, features);
 
       t.assert(getDefaultCliVersion.calledOnce);

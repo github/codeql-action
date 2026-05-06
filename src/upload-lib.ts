@@ -156,9 +156,8 @@ async function combineSarifFilesUsingCLI(
       apiURL: getRequiredEnvParam("GITHUB_API_URL"),
     };
 
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
 
     const initCodeQLResult = await initCodeQL(
       undefined, // There is no tools input on the upload action

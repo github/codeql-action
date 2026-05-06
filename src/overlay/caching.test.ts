@@ -7,7 +7,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "../actions-util";
 import * as apiClient from "../api-client";
-import { ResolveDatabaseOutput } from "../codeql";
+import type { ResolveDatabaseOutput } from "../codeql";
 import * as gitUtils from "../git-utils";
 import { BuiltInLanguage } from "../languages";
 import { getRunnerLogger } from "../logging";
@@ -23,6 +23,7 @@ import {
   downloadOverlayBaseDatabaseFromCache,
   getCacheRestoreKeyPrefix,
   getCacheSaveKey,
+  getCodeQlVersionsForOverlayBaseDatabases,
 } from "./caching";
 import { OverlayDatabaseMode } from "./overlay-database-mode";
 
@@ -285,3 +286,134 @@ test.serial("overlay-base database cache keys remain stable", async (t) => {
     `Expected save key "${saveKey}" to start with restore key prefix "${restoreKeyPrefix}"`,
   );
 });
+
+test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases returns unique versions sorted latest first",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    sinon.stub(apiClient, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-abc123-1-1",
+      },
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.24.1-def456-2-1",
+      },
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.23.0-ghi789-3-1",
+      },
+    ]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["javascript", "python"],
+      logger,
+    );
+    t.deepEqual(result, ["2.24.1", "2.23.0"]);
+  },
+);
+
+test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases returns empty list when no caches exist",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    sinon.stub(apiClient, "listActionsCaches").resolves([]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["python"],
+      logger,
+    );
+    t.deepEqual(result, []);
+  },
+);
+
+test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases returns empty list when cache keys are unparseable",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    sinon.stub(apiClient, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-malformed",
+      },
+      { key: undefined },
+    ]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["python"],
+      logger,
+    );
+    t.deepEqual(result, []);
+  },
+);
+
+test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases returns the single version when only one cache exists",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    sinon.stub(apiClient, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-cpp-2.25.0-abc123-1-1",
+      },
+    ]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["cpp"],
+      logger,
+    );
+    t.deepEqual(result, ["2.25.0"]);
+  },
+);
+
+test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases resolves language aliases",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+    // The alias `c++` should be resolved to "cpp" and match cache entries keyed with "cpp"
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    sinon.stub(apiClient, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-cpp-2.25.0-abc123-1-1",
+      },
+    ]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["c++"],
+      logger,
+    );
+    t.deepEqual(result, ["2.25.0"]);
+  },
+);
+
+test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases ignores nightly versions with build metadata",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    sinon.stub(apiClient, "listActionsCaches").resolves([
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.25.0-abc123-1-1",
+      },
+      {
+        // Nightly release with semver build metadata; should be ignored.
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.26.0+202604211234-def456-2-1",
+      },
+      {
+        key: "codeql-overlay-base-database-1-c5666c509a2d9895-python-2.24.0-ghi789-3-1",
+      },
+    ]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["python"],
+      logger,
+    );
+    t.deepEqual(result, ["2.25.0", "2.24.0"]);
+  },
+);

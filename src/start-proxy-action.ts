@@ -111,7 +111,7 @@ async function run(startedAt: Date) {
       logger,
     );
 
-    // Check that the private registries are reachable.
+    // Perform best-effort checks that the private registries are reachable.
     await checkConnections(logger, proxyInfo);
 
     // Report success if we have reached this point.
@@ -198,6 +198,7 @@ async function startProxy(
     .map((credential) => ({
       type: credential.type,
       url: credential.url,
+      "replaces-base": credential["replaces-base"],
     }));
   core.setOutput("proxy_urls", JSON.stringify(registry_urls));
 

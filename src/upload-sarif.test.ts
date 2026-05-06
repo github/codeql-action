@@ -123,9 +123,29 @@ const postProcessAndUploadSarifMacro = test.macro({
   title: (providedTitle = "") => `processAndUploadSarif - ${providedTitle}`,
 });
 
-test.serial(
+/**
+ * Wraps `postProcessAndUploadSarifMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testPostProcessAndUploadSarif(
+  title: string,
+  sarifFiles: string[],
+  sarifPath: ((tempDir: string) => string) | undefined,
+  expectedResult: Partial<Record<AnalysisKind, UploadSarifExpectedResult>>,
+) {
+  test.serial(
+    title,
+    postProcessAndUploadSarifMacro,
+    sarifFiles,
+    sarifPath,
+    expectedResult,
+  );
+}
+
+testPostProcessAndUploadSarif(
   "SARIF file",
-  postProcessAndUploadSarifMacro,
   ["test.sarif"],
   (tempDir) => path.join(tempDir, "test.sarif"),
   {
@@ -138,9 +158,8 @@ test.serial(
   },
 );
 
-test.serial(
+testPostProcessAndUploadSarif(
   "JSON file",
-  postProcessAndUploadSarifMacro,
   ["test.json"],
   (tempDir) => path.join(tempDir, "test.json"),
   {
@@ -153,9 +172,8 @@ test.serial(
   },
 );
 
-test.serial(
+testPostProcessAndUploadSarif(
   "Code Scanning files",
-  postProcessAndUploadSarifMacro,
   ["test.json", "test.sarif"],
   undefined,
   {
@@ -169,9 +187,8 @@ test.serial(
   },
 );
 
-test.serial(
+testPostProcessAndUploadSarif(
   "Code Quality file",
-  postProcessAndUploadSarifMacro,
   ["test.quality.sarif"],
   (tempDir) => path.join(tempDir, "test.quality.sarif"),
   {
@@ -184,9 +201,8 @@ test.serial(
   },
 );
 
-test.serial(
+testPostProcessAndUploadSarif(
   "Mixed files",
-  postProcessAndUploadSarifMacro,
   ["test.sarif", "test.quality.sarif"],
   undefined,
   {

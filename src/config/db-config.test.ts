@@ -31,6 +31,21 @@ const parsePacksMacro = test.macro({
 });
 
 /**
+ * Wraps `parsePacksMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testParsePacks(
+  title: string,
+  packsInput: string,
+  languages: Language[],
+  expected: dbConfig.Packs | undefined,
+) {
+  test(title, parsePacksMacro, packsInput, languages, expected);
+}
+
+/**
  * Test macro for testing when the packs block is invalid
  */
 const parsePacksErrorMacro = test.macro({
@@ -61,13 +76,12 @@ const invalidPackNameMacro = test.macro({
     `Invalid pack string: ${arg}`,
 });
 
-test("no packs", parsePacksMacro, "", [], undefined);
-test("two packs", parsePacksMacro, "a/b,c/d@1.2.3", [BuiltInLanguage.cpp], {
+testParsePacks("no packs", "", [], undefined);
+testParsePacks("two packs", "a/b,c/d@1.2.3", [BuiltInLanguage.cpp], {
   [BuiltInLanguage.cpp]: ["a/b", "c/d@1.2.3"],
 });
-test(
+testParsePacks(
   "two packs with spaces",
-  parsePacksMacro,
   " a/b , c/d@1.2.3 ",
   [BuiltInLanguage.cpp],
   {
@@ -85,9 +99,8 @@ test(
   ),
 );
 
-test(
+testParsePacks(
   "packs with other valid names",
-  parsePacksMacro,
   [
     // ranges are ok
     "c/d@1.0",

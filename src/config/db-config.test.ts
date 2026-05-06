@@ -401,8 +401,32 @@ const calculateAugmentationErrorMacro = test.macro({
   title: (_, title) => `Calculate Augmentation Error: ${title}`,
 });
 
-test(
-  calculateAugmentationErrorMacro,
+/**
+ * Wraps `calculateAugmentationErrorMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testCalculateAugmentationError(
+  title: string,
+  rawPacksInput: string | undefined,
+  rawQueriesInput: string | undefined,
+  languages: Language[],
+  repositoryProperties: RepositoryProperties,
+  expectedError: RegExp | string,
+) {
+  test(
+    calculateAugmentationErrorMacro,
+    title,
+    rawPacksInput,
+    rawQueriesInput,
+    languages,
+    repositoryProperties,
+    expectedError,
+  );
+}
+
+testCalculateAugmentationError(
   "Plus (+) with nothing else (queries)",
   undefined,
   "   +   ",
@@ -411,8 +435,7 @@ test(
   /The workflow property "queries" is invalid/,
 );
 
-test(
-  calculateAugmentationErrorMacro,
+testCalculateAugmentationError(
   "Plus (+) with nothing else (packs)",
   "   +   ",
   undefined,
@@ -421,8 +444,7 @@ test(
   /The workflow property "packs" is invalid/,
 );
 
-test(
-  calculateAugmentationErrorMacro,
+testCalculateAugmentationError(
   "Plus (+) with nothing else (repo property queries)",
   undefined,
   undefined,
@@ -433,8 +455,7 @@ test(
   /The repository property "github-codeql-extra-queries" is invalid/,
 );
 
-test(
-  calculateAugmentationErrorMacro,
+testCalculateAugmentationError(
   "Packs input with multiple languages",
   "   +  a/b, c/d ",
   undefined,
@@ -443,8 +464,7 @@ test(
   /Cannot specify a 'packs' input in a multi-language analysis/,
 );
 
-test(
-  calculateAugmentationErrorMacro,
+testCalculateAugmentationError(
   "Packs input with no languages",
   "   +  a/b, c/d ",
   undefined,
@@ -453,8 +473,7 @@ test(
   /No languages specified/,
 );
 
-test(
-  calculateAugmentationErrorMacro,
+testCalculateAugmentationError(
   "Invalid packs",
   " a-pack-without-a-scope ",
   undefined,

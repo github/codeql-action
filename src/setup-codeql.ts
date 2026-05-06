@@ -14,7 +14,11 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
-import { addNoLanguageDiagnostic, makeDiagnostic } from "./diagnostics";
+import {
+  addNoLanguageDiagnostic,
+  makeDiagnostic,
+  makeTelemetryDiagnostic,
+} from "./diagnostics";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
@@ -270,7 +274,13 @@ async function findOverridingToolsInCache(
   return undefined;
 }
 
-/** Returns the sorted set of enabled versions that have cached overlay-base databases. */
+/**
+ * Returns the sorted set of enabled versions that have cached overlay-base databases for the
+ * given languages, or an empty list if neither the `OverlayAnalysisMatchCodeqlVersion` nor the
+ * `OverlayAnalysisMatchCodeqlVersionDryRun` feature flag is enabled. When only the dry-run flag
+ * is enabled, this performs the lookup and emits a telemetry diagnostic with the version that
+ * would have been chosen, but still returns an empty list so the caller falls back.
+ */
 export async function getEnabledVersionsWithOverlayBaseDatabases(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
@@ -280,7 +290,13 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
   if (rawLanguages === undefined || rawLanguages.length === 0) {
     return [];
   }
-  if (!(await features.getValue(Feature.OverlayAnalysisMatchCodeqlVersion))) {
+  const isEnabled = await features.getValue(
+    Feature.OverlayAnalysisMatchCodeqlVersion,
+  );
+  const isDryRun =
+    !isEnabled &&
+    (await features.getValue(Feature.OverlayAnalysisMatchCodeqlVersionDryRun));
+  if (!isEnabled && !isDryRun) {
     return [];
   }
 
@@ -296,14 +312,50 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
     );
     return [];
   }
+
   if (cachedVersions === undefined || cachedVersions.length === 0) {
     return [];
   }
 
   const cachedVersionsSet = new Set(cachedVersions);
-  return defaultCliVersion.enabledVersions.filter((v) =>
+  const overlayVersions = defaultCliVersion.enabledVersions.filter((v) =>
     cachedVersionsSet.has(v.cliVersion),
   );
+
+  if (overlayVersions.length === 0) {
+    return [];
+  }
+
+  const isCachedVersionDifferent =
+    overlayVersions[0].cliVersion !==
+    defaultCliVersion.enabledVersions[0].cliVersion;
+
+  if (isCachedVersionDifferent) {
+    addNoLanguageDiagnostic(
+      undefined,
+      makeTelemetryDiagnostic(
+        "codeql-action/overlay-aware-default-codeql-version",
+        "Overlay-aware default CodeQL version selection",
+        {
+          cachedVersions,
+          enabledVersions: defaultCliVersion.enabledVersions.map(
+            (v) => v.cliVersion,
+          ),
+          isDryRun,
+          overlayAwareVersion: overlayVersions[0].cliVersion,
+        },
+      ),
+    );
+  }
+
+  if (isDryRun) {
+    logger.debug(
+      `Overlay-aware default CodeQL version selection is running in dry-run mode. Would have used version ${overlayVersions[0].cliVersion}.`,
+    );
+    return [];
+  }
+
+  return overlayVersions;
 }
 
 /**
@@ -334,10 +386,6 @@ async function resolveDefaultCliVersion(
     );
     return overlayVersions[0];
   }
-  logger.info(
-    `Using CodeQL version ${defaultCliVersion.enabledVersions[0].cliVersion} since no enabled ` +
-      `versions with cached overlay-base databases were found.`,
-  );
   return defaultCliVersion.enabledVersions[0];
 }
 

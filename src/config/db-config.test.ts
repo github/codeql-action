@@ -62,6 +62,21 @@ const parsePacksErrorMacro = test.macro({
 });
 
 /**
+ * Wraps `parsePacksErrorMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testParsePacksError(
+  title: string,
+  packsInput: string,
+  languages: Language[],
+  expected: RegExp,
+) {
+  test(title, parsePacksErrorMacro, packsInput, languages, expected);
+}
+
+/**
  * Test macro for testing when the packs block is invalid
  */
 const invalidPackNameMacro = test.macro({
@@ -88,9 +103,8 @@ testParsePacks(
     [BuiltInLanguage.cpp]: ["a/b", "c/d@1.2.3"],
   },
 );
-test(
+testParsePacksError(
   "two packs with language",
-  parsePacksErrorMacro,
   "a/b,c/d@1.2.3",
   [BuiltInLanguage.cpp, BuiltInLanguage.java],
   new RegExp(

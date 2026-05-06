@@ -40,12 +40,14 @@ export enum OverlayDisabledReason {
   /** The top-level overlay analysis feature flag is not enabled. */
   OverallFeatureNotEnabled = "overall-feature-not-enabled",
   /**
-   * Overlay analysis was selected for a pull request, but the PR diff ranges
-   * needed for diff-informed analysis could not be computed. Overlay analysis
-   * has only been validated in combination with diff-informed analysis, so we
-   * fall back to a non-overlay analysis in this case.
+   * Overlay analysis was selected for a pull request, but diff-informed
+   * analysis was not enabled for the run (for example, because the
+   * `DiffInformedQueries` feature flag is off, the GHES version is too old,
+   * or the PR diff ranges could not be computed). Overlay analysis has only
+   * been validated in combination with diff-informed analysis, so we fall
+   * back to a non-overlay analysis in this case.
    */
-  PrDiffRangesNotComputed = "pr-diff-ranges-not-computed",
+  DiffInformedAnalysisNotEnabled = "diff-informed-analysis-not-enabled",
   /** Overlay analysis was skipped because it previously failed with similar hardware resources. */
   SkippedDueToCachedStatus = "skipped-due-to-cached-status",
   /** Disk usage could not be determined during the overlay status check. */

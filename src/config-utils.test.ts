@@ -21,6 +21,7 @@ import { GitVersionInfo } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
+import * as overlayDiagnostics from "./overlay/diagnostics";
 import { OverlayDisabledReason } from "./overlay/diagnostics";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
@@ -2245,6 +2246,9 @@ test("applyIncrementalAnalysisSettings: disables overlay analysis when diff rang
   config.useOverlayDatabaseCaching = true;
   const codeql = createStubCodeQL({});
   const logger = getRunnerLogger(true);
+  const addDiagnosticsStub = sinon
+    .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
+    .resolves();
 
   await configUtils.applyIncrementalAnalysisSettings(
     config,
@@ -2256,6 +2260,11 @@ test("applyIncrementalAnalysisSettings: disables overlay analysis when diff rang
   t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
   t.is(config.useOverlayDatabaseCaching, false);
   t.deepEqual(config.extraQueryExclusions, []);
+  t.true(addDiagnosticsStub.calledOnce);
+  t.is(
+    addDiagnosticsStub.firstCall.args[2],
+    OverlayDisabledReason.DiffInformedAnalysisNotEnabled,
+  );
 });
 
 test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only runs", async (t) => {

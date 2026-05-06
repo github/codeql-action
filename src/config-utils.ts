@@ -1107,7 +1107,7 @@ export async function applyIncrementalAnalysisSettings(
     await addOverlayDisablementDiagnostics(
       config,
       codeql,
-      OverlayDisabledReason.PrDiffRangesNotComputed,
+      OverlayDisabledReason.DiffInformedAnalysisNotEnabled,
     );
   }
 

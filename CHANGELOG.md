@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- For performance and accuracy reasons, [improved incremental analysis](https://github.com/github/roadmap/issues/1158) will now only be enabled on a pull request when diff-informed analysis is also enabled for that run. If diff-informed analysis is unavailable (for example, because the PR diff ranges could not be computed), the action will fall back to a full analysis. [#3791](https://github.com/github/codeql-action/pull/3791)
 
 ## 4.35.3 - 01 May 2026
 

@@ -601,7 +601,7 @@ async function testFailedSarifUpload(
   uploadFiles.resolves({
     sarifID: "42",
     statusReport: { raw_upload_size_bytes: 20, zipped_upload_size_bytes: 10 },
-  } as uploadLib.UploadResult);
+  });
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
   const features = [] as Feature[];

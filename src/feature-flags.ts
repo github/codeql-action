@@ -29,9 +29,27 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
  */
 export const CODEQL_VERSION_ZSTD_BUNDLE = "2.19.0";
 
-export interface CodeQLDefaultVersionInfo {
+export interface CodeQLVersionInfo {
+  /** The version number of the CodeQL CLI, e.g. `2.19.0`. */
   cliVersion: string;
+  /**
+   * The tag name of the CodeQL Bundle associated with this version, e.g. `codeql-bundle-v2.19.0`.
+   */
   tagName: string;
+}
+
+export interface CodeQLDefaultVersionInfo {
+  /**
+   * CodeQL CLI versions that are enabled as defaults, sorted from highest to lowest.
+   *
+   * Guaranteed to be non-empty. When feature flags are unavailable, this falls back to a single
+   * entry containing the version pinned in `defaults.json`.
+   */
+  enabledVersions: CodeQLVersionInfo[];
+  /**
+   * If accessed, whether the tools feature flags are valid, i.e. contain at least one enabled
+   * version.
+   */
   toolsFeatureFlagsValid?: boolean;
 }
 
@@ -358,8 +376,12 @@ export type FeatureWithoutCLI = {
 }[keyof typeof featureConfig];
 
 export interface FeatureEnablement {
-  /** Gets the default version of the CodeQL tools. */
-  getDefaultCliVersion(
+  /**
+   * Returns the set of default CodeQL CLI versions to consider, sorted from
+   * highest to lowest. The first entry is the version that the CodeQL Action
+   * will use by default. The list is always non-empty.
+   */
+  getEnabledDefaultCliVersions(
     variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo>;
   getValue(feature: FeatureWithoutCLI): Promise<boolean>;
@@ -383,12 +405,16 @@ export const FEATURE_FLAGS_FILE_NAME = "cached-feature-flags.json";
 class OfflineFeatures implements FeatureEnablement {
   constructor(protected readonly logger: Logger) {}
 
-  async getDefaultCliVersion(
+  async getEnabledDefaultCliVersions(
     _variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
     return {
-      cliVersion: defaults.cliVersion,
-      tagName: defaults.bundleVersion,
+      enabledVersions: [
+        {
+          cliVersion: defaults.cliVersion,
+          tagName: defaults.bundleVersion,
+        },
+      ],
     };
   }
 
@@ -530,13 +556,13 @@ class Features extends OfflineFeatures {
     );
   }
 
-  async getDefaultCliVersion(
+  async getEnabledDefaultCliVersions(
     variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
     if (supportsFeatureFlags(variant)) {
-      return await this.gitHubFeatureFlags.getDefaultCliVersionFromFlags();
+      return await this.gitHubFeatureFlags.getEnabledDefaultCliVersionsFromFlags();
     }
-    return super.getDefaultCliVersion(variant);
+    return super.getEnabledDefaultCliVersions(variant);
   }
 
   /**
@@ -612,16 +638,22 @@ class GitHubFeatureFlags {
     return version;
   }
 
-  async getDefaultCliVersionFromFlags(): Promise<CodeQLDefaultVersionInfo> {
+  /**
+   * Returns CLI versions enabled by `default_codeql_version_*_enabled` feature
+   * flags, sorted from highest to lowest. Falls back to the version pinned in
+   * `defaults.json` if no such flags are enabled.
+   */
+  async getEnabledDefaultCliVersionsFromFlags(): Promise<CodeQLDefaultVersionInfo> {
     const response = await this.getAllFeatures();
 
-    const enabledFeatureFlagCliVersions = Object.entries(response)
+    const sortedCliVersions = Object.entries(response)
       .map(([f, isEnabled]) =>
         isEnabled ? this.getCliVersionFromFeatureFlag(f) : undefined,
       )
-      .filter((f): f is string => f !== undefined);
+      .filter((f): f is string => f !== undefined)
+      .sort(semver.rcompare);
 
-    if (enabledFeatureFlagCliVersions.length === 0) {
+    if (sortedCliVersions.length === 0) {
       // We expect at least one default CLI version to be enabled on Dotcom at any time. However if
       // the feature flags are misconfigured, rather than crashing, we fall back to the CLI version
       // shipped with the Action in defaults.json. This has the effect of immediately rolling out
@@ -637,8 +669,12 @@ class GitHubFeatureFlags {
           `shipped with the Action. This is ${defaults.cliVersion}.`,
       );
       const result: CodeQLDefaultVersionInfo = {
-        cliVersion: defaults.cliVersion,
-        tagName: defaults.bundleVersion,
+        enabledVersions: [
+          {
+            cliVersion: defaults.cliVersion,
+            tagName: defaults.bundleVersion,
+          },
+        ],
       };
       if (this.hasAccessedRemoteFeatureFlags) {
         result.toolsFeatureFlagsValid = false;
@@ -646,17 +682,14 @@ class GitHubFeatureFlags {
       return result;
     }
 
-    const maxCliVersion = enabledFeatureFlagCliVersions.reduce(
-      (maxVersion, currentVersion) =>
-        currentVersion > maxVersion ? currentVersion : maxVersion,
-      enabledFeatureFlagCliVersions[0],
-    );
     this.logger.debug(
-      `Derived default CLI version of ${maxCliVersion} from feature flags.`,
+      `Derived default CLI version of ${sortedCliVersions[0]} from feature flags.`,
     );
     return {
-      cliVersion: maxCliVersion,
-      tagName: `codeql-bundle-v${maxCliVersion}`,
+      enabledVersions: sortedCliVersions.map((cliVersion) => ({
+        cliVersion,
+        tagName: `codeql-bundle-v${cliVersion}`,
+      })),
       toolsFeatureFlagsValid: true,
     };
   }

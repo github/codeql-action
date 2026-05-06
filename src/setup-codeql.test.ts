@@ -514,7 +514,10 @@ const toolcacheInputFallbackMacro = test.macro({
 
       // Check that `sourceType` and `toolsVersion` match expectations.
       t.is(source.sourceType, "download");
-      t.is(source.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+      t.is(
+        source.toolsVersion,
+        SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+      );
 
       // Check that key messages we would expect to find in the log are present.
       for (const expectedMessage of expectedMessages) {

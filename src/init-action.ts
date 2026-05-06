@@ -298,9 +298,8 @@ async function run(startedAt: Date) {
       );
     }
 
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),

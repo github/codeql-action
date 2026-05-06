@@ -438,8 +438,8 @@ export async function getCodeQLSource(
         }
       }
 
-      cliVersion = defaultCliVersion.cliVersion;
-      tagName = defaultCliVersion.tagName;
+      cliVersion = defaultCliVersion.enabledVersions[0].cliVersion;
+      tagName = defaultCliVersion.enabledVersions[0].tagName;
     }
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.
@@ -455,8 +455,8 @@ export async function getCodeQLSource(
     }
   } else {
     // Otherwise, use the default CLI version passed in.
-    cliVersion = defaultCliVersion.cliVersion;
-    tagName = defaultCliVersion.tagName;
+    cliVersion = defaultCliVersion.enabledVersions[0].cliVersion;
+    tagName = defaultCliVersion.enabledVersions[0].tagName;
   }
 
   const bundleVersion =

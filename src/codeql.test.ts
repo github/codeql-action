@@ -17,6 +17,7 @@ import {
   AugmentationProperties,
   generateCodeScanningConfig,
   defaultAugmentationProperties,
+  UserConfig,
 } from "./config/db-config";
 import type { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
@@ -545,7 +546,7 @@ const injectedConfigMacro = test.macro({
     t: ExecutionContext<unknown>,
     augmentationProperties: AugmentationProperties,
     configOverride: Partial<Config>,
-    expectedConfig: any,
+    expectedConfig: UserConfig,
   ) => {
     await util.withTmpDir(async (tempDir) => {
       sinon.stub(actionsUtil, "isDefaultSetup").resolves(false);
@@ -600,7 +601,7 @@ function testInjectedConfig(
   title: string,
   augmentationProperties: AugmentationProperties,
   configOverride: Partial<Config>,
-  expectedConfig: any,
+  expectedConfig: UserConfig,
 ) {
   test.serial(
     title,

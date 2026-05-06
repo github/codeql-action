@@ -91,6 +91,16 @@ const invalidPackNameMacro = test.macro({
     `Invalid pack string: ${arg}`,
 });
 
+/**
+ * Wraps `invalidPackNameMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testInvalidPackName(name: string) {
+  test(invalidPackNameMacro, name);
+}
+
 testParsePacks("no packs", "", [], undefined);
 testParsePacks("two packs", "a/b,c/d@1.2.3", [BuiltInLanguage.cpp], {
   [BuiltInLanguage.cpp]: ["a/b", "c/d@1.2.3"],
@@ -150,18 +160,18 @@ testParsePacks(
   },
 );
 
-test(invalidPackNameMacro, "c"); // all packs require at least a scope and a name
-test(invalidPackNameMacro, "c-/d");
-test(invalidPackNameMacro, "-c/d");
-test(invalidPackNameMacro, "c/d_d");
-test(invalidPackNameMacro, "c/d@@");
-test(invalidPackNameMacro, "c/d@1.0.0:");
-test(invalidPackNameMacro, "c/d:");
-test(invalidPackNameMacro, "c/d:/a");
-test(invalidPackNameMacro, "@1.0.0:a");
-test(invalidPackNameMacro, "c/d@../a");
-test(invalidPackNameMacro, "c/d@b/../a");
-test(invalidPackNameMacro, "c/d:z@1");
+testInvalidPackName("c"); // all packs require at least a scope and a name
+testInvalidPackName("c-/d");
+testInvalidPackName("-c/d");
+testInvalidPackName("c/d_d");
+testInvalidPackName("c/d@@");
+testInvalidPackName("c/d@1.0.0:");
+testInvalidPackName("c/d:");
+testInvalidPackName("c/d:/a");
+testInvalidPackName("@1.0.0:a");
+testInvalidPackName("c/d@../a");
+testInvalidPackName("c/d@b/../a");
+testInvalidPackName("c/d:z@1");
 
 /**
  * Test macro for pretty printing pack specs

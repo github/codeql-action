@@ -257,8 +257,32 @@ const calculateAugmentationMacro = test.macro({
   title: (_, title) => `Calculate Augmentation: ${title}`,
 });
 
-test(
-  calculateAugmentationMacro,
+/**
+ * Wraps `calculateAugmentationMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testCalculateAugmentation(
+  title: string,
+  rawPacksInput: string | undefined,
+  rawQueriesInput: string | undefined,
+  languages: Language[],
+  repositoryProperties: RepositoryProperties,
+  expectedAugmentationProperties: dbConfig.AugmentationProperties,
+) {
+  test(
+    calculateAugmentationMacro,
+    title,
+    rawPacksInput,
+    rawQueriesInput,
+    languages,
+    repositoryProperties,
+    expectedAugmentationProperties,
+  );
+}
+
+testCalculateAugmentation(
   "All empty",
   undefined,
   undefined,
@@ -269,8 +293,7 @@ test(
   },
 );
 
-test(
-  calculateAugmentationMacro,
+testCalculateAugmentation(
   "With queries",
   undefined,
   " a, b , c, d",
@@ -282,8 +305,7 @@ test(
   },
 );
 
-test(
-  calculateAugmentationMacro,
+testCalculateAugmentation(
   "With queries combining",
   undefined,
   "   +   a, b , c, d ",
@@ -296,8 +318,7 @@ test(
   },
 );
 
-test(
-  calculateAugmentationMacro,
+testCalculateAugmentation(
   "With packs",
   "   codeql/a , codeql/b   , codeql/c  , codeql/d  ",
   undefined,
@@ -309,8 +330,7 @@ test(
   },
 );
 
-test(
-  calculateAugmentationMacro,
+testCalculateAugmentation(
   "With packs combining",
   "   +   codeql/a, codeql/b, codeql/c, codeql/d",
   undefined,
@@ -323,8 +343,7 @@ test(
   },
 );
 
-test(
-  calculateAugmentationMacro,
+testCalculateAugmentation(
   "With repo property queries",
   undefined,
   undefined,
@@ -341,8 +360,7 @@ test(
   },
 );
 
-test(
-  calculateAugmentationMacro,
+testCalculateAugmentation(
   "With repo property queries combining",
   undefined,
   undefined,

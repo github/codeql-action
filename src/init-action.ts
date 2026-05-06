@@ -301,12 +301,16 @@ async function run(startedAt: Date) {
     const codeQLDefaultVersionInfo =
       await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      rawLanguages,
       features,
       logger,
     );

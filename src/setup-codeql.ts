@@ -7,17 +7,23 @@ import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
-import { isDynamicWorkflow, isRunningLocalAction } from "./actions-util";
+import {
+  isAnalyzingPullRequest,
+  isDynamicWorkflow,
+  isRunningLocalAction,
+} from "./actions-util";
 import * as api from "./api-client";
 import * as defaults from "./defaults.json";
 import { addNoLanguageDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
+  CodeQLVersionInfo,
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
 import { Logger } from "./logging";
+import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
 import * as tar from "./tar";
 import {
   downloadAndExtract,
@@ -264,12 +270,84 @@ async function findOverridingToolsInCache(
   return undefined;
 }
 
+/** Returns the sorted set of enabled versions that have cached overlay-base databases. */
+export async function getEnabledVersionsWithOverlayBaseDatabases(
+  defaultCliVersion: CodeQLDefaultVersionInfo,
+  rawLanguages: string[] | undefined,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<CodeQLVersionInfo[]> {
+  if (rawLanguages === undefined || rawLanguages.length === 0) {
+    return [];
+  }
+  if (!(await features.getValue(Feature.OverlayAnalysisMatchCodeqlVersion))) {
+    return [];
+  }
+
+  let cachedVersions: string[] | undefined;
+  try {
+    cachedVersions = await getCodeQlVersionsForOverlayBaseDatabases(
+      rawLanguages,
+      logger,
+    );
+  } catch (e) {
+    logger.warning(
+      `While setting up CodeQL, was unable to list overlay-base databases in the Actions cache. Details: ${e}`,
+    );
+    return [];
+  }
+  if (cachedVersions === undefined || cachedVersions.length === 0) {
+    return [];
+  }
+
+  const cachedVersionsSet = new Set(cachedVersions);
+  return defaultCliVersion.enabledVersions.filter((v) =>
+    cachedVersionsSet.has(v.cliVersion),
+  );
+}
+
+/**
+ * Resolves the newest enabled default CLI version that has a cached overlay-base database for the
+ * relevant languages, if analyzing a pull request and one exists. Otherwise, falls back to the
+ * newest enabled default CLI version.
+ */
+async function resolveDefaultCliVersion(
+  defaultCliVersion: CodeQLDefaultVersionInfo,
+  rawLanguages: string[] | undefined,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<CodeQLVersionInfo> {
+  if (!isAnalyzingPullRequest()) {
+    return defaultCliVersion.enabledVersions[0];
+  }
+
+  const overlayVersions = await getEnabledVersionsWithOverlayBaseDatabases(
+    defaultCliVersion,
+    rawLanguages,
+    features,
+    logger,
+  );
+  if (overlayVersions.length > 0) {
+    logger.info(
+      `Using CodeQL version ${overlayVersions[0].cliVersion} since this is the ` +
+        `highest enabled version that has a cached overlay-base database.`,
+    );
+    return overlayVersions[0];
+  }
+  logger.info(
+    `Using CodeQL version ${defaultCliVersion.enabledVersions[0].cliVersion} since no enabled ` +
+      `versions with cached overlay-base databases were found.`,
+  );
+  return defaultCliVersion.enabledVersions[0];
+}
+
 /**
  * Determines where the CodeQL CLI we want to use comes from. This can be from a local file,
  * the Actions toolcache, or a download.
  *
  * @param toolsInput The argument provided for the `tools` input, if any.
  * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
+ * @param rawLanguages Raw set of languages.
  * @param apiDetails Information about the GitHub API.
  * @param variant The GitHub variant we are running on.
  * @param tarSupportsZstd Whether zstd is supported by `tar`.
@@ -281,6 +359,7 @@ async function findOverridingToolsInCache(
 export async function getCodeQLSource(
   toolsInput: string | undefined,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  rawLanguages: string[] | undefined,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tarSupportsZstd: boolean,
@@ -438,8 +517,14 @@ export async function getCodeQLSource(
         }
       }
 
-      cliVersion = defaultCliVersion.enabledVersions[0].cliVersion;
-      tagName = defaultCliVersion.enabledVersions[0].tagName;
+      const version = await resolveDefaultCliVersion(
+        defaultCliVersion,
+        rawLanguages,
+        features,
+        logger,
+      );
+      cliVersion = version.cliVersion;
+      tagName = version.tagName;
     }
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.
@@ -454,9 +539,14 @@ export async function getCodeQLSource(
       }
     }
   } else {
-    // Otherwise, use the default CLI version passed in.
-    cliVersion = defaultCliVersion.enabledVersions[0].cliVersion;
-    tagName = defaultCliVersion.enabledVersions[0].tagName;
+    const version = await resolveDefaultCliVersion(
+      defaultCliVersion,
+      rawLanguages,
+      features,
+      logger,
+    );
+    cliVersion = version.cliVersion;
+    tagName = version.tagName;
   }
 
   const bundleVersion =
@@ -791,6 +881,7 @@ export async function setupCodeQLBundle(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  rawLanguages: string[] | undefined,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
@@ -804,6 +895,7 @@ export async function setupCodeQLBundle(
   const source = await getCodeQLSource(
     toolsInput,
     defaultCliVersion,
+    rawLanguages,
     apiDetails,
     variant,
     zstdAvailability.available,

@@ -145,6 +145,7 @@ async function run(startedAt: Date): Promise<void> {
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      undefined, // rawLanguages: currently, setup-codeql is not language aware
       features,
       logger,
     );

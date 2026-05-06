@@ -72,6 +72,7 @@ async function installIntoToolcache({
     cliVersion !== undefined
       ? { enabledVersions: [{ cliVersion, tagName }] }
       : SAMPLE_DEFAULT_CLI_VERSION,
+    undefined, // rawLanguages
     createFeatures([]),
     getRunnerLogger(true),
     false,
@@ -143,6 +144,7 @@ test.serial(
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
           features,
           getRunnerLogger(true),
           false,
@@ -175,6 +177,7 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
         features,
         getRunnerLogger(true),
         false,
@@ -214,6 +217,7 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
         features,
         getRunnerLogger(true),
         false,
@@ -264,6 +268,7 @@ for (const {
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
           features,
           getRunnerLogger(true),
           false,
@@ -308,6 +313,7 @@ for (const toolcacheVersion of [
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
           features,
           getRunnerLogger(true),
           false,
@@ -352,6 +358,7 @@ test.serial(
             },
           ],
         },
+        undefined, // rawLanguages
         features,
         getRunnerLogger(true),
         false,
@@ -398,6 +405,7 @@ test.serial(
             },
           ],
         },
+        undefined, // rawLanguages
         features,
         getRunnerLogger(true),
         false,
@@ -437,6 +445,7 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
         features,
         getRunnerLogger(true),
         false,
@@ -478,6 +487,7 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
         features,
         getRunnerLogger(true),
         false,

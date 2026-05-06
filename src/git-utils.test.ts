@@ -8,7 +8,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as gitUtils from "./git-utils";
-import { setupActionsVars, setupTests, SHA256_GITHUB_SHA } from "./testing-utils";
+import { setupActionsVars, setupTests } from "./testing-utils";
 import { withTmpDir } from "./util";
 
 setupTests(test);
@@ -405,9 +405,7 @@ test.serial(
 
     sinon
       .stub(gitUtils as any, "runGitCommand")
-      .resolves(
-        `commit ${mergeSha}\nparent ${baseOid}\nparent ${headOid}\n`,
-      );
+      .resolves(`commit ${mergeSha}\nparent ${baseOid}\nparent ${headOid}\n`);
 
     const result = await gitUtils.determineBaseBranchHeadCommitOid(__dirname);
     t.deepEqual(result, baseOid);

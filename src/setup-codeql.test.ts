@@ -533,9 +533,31 @@ const toolcacheInputFallbackMacro = test.macro({
     `getCodeQLSource falls back to downloading the CLI if ${providedTitle}`,
 });
 
-test.serial(
+/**
+ * Wraps `toolcacheInputFallbackMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testToolcacheInputFallback(
+  title: string,
+  featureList: Feature[],
+  environment: Record<string, string>,
+  testVersions: string[],
+  expectedMessages: string[],
+) {
+  test.serial(
+    title,
+    toolcacheInputFallbackMacro,
+    featureList,
+    environment,
+    testVersions,
+    expectedMessages,
+  );
+}
+
+testToolcacheInputFallback(
   "the toolcache doesn't have a CodeQL CLI when tools == toolcache",
-  toolcacheInputFallbackMacro,
   [Feature.AllowToolcacheInput],
   { GITHUB_EVENT_NAME: "dynamic" },
   [],
@@ -545,9 +567,8 @@ test.serial(
   ],
 );
 
-test.serial(
+testToolcacheInputFallback(
   "the workflow trigger is not `dynamic`",
-  toolcacheInputFallbackMacro,
   [Feature.AllowToolcacheInput],
   { GITHUB_EVENT_NAME: "pull_request" },
   [],
@@ -556,9 +577,8 @@ test.serial(
   ],
 );
 
-test.serial(
+testToolcacheInputFallback(
   "the feature flag is not enabled",
-  toolcacheInputFallbackMacro,
   [],
   { GITHUB_EVENT_NAME: "dynamic" },
   [],

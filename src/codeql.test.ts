@@ -590,9 +590,29 @@ const injectedConfigMacro = test.macro({
     `databaseInitCluster() injected config: ${providedTitle}`,
 });
 
-test.serial(
+/**
+ * Wraps `injectedConfigMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testInjectedConfig(
+  title: string,
+  augmentationProperties: AugmentationProperties,
+  configOverride: Partial<Config>,
+  expectedConfig: any,
+) {
+  test.serial(
+    title,
+    injectedConfigMacro,
+    augmentationProperties,
+    configOverride,
+    expectedConfig,
+  );
+}
+
+testInjectedConfig(
   "basic",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
   },
@@ -600,9 +620,8 @@ test.serial(
   {},
 );
 
-test.serial(
+testInjectedConfig(
   "injected packs from input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
@@ -613,9 +632,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "injected packs from input with existing packs combines",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInputCombines: true,
@@ -635,9 +653,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "injected packs from input with existing packs overrides",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
@@ -655,9 +672,8 @@ test.serial(
 );
 
 // similar, but with queries
-test.serial(
+testInjectedConfig(
   "injected queries from input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -675,9 +691,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "injected queries from input overrides",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -699,9 +714,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "injected queries from input combines",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -727,9 +741,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "injected queries from input combines 2",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -749,9 +762,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "injected queries and packs, but empty",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -768,9 +780,8 @@ test.serial(
   {},
 );
 
-test.serial(
+testInjectedConfig(
   "repo property queries have the highest precedence",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -790,9 +801,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "repo property queries combines with queries input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: false,
@@ -817,9 +827,8 @@ test.serial(
   },
 );
 
-test.serial(
+testInjectedConfig(
   "repo property queries combines everything else",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,

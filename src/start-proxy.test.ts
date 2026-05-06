@@ -458,9 +458,26 @@ const getCredentialsMacro = test.macro({
   title: (providedTitle = "") => `getCredentials - ${providedTitle}`,
 });
 
-test(
+/**
+ * Wraps `getCredentialsMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testGetCredentials(
+  title: string,
+  credentials: startProxyExports.RawCredential[],
+  checkAccepted: (
+    t: ExecutionContext<unknown>,
+    logger: RecordingLogger,
+    results: startProxyExports.Credential[],
+  ) => void,
+) {
+  test(title, getCredentialsMacro, credentials, checkAccepted);
+}
+
+testGetCredentials(
   "warns for PAT-like password without a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -488,9 +505,8 @@ test(
   },
 );
 
-test(
+testGetCredentials(
   "no warning for PAT-like password with a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -520,9 +536,8 @@ test(
   },
 );
 
-test(
+testGetCredentials(
   "warns for PAT-like token without a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -550,9 +565,8 @@ test(
   },
 );
 
-test(
+testGetCredentials(
   "no warning for PAT-like token with a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",

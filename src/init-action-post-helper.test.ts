@@ -796,7 +796,7 @@ test.serial(
   },
 );
 
-const skippedUploadTest = test.macro({
+const skippedUploadMacro = test.macro({
   exec: async (
     t: ExecutionContext<unknown>,
     config: Partial<configUtils.Config>,
@@ -823,9 +823,22 @@ const skippedUploadTest = test.macro({
     `tryUploadSarifIfRunFailed - skips upload ${providedTitle}`,
 });
 
-test.serial(
+/**
+ * Wraps `skippedUploadMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test.serial(macro, ...)`, the
+ * precise types of the arguments are erased.
+ */
+function testSkippedUpload(
+  title: string,
+  config: Partial<configUtils.Config>,
+  expectedSkippedReason: string,
+) {
+  test.serial(title, skippedUploadMacro, config, expectedSkippedReason);
+}
+
+testSkippedUpload(
   "without CodeQL command",
-  skippedUploadTest,
   // No codeQLCmd
   {
     analysisKinds: [AnalysisKind.RiskAssessment],
@@ -834,9 +847,8 @@ test.serial(
   "CodeQL command not found",
 );
 
-test.serial(
+testSkippedUpload(
   "if no language is configured",
-  skippedUploadTest,
   // No explicit language configuration
   {
     analysisKinds: [AnalysisKind.RiskAssessment],
@@ -845,9 +857,8 @@ test.serial(
   "Unexpectedly, the configuration is not for a single language.",
 );
 
-test.serial(
+testSkippedUpload(
   "if multiple languages is configured",
-  skippedUploadTest,
   // Multiple explicit languages configured
   {
     analysisKinds: [AnalysisKind.RiskAssessment],

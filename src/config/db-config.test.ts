@@ -200,27 +200,37 @@ const packSpecPrettyPrintingMacro = test.macro({
   ) => `Prettyprint pack spec: '${packStr}'`,
 });
 
-test(packSpecPrettyPrintingMacro, "a/b", {
+/**
+ * Wraps `packSpecPrettyPrintingMacro` to improve type checking.
+ *
+ * When the macro is invoked directly, e.g. via `test(macro, ...)`, the precise
+ * types of the arguments are erased.
+ */
+function testPackSpecPrettyPrinting(packStr: string, packObj: dbConfig.Pack) {
+  test(packSpecPrettyPrintingMacro, packStr, packObj);
+}
+
+testPackSpecPrettyPrinting("a/b", {
   name: "a/b",
   version: undefined,
   path: undefined,
 });
-test(packSpecPrettyPrintingMacro, "a/b@~1.2.3", {
+testPackSpecPrettyPrinting("a/b@~1.2.3", {
   name: "a/b",
   version: "~1.2.3",
   path: undefined,
 });
-test(packSpecPrettyPrintingMacro, "a/b@~1.2.3:abc/def", {
+testPackSpecPrettyPrinting("a/b@~1.2.3:abc/def", {
   name: "a/b",
   version: "~1.2.3",
   path: "abc/def",
 });
-test(packSpecPrettyPrintingMacro, "a/b:abc/def", {
+testPackSpecPrettyPrinting("a/b:abc/def", {
   name: "a/b",
   version: undefined,
   path: "abc/def",
 });
-test(packSpecPrettyPrintingMacro, "    a/b:abc/def    ", {
+testPackSpecPrettyPrinting("    a/b:abc/def    ", {
   name: "a/b",
   version: undefined,
   path: "abc/def",

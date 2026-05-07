@@ -20,6 +20,7 @@ import {
   createFeatures,
   getRecordingLogger,
   initializeFeatures,
+  makeMacro,
   mockBundleDownloadApi,
   setupActionsVars,
   setupTests,
@@ -473,7 +474,7 @@ test.serial(
   },
 );
 
-const toolcacheInputFallbackMacro = test.macro({
+const toolcacheInputFallbackMacro = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     featureList: Feature[],
@@ -533,9 +534,8 @@ const toolcacheInputFallbackMacro = test.macro({
     `getCodeQLSource falls back to downloading the CLI if ${providedTitle}`,
 });
 
-test.serial(
+toolcacheInputFallbackMacro.serial(
   "the toolcache doesn't have a CodeQL CLI when tools == toolcache",
-  toolcacheInputFallbackMacro,
   [Feature.AllowToolcacheInput],
   { GITHUB_EVENT_NAME: "dynamic" },
   [],
@@ -545,9 +545,8 @@ test.serial(
   ],
 );
 
-test.serial(
+toolcacheInputFallbackMacro.serial(
   "the workflow trigger is not `dynamic`",
-  toolcacheInputFallbackMacro,
   [Feature.AllowToolcacheInput],
   { GITHUB_EVENT_NAME: "pull_request" },
   [],
@@ -556,9 +555,8 @@ test.serial(
   ],
 );
 
-test.serial(
+toolcacheInputFallbackMacro.serial(
   "the feature flag is not enabled",
-  toolcacheInputFallbackMacro,
   [],
   { GITHUB_EVENT_NAME: "dynamic" },
   [],

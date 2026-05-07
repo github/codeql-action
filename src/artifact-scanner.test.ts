@@ -141,7 +141,12 @@ test("scanArtifactsForTokens handles files without tokens", async (t) => {
   }
 });
 
-if (os.platform() !== "win32") {
+// This test is slow (extracts and scans a zip artifact), so by default we only run it in CI. Set
+// RUN_SLOW_TESTS=1 to run it locally.
+if (
+  os.platform() !== "win32" &&
+  (process.env.CI === "true" || process.env.RUN_SLOW_TESTS === "1")
+) {
   test("scanArtifactsForTokens finds token in debug artifacts", async (t) => {
     t.timeout(15000); // 15 seconds
     const messages: LoggedMessage[] = [];

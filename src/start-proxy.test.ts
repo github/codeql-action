@@ -18,6 +18,7 @@ import {
   assertNotLogged,
   checkExpectedLogMessages,
   createFeatures,
+  makeMacro,
   makeTestToken,
   RecordingLogger,
   setupTests,
@@ -32,7 +33,7 @@ import {
 
 setupTests(test);
 
-const sendFailedStatusReportTest = test.macro({
+const sendFailedStatusReportTest = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     err: Error,
@@ -88,16 +89,14 @@ const sendFailedStatusReportTest = test.macro({
   title: (providedTitle = "") => `sendFailedStatusReport - ${providedTitle}`,
 });
 
-test.serial(
+sendFailedStatusReportTest.serial(
   "reports generic error message for non-StartProxyError error",
-  sendFailedStatusReportTest,
   new Error("Something went wrong today"),
   "Error from start-proxy Action omitted (Error).",
 );
 
-test.serial(
+sendFailedStatusReportTest.serial(
   "reports generic error message for non-StartProxyError error with safe error message",
-  sendFailedStatusReportTest,
   new Error(
     startProxyExports.getStartProxyErrorMessage(
       startProxyExports.StartProxyErrorType.DownloadFailed,
@@ -106,9 +105,8 @@ test.serial(
   "Error from start-proxy Action omitted (Error).",
 );
 
-test.serial(
+sendFailedStatusReportTest.serial(
   "reports generic error message for ConfigurationError error",
-  sendFailedStatusReportTest,
   new ConfigurationError("Something went wrong today"),
   "Error from start-proxy Action omitted (ConfigurationError).",
   "user-error",
@@ -414,7 +412,7 @@ test("getCredentials accepts OIDC configurations", (t) => {
   }
 });
 
-const getCredentialsMacro = test.macro({
+const getCredentialsMacro = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     credentials: startProxyExports.RawCredential[],
@@ -440,9 +438,8 @@ const getCredentialsMacro = test.macro({
   title: (providedTitle = "") => `getCredentials - ${providedTitle}`,
 });
 
-test(
+getCredentialsMacro(
   "warns for PAT-like password without a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -470,9 +467,8 @@ test(
   },
 );
 
-test(
+getCredentialsMacro(
   "no warning for PAT-like password with a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -502,9 +498,8 @@ test(
   },
 );
 
-test(
+getCredentialsMacro(
   "warns for PAT-like token without a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -532,9 +527,8 @@ test(
   },
 );
 
-test(
+getCredentialsMacro(
   "no warning for PAT-like token with a username",
-  getCredentialsMacro,
   [
     {
       type: "git_server",
@@ -796,7 +790,7 @@ test.serial(
   },
 );
 
-const wrapFailureTest = test.macro({
+const wrapFailureTest = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     setup: () => void,
@@ -827,9 +821,8 @@ test.serial("downloadProxy - returns file path on success", async (t) => {
   });
 });
 
-test.serial(
+wrapFailureTest.serial(
   "downloadProxy",
-  wrapFailureTest,
   () => {
     sinon.stub(toolcache, "downloadTool").throws();
   },
@@ -848,9 +841,8 @@ test.serial("extractProxy - returns file path on success", async (t) => {
   });
 });
 
-test.serial(
+wrapFailureTest.serial(
   "extractProxy",
-  wrapFailureTest,
   () => {
     sinon.stub(toolcache, "extractTar").throws();
   },
@@ -874,9 +866,8 @@ test.serial("cacheProxy - returns file path on success", async (t) => {
   });
 });
 
-test.serial(
+wrapFailureTest.serial(
   "cacheProxy",
-  wrapFailureTest,
   () => {
     sinon.stub(toolcache, "cacheDir").throws();
   },

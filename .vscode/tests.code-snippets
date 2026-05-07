@@ -19,7 +19,7 @@
     "scope": "javascript, typescript",
     "prefix": "testMacro",
     "body": [
-      "const ${1:nameMacro} = test.macro({",
+      "const ${1:nameMacro} = makeMacro({",
       "  exec: async (t: ExecutionContext<unknown>) => {},",
       "",
       "  title: (providedTitle = \"\") => `${2:common title} - \\${providedTitle}`,",

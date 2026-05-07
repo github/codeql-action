@@ -73,6 +73,7 @@ async function installIntoToolcache({
       ? { enabledVersions: [{ cliVersion, tagName }] }
       : SAMPLE_DEFAULT_CLI_VERSION,
     undefined, // rawLanguages
+    false, // useOverlayAwareDefaultCliVersion
     createFeatures([]),
     getRunnerLogger(true),
     false,
@@ -145,6 +146,7 @@ test.serial(
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
           false,
@@ -178,6 +180,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -218,6 +221,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -269,6 +273,7 @@ for (const {
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
           false,
@@ -314,6 +319,7 @@ for (const toolcacheVersion of [
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
           false,
@@ -359,6 +365,7 @@ test.serial(
           ],
         },
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -406,6 +413,7 @@ test.serial(
           ],
         },
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -446,6 +454,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -488,6 +497,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,

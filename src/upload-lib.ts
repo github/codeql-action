@@ -166,6 +166,7 @@ async function combineSarifFilesUsingCLI(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       undefined, // rawLanguages: upload-lib does not run analysis
+      false, // useOverlayAwareDefaultCliVersion: upload-lib does not run analysis
       features,
       logger,
     );

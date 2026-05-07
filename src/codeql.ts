@@ -306,6 +306,7 @@ const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
  * @param variant
  * @param defaultCliVersion
  * @param rawLanguages Raw set of languages.
+ * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param features Information about the features that are enabled.
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
@@ -319,6 +320,7 @@ export async function setupCodeQL(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
@@ -343,6 +345,7 @@ export async function setupCodeQL(
       variant,
       defaultCliVersion,
       rawLanguages,
+      useOverlayAwareDefaultCliVersion,
       features,
       logger,
     );

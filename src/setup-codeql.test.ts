@@ -108,6 +108,7 @@ test.serial(
         `https://github.com/github/codeql-action/releases/download/${tagName}/codeql-bundle-linux64.tar.gz`,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
@@ -132,6 +133,7 @@ test.serial(
         "linked",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
@@ -158,6 +160,7 @@ test.serial(
         "latest",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
@@ -215,6 +218,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         logger,
       );
@@ -271,6 +275,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         logger,
       );
@@ -323,6 +328,7 @@ test.serial(
         "nightly",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
@@ -385,6 +391,7 @@ test.serial(
         undefined,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
@@ -440,6 +447,7 @@ test.serial(
         "toolcache",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
@@ -508,6 +516,7 @@ const toolcacheInputFallbackMacro = test.macro({
         "toolcache",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
@@ -639,6 +648,82 @@ const overlayMatchEnabledVersions = {
   ],
   toolsFeatureFlagsValid: true,
 };
+
+test.serial(
+  "getCodeQLSource uses overlay-aware default version when requested for a PR",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env["CODE_SCANNING_REF"] = "refs/heads/feature-branch";
+      process.env["CODE_SCANNING_BASE_BRANCH"] = "main";
+
+      sinon.stub(api, "getAutomationID").resolves("test/");
+      const listStub = sinon.stub(api, "listActionsCaches").resolves([
+        {
+          key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+        },
+      ]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs("CodeQL", "2.20.1")
+        .returns("/path/to/codeql-2.20.1");
+
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        overlayMatchEnabledVersions,
+        ["javascript"],
+        true,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+        getRunnerLogger(true),
+      );
+
+      t.assert(listStub.calledOnce);
+      t.is(source.sourceType, "toolcache");
+      t.is(source.toolsVersion, "2.20.1");
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource skips overlay-aware default version when not requested",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env["CODE_SCANNING_REF"] = "refs/heads/feature-branch";
+      process.env["CODE_SCANNING_BASE_BRANCH"] = "main";
+
+      sinon.stub(api, "getAutomationID").resolves("test/");
+      const listStub = sinon.stub(api, "listActionsCaches").resolves([
+        {
+          key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+        },
+      ]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs("CodeQL", "2.20.2")
+        .returns("/path/to/codeql-2.20.2");
+
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        overlayMatchEnabledVersions,
+        ["javascript"],
+        false,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+        getRunnerLogger(true),
+      );
+
+      t.assert(listStub.notCalled);
+      t.is(source.sourceType, "toolcache");
+      t.is(source.toolsVersion, "2.20.2");
+    });
+  },
+);
 
 test.serial(
   "getEnabledVersionsWithOverlayBaseDatabases returns flag-enabled versions present in cache, sorted desc",

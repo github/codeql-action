@@ -304,6 +304,9 @@ async function run(startedAt: Date) {
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
+    const useOverlayAwareDefaultCliVersion = !!analysisKinds?.includes(
+      AnalysisKind.CodeScanning,
+    );
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -311,6 +314,7 @@ async function run(startedAt: Date) {
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
+      useOverlayAwareDefaultCliVersion,
       features,
       logger,
     );

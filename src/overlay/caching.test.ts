@@ -392,6 +392,32 @@ test.serial(
 );
 
 test.serial(
+  "getCodeQlVersionsForOverlayBaseDatabases de-duplicates resolved language aliases",
+  async (t) => {
+    const logger = getRunnerLogger(true);
+
+    sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
+    const listActionsCachesStub = sinon
+      .stub(apiClient, "listActionsCaches")
+      .resolves([
+        {
+          key: "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-2.25.0-abc123-1-1",
+        },
+      ]);
+
+    const result = await getCodeQlVersionsForOverlayBaseDatabases(
+      ["javascript", "typescript", "Python", "python"],
+      logger,
+    );
+    t.deepEqual(result, ["2.25.0"]);
+    sinon.assert.calledOnceWithExactly(
+      listActionsCachesStub,
+      "codeql-overlay-base-database-1-c5666c509a2d9895-javascript_python-",
+    );
+  },
+);
+
+test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases ignores nightly versions with build metadata",
   async (t) => {
     const logger = getRunnerLogger(true);

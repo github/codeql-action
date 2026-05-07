@@ -29,6 +29,11 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
  */
 export const CODEQL_VERSION_ZSTD_BUNDLE = "2.19.0";
 
+const LINKED_CODEQL_VERSION: CodeQLVersionInfo = {
+  cliVersion: defaults.cliVersion,
+  tagName: defaults.bundleVersion,
+};
+
 export interface CodeQLVersionInfo {
   /** The version number of the CodeQL CLI, e.g. `2.19.0`. */
   cliVersion: string;
@@ -420,12 +425,7 @@ class OfflineFeatures implements FeatureEnablement {
     _variant: util.GitHubVariant,
   ): Promise<CodeQLDefaultVersionInfo> {
     return {
-      enabledVersions: [
-        {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
-        },
-      ],
+      enabledVersions: [LINKED_CODEQL_VERSION],
     };
   }
 
@@ -680,12 +680,7 @@ class GitHubFeatureFlags {
           `shipped with the Action. This is ${defaults.cliVersion}.`,
       );
       const result: CodeQLDefaultVersionInfo = {
-        enabledVersions: [
-          {
-            cliVersion: defaults.cliVersion,
-            tagName: defaults.bundleVersion,
-          },
-        ],
+        enabledVersions: [LINKED_CODEQL_VERSION],
       };
       if (this.hasAccessedRemoteFeatureFlags) {
         result.toolsFeatureFlagsValid = false;

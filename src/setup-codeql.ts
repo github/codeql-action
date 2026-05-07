@@ -360,16 +360,17 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
 
 /**
  * Resolves the newest enabled default CLI version that has a cached overlay-base database for the
- * relevant languages, if analyzing a pull request and one exists. Otherwise, falls back to the
- * newest enabled default CLI version.
+ * relevant languages, if running a Code Scanning analysis for a pull request and one exists.
+ * Otherwise, falls back to the newest enabled default CLI version.
  */
 async function resolveDefaultCliVersion(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLVersionInfo> {
-  if (!isAnalyzingPullRequest()) {
+  if (!useOverlayAwareDefaultCliVersion || !isAnalyzingPullRequest()) {
     return defaultCliVersion.enabledVersions[0];
   }
 
@@ -396,6 +397,7 @@ async function resolveDefaultCliVersion(
  * @param toolsInput The argument provided for the `tools` input, if any.
  * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
  * @param rawLanguages Raw set of languages.
+ * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param apiDetails Information about the GitHub API.
  * @param variant The GitHub variant we are running on.
  * @param tarSupportsZstd Whether zstd is supported by `tar`.
@@ -408,6 +410,7 @@ export async function getCodeQLSource(
   toolsInput: string | undefined,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  useOverlayAwareDefaultCliVersion: boolean,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
   tarSupportsZstd: boolean,
@@ -568,6 +571,7 @@ export async function getCodeQLSource(
       const version = await resolveDefaultCliVersion(
         defaultCliVersion,
         rawLanguages,
+        useOverlayAwareDefaultCliVersion,
         features,
         logger,
       );
@@ -590,6 +594,7 @@ export async function getCodeQLSource(
     const version = await resolveDefaultCliVersion(
       defaultCliVersion,
       rawLanguages,
+      useOverlayAwareDefaultCliVersion,
       features,
       logger,
     );
@@ -930,6 +935,7 @@ export async function setupCodeQLBundle(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<SetupCodeQLResult> {
@@ -944,6 +950,7 @@ export async function setupCodeQLBundle(
     toolsInput,
     defaultCliVersion,
     rawLanguages,
+    useOverlayAwareDefaultCliVersion,
     apiDetails,
     variant,
     zstdAvailability.available,

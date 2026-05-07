@@ -146,6 +146,7 @@ async function run(startedAt: Date): Promise<void> {
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       undefined, // rawLanguages: currently, setup-codeql is not language aware
+      false, // useOverlayAwareDefaultCliVersion: setup-codeql is not language aware
       features,
       logger,
     );

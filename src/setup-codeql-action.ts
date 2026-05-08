@@ -7,8 +7,10 @@ import {
   getRequiredInput,
   getTemporaryDirectory,
 } from "./actions-util";
+import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
+import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { initCodeQL } from "./init";
@@ -139,14 +141,18 @@ async function run(startedAt: Date): Promise<void> {
     const codeQLDefaultVersionInfo =
       await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    const rawLanguages = getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
+    const analysisKinds = await getAnalysisKinds(logger);
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
-      undefined, // rawLanguages: currently, setup-codeql is not language aware
-      false, // useOverlayAwareDefaultCliVersion: setup-codeql is not language aware
+      rawLanguages,
+      analysisKinds.includes(AnalysisKind.CodeScanning),
       features,
       logger,
     );

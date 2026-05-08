@@ -618,26 +618,6 @@ test.serial(
   },
 );
 
-function makeOverlayMatchFeatures(opts: {
-  matchFlagEnabled?: boolean;
-  dryRunFlagEnabled?: boolean;
-}): FeatureEnablement {
-  return {
-    getEnabledDefaultCliVersions: async () => {
-      throw new Error("not implemented");
-    },
-    getValue: async (feature) => {
-      if (feature === Feature.OverlayAnalysisMatchCodeqlVersion) {
-        return opts.matchFlagEnabled ?? false;
-      }
-      if (feature === Feature.OverlayAnalysisMatchCodeqlVersionDryRun) {
-        return opts.dryRunFlagEnabled ?? false;
-      }
-      return false;
-    },
-  };
-}
-
 const overlayMatchEnabledVersions = {
   enabledVersions: [
     { cliVersion: "2.20.2", tagName: "codeql-bundle-v2.20.2" },
@@ -674,7 +654,7 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
-        makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+        createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
         getRunnerLogger(true),
       );
 
@@ -712,7 +692,7 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
-        makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+        createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
         getRunnerLogger(true),
       );
 
@@ -744,7 +724,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, [
@@ -767,7 +747,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -782,7 +762,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       undefined,
-      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -802,7 +782,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -822,7 +802,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures({ matchFlagEnabled: true }),
+      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, [
@@ -839,7 +819,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures({}),
+      createFeatures([]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -863,7 +843,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures({ dryRunFlagEnabled: true }),
+      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersionDryRun]),
       getRunnerLogger(true),
     );
     t.deepEqual(
@@ -891,10 +871,10 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      makeOverlayMatchFeatures({
-        matchFlagEnabled: true,
-        dryRunFlagEnabled: true,
-      }),
+      createFeatures([
+        Feature.OverlayAnalysisMatchCodeqlVersion,
+        Feature.OverlayAnalysisMatchCodeqlVersionDryRun,
+      ]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, [

@@ -4,6 +4,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 4.35.4 - 07 May 2026
+
 - Update default CodeQL bundle version to [2.25.4](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.4). [#3881](https://github.com/github/codeql-action/pull/3881)
 
 ## 4.35.3 - 01 May 2026

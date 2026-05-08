@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "3.35.3",
+  "version": "3.35.4",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -90,6 +90,7 @@
       "semver": ">=6.3.1"
     },
     "brace-expansion@2.0.1": "2.0.2",
-    "glob": "^11.1.0"
+    "glob": "^11.1.0",
+    "undici": "^6.24.0"
   }
 }

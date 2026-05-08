@@ -435,7 +435,7 @@ class OfflineFeatures implements FeatureEnablement {
   getFeatureConfig(feature: Feature): FeatureConfig {
     // Narrow the type to FeatureConfig to avoid type errors. To avoid unsafe use of `as`, we
     // check that the required properties exist using `satisfies`.
-    return featureConfig[feature] satisfies FeatureConfig as FeatureConfig;
+    return featureConfig[feature] satisfies FeatureConfig;
   }
 
   /**

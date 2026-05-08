@@ -13,6 +13,7 @@ import { BuiltInLanguage } from "../languages";
 import { getRunnerLogger } from "../logging";
 import {
   createTestConfig,
+  makeMacro,
   mockCodeQLVersion,
   setupTests,
 } from "../testing-utils";
@@ -51,10 +52,9 @@ const defaultDownloadTestCase: DownloadOverlayBaseDatabaseTestCase = {
   resolveDatabaseOutput: { overlayBaseSpecifier: "20250626:XXX" },
 };
 
-const testDownloadOverlayBaseDatabaseFromCache = test.macro({
+const testDownloadOverlayBaseDatabaseFromCache = makeMacro({
   exec: async (
     t,
-    _title: string,
     partialTestCase: Partial<DownloadOverlayBaseDatabaseTestCase>,
     expectDownloadSuccess: boolean,
   ) => {
@@ -142,18 +142,16 @@ const testDownloadOverlayBaseDatabaseFromCache = test.macro({
       }
     });
   },
-  title: (_, title) => `downloadOverlayBaseDatabaseFromCache: ${title}`,
+  title: (title) => `downloadOverlayBaseDatabaseFromCache: ${title}`,
 });
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns stats when successful",
   {},
   true,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when mode is OverlayDatabaseMode.OverlayBase",
   {
     overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
@@ -161,8 +159,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when mode is OverlayDatabaseMode.None",
   {
     overlayDatabaseMode: OverlayDatabaseMode.None,
@@ -170,8 +167,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when caching is disabled",
   {
     useOverlayDatabaseCaching: false,
@@ -179,8 +175,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined in test mode",
   {
     isInTestMode: true,
@@ -188,8 +183,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when cache miss",
   {
     restoreCacheResult: undefined,
@@ -197,8 +191,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when download fails",
   {
     restoreCacheResult: new Error("Download failed"),
@@ -206,8 +199,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when downloaded database is invalid",
   {
     hasBaseDatabaseOidsFile: false,
@@ -215,8 +207,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when downloaded database doesn't have an overlayBaseSpecifier",
   {
     resolveDatabaseOutput: {},
@@ -224,8 +215,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when resolving database metadata fails",
   {
     resolveDatabaseOutput: new Error("Failed to resolve database metadata"),
@@ -233,8 +223,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testDownloadOverlayBaseDatabaseFromCache,
+testDownloadOverlayBaseDatabaseFromCache.serial(
   "returns undefined when filesystem error occurs",
   {
     tryGetFolderBytesSucceeds: false,

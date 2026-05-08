@@ -263,7 +263,7 @@ export function getArtifactSuffix(matrix: string | undefined): string {
     try {
       const matrixObject = JSON.parse(matrix);
       if (json.isObject(matrixObject)) {
-        for (const matrixKey of Object.keys(matrixObject as object).sort())
+        for (const matrixKey of Object.keys(matrixObject).sort())
           suffix += `-${matrixObject[matrixKey]}`;
       } else {
         core.warning("User-specified `matrix` input is not an object.");

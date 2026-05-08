@@ -16,6 +16,7 @@ import {
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
   setupActionsVars,
+  makeMacro,
 } from "./testing-utils";
 import { GitHubVariant, withTmpDir } from "./util";
 import type { GitHubVersion } from "./util";
@@ -42,10 +43,9 @@ const defaultTestCase: DiffInformedAnalysisTestCase = {
   codeQLVersion: "2.21.0",
 };
 
-const testShouldPerformDiffInformedAnalysis = test.macro({
+const testShouldPerformDiffInformedAnalysis = makeMacro({
   exec: async (
     t: ExecutionContext,
-    _title: string,
     partialTestCase: Partial<DiffInformedAnalysisTestCase>,
     expectedResult: boolean,
   ) => {
@@ -94,18 +94,16 @@ const testShouldPerformDiffInformedAnalysis = test.macro({
       getPullRequestBranchesStub.restore();
     });
   },
-  title: (_, title) => `shouldPerformDiffInformedAnalysis: ${title}`,
+  title: (title) => `shouldPerformDiffInformedAnalysis: ${title}`,
 });
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns true in the default test case",
   {},
   true,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false when feature flag is disabled from the API",
   {
     featureEnabled: false,
@@ -113,8 +111,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false when CODEQL_ACTION_DIFF_INFORMED_QUERIES is set to false",
   {
     featureEnabled: true,
@@ -123,8 +120,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns true when CODEQL_ACTION_DIFF_INFORMED_QUERIES is set to true",
   {
     featureEnabled: false,
@@ -133,8 +129,7 @@ test.serial(
   true,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false for CodeQL version 2.20.0",
   {
     codeQLVersion: "2.20.0",
@@ -142,8 +137,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false for invalid GHES version",
   {
     gitHubVersion: {
@@ -154,8 +148,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false for GHES version 3.18.5",
   {
     gitHubVersion: {
@@ -166,8 +159,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns true for GHES version 3.19.0",
   {
     gitHubVersion: {
@@ -178,8 +170,7 @@ test.serial(
   true,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false when not a pull request",
   {
     pullRequestBranches: undefined,

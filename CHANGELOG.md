@@ -6,6 +6,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - Added an experimental change which, when running a Code Scanning analysis for a PR with [improved incremental analysis](https://github.com/github/roadmap/issues/1158) enabled, prefers CodeQL CLI versions that have a cached overlay-base database for the configured languages. This speeds up analysis for a repository when there is not yet a cached overlay-base database for the latest CLI version. We expect to roll this change out to everyone in May. [#3880](https://github.com/github/codeql-action/pull/3880)
 
+## 4.35.4 - 07 May 2026
+
+- Update default CodeQL bundle version to [2.25.4](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.4). [#3881](https://github.com/github/codeql-action/pull/3881)
+
 ## 4.35.3 - 01 May 2026
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.19.3 and earlier. These versions of CodeQL were discontinued on 9 April 2026 alongside GitHub Enterprise Server 3.15, and will be unsupported by the next minor release of the CodeQL Action. [#3837](https://github.com/github/codeql-action/pull/3837)

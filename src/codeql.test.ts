@@ -33,6 +33,7 @@ import {
   mockBundleDownloadApi,
   makeVersionInfo,
   createTestConfig,
+  makeMacro,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
@@ -571,7 +572,7 @@ test.serial("getExtraOptions throws for bad content", (t) => {
 });
 
 // Test macro for ensuring different variants of injected augmented configurations
-const injectedConfigMacro = test.macro({
+const injectedConfigMacro = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     augmentationProperties: AugmentationProperties,
@@ -621,9 +622,8 @@ const injectedConfigMacro = test.macro({
     `databaseInitCluster() injected config: ${providedTitle}`,
 });
 
-test.serial(
+injectedConfigMacro.serial(
   "basic",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
   },
@@ -631,9 +631,8 @@ test.serial(
   {},
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected packs from input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
@@ -644,9 +643,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected packs from input with existing packs combines",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInputCombines: true,
@@ -666,9 +664,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected packs from input with existing packs overrides",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
@@ -686,9 +683,8 @@ test.serial(
 );
 
 // similar, but with queries
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -706,9 +702,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input overrides",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -730,9 +725,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input combines",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -758,9 +752,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input combines 2",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -780,9 +773,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries and packs, but empty",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -799,9 +791,8 @@ test.serial(
   {},
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "repo property queries have the highest precedence",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -821,9 +812,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "repo property queries combines with queries input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: false,
@@ -848,9 +838,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "repo property queries combines everything else",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,

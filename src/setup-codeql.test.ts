@@ -7,7 +7,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import * as setupCodeql from "./setup-codeql";
 import * as tar from "./tar";
@@ -19,7 +19,6 @@ import {
   checkExpectedLogMessages,
   createFeatures,
   getRecordingLogger,
-  initializeFeatures,
   makeMacro,
   mockBundleDownloadApi,
   setupActionsVars,
@@ -34,14 +33,6 @@ import {
 
 setupTests(test);
 
-// TODO: Remove when when we no longer need to pass in features (https://github.com/github/codeql-action/issues/2600)
-const expectedFeatureEnablement: FeatureEnablement = initializeFeatures(
-  true,
-) as FeatureEnablement;
-expectedFeatureEnablement.getValue = function (feature: Feature) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  return expectedFeatureEnablement[feature];
-};
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });

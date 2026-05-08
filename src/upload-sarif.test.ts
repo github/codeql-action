@@ -67,7 +67,7 @@ const postProcessAndUploadSarifMacro = makeMacro({
         const analysisConfig = getAnalysisConfig(analysisKind);
         uploadPostProcessedFiles
           .withArgs(logger, sinon.match.any, analysisConfig, sinon.match.any)
-          .resolves(expectedResult[analysisKind as AnalysisKind]?.uploadResult);
+          .resolves(expectedResult[analysisKind]?.uploadResult);
       }
 
       const fullSarifPaths = sarifFiles.map(toFullPath);

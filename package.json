@@ -50,14 +50,14 @@
     "@types/archiver": "^7.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.19.9",
+    "@types/node": "^20.19.39",
     "@types/node-forge": "^1.3.14",
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^21.0.1",
     "ava": "^7.0.0",
     "esbuild": "^0.28.0",
-    "eslint": "^9.39.2",
+    "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-github": "^6.0.0",
     "eslint-plugin-import-x": "^4.16.2",
@@ -67,8 +67,8 @@
     "globals": "^17.5.0",
     "nock": "^14.0.12",
     "sinon": "^21.1.2",
-    "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.2"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.1"
   },
   "overrides": {
     "@actions/tool-cache": {

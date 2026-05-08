@@ -9,6 +9,7 @@ import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
+import { getCacheRestoreKeyPrefix } from "./overlay/caching";
 import * as setupCodeql from "./setup-codeql";
 import * as tar from "./tar";
 import {
@@ -18,6 +19,7 @@ import {
   SAMPLE_DOTCOM_API_DETAILS,
   checkExpectedLogMessages,
   createFeatures,
+  createTestConfig,
   getRecordingLogger,
   makeMacro,
   mockBundleDownloadApi,
@@ -618,6 +620,18 @@ const overlayMatchEnabledVersions = {
   toolsFeatureFlagsValid: true,
 };
 
+async function fakeOverlayBaseCacheKey(
+  language: string,
+  cliVersion: string,
+  suffix: string,
+): Promise<string> {
+  const prefix = await getCacheRestoreKeyPrefix(
+    createTestConfig({ languages: [language] }),
+    cliVersion,
+  );
+  return `${prefix}${suffix}`;
+}
+
 test.serial(
   "getCodeQLSource uses overlay-aware default version when requested for a PR",
   async (t) => {
@@ -629,7 +643,7 @@ test.serial(
       sinon.stub(api, "getAutomationID").resolves("test/");
       const listStub = sinon.stub(api, "listActionsCaches").resolves([
         {
-          key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+          key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
         },
       ]);
       sinon
@@ -667,7 +681,7 @@ test.serial(
       sinon.stub(api, "getAutomationID").resolves("test/");
       const listStub = sinon.stub(api, "listActionsCaches").resolves([
         {
-          key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+          key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
         },
       ]);
       sinon
@@ -699,16 +713,17 @@ test.serial(
   async (t) => {
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
+      // Flag-enabled versions present in the cache, listed in non-descending
+      // order so the test exercises the sort.
+      {
+        key: await fakeOverlayBaseCacheKey("javascript", "2.20.0", "ghi-3-1"),
+      },
+      {
+        key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "def-2-1"),
+      },
       // Newer than any flag-enabled version: should be filtered out.
       {
-        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.21.0-abc-1-1",
-      },
-      // Flag-enabled versions present in the cache.
-      {
-        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-def-2-1",
-      },
-      {
-        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.0-ghi-3-1",
+        key: await fakeOverlayBaseCacheKey("javascript", "2.21.0", "abc-1-1"),
       },
     ]);
 
@@ -731,7 +746,7 @@ test.serial(
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
       {
-        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.19.0-abc-1-1",
+        key: await fakeOverlayBaseCacheKey("javascript", "2.19.0", "abc-1-1"),
       },
     ]);
 
@@ -745,24 +760,31 @@ test.serial(
   },
 );
 
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases does not list caches when rawLanguages is empty",
-  async (t) => {
+const noLanguagesMacro = makeMacro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    rawLanguages: string[] | undefined,
+  ) => {
     const listStub = sinon.stub(api, "listActionsCaches").resolves([]);
 
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
-      undefined,
+      rawLanguages,
       createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
     t.assert(
       listStub.notCalled,
-      "Should not list Actions caches without rawLanguages.",
+      "Should not list Actions caches without any rawLanguages.",
     );
   },
-);
+  title: (providedTitle = "") =>
+    `getEnabledVersionsWithOverlayBaseDatabases does not list caches when rawLanguages is ${providedTitle}`,
+});
+
+noLanguagesMacro.serial("undefined", undefined);
+noLanguagesMacro.serial("an empty array", []);
 
 test.serial(
   "getEnabledVersionsWithOverlayBaseDatabases returns empty when listing caches throws",
@@ -781,12 +803,12 @@ test.serial(
 );
 
 test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases includes the highest version when it is cached",
+  "getEnabledVersionsWithOverlayBaseDatabases returns versions present in the cache",
   async (t) => {
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
       {
-        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.2-abc-1-1",
+        key: await fakeOverlayBaseCacheKey("javascript", "2.20.2", "abc-1-1"),
       },
     ]);
 
@@ -827,7 +849,7 @@ test.serial(
     sinon.stub(api, "getAutomationID").resolves("test/");
     const listStub = sinon.stub(api, "listActionsCaches").resolves([
       {
-        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+        key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
       },
     ]);
 
@@ -855,7 +877,7 @@ test.serial(
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
       {
-        key: "codeql-overlay-base-database-1-aaaaaaaaaaaaaaaa-javascript-2.20.1-abc-1-1",
+        key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
       },
     ]);
 

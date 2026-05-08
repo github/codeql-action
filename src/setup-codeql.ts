@@ -308,7 +308,8 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
     );
   } catch (e) {
     logger.warning(
-      `While setting up CodeQL, was unable to list overlay-base databases in the Actions cache. Details: ${e}`,
+      "Could not list overlay-base databases in the Actions cache while choosing a default " +
+        `CodeQL CLI version, falling back to the highest enabled version. Details: ${util.getErrorMessage(e)}`,
     );
     return [];
   }

@@ -592,13 +592,6 @@ async function getCodeQLForCmd(
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
 
-      const overwriteFlag = isSupportedToolsFeature(
-        await this.getVersion(),
-        ToolsFeature.ForceOverwrite,
-      )
-        ? "--force-overwrite"
-        : "--overwrite";
-
       const overlayDatabaseMode = config.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
@@ -625,7 +618,7 @@ async function getCodeQLForCmd(
           "init",
           ...(overlayDatabaseMode === OverlayDatabaseMode.Overlay
             ? []
-            : [overwriteFlag]),
+            : ["--force-overwrite"]),
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
@@ -636,7 +629,14 @@ async function getCodeQLForCmd(
             // Some user configs specify `--no-calculate-baseline` as an additional
             // argument to `codeql database init`. Therefore ignore the baseline file
             // options here to avoid specifying the same argument twice and erroring.
-            ignoringOptions: ["--overwrite", ...baselineFilesOptions],
+            //
+            // Ignore `--overwrite` to avoid passing both `--force-overwrite` and `--overwrite` if
+            // the user has configured `--overwrite`.
+            ignoringOptions: [
+              "--force-overwrite",
+              "--overwrite",
+              ...baselineFilesOptions,
+            ],
           }),
         ],
         { stdin: externalRepositoryToken },

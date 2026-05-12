@@ -1072,7 +1072,7 @@ test.serial(
 );
 
 test.serial(
-  "Avoids duplicating --overwrite flag if specified in CODEQL_ACTION_EXTRA_OPTIONS",
+  "Avoids duplicating --force-overwrite flag if specified in CODEQL_ACTION_EXTRA_OPTIONS",
   async (t) => {
     const runnerConstructorStub = stubToolRunnerConstructor();
     const codeqlObject = await stubCodeql();
@@ -1080,7 +1080,7 @@ test.serial(
     sinon.stub(io, "which").resolves("");
 
     process.env["CODEQL_ACTION_EXTRA_OPTIONS"] =
-      '{ "database": { "init": ["--overwrite"] } }';
+      '{ "database": { "init": ["--force-overwrite"] } }';
 
     await codeqlObject.databaseInitCluster(
       stubConfig,
@@ -1093,9 +1093,9 @@ test.serial(
     t.true(runnerConstructorStub.calledOnce);
     const args = runnerConstructorStub.firstCall.args[1] as string[];
     t.is(
-      args.filter((option: string) => option === "--overwrite").length,
+      args.filter((option: string) => option === "--force-overwrite").length,
       1,
-      "--overwrite should only be passed once",
+      "--force-overwrite should only be passed once",
     );
 
     // Clean up

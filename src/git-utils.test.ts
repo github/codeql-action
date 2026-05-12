@@ -305,6 +305,29 @@ test.serial("determineBaseBranchHeadCommitOid other error", async (t) => {
   infoStub.restore();
 });
 
+test.serial(
+  "determineBaseBranchHeadCommitOid accepts SHA-256 OIDs",
+  async (t) => {
+    const mergeSha = "a".repeat(64);
+    const baseOid = "b".repeat(64);
+    const headOid = "c".repeat(64);
+
+    process.env["GITHUB_EVENT_NAME"] = "pull_request";
+    process.env["GITHUB_SHA"] = mergeSha;
+
+    const runGitCommandStub = sinon
+      .stub(gitUtils as any, "runGitCommand")
+      .resolves(`commit ${mergeSha}\nparent ${baseOid}\nparent ${headOid}\n`);
+
+    try {
+      const result = await gitUtils.determineBaseBranchHeadCommitOid(__dirname);
+      t.deepEqual(result, baseOid);
+    } finally {
+      runGitCommandStub.restore();
+    }
+  },
+);
+
 test.serial("decodeGitFilePath unquoted strings", async (t) => {
   t.deepEqual(gitUtils.decodeGitFilePath("foo"), "foo");
   t.deepEqual(gitUtils.decodeGitFilePath("foo bar"), "foo bar");
@@ -435,6 +458,64 @@ test.serial("getFileOidsUnderPath handles quoted paths", async (t) => {
     });
   });
 });
+
+test.serial("getFileOidsUnderPath handles SHA-256 OIDs", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const sha256OidA =
+      "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2c0d4b7e8f9a1234567890ab";
+    const sha256OidB =
+      "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899";
+
+    sinon
+      .stub(gitUtils as any, "runGitCommand")
+      .callsFake(async (_cwd: any, args: any) => {
+        if (args[0] === "rev-parse") {
+          return `${tmpDir}\n`;
+        }
+        return (
+          `100644 ${sha256OidA} 0\tlib/sha256-file-a.js\n` +
+          `100644 ${sha256OidB} 0\tsrc/sha256-file-b.ts`
+        );
+      });
+
+    const result = await gitUtils.getFileOidsUnderPath("/fake/path");
+
+    t.deepEqual(result, {
+      "lib/sha256-file-a.js": sha256OidA,
+      "src/sha256-file-b.ts": sha256OidB,
+    });
+  });
+});
+
+test.serial(
+  "getFileOidsUnderPath rejects OIDs of unsupported length",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      // 50-char OID: not a valid SHA-1 (40) or SHA-256 (64) length. The regex
+      // must not accept this even though every character is a valid hex digit.
+      const invalidLine =
+        "100644 30d998ded095371488be3a729eb61d86ed721a1830d998ded0 0\tlib/bad.js";
+      sinon
+        .stub(gitUtils as any, "runGitCommand")
+        .callsFake(async (_cwd: any, args: any) => {
+          if (args[0] === "rev-parse") {
+            return `${tmpDir}\n`;
+          }
+          return invalidLine;
+        });
+
+      await t.throwsAsync(
+        async () => {
+          await gitUtils.getFileOidsUnderPath("/fake/path");
+        },
+        {
+          instanceOf: Error,
+          message: `Unexpected "git ls-files" output: ${invalidLine}`,
+        },
+      );
+    });
+  },
+);
 
 test.serial("getFileOidsUnderPath handles empty output", async (t) => {
   await withTmpDir(async (tmpDir) => {

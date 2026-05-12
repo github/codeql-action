@@ -4,13 +4,14 @@ import {
   getRequiredInput,
 } from "./actions-util";
 import { EnvVar } from "./environment";
+import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import {
   AssessmentPayload,
   BasePayload,
   UploadPayload,
 } from "./upload-lib/types";
-import { ConfigurationError, getRequiredEnvParam } from "./util";
+import { ConfigurationError, getRequiredEnvParam, isInTestMode } from "./util";
 
 export enum AnalysisKind {
   CodeScanning = "code-scanning",
@@ -77,6 +78,7 @@ let cachedAnalysisKinds: AnalysisKind[] | undefined;
  */
 export async function getAnalysisKinds(
   logger: Logger,
+  features: FeatureEnablement,
   skipCache: boolean = false,
 ): Promise<AnalysisKind[]> {
   if (!skipCache && cachedAnalysisKinds !== undefined) {
@@ -118,6 +120,19 @@ export async function getAnalysisKinds(
         );
       }
     }
+  }
+
+  // Throw an error if we have multiple inputs for `analysis-kinds` outside of test mode.
+  if (
+    !isInTestMode() &&
+    analysisKinds.length > 1 &&
+    !(await features.getValue(Feature.AllowMultipleAnalysisKinds))
+  ) {
+    throw new ConfigurationError(
+      "The `analysis-kinds` input is experimental and for GitHub-internal use only. " +
+        "Its behaviour may change at any time or be removed entirely. " +
+        "Specifying multiple values as input is no longer supported.",
+    );
   }
 
   // Cache the analysis kinds and return them.

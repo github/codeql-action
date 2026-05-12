@@ -407,7 +407,7 @@ export async function getLanguages(
   return languages;
 }
 
-/** Parses the `languages` input into a list of languages without checking if they are supported by CodeQL. */
+/** Splits the `languages` input into a list of raw languages without checking if they are supported by CodeQL. */
 export function getRawLanguagesNoAutodetect(
   languagesInput: string | undefined,
 ): string[] {

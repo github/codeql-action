@@ -7,7 +7,6 @@ export enum ToolsFeature {
   BundleSupportsIncludeOption = "bundleSupportsIncludeOption",
   BundleSupportsOverlay = "bundleSupportsOverlay",
   DatabaseInterpretResultsSupportsSarifRunProperty = "databaseInterpretResultsSupportsSarifRunProperty",
-  ForceOverwrite = "forceOverwrite",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   SuppressesMissingFileBaselineWarning = "suppressesMissingFileBaselineWarning",
 }

@@ -304,9 +304,9 @@ async function run(startedAt: Date) {
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
-    const useOverlayAwareDefaultCliVersion = !!analysisKinds?.includes(
-      AnalysisKind.CodeScanning,
-    );
+    const useOverlayAwareDefaultCliVersion =
+      analysisKinds?.length === 1 &&
+      analysisKinds[0] === AnalysisKind.CodeScanning;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,

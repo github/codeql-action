@@ -298,7 +298,7 @@ export const getFileOidsUnderPath = async function (
   // 100644 6b792ea543ce75d7a8a03df591e3c85311ecb64f 0\tsrc/git-utils.ts
   // The fields are: <mode> <oid> <stage>\t<path>
   // The OID is either 40 (SHA-1) or 64 (SHA-256) hex characters.
-  const regex = /^[0-9]+ ([0-9a-f]{40}(?:[a-f0-9]{24})?) [0-9]+\t(.+)$/;
+  const regex = /^[0-9]+ ([0-9a-f]{40}|[0-9a-f]{64}) [0-9]+\t(.+)$/;
   for (const line of stdout.split("\n")) {
     if (line) {
       const match = line.match(regex);

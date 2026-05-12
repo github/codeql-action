@@ -152,7 +152,8 @@ async function run(startedAt: Date): Promise<void> {
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
-      analysisKinds.includes(AnalysisKind.CodeScanning),
+      analysisKinds.length === 1 &&
+        analysisKinds[0] === AnalysisKind.CodeScanning,
       features,
       logger,
     );

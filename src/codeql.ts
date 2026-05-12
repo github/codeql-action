@@ -853,7 +853,7 @@ async function getCodeQLForCmd(
         "--sarif-group-rules-by-pack",
         "--sarif-include-query-help=always",
         "--sublanguage-file-coverage",
-        ...(await getJobRunUuidSarifOptions(this)),
+        ...(await getJobRunUuidSarifOptions()),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (sarifRunPropertyFlag !== undefined) {
@@ -1283,13 +1283,8 @@ function applyAutobuildAzurePipelinesTimeoutFix() {
   ].join(" ");
 }
 
-async function getJobRunUuidSarifOptions(codeql: CodeQL) {
+async function getJobRunUuidSarifOptions() {
   const jobRunUuid = process.env[EnvVar.JOB_RUN_UUID];
 
-  return jobRunUuid &&
-    (await codeql.supportsFeature(
-      ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
-    ))
-    ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
-    : [];
+  return jobRunUuid ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`] : [];
 }

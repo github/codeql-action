@@ -122,17 +122,23 @@ export async function getAnalysisKinds(
     }
   }
 
-  // Throw an error if we have multiple inputs for `analysis-kinds` outside of test mode.
+  // Log an error if we have multiple inputs for `analysis-kinds` outside of test mode,
+  // and enable only `code-scanning`.
   if (
     !isInTestMode() &&
     analysisKinds.length > 1 &&
     !(await features.getValue(Feature.AllowMultipleAnalysisKinds))
   ) {
-    throw new ConfigurationError(
+    logger.error(
       "The `analysis-kinds` input is experimental and for GitHub-internal use only. " +
         "Its behaviour may change at any time or be removed entirely. " +
-        "Specifying multiple values as input is no longer supported.",
+        "Specifying multiple values as input is no longer supported. " +
+        "Continuing with only `analysis-kinds: code-scanning`.",
     );
+
+    // Only enable Code Scanning.
+    cachedAnalysisKinds = [AnalysisKind.CodeScanning];
+    return cachedAnalysisKinds;
   }
 
   // Cache the analysis kinds and return them.

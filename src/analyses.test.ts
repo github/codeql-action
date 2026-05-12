@@ -16,7 +16,7 @@ import {
 } from "./analyses";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { createFeatures, setupTests } from "./testing-utils";
+import { createFeatures, RecordingLogger, setupTests } from "./testing-utils";
 import { AssessmentPayload } from "./upload-lib/types";
 import { ConfigurationError } from "./util";
 
@@ -70,19 +70,21 @@ test.serial(
 );
 
 test.serial(
-  "getAnalysisKinds - throws for multiple analysis kinds outside of test mode",
+  "getAnalysisKinds - only use `code-scanning` for multiple analysis kinds outside of test mode",
   async (t) => {
     process.env[EnvVar.TEST_MODE] = "false";
     const features = createFeatures([]);
+    const logger = new RecordingLogger();
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub
       .withArgs("analysis-kinds")
       .returns("code-scanning,code-quality");
-    await t.throwsAsync(
-      getAnalysisKinds(getRunnerLogger(true), features, true),
-      {
-        instanceOf: ConfigurationError,
-      },
+    const result = await getAnalysisKinds(logger, features, true);
+    t.deepEqual(result, [AnalysisKind.CodeScanning]);
+    t.assert(
+      logger.hasMessage(
+        "Continuing with only `analysis-kinds: code-scanning`.",
+      ),
     );
   },
 );

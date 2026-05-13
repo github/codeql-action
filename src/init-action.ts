@@ -298,16 +298,23 @@ async function run(startedAt: Date) {
       );
     }
 
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
+    const useOverlayAwareDefaultCliVersion =
+      analysisKinds?.length === 1 &&
+      analysisKinds[0] === AnalysisKind.CodeScanning;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      rawLanguages,
+      useOverlayAwareDefaultCliVersion,
       features,
       logger,
     );

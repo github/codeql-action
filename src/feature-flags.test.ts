@@ -451,12 +451,16 @@ test.serial(`selects CLI from defaults.json on GHES`, async (t) => {
   await withTmpDir(async (tmpDir) => {
     const features = setUpFeatureFlagTests(tmpDir);
 
-    const defaultCliVersion = await features.getDefaultCliVersion(
+    const defaultCliVersion = await features.getEnabledDefaultCliVersions(
       GitHubVariant.GHES,
     );
     t.deepEqual(defaultCliVersion, {
-      cliVersion: defaults.cliVersion,
-      tagName: defaults.bundleVersion,
+      enabledVersions: [
+        {
+          cliVersion: defaults.cliVersion,
+          tagName: defaults.bundleVersion,
+        },
+      ],
     });
   });
 });
@@ -482,10 +486,13 @@ for (const variant of [GitHubVariant.DOTCOM, GitHubVariant.GHEC_DR]) {
           false;
         mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
-        const defaultCliVersion = await features.getDefaultCliVersion(variant);
+        const defaultCliVersion =
+          await features.getEnabledDefaultCliVersions(variant);
         t.deepEqual(defaultCliVersion, {
-          cliVersion: "2.20.1",
-          tagName: "codeql-bundle-v2.20.1",
+          enabledVersions: [
+            { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
+            { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
+          ],
           toolsFeatureFlagsValid: true,
         });
       });
@@ -500,10 +507,15 @@ for (const variant of [GitHubVariant.DOTCOM, GitHubVariant.GHEC_DR]) {
         const expectedFeatureEnablement = initializeFeatures(true);
         mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
-        const defaultCliVersion = await features.getDefaultCliVersion(variant);
+        const defaultCliVersion =
+          await features.getEnabledDefaultCliVersions(variant);
         t.deepEqual(defaultCliVersion, {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
+          enabledVersions: [
+            {
+              cliVersion: defaults.cliVersion,
+              tagName: defaults.bundleVersion,
+            },
+          ],
           toolsFeatureFlagsValid: false,
         });
       });
@@ -529,10 +541,13 @@ for (const variant of [GitHubVariant.DOTCOM, GitHubVariant.GHEC_DR]) {
         ] = true;
         mockFeatureFlagApiEndpoint(200, expectedFeatureEnablement);
 
-        const defaultCliVersion = await features.getDefaultCliVersion(variant);
+        const defaultCliVersion =
+          await features.getEnabledDefaultCliVersions(variant);
         t.deepEqual(defaultCliVersion, {
-          cliVersion: "2.20.1",
-          tagName: "codeql-bundle-v2.20.1",
+          enabledVersions: [
+            { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
+            { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
+          ],
           toolsFeatureFlagsValid: true,
         });
 

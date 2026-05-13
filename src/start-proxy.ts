@@ -415,7 +415,7 @@ async function getCliVersionFromFeatures(
   features: FeatureEnablement,
 ): Promise<CodeQLDefaultVersionInfo> {
   const gitHubVersion = await getGitHubVersion();
-  return await features.getDefaultCliVersion(gitHubVersion.type);
+  return await features.getEnabledDefaultCliVersions(gitHubVersion.type);
 }
 
 /**
@@ -440,7 +440,7 @@ export async function getDownloadUrl(
     // Retrieve information about the CLI version we should use. This will be either the linked
     // version, or the one enabled by FFs.
     const versionInfo = useFeaturesToDetermineCLI
-      ? await getCliVersionFromFeatures(features)
+      ? (await getCliVersionFromFeatures(features)).enabledVersions[0]
       : {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,

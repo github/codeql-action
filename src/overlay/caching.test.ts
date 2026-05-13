@@ -80,65 +80,46 @@ const testDownloadOverlayBaseDatabaseFromCache = makeMacro({
         await fs.promises.writeFile(baseDatabaseOidsFile, JSON.stringify({}));
       }
 
-      const stubs: sinon.SinonStub[] = [];
+      sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
 
-      const getAutomationIDStub = sinon
-        .stub(apiClient, "getAutomationID")
-        .resolves("test-automation-id/");
-      stubs.push(getAutomationIDStub);
-
-      const isInTestModeStub = sinon
-        .stub(utils, "isInTestMode")
-        .returns(testCase.isInTestMode);
-      stubs.push(isInTestModeStub);
+      sinon.stub(utils, "isInTestMode").returns(testCase.isInTestMode);
 
       if (testCase.restoreCacheResult instanceof Error) {
-        const restoreCacheStub = sinon
+        sinon
           .stub(actionsCache, "restoreCache")
           .rejects(testCase.restoreCacheResult);
-        stubs.push(restoreCacheStub);
       } else {
-        const restoreCacheStub = sinon
+        sinon
           .stub(actionsCache, "restoreCache")
           .resolves(testCase.restoreCacheResult);
-        stubs.push(restoreCacheStub);
       }
 
-      const tryGetFolderBytesStub = sinon
+      sinon
         .stub(utils, "tryGetFolderBytes")
         .resolves(testCase.tryGetFolderBytesSucceeds ? 1024 * 1024 : undefined);
-      stubs.push(tryGetFolderBytesStub);
 
       const codeql = mockCodeQLVersion(testCase.codeQLVersion);
 
       if (testCase.resolveDatabaseOutput instanceof Error) {
-        const resolveDatabaseStub = sinon
+        sinon
           .stub(codeql, "resolveDatabase")
           .rejects(testCase.resolveDatabaseOutput);
-        stubs.push(resolveDatabaseStub);
       } else {
-        const resolveDatabaseStub = sinon
+        sinon
           .stub(codeql, "resolveDatabase")
           .resolves(testCase.resolveDatabaseOutput);
-        stubs.push(resolveDatabaseStub);
       }
 
-      try {
-        const result = await downloadOverlayBaseDatabaseFromCache(
-          codeql,
-          config,
-          logger,
-        );
+      const result = await downloadOverlayBaseDatabaseFromCache(
+        codeql,
+        config,
+        logger,
+      );
 
-        if (expectDownloadSuccess) {
-          t.truthy(result);
-        } else {
-          t.is(result, undefined);
-        }
-      } finally {
-        for (const stub of stubs) {
-          stub.restore();
-        }
+      if (expectDownloadSuccess) {
+        t.truthy(result);
+      } else {
+        t.is(result, undefined);
       }
     });
   },

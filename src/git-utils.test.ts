@@ -33,7 +33,6 @@ test.serial(
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, expectedRef);
-      callback.restore();
     });
   },
 );
@@ -54,7 +53,6 @@ test.serial(
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, expectedRef);
-      callback.restore();
     });
   },
 );
@@ -73,7 +71,6 @@ test.serial(
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, "refs/pull/1/head");
-      callback.restore();
     });
   },
 );
@@ -100,8 +97,6 @@ test.serial(
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, "refs/pull/2/merge");
-      callback.restore();
-      getAdditionalInputStub.restore();
     });
   },
 );
@@ -161,7 +156,6 @@ test.serial(
             "Both 'ref' and 'sha' are required if one of them is provided.",
         },
       );
-      getAdditionalInputStub.restore();
     });
   },
 );
@@ -188,7 +182,6 @@ test.serial(
             "Both 'ref' and 'sha' are required if one of them is provided.",
         },
       );
-      getAdditionalInputStub.restore();
     });
   },
 );
@@ -242,7 +235,6 @@ test.serial("isAnalyzingDefaultBranch()", async (t) => {
     process.env["GITHUB_EVENT_NAME"] = "schedule";
     process.env["GITHUB_REF"] = "refs/heads/main";
     t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), false);
-    getAdditionalInputStub.restore();
   });
 });
 
@@ -254,8 +246,6 @@ test.serial("determineBaseBranchHeadCommitOid non-pullrequest", async (t) => {
   const result = await gitUtils.determineBaseBranchHeadCommitOid(__dirname);
   t.deepEqual(result, undefined);
   t.deepEqual(0, infoStub.callCount);
-
-  infoStub.restore();
 });
 
 test.serial(
@@ -276,8 +266,6 @@ test.serial(
       "git call failed. Will calculate the base branch SHA on the server. Error: " +
         "The checkout path provided to the action does not appear to be a git repository.",
     );
-
-    infoStub.restore();
   },
 );
 
@@ -301,8 +289,6 @@ test.serial("determineBaseBranchHeadCommitOid other error", async (t) => {
       "The checkout path provided to the action does not appear to be a git repository.",
     ),
   );
-
-  infoStub.restore();
 });
 
 test.serial(
@@ -315,16 +301,12 @@ test.serial(
     process.env["GITHUB_EVENT_NAME"] = "pull_request";
     process.env["GITHUB_SHA"] = mergeSha;
 
-    const runGitCommandStub = sinon
+    sinon
       .stub(gitUtils as any, "runGitCommand")
       .resolves(`commit ${mergeSha}\nparent ${baseOid}\nparent ${headOid}\n`);
 
-    try {
-      const result = await gitUtils.determineBaseBranchHeadCommitOid(__dirname);
-      t.deepEqual(result, baseOid);
-    } finally {
-      runGitCommandStub.restore();
-    }
+    const result = await gitUtils.determineBaseBranchHeadCommitOid(__dirname);
+    t.deepEqual(result, baseOid);
   },
 );
 

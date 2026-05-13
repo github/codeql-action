@@ -73,10 +73,10 @@ const testShouldPerformDiffInformedAnalysis = makeMacro({
         [Feature.DiffInformedQueries]: testCase.featureEnabled,
       });
 
-      const getGitHubVersionStub = sinon
+      sinon
         .stub(apiClient, "getGitHubVersion")
         .resolves(testCase.gitHubVersion);
-      const getPullRequestBranchesStub = sinon
+      sinon
         .stub(actionsUtil, "getPullRequestBranches")
         .returns(testCase.pullRequestBranches);
 
@@ -89,9 +89,6 @@ const testShouldPerformDiffInformedAnalysis = makeMacro({
       t.is(result, expectedResult);
 
       delete process.env.CODEQL_ACTION_DIFF_INFORMED_QUERIES;
-
-      getGitHubVersionStub.restore();
-      getPullRequestBranchesStub.restore();
     });
   },
   title: (title) => `shouldPerformDiffInformedAnalysis: ${title}`,

@@ -40,14 +40,18 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
   apiURL: "https://api.github.com",
 };
 
-export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
-  cliVersion: "2.20.0",
-  tagName: "codeql-bundle-v2.20.0",
-};
-
 export const LINKED_CLI_VERSION = {
   cliVersion: defaults.cliVersion,
   tagName: defaults.bundleVersion,
+};
+
+export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
+  enabledVersions: [
+    {
+      cliVersion: "2.20.0",
+      tagName: "codeql-bundle-v2.20.0",
+    },
+  ],
 };
 
 type TestContext = {
@@ -466,7 +470,7 @@ export function mockCodeQLVersion(
  */
 export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
   return {
-    getDefaultCliVersion: async () => {
+    getEnabledDefaultCliVersions: async () => {
       throw new Error("not implemented");
     },
     getValue: async (feature) => {

@@ -144,7 +144,7 @@ async function run(startedAt: Date): Promise<void> {
     const rawLanguages = getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
-    const analysisKinds = await getAnalysisKinds(logger);
+    const analysisKinds = await getAnalysisKinds(logger, features);
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,

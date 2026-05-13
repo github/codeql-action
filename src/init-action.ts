@@ -281,7 +281,7 @@ async function run(startedAt: Date) {
     // successful, the results are cached so that we don't duplicate the work in normal runs.
     let analysisKinds: AnalysisKind[] | undefined;
     try {
-      analysisKinds = await getAnalysisKinds(logger);
+      analysisKinds = await getAnalysisKinds(logger, features);
     } catch (err) {
       logger.debug(
         `Failed to parse analysis kinds for 'starting' status report: ${getErrorMessage(err)}`,
@@ -353,7 +353,7 @@ async function run(startedAt: Date) {
       }
     }
 
-    analysisKinds = await getAnalysisKinds(logger);
+    analysisKinds = await getAnalysisKinds(logger, features);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
     const repositoryProperties = repositoryPropertiesResult.orElse({});
     const fileCoverageResult = await getFileCoverageInformationEnabled(

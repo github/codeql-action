@@ -16,7 +16,12 @@ import {
 } from "./analyses";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { createFeatures, RecordingLogger, setupTests } from "./testing-utils";
+import {
+  createFeatures,
+  RecordingLogger,
+  setupBaseActionsVars,
+  setupTests,
+} from "./testing-utils";
 import { AssessmentPayload } from "./upload-lib/types";
 import { ConfigurationError } from "./util";
 
@@ -72,6 +77,7 @@ test.serial(
 test.serial(
   "getAnalysisKinds - only use `code-scanning` for multiple analysis kinds outside of test mode",
   async (t) => {
+    setupBaseActionsVars();
     process.env[EnvVar.TEST_MODE] = "false";
     const features = createFeatures([]);
     const logger = new RecordingLogger();
@@ -84,6 +90,44 @@ test.serial(
     t.assert(
       logger.hasMessage(
         "Continuing with only `analysis-kinds: code-scanning`.",
+      ),
+    );
+  },
+);
+
+test.serial(
+  "getAnalysisKinds - logs error for non-default `analysis-kinds` in custom workflow",
+  async (t) => {
+    setupBaseActionsVars({ GITHUB_EVENT_NAME: "push" });
+    process.env[EnvVar.TEST_MODE] = "false";
+    const features = createFeatures([]);
+    const logger = new RecordingLogger();
+    const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
+    requiredInputStub.withArgs("analysis-kinds").returns("code-quality");
+    const result = await getAnalysisKinds(logger, features, true);
+    t.deepEqual(result, [AnalysisKind.CodeQuality]);
+    t.assert(
+      logger.hasMessage(
+        "An analysis kind other than `code-scanning` was specified in a custom workflow.",
+      ),
+    );
+  },
+);
+
+test.serial(
+  "getAnalysisKinds - no error for non-default `analysis-kinds` in managed workflow",
+  async (t) => {
+    setupBaseActionsVars({ GITHUB_EVENT_NAME: "dynamic" });
+    process.env[EnvVar.TEST_MODE] = "false";
+    const features = createFeatures([]);
+    const logger = new RecordingLogger();
+    const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
+    requiredInputStub.withArgs("analysis-kinds").returns("code-quality");
+    const result = await getAnalysisKinds(logger, features, true);
+    t.deepEqual(result, [AnalysisKind.CodeQuality]);
+    t.assert(
+      !logger.hasMessage(
+        "An analysis kind other than `code-scanning` was specified in a custom workflow.",
       ),
     );
   },
@@ -133,6 +177,7 @@ for (let i = 0; i < analysisKinds.length; i++) {
       test.serial(
         `getAnalysisKinds - allows ${analysisKind} with ${otherAnalysis}`,
         async (t) => {
+          setupBaseActionsVars();
           process.env[EnvVar.TEST_MODE] = "true";
           const features = createFeatures([]);
           const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
@@ -151,6 +196,7 @@ for (let i = 0; i < analysisKinds.length; i++) {
       test.serial(
         `getAnalysisKinds - throws if ${analysisKind} is enabled with ${otherAnalysis}`,
         async (t) => {
+          setupBaseActionsVars();
           const features = createFeatures([]);
           const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
           requiredInputStub

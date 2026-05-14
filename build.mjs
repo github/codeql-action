@@ -1,5 +1,5 @@
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import * as esbuild from "esbuild";
@@ -62,8 +62,14 @@ const onEndPlugin = {
   },
 };
 
+/** The name of the virtual `entry-points` module. */
+const SHARED_ENTRYPOINT = "entry-points";
+
 /**
- * Emit a tiny stub file for each Action entrypoint. Each stub imports the shared bundle
+ * This plugin finds all source files that contain action entry points.
+ * It then generates the virtual `entry-points` module which imports all identifies files,
+ * and re-exports their `runWrapper` functions with suitable aliases.
+ * A tiny stub file is emitted for each Action entrypoint. Each stub imports the shared bundle
  * and calls the respective entry point.
  *
  * @type {esbuild.Plugin}
@@ -71,6 +77,7 @@ const onEndPlugin = {
 const entryPointsPlugin = {
   name: "entry-points",
   setup(build) {
+    const namespace = "actions";
     const actions = [];
 
     const toPascal = (s) =>
@@ -91,6 +98,44 @@ const entryPointsPlugin = {
           pascalCaseName: `${toPascal(actionName)}${isPost ? "Post" : ""}Action`,
         });
       }
+    });
+
+    // Resolve the virtual `entry-points` file and set the corresponding namespace.
+    // Ideally, we'd `RegExp.escape` the entrypoint here, but that API isn't supported in Node 20.
+    // Since we're dealing with a hardcoded string, this isn't too much of a problem.
+    build.onResolve({ filter: new RegExp(`^${SHARED_ENTRYPOINT}$`) }, () => {
+      return { path: SHARED_ENTRYPOINT, namespace };
+    });
+
+    // Generate the virtual `entry-points` file based on the actions we discovered.
+    // Restrict using the namespace. The path filter does not need to discriminate any further.
+    build.onLoad({ filter: /.*/, namespace }, async () => {
+      const wrapperTemplatePath = "entry-wrapper.js.tpl";
+      const wrapperTemplate = await readFile(
+        join(SRC_DIR, wrapperTemplatePath),
+        "utf-8",
+      );
+
+      const actionsSorted = actions.sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+      const imports = actionsSorted
+        .map(
+          (action) =>
+            `import * as ${action.pascalCaseName} from "./src/${basename(action.path)}"`,
+        )
+        .join("\n");
+      const wrappers = actionsSorted
+        .map((action) =>
+          wrapperTemplate.replaceAll("__ACTION__", action.pascalCaseName),
+        )
+        .join("\n\n");
+
+      return {
+        contents: `"use strict";\n${imports}\n\n${wrappers}\n`,
+        resolveDir: ".",
+        loader: "ts",
+      };
     });
 
     // Emit entry point stubs for each action using the entry template.
@@ -119,7 +164,10 @@ const entryPointsPlugin = {
 
 const context = await esbuild.context({
   // Include upload-lib.ts as an entry point for use in testing environments.
-  entryPoints: globSync(["src/entry-points.ts", "src/upload-lib.ts"]),
+  entryPoints: [
+    { in: SHARED_ENTRYPOINT, out: SHARED_ENTRYPOINT },
+    join(SRC_DIR, "upload-lib.ts"),
+  ],
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,

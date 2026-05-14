@@ -28,6 +28,13 @@ interface WorkflowInput {
 /** A partial mapping from known input names to input definitions. */
 type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 
+type OperatingSystem =
+  | string
+  | {
+      os: string;
+      "runner-image"?: string;
+    };
+
 /**
  * Represents PR check specifications.
  */
@@ -37,7 +44,7 @@ interface Specification extends JobSpecification {
   /** CodeQL bundle versions to test against. Defaults to `DEFAULT_TEST_VERSIONS`. */
   versions?: string[];
   /** Operating system prefixes used to select runner images (e.g. `["ubuntu", "macos"]`). */
-  operatingSystems?: string[];
+  operatingSystems?: OperatingSystem[];
   /** Per-OS version overrides. If specified for an OS, only those versions are tested on that OS. */
   osCodeQlVersions?: Record<string, string[]>;
   /** Whether to use the all-platform CodeQL bundle. */
@@ -311,10 +318,19 @@ function generateJobMatrix(
       );
     }
 
-    const runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"];
+    const defaultRunnerImages = [
+      "ubuntu-latest",
+      "macos-latest",
+      "windows-latest",
+    ];
     const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
 
-    for (const operatingSystem of operatingSystems) {
+    for (const operatingSystemConfig of operatingSystems) {
+      const operatingSystem =
+        typeof operatingSystemConfig === "string"
+          ? operatingSystemConfig
+          : operatingSystemConfig.os;
+
       // If osCodeQlVersions is set for this OS, only include the specified CodeQL versions.
       const allowedVersions =
         checkSpecification.osCodeQlVersions?.[operatingSystem];
@@ -322,9 +338,13 @@ function generateJobMatrix(
         continue;
       }
 
-      const runnerImagesForOs = runnerImages.filter((image) =>
-        image.startsWith(operatingSystem),
-      );
+      const runnerImagesForOs =
+        typeof operatingSystemConfig === "string" ||
+        operatingSystemConfig["runner-image"] === undefined
+          ? defaultRunnerImages.filter((image) =>
+              image.startsWith(operatingSystem),
+            )
+          : [operatingSystemConfig["runner-image"]];
 
       for (const runnerImage of runnerImagesForOs) {
         matrix.push({

@@ -59,11 +59,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: linked
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: default
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: nightly-latest
     name: Swift analysis using a custom build command
     if: github.triggering_actor != 'dependabot[bot]'

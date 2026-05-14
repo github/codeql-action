@@ -43,7 +43,7 @@ interface Specification extends JobSpecification {
   inputs?: Record<string, WorkflowInput>;
   /** CodeQL bundle versions to test against. Defaults to `DEFAULT_TEST_VERSIONS`. */
   versions?: string[];
-  /** Operating system prefixes used to select runner images (e.g. `["ubuntu", "macos"]`). */
+  /** Operating system prefixes, either as strings or with explicit runner image labels. */
   operatingSystems?: OperatingSystem[];
   /** Per-OS version overrides. If specified for an OS, only those versions are tested on that OS. */
   osCodeQlVersions?: Record<string, string[]>;

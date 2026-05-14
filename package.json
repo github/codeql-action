@@ -13,7 +13,7 @@
     "test": "npm run ava -- src/",
     "test-debug": "npm run test -- --timeout=20m",
     "transpile": "tsc --build --verbose tsconfig.json",
-    "update-pr-checks": "pr-checks/sync.sh"
+    "update-pr-checks": "./pr-checks/sync.sh"
   },
   "license": "MIT",
   "workspaces": [

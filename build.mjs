@@ -87,7 +87,12 @@ const entryPointsPlugin = {
     build.onStart(() => {
       const actionFiles = globSync("src/*-action{,-post}.ts");
       for (const actionFile of actionFiles) {
-        const match = actionFile.match(/src\/(.*)-action(-post)?.ts/);
+        const match = basename(actionFile).match(/(.*)-action(-post)?/);
+
+        if (match.length < 2) {
+          throw new Error(`'${actionFile}' didn't match expected pattern.`);
+        }
+
         const actionName = match[1];
         const isPost = match[2] !== undefined;
 

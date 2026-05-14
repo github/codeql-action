@@ -5,9 +5,9 @@ import type { PullRequestBranches } from "./actions-util";
 import { getApiClient, getGitHubVersion } from "./api-client";
 import type { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { Logger } from "./logging";
+import { Logger, withGroupAsync } from "./logging";
 import { getRepositoryNwoFromEnv } from "./repository";
-import { GitHubVariant, satisfiesGHESVersion } from "./util";
+import { getErrorMessage, GitHubVariant, satisfiesGHESVersion } from "./util";
 
 /**
  * This interface is an abbreviated version of the file diff object returned by
@@ -19,20 +19,6 @@ interface FileDiff {
   // A patch may be absent if the file is binary, if the file diff is too large,
   // or if the file is unchanged.
   patch?: string | undefined;
-}
-
-/**
- * Check if the action should perform diff-informed analysis.
- */
-export async function shouldPerformDiffInformedAnalysis(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger,
-): Promise<boolean> {
-  return (
-    (await getDiffInformedAnalysisBranches(codeql, features, logger)) !==
-    undefined
-  );
 }
 
 /**
@@ -67,6 +53,46 @@ export async function getDiffInformedAnalysisBranches(
     );
   }
   return branches;
+}
+
+/**
+ * Prepares the diff ranges needed for diff-informed analysis for the current
+ * run.
+ *
+ * @returns `true` if the diff ranges were successfully computed and persisted
+ *   and are therefore available for use, `false` otherwise.
+ */
+export async function prepareDiffInformedAnalysis(
+  codeql: CodeQL,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<boolean> {
+  let branches: PullRequestBranches | undefined;
+  try {
+    branches = await getDiffInformedAnalysisBranches(codeql, features, logger);
+  } catch (e) {
+    // If we cannot determine whether diff-informed analysis applies (for
+    // example, because a feature-flag lookup failed), treat it as not
+    // applicable rather than triggering the overlay fallback.
+    logger.warning(
+      `Failed to determine branch information for diff-informed analysis: ${getErrorMessage(e)}`,
+    );
+    return false;
+  }
+  if (!branches) {
+    return false;
+  }
+
+  return await withGroupAsync("Computing PR diff ranges", async () => {
+    try {
+      return await computeAndPersistDiffRanges(branches, logger);
+    } catch (e) {
+      logger.warning(
+        `Failed to compute diff-informed analysis ranges: ${getErrorMessage(e)}`,
+      );
+      return false;
+    }
+  });
 }
 
 export interface DiffThunkRange {
@@ -149,6 +175,33 @@ export async function getPullRequestEditedDiffRanges(
     results.push(...diffRanges);
   }
   return results;
+}
+
+/**
+ * Compute and persist the diff ranges for a pull request. This fetches the
+ * diff from the GitHub API and writes it to the diff ranges JSON file so that
+ * CodeQL can use it for diff-informed analysis.
+ *
+ * @param branches The base and head branches of the pull request, as returned
+ *   by `getDiffInformedAnalysisBranches`.
+ * @param logger
+ * @returns `true` if the diff ranges were successfully computed and persisted,
+ *   otherwise `false`.
+ */
+export async function computeAndPersistDiffRanges(
+  branches: PullRequestBranches,
+  logger: Logger,
+): Promise<boolean> {
+  const ranges = await getPullRequestEditedDiffRanges(branches, logger);
+  if (ranges === undefined) {
+    return false;
+  }
+  writeDiffRangesJsonFile(logger, ranges);
+  const distinctFiles = new Set(ranges.map((r) => r.path)).size;
+  logger.info(
+    `Persisted ${ranges.length} diff range(s) across ${distinctFiles} file(s).`,
+  );
+  return true;
 }
 
 async function getFileDiffsWithBasehead(

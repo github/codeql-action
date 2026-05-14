@@ -64,11 +64,11 @@
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^11.1.0",
-    "globals": "^17.5.0",
+    "globals": "^17.6.0",
     "nock": "^14.0.12",
     "sinon": "^21.1.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.1"
+    "typescript-eslint": "^8.59.2"
   },
   "overrides": {
     "@actions/tool-cache": {

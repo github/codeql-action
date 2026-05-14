@@ -1,4 +1,4 @@
-import { copyFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,19 +62,70 @@ const onEndPlugin = {
   },
 };
 
+/**
+ * Emit a tiny stub file for each Action entrypoint. Each stub imports the shared bundle
+ * and calls the respective entry point.
+ *
+ * @type {esbuild.Plugin}
+ */
+const entryPointsPlugin = {
+  name: "entry-points",
+  setup(build) {
+    const actions = [];
+
+    const toPascal = (s) =>
+      s.replace(/(^|-)([a-z0-9])/gi, (_, __, c) => c.toUpperCase());
+
+    // Find the source files containing action entry points.
+    build.onStart(() => {
+      const actionFiles = globSync("src/*-action{,-post}.ts");
+      for (const actionFile of actionFiles) {
+        const match = actionFile.match(/src\/(.*)-action(-post)?.ts/);
+        const actionName = match[1];
+        const isPost = match[2] !== undefined;
+
+        actions.push({
+          path: actionFile,
+          name: actionName,
+          isPost,
+          pascalCaseName: `${toPascal(actionName)}${isPost ? "Post" : ""}Action`,
+        });
+      }
+    });
+
+    // Emit entry point stubs for each action using the entry template.
+    build.onEnd(async (result) => {
+      // Read the entry point template.
+      const templatePath = "action-entry.js.tpl";
+      const template = await readFile(join(SRC_DIR, templatePath), "utf-8");
+
+      const makeHeader = (sourceFile) =>
+        `// Automatically generated from '${templatePath}' for '${sourceFile}'.\n\n`;
+
+      // Write entry point stubs for each action.
+      for (const action of actions) {
+        await writeFile(
+          join(
+            OUT_DIR,
+            `${action.name}${action.isPost ? "-post" : ""}-entry.js`,
+          ),
+          makeHeader(action.path) +
+            template.replaceAll("__ACTION__", action.pascalCaseName),
+        );
+      }
+    });
+  },
+};
+
 const context = await esbuild.context({
   // Include upload-lib.ts as an entry point for use in testing environments.
-  entryPoints: globSync([
-    `${SRC_DIR}/*-entry.ts`,
-    "src/entry-points.ts",
-    "src/upload-lib.ts",
-  ]),
+  entryPoints: globSync(["src/entry-points.ts", "src/upload-lib.ts"]),
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,
   platform: "node",
   external: ["./entry-points"],
-  plugins: [cleanPlugin, copyDefaultsPlugin, onEndPlugin],
+  plugins: [cleanPlugin, copyDefaultsPlugin, entryPointsPlugin, onEndPlugin],
   target: ["node20"],
   define: {
     __CODEQL_ACTION_VERSION__: JSON.stringify(pkg.version),

@@ -4,8 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- If multiple inputs are provided for the GitHub-internal `analysis-kinds` input, only `code-scanning` will be enabled. The `analysis-kinds` input is experimental, for GitHub-internal use only, and may change without notice at any time. [#3892](https://github.com/github/codeql-action/pull/3892)
-- Added an experimental change which, when running a Code Scanning analysis for a PR with [improved incremental analysis](https://github.com/github/roadmap/issues/1158) enabled, prefers CodeQL CLI versions that have a cached overlay-base database for the configured languages. This speeds up analysis for a repository when there is not yet a cached overlay-base database for the latest CLI version. We expect to roll this change out to everyone in May. [#3880](https://github.com/github/codeql-action/pull/3880)
+No user facing changes.
+
+## v4.35.5 - 14 May 2026
+
+This release rolls back 4.35.4 due to issues with that release. It is identical to 0.0.0.
 
 ## 4.35.4 - 07 May 2026
 
@@ -1206,3 +1209,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

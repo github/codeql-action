@@ -16,4 +16,4 @@ inputs:
     required: false
 runs:
   using: node24
-  main: '../lib/autobuild-action.js'
+  main: '../lib/autobuild-entry.js'

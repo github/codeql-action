@@ -65,7 +65,8 @@ const virtualEntrypointPlugin = {
   name: "virtual-actions-entrypoint",
   setup(build) {
     const namespace = "actions-entrypoint";
-    build.onResolve({ filter: new RegExp(`^${RegExp.escape(SHARED_ENTRYPOINT)}$`) }, () => ({
+    // Ideally, we'd `RegExp.escape` the entrypoint here, but that API isn't supported in Node 20. Since we're dealing with a hardcoded string, this isn't too much of a problem.
+    build.onResolve({ filter: new RegExp(`^${SHARED_ENTRYPOINT}$`) }, () => ({
       path: SHARED_ENTRYPOINT,
       namespace,
     }));

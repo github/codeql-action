@@ -523,14 +523,11 @@ async function run(startedAt: Date) {
   }
 }
 
-// Module-level startedAt so it can be accessed by runWrapper for error reporting
-const startedAt = new Date();
-export const runPromise = run(startedAt);
-
 export async function runWrapper() {
+  const startedAt = new Date();
   const logger = getActionsLogger();
   try {
-    await runPromise;
+    await run(startedAt);
   } catch (error) {
     core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
     await sendUnhandledErrorStatusReport(

@@ -69,7 +69,7 @@ test("analyze action with RAM & threads from environment variables", async (t) =
     // level but does not wait for it to finish. To ensure that calls to
     // runFinalize and runQueries are correctly captured by spies, we explicitly
     // wait for the action promise to complete before starting verification.
-    await analyzeAction.runPromise;
+    await analyzeAction.runWrapper();
 
     t.assert(
       runFinalizeStub.calledOnceWith(

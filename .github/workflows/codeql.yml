@@ -77,7 +77,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04,ubuntu-24.04,windows-2022,windows-2025,macos-14,macos-15]
+        os: [ubuntu-22.04,ubuntu-24.04,windows-2022,windows-2025,macos-latest-xlarge]
         tools: ${{ fromJson(needs.check-codeql-versions.outputs.versions) }}
     runs-on: ${{ matrix.os }}
 

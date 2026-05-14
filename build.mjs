@@ -48,6 +48,27 @@ const copyDefaultsPlugin = {
 };
 
 /**
+ * Mark `lib/` as an ESM scope by writing `lib/package.json` with
+ * `{ "type": "module" }`. This lets the bundles use the regular `.js`
+ * extension while still being loaded as ESM by Node, without affecting
+ * the rest of the repo (the root package.json stays CJS so the tsc
+ * output in `build/` and any other consumers are unchanged).
+ *
+ * @type {esbuild.Plugin}
+ */
+const writeLibPackageJsonPlugin = {
+  name: "write-lib-package-json",
+  setup(build) {
+    build.onEnd(async () => {
+      await writeFile(
+        join(OUT_DIR, "package.json"),
+        JSON.stringify({ type: "module" }) + "\n",
+      );
+    });
+  },
+};
+
+/**
  * Log when the build ends.
  *
  * @type {esbuild.Plugin}
@@ -62,6 +83,19 @@ const onEndPlugin = {
   },
 };
 
+// Banner injected into every emitted ESM file so that bundled CommonJS
+// dependencies which call `require(...)` at runtime (e.g. parts of the
+// Azure SDK + undici stack pulled in transitively by `@actions/cache` and
+// `@actions/artifact`), or read `__filename` / `__dirname`, keep working.
+const esmCompatBanner = [
+  `import { createRequire as __codeqlCreateRequire } from "module";`,
+  `import { fileURLToPath as __codeqlFileURLToPath } from "url";`,
+  `import { dirname as __codeqlDirname } from "path";`,
+  `var require = __codeqlCreateRequire(import.meta.url);`,
+  `var __filename = __codeqlFileURLToPath(import.meta.url);`,
+  `var __dirname = __codeqlDirname(__filename);`,
+].join("");
+
 const context = await esbuild.context({
   // Include upload-lib.ts as an entry point for use in testing environments.
   entryPoints: globSync([
@@ -70,10 +104,24 @@ const context = await esbuild.context({
     "src/upload-lib.ts",
   ]),
   bundle: true,
-  format: "cjs",
+  // Use ESM with code splitting so shared modules (Azure storage, undici,
+  // octokit, ...) live in shared chunk files instead of being duplicated
+  // into every entry bundle. Node treats these `.js` files as ESM because
+  // `writeLibPackageJsonPlugin` writes `lib/package.json` with
+  // `"type": "module"`.
+  format: "esm",
+  splitting: true,
+  minify: true,
+  chunkNames: "chunks/chunk-[hash]",
+  banner: { js: esmCompatBanner },
   outdir: OUT_DIR,
   platform: "node",
-  plugins: [cleanPlugin, copyDefaultsPlugin, onEndPlugin],
+  plugins: [
+    cleanPlugin,
+    copyDefaultsPlugin,
+    writeLibPackageJsonPlugin,
+    onEndPlugin,
+  ],
   target: ["node20"],
   define: {
     __CODEQL_ACTION_VERSION__: JSON.stringify(pkg.version),

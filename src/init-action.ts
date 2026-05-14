@@ -276,7 +276,7 @@ async function run(startedAt: Date) {
     // successful, the results are cached so that we don't duplicate the work in normal runs.
     let analysisKinds: AnalysisKind[] | undefined;
     try {
-      analysisKinds = await getAnalysisKinds(logger);
+      analysisKinds = await getAnalysisKinds(logger, features);
     } catch (err) {
       logger.debug(
         `Failed to parse analysis kinds for 'starting' status report: ${getErrorMessage(err)}`,
@@ -293,16 +293,23 @@ async function run(startedAt: Date) {
       );
     }
 
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
+    const useOverlayAwareDefaultCliVersion =
+      analysisKinds?.length === 1 &&
+      analysisKinds[0] === AnalysisKind.CodeScanning;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      rawLanguages,
+      useOverlayAwareDefaultCliVersion,
       features,
       logger,
     );
@@ -341,7 +348,7 @@ async function run(startedAt: Date) {
       }
     }
 
-    analysisKinds = await getAnalysisKinds(logger);
+    analysisKinds = await getAnalysisKinds(logger, features);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
     const repositoryProperties = repositoryPropertiesResult.orElse({});
     const fileCoverageResult = await getFileCoverageInformationEnabled(

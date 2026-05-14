@@ -461,9 +461,10 @@ export async function getCodeQlVersionsForOverlayBaseDatabases(
     );
     return undefined;
   }
-  const cacheKeyPrefix = await getCacheKeyPrefixBase(
-    languages.filter((l) => l !== undefined),
-  );
+  const dedupedLanguages = [
+    ...new Set(languages.filter((l) => l !== undefined)),
+  ];
+  const cacheKeyPrefix = await getCacheKeyPrefixBase(dedupedLanguages);
 
   logger.debug(
     `Searching for overlay-base databases in Actions cache with ` +

@@ -33,6 +33,7 @@ import {
   mockBundleDownloadApi,
   makeVersionInfo,
   createTestConfig,
+  makeMacro,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
@@ -70,8 +71,10 @@ async function installIntoToolcache({
     tmpDir,
     util.GitHubVariant.GHES,
     cliVersion !== undefined
-      ? { cliVersion, tagName }
+      ? { enabledVersions: [{ cliVersion, tagName }] }
       : SAMPLE_DEFAULT_CLI_VERSION,
+    undefined, // rawLanguages
+    false, // useOverlayAwareDefaultCliVersion
     createFeatures([]),
     getRunnerLogger(true),
     false,
@@ -143,6 +146,8 @@ test.serial(
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
           false,
@@ -175,6 +180,8 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -214,6 +221,8 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -264,6 +273,8 @@ for (const {
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
           false,
@@ -284,11 +295,11 @@ for (const {
 for (const toolcacheVersion of [
   // Test that we use the tools from the toolcache when `SAMPLE_DEFAULT_CLI_VERSION` is requested
   // and `SAMPLE_DEFAULT_CLI_VERSION-` is in the toolcache.
-  SAMPLE_DEFAULT_CLI_VERSION.cliVersion,
-  `${SAMPLE_DEFAULT_CLI_VERSION.cliVersion}-20230101`,
+  SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+  `${SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion}-20230101`,
 ]) {
   test.serial(
-    `uses tools from toolcache when ${SAMPLE_DEFAULT_CLI_VERSION.cliVersion} is requested and ` +
+    `uses tools from toolcache when ${SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion} is requested and ` +
       `${toolcacheVersion} is installed`,
     async (t) => {
       const features = createFeatures([]);
@@ -308,11 +319,16 @@ for (const toolcacheVersion of [
           tmpDir,
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
           false,
         );
-        t.is(result.toolsVersion, SAMPLE_DEFAULT_CLI_VERSION.cliVersion);
+        t.is(
+          result.toolsVersion,
+          SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+        );
         t.is(result.toolsSource, ToolsSource.Toolcache);
         t.is(result.toolsDownloadStatusReport?.combinedDurationMs, undefined);
         t.is(result.toolsDownloadStatusReport?.downloadDurationMs, undefined);
@@ -342,9 +358,15 @@ test.serial(
         tmpDir,
         util.GitHubVariant.GHES,
         {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
+          enabledVersions: [
+            {
+              cliVersion: defaults.cliVersion,
+              tagName: defaults.bundleVersion,
+            },
+          ],
         },
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -384,9 +406,15 @@ test.serial(
         tmpDir,
         util.GitHubVariant.GHES,
         {
-          cliVersion: defaults.cliVersion,
-          tagName: defaults.bundleVersion,
+          enabledVersions: [
+            {
+              cliVersion: defaults.cliVersion,
+              tagName: defaults.bundleVersion,
+            },
+          ],
         },
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -426,6 +454,8 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -467,6 +497,8 @@ test.serial(
         tmpDir,
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
         false,
@@ -540,7 +572,7 @@ test.serial("getExtraOptions throws for bad content", (t) => {
 });
 
 // Test macro for ensuring different variants of injected augmented configurations
-const injectedConfigMacro = test.macro({
+const injectedConfigMacro = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     augmentationProperties: AugmentationProperties,
@@ -590,9 +622,8 @@ const injectedConfigMacro = test.macro({
     `databaseInitCluster() injected config: ${providedTitle}`,
 });
 
-test.serial(
+injectedConfigMacro.serial(
   "basic",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
   },
@@ -600,9 +631,8 @@ test.serial(
   {},
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected packs from input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
@@ -613,9 +643,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected packs from input with existing packs combines",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInputCombines: true,
@@ -635,9 +664,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected packs from input with existing packs overrides",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     packsInput: ["xxx", "yyy"],
@@ -655,9 +683,8 @@ test.serial(
 );
 
 // similar, but with queries
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -675,9 +702,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input overrides",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInput: [{ uses: "xxx" }, { uses: "yyy" }],
@@ -699,9 +725,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input combines",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -727,9 +752,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries from input combines 2",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -749,9 +773,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "injected queries and packs, but empty",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -768,9 +791,8 @@ test.serial(
   {},
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "repo property queries have the highest precedence",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,
@@ -790,9 +812,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "repo property queries combines with queries input",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: false,
@@ -817,9 +838,8 @@ test.serial(
   },
 );
 
-test.serial(
+injectedConfigMacro.serial(
   "repo property queries combines everything else",
-  injectedConfigMacro,
   {
     ...defaultAugmentationProperties,
     queriesInputCombines: true,

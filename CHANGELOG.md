@@ -5,6 +5,12 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - For performance and accuracy reasons, [improved incremental analysis](https://github.com/github/roadmap/issues/1158) will now only be enabled on a pull request when diff-informed analysis is also enabled for that run. If diff-informed analysis is unavailable (for example, because the PR diff ranges could not be computed), the action will fall back to a full analysis. [#3791](https://github.com/github/codeql-action/pull/3791)
+- If multiple inputs are provided for the GitHub-internal `analysis-kinds` input, only `code-scanning` will be enabled. The `analysis-kinds` input is experimental, for GitHub-internal use only, and may change without notice at any time. [#3892](https://github.com/github/codeql-action/pull/3892)
+- Added an experimental change which, when running a Code Scanning analysis for a PR with [improved incremental analysis](https://github.com/github/roadmap/issues/1158) enabled, prefers CodeQL CLI versions that have a cached overlay-base database for the configured languages. This speeds up analysis for a repository when there is not yet a cached overlay-base database for the latest CLI version. We expect to roll this change out to everyone in May. [#3880](https://github.com/github/codeql-action/pull/3880)
+
+## 4.35.4 - 07 May 2026
+
+- Update default CodeQL bundle version to [2.25.4](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.4). [#3881](https://github.com/github/codeql-action/pull/3881)
 
 ## 4.35.3 - 01 May 2026
 

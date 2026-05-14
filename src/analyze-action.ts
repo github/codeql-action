@@ -527,7 +527,7 @@ async function run(startedAt: Date) {
 const startedAt = new Date();
 export const runPromise = run(startedAt);
 
-async function runWrapper() {
+export async function runWrapper() {
   const logger = getActionsLogger();
   try {
     await runPromise;
@@ -542,5 +542,3 @@ async function runWrapper() {
   }
   await util.checkForTimeout();
 }
-
-void runWrapper();

@@ -880,7 +880,7 @@ async function recordZstdAvailability(
   );
 }
 
-async function runWrapper() {
+export async function runWrapper() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   try {
@@ -896,5 +896,3 @@ async function runWrapper() {
   }
   await checkForTimeout();
 }
-
-void runWrapper();

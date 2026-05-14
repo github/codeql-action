@@ -65,14 +65,16 @@ const onEndPlugin = {
 const context = await esbuild.context({
   // Include upload-lib.ts as an entry point for use in testing environments.
   entryPoints: globSync([
-    `${SRC_DIR}/*-action.ts`,
-    `${SRC_DIR}/*-action-post.ts`,
+    `${SRC_DIR}/*-entry.ts`,
+    // `${SRC_DIR}/*-action-post.ts`,
+    "src/entry-points.ts",
     "src/upload-lib.ts",
   ]),
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,
   platform: "node",
+  external: ["./entry-points"],
   plugins: [cleanPlugin, copyDefaultsPlugin, onEndPlugin],
   target: ["node20"],
   define: {

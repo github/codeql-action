@@ -5,8 +5,7 @@ versions:
   - default
   - nightly-latest
 operatingSystems:
-  - os: macos
-    runner-image: macos-latest-xlarge
+  - macos
 installGo: true
 installDotNet: true
 env:

@@ -2,8 +2,7 @@ name: "All-platform bundle"
 description: "Tests using an all-platform CodeQL Bundle"
 operatingSystems:
   - ubuntu
-  - os: macos
-    runner-image: macos-latest-xlarge
+  - macos
   - windows
 versions:
   - nightly-latest

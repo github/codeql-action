@@ -61,7 +61,7 @@ jobs:
         include:
           - os: ubuntu-latest
             version: nightly-latest
-          - os: macos-latest-xlarge
+          - os: macos-latest
             version: nightly-latest
           - os: windows-latest
             version: nightly-latest

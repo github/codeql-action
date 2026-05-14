@@ -150,7 +150,7 @@ const entryPointsPlugin = {
       const template = await readFile(join(SRC_DIR, templatePath), "utf-8");
 
       const makeHeader = (sourceFile) =>
-        `// Automatically generated from '${templatePath}' for '${sourceFile}'.\n\n`;
+        `// Automatically generated from '${templatePath}' for 'src/${basename(sourceFile)}'.\n\n`;
 
       // Write entry point stubs for each action.
       for (const action of actions) {

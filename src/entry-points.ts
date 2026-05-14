@@ -1,13 +1,13 @@
 import * as analyzeAction from "./analyze-action";
+import * as analyzePostAction from "./analyze-action-post";
 import * as autobuildAction from "./autobuild-action";
 import * as initAction from "./init-action";
+import * as initPostAction from "./init-action-post";
 import * as resolveEnvironmentAction from "./resolve-environment-action";
 import * as setupCodeqlAction from "./setup-codeql-action";
 import * as startProxyAction from "./start-proxy-action";
-import * as uploadSarifAction from "./upload-sarif-action";
-import * as analyzePostAction from "./analyze-action-post";
-import * as initPostAction from "./init-action-post";
 import * as startProxyPostAction from "./start-proxy-action-post";
+import * as uploadSarifAction from "./upload-sarif-action";
 import * as uploadSarifPostAction from "./upload-sarif-action-post";
 
 export async function runAnalyzeAction() {

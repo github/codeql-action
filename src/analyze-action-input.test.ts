@@ -67,6 +67,7 @@ test("analyze action with RAM & threads from action inputs", async (t) => {
     // level but does not wait for it to finish. To ensure that calls to
     // runFinalize and runQueries are correctly captured by spies, we explicitly
     // wait for the action promise to complete before starting verification.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await analyzeAction.runWrapper();
 
     t.assert(

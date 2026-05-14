@@ -19,6 +19,7 @@ import {
   createFeatures,
   createTestConfig,
   DEFAULT_ACTIONS_VARS,
+  makeMacro,
   makeVersionInfo,
   RecordingLogger,
   setupActionsVars,
@@ -601,7 +602,7 @@ async function testFailedSarifUpload(
   uploadFiles.resolves({
     sarifID: "42",
     statusReport: { raw_upload_size_bytes: 20, zipped_upload_size_bytes: 10 },
-  } as uploadLib.UploadResult);
+  });
   const waitForProcessing = sinon.stub(uploadLib, "waitForProcessing");
 
   const features = [] as Feature[];
@@ -796,7 +797,7 @@ test.serial(
   },
 );
 
-const skippedUploadTest = test.macro({
+const skippedUploadTest = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     config: Partial<configUtils.Config>,
@@ -823,9 +824,8 @@ const skippedUploadTest = test.macro({
     `tryUploadSarifIfRunFailed - skips upload ${providedTitle}`,
 });
 
-test.serial(
+skippedUploadTest.serial(
   "without CodeQL command",
-  skippedUploadTest,
   // No codeQLCmd
   {
     analysisKinds: [AnalysisKind.RiskAssessment],
@@ -834,9 +834,8 @@ test.serial(
   "CodeQL command not found",
 );
 
-test.serial(
+skippedUploadTest.serial(
   "if no language is configured",
-  skippedUploadTest,
   // No explicit language configuration
   {
     analysisKinds: [AnalysisKind.RiskAssessment],
@@ -845,9 +844,8 @@ test.serial(
   "Unexpectedly, the configuration is not for a single language.",
 );
 
-test.serial(
+skippedUploadTest.serial(
   "if multiple languages is configured",
-  skippedUploadTest,
   // Multiple explicit languages configured
   {
     analysisKinds: [AnalysisKind.RiskAssessment],

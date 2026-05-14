@@ -2,7 +2,11 @@ import { TextDecoder } from "node:util";
 import path from "path";
 
 import * as github from "@actions/github";
-import { ExecutionContext, TestFn } from "ava";
+import test, {
+  type ExecutionContext,
+  type MacroDeclarationOptions,
+  type TestFn,
+} from "ava";
 import nock from "nock";
 import * as sinon from "sinon";
 
@@ -36,14 +40,18 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
   apiURL: "https://api.github.com",
 };
 
-export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
-  cliVersion: "2.20.0",
-  tagName: "codeql-bundle-v2.20.0",
-};
-
 export const LINKED_CLI_VERSION = {
   cliVersion: defaults.cliVersion,
   tagName: defaults.bundleVersion,
+};
+
+export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
+  enabledVersions: [
+    {
+      cliVersion: "2.20.0",
+      tagName: "codeql-bundle-v2.20.0",
+    },
+  ],
 };
 
 type TestContext = {
@@ -85,8 +93,8 @@ function wrapOutput(context: TestContext) {
   };
 }
 
-export function setupTests(test: TestFn<any>) {
-  const typedTest = test as TestFn<TestContext>;
+export function setupTests(testFn: TestFn<any>) {
+  const typedTest = testFn as TestFn<TestContext>;
 
   typedTest.beforeEach((t) => {
     // Set an empty CodeQL object so that all method calls will fail
@@ -137,6 +145,26 @@ export function setupTests(test: TestFn<any>) {
     // Undo any modifications to the env
     process.env = t.context.env;
   });
+}
+
+/**
+ * Declare a reusable test implementation, with better type safety than `test.macro`.
+ */
+export function makeMacro<Args extends unknown[]>(
+  decl: MacroDeclarationOptions<Args, unknown>,
+) {
+  const m = test.macro<Args>(decl);
+
+  const wrapper = (name: string, ...args: Args) => test(name, m, ...args);
+  wrapper.test = (...args: Args) => test(m, ...args);
+  wrapper.serial = (name: string, ...args: Args) =>
+    test.serial(name, m, ...args);
+  // Make the implementation available as `fn`. We don't call it `exec` so
+  // that results from this function are not valid arguments to `test`
+  // or `test.serial`.
+  wrapper.fn = decl.exec;
+
+  return wrapper;
 }
 
 /**
@@ -442,7 +470,7 @@ export function mockCodeQLVersion(
  */
 export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
   return {
-    getDefaultCliVersion: async () => {
+    getEnabledDefaultCliVersions: async () => {
       throw new Error("not implemented");
     },
     getValue: async (feature) => {

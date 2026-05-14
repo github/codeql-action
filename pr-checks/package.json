@@ -7,10 +7,10 @@
     "@octokit/core": "^7.0.6",
     "@octokit/plugin-paginate-rest": ">=9.2.2",
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.4"
   },
   "devDependencies": {
-    "@types/node": "^20.19.9",
+    "@types/node": "^20.19.39",
     "tsx": "^4.21.0"
   }
 }

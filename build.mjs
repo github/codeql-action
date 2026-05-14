@@ -66,7 +66,6 @@ const context = await esbuild.context({
   // Include upload-lib.ts as an entry point for use in testing environments.
   entryPoints: globSync([
     `${SRC_DIR}/*-entry.ts`,
-    // `${SRC_DIR}/*-action-post.ts`,
     "src/entry-points.ts",
     "src/upload-lib.ts",
   ]),

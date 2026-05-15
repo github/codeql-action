@@ -188,17 +188,37 @@ export const DEFAULT_ACTIONS_VARS = {
   RUNNER_OS: "Linux",
 } as const satisfies Record<string, string>;
 
-// Sets environment variables that make using some libraries designed for
-// use only on actions safe to use outside of actions.
-export function setupActionsVars(
-  tempDir: string,
-  toolsDir: string,
-  overrides?: Partial<Record<keyof typeof DEFAULT_ACTIONS_VARS, string>>,
-) {
+/** Partial mappings from GitHub Actions environment variables to values. */
+export type ActionVarOverrides = Partial<
+  Record<keyof typeof DEFAULT_ACTIONS_VARS, string>
+>;
+
+/**
+ * Sets environment variables that are always available on GitHub Actions,
+ * excluding some that are expected to be set to paths. See `setupActionsVars`.
+ *
+ * @param overrides Overrides for the defaults.
+ */
+export function setupBaseActionsVars(overrides?: ActionVarOverrides) {
   const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
   for (const [key, value] of Object.entries(vars)) {
     process.env[key] = value;
   }
+}
+
+/**
+ * Sets environment variables that are always available on GitHub Actions.
+ *
+ * @param tempDir A value for `RUNNER_TEMP` and `GITHUB_WORKSPACE`.
+ * @param toolsDir A value for `RUNNER_TOOL_CACHE`.
+ * @param overrides Overrides for the defaults.
+ */
+export function setupActionsVars(
+  tempDir: string,
+  toolsDir: string,
+  overrides?: ActionVarOverrides,
+) {
+  setupBaseActionsVars(overrides);
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
   process.env["GITHUB_WORKSPACE"] = tempDir;

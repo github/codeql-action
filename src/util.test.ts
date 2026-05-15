@@ -418,9 +418,7 @@ for (const [
     `checkActionVersion ${reportErrorDescription} for ${versionsDescription}`,
     async (t) => {
       const warningSpy = sinon.spy(core, "warning");
-      const versionStub = sinon
-        .stub(api, "getGitHubVersion")
-        .resolves(githubVersion);
+      sinon.stub(api, "getGitHubVersion").resolves(githubVersion);
 
       // call checkActionVersion twice and assert below that warning is reported only once
       util.checkActionVersion(version, await api.getGitHubVersion());
@@ -437,7 +435,6 @@ for (const [
       } else {
         t.false(warningSpy.called);
       }
-      versionStub.restore();
     },
   );
 }

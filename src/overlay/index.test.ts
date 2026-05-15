@@ -50,31 +50,21 @@ test.serial(
         "modified.js": "ddd444", // Changed OID
         "added.js": "eee555", // New file
       };
-      const getFileOidsStubForOverlay = sinon
-        .stub(gitUtils, "getFileOidsUnderPath")
-        .resolves(currentOids);
+      sinon.stub(gitUtils, "getFileOidsUnderPath").resolves(currentOids);
 
       // Write the overlay changes file, which uses the mocked overlay OIDs
       // and the base database OIDs file
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
-      const getTempDirStub = sinon
-        .stub(actionsUtil, "getTemporaryDirectory")
-        .returns(tempDir);
-      const getDiffRangesStub = sinon
+      sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
+      sinon
         .stub(actionsUtil, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
-      const getGitRootStub = sinon
-        .stub(gitUtils, "getGitRoot")
-        .resolves(sourceRoot);
+      sinon.stub(gitUtils, "getGitRoot").resolves(sourceRoot);
       const changesFilePath = await writeOverlayChangesFile(
         config,
         sourceRoot,
         logger,
       );
-      getFileOidsStubForOverlay.restore();
-      getTempDirStub.restore();
-      getDiffRangesStub.restore();
-      getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
       const parsedContent = JSON.parse(fileContent) as { changes: string[] };
@@ -128,20 +118,14 @@ test.serial(
         "modified.js": "ddd444", // Changed OID
         "reverted.js": "eee555", // Same OID as base -- not detected by OID comparison
       };
-      const getFileOidsStubForOverlay = sinon
-        .stub(gitUtils, "getFileOidsUnderPath")
-        .resolves(currentOids);
+      sinon.stub(gitUtils, "getFileOidsUnderPath").resolves(currentOids);
 
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
-      const getTempDirStub = sinon
-        .stub(actionsUtil, "getTemporaryDirectory")
-        .returns(tempDir);
-      const getDiffRangesStub = sinon
+      sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
+      sinon
         .stub(actionsUtil, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
-      const getGitRootStub = sinon
-        .stub(gitUtils, "getGitRoot")
-        .resolves(sourceRoot);
+      sinon.stub(gitUtils, "getGitRoot").resolves(sourceRoot);
 
       // Write a pr-diff-range.json file with diff ranges including
       // "reverted.js" (unchanged OIDs) and "modified.js" (already in OID changes)
@@ -159,10 +143,6 @@ test.serial(
         sourceRoot,
         logger,
       );
-      getFileOidsStubForOverlay.restore();
-      getTempDirStub.restore();
-      getDiffRangesStub.restore();
-      getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
       const parsedContent = JSON.parse(fileContent) as { changes: string[] };
@@ -208,20 +188,14 @@ test.serial(
         "unchanged.js": "aaa111",
         "modified.js": "ddd444",
       };
-      const getFileOidsStubForOverlay = sinon
-        .stub(gitUtils, "getFileOidsUnderPath")
-        .resolves(currentOids);
+      sinon.stub(gitUtils, "getFileOidsUnderPath").resolves(currentOids);
 
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
-      const getTempDirStub = sinon
-        .stub(actionsUtil, "getTemporaryDirectory")
-        .returns(tempDir);
-      const getDiffRangesStub = sinon
+      sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
+      sinon
         .stub(actionsUtil, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
-      const getGitRootStub = sinon
-        .stub(gitUtils, "getGitRoot")
-        .resolves(sourceRoot);
+      sinon.stub(gitUtils, "getGitRoot").resolves(sourceRoot);
 
       // No pr-diff-range.json file exists - should work the same as before
       const changesFilePath = await writeOverlayChangesFile(
@@ -229,10 +203,6 @@ test.serial(
         sourceRoot,
         logger,
       );
-      getFileOidsStubForOverlay.restore();
-      getTempDirStub.restore();
-      getDiffRangesStub.restore();
-      getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
       const parsedContent = JSON.parse(fileContent) as { changes: string[] };
@@ -281,21 +251,15 @@ test.serial(
         "app.js": "aaa111",
         "lib/util.js": "bbb222",
       };
-      const getFileOidsStubForOverlay = sinon
-        .stub(gitUtils, "getFileOidsUnderPath")
-        .resolves(currentOids);
+      sinon.stub(gitUtils, "getFileOidsUnderPath").resolves(currentOids);
 
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
-      const getTempDirStub = sinon
-        .stub(actionsUtil, "getTemporaryDirectory")
-        .returns(tempDir);
-      const getDiffRangesStub = sinon
+      sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
+      sinon
         .stub(actionsUtil, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
       // getGitRoot returns the repo root (parent of sourceRoot)
-      const getGitRootStub = sinon
-        .stub(gitUtils, "getGitRoot")
-        .resolves(repoRoot);
+      sinon.stub(gitUtils, "getGitRoot").resolves(repoRoot);
 
       // Diff ranges use repo-root-relative paths (as returned by the GitHub compare API)
       await fs.promises.writeFile(
@@ -312,10 +276,6 @@ test.serial(
         sourceRoot,
         logger,
       );
-      getFileOidsStubForOverlay.restore();
-      getTempDirStub.restore();
-      getDiffRangesStub.restore();
-      getGitRootStub.restore();
 
       const fileContent = await fs.promises.readFile(changesFilePath, "utf-8");
       const parsedContent = JSON.parse(fileContent) as { changes: string[] };

@@ -128,7 +128,7 @@ async function run(startedAt: Date) {
   }
 }
 
-async function runWrapper() {
+export async function runWrapper() {
   const startedAt = new Date();
   const logger = getActionsLogger();
 
@@ -204,5 +204,3 @@ async function startProxy(
 
   return { host, port, cert: config.ca.cert, registries: registry_urls };
 }
-
-void runWrapper();

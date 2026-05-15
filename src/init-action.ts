@@ -37,11 +37,6 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import {
-  getDiffInformedAnalysisBranches,
-  getPullRequestEditedDiffRanges,
-  writeDiffRangesJsonFile,
-} from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
@@ -281,7 +276,7 @@ async function run(startedAt: Date) {
     // successful, the results are cached so that we don't duplicate the work in normal runs.
     let analysisKinds: AnalysisKind[] | undefined;
     try {
-      analysisKinds = await getAnalysisKinds(logger);
+      analysisKinds = await getAnalysisKinds(logger, features);
     } catch (err) {
       logger.debug(
         `Failed to parse analysis kinds for 'starting' status report: ${getErrorMessage(err)}`,
@@ -298,16 +293,23 @@ async function run(startedAt: Date) {
       );
     }
 
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
+    const useOverlayAwareDefaultCliVersion =
+      analysisKinds?.length === 1 &&
+      analysisKinds[0] === AnalysisKind.CodeScanning;
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      rawLanguages,
+      useOverlayAwareDefaultCliVersion,
       features,
       logger,
     );
@@ -346,7 +348,7 @@ async function run(startedAt: Date) {
       }
     }
 
-    analysisKinds = await getAnalysisKinds(logger);
+    analysisKinds = await getAnalysisKinds(logger, features);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
     const repositoryProperties = repositoryPropertiesResult.orElse({});
     const fileCoverageResult = await getFileCoverageInformationEnabled(
@@ -427,7 +429,6 @@ async function run(startedAt: Date) {
     }
 
     await checkInstallPython311(config.languages, codeql);
-    await computeAndPersistDiffRanges(codeql, features, logger);
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
@@ -823,42 +824,6 @@ async function loadRepositoryProperties(
   }
 }
 
-/**
- * Compute and persist diff ranges when diff-informed analysis is enabled
- * (feature flag + PR context). This writes the standard pr-diff-range.json
- * file for later reuse in the analyze step. Failures are logged but non-fatal.
- */
-async function computeAndPersistDiffRanges(
-  codeql: CodeQL,
-  features: FeatureEnablement,
-  logger: Logger,
-): Promise<void> {
-  await withGroupAsync("Computing PR diff ranges", async () => {
-    try {
-      const branches = await getDiffInformedAnalysisBranches(
-        codeql,
-        features,
-        logger,
-      );
-      if (!branches) {
-        return;
-      }
-      const ranges = await getPullRequestEditedDiffRanges(branches, logger);
-      if (ranges === undefined) {
-        return;
-      }
-      writeDiffRangesJsonFile(logger, ranges);
-      const distinctFiles = new Set(ranges.map((r) => r.path)).size;
-      logger.info(
-        `Persisted ${ranges.length} diff range(s) across ${distinctFiles} file(s).`,
-      );
-    } catch (e) {
-      logger.warning(
-        `Failed to compute and persist PR diff ranges: ${getErrorMessage(e)}`,
-      );
-    }
-  });
-}
 async function recordZstdAvailability(
   config: configUtils.Config,
   zstdAvailability: ZstdAvailability,
@@ -873,7 +838,7 @@ async function recordZstdAvailability(
   );
 }
 
-async function runWrapper() {
+export async function runWrapper() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   try {
@@ -889,5 +854,3 @@ async function runWrapper() {
   }
   await checkForTimeout();
 }
-
-void runWrapper();

@@ -67,7 +67,7 @@ const SHARED_ENTRYPOINT = "entry-points";
 
 /**
  * This plugin finds all source files that contain Action entry points.
- * It then generates the virtual `entry-points` module which imports all identifies files,
+ * It then generates the virtual `entry-points` module which imports all identified files,
  * and re-exports their `runWrapper` functions with suitable aliases.
  * A tiny stub file is emitted for each Action entrypoint. Each stub imports the shared bundle
  * and calls the respective entry point.

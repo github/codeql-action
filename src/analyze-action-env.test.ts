@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as analyze from "./analyze";
+import { runWrapper } from "./analyze-action";
 import * as api from "./api-client";
 import * as configUtils from "./config-utils";
 import * as gitUtils from "./git-utils";
@@ -62,14 +63,8 @@ test("analyze action with RAM & threads from environment variables", async (t) =
 
     const runFinalizeStub = sinon.stub(analyze, "runFinalize");
     const runQueriesStub = sinon.stub(analyze, "runQueries");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const analyzeAction = require("./analyze-action");
 
-    // When analyze-action.ts loads, it runs an async function from the top
-    // level but does not wait for it to finish. To ensure that calls to
-    // runFinalize and runQueries are correctly captured by spies, we explicitly
-    // wait for the action promise to complete before starting verification.
-    await analyzeAction.runPromise;
+    await runWrapper();
 
     t.assert(
       runFinalizeStub.calledOnceWith(

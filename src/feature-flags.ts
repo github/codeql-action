@@ -70,6 +70,8 @@ export interface CodeQLDefaultVersionInfo {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
+  /** Controls whether we allow multiple values for the `analysis-kinds` input. */
+  AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
   AllowToolcacheInput = "allow_toolcache_input",
   CleanupTrapCaches = "cleanup_trap_caches",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
@@ -163,6 +165,11 @@ export type FeatureConfig = {
 };
 
 export const featureConfig = {
+  [Feature.AllowMultipleAnalysisKinds]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
+    minimumVersion: undefined,
+  },
   [Feature.AllowToolcacheInput]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",

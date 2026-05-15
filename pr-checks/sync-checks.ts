@@ -15,8 +15,8 @@ import {
 
 /** Represents the command-line options. */
 export interface Options {
-  /** The token to use to authenticate to the GitHub API. */
-  token?: string;
+  /** Whether to read the GitHub API token from standard input. */
+  tokenStdin?: boolean;
   /** The git ref to use the checks for. */
   ref?: string;
   /** Whether to actually apply the changes or not. */
@@ -30,6 +30,65 @@ const codeqlActionRepo = {
   owner: "github",
   repo: "codeql-action",
 };
+
+/** Environment variables to check for a GitHub API token. */
+const TOKEN_ENVIRONMENT_VARIABLES = ["GH_TOKEN", "GITHUB_TOKEN"];
+
+/** Represents the sources from which we can retrieve the GitHub API token. */
+interface TokenSource {
+  /** Environment variables to inspect. */
+  env: NodeJS.ProcessEnv;
+  /** Reads a token from standard input. */
+  readStdin: () => Promise<string>;
+}
+
+/** Reads the GitHub API token from standard input. */
+async function readTokenFromStdin(): Promise<string> {
+  let token = "";
+  process.stdin.setEncoding("utf8");
+  for await (const chunk of process.stdin) {
+    token += chunk;
+  }
+  return token.trim();
+}
+
+/** Gets a GitHub API token from one of the supported environment variables. */
+function getTokenFromEnvironment(env: NodeJS.ProcessEnv): string | undefined {
+  for (const variableName of TOKEN_ENVIRONMENT_VARIABLES) {
+    const token = env[variableName]?.trim();
+    if (token) {
+      return token;
+    }
+  }
+  return undefined;
+}
+
+/** Gets the token to use to authenticate to the GitHub API. */
+export async function resolveToken(
+  options: Pick<Options, "tokenStdin">,
+  tokenSource: TokenSource = {
+    env: process.env,
+    readStdin: readTokenFromStdin,
+  },
+): Promise<string> {
+  if (options.tokenStdin) {
+    const token = (await tokenSource.readStdin()).trim();
+    if (token.length === 0) {
+      throw new Error("No token received on standard input.");
+    }
+    return token;
+  }
+
+  const environmentToken = getTokenFromEnvironment(tokenSource.env);
+  if (environmentToken !== undefined) {
+    return environmentToken;
+  }
+
+  throw new Error(
+    "Missing authentication token. Set GH_TOKEN/GITHUB_TOKEN or pipe a token " +
+      "to --token-stdin.",
+  );
+}
 
 /** Represents a configuration of which checks should not be set up as required checks. */
 export interface Exclusions {
@@ -205,9 +264,10 @@ async function updateBranch(
 async function main(): Promise<void> {
   const { values: options } = parseArgs({
     options: {
-      // The token to use to authenticate to the API.
-      token: {
-        type: "string",
+      // Read the token to use to authenticate to the API from standard input.
+      "token-stdin": {
+        type: "boolean",
+        default: false,
       },
       // The git ref for which to retrieve the check runs.
       ref: {
@@ -228,16 +288,16 @@ async function main(): Promise<void> {
     strict: true,
   });
 
-  if (options.token === undefined) {
-    throw new Error("Missing --token");
-  }
+  const token = await resolveToken({
+    tokenStdin: options["token-stdin"],
+  });
 
   console.info(
     `Oldest supported major version is: ${OLDEST_SUPPORTED_MAJOR_VERSION}`,
   );
 
   // Initialise the API client.
-  const client = getApiClient(options.token);
+  const client = getApiClient(token);
 
   // Find the check runs for the specified `ref` that we will later set as the required checks
   // for the main and release branches.

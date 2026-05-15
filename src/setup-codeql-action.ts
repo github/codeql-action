@@ -144,7 +144,7 @@ async function run(startedAt: Date): Promise<void> {
     const rawLanguages = getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
-    const analysisKinds = await getAnalysisKinds(logger);
+    const analysisKinds = await getAnalysisKinds(logger, features);
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
@@ -196,7 +196,7 @@ async function run(startedAt: Date): Promise<void> {
 }
 
 /** Run the action and catch any unhandled errors. */
-async function runWrapper(): Promise<void> {
+export async function runWrapper(): Promise<void> {
   const startedAt = new Date();
   const logger = getActionsLogger();
   try {
@@ -212,5 +212,3 @@ async function runWrapper(): Promise<void> {
   }
   await checkForTimeout();
 }
-
-void runWrapper();

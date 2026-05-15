@@ -28,10 +28,21 @@ interface WorkflowInput {
 /** A partial mapping from known input names to input definitions. */
 type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 
+/** An operating system identifier. */
+type OperatingSystemIdentifier = "ubuntu" | "macos" | "windows";
+
+/**
+ * Represents an operating system matrix entry for a generated PR check workflow.
+ *
+ * Either a string containing the OS identifier or an object containing the OS identifier and an
+ * optional runner image label.
+ */
 type OperatingSystem =
-  | string
+  | OperatingSystemIdentifier
   | {
-      os: string;
+      /** OS identifier. */
+      os: OperatingSystemIdentifier;
+      /** Optional runner image label. */
       "runner-image"?: string;
     };
 

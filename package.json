@@ -12,7 +12,8 @@
     "ava": "npm run transpile && ava --verbose",
     "test": "npm run ava -- src/",
     "test-debug": "npm run test -- --timeout=20m",
-    "transpile": "tsc --build --verbose tsconfig.json"
+    "transpile": "tsc --build --verbose tsconfig.json",
+    "update-pr-checks": "./pr-checks/sync.sh"
   },
   "license": "MIT",
   "workspaces": [
@@ -64,11 +65,11 @@
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^11.1.0",
-    "globals": "^17.5.0",
+    "globals": "^17.6.0",
     "nock": "^14.0.12",
-    "sinon": "^21.1.2",
+    "sinon": "^22.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.1"
+    "typescript-eslint": "^8.59.2"
   },
   "overrides": {
     "@actions/tool-cache": {
@@ -89,7 +90,6 @@
     "eslint-plugin-jsx-a11y": {
       "semver": ">=6.3.1"
     },
-    "brace-expansion@2.0.1": "2.0.2",
     "glob": "^11.1.0",
     "undici": "^6.24.0"
   }

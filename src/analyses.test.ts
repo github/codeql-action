@@ -16,7 +16,7 @@ import {
 } from "./analyses";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { createFeatures, RecordingLogger, setupTests } from "./testing-utils";
 import { AssessmentPayload } from "./upload-lib/types";
 import { ConfigurationError } from "./util";
 
@@ -53,24 +53,56 @@ test("Parsing analysis kinds requires at least one analysis kind", async (t) => 
 test.serial(
   "getAnalysisKinds - returns expected analysis kinds for `analysis-kinds` input",
   async (t) => {
+    process.env[EnvVar.TEST_MODE] = "true";
+    const features = createFeatures([]);
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub
       .withArgs("analysis-kinds")
       .returns("code-scanning,code-quality");
-    const result = await getAnalysisKinds(getRunnerLogger(true), true);
+    const result = await getAnalysisKinds(
+      getRunnerLogger(true),
+      features,
+      true,
+    );
     t.assert(result.includes(AnalysisKind.CodeScanning));
     t.assert(result.includes(AnalysisKind.CodeQuality));
   },
 );
 
 test.serial(
+  "getAnalysisKinds - only use `code-scanning` for multiple analysis kinds outside of test mode",
+  async (t) => {
+    process.env[EnvVar.TEST_MODE] = "false";
+    const features = createFeatures([]);
+    const logger = new RecordingLogger();
+    const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
+    requiredInputStub
+      .withArgs("analysis-kinds")
+      .returns("code-scanning,code-quality");
+    const result = await getAnalysisKinds(logger, features, true);
+    t.deepEqual(result, [AnalysisKind.CodeScanning]);
+    t.assert(
+      logger.hasMessage(
+        "Continuing with only `analysis-kinds: code-scanning`.",
+      ),
+    );
+  },
+);
+
+test.serial(
   "getAnalysisKinds - includes `code-quality` when deprecated `quality-queries` input is used",
   async (t) => {
+    process.env[EnvVar.TEST_MODE] = "true";
+    const features = createFeatures([]);
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("analysis-kinds").returns("code-scanning");
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("quality-queries").returns("code-quality");
-    const result = await getAnalysisKinds(getRunnerLogger(true), true);
+    const result = await getAnalysisKinds(
+      getRunnerLogger(true),
+      features,
+      true,
+    );
     t.assert(result.includes(AnalysisKind.CodeScanning));
     t.assert(result.includes(AnalysisKind.CodeQuality));
   },
@@ -79,9 +111,12 @@ test.serial(
 test.serial(
   "getAnalysisKinds - throws if `analysis-kinds` input is invalid",
   async (t) => {
+    const features = createFeatures([]);
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("analysis-kinds").returns("no-such-thing");
-    await t.throwsAsync(getAnalysisKinds(getRunnerLogger(true), true));
+    await t.throwsAsync(
+      getAnalysisKinds(getRunnerLogger(true), features, true),
+    );
   },
 );
 
@@ -98,11 +133,17 @@ for (let i = 0; i < analysisKinds.length; i++) {
       test.serial(
         `getAnalysisKinds - allows ${analysisKind} with ${otherAnalysis}`,
         async (t) => {
+          process.env[EnvVar.TEST_MODE] = "true";
+          const features = createFeatures([]);
           const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
           requiredInputStub
             .withArgs("analysis-kinds")
             .returns([analysisKind, otherAnalysis].join(","));
-          const result = await getAnalysisKinds(getRunnerLogger(true), true);
+          const result = await getAnalysisKinds(
+            getRunnerLogger(true),
+            features,
+            true,
+          );
           t.is(result.length, 2);
         },
       );
@@ -110,14 +151,18 @@ for (let i = 0; i < analysisKinds.length; i++) {
       test.serial(
         `getAnalysisKinds - throws if ${analysisKind} is enabled with ${otherAnalysis}`,
         async (t) => {
+          const features = createFeatures([]);
           const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
           requiredInputStub
             .withArgs("analysis-kinds")
             .returns([analysisKind, otherAnalysis].join(","));
-          await t.throwsAsync(getAnalysisKinds(getRunnerLogger(true), true), {
-            instanceOf: ConfigurationError,
-            message: `${analysisKind} and ${otherAnalysis} cannot be enabled at the same time`,
-          });
+          await t.throwsAsync(
+            getAnalysisKinds(getRunnerLogger(true), features, true),
+            {
+              instanceOf: ConfigurationError,
+              message: `${analysisKind} and ${otherAnalysis} cannot be enabled at the same time`,
+            },
+          );
         },
       );
     }

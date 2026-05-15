@@ -142,7 +142,7 @@ async function run(startedAt: Date) {
   await sendCompletedStatusReport(config, logger, startedAt, languages ?? []);
 }
 
-async function runWrapper() {
+export async function runWrapper() {
   const startedAt = new Date();
   const logger = getActionsLogger();
   try {
@@ -157,5 +157,3 @@ async function runWrapper() {
     );
   }
 }
-
-void runWrapper();

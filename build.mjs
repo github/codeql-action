@@ -127,7 +127,7 @@ const entryPointsPlugin = {
       const imports = actionsSorted
         .map(
           (action) =>
-            `import * as ${action.pascalCaseName} from "./src/${basename(action.path)}"`,
+            `import * as ${action.pascalCaseName} from "./src/${basename(action.path)}";`,
         )
         .join("\n");
       const wrappers = actionsSorted

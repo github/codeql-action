@@ -54,6 +54,32 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
   group: packaging-config-js-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
+  should-run-packaging-config-js:
+    name: Decide whether to run this check
+    timeout-minutes: 10
+    runs-on: ubuntu-slim
+    if: github.triggering_actor != 'dependabot[bot]'
+    outputs:
+      run-check: ${{ steps.changed-files-check.outputs.run-check || steps.event-type-check.outputs.run-check }}
+    steps:
+      - name: Run check if this is not a PR
+        id: event-type-check
+        if: github.event_name != 'pull_request'
+        run: echo "run-check=true" >> "$GITHUB_OUTPUT"
+      - name: Check out repository
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v6
+      - name: Determine changed files
+        id: changed-files
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/changed-files
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          exclude: '["README.md"]'
+      - name: Run check because of changed files
+        id: changed-files-check
+        if: github.event_name != 'pull_request' && steps.changed-files.outputs.files != '[]'
+        run: echo "run-check=true" >> "$GITHUB_OUTPUT"
   packaging-config-js:
     strategy:
       fail-fast: false
@@ -66,7 +92,9 @@ jobs:
           - os: ubuntu-latest
             version: nightly-latest
     name: 'Packaging: Config file'
-    if: github.triggering_actor != 'dependabot[bot]'
+    needs:
+      - should-run-packaging-config-js
+    if: needs.should-run-packaging-config-js.outputs.run-check == 'true'
     permissions:
       contents: read
       security-events: read
@@ -132,3 +160,23 @@ jobs:
           fi
     env:
       CODEQL_ACTION_TEST_MODE: true
+  skip-packaging-config-js:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Packaging: Config file'
+    needs:
+      - should-run-packaging-config-js
+    if: needs.should-run-packaging-config-js.outputs.run-check != 'true'
+    timeout-minutes: 5
+    runs-on: ubuntu-slim
+    steps:
+      - name: Success
+        run: exit 0

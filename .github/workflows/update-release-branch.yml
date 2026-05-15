@@ -64,11 +64,12 @@ jobs:
 
     - name: Update current release branch
       if: github.event_name == 'workflow_dispatch'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         echo SOURCE_BRANCH=${REF_NAME}
         echo TARGET_BRANCH=releases/${MAJOR_VERSION}
         python .github/update-release-branch.py \
-          --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
           --source-branch '${{ env.REF_NAME }}' \
           --target-branch 'releases/${{ env.MAJOR_VERSION }}' \
@@ -107,11 +108,12 @@ jobs:
     - uses: ./.github/actions/release-initialise
 
     - name: Update older release branch
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         echo SOURCE_BRANCH=${SOURCE_BRANCH}
         echo TARGET_BRANCH=${TARGET_BRANCH}
         python .github/update-release-branch.py \
-          --github-token ${{ secrets.GITHUB_TOKEN }} \
           --repository-nwo ${{ github.repository }} \
           --source-branch ${SOURCE_BRANCH} \
           --target-branch ${TARGET_BRANCH} \

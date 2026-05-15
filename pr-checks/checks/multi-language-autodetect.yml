@@ -2,7 +2,8 @@ name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems:
   - ubuntu
-  - macos
+  - os: macos
+    runner-image: macos-latest-xlarge
 env:
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true

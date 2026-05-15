@@ -66,7 +66,7 @@ const onEndPlugin = {
 const SHARED_ENTRYPOINT = "entry-points";
 
 /**
- * This plugin finds all source files that contain action entry points.
+ * This plugin finds all source files that contain Action entry points.
  * It then generates the virtual `entry-points` module which imports all identifies files,
  * and re-exports their `runWrapper` functions with suitable aliases.
  * A tiny stub file is emitted for each Action entrypoint. Each stub imports the shared bundle
@@ -83,7 +83,7 @@ const entryPointsPlugin = {
     const toPascal = (s) =>
       s.replace(/(^|-)([a-z0-9])/gi, (_, __, c) => c.toUpperCase());
 
-    // Find the source files containing action entry points.
+    // Find the source files containing Action entry points.
     build.onStart(() => {
       const actionFiles = globSync("src/*-action{,-post}.ts");
       for (const actionFile of actionFiles) {
@@ -112,7 +112,7 @@ const entryPointsPlugin = {
       return { path: SHARED_ENTRYPOINT, namespace };
     });
 
-    // Generate the virtual `entry-points` file based on the actions we discovered.
+    // Generate the virtual `entry-points` file based on the Actions we discovered.
     // Restrict using the namespace. The path filter does not need to discriminate any further.
     build.onLoad({ filter: /.*/, namespace }, async () => {
       const wrapperTemplatePath = "entry-wrapper.js.tpl";
@@ -143,7 +143,7 @@ const entryPointsPlugin = {
       };
     });
 
-    // Emit entry point stubs for each action using the entry template.
+    // Emit entry point stubs for each Action using the entry template.
     build.onEnd(async (result) => {
       // Read the entry point template.
       const templatePath = "action-entry.js.tpl";
@@ -152,7 +152,7 @@ const entryPointsPlugin = {
       const makeHeader = (sourceFile) =>
         `// Automatically generated from '${templatePath}' for 'src/${basename(sourceFile)}'.\n\n`;
 
-      // Write entry point stubs for each action.
+      // Write entry point stubs for each Action.
       for (const action of actions) {
         await writeFile(
           join(

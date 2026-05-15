@@ -15,5 +15,10 @@ inputs:
       $GITHUB_WORKSPACE as its working directory.
     required: false
 runs:
+<<<<<<< HEAD
   using: node20
   main: '../lib/autobuild-action.js'
+=======
+  using: node24
+  main: '../lib/autobuild-entry.js'
+>>>>>>> origin/releases/v4

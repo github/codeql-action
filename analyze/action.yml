@@ -94,6 +94,12 @@ outputs:
   sarif-id:
     description: The ID of the uploaded SARIF file.
 runs:
+<<<<<<< HEAD
   using: node20
   main: "../lib/analyze-action.js"
   post: "../lib/analyze-action-post.js"
+=======
+  using: node24
+  main: "../lib/analyze-entry.js"
+  post: "../lib/analyze-post-entry.js"
+>>>>>>> origin/releases/v4

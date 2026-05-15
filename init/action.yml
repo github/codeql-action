@@ -170,6 +170,12 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary used for analysis
 runs:
+<<<<<<< HEAD
   using: node20
   main: '../lib/init-action.js'
   post: '../lib/init-action-post.js'
+=======
+  using: node24
+  main: '../lib/init-entry.js'
+  post: '../lib/init-post-entry.js'
+>>>>>>> origin/releases/v4

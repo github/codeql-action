@@ -54,10 +54,5 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary that was installed.
 runs:
-<<<<<<< HEAD
   using: node20
-  main: '../lib/setup-codeql-action.js'
-=======
-  using: node24
   main: '../lib/setup-codeql-entry.js'
->>>>>>> origin/releases/v4

@@ -21,10 +21,5 @@ outputs:
   environment:
     description: The inferred build environment configuration.
 runs:
-<<<<<<< HEAD
   using: node20
-  main: '../lib/resolve-environment-action.js'
-=======
-  using: node24
   main: '../lib/resolve-environment-entry.js'
->>>>>>> origin/releases/v4

@@ -21,6 +21,7 @@ import { GitVersionInfo } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
+import * as overlayDiagnostics from "./overlay/diagnostics";
 import { OverlayDisabledReason } from "./overlay/diagnostics";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
@@ -1207,7 +1208,7 @@ checkOverlayEnablementMacro.serial(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1444,7 +1445,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1462,7 +1463,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1480,7 +1481,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1498,7 +1499,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as UserConfig,
+    },
     isDefaultBranch: true,
   },
   {
@@ -1562,7 +1563,7 @@ checkOverlayEnablementMacro.serial(
     features: [Feature.OverlayAnalysis, Feature.OverlayAnalysisJavascript],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1705,7 +1706,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       "disable-default-queries": true,
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1723,7 +1724,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       packs: ["some-custom-pack@1.0.0"],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1741,7 +1742,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       queries: [{ uses: "some-query.ql" }],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -1759,7 +1760,7 @@ checkOverlayEnablementMacro.serial(
     ],
     codeScanningConfig: {
       "query-filters": [{ include: { "security-severity": "high" } }],
-    } as UserConfig,
+    },
     isPullRequest: true,
   },
   {
@@ -2143,3 +2144,87 @@ test.serial(
     });
   },
 );
+
+test("applyIncrementalAnalysisSettings: no-op when mode is not Overlay and diff ranges are unavailable", async (t) => {
+  const config = createTestConfig({});
+  config.overlayDatabaseMode = OverlayDatabaseMode.None;
+  const codeql = createStubCodeQL({});
+  const logger = getRunnerLogger(true);
+
+  await configUtils.applyIncrementalAnalysisSettings(
+    config,
+    false,
+    codeql,
+    logger,
+  );
+
+  t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+  t.deepEqual(config.extraQueryExclusions, []);
+});
+
+test("applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions when diff ranges are available", async (t) => {
+  const config = createTestConfig({
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+  });
+  const codeql = createStubCodeQL({});
+  const logger = getRunnerLogger(true);
+
+  await configUtils.applyIncrementalAnalysisSettings(
+    config,
+    true,
+    codeql,
+    logger,
+  );
+
+  t.is(config.overlayDatabaseMode, OverlayDatabaseMode.Overlay);
+  t.deepEqual(config.extraQueryExclusions, [
+    { exclude: { tags: "exclude-from-incremental" } },
+  ]);
+});
+
+test("applyIncrementalAnalysisSettings: disables overlay analysis when diff ranges are unavailable", async (t) => {
+  const config = createTestConfig({
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+  });
+  config.useOverlayDatabaseCaching = true;
+  const codeql = createStubCodeQL({});
+  const logger = getRunnerLogger(true);
+  const addDiagnosticsStub = sinon
+    .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
+    .resolves();
+
+  await configUtils.applyIncrementalAnalysisSettings(
+    config,
+    false,
+    codeql,
+    logger,
+  );
+
+  t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+  t.is(config.useOverlayDatabaseCaching, false);
+  t.deepEqual(config.extraQueryExclusions, []);
+  t.true(addDiagnosticsStub.calledOnce);
+  t.is(
+    addDiagnosticsStub.firstCall.args[2],
+    OverlayDisabledReason.DiffInformedAnalysisNotEnabled,
+  );
+});
+
+test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only runs", async (t) => {
+  const config = createTestConfig({});
+  config.overlayDatabaseMode = OverlayDatabaseMode.None;
+  const codeql = createStubCodeQL({});
+  const logger = getRunnerLogger(true);
+
+  await configUtils.applyIncrementalAnalysisSettings(
+    config,
+    true,
+    codeql,
+    logger,
+  );
+
+  t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+  t.deepEqual(config.extraQueryExclusions, [
+    { exclude: { tags: "exclude-from-incremental" } },
+  ]);
+});

@@ -7,8 +7,10 @@ import {
   getRequiredInput,
   getTemporaryDirectory,
 } from "./actions-util";
+import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
+import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { initCodeQL } from "./init";
@@ -136,16 +138,22 @@ async function run(startedAt: Date): Promise<void> {
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    const rawLanguages = getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
+    const analysisKinds = await getAnalysisKinds(logger, features);
     const initCodeQLResult = await initCodeQL(
       getOptionalInput("tools"),
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      rawLanguages,
+      analysisKinds.length === 1 &&
+        analysisKinds[0] === AnalysisKind.CodeScanning,
       features,
       logger,
     );
@@ -188,7 +196,7 @@ async function run(startedAt: Date): Promise<void> {
 }
 
 /** Run the action and catch any unhandled errors. */
-async function runWrapper(): Promise<void> {
+export async function runWrapper(): Promise<void> {
   const startedAt = new Date();
   const logger = getActionsLogger();
   try {
@@ -204,5 +212,3 @@ async function runWrapper(): Promise<void> {
   }
   await checkForTimeout();
 }
-
-void runWrapper();

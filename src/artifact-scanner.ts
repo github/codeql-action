@@ -156,6 +156,10 @@ async function scanArchiveFile(
     );
   }
 
+  if (process.platform === "win32") {
+    throw new Error("Scanning archives is not supported on Windows.");
+  }
+
   const result: ScanResult = {
     scannedFiles: 0,
     findings: [],

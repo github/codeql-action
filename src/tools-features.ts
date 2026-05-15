@@ -6,8 +6,6 @@ export enum ToolsFeature {
   BuiltinExtractorsSpecifyDefaultQueries = "builtinExtractorsSpecifyDefaultQueries",
   BundleSupportsIncludeOption = "bundleSupportsIncludeOption",
   BundleSupportsOverlay = "bundleSupportsOverlay",
-  DatabaseInterpretResultsSupportsSarifRunProperty = "databaseInterpretResultsSupportsSarifRunProperty",
-  ForceOverwrite = "forceOverwrite",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   SuppressesMissingFileBaselineWarning = "suppressesMissingFileBaselineWarning",
 }

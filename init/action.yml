@@ -171,5 +171,5 @@ outputs:
     description: The version of the CodeQL binary used for analysis
 runs:
   using: node24
-  main: '../lib/init-action.js'
-  post: '../lib/init-action-post.js'
+  main: '../lib/init-entry.js'
+  post: '../lib/init-post-entry.js'

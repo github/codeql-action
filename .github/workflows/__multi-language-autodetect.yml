@@ -61,39 +61,39 @@ jobs:
         include:
           - os: ubuntu-latest
             version: stable-v2.17.6
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: stable-v2.17.6
           - os: ubuntu-latest
             version: stable-v2.18.4
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: stable-v2.18.4
           - os: ubuntu-latest
             version: stable-v2.19.4
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: stable-v2.19.4
           - os: ubuntu-latest
             version: stable-v2.20.7
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: stable-v2.20.7
           - os: ubuntu-latest
             version: stable-v2.21.4
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: stable-v2.21.4
           - os: ubuntu-latest
             version: stable-v2.22.4
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: stable-v2.22.4
           - os: ubuntu-latest
             version: default
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: default
           - os: ubuntu-latest
             version: linked
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: linked
           - os: ubuntu-latest
             version: nightly-latest
-          - os: macos-latest
+          - os: macos-latest-xlarge
             version: nightly-latest
     name: Multi-language repository
     if: github.triggering_actor != 'dependabot[bot]'

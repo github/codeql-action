@@ -17,13 +17,6 @@ import * as util from "./util";
 
 setupTests(test);
 
-// This test needs to be in its own file so that ava would run it in its own
-// nodejs process. The code being tested is in analyze-action.ts, which runs
-// immediately on load. So the file needs to be loaded during part of the test,
-// and that can happen only once per nodejs process. If multiple such tests are
-// in the same test file, ava would run them in the same nodejs process, and all
-// but the first test would fail.
-
 test("analyze action with RAM & threads from environment variables", async (t) => {
   // This test frequently times out on Windows with the default timeout, so we bump
   // it a bit to 20s.

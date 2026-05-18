@@ -29,6 +29,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
 
+    concurrency:
+      cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+      group: pr-checks-unit-tests-${{ github.ref }}-${{ github.event_name }}-${{ matrix.os }}-node${{ matrix['node-version'] }}
+
     steps:
       - name: Prepare git (Windows)
         if: runner.os == 'Windows'
@@ -70,13 +74,17 @@ jobs:
   # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
   # job.
   pr-checks:
-    name: PR checks
+    name: PR Checks
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
       pull-requests: write
     runs-on: ubuntu-slim
     timeout-minutes: 10
+
+    concurrency:
+      cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+      group: pr-checks-pr-checks-${{ github.ref }}-${{ github.event_name }}
 
     steps:
       - name: Checkout repository
@@ -103,6 +111,8 @@ jobs:
         run: npx tsx --test
 
       - name: Check repo size
+        # Forks and Dependabot PRs don't have permission to write comments, so skip the check in
+        # those cases.
         if: >-
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository &&

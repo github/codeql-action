@@ -6,9 +6,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import { getOctokit } from "@actions/github";
 import * as sinon from "sinon";
 
+import { type ApiClient, getApiClient } from "./api-client";
 import {
   COMMENT_MARKER,
   buildCommentBody,
@@ -198,10 +198,10 @@ describe("upsertSizeComment", async () => {
   const repo = "test-repo";
   const prNumber = 42;
 
-  let octokit: ReturnType<typeof getOctokit>;
+  let client: ApiClient;
 
   beforeEach(() => {
-    octokit = getOctokit("test-token");
+    client = getApiClient("test-token");
   });
 
   afterEach(() => {
@@ -209,20 +209,20 @@ describe("upsertSizeComment", async () => {
   });
 
   function stubExistingComments(comments: Array<{ id: number; body: string }>) {
-    // upsertSizeComment calls `octokit.paginate(octokit.rest.issues.listComments, ...)`,
-    // so stubbing `paginate` directly mocks the listing without depending on how
-    // paginate walks Octokit's response (link headers etc.).
-    return sinon.stub(octokit, "paginate").resolves(comments);
+    // upsertSizeComment calls `client.paginate(...)`, so stubbing `paginate`
+    // directly mocks the listing without depending on how paginate walks
+    // Octokit's response (link headers etc.).
+    return sinon.stub(client, "paginate").resolves(comments);
   }
 
   await it("creates a new comment when none exists and the delta is significant", async () => {
     stubExistingComments([]);
     const createStub = sinon
-      .stub(octokit.rest.issues, "createComment")
+      .stub(client.rest.issues, "createComment")
       .resolves({ data: { id: 999 } } as never);
 
     const result = await upsertSizeComment({
-      octokit,
+      client,
       owner,
       repo,
       prNumber,
@@ -246,11 +246,11 @@ describe("upsertSizeComment", async () => {
     // negative deltas.
     stubExistingComments([]);
     const createStub = sinon
-      .stub(octokit.rest.issues, "createComment")
+      .stub(client.rest.issues, "createComment")
       .resolves({ data: { id: 999 } } as never);
 
     const result = await upsertSizeComment({
-      octokit,
+      client,
       owner,
       repo,
       prNumber,
@@ -265,11 +265,11 @@ describe("upsertSizeComment", async () => {
 
   await it("skips when no existing comment and delta is below threshold", async () => {
     stubExistingComments([]);
-    const createStub = sinon.stub(octokit.rest.issues, "createComment");
-    const updateStub = sinon.stub(octokit.rest.issues, "updateComment");
+    const createStub = sinon.stub(client.rest.issues, "createComment");
+    const updateStub = sinon.stub(client.rest.issues, "updateComment");
 
     const result = await upsertSizeComment({
-      octokit,
+      client,
       owner,
       repo,
       prNumber,
@@ -286,11 +286,11 @@ describe("upsertSizeComment", async () => {
   await it("updates the existing comment when the delta is significant", async () => {
     stubExistingComments([{ id: 7, body: `${COMMENT_MARKER}\nold body` }]);
     const updateStub = sinon
-      .stub(octokit.rest.issues, "updateComment")
+      .stub(client.rest.issues, "updateComment")
       .resolves({ data: { id: 7 } } as never);
 
     const result = await upsertSizeComment({
-      octokit,
+      client,
       owner,
       repo,
       prNumber,
@@ -311,11 +311,11 @@ describe("upsertSizeComment", async () => {
     // gets reduced below the threshold by a follow-up commit.
     stubExistingComments([{ id: 7, body: `${COMMENT_MARKER}\nold body` }]);
     const updateStub = sinon
-      .stub(octokit.rest.issues, "updateComment")
+      .stub(client.rest.issues, "updateComment")
       .resolves({ data: { id: 7 } } as never);
 
     const result = await upsertSizeComment({
-      octokit,
+      client,
       owner,
       repo,
       prNumber,

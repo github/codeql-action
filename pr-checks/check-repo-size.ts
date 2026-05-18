@@ -14,7 +14,7 @@ import { spawn } from "node:child_process";
 import * as path from "node:path";
 import { parseArgs } from "node:util";
 
-import { getOctokit } from "@actions/github";
+import { type ApiClient, getApiClient } from "./api-client";
 
 /** Hidden marker used to find the existing sticky comment on a PR. */
 export const COMMENT_MARKER = "<!-- repo-size-diff-bot -->";
@@ -30,13 +30,11 @@ export const DEFAULT_REPOSITORY = "github/codeql-action";
  */
 export const SIGNIFICANT_DELTA_FRACTION = 0.1;
 
-export type Octokit = ReturnType<typeof getOctokit>;
-
 /**
  * Stream `git archive --format=tar.gz <ref>` and count the compressed bytes.
  *
- * `git archive` only includes tracked files, so we will ignore directories like `node_modules` and
- * `build` that aren't downloaded when starting up a CodeQL job.
+ * `git archive` only includes tracked files, so untracked directories like `node_modules` and
+ * `build` aren't counted in the size downloaded when starting up a CodeQL job.
  */
 export async function measureArchiveSize(
   ref: string,
@@ -114,8 +112,8 @@ export function buildCommentBody(opts: CommentBodyOptions): string {
     `| **Delta** | **${formatBytes(delta, true)} (${signedDelta} bytes, ${formatPercent(delta / baseSize)})** |`,
     "",
     "Sizes are measured by streaming `git archive --format=tar.gz <ref>`, " +
-      "which includes all tracked files and excludes `node_modules` and " +
-      "other untracked or git-ignored files. The compressed checkout is " +
+      "which includes tracked files and excludes untracked files such as " +
+      "`node_modules`. The compressed checkout is " +
       "downloaded by every consumer of this Action, so changes here directly " +
       `affect Action download time.${runUrlLine}`,
   ].join("\n");
@@ -134,7 +132,7 @@ export function isDeltaSignificant(
 }
 
 export interface UpsertOptions {
-  octokit: Octokit;
+  client: ApiClient;
   owner: string;
   repo: string;
   prNumber: number;
@@ -156,20 +154,23 @@ export type UpsertResult =
 export async function upsertSizeComment(
   opts: UpsertOptions,
 ): Promise<UpsertResult> {
-  const { octokit, owner, repo, prNumber, body, delta, baseSize } = opts;
+  const { client, owner, repo, prNumber, body, delta, baseSize } = opts;
 
-  const comments = await octokit.paginate(octokit.rest.issues.listComments, {
-    owner,
-    repo,
-    issue_number: prNumber,
-    per_page: 100,
-  });
+  const comments = await client.paginate(
+    "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+    {
+      owner,
+      repo,
+      issue_number: prNumber,
+      per_page: 100,
+    },
+  );
   const existing = comments.find((c) =>
     (c.body ?? "").includes(COMMENT_MARKER),
   );
 
   if (existing) {
-    await octokit.rest.issues.updateComment({
+    await client.rest.issues.updateComment({
       owner,
       repo,
       comment_id: existing.id,
@@ -179,7 +180,7 @@ export async function upsertSizeComment(
   }
 
   if (isDeltaSignificant(delta, baseSize, SIGNIFICANT_DELTA_FRACTION)) {
-    const { data } = await octokit.rest.issues.createComment({
+    const { data } = await client.rest.issues.createComment({
       owner,
       repo,
       issue_number: prNumber,
@@ -198,10 +199,12 @@ export async function upsertSizeComment(
 }
 
 interface MainArgs {
-  /** Base ref of the PR. Defaults to `main`, and is prefixed with `origin/` when passed to git. */
+  /** Base ref of the PR. Defaults to `main`, and is used as the label in the PR comment. */
   baseRef: string;
-  /** Numeric PR number used to find / create / update the sticky comment. */
-  prNumber: number;
+  /** Base commit to archive. Defaults to `origin/main` for local dry runs. */
+  baseCommitish: string;
+  /** Numeric PR number used to find / create / update the sticky comment. Required outside dry-run. */
+  prNumber?: number;
   /** `owner/repo` slug, defaulting to `github/codeql-action`, split before being passed to Octokit. */
   ownerRepo: string;
   /** Optional URL of the workflow run, surfaced in the comment footer. */
@@ -220,23 +223,29 @@ export function readArgs(): MainArgs {
     strict: true,
   });
 
+  const dryRun = values["dry-run"] ?? false;
   const baseRef = process.env.BASE_REF ?? DEFAULT_BASE_REF;
+  const baseCommitish = process.env.BASE_SHA ?? `origin/${baseRef}`;
   const prNumberStr = process.env.PR_NUMBER;
   const repo = process.env.GITHUB_REPOSITORY ?? DEFAULT_REPOSITORY;
 
-  if (!prNumberStr) throw new Error("Missing PR_NUMBER env var");
-
-  const prNumber = Number.parseInt(prNumberStr, 10);
-  if (!Number.isFinite(prNumber)) {
-    throw new Error(`Invalid PR_NUMBER value: ${prNumberStr}`);
+  let prNumber: number | undefined;
+  if (prNumberStr) {
+    prNumber = Number.parseInt(prNumberStr, 10);
+    if (!Number.isFinite(prNumber)) {
+      throw new Error(`Invalid PR_NUMBER value: ${prNumberStr}`);
+    }
+  } else if (!dryRun) {
+    throw new Error("Missing PR_NUMBER env var");
   }
 
   return {
     baseRef,
+    baseCommitish,
     prNumber,
     ownerRepo: repo,
     runUrl: process.env.RUN_URL,
-    dryRun: values["dry-run"] ?? false,
+    dryRun,
     token: process.env.GITHUB_TOKEN,
   };
 }
@@ -248,8 +257,8 @@ async function main(): Promise<number> {
   // root is always the parent directory.
   const repoRoot = path.resolve(__dirname, "..");
 
-  console.log(`Measuring base archive size for origin/${args.baseRef}...`);
-  const baseSize = await measureArchiveSize(`origin/${args.baseRef}`, repoRoot);
+  console.log(`Measuring base archive size for ${args.baseCommitish}...`);
+  const baseSize = await measureArchiveSize(args.baseCommitish, repoRoot);
   console.log(`  ${baseSize} bytes`);
 
   console.log("Measuring PR archive size for HEAD...");
@@ -285,6 +294,9 @@ async function main(): Promise<number> {
       "GITHUB_TOKEN env var is required when not running with --dry-run",
     );
   }
+  if (args.prNumber === undefined) {
+    throw new Error("Missing PR_NUMBER env var");
+  }
 
   const [owner, repo] = args.ownerRepo.split("/");
   if (!owner || !repo) {
@@ -292,7 +304,7 @@ async function main(): Promise<number> {
   }
 
   const result = await upsertSizeComment({
-    octokit: getOctokit(args.token),
+    client: getApiClient(args.token),
     owner,
     repo,
     prNumber: args.prNumber,

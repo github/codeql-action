@@ -209,7 +209,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           significant=$(jq -r '.significant' repo-size-comment/metadata.json)
-          body=$(cat repo-size-comment/body.md)
           comment_id=$(
             gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
               --paginate \
@@ -219,10 +218,10 @@ jobs:
 
           if [[ -n "$comment_id" ]]; then
             echo "Updating existing comment $comment_id."
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" --field body="$body"
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" --field body=@repo-size-comment/body.md
           elif [[ "$significant" == "true" ]]; then
             echo "Creating new repo size comment."
-            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body=@repo-size-comment/body.md
           else
             echo "Skipping repo size comment because the delta is below the threshold and no sticky comment exists."
           fi

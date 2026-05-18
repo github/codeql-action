@@ -177,7 +177,7 @@ const context = await esbuild.context({
   format: "cjs",
   outdir: OUT_DIR,
   platform: "node",
-  external: ["./entry-points"],
+  external: ["./entry-points", "./upload-lib"],
   plugins: [cleanPlugin, copyDefaultsPlugin, entryPointsPlugin, onEndPlugin],
   target: ["node20"],
   define: {

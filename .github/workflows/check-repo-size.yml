@@ -1,0 +1,53 @@
+name: Check repo size
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-repo-size:
+    name: Check repo size
+    runs-on: ubuntu-slim
+    # PRs from forks (and Dependabot, which behaves like a fork) get a
+    # read-only GITHUB_TOKEN that can't post comments, so the job would only
+    # ever fail. Skip them.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.triggering_actor != 'dependabot[bot]'
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Need full history so we have both the PR merge commit (HEAD) and
+          # the base ref locally for `git archive` to work against either.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install pr-checks dependencies
+        working-directory: pr-checks
+        run: npm ci
+
+      - name: Check repo size
+        working-directory: pr-checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: npx tsx check-repo-size.ts

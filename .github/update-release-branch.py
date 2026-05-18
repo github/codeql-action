@@ -127,8 +127,8 @@ def open_pr(
     body.append(' - [ ] Add a commit to this branch to resolve the merge conflicts ' +
       'in the following files:')
     body.extend([f'    - `{file}`' for file in conflicted_files])
-    body.append('')
-    body.append('    Rebuild the Action (`npm run build`) and add any changes to the built output in `lib` to this commit.')
+    body.append(' - [ ] Rebuild the Action locally (`npm run build`) and push any changes to the ' +
+      'built output in `lib` as a separate commit named exactly `Rebuild`.')
     body.append(' - [ ] Ensure another maintainer has reviewed the additional commits you added to this ' +
       'branch to resolve the merge conflicts.')
   body.append(' - [ ] Ensure the CHANGELOG displays the correct version and date.')

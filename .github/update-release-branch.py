@@ -16,11 +16,22 @@ No user facing changes.
 """
 
 # NB: This exact commit message is used to find commits for reverting during backports.
-# Changing it requires a transition period where both old and new versions are supported.
+# Changing it requires a transition period where both old and new versions are supported.
 BACKPORT_COMMIT_MESSAGE = 'Update version and changelog for v'
 
 # Name of the remote
 ORIGIN = 'origin'
+
+# Environment variables to check for a GitHub API token.
+TOKEN_ENVIRONMENT_VARIABLES = ('GH_TOKEN', 'GITHUB_TOKEN')
+
+# Gets a GitHub API token from one of the supported environment variables.
+def get_github_token():
+  for variable_name in TOKEN_ENVIRONMENT_VARIABLES:
+    token = os.environ.get(variable_name, '').strip()
+    if token:
+      return token
+  raise Exception('Missing GitHub token. Set GITHUB_TOKEN or GH_TOKEN.')
 
 # Runs git with the given args and returns the stdout.
 # Raises an error if git does not exit successfully (unless passed
@@ -271,12 +282,6 @@ def main():
   parser = argparse.ArgumentParser('update-release-branch.py')
 
   parser.add_argument(
-    '--github-token',
-    type=str,
-    required=True,
-    help='GitHub token, typically from GitHub Actions.'
-  )
-  parser.add_argument(
     '--repository-nwo',
     type=str,
     required=True,
@@ -313,7 +318,7 @@ def main():
   target_branch = args.target_branch
   is_primary_release = args.is_primary_release
 
-  repo = Github(args.github_token).get_repo(args.repository_nwo)
+  repo = Github(get_github_token()).get_repo(args.repository_nwo)
 
   # the target branch will be of the form releases/vN, where N is the major version number
   target_branch_major_version = target_branch.strip('releases/v')

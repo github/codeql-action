@@ -1,3 +1,9 @@
+#!/usr/bin/env npx tsx
+
+/*
+Tests for check-repo-size.ts.
+*/
+
 import * as assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -6,17 +12,15 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import * as sinon from "sinon";
-
-import { type ApiClient, getApiClient } from "./api-client";
 import {
   COMMENT_MARKER,
+  DEFAULT_BASE_REF,
   buildCommentBody,
   formatBytes,
   formatPercent,
   isDeltaSignificant,
   measureArchiveSize,
-  upsertSizeComment,
+  readArgs,
 } from "./check-repo-size";
 
 describe("formatBytes", async () => {
@@ -113,6 +117,66 @@ describe("buildCommentBody", async () => {
   });
 });
 
+describe("readArgs", async () => {
+  await it("defaults the base ref for local runs", () => {
+    const originalEnv = process.env;
+    const originalArgv = process.argv;
+
+    try {
+      process.env = {};
+      process.argv = ["node", "check-repo-size.ts", "--output-dir", "/tmp/out"];
+
+      const args = readArgs();
+
+      assert.equal(args.baseRef, DEFAULT_BASE_REF);
+      assert.equal(args.baseCommitish, `origin/${DEFAULT_BASE_REF}`);
+      assert.equal(args.outputDir, "/tmp/out");
+      assert.equal(args.runUrl, undefined);
+    } finally {
+      process.env = originalEnv;
+      process.argv = originalArgv;
+    }
+  });
+
+  await it("uses the base SHA when provided by the workflow", () => {
+    const originalEnv = process.env;
+    const originalArgv = process.argv;
+
+    try {
+      process.env = {
+        BASE_REF: "main",
+        BASE_SHA: "abc123",
+        RUN_URL: "https://example.test/run",
+      };
+      process.argv = ["node", "check-repo-size.ts", "--output-dir", "/tmp/out"];
+
+      const args = readArgs();
+
+      assert.equal(args.baseRef, "main");
+      assert.equal(args.baseCommitish, "abc123");
+      assert.equal(args.outputDir, "/tmp/out");
+      assert.equal(args.runUrl, "https://example.test/run");
+    } finally {
+      process.env = originalEnv;
+      process.argv = originalArgv;
+    }
+  });
+
+  await it("throws when --output-dir is missing", () => {
+    const originalEnv = process.env;
+    const originalArgv = process.argv;
+
+    try {
+      process.env = {};
+      process.argv = ["node", "check-repo-size.ts"];
+      assert.throws(() => readArgs(), /--output-dir is required/);
+    } finally {
+      process.env = originalEnv;
+      process.argv = originalArgv;
+    }
+  });
+});
+
 let repoDir: string;
 
 beforeEach(() => {
@@ -190,142 +254,6 @@ describe("measureArchiveSize", async () => {
       () => measureArchiveSize("does-not-exist", repoDir),
       /git archive does-not-exist exited with code/,
     );
-  });
-});
-
-describe("upsertSizeComment", async () => {
-  const owner = "test-owner";
-  const repo = "test-repo";
-  const prNumber = 42;
-
-  let client: ApiClient;
-
-  beforeEach(() => {
-    client = getApiClient("test-token");
-  });
-
-  afterEach(() => {
-    sinon.restore();
-  });
-
-  function stubExistingComments(comments: Array<{ id: number; body: string }>) {
-    // upsertSizeComment calls `client.paginate(...)`, so stubbing `paginate`
-    // directly mocks the listing without depending on how paginate walks
-    // Octokit's response (link headers etc.).
-    return sinon.stub(client, "paginate").resolves(comments);
-  }
-
-  await it("creates a new comment when none exists and the delta is significant", async () => {
-    stubExistingComments([]);
-    const createStub = sinon
-      .stub(client.rest.issues, "createComment")
-      .resolves({ data: { id: 999 } } as never);
-
-    const result = await upsertSizeComment({
-      client,
-      owner,
-      repo,
-      prNumber,
-      body: `${COMMENT_MARKER}\nhello`,
-      delta: 200,
-      baseSize: 1000,
-    });
-
-    assert.deepEqual(result, { action: "created", commentId: 999 });
-    sinon.assert.calledOnce(createStub);
-    const createArgs = createStub.firstCall.args[0]!;
-    assert.equal(createArgs.owner, owner);
-    assert.equal(createArgs.repo, repo);
-    assert.equal(createArgs.issue_number, prNumber);
-    assert.ok(createArgs.body.includes(COMMENT_MARKER));
-  });
-
-  await it("creates a new comment for a significant size decrease", async () => {
-    // Shrinkage matters too: it might indicate accidentally deleted tracked
-    // files. The full pipeline (not just isDeltaSignificant) needs to post on
-    // negative deltas.
-    stubExistingComments([]);
-    const createStub = sinon
-      .stub(client.rest.issues, "createComment")
-      .resolves({ data: { id: 999 } } as never);
-
-    const result = await upsertSizeComment({
-      client,
-      owner,
-      repo,
-      prNumber,
-      body: `${COMMENT_MARKER}\nhello`,
-      delta: -200,
-      baseSize: 1000,
-    });
-
-    assert.deepEqual(result, { action: "created", commentId: 999 });
-    sinon.assert.calledOnce(createStub);
-  });
-
-  await it("skips when no existing comment and delta is below threshold", async () => {
-    stubExistingComments([]);
-    const createStub = sinon.stub(client.rest.issues, "createComment");
-    const updateStub = sinon.stub(client.rest.issues, "updateComment");
-
-    const result = await upsertSizeComment({
-      client,
-      owner,
-      repo,
-      prNumber,
-      body: `${COMMENT_MARKER}\nhello`,
-      delta: 50,
-      baseSize: 1000,
-    });
-
-    assert.equal(result.action, "skipped");
-    sinon.assert.notCalled(createStub);
-    sinon.assert.notCalled(updateStub);
-  });
-
-  await it("updates the existing comment when the delta is significant", async () => {
-    stubExistingComments([{ id: 7, body: `${COMMENT_MARKER}\nold body` }]);
-    const updateStub = sinon
-      .stub(client.rest.issues, "updateComment")
-      .resolves({ data: { id: 7 } } as never);
-
-    const result = await upsertSizeComment({
-      client,
-      owner,
-      repo,
-      prNumber,
-      body: `${COMMENT_MARKER}\nnew body`,
-      delta: 200,
-      baseSize: 1000,
-    });
-
-    assert.deepEqual(result, { action: "updated", commentId: 7 });
-    sinon.assert.calledOnce(updateStub);
-    const updateArgs = updateStub.firstCall.args[0]!;
-    assert.equal(updateArgs.comment_id, 7);
-    assert.ok(updateArgs.body.includes("new body"));
-  });
-
-  await it("updates an existing comment even when the delta is below threshold", async () => {
-    // This keeps the comment in sync after a PR that initially had a big diff
-    // gets reduced below the threshold by a follow-up commit.
-    stubExistingComments([{ id: 7, body: `${COMMENT_MARKER}\nold body` }]);
-    const updateStub = sinon
-      .stub(client.rest.issues, "updateComment")
-      .resolves({ data: { id: 7 } } as never);
-
-    const result = await upsertSizeComment({
-      client,
-      owner,
-      repo,
-      prNumber,
-      body: `${COMMENT_MARKER}\nnew body`,
-      delta: 1,
-      baseSize: 1000,
-    });
-
-    assert.deepEqual(result, { action: "updated", commentId: 7 });
-    sinon.assert.calledOnce(updateStub);
   });
 });
 

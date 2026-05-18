@@ -115,10 +115,6 @@ type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 // The default set of CodeQL Bundle versions to use for the PR checks.
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-  "stable-v2.17.6",
-  // The last CodeQL release in the 2.18 series.
-  "stable-v2.18.4",
-  // The last CodeQL release in the 2.19 series.
   "stable-v2.19.4",
   // The last CodeQL release in the 2.20 series.
   "stable-v2.20.7",
@@ -126,6 +122,10 @@ const defaultTestVersions = [
   "stable-v2.21.4",
   // The last CodeQL release in the 2.22 series.
   "stable-v2.22.4",
+  // The last CodeQL release in the 2.23 series.
+  "stable-v2.23.9",
+  // The last CodeQL release in the 2.24 series.
+  "stable-v2.24.3",
   // The default version of CodeQL for Dotcom, as determined by feature flags.
   "default",
   // The version of CodeQL shipped with the Action in `defaults.json`. During the release process

@@ -277,7 +277,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.17.6";
+const CODEQL_MINIMUM_VERSION = "2.19.4";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -592,13 +592,6 @@ async function getCodeQLForCmd(
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
 
-      const overwriteFlag = isSupportedToolsFeature(
-        await this.getVersion(),
-        ToolsFeature.ForceOverwrite,
-      )
-        ? "--force-overwrite"
-        : "--overwrite";
-
       const overlayDatabaseMode = config.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
@@ -625,7 +618,7 @@ async function getCodeQLForCmd(
           "init",
           ...(overlayDatabaseMode === OverlayDatabaseMode.Overlay
             ? []
-            : [overwriteFlag]),
+            : ["--force-overwrite"]),
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
@@ -636,7 +629,14 @@ async function getCodeQLForCmd(
             // Some user configs specify `--no-calculate-baseline` as an additional
             // argument to `codeql database init`. Therefore ignore the baseline file
             // options here to avoid specifying the same argument twice and erroring.
-            ignoringOptions: ["--overwrite", ...baselineFilesOptions],
+            //
+            // Ignore `--overwrite` to avoid passing both `--force-overwrite` and `--overwrite` if
+            // the user has configured `--overwrite`.
+            ignoringOptions: [
+              "--force-overwrite",
+              "--overwrite",
+              ...baselineFilesOptions,
+            ],
           }),
         ],
         { stdin: externalRepositoryToken },
@@ -853,7 +853,7 @@ async function getCodeQLForCmd(
         "--sarif-group-rules-by-pack",
         "--sarif-include-query-help=always",
         "--sublanguage-file-coverage",
-        ...(await getJobRunUuidSarifOptions(this)),
+        ...(await getJobRunUuidSarifOptions()),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (sarifRunPropertyFlag !== undefined) {
@@ -1283,13 +1283,8 @@ function applyAutobuildAzurePipelinesTimeoutFix() {
   ].join(" ");
 }
 
-async function getJobRunUuidSarifOptions(codeql: CodeQL) {
+async function getJobRunUuidSarifOptions() {
   const jobRunUuid = process.env[EnvVar.JOB_RUN_UUID];
 
-  return jobRunUuid &&
-    (await codeql.supportsFeature(
-      ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
-    ))
-    ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
-    : [];
+  return jobRunUuid ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`] : [];
 }

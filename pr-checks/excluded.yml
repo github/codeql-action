@@ -12,5 +12,6 @@ is:
   - "Agent"
   - "Cleanup artifacts"
   - "Prepare"
+  - "Post repo size comment"
   - "Upload results"
   - "Label PR with size"

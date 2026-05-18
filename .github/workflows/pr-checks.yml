@@ -78,8 +78,7 @@ jobs:
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
-      pull-requests: write
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
     concurrency:
@@ -89,10 +88,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          # Need full history so we have both the PR merge commit (HEAD) and the base SHA locally
-          # for `git archive` to work against either.
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -110,33 +105,54 @@ jobs:
         working-directory: pr-checks
         run: npx tsx --test
 
-      - name: Check repo size
-        # Forks and Dependabot PRs don't have permission to write comments, so skip the check in
-        # those cases.
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
-        working-directory: pr-checks
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: npx tsx check-repo-size.ts
-
       - name: Verify all Actions use the same Node version
         id: head-version
         run: |
-          NODE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
+          NODE_VERSION=$(find . -path "*/node_modules" -prune -o -name "action.yml" -exec yq -o=json '.runs.using' {} \; | jq -rs '[.[] | select(. != null and startswith("node"))] | unique | .[]')
           echo "NODE_VERSION: ${NODE_VERSION}"
           if [[ $(echo "$NODE_VERSION" | wc -l) -gt 1 ]]; then
             echo "::error::More than one node version used in 'action.yml' files."
             exit 1
           fi
           echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Fetch base commit
+        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
+        # check in those cases.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git fetch --no-tags --depth=1 origin "$BASE_SHA"
+
+      - name: Check repo size
+        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
+        # check in those cases.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        working-directory: pr-checks
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: npx tsx check-repo-size.ts --output-dir "$RUNNER_TEMP/repo-size"
+
+      - name: Upload repo size comment
+        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
+        # check in those cases.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/upload-artifact@v7
+        with:
+          name: repo-size-comment
+          path: ${{ runner.temp }}/repo-size/
+          if-no-files-found: error
 
       - name: 'Backport: Check out base ref'
         id: checkout-base
@@ -150,10 +166,63 @@ jobs:
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
         run: |
-          BASE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
+          BASE_VERSION=$(find . -path "*/node_modules" -prune -o -name "action.yml" -exec yq -o=json '.runs.using' {} \; | jq -rs '[.[] | select(. != null and startswith("node"))] | unique | .[]')
           echo "HEAD_VERSION: ${HEAD_VERSION}"
           echo "BASE_VERSION: ${BASE_VERSION}"
           if [[ "$BASE_VERSION" != "$HEAD_VERSION" ]]; then
             echo "::error::Cannot change the Node version of an Action in a backport PR."
             exit 1
+          fi
+
+  post-repo-size-comment:
+    name: Post repo size comment
+    needs: pr-checks
+    # Keep write permissions isolated from the job that checks out and tests PR code. This job only
+    # posts the candidate comment body produced by the read-only `pr-checks` job.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      needs.pr-checks.result == 'success'
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+
+    concurrency:
+      cancel-in-progress: true
+      group: check-repo-size-${{ github.event.pull_request.number }}
+
+    steps:
+      - name: Download repo size comment
+        uses: actions/download-artifact@v8
+        with:
+          name: repo-size-comment
+          path: repo-size-comment
+
+      - name: Post repo size comment
+        env:
+          COMMENT_MARKER: "<!-- repo-size-diff-bot -->"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          significant=$(jq -r '.significant' repo-size-comment/metadata.json)
+          body=$(cat repo-size-comment/body.md)
+          comment_id=$(
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              --paginate \
+              --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
+              | head -n 1
+          )
+
+          if [[ -n "$comment_id" ]]; then
+            echo "Updating existing comment $comment_id."
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" --field body="$body"
+          elif [[ "$significant" == "true" ]]; then
+            echo "Creating new repo size comment."
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"
+          else
+            echo "Skipping repo size comment because the delta is below the threshold and no sticky comment exists."
           fi

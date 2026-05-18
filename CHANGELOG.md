@@ -4,7 +4,8 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- _Breaking change_: Bump the minimum required CodeQL bundle version to 2.19.4. [#3894](https://github.com/github/codeql-action/pull/3894)
+- Add support for SHA-256 Git object IDs. [#3893](https://github.com/github/codeql-action/pull/3893)
 
 ## 4.35.5 - 15 May 2026
 

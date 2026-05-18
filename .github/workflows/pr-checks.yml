@@ -67,24 +67,24 @@ jobs:
           sarif_file: eslint.sarif
           category: eslint
 
-  # Verifying the PR checks are up-to-date requires Node 24. The PR checks are not dependent
-  # on the main codebase and therefore do not need to be run as part of the same matrix that
-  # we use for the `unit-tests` job.
-  verify-pr-checks:
-    name: Verify PR checks
+  # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
+  # job.
+  pr-checks:
+    name: PR checks
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
+      pull-requests: write
     runs-on: ubuntu-slim
     timeout-minutes: 10
 
     steps:
-      - name: Prepare git (Windows)
-        if: runner.os == 'Windows'
-        run: git config --global core.autocrlf false
-
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Need full history so we have both the PR merge commit (HEAD) and the base SHA locally
+          # for `git archive` to work against either.
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -96,29 +96,29 @@ jobs:
         run: npm ci
 
       - name: Verify PR checks up to date
-        if: always()
         run: .github/workflows/script/verify-pr-checks.sh
 
       - name: Run pr-checks tests
-        if: always()
         working-directory: pr-checks
         run: npx tsx --test
 
-  check-node-version:
-    if: github.triggering_actor != 'dependabot[bot]'
-    name: Check Action Node versions
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      BASE_REF: ${{ github.base_ref }}
+      - name: Check repo size
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        working-directory: pr-checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: npx tsx check-repo-size.ts
 
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v6
-      - id: head-version
-        name: Verify all Actions use the same Node version
+      - name: Verify all Actions use the same Node version
+        id: head-version
         run: |
           NODE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
           echo "NODE_VERSION: ${NODE_VERSION}"
@@ -128,12 +128,12 @@ jobs:
           fi
           echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
 
-      - id: checkout-base
-        name: 'Backport: Check out base ref'
+      - name: 'Backport: Check out base ref'
+        id: checkout-base
         if: ${{ startsWith(github.head_ref, 'backport-') }}
         uses: actions/checkout@v6
         with:
-          ref: ${{ env.BASE_REF }}
+          ref: ${{ github.base_ref }}
 
       - name: 'Backport: Verify Node versions unchanged'
         if: steps.checkout-base.outcome == 'success'

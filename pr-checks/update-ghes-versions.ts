@@ -7,6 +7,7 @@
  */
 
 import * as fs from "node:fs";
+import * as path from "node:path";
 
 import { type SemVer } from "semver";
 import * as semver from "semver";
@@ -52,6 +53,48 @@ export function readApiCompatibility(): ApiCompatibility {
   return apiCompatibilityData;
 }
 
+/** The JSON schema for entries in the `releases.json` file. */
+const releaseDataSchema = {
+  feature_freeze: json.string,
+  end: json.string,
+} as const satisfies json.Schema;
+
+/** The type representing entries in the `releases.json` file. */
+export type ReleaseData = json.FromSchema<typeof releaseDataSchema>;
+
+/** A mapping from GHES releases to release information. */
+export type EnterpriseReleases = Record<string, ReleaseData>;
+
+/** Reads information about GHES releases. */
+export function readEnterpriseReleases(
+  enterpriseReleasesPath: string,
+): EnterpriseReleases {
+  const releaseFilePath = path.join(enterpriseReleasesPath, "releases.json");
+  const releases: unknown = JSON.parse(
+    fs.readFileSync(releaseFilePath, "utf8"),
+  );
+
+  if (!json.isObject(releases)) {
+    throw new Error(`Expected '${releaseFilePath}' to contain an object.`);
+  }
+
+  // Remove GHES version using a previous version numbering scheme.
+  delete releases["11.10"];
+
+  // Validate that the object satisfies the schema.
+  for (const [, releaseData] of Object.entries(releases)) {
+    if (!json.isObject(releaseData)) {
+      throw new Error(
+        `Expected release data to be an object, but it is ${typeof releaseData}.`,
+      );
+    }
+    if (!json.validateSchema(releaseDataSchema, releaseData)) {
+      throw new Error("Expected release data to satisfy schema.");
+    }
+  }
+
+  return releases;
+}
 
 function main() {
   const enterpriseReleasesPath = process.env[EnvVar.ENTERPRISE_RELEASES_PATH];
@@ -63,6 +106,9 @@ function main() {
 
   // Get the version compatibility data stored in the repo.
   const apiCompatibilityData = readApiCompatibility();
+
+  // Get the GHES release information.
+  const releases = readEnterpriseReleases(enterpriseReleasesPath);
 }
 
 // Only call `main` if this script was run directly.

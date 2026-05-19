@@ -6,7 +6,13 @@
  * an `enterprise-releases` checkout.
  */
 
+import { type SemVer } from "semver";
+import * as semver from "semver";
+
 import { API_COMPATIBILITY_FILE } from "./config";
+
+/** The first GHES version that included Code Scanning. */
+const FIRST_SUPPORTED_RELEASE: SemVer = new semver.SemVer("2.22.0");
 
 function main() {}
 

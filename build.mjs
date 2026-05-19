@@ -65,7 +65,7 @@ const onEndPlugin = {
 /** The name of the virtual `entry-points` module. */
 const SHARED_ENTRYPOINT = "entry-points";
 
-/** The property name under which `upload-lib`'s namespace is exposed on `entry-points`. */
+/** The property name under which `upload-lib`'s namespace is exposed in `entry-points`. */
 const UPLOAD_LIB_EXPORT = "uploadLib";
 
 /** The relative source path of the `upload-lib` module that we re-export from `entry-points`. */
@@ -151,7 +151,7 @@ const entryPointsPlugin = {
       const uploadLibReExport = `export * as ${UPLOAD_LIB_EXPORT} from "${UPLOAD_LIB_SRC}";`;
 
       return {
-        contents: `"use strict";\n${imports}\n\n${wrappers}\n\n${uploadLibReExport}\n`,
+        contents: `"use strict";\n${imports}\n\n${uploadLibReExport}\n\n${wrappers}\n`,
         resolveDir: ".",
         loader: "ts",
       };
@@ -159,12 +159,15 @@ const entryPointsPlugin = {
 
     // Emit entry point stubs for each Action using the entry template.
     build.onEnd(async () => {
-      // Read the entry point template.
-      const templatePath = "action-entry.js.tpl";
-      const template = await readFile(join(SRC_DIR, templatePath), "utf-8");
-
-      const makeHeader = (sourceFile) =>
+      const makeHeader = (templatePath, sourceFile) =>
         `// Automatically generated from '${templatePath}' for 'src/${basename(sourceFile)}'.\n\n`;
+
+      // Read the entry point template.
+      const actionTemplatePath = "action-entry.js.tpl";
+      const actionTemplate = await readFile(
+        join(SRC_DIR, actionTemplatePath),
+        "utf-8",
+      );
 
       // Write entry point stubs for each Action.
       for (const action of actions) {
@@ -173,19 +176,26 @@ const entryPointsPlugin = {
             OUT_DIR,
             `${action.name}${action.isPost ? "-post" : ""}-entry.js`,
           ),
-          makeHeader(action.path) +
-            template.replaceAll("__ACTION__", action.pascalCaseName),
+          makeHeader(actionTemplatePath, action.path) +
+            actionTemplate.replaceAll("__ACTION__", action.pascalCaseName),
         );
       }
 
       // Write a small stub for `upload-lib` that re-exports it from the shared bundle.
       // External callers (e.g. internal testing environments) `require("./lib/upload-lib")`
       // and expect the same shape as before, so we expose the namespace as `module.exports`.
+      const uploadLibStubTemplatePath = "upload-lib-stub.js.tpl";
+      const uploadLibStubTemplate = await readFile(
+        join(SRC_DIR, uploadLibStubTemplatePath),
+        "utf-8",
+      );
       await writeFile(
         join(OUT_DIR, "upload-lib.js"),
-        `// Automatically generated stub re-exporting '${UPLOAD_LIB_SRC}.ts' from '${SHARED_ENTRYPOINT}.js'.\n\n` +
-          `"use strict";\n\n` +
-          `module.exports = require("./${SHARED_ENTRYPOINT}").${UPLOAD_LIB_EXPORT};\n`,
+        makeHeader(uploadLibStubTemplatePath, `${UPLOAD_LIB_SRC}.ts`) +
+          uploadLibStubTemplate.replaceAll(
+            "__UPLOAD_LIB_EXPORT__",
+            UPLOAD_LIB_EXPORT,
+          ),
       );
     });
   },

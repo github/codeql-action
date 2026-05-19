@@ -116,6 +116,85 @@ export function readEnterpriseReleases(
   return releases;
 }
 
+/** Adds `weeks`-many weeks to the UTC date of `date`. */
+export function addWeeks(date: Date, weeks: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(date.getUTCDate() + weeks * 7);
+  return result;
+}
+
+/** Determines the current range of GHES versions we should support. */
+export function determineSupportedRange(
+  apiCompatibilityData: ApiCompatibility,
+  releases: EnterpriseReleases,
+): ApiCompatibility {
+  // Our goal is to identify the oldest and newest GHES release we should support.
+  // We begin with `oldestSupportRelease = undefined` so that we determine the
+  // minimum from scratch and don't stick to `apiCompatibilityData.minimumVersion`
+  // when it is no longer supported.
+  // For `newestSupportedRelease`, we assume that `apiCompatibilityData.maximumVersion`
+  // is guaranteed to not be outdated.
+  let oldestSupportedRelease: SemVer | undefined;
+  let newestSupportedRelease = parseEnterpriseVersion(
+    apiCompatibilityData.maximumVersion,
+  );
+
+  if (newestSupportedRelease === null) {
+    throw new Error(
+      `${apiCompatibilityData.maximumVersion} is not a valid semantic version.`,
+    );
+  }
+
+  const today = new Date();
+
+  // NOTE: We deliberately omit including any data from `releases` in the error messages below.
+
+  for (const [releaseVersionString, releaseData] of Object.entries(releases)) {
+    const releaseVersion = parseEnterpriseVersion(releaseVersionString);
+
+    if (releaseVersion === null) {
+      throw new Error("Invalid enterprise release version.");
+    }
+
+    // Ignore GHES releases older than `FIRST_SUPPORTED_RELEASE`.
+    if (semver.compare(releaseVersion, FIRST_SUPPORTED_RELEASE) < 0) {
+      continue;
+    }
+
+    // If the GHES release is newer than the current, newest release we support,
+    // check whether at least two weeks have passed since the feature freeze date
+    // so we don't set `newestSupportedRelease` too early.
+    if (semver.compare(releaseVersion, newestSupportedRelease) > 0) {
+      const featureFreezeDate = new Date(releaseData.feature_freeze);
+      if (featureFreezeDate < addWeeks(today, 2)) {
+        newestSupportedRelease = releaseVersion;
+      }
+    }
+
+    if (
+      oldestSupportedRelease === undefined ||
+      semver.compare(releaseVersion, oldestSupportedRelease) < 0
+    ) {
+      const endOfLifeDate = new Date(releaseData.end);
+      // The GHES version is not actually end of life until the end of the day
+      // specified by `endOfLifeDate`. Wait an extra week to be safe.
+      const isEndOfLife = today > addWeeks(endOfLifeDate, 1);
+      if (!isEndOfLife) {
+        oldestSupportedRelease = releaseVersion;
+      }
+    }
+  }
+
+  if (!oldestSupportedRelease) {
+    throw new Error("Could not determine oldest supported release.");
+  }
+
+  return {
+    maximumVersion: printEnterpriseVersion(newestSupportedRelease),
+    minimumVersion: printEnterpriseVersion(oldestSupportedRelease),
+  };
+}
+
 function main() {
   const enterpriseReleasesPath = process.env[EnvVar.ENTERPRISE_RELEASES_PATH];
   if (!enterpriseReleasesPath) {
@@ -129,6 +208,30 @@ function main() {
 
   // Get the GHES release information.
   const releases = readEnterpriseReleases(enterpriseReleasesPath);
+
+  // Determine the supported range.
+  const newCompatibilityData: ApiCompatibility = determineSupportedRange(
+    apiCompatibilityData,
+    releases,
+  );
+
+  // If the version range has changed, write the updates to `API_COMPATIBILITY_FILE`.
+  if (
+    newCompatibilityData.minimumVersion !==
+      apiCompatibilityData.minimumVersion ||
+    newCompatibilityData.maximumVersion !== apiCompatibilityData.maximumVersion
+  ) {
+    const data = JSON.stringify(newCompatibilityData);
+    fs.writeFileSync(API_COMPATIBILITY_FILE, `${data}\n`);
+
+    console.log(
+      `Updated '${path.basename(API_COMPATIBILITY_FILE)}': ${newCompatibilityData.minimumVersion} - ${newCompatibilityData.maximumVersion}`,
+    );
+  } else {
+    console.log(
+      `No changes, not writing to '${path.basename(API_COMPATIBILITY_FILE)}'.`,
+    );
+  }
 }
 
 // Only call `main` if this script was run directly.

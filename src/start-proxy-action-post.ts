@@ -12,7 +12,7 @@ import { uploadArtifacts } from "./debug-artifacts";
 import { getActionsLogger } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
-async function runWrapper() {
+export async function runWrapper() {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
@@ -62,5 +62,3 @@ async function runWrapper() {
     );
   }
 }
-
-void runWrapper();

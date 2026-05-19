@@ -9,7 +9,7 @@ on:
       - main
     paths:
       - .github/workflows/update-supported-enterprise-server-versions.yml
-      - .github/workflows/update-supported-enterprise-server-versions/update.py
+      - pr-checks/update-ghes-versions.ts
 
 jobs:
   update-supported-enterprise-server-versions:
@@ -22,12 +22,18 @@ jobs:
       pull-requests: write # needed to create pull request
 
     steps:
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
       - name: Checkout CodeQL Action
         uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Checkout Enterprise Releases
         uses: actions/checkout@v6
         with:
@@ -35,17 +41,17 @@ jobs:
           token: ${{ secrets.ENTERPRISE_RELEASE_TOKEN }}
           path: ${{ github.workspace }}/enterprise-releases/
           sparse-checkout: releases.json
+
       - name: Update Supported Enterprise Server Versions
+        working-directory: pr-checks
         run: |
-          cd ./.github/workflows/update-supported-enterprise-server-versions/
-          python3 -m pip install pipenv
-          pipenv install
-          pipenv run ./update.py
+          npx tsx update-ghes-versions.ts
           rm --recursive "$ENTERPRISE_RELEASES_PATH"
-          npm ci
-          npm run build
         env:
           ENTERPRISE_RELEASES_PATH: ${{ github.workspace }}/enterprise-releases/
+
+      - name: Rebuild
+        run: npm run build
 
       - name: Update git config
         run: |

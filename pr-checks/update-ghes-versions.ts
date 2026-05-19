@@ -6,6 +6,8 @@
  * an `enterprise-releases` checkout.
  */
 
+import { API_COMPATIBILITY_FILE } from "./config";
+
 function main() {}
 
 // Only call `main` if this script was run directly.

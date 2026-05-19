@@ -2,6 +2,7 @@ import {
   fixCodeQualityCategory,
   getOptionalInput,
   getRequiredInput,
+  isDynamicWorkflow,
 } from "./actions-util";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -65,6 +66,21 @@ export async function parseAnalysisKinds(
 // Used to avoid re-parsing the input after we have done it once.
 let cachedAnalysisKinds: AnalysisKind[] | undefined;
 
+/** Determines whether `code-scanning` is the only enabled analysis kind in `analysisKinds`. */
+function isOnlyCodeScanningEnabled(analysisKinds: AnalysisKind[]) {
+  return (
+    analysisKinds.length === 1 && analysisKinds[0] === AnalysisKind.CodeScanning
+  );
+}
+
+/** Prepends a generic message about the intended usage for `analysis-kinds` to `message`. */
+function makeAnalysisKindUsageError(message: string) {
+  return (
+    "The `analysis-kinds` input is experimental and for GitHub-internal use only. " +
+    `Its behaviour may change at any time or be removed entirely. ${message}`
+  );
+}
+
 /**
  * Initialises the analysis kinds for the analysis based on the `analysis-kinds` input.
  * This function will also use the deprecated `quality-queries` input as an indicator to enable `code-quality`.
@@ -88,6 +104,26 @@ export async function getAnalysisKinds(
   const analysisKinds = await parseAnalysisKinds(
     getRequiredInput("analysis-kinds"),
   );
+
+  // Log an error if we are outside of a GitHub-managed workflow and an analysis kind
+  // other than `code-scanning` is enabled.
+  if (
+    !isInTestMode() &&
+    !isDynamicWorkflow() &&
+    !isOnlyCodeScanningEnabled(analysisKinds)
+  ) {
+    const codeQualityHint = analysisKinds.includes(AnalysisKind.CodeQuality)
+      ? " If your intention is to use quality queries outside of Code Quality, " +
+        "use the `queries` input with `code-quality` instead."
+      : "";
+
+    logger.error(
+      makeAnalysisKindUsageError(
+        "An analysis kind other than `code-scanning` was specified in a custom workflow. " +
+          `This is not supported and will become a fatal error in a future version of the CodeQL Action.${codeQualityHint}`,
+      ),
+    );
+  }
 
   // Warn that `quality-queries` is deprecated if there is an argument for it.
   const qualityQueriesInput = getOptionalInput("quality-queries");
@@ -130,10 +166,10 @@ export async function getAnalysisKinds(
     !(await features.getValue(Feature.AllowMultipleAnalysisKinds))
   ) {
     logger.error(
-      "The `analysis-kinds` input is experimental and for GitHub-internal use only. " +
-        "Its behaviour may change at any time or be removed entirely. " +
+      makeAnalysisKindUsageError(
         "Specifying multiple values as input is no longer supported. " +
-        "Continuing with only `analysis-kinds: code-scanning`.",
+          "Continuing with only `analysis-kinds: code-scanning`.",
+      ),
     );
 
     // Only enable Code Scanning.

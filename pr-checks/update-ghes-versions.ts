@@ -24,6 +24,26 @@ export enum EnvVar {
   ENTERPRISE_RELEASES_PATH = "ENTERPRISE_RELEASES_PATH",
 }
 
+/**
+ * The semver specification requires three numeric components, but GHES release families
+ * only have two. This function uses `semver.coerce` to first coerce the version string
+ * into an acceptable input for `semver.parse`. E.g. `3.10` becomes `3.10.0`.
+ */
+export function parseEnterpriseVersion(val: string): SemVer | null {
+  return semver.parse(semver.coerce(val));
+}
+
+/**
+ * Mirroring `parseEnterpriseVersion`, this function returns only the major and minor
+ * version components from `ver`.
+ */
+export function printEnterpriseVersion(ver: SemVer) {
+  if (ver.patch === 0) {
+    return `${ver.major}.${ver.minor}`;
+  }
+  return ver.toString();
+}
+
 /** The JSON schema for `API_COMPATIBILITY_FILE`. */
 const apiCompatibilitySchema = {
   minimumVersion: json.string,

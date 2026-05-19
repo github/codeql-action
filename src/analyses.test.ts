@@ -125,11 +125,7 @@ test.serial(
     requiredInputStub.withArgs("analysis-kinds").returns("code-quality");
     const result = await getAnalysisKinds(logger, features, true);
     t.deepEqual(result, [AnalysisKind.CodeQuality]);
-    t.assert(
-      !logger.hasMessage(
-        "An analysis kind other than `code-scanning` was specified in a custom workflow.",
-      ),
-    );
+    t.deepEqual(logger.messages, []);
   },
 );
 

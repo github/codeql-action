@@ -129,6 +129,9 @@ export function determineSupportedRange(
   apiCompatibilityData: ApiCompatibility,
   releases: EnterpriseReleases,
 ): ApiCompatibility {
+  // We only care about the UTC date component.
+  today.setUTCHours(0, 0, 0, 0);
+
   // Our goal is to identify the oldest and newest GHES release we should support.
   // We begin with `oldestSupportRelease = undefined` so that we determine the
   // minimum from scratch and don't stick to `apiCompatibilityData.minimumVersion`
@@ -160,9 +163,9 @@ export function determineSupportedRange(
       continue;
     }
 
-    // If the GHES release is newer than the current, newest release we support,
-    // check whether at least two weeks have passed since the feature freeze date
-    // so we don't set `newestSupportedRelease` too early.
+    // Set `newestSupportedRelease` to a GHES release if it has a greater version
+    // than the current `newestSupportedRelease` and the feature freeze has
+    // already happened or will be in the next two weeks.
     if (semver.compare(releaseVersion, newestSupportedRelease) > 0) {
       const featureFreezeDate = new Date(releaseData.feature_freeze);
       if (featureFreezeDate < addWeeks(today, 2)) {

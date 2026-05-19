@@ -125,6 +125,7 @@ export function addWeeks(date: Date, weeks: number): Date {
 
 /** Determines the current range of GHES versions we should support. */
 export function determineSupportedRange(
+  today: Date,
   apiCompatibilityData: ApiCompatibility,
   releases: EnterpriseReleases,
 ): ApiCompatibility {
@@ -144,8 +145,6 @@ export function determineSupportedRange(
       `${apiCompatibilityData.maximumVersion} is not a valid semantic version.`,
     );
   }
-
-  const today = new Date();
 
   // NOTE: We deliberately omit including any data from `releases` in the error messages below.
 
@@ -211,6 +210,7 @@ function main() {
 
   // Determine the supported range.
   const newCompatibilityData: ApiCompatibility = determineSupportedRange(
+    new Date(),
     apiCompatibilityData,
     releases,
   );

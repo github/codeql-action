@@ -31,7 +31,7 @@ import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { shouldPerformDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
@@ -1078,6 +1078,48 @@ function hasQueryCustomisation(userConfig: UserConfig): boolean {
 }
 
 /**
+ * Finalize the incremental-analysis configuration for this run.
+ *
+ * Overlay analysis has only been validated in combination with diff-informed
+ * analysis, so if `Overlay` mode was selected for a pull request but the diff
+ * ranges could not be computed, fall back to a full non-overlay analysis.
+ *
+ * Query exclusions for incremental-only queries are then applied whenever the
+ * diff ranges are available — which, after the fallback above, is exactly the
+ * set of runs where any kind of incremental analysis (overlay or
+ * diff-informed) is in effect.
+ */
+export async function applyIncrementalAnalysisSettings(
+  config: Config,
+  hasDiffRanges: boolean,
+  codeql: CodeQL,
+  logger: Logger,
+): Promise<void> {
+  if (
+    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
+    !hasDiffRanges
+  ) {
+    logger.info(
+      `Reverting overlay database mode to ${OverlayDatabaseMode.None} ` +
+        "because the PR diff ranges could not be computed.",
+    );
+    config.overlayDatabaseMode = OverlayDatabaseMode.None;
+    config.useOverlayDatabaseCaching = false;
+    await addOverlayDisablementDiagnostics(
+      config,
+      codeql,
+      OverlayDisabledReason.DiffInformedAnalysisNotEnabled,
+    );
+  }
+
+  if (hasDiffRanges) {
+    config.extraQueryExclusions.push({
+      exclude: { tags: "exclude-from-incremental" },
+    });
+  }
+}
+
+/**
  * Load and return the config.
  *
  * This will parse the config from the user input if present, or generate
@@ -1231,18 +1273,18 @@ export async function initConfig(
     );
   }
 
-  if (
-    config.overlayDatabaseMode === OverlayDatabaseMode.Overlay ||
-    (await shouldPerformDiffInformedAnalysis(
-      inputs.codeql,
-      inputs.features,
-      logger,
-    ))
-  ) {
-    config.extraQueryExclusions.push({
-      exclude: { tags: "exclude-from-incremental" },
-    });
-  }
+  const hasDiffRanges = await prepareDiffInformedAnalysis(
+    inputs.codeql,
+    inputs.features,
+    logger,
+  );
+
+  await applyIncrementalAnalysisSettings(
+    config,
+    hasDiffRanges,
+    inputs.codeql,
+    logger,
+  );
 
   if (await isTrapCachingEnabled(features, config.overlayDatabaseMode)) {
     const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(

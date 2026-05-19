@@ -55,4 +55,4 @@ outputs:
     description: The version of the CodeQL binary that was installed.
 runs:
   using: node24
-  main: '../lib/setup-codeql-action.js'
+  main: '../lib/setup-codeql-entry.js'

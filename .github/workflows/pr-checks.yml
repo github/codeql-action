@@ -10,6 +10,10 @@ on:
     types: [checks_requested]
   workflow_dispatch:
 
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 defaults:
   run:
     shell: bash

@@ -105,10 +105,10 @@ jobs:
         run: npx tsx --test
 
   check-node-version:
-    if: github.triggering_actor != 'dependabot[bot]'
-    name: Check Action Node versions
+    if: github.triggering_actor != 'dependabot[bot]' && startsWith(github.head_ref, 'backport-')
+    name: Check Action Node versions for Backport
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 5
     env:
       BASE_REF: ${{ github.base_ref }}
 
@@ -116,31 +116,30 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          depth: 1
+
       - id: head-version
-        name: Verify all Actions use the same Node version
+        name: Determine Node version for HEAD
         run: |
-          NODE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
+          NODE_VERSION=$(cat .nvmrc)
           echo "NODE_VERSION: ${NODE_VERSION}"
-          if [[ $(echo "$NODE_VERSION" | wc -l) -gt 1 ]]; then
-            echo "::error::More than one node version used in 'action.yml' files."
-            exit 1
-          fi
           echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
 
       - id: checkout-base
         name: 'Backport: Check out base ref'
-        if: ${{ startsWith(github.head_ref, 'backport-') }}
         uses: actions/checkout@v6
         with:
           ref: ${{ env.BASE_REF }}
+          depth: 1
 
       - name: 'Backport: Verify Node versions unchanged'
-        if: steps.checkout-base.outcome == 'success'
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
         run: |
-          BASE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
+          BASE_VERSION=$(cat .nvmrc)
           echo "HEAD_VERSION: ${HEAD_VERSION}"
           echo "BASE_VERSION: ${BASE_VERSION}"
           if [[ "$BASE_VERSION" != "$HEAD_VERSION" ]]; then

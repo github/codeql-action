@@ -73,8 +73,8 @@ jobs:
 
   # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
   # job.
-  pr-checks:
-    name: PR Checks
+  other-checks:
+    name: Other checks
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
@@ -96,12 +96,15 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        id: install-deps
         run: npm ci
 
       - name: Verify PR checks up to date
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
         run: .github/workflows/script/verify-pr-checks.sh
 
       - name: Run pr-checks tests
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
         working-directory: pr-checks
         run: npx tsx --test
 
@@ -117,6 +120,7 @@ jobs:
           echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Fetch base commit
+        id: fetch-base
         # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
         # check in those cases.
         if: >-
@@ -125,29 +129,28 @@ jobs:
           github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Compare against the merge base so the size delta reflects only the commits actually
+          # added by this PR, ignoring any changes that have landed on the base branch since the
+          # PR branched off.
+          merge_base=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE_SHA...$HEAD_SHA" --jq '.merge_base_commit.sha')
+          echo "merge_base=$merge_base" >> "$GITHUB_OUTPUT"
+          git fetch --no-tags --depth=1 origin "$merge_base" "$HEAD_SHA"
 
       - name: Check repo size
-        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
-        # check in those cases.
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
+        if: steps.fetch-base.outcome == 'success'
         working-directory: pr-checks
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ steps.fetch-base.outputs.merge_base }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: npx tsx check-repo-size.ts --output-dir "$RUNNER_TEMP/repo-size"
 
       - name: Upload repo size comment
-        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
-        # check in those cases.
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
+        if: steps.fetch-base.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: repo-size-comment
@@ -176,14 +179,14 @@ jobs:
 
   post-repo-size-comment:
     name: Post repo size comment
-    needs: pr-checks
+    needs: other-checks
     # Keep write permissions isolated from the job that checks out and tests PR code. This job only
     # posts the candidate comment body produced by the read-only `pr-checks` job.
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
-      needs.pr-checks.result == 'success'
+      needs.other-checks.result == 'success'
     permissions:
       contents: read
       pull-requests: write
@@ -205,7 +208,6 @@ jobs:
         env:
           COMMENT_MARKER: "<!-- repo-size-diff-bot -->"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           significant=$(jq -r '.significant' repo-size-comment/metadata.json)

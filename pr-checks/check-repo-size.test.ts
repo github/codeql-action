@@ -25,24 +25,18 @@ import {
 
 describe("formatBytes", async () => {
   const cases: Array<[number, boolean, string]> = [
-    // Unsigned: bytes / KiB / MiB boundaries.
-    [0, false, "0 B"],
-    [1, false, "1 B"],
-    [1023, false, "1023 B"],
+    // Unsigned values, including sub-KiB amounts which round to 0.00.
+    [0, false, "0.00 KiB"],
+    [512, false, "0.50 KiB"],
     [1024, false, "1.00 KiB"],
-    [2048, false, "2.00 KiB"],
-    [1024 * 1024 - 1, false, "1024.00 KiB"],
-    [1024 * 1024, false, "1.00 MiB"],
-    [2.5 * 1024 * 1024, false, "2.50 MiB"],
+    [1024 * 1024, false, "1024.00 KiB"],
+    [2 * 1024 * 1024, false, "2048.00 KiB"],
     // Negative values always use a leading minus.
-    [-512, false, "-512 B"],
-    [-2048, false, "-2.00 KiB"],
-    [-2 * 1024 * 1024, false, "-2.00 MiB"],
+    [-2 * 1024 * 1024, false, "-2048.00 KiB"],
     // signed=true prepends a + to non-negative values.
-    [0, true, "+0 B"],
-    [512, true, "+512 B"],
-    [2048, true, "+2.00 KiB"],
-    [-512, true, "-512 B"],
+    [0, true, "+0.00 KiB"],
+    [2 * 1024 * 1024, true, "+2048.00 KiB"],
+    [-2 * 1024 * 1024, true, "-2048.00 KiB"],
   ];
   for (const [bytes, signed, expected] of cases) {
     await it(`formats ${bytes} (signed=${signed}) as ${expected}`, () => {
@@ -94,8 +88,8 @@ describe("buildCommentBody", async () => {
     });
 
     assert.match(body, new RegExp(`^${escapeRegExp(COMMENT_MARKER)}`));
-    assert.match(body, /Base \(`main`\) \| 1\.91 MiB \(2000000 bytes\)/);
-    assert.match(body, /This PR \| 2\.19 MiB \(2300000 bytes\)/);
+    assert.match(body, /Base \(`main`\) \| 1953\.13 KiB \(2000000 bytes\)/);
+    assert.match(body, /This PR \| 2246\.09 KiB \(2300000 bytes\)/);
     assert.match(
       body,
       /\*\*Delta\*\* \| \*\*\+292\.97 KiB \(\+300000 bytes, \+15\.00%\)\*\*/,
@@ -118,7 +112,7 @@ describe("buildCommentBody", async () => {
 });
 
 describe("readArgs", async () => {
-  await it("defaults the base ref for local runs", () => {
+  await it("defaults the base ref and head commit for local runs", () => {
     const originalEnv = process.env;
     const originalArgv = process.argv;
 
@@ -130,6 +124,7 @@ describe("readArgs", async () => {
 
       assert.equal(args.baseRef, DEFAULT_BASE_REF);
       assert.equal(args.baseCommitish, `origin/${DEFAULT_BASE_REF}`);
+      assert.equal(args.headCommitish, "HEAD");
       assert.equal(args.outputDir, "/tmp/out");
       assert.equal(args.runUrl, undefined);
     } finally {
@@ -138,7 +133,7 @@ describe("readArgs", async () => {
     }
   });
 
-  await it("uses the base SHA when provided by the workflow", () => {
+  await it("uses the base and head SHAs when provided by the workflow", () => {
     const originalEnv = process.env;
     const originalArgv = process.argv;
 
@@ -146,6 +141,7 @@ describe("readArgs", async () => {
       process.env = {
         BASE_REF: "main",
         BASE_SHA: "abc123",
+        HEAD_SHA: "def456",
         RUN_URL: "https://example.test/run",
       };
       process.argv = ["node", "check-repo-size.ts", "--output-dir", "/tmp/out"];
@@ -154,6 +150,7 @@ describe("readArgs", async () => {
 
       assert.equal(args.baseRef, "main");
       assert.equal(args.baseCommitish, "abc123");
+      assert.equal(args.headCommitish, "def456");
       assert.equal(args.outputDir, "/tmp/out");
       assert.equal(args.runUrl, "https://example.test/run");
     } finally {

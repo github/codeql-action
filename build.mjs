@@ -53,9 +53,15 @@ const checkNodeVersionsPlugin = {
 
         // Find the `runs.using` value in the specification.
         const using = specification.runs.using;
-        if (using === undefined) {
+        if (using === undefined || using === null) {
           throw new Error(
             `Couldn't find 'runs.using' in ${actionSpecification}`,
+          );
+        }
+
+        if (typeof using !== "string" || !using.startsWith("node")) {
+          throw new Error(
+            `Expected 'runs.using' to be a string starting with 'node' in ${actionSpecification}`,
           );
         }
 

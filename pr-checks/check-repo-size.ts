@@ -14,6 +14,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { parseArgs } from "node:util";
 
+import { getErrorMessage } from "../src/util";
+
+import { REPO_ROOT } from "./config";
+
 /** Hidden marker used to find the existing sticky comment on a PR. */
 export const COMMENT_MARKER = "<!-- repo-size-diff-bot -->";
 
@@ -62,15 +66,13 @@ export async function measureArchiveSize(
 }
 
 /**
- * Format a byte count into a human-readable string with binary units. If `signed` is true, a
- * leading `+` is prepended for non-negative values so gains and losses are visually distinct.
+ * Format a byte count as KiB. If `signed` is true, a leading `+` is prepended for non-negative
+ * values so gains and losses are visually distinct.
  */
 export function formatBytes(bytes: number, signed = false): string {
   const sign = bytes < 0 ? "-" : signed ? "+" : "";
-  const abs = Math.abs(bytes);
-  if (abs < 1024) return `${sign}${abs} B`;
-  if (abs < 1024 * 1024) return `${sign}${(abs / 1024).toFixed(2)} KiB`;
-  return `${sign}${(abs / 1024 / 1024).toFixed(2)} MiB`;
+  const kib = Math.abs(bytes) / 1024;
+  return `${sign}${kib.toFixed(2)} KiB`;
 }
 
 /** Format a fraction as a signed percentage with 2 decimal places. */
@@ -131,6 +133,8 @@ interface MainArgs {
   baseRef: string;
   /** Base commit-ish to archive. Defaults to `origin/<baseRef>` for local runs. */
   baseCommitish: string;
+  /** Head commit-ish to archive. Defaults to `HEAD` for local runs. */
+  headCommitish: string;
   /** Optional URL of the workflow run, surfaced in the comment footer. */
   runUrl?: string;
   /** Directory where `body.md` and `metadata.json` are written. */
@@ -152,10 +156,12 @@ export function readArgs(): MainArgs {
 
   const baseRef = process.env.BASE_REF ?? DEFAULT_BASE_REF;
   const baseCommitish = process.env.BASE_SHA ?? `origin/${baseRef}`;
+  const headCommitish = process.env.HEAD_SHA ?? "HEAD";
 
   return {
     baseRef,
     baseCommitish,
+    headCommitish,
     runUrl: process.env.RUN_URL,
     outputDir,
   };
@@ -164,16 +170,12 @@ export function readArgs(): MainArgs {
 async function main(): Promise<number> {
   const args = readArgs();
 
-  // The script lives at `<repoRoot>/pr-checks/check-repo-size.ts`, so the repo root is the parent
-  // directory.
-  const repoRoot = path.resolve(__dirname, "..");
-
   console.log(`Measuring base archive size for ${args.baseCommitish}...`);
-  const baseSize = await measureArchiveSize(args.baseCommitish, repoRoot);
+  const baseSize = await measureArchiveSize(args.baseCommitish, REPO_ROOT);
   console.log(`  ${baseSize} bytes`);
 
-  console.log("Measuring PR archive size for HEAD...");
-  const prSize = await measureArchiveSize("HEAD", repoRoot);
+  console.log(`Measuring PR archive size for ${args.headCommitish}...`);
+  const prSize = await measureArchiveSize(args.headCommitish, REPO_ROOT);
   console.log(`  ${prSize} bytes`);
 
   const delta = prSize - baseSize;
@@ -209,13 +211,15 @@ async function main(): Promise<number> {
   return 0;
 }
 
+async function run(): Promise<void> {
+  try {
+    process.exit(await main());
+  } catch (err) {
+    console.error(getErrorMessage(err));
+    process.exit(1);
+  }
+}
+
 if (require.main === module) {
-  void (async () => {
-    try {
-      process.exit(await main());
-    } catch (err) {
-      console.error(err instanceof Error ? err.message : String(err));
-      process.exit(1);
-    }
-  })();
+  void run();
 }

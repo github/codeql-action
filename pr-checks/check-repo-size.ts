@@ -14,8 +14,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { parseArgs } from "node:util";
 
-import { getErrorMessage } from "../src/util";
-
 import { REPO_ROOT } from "./config";
 
 /** Hidden marker used to find the existing sticky comment on a PR. */
@@ -215,7 +213,7 @@ async function run(): Promise<void> {
   try {
     process.exit(await main());
   } catch (err) {
-    console.error(getErrorMessage(err));
+    console.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
 }

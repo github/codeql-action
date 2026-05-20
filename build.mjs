@@ -81,6 +81,13 @@ const checkNodeVersionsPlugin = {
           `More than one node version used in 'action.yml' files: ${JSON.stringify(nodeVersions)}`,
         );
       }
+
+      // Write the node version to `.nvmrc`.
+      writeFile(
+        join(__dirname, ".nvmrc"),
+        nodeVersion.substring("node".length) + "\n",
+        "utf-8",
+      );
     });
   },
 };

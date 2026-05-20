@@ -9,6 +9,10 @@ on:
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
 
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 defaults:
   run:
     shell: bash

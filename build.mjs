@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import * as esbuild from "esbuild";
 import { globSync } from "glob";
+import * as yaml from "js-yaml";
 
 import pkg from "./package.json" with { type: "json" };
 
@@ -23,6 +24,57 @@ const cleanPlugin = {
   setup(build) {
     build.onStart(async () => {
       await rm(OUT_DIR, { recursive: true, force: true });
+    });
+  },
+};
+
+/** A plugin that checks that the Node versions in all `action.yml` files are the same. */
+const checkNodeVersionsPlugin = {
+  name: "check-node-versions",
+  setup(build) {
+    build.onStart(async () => {
+      // Find all the `action.yml` files. We don't care about the stub in the repository root,
+      // since that is a `composite` action.
+      const actionSpecifications = globSync("*/action.yml");
+
+      // Track the Node versions we find for each file.
+      const nodeVersions = {};
+
+      // We will store the first Node version we find and use it to compare against the others.
+      // If there's any disagreement, we set `versionMismatch` to `true` and throw an error
+      // that includes all the discovered Node versions at the end.
+      let nodeVersion = undefined;
+      let versionMismatch = false;
+
+      for (const actionSpecification of actionSpecifications) {
+        // Read the contents of the action.yml file.
+        const contents = await readFile(actionSpecification, "utf-8");
+        const specification = yaml.load(contents);
+
+        // Find the `runs.using` value in the specification.
+        const using = specification.runs.using;
+        if (using === undefined) {
+          throw new Error(
+            `Couldn't find 'runs.using' in ${actionSpecification}`,
+          );
+        }
+
+        if (nodeVersion === undefined) {
+          // First one we found: set it as the baseline.
+          nodeVersion = using;
+        } else if (nodeVersion !== using) {
+          // Disagreement: set `versionMismatch` to indicate that we should throw an error later.
+          versionMismatch = true;
+        }
+        nodeVersions[actionSpecification] = using;
+      }
+
+      // Throw an error if there was a version mismatch.
+      if (versionMismatch) {
+        throw new Error(
+          `More than one node version used in 'action.yml' files: ${JSON.stringify(nodeVersions)}`,
+        );
+      }
     });
   },
 };
@@ -78,7 +130,7 @@ const UPLOAD_LIB_SRC = "./src/upload-lib";
  *
  * The virtual module additionally re-exports `upload-lib` under the `uploadLib` namespace so that
  * external consumers can access it via the small `lib/upload-lib.js` stub emitted below.
- * 
+ *
  * A tiny stub file is emitted for each Action entrypoint, and one for `upload-lib`. Each stub
  * imports the shared bundle and calls/re-exports from the respective entry point.
  *
@@ -208,7 +260,13 @@ const context = await esbuild.context({
   outdir: OUT_DIR,
   platform: "node",
   external: ["./entry-points"],
-  plugins: [cleanPlugin, copyDefaultsPlugin, entryPointsPlugin, onEndPlugin],
+  plugins: [
+    cleanPlugin,
+    checkNodeVersionsPlugin,
+    copyDefaultsPlugin,
+    entryPointsPlugin,
+    onEndPlugin,
+  ],
   target: ["node20"],
   define: {
     __CODEQL_ACTION_VERSION__: JSON.stringify(pkg.version),

@@ -56,9 +56,8 @@ def run_command(*args):
 
 # Rebuilds the action and commits any changes.
 def rebuild_action():
-  # For backports, the only source-level change vs the source branch is the new version number,
-  # so we just need to refresh the version embedded in `lib/`.
   run_command('npm', 'ci')
+  # We only expect changes to the JavaScript output, rebuilding e.g. the PR checks is unnecessary.
   run_command('npm', 'run', 'build')
 
   run_git('add', '--all')
@@ -450,12 +449,11 @@ def main():
     run_git('add', 'CHANGELOG.md')
     run_git('commit', '-m', f'Update changelog for v{version}')
 
-  if not is_primary_release:
-    if len(conflicted_files) == 0:
-      print('Rebuilding the Action.')
-      rebuild_action()
-    else:
-      print(f'Skipping automatic rebuild because the merge produced conflicts in {conflicted_files}.')
+  if len(conflicted_files) > 0:
+    print(f'Skipping automatic rebuild because the merge produced conflicts in {conflicted_files}.')
+  else:
+    print('Rebuilding the Action.')
+    rebuild_action()
 
   run_git('push', ORIGIN, new_branch_name)
 

@@ -6,6 +6,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - _Breaking change_: Bump the minimum required CodeQL bundle version to 2.19.4. [#3894](https://github.com/github/codeql-action/pull/3894)
 - Add support for SHA-256 Git object IDs. [#3893](https://github.com/github/codeql-action/pull/3893)
+- The JavaScript bundle shipped on release branches is now minified, reducing the size of the repository by around 20%. Bundles on `main` remain unminified to avoid merge conflicts between PRs. [#3920](https://github.com/github/codeql-action/pull/3920)
 
 ## 4.35.5 - 15 May 2026
 

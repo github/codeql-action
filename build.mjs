@@ -83,7 +83,7 @@ const checkNodeVersionsPlugin = {
       }
 
       // Write the node version to `.nvmrc`.
-      writeFile(
+      await writeFile(
         join(__dirname, ".nvmrc"),
         nodeVersion.substring("node".length) + "\n",
         "utf-8",

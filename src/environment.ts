@@ -154,3 +154,12 @@ export enum EnvVar {
   /** Used by Code Scanning Risk Assessment to communicate the assessment ID to the CodeQL Action. */
   RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }
+
+/**
+ * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
+ *
+ * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
+ */
+export function isInTestMode(): boolean {
+  return process.env[EnvVar.TEST_MODE] === "true";
+}

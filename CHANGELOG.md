@@ -2,11 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## 3.36.0 - 22 May 2026
+## [UNRELEASED]
 
-- _Breaking change_: Bump the minimum required CodeQL bundle version to 2.19.4. [#3894](https://github.com/github/codeql-action/pull/3894)
-- Add support for SHA-256 Git object IDs. [#3893](https://github.com/github/codeql-action/pull/3893)
-- Update default CodeQL bundle version to [2.25.5](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.5). [#3926](https://github.com/github/codeql-action/pull/3926)
+No user facing changes.
+
+## v3.36.0 - 22 May 2026
+
+This release rolls back 4.36.0 due to issues with that release. It is identical to 0.0.0.
 
 ## 3.35.5 - 15 May 2026
 
@@ -1206,3 +1208,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

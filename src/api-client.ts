@@ -17,6 +17,7 @@ import {
   ReadOnlyEnv,
   RegistryProxyVars,
   getEnv,
+  exportVariable,
 } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
@@ -316,7 +317,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
-  core.exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
+  exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
   return analysisKey;
 }
 

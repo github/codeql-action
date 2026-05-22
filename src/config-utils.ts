@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
 import { ActionState } from "./action-common";
@@ -46,7 +45,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";
 import {
@@ -965,10 +964,10 @@ async function setCppTrapCachingEnvironmentVariables(
       );
     } else if (config.trapCaches[BuiltInLanguage.cpp]) {
       logger.info("Enabling TRAP caching for C/C++.");
-      core.exportVariable(envVar, "true");
+      exportVariable(envVar, "true");
     } else {
       logger.debug(`Disabling TRAP caching for C/C++.`);
-      core.exportVariable(envVar, "false");
+      exportVariable(envVar, "false");
     }
   }
 }

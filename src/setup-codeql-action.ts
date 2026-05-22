@@ -184,7 +184,7 @@ async function run(
     core.setOutput("codeql-path", codeql.getPath());
     core.setOutput("codeql-version", (await codeql.getVersion()).version);
 
-    core.exportVariable(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
+    actionState.env.export(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

@@ -26,6 +26,9 @@ const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
 
 /**
  * The first version of the CodeQL Bundle that shipped with zstd-compressed bundles.
+ *
+ * This is now below the minimum version of CodeQL, but we keep this around because we currently set
+ * up CodeQL before checking that the version is new enough.
  */
 export const CODEQL_VERSION_ZSTD_BUNDLE = "2.19.0";
 

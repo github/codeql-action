@@ -317,3 +317,12 @@ export class Env<
 export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
   return new Env(env);
 }
+
+/**
+ * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
+ *
+ * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
+ */
+export function isInTestMode(): boolean {
+  return process.env[EnvVar.TEST_MODE] === "true";
+}

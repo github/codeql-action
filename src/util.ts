@@ -14,13 +14,18 @@ import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
-import { EnvVar, getRequiredEnvParam } from "./environment";
+import { EnvVar, getRequiredEnvParam, isInTestMode } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
-export { getRequiredEnvParam, getOptionalEnvVar, getEnv } from "./environment";
+export {
+  getRequiredEnvParam,
+  getOptionalEnvVar,
+  getEnv,
+  isInTestMode,
+} from "./environment";
 
 /**
  * The name of the file containing the base database OIDs, as stored in the
@@ -709,15 +714,6 @@ export async function delay(
 
 export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
-}
-
-/**
- * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
- *
- * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
- */
-export function isInTestMode(): boolean {
-  return process.env[EnvVar.TEST_MODE] === "true";
 }
 
 /**

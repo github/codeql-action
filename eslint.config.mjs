@@ -140,6 +140,18 @@ export default [
       "no-async-foreach/no-async-foreach": "error",
       "no-sequences": "error",
       "no-shadow": "off",
+
+      // A basic check that we don't use `exportVariable` from `@actions/core`. This rule depends on
+      // the module being imported as `core`, but that is a good enough check for us.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[object.name='core'][property.name='exportVariable']",
+          message: "Use `exportVariable` from `environment.ts` instead.",
+        },
+      ],
+
       // This is overly restrictive with unsetting `EnvVar`s
       "@typescript-eslint/no-dynamic-delete": "off",
       "@typescript-eslint/no-shadow": "error",
@@ -155,6 +167,15 @@ export default [
           disableMissingParamChecks: true,
         },
       ],
+    },
+  },
+  {
+    files: ["src/environment.ts"],
+
+    // We allow `exportVariable` from `@actions/core` to be used in this file
+    // since it defines the wrapper around it that other modules use.
+    rules: {
+      "no-restricted-syntax": "off",
     },
   },
   {

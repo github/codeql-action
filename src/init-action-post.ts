@@ -20,7 +20,7 @@ import {
   DependencyCachingUsageReport,
   getDependencyCacheUsage,
 } from "./dependency-caching";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable } from "./environment";
 import { initFeatures } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -157,7 +157,7 @@ function getFinalJobStatus(config: Config | undefined): JobStatus {
   let jobStatus: JobStatus;
 
   if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true") {
-    core.exportVariable(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
+    exportVariable(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
     jobStatus = JobStatus.SuccessStatus;
   } else if (config !== undefined) {
     // - We have computed a CodeQL config
@@ -182,7 +182,7 @@ function getFinalJobStatus(config: Config | undefined): JobStatus {
 
   // This shouldn't be necessary, but in the odd case that we run more than one
   // `init` post step, ensure the job status is consistent between them.
-  core.exportVariable(EnvVar.JOB_STATUS, jobStatus);
+  exportVariable(EnvVar.JOB_STATUS, jobStatus);
   return jobStatus;
 }
 

@@ -11,7 +11,7 @@ import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import { getRawLanguagesNoAutodetect } from "./config-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
@@ -125,7 +125,7 @@ async function run(startedAt: Date): Promise<void> {
 
     const jobRunUuid = uuidV4();
     logger.info(`Job run UUID is ${jobRunUuid}.`);
-    core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+    exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
 
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,
@@ -165,7 +165,7 @@ async function run(startedAt: Date): Promise<void> {
     core.setOutput("codeql-path", codeql.getPath());
     core.setOutput("codeql-version", (await codeql.getVersion()).version);
 
-    core.exportVariable(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
+    exportVariable(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

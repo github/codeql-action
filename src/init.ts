@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as github from "@actions/github";
 import * as io from "@actions/io";
@@ -16,7 +15,7 @@ import {
 import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -418,5 +417,5 @@ export function logFileCoverageOnPrsDeprecationWarning(logger: Logger): void {
   }
 
   logger.warning(message);
-  core.exportVariable(EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION, "true");
+  exportVariable(EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION, "true");
 }

@@ -3,7 +3,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -216,7 +216,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
-  core.exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
+  exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
   return analysisKey;
 }
 

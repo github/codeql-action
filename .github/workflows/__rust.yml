@@ -40,7 +40,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.19.3
+            version: stable-v2.19.4
           - os: ubuntu-latest
             version: stable-v2.22.1
           - os: ubuntu-latest

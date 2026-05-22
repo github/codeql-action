@@ -16,11 +16,26 @@ No user facing changes.
 """
 
 # NB: This exact commit message is used to find commits for reverting during backports.
-# Changing it requires a transition period where both old and new versions are supported.
+# Changing it requires a transition period where both old and new versions are supported.
 BACKPORT_COMMIT_MESSAGE = 'Update version and changelog for v'
+
+# Commit message used for rebuild commits, both those produced by this script and those produced
+# by the `Rebuild Action` workflow (`.github/workflows/rebuild.yml`).
+REBUILD_COMMIT_MESSAGE = 'Rebuild'
 
 # Name of the remote
 ORIGIN = 'origin'
+
+# Environment variables to check for a GitHub API token.
+TOKEN_ENVIRONMENT_VARIABLES = ('GH_TOKEN', 'GITHUB_TOKEN')
+
+# Gets a GitHub API token from one of the supported environment variables.
+def get_github_token():
+  for variable_name in TOKEN_ENVIRONMENT_VARIABLES:
+    token = os.environ.get(variable_name, '').strip()
+    if token:
+      return token
+  raise Exception('Missing GitHub token. Set GITHUB_TOKEN or GH_TOKEN.')
 
 # Runs git with the given args and returns the stdout.
 # Raises an error if git does not exit successfully (unless passed
@@ -31,6 +46,28 @@ def run_git(*args, allow_non_zero_exit_code=False):
   if not allow_non_zero_exit_code and p.returncode != 0:
     raise Exception(f'Call to {" ".join(cmd)} exited with code {p.returncode} stderr: {p.stderr.decode("ascii")}.')
   return p.stdout.decode('ascii')
+
+# Runs the given command, streaming output to the console.
+# Raises an error if the command does not exit successfully.
+def run_command(*args):
+  cmd = list(args)
+  print(f'Running `{" ".join(cmd)}`.')
+  subprocess.run(cmd, check=True)
+
+# Rebuilds the action and commits any changes.
+def rebuild_action():
+  # For backports, the only source-level change vs the source branch is the new version number,
+  # so we just need to refresh the version embedded in `lib/`.
+  run_command('npm', 'ci')
+  run_command('npm', 'run', 'build')
+
+  run_git('add', '--all')
+  # `git diff --cached --quiet` exits 0 if there are no staged changes, 1 if there are.
+  if subprocess.run(['git', 'diff', '--cached', '--quiet']).returncode == 0:
+    print('Rebuild produced no changes; skipping Rebuild commit.')
+  else:
+    run_git('commit', '-m', REBUILD_COMMIT_MESSAGE)
+    print('Created Rebuild commit.')
 
 # Returns true if the given branch exists on the origin remote
 def branch_exists_on_remote(branch_name):
@@ -87,19 +124,17 @@ def open_pr(
   body.append('Please do the following:')
   if len(conflicted_files) > 0:
     body.append(' - [ ] Ensure `package.json` file contains the correct version.')
-    body.append(' - [ ] Add commits to this branch to resolve the merge conflicts ' +
+    body.append(' - [ ] Add a commit to this branch to resolve the merge conflicts ' +
       'in the following files:')
-    body.extend([f'    - [ ] `{file}`' for file in conflicted_files])
+    body.extend([f'    - `{file}`' for file in conflicted_files])
+    body.append(' - [ ] Rebuild the Action locally (`npm run build`) and push any changes to the ' +
+      f'built output in `lib` as a separate commit named exactly `{REBUILD_COMMIT_MESSAGE}`.')
     body.append(' - [ ] Ensure another maintainer has reviewed the additional commits you added to this ' +
       'branch to resolve the merge conflicts.')
   body.append(' - [ ] Ensure the CHANGELOG displays the correct version and date.')
   body.append(' - [ ] Ensure the CHANGELOG includes all relevant, user-facing changes since the last release.')
   body.append(f' - [ ] Check that there are not any unexpected commits being merged into the `{target_branch}` branch.')
   body.append(' - [ ] Ensure the docs team is aware of any documentation changes that need to be released.')
-
-  if not is_primary_release:
-    body.append(' - [ ] Remove and re-add the "Rebuild" label to the PR to trigger just this workflow.')
-    body.append(' - [ ] Wait for the "Rebuild" workflow to push a commit updating the distribution files.')
 
   body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
   body.append(' - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.')
@@ -109,13 +144,11 @@ def open_pr(
     body.append(' - [ ] Merge all backport PRs to older release branches, that will automatically be created once this PR is merged.')
 
   title = f'Merge {source_branch} into {target_branch}'
-  labels = ['Rebuild'] if not is_primary_release else []
 
   # Create the pull request
   # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
   # a maintainer can take the PR out of draft, thereby triggering the PR checks.
   pr = repo.create_pull(title=title, body='\n'.join(body), head=new_branch_name, base=target_branch, draft=True)
-  pr.add_to_labels(*labels)
   print(f'Created PR #{str(pr.number)}')
 
   # Assign the conductor
@@ -271,12 +304,6 @@ def main():
   parser = argparse.ArgumentParser('update-release-branch.py')
 
   parser.add_argument(
-    '--github-token',
-    type=str,
-    required=True,
-    help='GitHub token, typically from GitHub Actions.'
-  )
-  parser.add_argument(
     '--repository-nwo',
     type=str,
     required=True,
@@ -313,7 +340,7 @@ def main():
   target_branch = args.target_branch
   is_primary_release = args.is_primary_release
 
-  repo = Github(args.github_token).get_repo(args.repository_nwo)
+  repo = Github(get_github_token()).get_repo(args.repository_nwo)
 
   # the target branch will be of the form releases/vN, where N is the major version number
   target_branch_major_version = target_branch.strip('releases/v')
@@ -380,8 +407,9 @@ def main():
       # releases.
       run_git('revert', vOlder_update_commits[0], '--no-edit')
 
-      # Also revert the "Rebuild" commit created by Actions.
-      rebuild_commit = run_git('log', '--grep', '^Rebuild$', '--format=%H').split()[0]
+      # Also revert the "Rebuild" commit, whether created by this script or by the
+      # `Rebuild Action` workflow.
+      rebuild_commit = run_git('log', '--grep', f'^{REBUILD_COMMIT_MESSAGE}$', '--format=%H').split()[0]
       print(f'  Reverting {rebuild_commit}')
       run_git('revert', rebuild_commit, '--no-edit')
 
@@ -396,9 +424,10 @@ def main():
       run_git('add', '.')
       run_git('commit', '--no-edit')
 
-    # Migrate the package version number from a vLatest version number to a vOlder version number
+    # Migrate the package version number from a vLatest version number to a vOlder version number.
+    # `package-lock.json` is updated as part of the subsequent rebuild step (see `rebuild_action`).
     print(f'Setting version number to {version} in package.json')
-    replace_version_package_json(get_current_version(), version) # We rely on the `Rebuild` workflow to update package-lock.json
+    replace_version_package_json(get_current_version(), version)
     run_git('add', 'package.json')
 
     # Migrate the changelog notes from vLatest version numbers to vOlder version numbers
@@ -420,6 +449,13 @@ def main():
     # Create a commit that updates the CHANGELOG
     run_git('add', 'CHANGELOG.md')
     run_git('commit', '-m', f'Update changelog for v{version}')
+
+  if not is_primary_release:
+    if len(conflicted_files) == 0:
+      print('Rebuilding the Action.')
+      rebuild_action()
+    else:
+      print(f'Skipping automatic rebuild because the merge produced conflicts in {conflicted_files}.')
 
   run_git('push', ORIGIN, new_branch_name)
 

@@ -20,6 +20,10 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
 
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 defaults:
   run:
     shell: bash

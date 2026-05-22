@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "3.35.5",
+  "version": "3.36.0",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -12,7 +12,8 @@
     "ava": "npm run transpile && ava --verbose",
     "test": "npm run ava -- src/",
     "test-debug": "npm run test -- --timeout=20m",
-    "transpile": "tsc --build --verbose tsconfig.json"
+    "transpile": "tsc --build --verbose tsconfig.json",
+    "update-pr-checks": "./pr-checks/sync.sh"
   },
   "license": "MIT",
   "workspaces": [
@@ -43,7 +44,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@ava/typescript": "7.0.0",
+    "@ava/typescript": "6.0.0",
     "@eslint/compat": "^2.0.5",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@octokit/types": "^16.0.0",
@@ -55,7 +56,7 @@
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^21.0.1",
-    "ava": "^7.0.0",
+    "ava": "^6.4.1",
     "esbuild": "^0.28.0",
     "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -66,7 +67,7 @@
     "glob": "^11.1.0",
     "globals": "^17.6.0",
     "nock": "^14.0.12",
-    "sinon": "^21.1.2",
+    "sinon": "^22.0.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.2"
   },

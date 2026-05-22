@@ -28,6 +28,24 @@ interface WorkflowInput {
 /** A partial mapping from known input names to input definitions. */
 type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 
+/** An operating system identifier. */
+type OperatingSystemIdentifier = "ubuntu" | "macos" | "windows";
+
+/**
+ * Represents an operating system matrix entry for a generated PR check workflow.
+ *
+ * Either a string containing the OS identifier or an object containing the OS identifier and an
+ * optional runner image label.
+ */
+type OperatingSystem =
+  | OperatingSystemIdentifier
+  | {
+      /** OS identifier. */
+      os: OperatingSystemIdentifier;
+      /** Optional runner image label. */
+      "runner-image"?: string;
+    };
+
 /**
  * Represents PR check specifications.
  */
@@ -36,8 +54,8 @@ interface Specification extends JobSpecification {
   inputs?: Record<string, WorkflowInput>;
   /** CodeQL bundle versions to test against. Defaults to `DEFAULT_TEST_VERSIONS`. */
   versions?: string[];
-  /** Operating system prefixes used to select runner images (e.g. `["ubuntu", "macos"]`). */
-  operatingSystems?: string[];
+  /** Operating system prefixes, either as strings or with explicit runner image labels. */
+  operatingSystems?: OperatingSystem[];
   /** Per-OS version overrides. If specified for an OS, only those versions are tested on that OS. */
   osCodeQlVersions?: Record<string, string[]>;
   /** Whether to use the all-platform CodeQL bundle. */
@@ -97,10 +115,6 @@ type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 // The default set of CodeQL Bundle versions to use for the PR checks.
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-  "stable-v2.17.6",
-  // The last CodeQL release in the 2.18 series.
-  "stable-v2.18.4",
-  // The last CodeQL release in the 2.19 series.
   "stable-v2.19.4",
   // The last CodeQL release in the 2.20 series.
   "stable-v2.20.7",
@@ -108,6 +122,10 @@ const defaultTestVersions = [
   "stable-v2.21.4",
   // The last CodeQL release in the 2.22 series.
   "stable-v2.22.4",
+  // The last CodeQL release in the 2.23 series.
+  "stable-v2.23.9",
+  // The last CodeQL release in the 2.24 series.
+  "stable-v2.24.3",
   // The default version of CodeQL for Dotcom, as determined by feature flags.
   "default",
   // The version of CodeQL shipped with the Action in `defaults.json`. During the release process
@@ -311,10 +329,19 @@ function generateJobMatrix(
       );
     }
 
-    const runnerImages = ["ubuntu-latest", "macos-latest", "windows-latest"];
+    const defaultRunnerImages = [
+      "ubuntu-latest",
+      "macos-latest",
+      "windows-latest",
+    ];
     const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
 
-    for (const operatingSystem of operatingSystems) {
+    for (const operatingSystemConfig of operatingSystems) {
+      const operatingSystem =
+        typeof operatingSystemConfig === "string"
+          ? operatingSystemConfig
+          : operatingSystemConfig.os;
+
       // If osCodeQlVersions is set for this OS, only include the specified CodeQL versions.
       const allowedVersions =
         checkSpecification.osCodeQlVersions?.[operatingSystem];
@@ -322,9 +349,13 @@ function generateJobMatrix(
         continue;
       }
 
-      const runnerImagesForOs = runnerImages.filter((image) =>
-        image.startsWith(operatingSystem),
-      );
+      const runnerImagesForOs =
+        typeof operatingSystemConfig === "string" ||
+        operatingSystemConfig["runner-image"] === undefined
+          ? defaultRunnerImages.filter((image) =>
+              image.startsWith(operatingSystem),
+            )
+          : [operatingSystemConfig["runner-image"]];
 
       for (const runnerImage of runnerImagesForOs) {
         matrix.push({

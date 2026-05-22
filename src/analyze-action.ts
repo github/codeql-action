@@ -214,9 +214,10 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
 
 async function run({
   startedAt,
+  env,
   logger,
   actions,
-}: ActionState<["Base", "Logger", "Actions"]>) {
+}: ActionState<["Base", "Env", "Logger", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
@@ -287,7 +288,7 @@ async function run({
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
-    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
+    env.export(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,
@@ -456,7 +457,7 @@ async function run({
         `expect-error input was set to true but no error was thrown.`,
       );
     }
-    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+    env.export(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     if (

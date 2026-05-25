@@ -12,7 +12,7 @@ import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { cleanupAndUploadDatabases } from "./database-upload";
 import * as gitUtils from "./git-utils";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import { RepositoryNwo } from "./repository";
 import {
   checkExpectedLogMessages,

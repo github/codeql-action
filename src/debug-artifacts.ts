@@ -13,7 +13,7 @@ import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import * as json from "./json";
-import { Language } from "./languages";
+import { Language } from "./languages/index";
 import { Logger, withGroup } from "./logging";
 import {
   isSafeArtifactUpload,

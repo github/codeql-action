@@ -72,7 +72,7 @@ async function sendCompletedStatusReport(
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
     tools_input: getOptionalInput("tools") || "",
-    computed_tools_input: effectiveToolsInput || "",
+    effective_tools_input: effectiveToolsInput || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: "",

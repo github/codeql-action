@@ -10,7 +10,7 @@ import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
 import { EnvVar } from "./environment";
-import { Language } from "./languages";
+import { Language } from "./languages/index";
 import { Logger, getActionsLogger } from "./logging";
 import {
   StatusReportBase,

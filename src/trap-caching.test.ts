@@ -15,7 +15,7 @@ import {
 import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import { getRunnerLogger } from "./logging";
 import {
   createFeatures,

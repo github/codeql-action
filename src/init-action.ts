@@ -49,7 +49,7 @@ import {
   initConfig,
   runDatabaseInitCluster,
 } from "./init";
-import { JavaEnvVars, BuiltInLanguage } from "./languages";
+import { JavaEnvVars, BuiltInLanguage } from "./languages/index";
 import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -160,7 +160,7 @@ async function sendCompletedStatusReport(
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
     tools_input: getOptionalInput("tools") || "",
-    computed_tools_input: effectiveToolsInput || "",
+    effective_tools_input: effectiveToolsInput || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: workflowLanguages || "",

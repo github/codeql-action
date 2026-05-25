@@ -11,7 +11,7 @@ import { CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { BuiltInLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages/index";
 import { Logger } from "./logging";
 import { getErrorMessage, getRequiredEnvParam } from "./util";
 

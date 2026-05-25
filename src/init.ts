@@ -26,7 +26,7 @@ import {
   RepositoryProperties,
   RepositoryPropertyName,
 } from "./feature-flags/properties";
-import { BuiltInLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages/index";
 import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import { ZstdAvailability } from "./tar";

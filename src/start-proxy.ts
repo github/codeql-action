@@ -18,7 +18,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import * as json from "./json";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import { Logger } from "./logging";
 import {
   Address,

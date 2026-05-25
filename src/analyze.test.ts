@@ -14,7 +14,7 @@ import {
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
 import { Feature } from "./feature-flags";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import { getRunnerLogger } from "./logging";
 import {
   setupTests,

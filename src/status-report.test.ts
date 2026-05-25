@@ -4,7 +4,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -316,7 +316,7 @@ const testCreateInitWithConfigStatusReport = makeMacro({
         const initStatusReport: InitStatusReport = {
           ...statusReportBase,
           tools_input: "",
-          computed_tools_input: "",
+          effective_tools_input: "",
           tools_resolved_version: "foo",
           tools_source: ToolsSource.Unknown,
           workflow_languages: "actions",

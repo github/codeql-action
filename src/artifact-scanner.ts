@@ -55,7 +55,7 @@ const GITHUB_TOKEN_PATTERNS: TokenPattern[] = [
   },
   {
     type: TokenType.ServerToServer,
-    pattern: /\bghs_[a-zA-Z0-9]{36}\b/g,
+    pattern: /ghs_[A-Za-z0-9._]{36,}/g,
   },
   {
     type: TokenType.Refresh,
@@ -63,7 +63,7 @@ const GITHUB_TOKEN_PATTERNS: TokenPattern[] = [
   },
   {
     type: TokenType.AppInstallationAccess,
-    pattern: /\bghs_[a-zA-Z0-9]{255}\b/g,
+    pattern: /ghs_[A-Za-z0-9._]{36,}/g,
   },
 ];
 
@@ -109,16 +109,27 @@ function scanFileForTokens(
   logger: Logger,
 ): TokenFinding[] {
   const findings: TokenFinding[] = [];
+  const seenMatches = new Set<number>();
   try {
     const content = fs.readFileSync(filePath, "utf8");
 
     for (const { type, pattern } of GITHUB_TOKEN_PATTERNS) {
-      const matches = content.match(pattern);
-      if (matches) {
-        for (let i = 0; i < matches.length; i++) {
-          findings.push({ tokenType: type, filePath: relativePath });
+      const regex = new RegExp(pattern.source, pattern.flags);
+      let matchCount = 0;
+
+      for (const match of content.matchAll(regex)) {
+        const index = match.index;
+        if (index === undefined || seenMatches.has(index)) {
+          continue;
         }
-        logger.debug(`Found ${matches.length} ${type}(s) in ${relativePath}`);
+
+        seenMatches.add(index);
+        findings.push({ tokenType: type, filePath: relativePath });
+        matchCount++;
+      }
+
+      if (matchCount > 0) {
+        logger.debug(`Found ${matchCount} ${type}(s) in ${relativePath}`);
       }
     }
 

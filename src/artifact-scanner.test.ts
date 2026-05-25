@@ -23,6 +23,9 @@ test("makeTestToken", (t) => {
   t.is(makeTestToken(255).length, 255);
 });
 
+const NEW_FORMAT_GHS_TOKEN =
+  "ghs_abc123.def456.ghi789_abc123.def456.ghi789";
+
 test("isAuthToken", (t) => {
   // Undefined for strings that aren't tokens
   t.is(isAuthToken("some string"), undefined);
@@ -32,9 +35,10 @@ test("isAuthToken", (t) => {
   // Token types for strings that are tokens.
   t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
   t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
+  t.is(isAuthToken(NEW_FORMAT_GHS_TOKEN), TokenType.ServerToServer);
   t.is(
     isAuthToken(`ghs_${makeTestToken(255)}`),
-    TokenType.AppInstallationAccess,
+    TokenType.ServerToServer,
   );
   t.is(
     isAuthToken(`github_pat_${makeTestToken(22)}_${makeTestToken(59)}`),
@@ -51,6 +55,15 @@ test("isAuthToken", (t) => {
       GITHUB_PAT_CLASSIC_PATTERN,
     ]),
     undefined,
+  );
+  t.is(
+    isAuthToken(NEW_FORMAT_GHS_TOKEN, [
+      {
+        type: TokenType.AppInstallationAccess,
+        pattern: /ghs_[A-Za-z0-9._]{36,}/g,
+      },
+    ]),
+    TokenType.AppInstallationAccess,
   );
 });
 
@@ -76,15 +89,11 @@ const testTokens = [
   },
   {
     type: TokenType.ServerToServer,
-    value: `ghs_${makeTestToken()}`,
+    value: NEW_FORMAT_GHS_TOKEN,
   },
   {
     type: TokenType.Refresh,
     value: `ghr_${makeTestToken()}`,
-  },
-  {
-    type: TokenType.AppInstallationAccess,
-    value: `ghs_${makeTestToken(255)}`,
   },
 ];
 

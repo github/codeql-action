@@ -253,6 +253,7 @@ async function run(startedAt: Date) {
       repositoryNwo,
       logger,
     );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     // Create a unique identifier for this run.
     const jobRunUuid = uuidV4();
@@ -303,7 +304,11 @@ async function run(startedAt: Date) {
     // Determine the effective tools input.
     // The explicit `tools` workflow input takes precedence. If none is provided,
     // fall back to the 'github-codeql-tools' repository property (if set).
-    effectiveToolsInput = await resolveToolsInput(repositoryNwo, logger);
+    effectiveToolsInput = resolveToolsInput(
+      getOptionalInput("tools"),
+      repositoryProperties,
+      logger,
+    );
 
     const initCodeQLResult = await initCodeQL(
       effectiveToolsInput,
@@ -351,7 +356,6 @@ async function run(startedAt: Date) {
 
     analysisKinds = await getAnalysisKinds(logger);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
-    const repositoryProperties = repositoryPropertiesResult.orElse({});
     const fileCoverageResult = await getFileCoverageInformationEnabled(
       debugMode,
       codeql,

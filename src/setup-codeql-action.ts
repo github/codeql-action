@@ -11,6 +11,7 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
+import { loadRepositoryProperties } from "./feature-flags/properties";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -145,10 +146,21 @@ async function run(startedAt: Date): Promise<void> {
     );
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
 
+    // Fetch the values of known repository properties that affect us.
+    const repositoryPropertiesResult = await loadRepositoryProperties(
+      repositoryNwo,
+      logger,
+    );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
+
     // Determine the effective tools input.
     // The explicit `tools` workflow input takes precedence. If none is provided,
     // fall back to the 'github-codeql-tools' repository property (if set).
-    effectiveToolsInput = await resolveToolsInput(repositoryNwo, logger);
+    effectiveToolsInput = resolveToolsInput(
+      getOptionalInput("tools"),
+      repositoryProperties,
+      logger,
+    );
 
     const initCodeQLResult = await initCodeQL(
       effectiveToolsInput,

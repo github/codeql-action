@@ -6,6 +6,31 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - Organizations can now create a custom repository property with the name `github-codeql-tools` to set the default CodeQL CLI tools value for their repositories. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) and [Customizing your advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning).
 
+## 4.36.0 - 22 May 2026
+
+- _Breaking change_: Bump the minimum required CodeQL bundle version to 2.19.4. [#3894](https://github.com/github/codeql-action/pull/3894)
+- Add support for SHA-256 Git object IDs. [#3893](https://github.com/github/codeql-action/pull/3893)
+- Update default CodeQL bundle version to [2.25.5](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.5). [#3926](https://github.com/github/codeql-action/pull/3926)
+
+## 4.35.5 - 15 May 2026
+
+- We have improved how the JavaScript bundles for the CodeQL Action are generated to avoid duplication across bundles and reduce the size of the repository by around 70%. This should have no effect on the runtime behaviour of the CodeQL Action. [#3899](https://github.com/github/codeql-action/pull/3899)
+- For performance and accuracy reasons, [improved incremental analysis](https://github.com/github/roadmap/issues/1158) will now only be enabled on a pull request when diff-informed analysis is also enabled for that run. If diff-informed analysis is unavailable (for example, because the PR diff ranges could not be computed), the action will fall back to a full analysis. [#3791](https://github.com/github/codeql-action/pull/3791)
+- If multiple inputs are provided for the GitHub-internal `analysis-kinds` input, only `code-scanning` will be enabled. The `analysis-kinds` input is experimental, for GitHub-internal use only, and may change without notice at any time. [#3892](https://github.com/github/codeql-action/pull/3892)
+- Added an experimental change which, when running a Code Scanning analysis for a PR with [improved incremental analysis](https://github.com/github/roadmap/issues/1158) enabled, prefers CodeQL CLI versions that have a cached overlay-base database for the configured languages. This speeds up analysis for a repository when there is not yet a cached overlay-base database for the latest CLI version. We expect to roll this change out to everyone in May. [#3880](https://github.com/github/codeql-action/pull/3880)
+
+## 4.35.4 - 07 May 2026
+
+- Update default CodeQL bundle version to [2.25.4](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.4). [#3881](https://github.com/github/codeql-action/pull/3881)
+
+## 4.35.3 - 01 May 2026
+
+- _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.19.3 and earlier. These versions of CodeQL were discontinued on 9 April 2026 alongside GitHub Enterprise Server 3.15, and will be unsupported by the next minor release of the CodeQL Action. [#3837](https://github.com/github/codeql-action/pull/3837)
+- Configurations for private registries that use Cloudsmith or GCP OIDC are now accepted. [#3850](https://github.com/github/codeql-action/pull/3850)
+- Best-effort connection tests for private registries now use `GET` requests instead of `HEAD` for better compatibility with various registry implementations. For NuGet feeds, the test is now always performed against the service index. [#3853](https://github.com/github/codeql-action/pull/3853)
+- Fixed a bug where two diagnostics produced within the same millisecond could overwrite each other on disk, causing one of them to be lost. [#3852](https://github.com/github/codeql-action/pull/3852)
+- Update default CodeQL bundle version to [2.25.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.3). [#3865](https://github.com/github/codeql-action/pull/3865)
+
 ## 4.35.2 - 15 Apr 2026
 
 - The undocumented TRAP cache cleanup feature that could be enabled using the `CODEQL_ACTION_CLEANUP_TRAP_CACHES` environment variable is deprecated and will be removed in May 2026. If you are affected by this, we recommend disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action. [#3795](https://github.com/github/codeql-action/pull/3795)

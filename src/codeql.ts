@@ -277,22 +277,22 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.17.6";
+const CODEQL_MINIMUM_VERSION = "2.19.4";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.17.6";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.19.4";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.13";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.15";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2025-06-19";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-04-09";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
@@ -305,6 +305,8 @@ const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
  * @param tempDir
  * @param variant
  * @param defaultCliVersion
+ * @param rawLanguages Raw set of languages.
+ * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param features Information about the features that are enabled.
  * @param logger
  * @param checkVersion Whether to check that CodeQL CLI meets the minimum
@@ -317,6 +319,8 @@ export async function setupCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  rawLanguages: string[] | undefined,
+  useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
   checkVersion: boolean,
@@ -340,6 +344,8 @@ export async function setupCodeQL(
       tempDir,
       variant,
       defaultCliVersion,
+      rawLanguages,
+      useOverlayAwareDefaultCliVersion,
       features,
       logger,
     );
@@ -586,13 +592,6 @@ async function getCodeQLForCmd(
         extraArgs.push(`--qlconfig-file=${qlconfigFile}`);
       }
 
-      const overwriteFlag = isSupportedToolsFeature(
-        await this.getVersion(),
-        ToolsFeature.ForceOverwrite,
-      )
-        ? "--force-overwrite"
-        : "--overwrite";
-
       const overlayDatabaseMode = config.overlayDatabaseMode;
       if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
         const overlayChangesFile = await writeOverlayChangesFile(
@@ -619,7 +618,7 @@ async function getCodeQLForCmd(
           "init",
           ...(overlayDatabaseMode === OverlayDatabaseMode.Overlay
             ? []
-            : [overwriteFlag]),
+            : ["--force-overwrite"]),
           "--db-cluster",
           config.dbLocation,
           `--source-root=${sourceRoot}`,
@@ -630,7 +629,14 @@ async function getCodeQLForCmd(
             // Some user configs specify `--no-calculate-baseline` as an additional
             // argument to `codeql database init`. Therefore ignore the baseline file
             // options here to avoid specifying the same argument twice and erroring.
-            ignoringOptions: ["--overwrite", ...baselineFilesOptions],
+            //
+            // Ignore `--overwrite` to avoid passing both `--force-overwrite` and `--overwrite` if
+            // the user has configured `--overwrite`.
+            ignoringOptions: [
+              "--force-overwrite",
+              "--overwrite",
+              ...baselineFilesOptions,
+            ],
           }),
         ],
         { stdin: externalRepositoryToken },
@@ -847,7 +853,7 @@ async function getCodeQLForCmd(
         "--sarif-group-rules-by-pack",
         "--sarif-include-query-help=always",
         "--sublanguage-file-coverage",
-        ...(await getJobRunUuidSarifOptions(this)),
+        ...(await getJobRunUuidSarifOptions()),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (sarifRunPropertyFlag !== undefined) {
@@ -1277,13 +1283,8 @@ function applyAutobuildAzurePipelinesTimeoutFix() {
   ].join(" ");
 }
 
-async function getJobRunUuidSarifOptions(codeql: CodeQL) {
+async function getJobRunUuidSarifOptions() {
   const jobRunUuid = process.env[EnvVar.JOB_RUN_UUID];
 
-  return jobRunUuid &&
-    (await codeql.supportsFeature(
-      ToolsFeature.DatabaseInterpretResultsSupportsSarifRunProperty,
-    ))
-    ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`]
-    : [];
+  return jobRunUuid ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`] : [];
 }

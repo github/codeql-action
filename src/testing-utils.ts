@@ -2,7 +2,11 @@ import { TextDecoder } from "node:util";
 import path from "path";
 
 import * as github from "@actions/github";
-import { ExecutionContext, TestFn } from "ava";
+import test, {
+  type ExecutionContext,
+  type MacroDeclarationOptions,
+  type TestFn,
+} from "ava";
 import nock from "nock";
 import * as sinon from "sinon";
 
@@ -36,14 +40,18 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
   apiURL: "https://api.github.com",
 };
 
-export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
-  cliVersion: "2.20.0",
-  tagName: "codeql-bundle-v2.20.0",
-};
-
 export const LINKED_CLI_VERSION = {
   cliVersion: defaults.cliVersion,
   tagName: defaults.bundleVersion,
+};
+
+export const SAMPLE_DEFAULT_CLI_VERSION: CodeQLDefaultVersionInfo = {
+  enabledVersions: [
+    {
+      cliVersion: "2.20.0",
+      tagName: "codeql-bundle-v2.20.0",
+    },
+  ],
 };
 
 type TestContext = {
@@ -85,8 +93,8 @@ function wrapOutput(context: TestContext) {
   };
 }
 
-export function setupTests(test: TestFn<any>) {
-  const typedTest = test as TestFn<TestContext>;
+export function setupTests(testFn: TestFn<any>) {
+  const typedTest = testFn as TestFn<TestContext>;
 
   typedTest.beforeEach((t) => {
     // Set an empty CodeQL object so that all method calls will fail
@@ -140,6 +148,26 @@ export function setupTests(test: TestFn<any>) {
 }
 
 /**
+ * Declare a reusable test implementation, with better type safety than `test.macro`.
+ */
+export function makeMacro<Args extends unknown[]>(
+  decl: MacroDeclarationOptions<Args, unknown>,
+) {
+  const m = test.macro<Args>(decl);
+
+  const wrapper = (name: string, ...args: Args) => test(name, m, ...args);
+  wrapper.test = (...args: Args) => test(m, ...args);
+  wrapper.serial = (name: string, ...args: Args) =>
+    test.serial(name, m, ...args);
+  // Make the implementation available as `fn`. We don't call it `exec` so
+  // that results from this function are not valid arguments to `test`
+  // or `test.serial`.
+  wrapper.fn = decl.exec;
+
+  return wrapper;
+}
+
+/**
  * Default values for environment variables typically set in an Actions
  * environment. Tests can override individual variables by passing them in the
  * `overrides` parameter.
@@ -160,17 +188,37 @@ export const DEFAULT_ACTIONS_VARS = {
   RUNNER_OS: "Linux",
 } as const satisfies Record<string, string>;
 
-// Sets environment variables that make using some libraries designed for
-// use only on actions safe to use outside of actions.
-export function setupActionsVars(
-  tempDir: string,
-  toolsDir: string,
-  overrides?: Partial<Record<keyof typeof DEFAULT_ACTIONS_VARS, string>>,
-) {
+/** Partial mappings from GitHub Actions environment variables to values. */
+export type ActionVarOverrides = Partial<
+  Record<keyof typeof DEFAULT_ACTIONS_VARS, string>
+>;
+
+/**
+ * Sets environment variables that are always available on GitHub Actions,
+ * excluding some that are expected to be set to paths. See `setupActionsVars`.
+ *
+ * @param overrides Overrides for the defaults.
+ */
+export function setupBaseActionsVars(overrides?: ActionVarOverrides) {
   const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
   for (const [key, value] of Object.entries(vars)) {
     process.env[key] = value;
   }
+}
+
+/**
+ * Sets environment variables that are always available on GitHub Actions.
+ *
+ * @param tempDir A value for `RUNNER_TEMP` and `GITHUB_WORKSPACE`.
+ * @param toolsDir A value for `RUNNER_TOOL_CACHE`.
+ * @param overrides Overrides for the defaults.
+ */
+export function setupActionsVars(
+  tempDir: string,
+  toolsDir: string,
+  overrides?: ActionVarOverrides,
+) {
+  setupBaseActionsVars(overrides);
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
   process.env["GITHUB_WORKSPACE"] = tempDir;
@@ -442,7 +490,7 @@ export function mockCodeQLVersion(
  */
 export function createFeatures(enabledFeatures: Feature[]): FeatureEnablement {
   return {
-    getDefaultCliVersion: async () => {
+    getEnabledDefaultCliVersions: async () => {
       throw new Error("not implemented");
     },
     getValue: async (feature) => {

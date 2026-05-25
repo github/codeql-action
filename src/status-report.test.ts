@@ -19,6 +19,7 @@ import {
   setupTests,
   setupActionsVars,
   createTestConfig,
+  makeMacro,
 } from "./testing-utils";
 import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 
@@ -291,10 +292,9 @@ test.serial(
   },
 );
 
-const testCreateInitWithConfigStatusReport = test.macro({
+const testCreateInitWithConfigStatusReport = makeMacro({
   exec: async (
     t,
-    _title: string,
     config: Config,
     expectedReportProperties: Partial<InitWithConfigStatusReport>,
   ) => {
@@ -338,11 +338,10 @@ const testCreateInitWithConfigStatusReport = test.macro({
       }
     });
   },
-  title: (_, title) => `createInitWithConfigStatusReport: ${title}`,
+  title: (title) => `createInitWithConfigStatusReport: ${title}`,
 });
 
-test.serial(
-  testCreateInitWithConfigStatusReport,
+testCreateInitWithConfigStatusReport.serial(
   "returns a value",
   createTestConfig({
     buildMode: BuildMode.None,
@@ -356,8 +355,7 @@ test.serial(
   },
 );
 
-test.serial(
-  testCreateInitWithConfigStatusReport,
+testCreateInitWithConfigStatusReport.serial(
   "includes packs for a single language",
   createTestConfig({
     buildMode: BuildMode.None,
@@ -373,8 +371,7 @@ test.serial(
   },
 );
 
-test.serial(
-  testCreateInitWithConfigStatusReport,
+testCreateInitWithConfigStatusReport.serial(
   "includes packs for multiple languages",
   createTestConfig({
     buildMode: BuildMode.None,

@@ -5,17 +5,20 @@ import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
 import * as apiClient from "./api-client";
 import {
-  shouldPerformDiffInformedAnalysis,
+  getDiffInformedAnalysisBranches,
+  prepareDiffInformedAnalysis,
   exportedForTesting,
 } from "./diff-informed-analysis-utils";
-import { Feature, initFeatures } from "./feature-flags";
+import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
+  createFeatures,
   mockCodeQLVersion,
   mockFeatureFlagApiEndpoint,
   setupActionsVars,
+  makeMacro,
 } from "./testing-utils";
 import { GitHubVariant, withTmpDir } from "./util";
 import type { GitHubVersion } from "./util";
@@ -42,10 +45,9 @@ const defaultTestCase: DiffInformedAnalysisTestCase = {
   codeQLVersion: "2.21.0",
 };
 
-const testShouldPerformDiffInformedAnalysis = test.macro({
+const testShouldPerformDiffInformedAnalysis = makeMacro({
   exec: async (
     t: ExecutionContext,
-    _title: string,
     partialTestCase: Partial<DiffInformedAnalysisTestCase>,
     expectedResult: boolean,
   ) => {
@@ -73,39 +75,34 @@ const testShouldPerformDiffInformedAnalysis = test.macro({
         [Feature.DiffInformedQueries]: testCase.featureEnabled,
       });
 
-      const getGitHubVersionStub = sinon
+      sinon
         .stub(apiClient, "getGitHubVersion")
         .resolves(testCase.gitHubVersion);
-      const getPullRequestBranchesStub = sinon
+      sinon
         .stub(actionsUtil, "getPullRequestBranches")
         .returns(testCase.pullRequestBranches);
 
-      const result = await shouldPerformDiffInformedAnalysis(
+      const branches = await getDiffInformedAnalysisBranches(
         codeql,
         features,
         logger,
       );
 
-      t.is(result, expectedResult);
+      t.is(branches !== undefined, expectedResult);
 
       delete process.env.CODEQL_ACTION_DIFF_INFORMED_QUERIES;
-
-      getGitHubVersionStub.restore();
-      getPullRequestBranchesStub.restore();
     });
   },
-  title: (_, title) => `shouldPerformDiffInformedAnalysis: ${title}`,
+  title: (title) => `getDiffInformedAnalysisBranches: ${title}`,
 });
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns true in the default test case",
   {},
   true,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false when feature flag is disabled from the API",
   {
     featureEnabled: false,
@@ -113,8 +110,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false when CODEQL_ACTION_DIFF_INFORMED_QUERIES is set to false",
   {
     featureEnabled: true,
@@ -123,8 +119,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns true when CODEQL_ACTION_DIFF_INFORMED_QUERIES is set to true",
   {
     featureEnabled: false,
@@ -133,8 +128,7 @@ test.serial(
   true,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false for CodeQL version 2.20.0",
   {
     codeQLVersion: "2.20.0",
@@ -142,8 +136,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false for invalid GHES version",
   {
     gitHubVersion: {
@@ -154,8 +147,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false for GHES version 3.18.5",
   {
     gitHubVersion: {
@@ -166,8 +158,7 @@ test.serial(
   false,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns true for GHES version 3.19.0",
   {
     gitHubVersion: {
@@ -178,13 +169,141 @@ test.serial(
   true,
 );
 
-test.serial(
-  testShouldPerformDiffInformedAnalysis,
+testShouldPerformDiffInformedAnalysis.serial(
   "returns false when not a pull request",
   {
     pullRequestBranches: undefined,
   },
   false,
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns false when not a pull request",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      const features = createFeatures([Feature.DiffInformedQueries]);
+
+      sinon.stub(actionsUtil, "getPullRequestBranches").returns(undefined);
+      sinon
+        .stub(apiClient, "getGitHubVersion")
+        .resolves({ type: GitHubVariant.DOTCOM });
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.false(result);
+    });
+  },
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns false when applicability check throws",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      // A features implementation whose getValue rejects, simulating an
+      // unexpected failure when determining whether diff-informed analysis
+      // should run.
+      const features: FeatureEnablement = {
+        getEnabledDefaultCliVersions: async () => {
+          throw new Error("not implemented");
+        },
+        getValue: async () => {
+          throw new Error("feature flag lookup failed");
+        },
+      };
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.false(result);
+    });
+  },
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns true when the diff is fetched successfully",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      const features = createFeatures([Feature.DiffInformedQueries]);
+
+      sinon
+        .stub(actionsUtil, "getPullRequestBranches")
+        .returns({ base: "main", head: "feature" });
+      sinon
+        .stub(apiClient, "getGitHubVersion")
+        .resolves({ type: GitHubVariant.DOTCOM });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      sinon.stub(apiClient, "getApiClient").returns({
+        rest: {
+          repos: {
+            compareCommitsWithBasehead: sinon
+              .stub()
+              .resolves({ data: { files: [] } }),
+          },
+        },
+      } as any);
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.true(result);
+    });
+  },
+);
+
+test.serial(
+  "prepareDiffInformedAnalysis: returns false when the diff API call fails",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const logger = getRunnerLogger(true);
+      const codeql = mockCodeQLVersion("2.21.0");
+      const features = createFeatures([Feature.DiffInformedQueries]);
+
+      sinon
+        .stub(actionsUtil, "getPullRequestBranches")
+        .returns({ base: "main", head: "feature" });
+      sinon
+        .stub(apiClient, "getGitHubVersion")
+        .resolves({ type: GitHubVariant.DOTCOM });
+      const notFoundError: any = new Error("Not Found");
+      notFoundError.status = 404;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      sinon.stub(apiClient, "getApiClient").returns({
+        rest: {
+          repos: {
+            compareCommitsWithBasehead: sinon.stub().rejects(notFoundError),
+          },
+        },
+      } as any);
+
+      const result = await prepareDiffInformedAnalysis(
+        codeql,
+        features,
+        logger,
+      );
+
+      t.false(result);
+    });
+  },
 );
 
 function runGetDiffRanges(changes: number, patch: string[] | undefined): any {

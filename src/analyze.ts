@@ -251,16 +251,9 @@ export async function setupDiffInformedQueryRun(
         diffRanges,
         checkoutPath,
       );
-      if (packDir === undefined) {
-        logger.warning(
-          "Cannot create diff range extension pack for diff-informed queries; " +
-            "reverting to performing full analysis.",
-        );
-      } else {
-        logger.info(
-          `Successfully created diff range extension pack at ${packDir}.`,
-        );
-      }
+      logger.info(
+        `Successfully created diff range extension pack at ${packDir}.`,
+      );
       return packDir;
     },
   );
@@ -314,18 +307,13 @@ extensions:
  * @param ranges The file line ranges, as returned by
  * `getPullRequestEditedDiffRanges`.
  * @param checkoutPath The path at which the repository was checked out.
- * @returns The absolute path of the directory containing the extension pack, or
- * `undefined` if no extension pack was created.
+ * @returns The absolute path of the directory containing the extension pack.
  */
 function writeDiffRangeDataExtensionPack(
   logger: Logger,
-  ranges: DiffThunkRange[] | undefined,
+  ranges: DiffThunkRange[],
   checkoutPath: string,
-): string | undefined {
-  if (ranges === undefined) {
-    return undefined;
-  }
-
+): string {
   if (ranges.length === 0) {
     // An empty diff range means that there are no added or modified lines in
     // the pull request. But the `restrictAlertsTo` extensible predicate

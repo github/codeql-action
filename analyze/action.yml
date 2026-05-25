@@ -95,5 +95,5 @@ outputs:
     description: The ID of the uploaded SARIF file.
 runs:
   using: node24
-  main: "../lib/analyze-action.js"
-  post: "../lib/analyze-action-post.js"
+  main: "../lib/analyze-entry.js"
+  post: "../lib/analyze-post-entry.js"

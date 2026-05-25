@@ -7,8 +7,10 @@ import {
   getRequiredInput,
   getTemporaryDirectory,
 } from "./actions-util";
+import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
+import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { loadRepositoryProperties } from "./feature-flags/properties";
@@ -141,9 +143,8 @@ async function run(startedAt: Date): Promise<void> {
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
-    const codeQLDefaultVersionInfo = await features.getDefaultCliVersion(
-      gitHubVersion.type,
-    );
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
 
     // Fetch the values of known repository properties that affect us.
@@ -161,6 +162,10 @@ async function run(startedAt: Date): Promise<void> {
       repositoryProperties,
       logger,
     );
+    const rawLanguages = getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
+    const analysisKinds = await getAnalysisKinds(logger, features);
 
     const initCodeQLResult = await initCodeQL(
       effectiveToolsInput,
@@ -168,6 +173,9 @@ async function run(startedAt: Date): Promise<void> {
       getTemporaryDirectory(),
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      rawLanguages,
+      analysisKinds.length === 1 &&
+        analysisKinds[0] === AnalysisKind.CodeScanning,
       features,
       logger,
     );
@@ -211,7 +219,7 @@ async function run(startedAt: Date): Promise<void> {
 }
 
 /** Run the action and catch any unhandled errors. */
-async function runWrapper(): Promise<void> {
+export async function runWrapper(): Promise<void> {
   const startedAt = new Date();
   const logger = getActionsLogger();
   try {
@@ -227,5 +235,3 @@ async function runWrapper(): Promise<void> {
   }
   await checkForTimeout();
 }
-
-void runWrapper();

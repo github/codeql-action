@@ -39,6 +39,8 @@ export async function initCodeQL(
   tempDir: string,
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
+  rawLanguages: string[] | undefined,
+  useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
@@ -61,6 +63,8 @@ export async function initCodeQL(
     tempDir,
     variant,
     defaultCliVersion,
+    rawLanguages,
+    useOverlayAwareDefaultCliVersion,
     features,
     logger,
     true,

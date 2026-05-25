@@ -422,7 +422,7 @@ async function testLanguageAliases(
           ],
         },
       },
-    } as Workflow,
+    },
     codeql,
   );
 

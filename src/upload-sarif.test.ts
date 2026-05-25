@@ -6,7 +6,7 @@ import * as sinon from "sinon";
 
 import { AnalysisKind, getAnalysisConfig } from "./analyses";
 import { getRunnerLogger } from "./logging";
-import { createFeatures, setupTests } from "./testing-utils";
+import { createFeatures, makeMacro, setupTests } from "./testing-utils";
 import { UploadResult } from "./upload-lib";
 import * as uploadLib from "./upload-lib";
 import { postProcessAndUploadSarif } from "./upload-sarif";
@@ -43,7 +43,7 @@ function mockPostProcessSarifFiles() {
   return postProcessSarifFiles;
 }
 
-const postProcessAndUploadSarifMacro = test.macro({
+const postProcessAndUploadSarifMacro = makeMacro({
   exec: async (
     t: ExecutionContext<unknown>,
     sarifFiles: string[],
@@ -67,7 +67,7 @@ const postProcessAndUploadSarifMacro = test.macro({
         const analysisConfig = getAnalysisConfig(analysisKind);
         uploadPostProcessedFiles
           .withArgs(logger, sinon.match.any, analysisConfig, sinon.match.any)
-          .resolves(expectedResult[analysisKind as AnalysisKind]?.uploadResult);
+          .resolves(expectedResult[analysisKind]?.uploadResult);
       }
 
       const fullSarifPaths = sarifFiles.map(toFullPath);
@@ -123,9 +123,8 @@ const postProcessAndUploadSarifMacro = test.macro({
   title: (providedTitle = "") => `processAndUploadSarif - ${providedTitle}`,
 });
 
-test.serial(
+postProcessAndUploadSarifMacro.serial(
   "SARIF file",
-  postProcessAndUploadSarifMacro,
   ["test.sarif"],
   (tempDir) => path.join(tempDir, "test.sarif"),
   {
@@ -138,9 +137,8 @@ test.serial(
   },
 );
 
-test.serial(
+postProcessAndUploadSarifMacro.serial(
   "JSON file",
-  postProcessAndUploadSarifMacro,
   ["test.json"],
   (tempDir) => path.join(tempDir, "test.json"),
   {
@@ -153,9 +151,8 @@ test.serial(
   },
 );
 
-test.serial(
+postProcessAndUploadSarifMacro.serial(
   "Code Scanning files",
-  postProcessAndUploadSarifMacro,
   ["test.json", "test.sarif"],
   undefined,
   {
@@ -169,9 +166,8 @@ test.serial(
   },
 );
 
-test.serial(
+postProcessAndUploadSarifMacro.serial(
   "Code Quality file",
-  postProcessAndUploadSarifMacro,
   ["test.quality.sarif"],
   (tempDir) => path.join(tempDir, "test.quality.sarif"),
   {
@@ -184,9 +180,8 @@ test.serial(
   },
 );
 
-test.serial(
+postProcessAndUploadSarifMacro.serial(
   "Mixed files",
-  postProcessAndUploadSarifMacro,
   ["test.sarif", "test.quality.sarif"],
   undefined,
   {

@@ -23,8 +23,7 @@ test("makeTestToken", (t) => {
   t.is(makeTestToken(255).length, 255);
 });
 
-const NEW_FORMAT_GHS_TOKEN =
-  "ghs_abc123.def456.ghi789_abc123.def456.ghi789";
+const NEW_FORMAT_GHS_TOKEN = "ghs_abc123.def456.ghi789_abc123.def456.ghi789";
 
 test("isAuthToken", (t) => {
   // Undefined for strings that aren't tokens
@@ -36,10 +35,7 @@ test("isAuthToken", (t) => {
   t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
   t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
   t.is(isAuthToken(NEW_FORMAT_GHS_TOKEN), TokenType.ServerToServer);
-  t.is(
-    isAuthToken(`ghs_${makeTestToken(255)}`),
-    TokenType.ServerToServer,
-  );
+  t.is(isAuthToken(`ghs_${makeTestToken(255)}`), TokenType.ServerToServer);
   t.is(
     isAuthToken(`github_pat_${makeTestToken(22)}_${makeTestToken(59)}`),
     TokenType.PersonalAccessFineGrained,

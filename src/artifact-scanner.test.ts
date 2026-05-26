@@ -60,7 +60,7 @@ test("isAuthToken", (t) => {
     isAuthToken(NEW_FORMAT_GHS_TOKEN, [
       {
         type: TokenType.AppInstallationAccess,
-        pattern: /ghs_[A-Za-z0-9._]{36,}/g,
+        pattern: /ghs_[A-Za-z0-9._-]{36,}/g,
       },
     ]),
     TokenType.AppInstallationAccess,

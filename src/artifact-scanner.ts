@@ -55,7 +55,7 @@ const GITHUB_TOKEN_PATTERNS: TokenPattern[] = [
   },
   {
     type: TokenType.ServerToServer,
-    pattern: /ghs_[A-Za-z0-9._]{36,}/g,
+    pattern: /ghs_[A-Za-z0-9._-]{36,}/g,
   },
   {
     type: TokenType.Refresh,
@@ -63,7 +63,7 @@ const GITHUB_TOKEN_PATTERNS: TokenPattern[] = [
   },
   {
     type: TokenType.AppInstallationAccess,
-    pattern: /ghs_[A-Za-z0-9._]{36,}/g,
+    pattern: /ghs_[A-Za-z0-9._-]{36,}/g,
   },
 ];
 

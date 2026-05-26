@@ -17,7 +17,6 @@ export enum TokenType {
   UserToServer = "User-to-Server Token",
   ServerToServer = "Server-to-Server Token",
   Refresh = "Refresh Token",
-  AppInstallationAccess = "App Installation Access Token",
 }
 
 /** A value of this type associates a token type with its pattern. */
@@ -60,10 +59,6 @@ const GITHUB_TOKEN_PATTERNS: TokenPattern[] = [
   {
     type: TokenType.Refresh,
     pattern: /\bghr_[a-zA-Z0-9]{36}\b/g,
-  },
-  {
-    type: TokenType.AppInstallationAccess,
-    pattern: /ghs_[A-Za-z0-9._-]{36,}/g,
   },
 ];
 

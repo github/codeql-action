@@ -55,11 +55,11 @@ test("isAuthToken", (t) => {
   t.is(
     isAuthToken(NEW_FORMAT_GHS_TOKEN, [
       {
-        type: TokenType.AppInstallationAccess,
+        type: TokenType.ServerToServer,
         pattern: /ghs_[A-Za-z0-9._-]{36,}/g,
       },
     ]),
-    TokenType.AppInstallationAccess,
+    TokenType.ServerToServer,
   );
 });
 

@@ -69,7 +69,7 @@
     "nock": "^14.0.15",
     "sinon": "^22.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.3"
+    "typescript-eslint": "^8.59.4"
   },
   "overrides": {
     "@actions/tool-cache": {

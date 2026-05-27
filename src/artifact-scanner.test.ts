@@ -52,15 +52,6 @@ test("isAuthToken", (t) => {
     ]),
     undefined,
   );
-  t.is(
-    isAuthToken(NEW_FORMAT_GHS_TOKEN, [
-      {
-        type: TokenType.ServerToServer,
-        pattern: /ghs_[A-Za-z0-9._-]{36,}/g,
-      },
-    ]),
-    TokenType.ServerToServer,
-  );
 });
 
 const testTokens = [
@@ -85,7 +76,15 @@ const testTokens = [
   },
   {
     type: TokenType.ServerToServer,
+    value: `ghs_${makeTestToken()}`,
+    checkPattern: "Server-to-Server",
+    label: "legacy format",
+  },
+  {
+    type: TokenType.ServerToServer,
     value: NEW_FORMAT_GHS_TOKEN,
+    checkPattern: "Server-to-Server",
+    label: "new format",
   },
   {
     type: TokenType.Refresh,
@@ -93,8 +92,11 @@ const testTokens = [
   },
 ];
 
-for (const { type, value, checkPattern } of testTokens) {
-  test(`scanArtifactsForTokens detects GitHub ${type} tokens in files`, async (t) => {
+for (const { type, value, checkPattern, label } of testTokens) {
+  const testName = label
+    ? `scanArtifactsForTokens detects GitHub ${type} (${label}) tokens in files`
+    : `scanArtifactsForTokens detects GitHub ${type} tokens in files`;
+  test(testName, async (t) => {
     const logMessages = [];
     const logger = getRecordingLogger(logMessages, { logToConsole: false });
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "scanner-test-"));

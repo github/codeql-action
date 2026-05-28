@@ -33,6 +33,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
 
+    concurrency:
+      cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+      group: pr-checks-unit-tests-${{ github.ref }}-${{ github.event_name }}-${{ matrix.os }}-node${{ matrix['node-version'] }}
+
     steps:
       - name: Prepare git (Windows)
         if: runner.os == 'Windows'
@@ -71,22 +75,21 @@ jobs:
           sarif_file: eslint.sarif
           category: eslint
 
-  # Verifying the PR checks are up-to-date requires Node 24. The PR checks are not dependent
-  # on the main codebase and therefore do not need to be run as part of the same matrix that
-  # we use for the `unit-tests` job.
-  verify-pr-checks:
-    name: Verify PR checks
+  # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
+  # job.
+  other-checks:
+    name: Other checks
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
-    steps:
-      - name: Prepare git (Windows)
-        if: runner.os == 'Windows'
-        run: git config --global core.autocrlf false
+    concurrency:
+      cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+      group: pr-checks-pr-checks-${{ github.ref }}-${{ github.event_name }}
 
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -97,34 +100,22 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        id: install-deps
         run: npm ci
 
       - name: Verify PR checks up to date
-        if: always()
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
         run: .github/workflows/script/verify-pr-checks.sh
 
       - name: Run pr-checks tests
-        if: always()
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
         working-directory: pr-checks
         run: npx tsx --test
 
-  check-node-version:
-    if: github.triggering_actor != 'dependabot[bot]'
-    name: Check Action Node versions
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      BASE_REF: ${{ github.base_ref }}
-
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v6
-      - id: head-version
-        name: Verify all Actions use the same Node version
+      - name: Verify all Actions use the same Node version
+        id: head-version
         run: |
-          NODE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
+          NODE_VERSION=$(find . -path "*/node_modules" -prune -o -name "action.yml" -exec yq -o=json '.runs.using' {} \; | jq -rs '[.[] | select(. != null and startswith("node"))] | unique | .[]')
           echo "NODE_VERSION: ${NODE_VERSION}"
           if [[ $(echo "$NODE_VERSION" | wc -l) -gt 1 ]]; then
             echo "::error::More than one node version used in 'action.yml' files."
@@ -132,22 +123,111 @@ jobs:
           fi
           echo "node_version=${NODE_VERSION}" >> $GITHUB_OUTPUT
 
-      - id: checkout-base
-        name: 'Backport: Check out base ref'
+      - name: Fetch base commit
+        id: fetch-base
+        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
+        # check in those cases.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Compare against the merge base so the size delta reflects only the commits actually
+          # added by this PR, ignoring any changes that have landed on the base branch since the
+          # PR branched off.
+          merge_base=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BASE_SHA...$HEAD_SHA" --jq '.merge_base_commit.sha')
+          echo "merge_base=$merge_base" >> "$GITHUB_OUTPUT"
+          git fetch --no-tags --depth=1 origin "$merge_base" "$HEAD_SHA"
+
+      - name: Check repo size
+        if: steps.fetch-base.outcome == 'success'
+        working-directory: pr-checks
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ steps.fetch-base.outputs.merge_base }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: npx tsx check-repo-size.ts --output-dir "$RUNNER_TEMP/repo-size"
+
+      - name: Upload repo size comment
+        if: steps.fetch-base.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: repo-size-comment
+          path: ${{ runner.temp }}/repo-size/
+          if-no-files-found: error
+
+      - name: 'Backport: Check out base ref'
+        id: checkout-base
         if: ${{ startsWith(github.head_ref, 'backport-') }}
         uses: actions/checkout@v6
         with:
-          ref: ${{ env.BASE_REF }}
+          ref: ${{ github.base_ref }}
 
       - name: 'Backport: Verify Node versions unchanged'
         if: steps.checkout-base.outcome == 'success'
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
         run: |
-          BASE_VERSION=$(find . -name "action.yml" -exec yq -e '.runs.using' {} \; | grep node | sort | uniq)
+          BASE_VERSION=$(find . -path "*/node_modules" -prune -o -name "action.yml" -exec yq -o=json '.runs.using' {} \; | jq -rs '[.[] | select(. != null and startswith("node"))] | unique | .[]')
           echo "HEAD_VERSION: ${HEAD_VERSION}"
           echo "BASE_VERSION: ${BASE_VERSION}"
           if [[ "$BASE_VERSION" != "$HEAD_VERSION" ]]; then
             echo "::error::Cannot change the Node version of an Action in a backport PR."
             exit 1
+          fi
+
+  post-repo-size-comment:
+    name: Post repo size comment
+    needs: other-checks
+    # Keep write permissions isolated from the job that checks out and tests PR code. This job only
+    # posts the candidate comment body produced by the read-only `pr-checks` job.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      needs.other-checks.result == 'success'
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+
+    concurrency:
+      cancel-in-progress: true
+      group: check-repo-size-${{ github.event.pull_request.number }}
+
+    steps:
+      - name: Download repo size comment
+        uses: actions/download-artifact@v8
+        with:
+          name: repo-size-comment
+          path: repo-size-comment
+
+      - name: Post repo size comment
+        env:
+          COMMENT_MARKER: "<!-- repo-size-diff-bot -->"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          significant=$(jq -r '.significant' repo-size-comment/metadata.json)
+          comment_id=$(
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              --paginate \
+              --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
+              | head -n 1
+          )
+
+          if [[ -n "$comment_id" ]]; then
+            echo "Updating existing comment $comment_id."
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id" --field body=@repo-size-comment/body.md
+          elif [[ "$significant" == "true" ]]; then
+            echo "Creating new repo size comment."
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body=@repo-size-comment/body.md
+          else
+            echo "Skipping repo size comment because the delta is below the threshold and no sticky comment exists."
           fi

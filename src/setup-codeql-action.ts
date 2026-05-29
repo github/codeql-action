@@ -18,7 +18,7 @@ import { loadRepositoryProperties } from "./feature-flags/properties";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
-import { resolveToolsInput } from "./resolve-tools-input";
+import { resolveToolsInput } from "./config/resolve-tools-input";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,

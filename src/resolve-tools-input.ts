@@ -28,14 +28,17 @@ export function resolveToolsInput(
     return toolsWorkflowInput;
   }
 
+  const toolsPropertyValue = repositoryProperties[RepositoryPropertyName.TOOLS];
+
   if (!allowRepositoryPropertyFallback) {
-    logger.info(
-      `No explicit tools input was provided. Ignoring '${RepositoryPropertyName.TOOLS}' repository property because it is only supported for dynamic workflows.`,
-    );
+    if (toolsPropertyValue) {
+      logger.info(
+        `No explicit tools input was provided. Ignoring '${RepositoryPropertyName.TOOLS}' repository property because it is only supported for dynamic workflows.`,
+      );
+    }
     return undefined;
   }
 
-  const toolsPropertyValue = repositoryProperties[RepositoryPropertyName.TOOLS];
   if (toolsPropertyValue) {
     logger.info(
       `Setting tools: ${toolsPropertyValue} based on the '${RepositoryPropertyName.TOOLS}' repository property.`,

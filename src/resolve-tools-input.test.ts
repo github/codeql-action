@@ -133,3 +133,13 @@ test("resolveToolsInput ignores repository property when fallback is disabled", 
     ),
   );
 });
+
+test("resolveToolsInput does not log when fallback is disabled and repository property is not set", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  const result = resolveToolsInput(undefined, false, {}, logger);
+
+  t.is(result, undefined);
+  t.is(loggedMessages.length, 0);
+});

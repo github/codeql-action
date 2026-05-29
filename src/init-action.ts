@@ -24,6 +24,7 @@ import {
   shouldRestoreCache,
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
+import { resolveToolsInput } from "./config/resolve-tools-input";
 import * as configUtils from "./config-utils";
 import {
   DependencyCacheRestoreStatusReport,
@@ -58,7 +59,6 @@ import {
 } from "./overlay/caching";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getRepositoryNwo } from "./repository";
-import { resolveToolsInput } from "./config/resolve-tools-input";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,

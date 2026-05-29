@@ -11,6 +11,7 @@ import {
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
+import { resolveToolsInput } from "./config/resolve-tools-input";
 import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
@@ -18,7 +19,6 @@ import { loadRepositoryProperties } from "./feature-flags/properties";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
-import { resolveToolsInput } from "./config/resolve-tools-input";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,

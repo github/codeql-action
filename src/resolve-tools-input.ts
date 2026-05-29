@@ -20,7 +20,9 @@ export function resolveToolsInput(
   logger: Logger,
 ): string | undefined {
   if (toolsWorkflowInput) {
-    logger.info(`Setting tools: ${toolsWorkflowInput} based on workflow input.`);
+    logger.info(
+      `Setting tools: ${toolsWorkflowInput} based on workflow input.`,
+    );
     return toolsWorkflowInput;
   }
 

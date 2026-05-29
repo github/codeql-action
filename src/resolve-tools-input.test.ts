@@ -108,7 +108,7 @@ test("resolveToolsInput ignores repository property when fallback is disabled", 
   t.is(loggedMessages.length, 1);
   const fallbackDisabledMessage = String(loggedMessages[0].message);
   t.true(
-    /Ignoring 'github-codeql-tools' repository property because it is only supported for (dynamic workflows|default setup)\./.test(
+    /Ignoring 'github-codeql-tools' repository property because it is only supported for dynamic workflows\./.test(
       fallbackDisabledMessage,
     ),
   );

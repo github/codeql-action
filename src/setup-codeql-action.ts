@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
 import {
+  isDynamicWorkflow,
   getActionVersion,
   getOptionalInput,
   getRequiredInput,
@@ -156,9 +157,10 @@ async function run(startedAt: Date): Promise<void> {
 
     // Determine the effective tools input.
     // The explicit `tools` workflow input takes precedence. If none is provided,
-    // fall back to the 'github-codeql-tools' repository property (if set).
+    // fall back to the 'github-codeql-tools' repository property (if set) only for dynamic workflows.
     effectiveToolsInput = resolveToolsInput(
       getOptionalInput("tools"),
+      isDynamicWorkflow(),
       repositoryProperties,
       logger,
     );

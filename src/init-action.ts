@@ -7,6 +7,7 @@ import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
 import {
+  isDynamicWorkflow,
   FileCmdNotFoundError,
   getActionVersion,
   getFileType,
@@ -297,9 +298,10 @@ async function run(startedAt: Date) {
 
     // Determine the effective tools input.
     // The explicit `tools` workflow input takes precedence. If none is provided,
-    // fall back to the 'github-codeql-tools' repository property (if set).
+    // fall back to the 'github-codeql-tools' repository property (if set) only for dynamic workflows.
     effectiveToolsInput = resolveToolsInput(
       getOptionalInput("tools"),
+      isDynamicWorkflow(),
       repositoryProperties,
       logger,
     );

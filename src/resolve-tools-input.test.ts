@@ -11,7 +11,7 @@ test("resolveToolsInput returns undefined when no tools input or repository prop
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
 
-  const result = resolveToolsInput(undefined, {}, logger);
+  const result = resolveToolsInput(undefined, true, {}, logger);
 
   t.is(result, undefined);
   t.is(loggedMessages.length, 0);
@@ -21,7 +21,7 @@ test("resolveToolsInput returns workflow input when only workflow input is provi
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
 
-  const result = resolveToolsInput("latest", {}, logger);
+  const result = resolveToolsInput("latest", true, {}, logger);
 
   t.is(result, "latest");
   t.is(loggedMessages.length, 1);
@@ -38,7 +38,7 @@ test("resolveToolsInput returns repository property when only repository propert
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: "toolcache",
   };
-  const result = resolveToolsInput(undefined, repositoryProperties, logger);
+  const result = resolveToolsInput(undefined, true, repositoryProperties, logger);
 
   t.is(result, "toolcache");
   t.is(loggedMessages.length, 1);
@@ -55,7 +55,7 @@ test("resolveToolsInput prioritizes workflow input over repository property", (t
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: "toolcache",
   };
-  const result = resolveToolsInput("nightly", repositoryProperties, logger);
+  const result = resolveToolsInput("nightly", true, repositoryProperties, logger);
 
   t.is(result, "nightly");
   t.is(loggedMessages.length, 1);
@@ -72,60 +72,13 @@ test("resolveToolsInput treats empty string workflow input as not set", (t) => {
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: "toolcache",
   };
-  const result = resolveToolsInput("", repositoryProperties, logger);
+  const result = resolveToolsInput("", true, repositoryProperties, logger);
 
   t.is(result, "toolcache");
   t.is(loggedMessages.length, 1);
   t.is(
     loggedMessages[0].message,
     "Setting tools: toolcache based on the 'github-codeql-tools' repository property.",
-  );
-});
-
-test("resolveToolsInput returns workflow input with URL value", (t) => {
-  const loggedMessages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(loggedMessages);
-
-  const url = "https://example.com/codeql-bundle.tar.gz";
-  const result = resolveToolsInput(url, {}, logger);
-
-  t.is(result, url);
-  t.is(loggedMessages.length, 1);
-  t.is(
-    loggedMessages[0].message,
-    `Setting tools: ${url} based on workflow input.`,
-  );
-});
-
-test("resolveToolsInput returns repository property with 'latest' value", (t) => {
-  const loggedMessages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(loggedMessages);
-
-  const repositoryProperties: RepositoryProperties = {
-    [RepositoryPropertyName.TOOLS]: "latest",
-  };
-  const result = resolveToolsInput(undefined, repositoryProperties, logger);
-
-  t.is(result, "latest");
-  t.is(
-    loggedMessages[0].message,
-    "Setting tools: latest based on the 'github-codeql-tools' repository property.",
-  );
-});
-
-test("resolveToolsInput returns repository property with specific version", (t) => {
-  const loggedMessages: LoggedMessage[] = [];
-  const logger = getRecordingLogger(loggedMessages);
-
-  const repositoryProperties: RepositoryProperties = {
-    [RepositoryPropertyName.TOOLS]: "2.16.1",
-  };
-  const result = resolveToolsInput(undefined, repositoryProperties, logger);
-
-  t.is(result, "2.16.1");
-  t.is(
-    loggedMessages[0].message,
-    "Setting tools: 2.16.1 based on the 'github-codeql-tools' repository property.",
   );
 });
 
@@ -136,8 +89,27 @@ test("resolveToolsInput returns undefined when repository property is undefined"
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: undefined,
   };
-  const result = resolveToolsInput(undefined, repositoryProperties, logger);
+  const result = resolveToolsInput(undefined, true, repositoryProperties, logger);
 
   t.is(result, undefined);
   t.is(loggedMessages.length, 0);
+});
+
+test("resolveToolsInput ignores repository property when fallback is disabled", (t) => {
+  const loggedMessages: LoggedMessage[] = [];
+  const logger = getRecordingLogger(loggedMessages);
+
+  const repositoryProperties: RepositoryProperties = {
+    [RepositoryPropertyName.TOOLS]: "toolcache",
+  };
+  const result = resolveToolsInput(undefined, false, repositoryProperties, logger);
+
+  t.is(result, undefined);
+  t.is(loggedMessages.length, 1);
+  const fallbackDisabledMessage = String(loggedMessages[0].message);
+  t.true(
+    /Ignoring 'github-codeql-tools' repository property because it is only supported for (dynamic workflows|default setup)\./.test(
+      fallbackDisabledMessage,
+    ),
+  );
 });

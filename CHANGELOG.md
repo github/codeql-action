@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- Organizations can now create a custom repository property with the name `github-codeql-tools` to set the default CodeQL CLI tools value for their repositories. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) and [Customizing your advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning).
+- Organizations can now create a custom repository property with the name `github-codeql-tools` to set the default CodeQL CLI tools value for their repositories. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization), [Repository properties for Code Scanning](https://docs.github.com/en/code-security/concepts/code-scanning/repository-properties) and [Customizing your advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning).
 
 ## 4.36.0 - 22 May 2026
 

@@ -204,7 +204,7 @@ export async function loadRepositoryProperties(
   try {
     return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
   } catch (error) {
-    logger.warning(
+    logger.info(
       `Failed to load repository properties: ${getErrorMessage(error)}`,
     );
     return new Failure(error);

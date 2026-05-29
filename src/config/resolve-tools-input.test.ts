@@ -114,7 +114,7 @@ test("resolveToolsInput returns undefined when repository property is undefined"
   t.is(loggedMessages.length, 0);
 });
 
-test("resolveToolsInput ignores repository property when fallback is disabled", (t) => {
+test("resolveToolsInput returns repository property when fallback is disabled", (t) => {
   const loggedMessages: LoggedMessage[] = [];
   const logger = getRecordingLogger(loggedMessages);
 
@@ -128,13 +128,11 @@ test("resolveToolsInput ignores repository property when fallback is disabled", 
     logger,
   );
 
-  t.is(result, undefined);
+  t.is(result, "toolcache");
   t.is(loggedMessages.length, 1);
-  const fallbackDisabledMessage = String(loggedMessages[0].message);
-  t.true(
-    /Ignoring 'github-codeql-tools' repository property because it is only supported for dynamic workflows\./.test(
-      fallbackDisabledMessage,
-    ),
+  t.is(
+    loggedMessages[0].message,
+    "Setting tools: toolcache based on the 'github-codeql-tools' repository property.",
   );
 });
 

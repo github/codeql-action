@@ -10,14 +10,14 @@ import { Logger } from "../logging";
  * falls back to the repository property (if set and enabled for this workflow).
  *
  * @param toolsWorkflowInput - The value of the `tools` workflow input, if provided.
- * @param allowRepositoryPropertyFallback - Whether the repository property fallback is enabled.
+ * @param _allowRepositoryPropertyFallback - Reserved for backwards compatibility.
  * @param repositoryProperties - The parsed repository properties.
  * @param logger - Logger for outputting resolution messages.
  * @returns The effective tools input value.
  */
 export function resolveToolsInput(
   toolsWorkflowInput: string | undefined,
-  allowRepositoryPropertyFallback: boolean,
+  _allowRepositoryPropertyFallback: boolean,
   repositoryProperties: RepositoryProperties,
   logger: Logger,
 ): string | undefined {
@@ -29,15 +29,6 @@ export function resolveToolsInput(
   }
 
   const toolsPropertyValue = repositoryProperties[RepositoryPropertyName.TOOLS];
-
-  if (!allowRepositoryPropertyFallback) {
-    if (toolsPropertyValue) {
-      logger.info(
-        `No explicit tools input was provided. Ignoring '${RepositoryPropertyName.TOOLS}' repository property because it is only supported for dynamic workflows.`,
-      );
-    }
-    return undefined;
-  }
 
   if (toolsPropertyValue) {
     logger.info(

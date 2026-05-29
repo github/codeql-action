@@ -38,7 +38,12 @@ test("resolveToolsInput returns repository property when only repository propert
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: "toolcache",
   };
-  const result = resolveToolsInput(undefined, true, repositoryProperties, logger);
+  const result = resolveToolsInput(
+    undefined,
+    true,
+    repositoryProperties,
+    logger,
+  );
 
   t.is(result, "toolcache");
   t.is(loggedMessages.length, 1);
@@ -55,7 +60,12 @@ test("resolveToolsInput prioritizes workflow input over repository property", (t
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: "toolcache",
   };
-  const result = resolveToolsInput("nightly", true, repositoryProperties, logger);
+  const result = resolveToolsInput(
+    "nightly",
+    true,
+    repositoryProperties,
+    logger,
+  );
 
   t.is(result, "nightly");
   t.is(loggedMessages.length, 1);
@@ -89,7 +99,12 @@ test("resolveToolsInput returns undefined when repository property is undefined"
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: undefined,
   };
-  const result = resolveToolsInput(undefined, true, repositoryProperties, logger);
+  const result = resolveToolsInput(
+    undefined,
+    true,
+    repositoryProperties,
+    logger,
+  );
 
   t.is(result, undefined);
   t.is(loggedMessages.length, 0);
@@ -102,7 +117,12 @@ test("resolveToolsInput ignores repository property when fallback is disabled", 
   const repositoryProperties: RepositoryProperties = {
     [RepositoryPropertyName.TOOLS]: "toolcache",
   };
-  const result = resolveToolsInput(undefined, false, repositoryProperties, logger);
+  const result = resolveToolsInput(
+    undefined,
+    false,
+    repositoryProperties,
+    logger,
+  );
 
   t.is(result, undefined);
   t.is(loggedMessages.length, 1);

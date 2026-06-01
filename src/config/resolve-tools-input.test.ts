@@ -186,7 +186,12 @@ test("resolveToolsInput applies tools property in dynamic mode for dynamic workf
     [RepositoryPropertyName.TOOLS_MODE]:
       ToolsModeRepositoryPropertyValue.Dynamic,
   };
-  const result = resolveToolsInput(undefined, true, repositoryProperties, logger);
+  const result = resolveToolsInput(
+    undefined,
+    true,
+    repositoryProperties,
+    logger,
+  );
 
   t.is(result, "toolcache");
   t.is(loggedMessages.length, 1);
@@ -226,7 +231,10 @@ test("resolveToolsInputWithMetadata reports workflow input source", (t) => {
   const result = resolveToolsInputWithMetadata("latest", false, {}, logger);
 
   t.is(result.effectiveToolsInput, "latest");
-  t.is(result.effectiveToolsInputSource, EffectiveToolsInputSource.WorkflowInput);
+  t.is(
+    result.effectiveToolsInputSource,
+    EffectiveToolsInputSource.WorkflowInput,
+  );
   t.is(result.toolsRepoPropertyMode, undefined);
 });
 

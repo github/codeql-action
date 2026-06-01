@@ -17,6 +17,12 @@ export enum RepositoryPropertyName {
   EXTRA_QUERIES = "github-codeql-extra-queries",
   FILE_COVERAGE_ON_PRS = "github-codeql-file-coverage-on-prs",
   TOOLS = "github-codeql-tools",
+  TOOLS_MODE = "github-codeql-tools-mode",
+}
+
+export enum ToolsModeRepositoryPropertyValue {
+  Dynamic = "dynamic",
+  Enforce = "enforce",
 }
 
 /** Parsed types of the known repository properties. */
@@ -25,6 +31,7 @@ export type AllRepositoryProperties = {
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: boolean;
   [RepositoryPropertyName.TOOLS]: string;
+  [RepositoryPropertyName.TOOLS_MODE]: ToolsModeRepositoryPropertyValue;
 };
 
 /** Parsed repository properties. */
@@ -36,6 +43,7 @@ export type RepositoryPropertyApiType = {
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: string;
   [RepositoryPropertyName.TOOLS]: string;
+  [RepositoryPropertyName.TOOLS_MODE]: string;
 };
 
 /** The type of functions which take the `value` from the API and try to convert it to the type we want. */
@@ -84,6 +92,10 @@ const repositoryPropertyParsers: {
   [RepositoryPropertyName.EXTRA_QUERIES]: stringProperty,
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: booleanProperty,
   [RepositoryPropertyName.TOOLS]: stringProperty,
+  [RepositoryPropertyName.TOOLS_MODE]: {
+    validate: isString,
+    parse: parseToolsModeRepositoryProperty,
+  },
 };
 
 /**
@@ -253,6 +265,25 @@ function parseBooleanRepositoryProperty(
 
 /** Parse a string repository property. */
 function parseStringRepositoryProperty(_name: string, value: string): string {
+  return value;
+}
+
+/** Parse the tools mode repository property. */
+function parseToolsModeRepositoryProperty(
+  name: string,
+  value: string,
+  logger: Logger,
+): ToolsModeRepositoryPropertyValue {
+  if (
+    value !== ToolsModeRepositoryPropertyValue.Dynamic &&
+    value !== ToolsModeRepositoryPropertyValue.Enforce
+  ) {
+    logger.warning(
+      `Repository property '${name}' has unexpected value '${value}'. Expected 'dynamic' or 'enforce'. Defaulting to 'enforce'.`,
+    );
+    return ToolsModeRepositoryPropertyValue.Enforce;
+  }
+
   return value;
 }
 

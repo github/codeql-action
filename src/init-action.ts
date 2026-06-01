@@ -298,7 +298,9 @@ async function run(startedAt: Date) {
 
     // Determine the effective tools input.
     // The explicit `tools` workflow input takes precedence. If none is provided,
-    // fall back to the 'github-codeql-tools' repository property (if set) only for dynamic workflows.
+    // fall back to the 'github-codeql-tools' repository property (if set).
+    // If 'github-codeql-tools-mode' is set to 'dynamic', this fallback applies
+    // only to dynamic workflows. Otherwise, it applies to all workflows.
     effectiveToolsInput = resolveToolsInput(
       getOptionalInput("tools"),
       isDynamicWorkflow(),

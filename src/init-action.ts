@@ -227,8 +227,7 @@ async function run(startedAt: Date) {
   let toolsVersion: string;
   let zstdAvailability: ZstdAvailability | undefined;
   let effectiveToolsInput: string | undefined;
-  let effectiveToolsInputSource: EffectiveToolsInputSource =
-    EffectiveToolsInputSource.None;
+  let effectiveToolsInputSource: EffectiveToolsInputSource;
   let toolsRepoPropertyMode: ToolsModeRepositoryPropertyValue | undefined;
 
   try {

@@ -115,8 +115,7 @@ async function run(startedAt: Date): Promise<void> {
   let toolsSource: ToolsSource;
   let toolsVersion: string;
   let effectiveToolsInput: string | undefined;
-  let effectiveToolsInputSource: EffectiveToolsInputSource =
-    EffectiveToolsInputSource.None;
+  let effectiveToolsInputSource: EffectiveToolsInputSource;
   let toolsRepoPropertyMode: ToolsModeRepositoryPropertyValue | undefined;
 
   try {

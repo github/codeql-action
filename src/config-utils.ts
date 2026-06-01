@@ -19,7 +19,7 @@ import {
 } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind, getCachingKind } from "./caching-utils";
-import { type CodeQL } from "./codeql";
+import { type CodeQL, type CodeQLCliMetadata } from "./codeql";
 import {
   calculateAugmentation,
   ExcludeQueryFilter,
@@ -177,6 +177,10 @@ export interface Config {
    * Path of the CodeQL executable.
    */
   codeQLCmd: string;
+  /**
+   * Cacheable metadata gathered from the CodeQL CLI while initializing the workflow.
+   */
+  codeQLMetadata?: CodeQLCliMetadata;
   /**
    * Version of GitHub we are talking to.
    */
@@ -561,6 +565,7 @@ export async function initActionState(
     computedConfig,
     tempDir,
     codeQLCmd: codeql.getPath(),
+    codeQLMetadata: codeql.getCliMetadata(),
     gitHubVersion: githubVersion,
     dbLocation: dbLocationOrDefault(dbLocation, tempDir),
     debugMode,

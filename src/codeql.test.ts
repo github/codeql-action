@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as path from "path";
 
 import { ExecOptions } from "@actions/exec";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
@@ -122,6 +123,166 @@ async function stubCodeql(): Promise<codeql.CodeQL> {
     .resolves(true);
   return codeqlObject;
 }
+
+function stubSuccessfulToolRunner(
+  stdoutForArgs: (args: string[]) => string | undefined,
+): sinon.SinonStub<any[], toolrunner.ToolRunner> {
+  const runnerConstructorStub = sinon.stub(
+    toolrunner,
+    "ToolRunner",
+  ) as sinon.SinonStub<any[], toolrunner.ToolRunner>;
+
+  runnerConstructorStub.callsFake((_cmd, args, options: ExecOptions) => {
+    return {
+      exec: async () => {
+        const stdout = stdoutForArgs(args as string[]);
+        if (stdout !== undefined) {
+          options.listeners?.stdout?.(Buffer.from(stdout));
+        }
+        return 0;
+      },
+    } as toolrunner.ToolRunner;
+  });
+
+  return runnerConstructorStub;
+}
+
+test.serial("getVersion and printVersion share cached version", async (t) => {
+  const version = { version: "2.30.0" };
+  let versionCalls = 0;
+  stubSuccessfulToolRunner((args) => {
+    if (args.join(" ") === "version --format=json") {
+      versionCalls++;
+      return JSON.stringify(version);
+    }
+    return undefined;
+  });
+
+  const codeqlObject = await codeql.getCodeQLForTesting();
+
+  t.deepEqual(await codeqlObject.getVersion(), version);
+  await codeqlObject.printVersion();
+
+  t.is(versionCalls, 1);
+});
+
+test.serial(
+  "betterResolveLanguages caches only the unfiltered result",
+  async (t) => {
+    const unfilteredLanguages = {
+      aliases: { typescript: BuiltInLanguage.javascript },
+      extractors: {
+        html: [{ extractor_root: "/html" }],
+        javascript: [{ extractor_root: "/javascript" }],
+      },
+    };
+    const filteredLanguages = {
+      aliases: { typescript: BuiltInLanguage.javascript },
+      extractors: {
+        javascript: [{ extractor_root: "/javascript" }],
+      },
+    };
+
+    let unfilteredCalls = 0;
+    let filteredCalls = 0;
+    stubSuccessfulToolRunner((args) => {
+      if (args[0] === "resolve" && args[1] === "languages") {
+        if (args.includes("--filter-to-languages-with-queries")) {
+          filteredCalls++;
+          return JSON.stringify(filteredLanguages);
+        }
+        unfilteredCalls++;
+        return JSON.stringify(unfilteredLanguages);
+      }
+      return undefined;
+    });
+
+    const codeqlObject = await codeql.getCodeQLForTesting();
+
+    t.deepEqual(
+      await codeqlObject.betterResolveLanguages(),
+      unfilteredLanguages,
+    );
+    t.deepEqual(
+      await codeqlObject.betterResolveLanguages(),
+      unfilteredLanguages,
+    );
+    t.deepEqual(
+      await codeqlObject.betterResolveLanguages({
+        filterToLanguagesWithQueries: true,
+      }),
+      filteredLanguages,
+    );
+    t.deepEqual(
+      await codeqlObject.betterResolveLanguages({
+        filterToLanguagesWithQueries: true,
+      }),
+      filteredLanguages,
+    );
+
+    // The unfiltered result is cached after the first call; the filtered
+    // variant is not cached because nothing reuses it.
+    t.is(unfilteredCalls, 1);
+    t.is(filteredCalls, 2);
+  },
+);
+
+test.serial("resolveExtractor caches its result per language", async (t) => {
+  await util.withTmpDir(async (tempDir) => {
+    const extractorRoot = path.join(tempDir, "javascript");
+    fs.mkdirSync(path.join(extractorRoot, "tools"), { recursive: true });
+    fs.writeFileSync(
+      path.join(extractorRoot, "tools", "tracing-config.lua"),
+      "",
+    );
+
+    let resolveExtractorCalls = 0;
+    stubSuccessfulToolRunner((args) => {
+      if (args[0] === "resolve" && args[1] === "extractor") {
+        resolveExtractorCalls++;
+        return JSON.stringify(extractorRoot);
+      }
+      return undefined;
+    });
+
+    const codeqlObject = await codeql.getCodeQLForTesting();
+
+    t.is(
+      await codeqlObject.resolveExtractor(BuiltInLanguage.javascript),
+      extractorRoot,
+    );
+    t.is(
+      await codeqlObject.resolveExtractor(BuiltInLanguage.javascript),
+      extractorRoot,
+    );
+    t.true(await codeqlObject.isTracedLanguage(BuiltInLanguage.javascript));
+    t.is(resolveExtractorCalls, 1);
+  });
+});
+
+test.serial(
+  "hydrateCliMetadata seeds the cache from persisted metadata",
+  async (t) => {
+    let cliCalls = 0;
+    stubSuccessfulToolRunner((_args) => {
+      cliCalls++;
+      return "{}";
+    });
+
+    const codeqlObject = await codeql.getCodeQLForTesting();
+
+    codeqlObject.hydrateCliMetadata({
+      codeQLCmd: "codeql-for-testing",
+      extractorPaths: { javascript: "/javascript" },
+    });
+
+    t.is(
+      await codeqlObject.resolveExtractor(BuiltInLanguage.javascript),
+      "/javascript",
+    );
+    t.is(cliCalls, 0);
+  },
+);
 
 test.serial(
   "downloads and caches explicitly requested bundles that aren't in the toolcache",

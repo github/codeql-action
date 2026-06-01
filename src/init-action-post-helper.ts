@@ -163,7 +163,7 @@ async function generateFailedSarif(
   sarifFile?: string,
 ) {
   const databasePath = config.dbLocation;
-  const codeql = await getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(config.codeQLCmd, config.codeQLMetadata);
 
   // Set the filename for the SARIF file if not already set.
   if (sarifFile === undefined) {

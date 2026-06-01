@@ -75,7 +75,7 @@ async function run(startedAt: Date) {
         "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
       );
     } else {
-      const codeql = await getCodeQL(config.codeQLCmd);
+      const codeql = await getCodeQL(config.codeQLCmd, config.codeQLMetadata);
 
       uploadFailedSarifResult = await initActionPostHelper.uploadFailureInfo(
         debugArtifacts.tryUploadAllAvailableDebugArtifacts,

@@ -101,7 +101,7 @@ async function run(startedAt: Date) {
       );
     }
 
-    const codeql = await getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd, config.codeQLMetadata);
 
     languages = await determineAutobuildLanguages(codeql, config, logger);
     if (languages !== undefined) {

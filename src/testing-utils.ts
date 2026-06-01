@@ -560,7 +560,7 @@ export function mockBundleDownloadApi({
 }
 
 export function createTestConfig(overrides: Partial<Config>): Config {
-  return Object.assign(
+  const config = Object.assign(
     {},
     {
       version: getActionVersion(),
@@ -590,6 +590,8 @@ export function createTestConfig(overrides: Partial<Config>): Config {
     } satisfies Config,
     overrides,
   );
+  config.codeQLMetadata ??= { codeQLCmd: config.codeQLCmd };
+  return config;
 }
 
 export function makeTestToken(length: number = 36) {

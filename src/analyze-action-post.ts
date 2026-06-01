@@ -38,7 +38,7 @@ export async function runWrapper() {
         logger,
       );
       if (config !== undefined) {
-        const codeql = await getCodeQL(config.codeQLCmd);
+        const codeql = await getCodeQL(config.codeQLCmd, config.codeQLMetadata);
         const version = await codeql.getVersion();
         await debugArtifacts.uploadCombinedSarifArtifacts(
           logger,

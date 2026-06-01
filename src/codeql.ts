@@ -218,6 +218,10 @@ export interface CodeQL {
     outputFile: string,
     options: { mergeRunsFromEqualCategory?: boolean },
   ): Promise<void>;
+  /** Return cacheable metadata gathered from the CodeQL CLI. */
+  getCliMetadata(): CodeQLCliMetadata;
+  /** Hydrate the CodeQL wrapper with cacheable metadata gathered earlier in the job. */
+  hydrateCliMetadata(metadata: CodeQLCliMetadata | undefined): void;
 }
 
 export interface VersionInfo {
@@ -247,12 +251,10 @@ export interface BetterResolveLanguagesOutput {
     [alias: string]: string;
   };
   extractors: {
-    [language: string]: [
-      {
-        extractor_root: string;
-        extractor_options?: any;
-      },
-    ];
+    [language: string]: Array<{
+      extractor_root: string;
+      extractor_options?: any;
+    }>;
   };
 }
 
@@ -262,6 +264,11 @@ export interface ResolveBuildEnvironmentOutput {
       [key: string]: unknown;
     };
   };
+}
+
+export interface CodeQLCliMetadata {
+  codeQLCmd: string;
+  extractorPaths?: { [language: string]: string };
 }
 
 /**
@@ -392,9 +399,14 @@ export async function setupCodeQL(
 /**
  * Use the CodeQL executable located at the given path.
  */
-export async function getCodeQL(cmd: string): Promise<CodeQL> {
+export async function getCodeQL(
+  cmd: string,
+  cliMetadata?: CodeQLCliMetadata,
+): Promise<CodeQL> {
   if (cachedCodeQL === undefined) {
-    cachedCodeQL = await getCodeQLForCmd(cmd, true);
+    cachedCodeQL = await getCodeQLForCmd(cmd, true, cliMetadata);
+  } else {
+    cachedCodeQL.hydrateCliMetadata(cliMetadata);
   }
   return cachedCodeQL;
 }
@@ -492,6 +504,14 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     ),
     resolveDatabase: resolveFunction(partialCodeql, "resolveDatabase"),
     mergeResults: resolveFunction(partialCodeql, "mergeResults"),
+    getCliMetadata: resolveFunction(partialCodeql, "getCliMetadata", () => ({
+      codeQLCmd: partialCodeql.getPath?.() ?? "/tmp/dummy-path",
+    })),
+    hydrateCliMetadata: resolveFunction(
+      partialCodeql,
+      "hydrateCliMetadata",
+      () => {},
+    ),
   };
 }
 
@@ -506,6 +526,12 @@ export async function getCodeQLForTesting(
   return getCodeQLForCmd(cmd, false);
 }
 
+function cacheCodeQlVersionForStatusReports(versionInfo: VersionInfo): void {
+  if (util.getCachedCodeQlVersion() === undefined) {
+    util.cacheCodeQlVersion(versionInfo);
+  }
+}
+
 /**
  * Return a CodeQL object for CodeQL CLI access.
  *
@@ -517,13 +543,24 @@ export async function getCodeQLForTesting(
 async function getCodeQLForCmd(
   cmd: string,
   checkVersion: boolean,
+  initialCliMetadata?: CodeQLCliMetadata,
 ): Promise<CodeQL> {
+  // Metadata persisted across the init/autobuild/analyze steps. Only extractor
+  // paths are reused by a later step, so that's all this holds.
+  const cliMetadata: CodeQLCliMetadata = { codeQLCmd: cmd };
+  // In-process-only caches. These aren't persisted because no later step reuses
+  // them: the CLI version always matches across steps, and `resolve languages`
+  // is only re-read within a single step.
+  let cachedVersion: VersionInfo | undefined;
+  let cachedUnfilteredBetterResolveLanguages:
+    | BetterResolveLanguagesOutput
+    | undefined;
   const codeql: CodeQL = {
     getPath() {
       return cmd;
     },
     async getVersion() {
-      let result = util.getCachedCodeQlVersion();
+      let result = cachedVersion;
       if (result === undefined) {
         const output = await runCli(cmd, ["version", "--format=json"], {
           noStreamStdout: true,
@@ -535,12 +572,15 @@ async function getCodeQLForCmd(
             `Invalid JSON output from \`version --format=json\`: ${output}`,
           );
         }
-        util.cacheCodeQlVersion(result);
+        cachedVersion = result;
       }
+      cacheCodeQlVersionForStatusReports(result);
       return result;
     },
     async printVersion() {
-      await runCli(cmd, ["version", "--format=json"]);
+      const version = await this.getVersion();
+      process.stdout.write(`[command]${cmd} version --format=json\n`);
+      process.stdout.write(`${JSON.stringify(version)}\n`);
     },
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);
@@ -758,6 +798,13 @@ async function getCodeQLForCmd(
         filterToLanguagesWithQueries: boolean;
       } = { filterToLanguagesWithQueries: false },
     ) {
+      if (
+        !filterToLanguagesWithQueries &&
+        cachedUnfilteredBetterResolveLanguages
+      ) {
+        return cachedUnfilteredBetterResolveLanguages;
+      }
+
       const codeqlArgs = [
         "resolve",
         "languages",
@@ -772,7 +819,11 @@ async function getCodeQLForCmd(
       const output = await runCli(cmd, codeqlArgs);
 
       try {
-        return JSON.parse(output) as BetterResolveLanguagesOutput;
+        const result = JSON.parse(output) as BetterResolveLanguagesOutput;
+        if (!filterToLanguagesWithQueries) {
+          cachedUnfilteredBetterResolveLanguages = result;
+        }
+        return result;
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
@@ -968,6 +1019,11 @@ async function getCodeQLForCmd(
       await new toolrunner.ToolRunner(cmd, args).exec();
     },
     async resolveExtractor(language: Language): Promise<string> {
+      const cachedExtractorPath = cliMetadata.extractorPaths?.[language];
+      if (cachedExtractorPath !== undefined) {
+        return cachedExtractorPath;
+      }
+
       // Request it using `format=json` so we don't need to strip the trailing new line generated by
       // the CLI.
       let extractorPath = "";
@@ -993,7 +1049,10 @@ async function getCodeQLForCmd(
           },
         },
       ).exec();
-      return JSON.parse(extractorPath) as string;
+      const resolvedExtractorPath = JSON.parse(extractorPath) as string;
+      cliMetadata.extractorPaths ??= {};
+      cliMetadata.extractorPaths[language] = resolvedExtractorPath;
+      return resolvedExtractorPath;
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
       const codeqlArgs = [
@@ -1058,7 +1117,22 @@ async function getCodeQLForCmd(
 
       await runCli(cmd, args);
     },
+    getCliMetadata() {
+      return cliMetadata;
+    },
+    hydrateCliMetadata(metadata: CodeQLCliMetadata | undefined): void {
+      if (metadata?.codeQLCmd !== cliMetadata.codeQLCmd) {
+        return;
+      }
+
+      cliMetadata.extractorPaths = {
+        ...metadata.extractorPaths,
+        ...cliMetadata.extractorPaths,
+      };
+    },
   };
+  // Seed the cache with any metadata persisted by an earlier step.
+  codeql.hydrateCliMetadata(initialCliMetadata);
   // To ensure that status reports include the CodeQL CLI version wherever
   // possible, we want to call getVersion(), which populates the version value
   // used by status reporting, at the earliest opportunity. But invoking

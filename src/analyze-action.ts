@@ -256,7 +256,7 @@ async function run(startedAt: Date) {
       );
     }
 
-    const codeql = await getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(config.codeQLCmd, config.codeQLMetadata);
 
     if (hasBadExpectErrorInput()) {
       throw new util.ConfigurationError(

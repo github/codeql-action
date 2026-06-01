@@ -585,6 +585,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      overlayModeSetExplicitly: false,
       repositoryProperties: {},
       enableFileCoverageInformation: true,
     } satisfies Config,

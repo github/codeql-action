@@ -5,6 +5,18 @@ import {
 } from "../feature-flags/properties";
 import { Logger } from "../logging";
 
+export enum EffectiveToolsInputSource {
+  WorkflowInput = "workflow-input",
+  RepositoryProperty = "repository-property",
+  None = "none",
+}
+
+export type ResolvedToolsInput = {
+  effectiveToolsInput: string | undefined;
+  effectiveToolsInputSource: EffectiveToolsInputSource;
+  toolsRepoPropertyMode: ToolsModeRepositoryPropertyValue | undefined;
+};
+
 /**
  * Resolves the effective tools input by combining the workflow input and repository properties.
  * The explicit `tools` workflow input takes precedence. If none is provided,
@@ -24,11 +36,29 @@ export function resolveToolsInput(
   repositoryProperties: RepositoryProperties,
   logger: Logger,
 ): string | undefined {
+  return resolveToolsInputWithMetadata(
+    toolsWorkflowInput,
+    isDynamicWorkflow,
+    repositoryProperties,
+    logger,
+  ).effectiveToolsInput;
+}
+
+export function resolveToolsInputWithMetadata(
+  toolsWorkflowInput: string | undefined,
+  isDynamicWorkflow: boolean,
+  repositoryProperties: RepositoryProperties,
+  logger: Logger,
+): ResolvedToolsInput {
   if (toolsWorkflowInput) {
     logger.info(
       `Setting tools: ${toolsWorkflowInput} based on workflow input.`,
     );
-    return toolsWorkflowInput;
+    return {
+      effectiveToolsInput: toolsWorkflowInput,
+      effectiveToolsInputSource: EffectiveToolsInputSource.WorkflowInput,
+      toolsRepoPropertyMode: undefined,
+    };
   }
 
   const toolsPropertyValue = repositoryProperties[RepositoryPropertyName.TOOLS];
@@ -44,15 +74,27 @@ export function resolveToolsInput(
     logger.info(
       `Ignoring '${RepositoryPropertyName.TOOLS}' repository property because '${RepositoryPropertyName.TOOLS_MODE}' is set to '${toolsMode}' and this is not a dynamic workflow.`,
     );
-    return undefined;
+    return {
+      effectiveToolsInput: undefined,
+      effectiveToolsInputSource: EffectiveToolsInputSource.None,
+      toolsRepoPropertyMode: toolsMode,
+    };
   }
 
   if (toolsPropertyValue) {
     logger.info(
-      `Setting tools: ${toolsPropertyValue} based on the '${RepositoryPropertyName.TOOLS}' repository property.`,
+      `Setting tools: ${toolsPropertyValue} based on the '${RepositoryPropertyName.TOOLS}' repository property (mode: '${toolsMode}').`,
     );
-    return toolsPropertyValue;
+    return {
+      effectiveToolsInput: toolsPropertyValue,
+      effectiveToolsInputSource: EffectiveToolsInputSource.RepositoryProperty,
+      toolsRepoPropertyMode: toolsMode,
+    };
   }
 
-  return undefined;
+  return {
+    effectiveToolsInput: undefined,
+    effectiveToolsInputSource: EffectiveToolsInputSource.None,
+    toolsRepoPropertyMode: undefined,
+  };
 }

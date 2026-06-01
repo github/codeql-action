@@ -12,6 +12,7 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
+import { EffectiveToolsInputSource } from "./config/resolve-tools-input";
 import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
 import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
@@ -484,6 +485,10 @@ export interface InitStatusReport extends StatusReportBase {
   tools_input: string;
   /** The effective tools input that was used, after applying defaults and repository properties. */
   effective_tools_input: string;
+  /** Indicates where the effective tools input was resolved from. */
+  effective_tools_input_source: EffectiveToolsInputSource;
+  /** The value of the tools repository property mode, if relevant. */
+  tools_repo_property_mode: string;
   /** Version of the bundle used. */
   tools_resolved_version: string;
   /** Where the bundle originated from. */

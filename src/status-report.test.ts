@@ -2,6 +2,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { EffectiveToolsInputSource } from "./config/resolve-tools-input";
 import { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import { BuiltInLanguage } from "./languages/index";
@@ -317,6 +318,8 @@ const testCreateInitWithConfigStatusReport = makeMacro({
           ...statusReportBase,
           tools_input: "",
           effective_tools_input: "",
+          effective_tools_input_source: EffectiveToolsInputSource.None,
+          tools_repo_property_mode: "",
           tools_resolved_version: "foo",
           tools_source: ToolsSource.Unknown,
           workflow_languages: "actions",
@@ -348,10 +351,69 @@ testCreateInitWithConfigStatusReport.serial(
     languages: [BuiltInLanguage.java, BuiltInLanguage.swift],
   }),
   {
+    effective_tools_input_source: EffectiveToolsInputSource.None,
+    tools_repo_property_mode: "",
     trap_cache_download_size_bytes: 1024,
     registries: "[]",
     query_filters: "[]",
     packs: "{}",
+  },
+);
+
+test.serial(
+  "createInitWithConfigStatusReport preserves tools telemetry fields",
+  async (t) => {
+    await withTmpDir(async (tmpDir: string) => {
+      setupEnvironmentAndStub(tmpDir);
+
+      const config = createTestConfig({
+        buildMode: BuildMode.None,
+        languages: [BuiltInLanguage.java],
+      });
+
+      const statusReportBase = await createStatusReportBase(
+        ActionName.Init,
+        "failure",
+        new Date("May 19, 2023 05:19:00"),
+        config,
+        { numAvailableBytes: 100, numTotalBytes: 500 },
+        getRunnerLogger(false),
+        "failure cause",
+        "exception stack trace",
+      );
+
+      if (t.truthy(statusReportBase)) {
+        const initStatusReport: InitStatusReport = {
+          ...statusReportBase,
+          tools_input: "",
+          effective_tools_input: "toolcache",
+          effective_tools_input_source:
+            EffectiveToolsInputSource.RepositoryProperty,
+          tools_repo_property_mode: "dynamic",
+          tools_resolved_version: "foo",
+          tools_source: ToolsSource.Unknown,
+          workflow_languages: "actions",
+        };
+
+        const initWithConfigStatusReport =
+          await createInitWithConfigStatusReport(
+            config,
+            initStatusReport,
+            undefined,
+            1024,
+            undefined,
+            undefined,
+          );
+
+        if (t.truthy(initWithConfigStatusReport)) {
+          t.is(
+            initWithConfigStatusReport.effective_tools_input_source,
+            EffectiveToolsInputSource.RepositoryProperty,
+          );
+          t.is(initWithConfigStatusReport.tools_repo_property_mode, "dynamic");
+        }
+      }
+    });
   },
 );
 

@@ -1,6 +1,10 @@
 import test from "ava";
 
-import { resolveToolsInput } from "../config/resolve-tools-input";
+import {
+  EffectiveToolsInputSource,
+  resolveToolsInput,
+  resolveToolsInputWithMetadata,
+} from "../config/resolve-tools-input";
 import {
   RepositoryPropertyName,
   ToolsModeRepositoryPropertyValue,
@@ -56,7 +60,7 @@ test("resolveToolsInput returns repository property when only repository propert
   t.is(loggedMessages.length, 1);
   t.is(
     loggedMessages[0].message,
-    "Setting tools: toolcache based on the 'github-codeql-tools' repository property.",
+    "Setting tools: toolcache based on the 'github-codeql-tools' repository property (mode: 'enforce').",
   );
 });
 
@@ -95,7 +99,7 @@ test("resolveToolsInput treats empty string workflow input as not set", (t) => {
   t.is(loggedMessages.length, 1);
   t.is(
     loggedMessages[0].message,
-    "Setting tools: toolcache based on the 'github-codeql-tools' repository property.",
+    "Setting tools: toolcache based on the 'github-codeql-tools' repository property (mode: 'enforce').",
   );
 });
 
@@ -135,7 +139,7 @@ test("resolveToolsInput returns repository property when workflow input is not s
   t.is(loggedMessages.length, 1);
   t.is(
     loggedMessages[0].message,
-    "Setting tools: toolcache based on the 'github-codeql-tools' repository property.",
+    "Setting tools: toolcache based on the 'github-codeql-tools' repository property (mode: 'enforce').",
   );
 });
 
@@ -169,7 +173,7 @@ test("resolveToolsInput applies tools property in enforce mode for static workfl
   t.is(loggedMessages.length, 1);
   t.is(
     loggedMessages[0].message,
-    "Setting tools: toolcache based on the 'github-codeql-tools' repository property.",
+    "Setting tools: toolcache based on the 'github-codeql-tools' repository property (mode: 'enforce').",
   );
 });
 
@@ -188,7 +192,7 @@ test("resolveToolsInput applies tools property in dynamic mode for dynamic workf
   t.is(loggedMessages.length, 1);
   t.is(
     loggedMessages[0].message,
-    "Setting tools: toolcache based on the 'github-codeql-tools' repository property.",
+    "Setting tools: toolcache based on the 'github-codeql-tools' repository property (mode: 'dynamic').",
   );
 });
 
@@ -214,4 +218,55 @@ test("resolveToolsInput ignores tools property in dynamic mode for static workfl
     loggedMessages[0].message,
     "Ignoring 'github-codeql-tools' repository property because 'github-codeql-tools-mode' is set to 'dynamic' and this is not a dynamic workflow.",
   );
+});
+
+test("resolveToolsInputWithMetadata reports workflow input source", (t) => {
+  const logger = getRecordingLogger([]);
+
+  const result = resolveToolsInputWithMetadata("latest", false, {}, logger);
+
+  t.is(result.effectiveToolsInput, "latest");
+  t.is(result.effectiveToolsInputSource, EffectiveToolsInputSource.WorkflowInput);
+  t.is(result.toolsRepoPropertyMode, undefined);
+});
+
+test("resolveToolsInputWithMetadata reports repository property source and mode", (t) => {
+  const logger = getRecordingLogger([]);
+
+  const result = resolveToolsInputWithMetadata(
+    undefined,
+    false,
+    {
+      [RepositoryPropertyName.TOOLS]: "toolcache",
+      [RepositoryPropertyName.TOOLS_MODE]:
+        ToolsModeRepositoryPropertyValue.Enforce,
+    },
+    logger,
+  );
+
+  t.is(result.effectiveToolsInput, "toolcache");
+  t.is(
+    result.effectiveToolsInputSource,
+    EffectiveToolsInputSource.RepositoryProperty,
+  );
+  t.is(result.toolsRepoPropertyMode, ToolsModeRepositoryPropertyValue.Enforce);
+});
+
+test("resolveToolsInputWithMetadata reports dynamic-mode skip on static workflows", (t) => {
+  const logger = getRecordingLogger([]);
+
+  const result = resolveToolsInputWithMetadata(
+    undefined,
+    false,
+    {
+      [RepositoryPropertyName.TOOLS]: "toolcache",
+      [RepositoryPropertyName.TOOLS_MODE]:
+        ToolsModeRepositoryPropertyValue.Dynamic,
+    },
+    logger,
+  );
+
+  t.is(result.effectiveToolsInput, undefined);
+  t.is(result.effectiveToolsInputSource, EffectiveToolsInputSource.None);
+  t.is(result.toolsRepoPropertyMode, ToolsModeRepositoryPropertyValue.Dynamic);
 });

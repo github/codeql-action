@@ -858,7 +858,9 @@ export async function waitForProcessing(
 
     // Do an initial wait because processing will always take a minimum of 2-3 seconds
     let statusCheckBackoff = STATUS_CHECK_INITIAL_BACKOFF_MILLISECONDS;
-    await util.delay(statusCheckBackoff, { allowProcessExit: false });
+    if (process.env["NODE_ENV"] !== "test") {
+      await util.delay(statusCheckBackoff, { allowProcessExit: false });
+    }
 
     for (
       let statusCheckCount = 1;

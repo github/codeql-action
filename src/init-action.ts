@@ -614,6 +614,11 @@ async function run(startedAt: Date) {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
+    // Emergency override to force the CodeQL CLI back to the JGit-based Git backend.
+    if (await features.getValue(Feature.ForceJGit)) {
+      core.exportVariable("CODEQL_GIT_BACKEND", "jgit");
+    }
+
     const kotlinLimitVar =
       "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
     if (

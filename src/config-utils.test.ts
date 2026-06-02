@@ -1044,6 +1044,7 @@ const checkOverlayEnablementMacro = makeMacro({
       | {
           overlayDatabaseMode: OverlayDatabaseMode;
           useOverlayDatabaseCaching: boolean;
+          overlayModeSetExplicitly?: boolean;
         }
       | {
           disabledReason: OverlayDisabledReason;
@@ -1124,7 +1125,13 @@ const checkOverlayEnablementMacro = makeMacro({
         if ("disabledReason" in expected) {
           t.deepEqual(result, new Failure(expected.disabledReason));
         } else {
-          t.deepEqual(result, new Success(expected));
+          t.deepEqual(
+            result,
+            new Success({
+              overlayModeSetExplicitly: false,
+              ...expected,
+            }),
+          );
         }
       } finally {
         // Restore the original environment
@@ -1143,6 +1150,7 @@ checkOverlayEnablementMacro.serial(
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: false,
+    overlayModeSetExplicitly: true,
   },
 );
 
@@ -1154,6 +1162,7 @@ checkOverlayEnablementMacro.serial(
   {
     overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
     useOverlayDatabaseCaching: false,
+    overlayModeSetExplicitly: true,
   },
 );
 
@@ -1812,6 +1821,7 @@ checkOverlayEnablementMacro.serial(
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: false,
+    overlayModeSetExplicitly: true,
   },
 );
 
@@ -1824,6 +1834,7 @@ checkOverlayEnablementMacro.serial(
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: false,
+    overlayModeSetExplicitly: true,
   },
 );
 
@@ -1920,6 +1931,7 @@ checkOverlayEnablementMacro.serial(
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: false,
+    overlayModeSetExplicitly: true,
   },
 );
 
@@ -1965,6 +1977,7 @@ checkOverlayEnablementMacro.serial(
   {
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: false,
+    overlayModeSetExplicitly: true,
   },
 );
 
@@ -2182,33 +2195,64 @@ test("applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions w
   ]);
 });
 
-test("applyIncrementalAnalysisSettings: disables overlay analysis when diff ranges are unavailable", async (t) => {
-  const config = createTestConfig({
-    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
-  });
-  config.useOverlayDatabaseCaching = true;
-  const codeql = createStubCodeQL({});
-  const logger = getRunnerLogger(true);
-  const addDiagnosticsStub = sinon
-    .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
-    .resolves();
+test.serial(
+  "applyIncrementalAnalysisSettings: disables overlay analysis when diff ranges are unavailable",
+  async (t) => {
+    const config = createTestConfig({
+      overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    });
+    config.useOverlayDatabaseCaching = true;
+    const codeql = createStubCodeQL({});
+    const logger = getRunnerLogger(true);
+    const addDiagnosticsStub = sinon
+      .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
+      .resolves();
 
-  await configUtils.applyIncrementalAnalysisSettings(
-    config,
-    false,
-    codeql,
-    logger,
-  );
+    await configUtils.applyIncrementalAnalysisSettings(
+      config,
+      false,
+      codeql,
+      logger,
+    );
 
-  t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
-  t.is(config.useOverlayDatabaseCaching, false);
-  t.deepEqual(config.extraQueryExclusions, []);
-  t.true(addDiagnosticsStub.calledOnce);
-  t.is(
-    addDiagnosticsStub.firstCall.args[2],
-    OverlayDisabledReason.DiffInformedAnalysisNotEnabled,
-  );
-});
+    t.is(config.overlayDatabaseMode, OverlayDatabaseMode.None);
+    t.is(config.useOverlayDatabaseCaching, false);
+    t.deepEqual(config.extraQueryExclusions, []);
+    t.true(addDiagnosticsStub.calledOnce);
+    t.is(
+      addDiagnosticsStub.firstCall.args[2],
+      OverlayDisabledReason.DiffInformedAnalysisNotEnabled,
+    );
+  },
+);
+
+test.serial(
+  "applyIncrementalAnalysisSettings: keeps overlay mode when set explicitly and diff ranges are unavailable",
+  async (t) => {
+    const config = createTestConfig({
+      overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+    });
+    config.useOverlayDatabaseCaching = false;
+    config.overlayModeSetExplicitly = true;
+    const codeql = createStubCodeQL({});
+    const logger = getRunnerLogger(true);
+    const addDiagnosticsStub = sinon
+      .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
+      .resolves();
+
+    await configUtils.applyIncrementalAnalysisSettings(
+      config,
+      false,
+      codeql,
+      logger,
+    );
+
+    t.is(config.overlayDatabaseMode, OverlayDatabaseMode.Overlay);
+    t.is(config.useOverlayDatabaseCaching, false);
+    t.deepEqual(config.extraQueryExclusions, []);
+    t.true(addDiagnosticsStub.notCalled);
+  },
+);
 
 test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only runs", async (t) => {
   const config = createTestConfig({});

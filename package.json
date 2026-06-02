@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.36.0",
+  "version": "4.36.1",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -40,18 +40,18 @@
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
-    "semver": "^7.7.4",
+    "semver": "^7.8.0",
     "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@ava/typescript": "6.0.0",
-    "@eslint/compat": "^2.0.5",
+    "@eslint/compat": "^2.1.0",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
     "@octokit/types": "^16.0.0",
     "@types/archiver": "^7.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.19.39",
+    "@types/node": "^20.19.41",
     "@types/node-forge": "^1.3.14",
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
@@ -66,10 +66,10 @@
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^11.1.0",
     "globals": "^17.6.0",
-    "nock": "^14.0.12",
+    "nock": "^14.0.15",
     "sinon": "^22.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.59.2"
+    "typescript-eslint": "^8.59.4"
   },
   "overrides": {
     "@actions/tool-cache": {

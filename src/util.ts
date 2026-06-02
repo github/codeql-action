@@ -619,15 +619,51 @@ export function asHTTPError(arg: any): HTTPError | undefined {
 
 let cachedCodeQlVersion: undefined | VersionInfo = undefined;
 
-export function cacheCodeQlVersion(version: VersionInfo): void {
+/** The persisted version together with the CLI path it was obtained from. */
+interface PersistedVersionInfo {
+  cmd: string;
+  version: VersionInfo;
+}
+
+export function cacheCodeQlVersion(cmd: string, version: VersionInfo): void {
   if (cachedCodeQlVersion !== undefined) {
     throw new Error("cacheCodeQlVersion() should be called only once");
   }
   cachedCodeQlVersion = version;
+  // Persist the version so that subsequent Actions steps, which run in separate
+  // processes, can reuse it rather than invoking `codeql version` again. We
+  // record the CLI path so that a different step using a different CodeQL bundle
+  // doesn't pick up a stale version.
+  core.exportVariable(
+    EnvVar.CODEQL_VERSION_INFO,
+    JSON.stringify({ cmd, version }),
+  );
 }
 
-export function getCachedCodeQlVersion(): undefined | VersionInfo {
-  return cachedCodeQlVersion;
+export function getCachedCodeQlVersion(cmd?: string): undefined | VersionInfo {
+  if (cachedCodeQlVersion !== undefined) {
+    return cachedCodeQlVersion;
+  }
+  // Fall back to the value persisted by an earlier Actions step, if any. This is
+  // best-effort: any malformed or mismatched value is ignored so that the caller
+  // invokes `codeql version` instead.
+  const serialized = process.env[EnvVar.CODEQL_VERSION_INFO];
+  if (!serialized) {
+    return undefined;
+  }
+  let persisted: PersistedVersionInfo;
+  try {
+    persisted = JSON.parse(serialized) as PersistedVersionInfo;
+  } catch {
+    return undefined;
+  }
+  if (
+    typeof persisted?.version?.version !== "string" ||
+    (cmd !== undefined && persisted.cmd !== cmd)
+  ) {
+    return undefined;
+  }
+  return persisted.version;
 }
 
 export async function codeQlVersionAtLeast(

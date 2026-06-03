@@ -23,6 +23,12 @@ export enum EnvVar {
    */
   CODEQL_VERSION_INFO = "CODEQL_ACTION_CLI_VERSION_INFO",
 
+  /**
+   * `ResolveLanguagesOutput` for the CodeQL CLI, so later Actions steps can reuse it instead of
+   * invoking `codeql resolve languages` again.
+   */
+  CODEQL_RESOLVE_LANGUAGES = "CODEQL_ACTION_CLI_RESOLVE_LANGUAGES",
+
   /** Whether the CodeQL Action has invoked the Go autobuilder. */
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
 

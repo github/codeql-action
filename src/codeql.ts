@@ -736,21 +736,26 @@ async function getCodeQLForCmd(
       await runCli(cmd, args);
     },
     async resolveLanguages() {
-      const codeqlArgs = [
-        "resolve",
-        "languages",
-        "--format=json",
-        ...getExtraOptionsFromEnv(["resolve", "languages"]),
-      ];
-      const output = await runCli(cmd, codeqlArgs);
+      let result = util.getCachedCodeQlResolveLanguages(cmd);
+      if (result === undefined) {
+        const codeqlArgs = [
+          "resolve",
+          "languages",
+          "--format=json",
+          ...getExtraOptionsFromEnv(["resolve", "languages"]),
+        ];
+        const output = await runCli(cmd, codeqlArgs);
 
-      try {
-        return JSON.parse(output) as ResolveLanguagesOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve languages: ${e}`,
-        );
+        try {
+          result = JSON.parse(output) as ResolveLanguagesOutput;
+        } catch (e) {
+          throw new Error(
+            `Unexpected output from codeql resolve languages: ${e}`,
+          );
+        }
+        util.cacheCodeQlResolveLanguages(cmd, result);
       }
+      return result;
     },
     async betterResolveLanguages(
       {

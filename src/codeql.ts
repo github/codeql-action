@@ -731,26 +731,31 @@ async function getCodeQLForCmd(
         filterToLanguagesWithQueries: boolean;
       } = { filterToLanguagesWithQueries: false },
     ) {
-      const codeqlArgs = [
-        "resolve",
-        "languages",
-        "--format=betterjson",
-        "--extractor-options-verbosity=4",
-        "--extractor-include-aliases",
-        ...(filterToLanguagesWithQueries
-          ? ["--filter-to-languages-with-queries"]
-          : []),
-        ...getExtraOptionsFromEnv(["resolve", "languages"]),
-      ];
-      const output = await runCli(cmd, codeqlArgs);
+      let result = util.getCachedCodeQlResolveLanguages(cmd);
+      if (result === undefined) {
+        const codeqlArgs = [
+          "resolve",
+          "languages",
+          "--format=betterjson",
+          "--extractor-options-verbosity=4",
+          "--extractor-include-aliases",
+          ...(filterToLanguagesWithQueries
+            ? ["--filter-to-languages-with-queries"]
+            : []),
+          ...getExtraOptionsFromEnv(["resolve", "languages"]),
+        ];
+        const output = await runCli(cmd, codeqlArgs);
 
-      try {
-        return JSON.parse(output) as ResolveLanguagesOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
-        );
+        try {
+          result = JSON.parse(output) as ResolveLanguagesOutput;
+        } catch (e) {
+          throw new Error(
+            `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
+          );
+        }
+        util.cacheCodeQlResolveLanguages(cmd, result);
       }
+      return result;
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,

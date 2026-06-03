@@ -619,10 +619,42 @@ export function asHTTPError(arg: any): HTTPError | undefined {
 
 let cachedCodeQlVersion: undefined | VersionInfo = undefined;
 
+/**
+ * Resets the in-process cache of the CodeQL CLI version. Only for use in tests,
+ * which exercise multiple "steps" within a single process.
+ */
+export function resetCachedCodeQlVersion(): void {
+  cachedCodeQlVersion = undefined;
+}
+
 /** The persisted version together with the CLI path it was obtained from. */
 interface PersistedVersionInfo {
   cmd: string;
   version: VersionInfo;
+}
+
+function isVersionInfo(x: unknown): x is VersionInfo {
+  const candidate = x as Partial<VersionInfo> | null;
+  return (
+    typeof candidate === "object" &&
+    candidate !== null &&
+    typeof candidate.version === "string" &&
+    (candidate.features === undefined ||
+      (typeof candidate.features === "object" &&
+        candidate.features !== null)) &&
+    (candidate.overlayVersion === undefined ||
+      typeof candidate.overlayVersion === "number")
+  );
+}
+
+function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
+  const candidate = x as Partial<PersistedVersionInfo> | null;
+  return (
+    typeof candidate === "object" &&
+    candidate !== null &&
+    typeof candidate.cmd === "string" &&
+    isVersionInfo(candidate.version)
+  );
 }
 
 export function cacheCodeQlVersion(cmd: string, version: VersionInfo): void {
@@ -651,19 +683,22 @@ export function getCachedCodeQlVersion(cmd?: string): undefined | VersionInfo {
   if (!serialized) {
     return undefined;
   }
-  let persisted: PersistedVersionInfo;
+  let persisted: unknown;
   try {
-    persisted = JSON.parse(serialized) as PersistedVersionInfo;
+    persisted = JSON.parse(serialized);
   } catch {
     return undefined;
   }
   if (
-    typeof persisted?.version?.version !== "string" ||
+    !isPersistedVersionInfo(persisted) ||
     (cmd !== undefined && persisted.cmd !== cmd)
   ) {
     return undefined;
   }
-  return persisted.version;
+  // Memoize the parsed value so that subsequent calls in this process don't
+  // re-parse the environment variable.
+  cachedCodeQlVersion = persisted.version;
+  return cachedCodeQlVersion;
 }
 
 export async function codeQlVersionAtLeast(

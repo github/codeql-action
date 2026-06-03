@@ -68,6 +68,10 @@ export function scanGeneratedWorkflows(
 /**
  * Update hardcoded action versions in pr-checks/sync.ts
  *
+ * Handles both inline `uses: "owner/action@ref"` strings and SHA-pinned
+ * references expressed via the `pinnedUses("owner/action", "<sha>", "version")`
+ * helper.
+ *
  * @param syncTsPath - Path to sync.ts file
  * @param actionVersions - Map of action names to versions (may include comments)
  * @returns True if the file was modified, false otherwise
@@ -87,18 +91,36 @@ export function updateSyncTs(
   for (const [actionName, versionWithComment] of Object.entries(
     actionVersions,
   )) {
-    // Extract just the version part (before any comment) for sync.ts
-    const version = versionWithComment.includes("#")
+    // Split the scanned value into the ref (e.g. a commit SHA) and the optional
+    // trailing version comment (e.g. `v6.0.3`).
+    const ref = versionWithComment.includes("#")
       ? versionWithComment.split("#")[0].trim()
       : versionWithComment.trim();
+    const versionComment = versionWithComment.includes("#")
+      ? versionWithComment.split("#")[1].trim()
+      : "";
+
+    const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     // Look for patterns like uses: "actions/setup-node@v4"
     // Note that this will break if we store an Action uses reference in a
     // variable - that's a risk we're happy to take since in that case the
     // PR checks will just fail.
-    const escaped = actionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(`(uses:\\s*")${escaped}@(?:[^"]+)(")`, "g");
-    content = content.replace(pattern, `$1${actionName}@${version}$2`);
+    const usesPattern = new RegExp(`(uses:\\s*")${escaped}@(?:[^"]+)(")`, "g");
+    content = content.replace(usesPattern, `$1${actionName}@${ref}$2`);
+
+    // Look for SHA-pinned references expressed via the `pinnedUses` helper, e.g.
+    // `pinnedUses("actions/checkout", "<sha>", "v6.0.3")`, updating both the
+    // pinned ref and the version comment.
+    const pinnedPattern = new RegExp(
+      `(pinnedUses\\(\\s*")${escaped}("\\s*,\\s*")[^"]*("\\s*,\\s*")([^"]*)(")`,
+      "g",
+    );
+    content = content.replace(
+      pinnedPattern,
+      (_match, p1, p2, p3, oldVersion, p5) =>
+        `${p1}${actionName}${p2}${ref}${p3}${versionComment || oldVersion}${p5}`,
+    );
   }
 
   if (content !== originalContent) {

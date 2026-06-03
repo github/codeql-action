@@ -38,7 +38,7 @@ jobs:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull request
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         fetch-depth: 0  # Need full history for calculation of diffs
     - uses: ./.github/actions/release-initialise
@@ -94,14 +94,14 @@ jobs:
       pull-requests: write # needed to create pull request
     steps:
     - name: Generate token
-      uses: actions/create-github-app-token@v3.2.0
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
       id: app-token
       with:
         app-id: ${{ vars.AUTOMATION_APP_ID }}
         private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         fetch-depth: 0  # Need full history for calculation of diffs
         token: ${{ steps.app-token.outputs.token }}

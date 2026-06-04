@@ -4,6 +4,8 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## 4.36.2 - 04 Jun 2026
 
+ - Cache CodeQL CLI version information across Actions steps. [#3943](https://github.com/github/codeql-action/pull/3943)
+ - Reduce requests while waiting for analysis processing by using exponential backoff when polling SARIF processing status. [#3937](https://github.com/github/codeql-action/pull/3937)
 - Update default CodeQL bundle version to [2.25.6](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.6). [#3948](https://github.com/github/codeql-action/pull/3948)
 
 ## 4.36.1 - 02 Jun 2026

@@ -2,11 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## 3.36.2 - 04 Jun 2026
+## [UNRELEASED]
 
- - Cache CodeQL CLI version information across Actions steps. [#3943](https://github.com/github/codeql-action/pull/3943)
- - Reduce requests while waiting for analysis processing by using exponential backoff when polling SARIF processing status. [#3937](https://github.com/github/codeql-action/pull/3937)
-- Update default CodeQL bundle version to [2.25.6](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.6). [#3948](https://github.com/github/codeql-action/pull/3948)
+No user facing changes.
+
+## v3.36.2 - 04 Jun 2026
+
+This release rolls back 4.36.2 due to issues with that release. It is identical to 0.0.0.
 
 ## 3.36.1 - 02 Jun 2026
 
@@ -1216,3 +1218,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

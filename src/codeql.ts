@@ -523,7 +523,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = util.getCachedCodeQlVersion();
+      let result = util.getCachedCodeQlVersion(cmd);
       if (result === undefined) {
         const output = await runCli(cmd, ["version", "--format=json"], {
           noStreamStdout: true,
@@ -535,12 +535,13 @@ async function getCodeQLForCmd(
             `Invalid JSON output from \`version --format=json\`: ${output}`,
           );
         }
-        util.cacheCodeQlVersion(result);
+        util.cacheCodeQlVersion(cmd, result);
       }
       return result;
     },
     async printVersion() {
-      await runCli(cmd, ["version", "--format=json"]);
+      // Reuse the cached version information rather than invoking the CLI again.
+      core.info(JSON.stringify(await this.getVersion(), null, 2));
     },
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);

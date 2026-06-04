@@ -244,6 +244,11 @@ export interface Config {
   useOverlayDatabaseCaching: boolean;
 
   /**
+   * Whether the overlay database mode was set explicitly.
+   */
+  overlayModeSetExplicitly: boolean;
+
+  /**
    * A partial mapping from repository properties that affect us to their values.
    */
   repositoryProperties: RepositoryProperties;
@@ -573,6 +578,7 @@ export async function initActionState(
     extraQueryExclusions: [],
     overlayDatabaseMode: OverlayDatabaseMode.None,
     useOverlayDatabaseCaching: false,
+    overlayModeSetExplicitly: false,
     repositoryProperties,
     enableFileCoverageInformation,
   };
@@ -772,6 +778,7 @@ async function checkRunnerResources(
 interface EnabledOverlayConfig {
   overlayDatabaseMode: Exclude<OverlayDatabaseMode, OverlayDatabaseMode.None>;
   useOverlayDatabaseCaching: boolean;
+  overlayModeSetExplicitly: boolean;
 }
 
 /**
@@ -826,6 +833,7 @@ export async function checkOverlayEnablement(
     return validateOverlayDatabaseMode(
       modeEnv,
       false,
+      true,
       codeql,
       languages,
       sourceRoot,
@@ -917,6 +925,7 @@ export async function checkOverlayEnablement(
   return validateOverlayDatabaseMode(
     overlayDatabaseMode,
     true,
+    false,
     codeql,
     languages,
     sourceRoot,
@@ -935,6 +944,7 @@ export async function checkOverlayEnablement(
 async function validateOverlayDatabaseMode(
   overlayDatabaseMode: Exclude<OverlayDatabaseMode, OverlayDatabaseMode.None>,
   useOverlayDatabaseCaching: boolean,
+  overlayModeSetExplicitly: boolean,
   codeql: CodeQL,
   languages: Language[],
   sourceRoot: string,
@@ -1006,6 +1016,7 @@ async function validateOverlayDatabaseMode(
   return new Success({
     overlayDatabaseMode,
     useOverlayDatabaseCaching,
+    overlayModeSetExplicitly,
   });
 }
 
@@ -1080,14 +1091,14 @@ function hasQueryCustomisation(userConfig: UserConfig): boolean {
 /**
  * Finalize the incremental-analysis configuration for this run.
  *
- * Overlay analysis has only been validated in combination with diff-informed
- * analysis, so if `Overlay` mode was selected for a pull request but the diff
- * ranges could not be computed, fall back to a full non-overlay analysis.
+ * Overlay analysis has only been validated in combination with diff-informed analysis, so if
+ * `Overlay` mode was selected for a pull request but the diff ranges could not be computed, fall
+ * back to a full non-overlay analysis. If the overlay mode was set explicitly, this fallback does
+ * not apply.
  *
- * Query exclusions for incremental-only queries are then applied whenever the
- * diff ranges are available — which, after the fallback above, is exactly the
- * set of runs where any kind of incremental analysis (overlay or
- * diff-informed) is in effect.
+ * Query exclusions for incremental-only queries are then applied whenever the diff ranges are
+ * available — which, after the fallback above, is exactly the set of runs where any kind of
+ * incremental analysis (overlay or diff-informed) is in effect.
  */
 export async function applyIncrementalAnalysisSettings(
   config: Config,
@@ -1097,7 +1108,8 @@ export async function applyIncrementalAnalysisSettings(
 ): Promise<void> {
   if (
     config.overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
-    !hasDiffRanges
+    !hasDiffRanges &&
+    !config.overlayModeSetExplicitly
   ) {
     logger.info(
       `Reverting overlay database mode to ${OverlayDatabaseMode.None} ` +
@@ -1251,14 +1263,18 @@ export async function initConfig(
     logger,
   );
   if (overlayDatabaseModeResult.isSuccess()) {
-    const { overlayDatabaseMode, useOverlayDatabaseCaching } =
-      overlayDatabaseModeResult.value;
+    const {
+      overlayDatabaseMode,
+      useOverlayDatabaseCaching,
+      overlayModeSetExplicitly,
+    } = overlayDatabaseModeResult.value;
     logger.info(
       `Using overlay database mode: ${overlayDatabaseMode} ` +
         `${useOverlayDatabaseCaching ? "with" : "without"} caching.`,
     );
     config.overlayDatabaseMode = overlayDatabaseMode;
     config.useOverlayDatabaseCaching = useOverlayDatabaseCaching;
+    config.overlayModeSetExplicitly = overlayModeSetExplicitly;
   } else {
     const overlayDisabledReason = overlayDatabaseModeResult.value;
     logger.info(

@@ -71,13 +71,13 @@ jobs:
     steps:
       # This ensures we don't accidentally use the original checkout for any part of the test.
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Install .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
         with:
           dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - name: Install Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
@@ -96,7 +96,7 @@ jobs:
           rm -rf ./* .github .git
       # Check out the actions repo again, but at a different location.
       # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
           path: x/y/z/some-path

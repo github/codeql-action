@@ -1,6 +1,6 @@
 {
-  "bundleVersion": "codeql-bundle-v2.25.5",
-  "cliVersion": "2.25.5",
-  "priorBundleVersion": "codeql-bundle-v2.25.4",
-  "priorCliVersion": "2.25.4"
+  "bundleVersion": "codeql-bundle-v2.25.6",
+  "cliVersion": "2.25.6",
+  "priorBundleVersion": "codeql-bundle-v2.25.5",
+  "priorCliVersion": "2.25.5"
 }

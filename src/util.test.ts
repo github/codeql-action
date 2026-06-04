@@ -532,3 +532,58 @@ test("Failure.orElse returns the default value for a failure result", (t) => {
   const result = new util.Failure(new Error("test error"));
   t.is(result.orElse("default value"), "default value");
 });
+
+test.serial(
+  "getCachedCodeQlVersion reuses a version persisted by an earlier step",
+  (t) => {
+    process.env[EnvVar.CODEQL_VERSION_INFO] = JSON.stringify({
+      cmd: "/path/to/codeql",
+      version: { version: "2.20.0" },
+    });
+    t.deepEqual(util.getCachedCodeQlVersion("/path/to/codeql"), {
+      version: "2.20.0",
+    });
+  },
+);
+
+test.serial(
+  "getCachedCodeQlVersion ignores a persisted version from a different CLI",
+  (t) => {
+    process.env[EnvVar.CODEQL_VERSION_INFO] = JSON.stringify({
+      cmd: "/path/to/other-codeql",
+      version: { version: "2.20.0" },
+    });
+    t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined);
+  },
+);
+
+test.serial(
+  "getCachedCodeQlVersion ignores a malformed persisted value",
+  (t) => {
+    process.env[EnvVar.CODEQL_VERSION_INFO] = "not valid json";
+    t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined);
+  },
+);
+
+test.serial(
+  "getCachedCodeQlVersion ignores a persisted value with the wrong structure",
+  (t) => {
+    for (const value of [
+      JSON.stringify({ cmd: "/path/to/codeql" }),
+      JSON.stringify({ cmd: "/path/to/codeql", version: {} }),
+      JSON.stringify({ cmd: "/path/to/codeql", version: { version: 2 } }),
+      JSON.stringify({ version: { version: "2.20.0" } }),
+      JSON.stringify({
+        cmd: "/path/to/codeql",
+        version: { version: "2.20.0", overlayVersion: "1" },
+      }),
+      JSON.stringify({
+        cmd: "/path/to/codeql",
+        version: { version: "2.20.0", features: "nope" },
+      }),
+    ]) {
+      process.env[EnvVar.CODEQL_VERSION_INFO] = value;
+      t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined, value);
+    }
+  },
+);

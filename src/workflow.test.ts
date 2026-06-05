@@ -383,7 +383,7 @@ async function testLanguageAliases(
   process.env.GITHUB_JOB = "test";
 
   const codeql = await getCodeQLForTesting();
-  sinon.stub(codeql, "betterResolveLanguages").resolves({
+  sinon.stub(codeql, "resolveLanguages").resolves({
     aliases:
       aliases !== undefined
         ? // Remap from languageName -> aliases to alias -> languageName

@@ -38,7 +38,7 @@ const stubCodeql = createStubCodeQL({
   async getVersion() {
     return makeVersionInfo("2.10.3");
   },
-  async betterResolveLanguages() {
+  async resolveLanguages() {
     return {
       extractors: {
         [BuiltInLanguage.javascript]: [

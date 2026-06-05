@@ -5,7 +5,7 @@ import type { PullRequestBranches } from "./actions-util";
 import { getApiClient, getGitHubVersion } from "./api-client";
 import type { CodeQL } from "./codeql";
 import { Feature, FeatureEnablement } from "./feature-flags";
-import { Logger, withGroupAsync } from "./logging";
+import { Logger } from "./logging";
 import { getRepositoryNwoFromEnv } from "./repository";
 import { getErrorMessage, GitHubVariant, satisfiesGHESVersion } from "./util";
 
@@ -83,16 +83,14 @@ export async function prepareDiffInformedAnalysis(
     return false;
   }
 
-  return await withGroupAsync("Computing PR diff ranges", async () => {
-    try {
-      return await computeAndPersistDiffRanges(branches, logger);
-    } catch (e) {
-      logger.warning(
-        `Failed to compute diff-informed analysis ranges: ${getErrorMessage(e)}`,
-      );
-      return false;
-    }
-  });
+  try {
+    return await computeAndPersistDiffRanges(branches, logger);
+  } catch (e) {
+    logger.warning(
+      `Failed to compute diff-informed analysis ranges: ${getErrorMessage(e)}`,
+    );
+    return false;
+  }
 }
 
 export interface DiffThunkRange {
@@ -192,6 +190,7 @@ export async function computeAndPersistDiffRanges(
   branches: PullRequestBranches,
   logger: Logger,
 ): Promise<boolean> {
+  logger.info("Computing PR diff ranges...");
   const ranges = await getPullRequestEditedDiffRanges(branches, logger);
   if (ranges === undefined) {
     return false;

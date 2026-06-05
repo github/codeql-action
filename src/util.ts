@@ -10,7 +10,7 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { CodeQL, VersionInfo } from "./codeql";
+import type { CodeQL, VersionInfo, ResolveLanguagesOutput } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
@@ -699,6 +699,75 @@ export function getCachedCodeQlVersion(cmd?: string): undefined | VersionInfo {
   // re-parse the environment variable.
   cachedCodeQlVersion = persisted.version;
   return cachedCodeQlVersion;
+}
+
+let cachedCodeQlResolveLanguages: undefined | ResolveLanguagesOutput =
+  undefined;
+
+interface PersistedResolveLanguagesOutput {
+  cmd: string;
+  output: ResolveLanguagesOutput;
+}
+
+export function cacheCodeQlResolveLanguages(
+  cmd: string,
+  output: ResolveLanguagesOutput,
+): void {
+  if (cachedCodeQlResolveLanguages !== undefined) {
+    throw new Error("cacheCodeQlResolveLanguages() should be called only once");
+  }
+  cachedCodeQlResolveLanguages = output;
+  // Persist the output so that subsequent Actions steps, which run in separate
+  // processes, can reuse it rather than invoking `codeql resolve languages` again. We
+  // record the CLI path so that a different step using a different CodeQL bundle
+  // doesn't pick up a stale output.
+  core.exportVariable(
+    EnvVar.CODEQL_RESOLVE_LANGUAGES,
+    JSON.stringify({ cmd, output }),
+  );
+}
+
+function isPersistedResolveLanguagesOutput(
+  value: unknown,
+): value is PersistedResolveLanguagesOutput {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as Record<string, unknown>).cmd === "string" &&
+    typeof (value as Record<string, unknown>).output === "object" &&
+    (value as Record<string, unknown>).output !== null
+  );
+}
+
+export function getCachedCodeQlResolveLanguages(
+  cmd?: string,
+): undefined | ResolveLanguagesOutput {
+  if (cachedCodeQlResolveLanguages !== undefined) {
+    return cachedCodeQlResolveLanguages;
+  }
+  // Fall back to the value persisted by an earlier Actions step, if any. This is
+  // best-effort: any malformed or mismatched value is ignored so that the caller
+  // invokes `codeql resolve languages` instead.
+  const serialized = process.env[EnvVar.CODEQL_RESOLVE_LANGUAGES];
+  if (!serialized) {
+    return undefined;
+  }
+  let persisted: unknown;
+  try {
+    persisted = JSON.parse(serialized);
+  } catch {
+    return undefined;
+  }
+  if (
+    !isPersistedResolveLanguagesOutput(persisted) ||
+    (cmd !== undefined && persisted.cmd !== cmd)
+  ) {
+    return undefined;
+  }
+  // Memoize the parsed value so that subsequent calls in this process don't
+  // re-parse the environment variable.
+  cachedCodeQlResolveLanguages = persisted.output;
+  return cachedCodeQlResolveLanguages;
 }
 
 export async function codeQlVersionAtLeast(

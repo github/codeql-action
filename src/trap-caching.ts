@@ -280,7 +280,7 @@ export async function getLanguagesSupportingCaching(
   logger: Logger,
 ): Promise<Language[]> {
   const result: Language[] = [];
-  const resolveResult = await codeql.betterResolveLanguages();
+  const resolveResult = await codeql.resolveLanguages();
   outer: for (const lang of languages) {
     const extractorsForLanguage = resolveResult.extractors[lang];
     if (extractorsForLanguage === undefined) {

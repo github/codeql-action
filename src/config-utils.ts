@@ -266,7 +266,7 @@ async function getSupportedLanguageMap(
   const resolveSupportedLanguagesUsingCli = await codeql.supportsFeature(
     ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   );
-  const resolveResult = await codeql.betterResolveLanguages({
+  const resolveResult = await codeql.resolveLanguages({
     filterToLanguagesWithQueries: resolveSupportedLanguagesUsingCli,
   });
   if (resolveSupportedLanguagesUsingCli) {

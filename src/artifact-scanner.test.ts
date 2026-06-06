@@ -23,6 +23,8 @@ test("makeTestToken", (t) => {
   t.is(makeTestToken(255).length, 255);
 });
 
+const NEW_FORMAT_GHS_TOKEN = "ghs_abc123.def456.ghi789_abc123.def456.ghi789";
+
 test("isAuthToken", (t) => {
   // Undefined for strings that aren't tokens
   t.is(isAuthToken("some string"), undefined);
@@ -32,10 +34,8 @@ test("isAuthToken", (t) => {
   // Token types for strings that are tokens.
   t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
   t.is(isAuthToken(`ghp_${makeTestToken()}`), TokenType.PersonalAccessClassic);
-  t.is(
-    isAuthToken(`ghs_${makeTestToken(255)}`),
-    TokenType.AppInstallationAccess,
-  );
+  t.is(isAuthToken(NEW_FORMAT_GHS_TOKEN), TokenType.ServerToServer);
+  t.is(isAuthToken(`ghs_${makeTestToken(255)}`), TokenType.ServerToServer);
   t.is(
     isAuthToken(`github_pat_${makeTestToken(22)}_${makeTestToken(59)}`),
     TokenType.PersonalAccessFineGrained,
@@ -77,19 +77,26 @@ const testTokens = [
   {
     type: TokenType.ServerToServer,
     value: `ghs_${makeTestToken()}`,
+    checkPattern: "Server-to-Server",
+    label: "legacy format",
+  },
+  {
+    type: TokenType.ServerToServer,
+    value: NEW_FORMAT_GHS_TOKEN,
+    checkPattern: "Server-to-Server",
+    label: "new format",
   },
   {
     type: TokenType.Refresh,
     value: `ghr_${makeTestToken()}`,
   },
-  {
-    type: TokenType.AppInstallationAccess,
-    value: `ghs_${makeTestToken(255)}`,
-  },
 ];
 
-for (const { type, value, checkPattern } of testTokens) {
-  test(`scanArtifactsForTokens detects GitHub ${type} tokens in files`, async (t) => {
+for (const { type, value, checkPattern, label } of testTokens) {
+  const testName = label
+    ? `scanArtifactsForTokens detects GitHub ${type} (${label}) tokens in files`
+    : `scanArtifactsForTokens detects GitHub ${type} tokens in files`;
+  test(testName, async (t) => {
     const logMessages = [];
     const logger = getRecordingLogger(logMessages, { logToConsole: false });
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "scanner-test-"));

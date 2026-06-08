@@ -34,6 +34,32 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
   group: analysis-kinds-${{github.ref}}
 jobs:
+  should-run-analysis-kinds:
+    name: Decide whether to run this check
+    timeout-minutes: 10
+    runs-on: ubuntu-slim
+    if: github.triggering_actor != 'dependabot[bot]'
+    outputs:
+      run-check: ${{ steps.changed-files-check.outputs.run-check || steps.event-type-check.outputs.run-check }}
+    steps:
+      - name: Run check if this is not a PR
+        id: event-type-check
+        if: github.event_name != 'pull_request'
+        run: echo "run-check=true" >> "$GITHUB_OUTPUT"
+      - name: Check out repository
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v6
+      - name: Determine changed files
+        id: changed-files
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/changed-files
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          exclude: '["README.md"]'
+      - name: Run check because of changed files
+        id: changed-files-check
+        if: github.event_name != 'pull_request' && steps.changed-files.outputs.files != '[]'
+        run: echo "run-check=true" >> "$GITHUB_OUTPUT"
   analysis-kinds:
     strategy:
       fail-fast: false
@@ -64,7 +90,9 @@ jobs:
             version: nightly-latest
             analysis-kinds: risk-assessment
     name: Analysis kinds
-    if: github.triggering_actor != 'dependabot[bot]'
+    needs:
+      - should-run-analysis-kinds
+    if: needs.should-run-analysis-kinds.outputs.run-check == 'true'
     permissions:
       contents: read
       security-events: read
@@ -150,3 +178,41 @@ jobs:
           core.setFailed(`${ found ? "Found" : "Didn't find" } rule ${targetId}`);
         }
       CODEQL_ACTION_TEST_MODE: true
+  skip-analysis-kinds:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-scanning,code-quality
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: risk-assessment
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-scanning,code-quality
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: risk-assessment
+    name: Analysis kinds
+    needs:
+      - should-run-analysis-kinds
+    if: needs.should-run-analysis-kinds.outputs.run-check != 'true'
+    timeout-minutes: 5
+    runs-on: ubuntu-slim
+    steps:
+      - name: Success
+        run: exit 0

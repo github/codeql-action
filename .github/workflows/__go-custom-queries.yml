@@ -54,6 +54,32 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
   group: go-custom-queries-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
+  should-run-go-custom-queries:
+    name: Decide whether to run this check
+    timeout-minutes: 10
+    runs-on: ubuntu-slim
+    if: github.triggering_actor != 'dependabot[bot]'
+    outputs:
+      run-check: ${{ steps.changed-files-check.outputs.run-check || steps.event-type-check.outputs.run-check }}
+    steps:
+      - name: Run check if this is not a PR
+        id: event-type-check
+        if: github.event_name != 'pull_request'
+        run: echo "run-check=true" >> "$GITHUB_OUTPUT"
+      - name: Check out repository
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v6
+      - name: Determine changed files
+        id: changed-files
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/changed-files
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          exclude: '["README.md"]'
+      - name: Run check because of changed files
+        id: changed-files-check
+        if: github.event_name != 'pull_request' && steps.changed-files.outputs.files != '[]'
+        run: echo "run-check=true" >> "$GITHUB_OUTPUT"
   go-custom-queries:
     strategy:
       fail-fast: false
@@ -64,7 +90,9 @@ jobs:
           - os: ubuntu-latest
             version: nightly-latest
     name: 'Go: Custom queries'
-    if: github.triggering_actor != 'dependabot[bot]'
+    needs:
+      - should-run-go-custom-queries
+    if: needs.should-run-go-custom-queries.outputs.run-check == 'true'
     permissions:
       contents: read
       security-events: read
@@ -100,3 +128,21 @@ jobs:
     env:
       DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
       CODEQL_ACTION_TEST_MODE: true
+  skip-go-custom-queries:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Go: Custom queries'
+    needs:
+      - should-run-go-custom-queries
+    if: needs.should-run-go-custom-queries.outputs.run-check != 'true'
+    timeout-minutes: 5
+    runs-on: ubuntu-slim
+    steps:
+      - name: Success
+        run: exit 0

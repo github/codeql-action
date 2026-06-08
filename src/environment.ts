@@ -1,3 +1,5 @@
+import * as core from "@actions/core";
+
 /**
  * Environment variables used by the CodeQL Action.
  *
@@ -159,4 +161,30 @@ export enum EnvVar {
 
   /** Used by Code Scanning Risk Assessment to communicate the assessment ID to the CodeQL Action. */
   RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
+}
+
+/**
+ * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
+ *
+ * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
+ */
+export function isInTestMode(): boolean {
+  return process.env[EnvVar.TEST_MODE] === "true";
+}
+
+/**
+ * Wrapper around `core.exportVariable` which does not call `core.exportVariable`
+ * when running unit tests. This is important, because otherwise `core.exportVariable`
+ * sets environment variables for other steps in a workflow when we run unit tests in CI.
+ */
+export function exportVariable(name: string, val: any): void {
+  if (process.env["NODE_ENV"] === "test") {
+    // Setting the environment variable for the current process is OK since we reset
+    // those at the end of each test. This allows tests to pass that rely on that
+    // part of the `core.exportVariable` behaviour.
+    process.env[name] = val;
+  } else {
+    // Call `core.exportVariable` whenever we are not in a test environment.
+    core.exportVariable(name, val);
+  }
 }

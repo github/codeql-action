@@ -13,10 +13,12 @@ import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL, VersionInfo } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable, isInTestMode } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
+
+export { isInTestMode } from "./environment";
 
 /**
  * The name of the file containing the base database OIDs, as stored in the
@@ -515,7 +517,7 @@ export function checkGitHubVersionInRange(
     );
   }
   hasBeenWarnedAboutVersion = true;
-  core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
+  exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
 }
 
 export enum DisallowedAPIVersionReason {
@@ -559,11 +561,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  core.exportVariable(EnvVar.VERSION, version);
+  exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  exportVariable(EnvVar.FEATURE_SANDWICH, "false");
+  exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  exportVariable(EnvVar.VERSION, version);
 }
 
 /**
@@ -777,15 +779,6 @@ export async function delay(
 
 export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
-}
-
-/**
- * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
- *
- * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
- */
-export function isInTestMode(): boolean {
-  return process.env[EnvVar.TEST_MODE] === "true";
 }
 
 /**
@@ -1006,7 +999,7 @@ export async function checkDiskUsage(
       } else {
         logger.debug(message);
       }
-      core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
+      exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
       numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
@@ -1055,7 +1048,7 @@ export function checkActionVersion(
           "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
-      core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
+      exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
     }
   }
 }

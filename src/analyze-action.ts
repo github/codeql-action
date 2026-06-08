@@ -28,7 +28,7 @@ import {
   DependencyCacheUploadStatusReport,
   uploadDependencyCaches,
 } from "./dependency-caching";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
@@ -284,7 +284,7 @@ async function run(startedAt: Date) {
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
-    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
+    exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,
@@ -444,7 +444,7 @@ async function run(startedAt: Date) {
         `expect-error input was set to true but no error was thrown.`,
       );
     }
-    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+    exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     if (

@@ -37,7 +37,7 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { EnvVar } from "./environment";
+import { EnvVar, exportVariable } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
   loadPropertiesFromApi,
@@ -255,9 +255,9 @@ async function run(startedAt: Date) {
     // Create a unique identifier for this run.
     const jobRunUuid = uuidV4();
     logger.info(`Job run UUID is ${jobRunUuid}.`);
-    core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+    exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
 
-    core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
+    exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
     configFile = getOptionalInput("config-file");
 
@@ -343,7 +343,7 @@ async function run(startedAt: Date) {
         );
       }
       if (semver.lt(actualVer, publicPreview)) {
-        core.exportVariable(EnvVar.EXPERIMENTAL_FEATURES, "true");
+        exportVariable(EnvVar.EXPERIMENTAL_FEATURES, "true");
         logger.info("Experimental Rust analysis enabled");
       }
     }
@@ -508,7 +508,7 @@ async function run(startedAt: Date) {
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {
-      core.exportVariable("GOFLAGS", goFlags);
+      exportVariable("GOFLAGS", goFlags);
       core.warning(
         "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
       );
@@ -554,7 +554,7 @@ async function run(startedAt: Date) {
 
             // Store the original location of our wrapper script somewhere where we can
             // later retrieve it from and cross-check that it hasn't been changed.
-            core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+            exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
           } catch (e) {
             logger.warning(
               `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
@@ -563,7 +563,7 @@ async function run(startedAt: Date) {
         } else {
           // Store the location of the original Go binary, so we can check that no setup tasks were performed after the
           // `init` Action ran.
-          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goBinaryPath);
+          exportVariable(EnvVar.GO_BINARY_LOCATION, goBinaryPath);
         }
       } catch (e) {
         logger.warning(
@@ -598,12 +598,12 @@ async function run(startedAt: Date) {
     // threads it would ask extractors to use. See help text for the "--ram" and "--threads"
     // options at https://codeql.github.com/docs/codeql-cli/manual/database-trace-command/
     // for details.
-    core.exportVariable(
+    exportVariable(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
         getCodeQLMemoryLimit(getOptionalInput("ram"), logger).toString(),
     );
-    core.exportVariable(
+    exportVariable(
       "CODEQL_THREADS",
       process.env["CODEQL_THREADS"] ||
         getThreadsFlagValue(getOptionalInput("threads"), logger).toString(),
@@ -611,7 +611,7 @@ async function run(startedAt: Date) {
 
     // Disable Kotlin extractor if feature flag set
     if (await features.getValue(Feature.DisableKotlinAnalysisEnabled)) {
-      core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+      exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
     }
 
     // Emergency override to force the CodeQL CLI back to the JGit-based Git backend.
@@ -625,7 +625,7 @@ async function run(startedAt: Date) {
       (await codeQlVersionAtLeast(codeql, "2.20.3")) &&
       !(await codeQlVersionAtLeast(codeql, "2.20.4"))
     ) {
-      core.exportVariable(kotlinLimitVar, "2.1.20");
+      exportVariable(kotlinLimitVar, "2.1.20");
     }
 
     // Restore dependency cache(s), if they exist.
@@ -674,10 +674,7 @@ async function run(startedAt: Date) {
       config.buildMode === BuildMode.None &&
       config.languages.includes(BuiltInLanguage.java)
     ) {
-      core.exportVariable(
-        EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS,
-        "true",
-      );
+      exportVariable(EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS, "true");
     }
 
     const { registriesAuthTokens, qlconfigFile } =
@@ -734,7 +731,7 @@ async function run(startedAt: Date) {
     const tracerConfig = await getCombinedTracerConfig(codeql, config);
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
-        core.exportVariable(key, value);
+        exportVariable(key, value);
       }
     }
 
@@ -745,7 +742,7 @@ async function run(startedAt: Date) {
         getOptionalEnvVar(JavaEnvVars.JAVA_TOOL_OPTIONS) || "";
 
       // Add the network debugging options.
-      core.exportVariable(
+      exportVariable(
         JavaEnvVars.JAVA_TOOL_OPTIONS,
         `${existingJavaToolOptions} -Djavax.net.debug=all`,
       );

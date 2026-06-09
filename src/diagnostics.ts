@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "fs";
 import path from "path";
 
 import type { Config } from "./config-utils";
-import { Language } from "./languages";
+import { Language } from "./languages/index";
 import { getActionsLogger } from "./logging";
 import { getCodeQLDatabasePath } from "./util";
 

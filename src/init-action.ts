@@ -2,12 +2,12 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
 import {
+  isDynamicWorkflow,
   FileCmdNotFoundError,
   getActionVersion,
   getFileType,
@@ -24,6 +24,10 @@ import {
   shouldRestoreCache,
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
+import {
+  EffectiveToolsInputSource,
+  resolveToolsInputWithMetadata,
+} from "./config/resolve-tools-input";
 import * as configUtils from "./config-utils";
 import {
   DependencyCacheRestoreStatusReport,
@@ -40,8 +44,8 @@ import {
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import {
-  loadPropertiesFromApi,
-  RepositoryProperties,
+  loadRepositoryProperties,
+  ToolsModeRepositoryPropertyValue,
 } from "./feature-flags/properties";
 import {
   checkInstallPython311,
@@ -53,14 +57,14 @@ import {
   initConfig,
   runDatabaseInitCluster,
 } from "./init";
-import { JavaEnvVars, BuiltInLanguage } from "./languages";
+import { JavaEnvVars, BuiltInLanguage } from "./languages/index";
 import { getActionsLogger, Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
 } from "./overlay/caching";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
-import { getRepositoryNwo, RepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -93,10 +97,7 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
-  Result,
   getOptionalEnvVar,
-  Success,
-  Failure,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -140,6 +141,9 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  effectiveToolsInput: string | undefined,
+  effectiveToolsInputSource: EffectiveToolsInputSource,
+  toolsRepoPropertyMode: ToolsModeRepositoryPropertyValue | undefined,
   overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
   dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined,
   logger: Logger,
@@ -165,6 +169,9 @@ async function sendCompletedStatusReport(
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
     tools_input: getOptionalInput("tools") || "",
+    effective_tools_input: effectiveToolsInput || "",
+    effective_tools_input_source: effectiveToolsInputSource,
+    tools_repo_property_mode: toolsRepoPropertyMode || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: workflowLanguages || "",
@@ -219,6 +226,9 @@ async function run(startedAt: Date) {
   let toolsSource: ToolsSource;
   let toolsVersion: string;
   let zstdAvailability: ZstdAvailability | undefined;
+  let effectiveToolsInput: string | undefined;
+  let effectiveToolsInputSource: EffectiveToolsInputSource;
+  let toolsRepoPropertyMode: ToolsModeRepositoryPropertyValue | undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -251,6 +261,7 @@ async function run(startedAt: Date) {
       repositoryNwo,
       logger,
     );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     // Create a unique identifier for this run.
     const jobRunUuid = uuidV4();
@@ -296,6 +307,21 @@ async function run(startedAt: Date) {
     const codeQLDefaultVersionInfo =
       await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+
+    // Determine the effective tools input.
+    // The explicit `tools` workflow input takes precedence. If none is provided,
+    // fall back to the 'github-codeql-tools' repository property (if set).
+    // If 'github-codeql-tools-mode' is set to 'dynamic', this fallback applies
+    // only to dynamic workflows. Otherwise, it applies to all workflows.
+    const resolvedToolsInput = resolveToolsInputWithMetadata(
+      getOptionalInput("tools"),
+      isDynamicWorkflow(),
+      repositoryProperties,
+      logger,
+    );
+    effectiveToolsInput = resolvedToolsInput.effectiveToolsInput;
+    effectiveToolsInputSource = resolvedToolsInput.effectiveToolsInputSource;
+    toolsRepoPropertyMode = resolvedToolsInput.toolsRepoPropertyMode;
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
@@ -303,7 +329,7 @@ async function run(startedAt: Date) {
       analysisKinds?.length === 1 &&
       analysisKinds[0] === AnalysisKind.CodeScanning;
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      effectiveToolsInput,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
@@ -350,7 +376,6 @@ async function run(startedAt: Date) {
 
     analysisKinds = await getAnalysisKinds(logger, features);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
-    const repositoryProperties = repositoryPropertiesResult.orElse({});
     const fileCoverageResult = await getFileCoverageInformationEnabled(
       debugMode,
       codeql,
@@ -774,6 +799,9 @@ async function run(startedAt: Date) {
       toolsFeatureFlagsValid,
       toolsSource,
       toolsVersion,
+      effectiveToolsInput,
+      effectiveToolsInputSource,
+      toolsRepoPropertyMode,
       overlayBaseDatabaseStats,
       dependencyCachingStatus,
       logger,
@@ -791,42 +819,13 @@ async function run(startedAt: Date) {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    effectiveToolsInput,
+    effectiveToolsInputSource,
+    toolsRepoPropertyMode,
     overlayBaseDatabaseStats,
     dependencyCachingStatus,
     logger,
   );
-}
-
-/**
- * Loads [repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) if applicable.
- */
-async function loadRepositoryProperties(
-  repositoryNwo: RepositoryNwo,
-  logger: Logger,
-): Promise<Result<RepositoryProperties, unknown>> {
-  // See if we can skip loading repository properties early. In particular,
-  // repositories owned by users cannot have repository properties, so we can
-  // skip the API call entirely in that case.
-  const repositoryOwnerType = github.context.payload.repository?.owner.type;
-  logger.debug(
-    `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
-  );
-  if (repositoryOwnerType === "User") {
-    logger.debug(
-      "Skipping loading repository properties because the repository is owned by a user and " +
-        "therefore cannot have repository properties.",
-    );
-    return new Success({});
-  }
-
-  try {
-    return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
-  } catch (error) {
-    logger.warning(
-      `Failed to load repository properties: ${getErrorMessage(error)}`,
-    );
-    return new Failure(error);
-  }
 }
 
 async function recordZstdAvailability(

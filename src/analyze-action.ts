@@ -30,7 +30,7 @@ import {
 } from "./dependency-caching";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import { getActionsLogger, Logger } from "./logging";
 import { cleanupAndUploadOverlayBaseDatabaseToCache } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";

@@ -78,6 +78,8 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
     url: "",
     data: [
       { property_name: "github-codeql-extra-queries", value: "+queries" },
+      { property_name: "github-codeql-tools", value: "toolcache" },
+      { property_name: "github-codeql-tools-mode", value: "dynamic" },
       { property_name: "unknown-property", value: "something" },
     ] satisfies properties.GitHubPropertiesResponse,
   });
@@ -87,8 +89,44 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
     logger,
     mockRepositoryNwo,
   );
-  t.deepEqual(response, { "github-codeql-extra-queries": "+queries" });
+  t.deepEqual(response, {
+    "github-codeql-extra-queries": "+queries",
+    "github-codeql-tools": "toolcache",
+    "github-codeql-tools-mode": "dynamic",
+  });
 });
+
+test.serial(
+  "loadPropertiesFromApi warns if tools mode property has unexpected value",
+  async (t) => {
+    sinon.stub(api, "getRepositoryProperties").resolves({
+      headers: {},
+      status: 200,
+      url: "",
+      data: [
+        {
+          property_name: "github-codeql-tools-mode",
+          value: "all",
+        },
+      ] satisfies properties.GitHubPropertiesResponse,
+    });
+    const logger = getRunnerLogger(true);
+    const warningSpy = sinon.spy(logger, "warning");
+    const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+    const response = await properties.loadPropertiesFromApi(
+      logger,
+      mockRepositoryNwo,
+    );
+    t.deepEqual(response, {
+      "github-codeql-tools-mode": "enforce",
+    });
+    t.true(warningSpy.calledOnce);
+    t.is(
+      warningSpy.firstCall.args[0],
+      "Repository property 'github-codeql-tools-mode' has unexpected value 'all'. Expected 'dynamic' or 'enforce'. Defaulting to 'enforce'.",
+    );
+  },
+);
 
 test.serial("loadPropertiesFromApi parses true boolean property", async (t) => {
   sinon.stub(api, "getRepositoryProperties").resolves({

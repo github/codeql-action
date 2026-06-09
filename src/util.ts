@@ -15,7 +15,7 @@ import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
 import { EnvVar } from "./environment";
 import * as json from "./json";
-import { Language } from "./languages";
+import { Language } from "./languages/index";
 import { Logger } from "./logging";
 
 /**

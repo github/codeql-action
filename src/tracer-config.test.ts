@@ -6,7 +6,7 @@ import * as sinon from "sinon";
 
 import { CodeQL, getCodeQLForTesting } from "./codeql";
 import * as configUtils from "./config-utils";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import { createTestConfig, makeVersionInfo, setupTests } from "./testing-utils";
 import { ToolsFeature } from "./tools-features";
 import { getCombinedTracerConfig } from "./tracer-config";

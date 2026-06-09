@@ -559,7 +559,7 @@ export async function getCodeQLSource(
         );
       } else {
         if (allowToolcacheValueFF) {
-          logger.warning(
+          logger.info(
             `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
           );
         } else {

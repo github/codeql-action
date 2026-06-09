@@ -10,7 +10,7 @@ import { type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
-import { Language } from "./languages";
+import { Language } from "./languages/index";
 import { Logger } from "./logging";
 import {
   asHTTPError,

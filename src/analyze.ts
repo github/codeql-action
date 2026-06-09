@@ -21,7 +21,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
-import { BuiltInLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages/index";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import type * as sarif from "./sarif";

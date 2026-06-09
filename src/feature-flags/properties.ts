@@ -1,7 +1,10 @@
+import * as github from "@actions/github";
+
 import { isDynamicWorkflow } from "../actions-util";
 import { getRepositoryProperties } from "../api-client";
 import { Logger } from "../logging";
 import { RepositoryNwo } from "../repository";
+import { getErrorMessage, Result, Success, Failure } from "../util";
 
 /** The common prefix that we expect all of our repository properties to have. */
 export const GITHUB_CODEQL_PROPERTY_PREFIX = "github-codeql-";
@@ -13,6 +16,13 @@ export enum RepositoryPropertyName {
   DISABLE_OVERLAY = "github-codeql-disable-overlay",
   EXTRA_QUERIES = "github-codeql-extra-queries",
   FILE_COVERAGE_ON_PRS = "github-codeql-file-coverage-on-prs",
+  TOOLS = "github-codeql-tools",
+  TOOLS_MODE = "github-codeql-tools-mode",
+}
+
+export enum ToolsModeRepositoryPropertyValue {
+  Dynamic = "dynamic",
+  Enforce = "enforce",
 }
 
 /** Parsed types of the known repository properties. */
@@ -20,6 +30,8 @@ export type AllRepositoryProperties = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: boolean;
+  [RepositoryPropertyName.TOOLS]: string;
+  [RepositoryPropertyName.TOOLS_MODE]: ToolsModeRepositoryPropertyValue;
 };
 
 /** Parsed repository properties. */
@@ -30,6 +42,8 @@ export type RepositoryPropertyApiType = {
   [RepositoryPropertyName.DISABLE_OVERLAY]: string;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: string;
+  [RepositoryPropertyName.TOOLS]: string;
+  [RepositoryPropertyName.TOOLS_MODE]: string;
 };
 
 /** The type of functions which take the `value` from the API and try to convert it to the type we want. */
@@ -77,6 +91,11 @@ const repositoryPropertyParsers: {
   [RepositoryPropertyName.DISABLE_OVERLAY]: booleanProperty,
   [RepositoryPropertyName.EXTRA_QUERIES]: stringProperty,
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: booleanProperty,
+  [RepositoryPropertyName.TOOLS]: stringProperty,
+  [RepositoryPropertyName.TOOLS_MODE]: {
+    validate: isString,
+    parse: parseToolsModeRepositoryProperty,
+  },
 };
 
 /**
@@ -173,6 +192,38 @@ export async function loadPropertiesFromApi(
 }
 
 /**
+ * Loads [repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) if applicable.
+ */
+export async function loadRepositoryProperties(
+  repositoryNwo: RepositoryNwo,
+  logger: Logger,
+): Promise<Result<RepositoryProperties, unknown>> {
+  // See if we can skip loading repository properties early. In particular,
+  // repositories owned by users cannot have repository properties, so we can
+  // skip the API call entirely in that case.
+  const repositoryOwnerType = github.context.payload.repository?.owner.type;
+  logger.debug(
+    `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
+  );
+  if (repositoryOwnerType === "User") {
+    logger.debug(
+      "Skipping loading repository properties because the repository is owned by a user and " +
+        "therefore cannot have repository properties.",
+    );
+    return new Success({});
+  }
+
+  try {
+    return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
+  } catch (error) {
+    logger.info(
+      `Failed to load repository properties: ${getErrorMessage(error)}`,
+    );
+    return new Failure(error);
+  }
+}
+
+/**
  * Validate that `value` has the correct type for `K` and, if so, update the partial set of repository
  * properties with the parsed value of the specified property.
  */
@@ -214,6 +265,25 @@ function parseBooleanRepositoryProperty(
 
 /** Parse a string repository property. */
 function parseStringRepositoryProperty(_name: string, value: string): string {
+  return value;
+}
+
+/** Parse the tools mode repository property. */
+function parseToolsModeRepositoryProperty(
+  name: string,
+  value: string,
+  logger: Logger,
+): ToolsModeRepositoryPropertyValue {
+  if (
+    value !== ToolsModeRepositoryPropertyValue.Dynamic &&
+    value !== ToolsModeRepositoryPropertyValue.Enforce
+  ) {
+    logger.warning(
+      `Repository property '${name}' has unexpected value '${value}'. Expected 'dynamic' or 'enforce'. Defaulting to 'enforce'.`,
+    );
+    return ToolsModeRepositoryPropertyValue.Enforce;
+  }
+
   return value;
 }
 

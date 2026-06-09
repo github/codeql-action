@@ -15,7 +15,7 @@ import {
   getFileCoverageInformationEnabled,
   logFileCoverageOnPrsDeprecationWarning,
 } from "./init";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import {
   createFeatures,
   LoggedMessage,

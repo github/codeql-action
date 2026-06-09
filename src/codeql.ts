@@ -22,7 +22,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import { isAnalyzingDefaultBranch } from "./git-utils";
-import { Language } from "./languages";
+import { Language } from "./languages/index";
 import { Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";

@@ -27,7 +27,7 @@ import {
   CacheStoreResult,
 } from "./dependency-caching";
 import { Feature } from "./feature-flags";
-import { BuiltInLanguage } from "./languages";
+import { BuiltInLanguage } from "./languages/index";
 import {
   setupTests,
   createFeatures,

@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
 import {
+  isDynamicWorkflow,
   getActionVersion,
   getOptionalInput,
   getRequiredInput,
@@ -10,9 +11,17 @@ import {
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
+import {
+  EffectiveToolsInputSource,
+  resolveToolsInputWithMetadata,
+} from "./config/resolve-tools-input";
 import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
+import {
+  loadRepositoryProperties,
+  ToolsModeRepositoryPropertyValue,
+} from "./feature-flags/properties";
 import { initCodeQL } from "./init";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -48,6 +57,9 @@ async function sendCompletedStatusReport(
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
   toolsVersion: string,
+  effectiveToolsInput: string | undefined,
+  effectiveToolsInputSource: EffectiveToolsInputSource,
+  toolsRepoPropertyMode: ToolsModeRepositoryPropertyValue | undefined,
   logger: Logger,
   error?: Error,
 ): Promise<void> {
@@ -69,6 +81,9 @@ async function sendCompletedStatusReport(
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
     tools_input: getOptionalInput("tools") || "",
+    effective_tools_input: effectiveToolsInput || "",
+    effective_tools_input_source: effectiveToolsInputSource,
+    tools_repo_property_mode: toolsRepoPropertyMode || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: "",
@@ -99,6 +114,9 @@ async function run(startedAt: Date): Promise<void> {
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
+  let effectiveToolsInput: string | undefined;
+  let effectiveToolsInputSource: EffectiveToolsInputSource;
+  let toolsRepoPropertyMode: ToolsModeRepositoryPropertyValue | undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -141,12 +159,35 @@ async function run(startedAt: Date): Promise<void> {
     const codeQLDefaultVersionInfo =
       await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+
+    // Fetch the values of known repository properties that affect us.
+    const repositoryPropertiesResult = await loadRepositoryProperties(
+      repositoryNwo,
+      logger,
+    );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
+
+    // Determine the effective tools input.
+    // The explicit `tools` workflow input takes precedence. If none is provided,
+    // fall back to the 'github-codeql-tools' repository property (if set).
+    // If 'github-codeql-tools-mode' is set to 'dynamic', this fallback applies
+    // only to dynamic workflows. Otherwise, it applies to all workflows.
+    const resolvedToolsInput = resolveToolsInputWithMetadata(
+      getOptionalInput("tools"),
+      isDynamicWorkflow(),
+      repositoryProperties,
+      logger,
+    );
+    effectiveToolsInput = resolvedToolsInput.effectiveToolsInput;
+    effectiveToolsInputSource = resolvedToolsInput.effectiveToolsInputSource;
+    toolsRepoPropertyMode = resolvedToolsInput.toolsRepoPropertyMode;
     const rawLanguages = getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
     const analysisKinds = await getAnalysisKinds(logger, features);
+
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      effectiveToolsInput,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
@@ -191,6 +232,9 @@ async function run(startedAt: Date): Promise<void> {
     toolsFeatureFlagsValid,
     toolsSource,
     toolsVersion,
+    effectiveToolsInput,
+    effectiveToolsInputSource,
+    toolsRepoPropertyMode,
     logger,
   );
 }

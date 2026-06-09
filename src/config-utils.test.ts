@@ -18,7 +18,7 @@ import { Feature } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
 import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
-import { BuiltInLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages/index";
 import { getRunnerLogger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import * as overlayDiagnostics from "./overlay/diagnostics";

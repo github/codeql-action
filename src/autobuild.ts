@@ -7,7 +7,7 @@ import * as configUtils from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { Feature, featureConfig, initFeatures } from "./feature-flags";
-import { BuiltInLanguage, Language } from "./languages";
+import { BuiltInLanguage, Language } from "./languages/index";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import { asyncFilter, BuildMode } from "./util";

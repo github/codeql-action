@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- Organizations can create a custom repository property named `github-codeql-tools` to set a default CodeQL CLI tools value. You can optionally set `github-codeql-tools-mode` to control scope: use `enforce` (default) to apply to all workflows, or `dynamic` to apply only to dynamic workflows. If a workflow provides an explicit `tools:` input, that input takes precedence. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization), [Repository properties for Code Scanning](https://docs.github.com/en/code-security/concepts/code-scanning/repository-properties) and [Customizing your advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning).
 
 ## 4.36.2 - 04 Jun 2026
 

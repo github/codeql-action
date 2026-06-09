@@ -829,8 +829,10 @@ function dumpSarifFile(
   fs.writeFileSync(outputFile, sarifPayload);
 }
 
-const STATUS_CHECK_FREQUENCY_MILLISECONDS = 5 * 1000;
-const STATUS_CHECK_TIMEOUT_MILLISECONDS = 2 * 60 * 1000;
+// Should lead to status checks after 5s, 15s, 35s, 75s, and 155s.
+const STATUS_CHECK_INITIAL_BACKOFF_MILLISECONDS = 5 * 1000;
+const STATUS_CHECK_BACKOFF_MULTIPLIER = 2;
+const STATUS_CHECK_MAX_TRIES = 5;
 
 type ProcessingStatus = "pending" | "complete" | "failed";
 
@@ -854,20 +856,17 @@ export async function waitForProcessing(
   try {
     const client = api.getApiClient();
 
-    const statusCheckingStarted = Date.now();
-    while (true) {
-      if (
-        Date.now() >
-        statusCheckingStarted + STATUS_CHECK_TIMEOUT_MILLISECONDS
-      ) {
-        // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
-        // It's possible the analysis will eventually finish processing, but it's not worth spending more
-        // Actions time waiting.
-        logger.warning(
-          "Timed out waiting for analysis to finish processing. Continuing.",
-        );
-        break;
-      }
+    // Do an initial wait because processing will always take a minimum of 2-3 seconds
+    let statusCheckBackoff = STATUS_CHECK_INITIAL_BACKOFF_MILLISECONDS;
+    if (process.env["NODE_ENV"] !== "test") {
+      await util.delay(statusCheckBackoff, { allowProcessExit: false });
+    }
+
+    for (
+      let statusCheckCount = 1;
+      statusCheckCount <= STATUS_CHECK_MAX_TRIES;
+      statusCheckCount++
+    ) {
       let response: OctokitResponse<any> | undefined = undefined;
       try {
         response = await client.request(
@@ -912,9 +911,18 @@ export async function waitForProcessing(
         util.assertNever(status);
       }
 
-      await util.delay(STATUS_CHECK_FREQUENCY_MILLISECONDS, {
-        allowProcessExit: false,
-      });
+      if (statusCheckCount === STATUS_CHECK_MAX_TRIES) {
+        // If the analysis hasn't finished processing in the allotted time, we continue anyway rather than failing.
+        // It's possible the analysis will eventually finish processing, but it's not worth spending more
+        // Actions time waiting.
+        logger.warning(
+          "Timed out waiting for analysis to finish processing. Continuing.",
+        );
+        break;
+      } else {
+        statusCheckBackoff *= STATUS_CHECK_BACKOFF_MULTIPLIER;
+        await util.delay(statusCheckBackoff, { allowProcessExit: false });
+      }
     }
   } finally {
     logger.endGroup();

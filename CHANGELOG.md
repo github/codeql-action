@@ -6,6 +6,16 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - Organizations can create a custom repository property named `github-codeql-tools` to set a default CodeQL CLI tools value. You can optionally set `github-codeql-tools-mode` to control scope: use `enforce` (default) to apply to all workflows, or `dynamic` to apply only to dynamic workflows. If a workflow provides an explicit `tools:` input, that input takes precedence. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization), [Repository properties for Code Scanning](https://docs.github.com/en/code-security/concepts/code-scanning/repository-properties) and [Customizing your advanced setup for code scanning](https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning).
 
+## 4.36.2 - 04 Jun 2026
+
+- Cache CodeQL CLI version information across Actions steps. [#3943](https://github.com/github/codeql-action/pull/3943)
+- Reduce requests while waiting for analysis processing by using exponential backoff when polling SARIF processing status. [#3937](https://github.com/github/codeql-action/pull/3937)
+- Update default CodeQL bundle version to [2.25.6](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.6). [#3948](https://github.com/github/codeql-action/pull/3948)
+
+## 4.36.1 - 02 Jun 2026
+
+No user facing changes.
+
 ## 4.36.0 - 22 May 2026
 
 - _Breaking change_: Bump the minimum required CodeQL bundle version to 2.19.4. [#3894](https://github.com/github/codeql-action/pull/3894)

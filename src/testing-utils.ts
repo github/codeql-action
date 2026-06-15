@@ -32,6 +32,7 @@ import {
   GitHubVariant,
   GitHubVersion,
   HTTPError,
+  resetCachedCodeQlVersion,
 } from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
@@ -100,6 +101,10 @@ export function setupTests(testFn: TestFn<any>) {
     // Set an empty CodeQL object so that all method calls will fail
     // unless the test explicitly sets one up.
     codeql.setCodeQL({});
+
+    // Reset the in-process CodeQL version cache so that it doesn't leak between
+    // tests, which each represent a separate Actions step in production.
+    resetCachedCodeQlVersion();
 
     // Replace stdout and stderr so we can record output during tests
     t.context.testOutput = "";
@@ -585,6 +590,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      overlayModeSetExplicitly: false,
       repositoryProperties: {},
       enableFileCoverageInformation: true,
     } satisfies Config,

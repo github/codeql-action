@@ -7,6 +7,16 @@ import * as yaml from "yaml";
 
 import { BuiltInLanguage } from "../src/languages";
 
+/**
+ * Returns a `uses` value for `action` pinned to a commit SHA, with the
+ * human-readable version recorded in a trailing comment.
+ */
+function pinnedUses(action: string, sha: string, version: string): yaml.Scalar {
+  const node = new yaml.Scalar(`${action}@${sha}`);
+  node.comment = ` ${version}`;
+  return node;
+}
+
 /** Known workflow input names. */
 enum KnownInputName {
   GoVersion = "go-version",
@@ -192,7 +202,11 @@ const languageSetups: LanguageSetups = {
     steps: [
       {
         name: "Install Node.js",
-        uses: "actions/setup-node@v6",
+        uses: pinnedUses(
+          "actions/setup-node",
+          "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
+          "v6.4.0",
+        ),
         with: {
           "node-version": defaultLanguageVersions.javascript,
           cache: "npm",
@@ -210,7 +224,11 @@ const languageSetups: LanguageSetups = {
     steps: [
       {
         name: "Install Go",
-        uses: "actions/setup-go@v6",
+        uses: pinnedUses(
+          "actions/setup-go",
+          "4a3601121dd01d1626a1e23e37211e3254c1c06c",
+          "v6.4.0",
+        ),
         with: {
           "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
           // to avoid potentially misleading autobuilder results where we expect it to download
@@ -226,7 +244,11 @@ const languageSetups: LanguageSetups = {
     steps: [
       {
         name: "Install Java",
-        uses: "actions/setup-java@v5",
+        uses: pinnedUses(
+          "actions/setup-java",
+          "be666c2fcd27ec809703dec50e508c2fdc7f6654",
+          "v5.2.0",
+        ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
           distribution: "temurin",
@@ -240,7 +262,11 @@ const languageSetups: LanguageSetups = {
     steps: [
       {
         name: "Install Python",
-        uses: "actions/setup-python@v6",
+        uses: pinnedUses(
+          "actions/setup-python",
+          "a309ff8b426b58ec0e2a45f0f869d46889d02405",
+          "v6.2.0",
+        ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
         },
@@ -253,7 +279,11 @@ const languageSetups: LanguageSetups = {
     steps: [
       {
         name: "Install .NET",
-        uses: "actions/setup-dotnet@v5",
+        uses: pinnedUses(
+          "actions/setup-dotnet",
+          "9a946fdbd5fb07b82b2f5a4466058b876ab72bb2",
+          "v5.3.0",
+        ),
         with: {
           "dotnet-version": `\${{ inputs.dotnet-version || '${defaultLanguageVersions.csharp}' }}`,
         },
@@ -456,7 +486,11 @@ function generateJob(
   const steps: Step[] = [
     {
       name: "Check out repository",
-      uses: "actions/checkout@v6",
+      uses: pinnedUses(
+        "actions/checkout",
+        "df4cb1c069e1874edd31b4311f1884172cec0e10",
+        "v6.0.3",
+      ),
     },
     ...setupInfo.steps,
     {

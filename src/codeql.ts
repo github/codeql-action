@@ -118,15 +118,11 @@ export interface CodeQL {
     enableDebugLogging: boolean,
   ): Promise<void>;
   /**
-   * Run 'codeql resolve languages'.
-   */
-  resolveLanguages(): Promise<ResolveLanguagesOutput>;
-  /**
    * Run 'codeql resolve languages' with '--format=betterjson'.
    */
-  betterResolveLanguages(options?: {
+  resolveLanguages(options?: {
     filterToLanguagesWithQueries: boolean;
-  }): Promise<BetterResolveLanguagesOutput>;
+  }): Promise<ResolveLanguagesOutput>;
   /**
    * Run 'codeql resolve build-environment'
    */
@@ -239,20 +235,14 @@ export interface ResolveDatabaseOutput {
 }
 
 export interface ResolveLanguagesOutput {
-  [language: string]: [string];
-}
-
-export interface BetterResolveLanguagesOutput {
   aliases?: {
     [alias: string]: string;
   };
   extractors: {
-    [language: string]: [
-      {
-        extractor_root: string;
-        extractor_options?: any;
-      },
-    ];
+    [language: string]: Array<{
+      extractor_root: string;
+      extractor_options?: any;
+    }>;
   };
 }
 
@@ -460,10 +450,9 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
       "extractUsingBuildMode",
     ),
     finalizeDatabase: resolveFunction(partialCodeql, "finalizeDatabase"),
-    resolveLanguages: resolveFunction(partialCodeql, "resolveLanguages"),
-    betterResolveLanguages: resolveFunction(
+    resolveLanguages: resolveFunction(
       partialCodeql,
-      "betterResolveLanguages",
+      "resolveLanguages",
       async () => ({ aliases: {}, extractors: {} }),
     ),
     resolveBuildEnvironment: resolveFunction(
@@ -523,7 +512,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = util.getCachedCodeQlVersion();
+      let result = util.getCachedCodeQlVersion(cmd);
       if (result === undefined) {
         const output = await runCli(cmd, ["version", "--format=json"], {
           noStreamStdout: true,
@@ -535,12 +524,13 @@ async function getCodeQLForCmd(
             `Invalid JSON output from \`version --format=json\`: ${output}`,
           );
         }
-        util.cacheCodeQlVersion(result);
+        util.cacheCodeQlVersion(cmd, result);
       }
       return result;
     },
     async printVersion() {
-      await runCli(cmd, ["version", "--format=json"]);
+      // Reuse the cached version information rather than invoking the CLI again.
+      core.info(JSON.stringify(await this.getVersion(), null, 2));
     },
     async supportsFeature(feature: ToolsFeature) {
       return isSupportedToolsFeature(await this.getVersion(), feature);
@@ -734,24 +724,7 @@ async function getCodeQLForCmd(
       ];
       await runCli(cmd, args);
     },
-    async resolveLanguages() {
-      const codeqlArgs = [
-        "resolve",
-        "languages",
-        "--format=json",
-        ...getExtraOptionsFromEnv(["resolve", "languages"]),
-      ];
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        return JSON.parse(output) as ResolveLanguagesOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve languages: ${e}`,
-        );
-      }
-    },
-    async betterResolveLanguages(
+    async resolveLanguages(
       {
         filterToLanguagesWithQueries,
       }: {
@@ -772,7 +745,7 @@ async function getCodeQLForCmd(
       const output = await runCli(cmd, codeqlArgs);
 
       try {
-        return JSON.parse(output) as BetterResolveLanguagesOutput;
+        return JSON.parse(output) as ResolveLanguagesOutput;
       } catch (e) {
         throw new Error(
           `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,

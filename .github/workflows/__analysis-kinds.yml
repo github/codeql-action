@@ -72,7 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -92,7 +92,7 @@ jobs:
           post-processed-sarif-path: '${{ runner.temp }}/post-processed'
 
       - name: Upload SARIF files
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: |
             analysis-kinds-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}
@@ -100,7 +100,7 @@ jobs:
           retention-days: 7
 
       - name: Upload post-processed SARIF
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: |
             post-processed-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Check quality query does not appear in security SARIF
         if: contains(matrix.analysis-kinds, 'code-scanning')
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         env:
           SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'
           EXPECT_PRESENT: 'false'
@@ -118,7 +118,7 @@ jobs:
           script: ${{ env.CHECK_SCRIPT }}
       - name: Check quality query appears in quality SARIF
         if: contains(matrix.analysis-kinds, 'code-quality')
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         env:
           SARIF_PATH: '${{ runner.temp }}/results/javascript.quality.sarif'
           EXPECT_PRESENT: 'true'

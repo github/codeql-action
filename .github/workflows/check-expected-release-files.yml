@@ -9,6 +9,10 @@ on:
     # by other workflows.
     types: [opened, synchronize, reopened, ready_for_review]
 
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 defaults:
   run:
     shell: bash
@@ -22,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout CodeQL Action
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Check Expected Release Files
         run: |
           bundle_version="$(cat "./src/defaults.json" | jq -r ".bundleVersion")"

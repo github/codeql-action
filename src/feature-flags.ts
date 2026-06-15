@@ -82,6 +82,11 @@ export enum Feature {
   DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
   DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
   ExportDiagnosticsEnabled = "export_diagnostics_enabled",
+  /**
+   * Emergency override that forces the CodeQL CLI to use the JGit-based Git backend instead of its
+   * default backend selection.
+   */
+  ForceJGit = "force_jgit",
   ForceNightly = "force_nightly",
   IgnoreGeneratedFiles = "ignore_generated_files",
   JavaNetworkDebugging = "java_network_debugging",
@@ -222,6 +227,11 @@ export const featureConfig = {
     defaultValue: true,
     envVar: "CODEQL_ACTION_EXPORT_DIAGNOSTICS",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.ForceJGit]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_FORCE_JGIT",
     minimumVersion: undefined,
   },
   [Feature.ForceNightly]: {

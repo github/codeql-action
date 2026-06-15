@@ -6,14 +6,17 @@ export const OLDEST_SUPPORTED_MAJOR_VERSION = 3;
 /** The `pr-checks` directory. */
 export const PR_CHECKS_DIR = __dirname;
 
+/** The repository root. */
+export const REPO_ROOT = path.join(PR_CHECKS_DIR, "..");
+
 /** The path of the file configuring which checks shouldn't be required. */
 export const PR_CHECK_EXCLUDED_FILE = path.join(PR_CHECKS_DIR, "excluded.yml");
 
 /** The path to the esbuild metadata file. */
-export const BUNDLE_METADATA_FILE = path.join(PR_CHECKS_DIR, "..", "meta.json");
+export const BUNDLE_METADATA_FILE = path.join(REPO_ROOT, "meta.json");
 
 /** The `src` directory. */
-const SOURCE_ROOT = path.join(PR_CHECKS_DIR, "..", "src");
+const SOURCE_ROOT = path.join(REPO_ROOT, "src");
 
 /** The path to the built-in languages file. */
 export const BUILTIN_LANGUAGES_FILE = path.join(

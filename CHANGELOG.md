@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.20.6 and earlier. These versions of CodeQL were discontinued on 25 June 2026 alongside GitHub Enterprise Server 3.16, and will be unsupported by the next minor release of the CodeQL Action. [#3956](https://github.com/github/codeql-action/pull/3956)
 
 ## 4.36.2 - 04 Jun 2026
 

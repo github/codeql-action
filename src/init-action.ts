@@ -263,7 +263,7 @@ async function run(startedAt: Date) {
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
-    configFile = getConfigFileInput(actionsEnv, repositoryProperties);
+    configFile = getConfigFileInput(logger, actionsEnv, repositoryProperties);
 
     // path.resolve() respects the intended semantics of source-root. If
     // source-root is relative, it is relative to the GITHUB_WORKSPACE. If

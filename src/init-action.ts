@@ -254,6 +254,7 @@ async function run(startedAt: Date) {
       repositoryNwo,
       logger,
     );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     // Create a unique identifier for this run.
     const jobRunUuid = uuidV4();
@@ -262,7 +263,7 @@ async function run(startedAt: Date) {
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
-    configFile = getConfigFileInput(actionsEnv);
+    configFile = getConfigFileInput(actionsEnv, repositoryProperties);
 
     // path.resolve() respects the intended semantics of source-root. If
     // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
@@ -353,7 +354,6 @@ async function run(startedAt: Date) {
 
     analysisKinds = await getAnalysisKinds(logger, features);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
-    const repositoryProperties = repositoryPropertiesResult.orElse({});
     const fileCoverageResult = await getFileCoverageInformationEnabled(
       debugMode,
       codeql,

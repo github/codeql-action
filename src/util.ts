@@ -634,16 +634,16 @@ interface PersistedVersionInfo {
 }
 
 function isVersionInfo(x: unknown): x is VersionInfo {
-  const candidate = x as Partial<VersionInfo> | null;
   return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.version === "string" &&
-    (candidate.features === undefined ||
-      (typeof candidate.features === "object" &&
-        candidate.features !== null)) &&
-    (candidate.overlayVersion === undefined ||
-      typeof candidate.overlayVersion === "number")
+    json.isObject(x) &&
+    json.validateSchema(
+      {
+        version: json.string,
+        features: json.undefinable(json.object),
+        overlayVersion: json.undefinable(json.number),
+      },
+      x,
+    )
   );
 }
 

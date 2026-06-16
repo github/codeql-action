@@ -10,7 +10,7 @@ import test, {
 import nock from "nock";
 import * as sinon from "sinon";
 
-import { ActionsEnv, getActionVersion } from "./actions-util";
+import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -200,7 +200,7 @@ export const DEFAULT_ACTIONS_VARS = {
   GITHUB_WORKFLOW: "test-workflow",
   RUNNER_NAME: "my-runner",
   RUNNER_OS: "Linux",
-} as const satisfies Record<string, string>;
+} as const satisfies Partial<Record<ActionsEnvVars, string>>;
 
 /** Partial mappings from GitHub Actions environment variables to values. */
 export type ActionVarOverrides = Partial<

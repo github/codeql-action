@@ -18,6 +18,7 @@ import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
+import { Env } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -29,6 +30,7 @@ import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  getEnv,
   GitHubVariant,
   GitHubVersion,
   HTTPError,
@@ -170,6 +172,11 @@ export function makeMacro<Args extends unknown[]>(
   wrapper.fn = decl.exec;
 
   return wrapper;
+}
+
+export function getTestEnv(): Env {
+  const testEnv: NodeJS.ProcessEnv = {};
+  return getEnv(testEnv);
 }
 
 /**

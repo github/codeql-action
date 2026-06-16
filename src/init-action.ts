@@ -9,6 +9,7 @@ import { v4 as uuidV4 } from "uuid";
 
 import {
   FileCmdNotFoundError,
+  getActionsEnv,
   getActionVersion,
   getFileType,
   getOptionalInput,
@@ -24,6 +25,7 @@ import {
   shouldRestoreCache,
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
+import { getConfigFileInput } from "./config/file";
 import * as configUtils from "./config-utils";
 import {
   DependencyCacheRestoreStatusReport,
@@ -207,6 +209,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  const actionsEnv = getActionsEnv();
 
   let apiDetails: GitHubApiCombinedDetails;
   let config: configUtils.Config | undefined;
@@ -259,7 +262,7 @@ async function run(startedAt: Date) {
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
-    configFile = getOptionalInput("config-file");
+    configFile = getConfigFileInput(actionsEnv);
 
     // path.resolve() respects the intended semantics of source-root. If
     // source-root is relative, it is relative to the GITHUB_WORKSPACE. If

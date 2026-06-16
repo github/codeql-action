@@ -44,3 +44,26 @@ test("validateSchema - optional properties are optional", async (t) => {
   t.true(json.validateSchema(optionalSchema, { optionalKey: "" }));
   t.true(json.validateSchema(optionalSchema, { optionalKey: "foo" }));
 });
+
+const undefinableSchema = {
+  optionalKey: json.undefinable(json.string),
+};
+
+test("validateSchema - undefinable properties are optional but reject null", async (t) => {
+  // Optional fields may be absent or explicitly undefined
+  t.true(json.validateSchema(undefinableSchema, {}));
+  t.true(json.validateSchema(undefinableSchema, { optionalKey: undefined }));
+
+  // But, unlike `optional`, `null` is rejected
+  t.false(json.validateSchema(undefinableSchema, { optionalKey: null }));
+
+  // And, if present, should have the expected type
+  t.false(json.validateSchema(undefinableSchema, { optionalKey: 0 }));
+  t.false(json.validateSchema(undefinableSchema, { optionalKey: 123 }));
+  t.false(json.validateSchema(undefinableSchema, { optionalKey: false }));
+  t.false(json.validateSchema(undefinableSchema, { optionalKey: true }));
+  t.false(json.validateSchema(undefinableSchema, { optionalKey: [] }));
+  t.false(json.validateSchema(undefinableSchema, { optionalKey: {} }));
+  t.true(json.validateSchema(undefinableSchema, { optionalKey: "" }));
+  t.true(json.validateSchema(undefinableSchema, { optionalKey: "foo" }));
+});

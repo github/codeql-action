@@ -10,6 +10,7 @@ export const GITHUB_CODEQL_PROPERTY_PREFIX = "github-codeql-";
  * Enumerates repository property names that have some meaning to us.
  */
 export enum RepositoryPropertyName {
+  CONFIG_FILE = "github-codeql-config-file",
   DISABLE_OVERLAY = "github-codeql-disable-overlay",
   EXTRA_QUERIES = "github-codeql-extra-queries",
   FILE_COVERAGE_ON_PRS = "github-codeql-file-coverage-on-prs",
@@ -17,6 +18,7 @@ export enum RepositoryPropertyName {
 
 /** Parsed types of the known repository properties. */
 export type AllRepositoryProperties = {
+  [RepositoryPropertyName.CONFIG_FILE]: string;
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: boolean;
@@ -27,6 +29,7 @@ export type RepositoryProperties = Partial<AllRepositoryProperties>;
 
 /** Maps known repository properties to the type we expect to get from the API. */
 export type RepositoryPropertyApiType = {
+  [RepositoryPropertyName.CONFIG_FILE]: string;
   [RepositoryPropertyName.DISABLE_OVERLAY]: string;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: string;
@@ -74,6 +77,7 @@ const booleanProperty = {
 const repositoryPropertyParsers: {
   [K in RepositoryPropertyName]: PropertyInfo<K>;
 } = {
+  [RepositoryPropertyName.CONFIG_FILE]: stringProperty,
   [RepositoryPropertyName.DISABLE_OVERLAY]: booleanProperty,
   [RepositoryPropertyName.EXTRA_QUERIES]: stringProperty,
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: booleanProperty,

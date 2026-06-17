@@ -23,7 +23,7 @@ export function getConfigFileInput(
   const propertyValue =
     repositoryProperties[RepositoryPropertyName.CONFIG_FILE];
 
-  if (propertyValue !== undefined) {
+  if (propertyValue !== undefined && propertyValue.trim().length > 0) {
     logger.info(
       `Using configuration file input from repository property: ${propertyValue}`,
     );

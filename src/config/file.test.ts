@@ -56,3 +56,14 @@ test("getConfigFileInput returns repository property value", async (t) => {
     ),
   );
 });
+
+test("getConfigFileInput ignores empty repository property value", async (t) => {
+  const logger = new RecordingLogger();
+  const actionsEnv = getTestActionsEnv();
+
+  // Since the repository property value is an empty/whitespace string, we should ignore it.
+  const result = getConfigFileInput(logger, actionsEnv, {
+    [RepositoryPropertyName.CONFIG_FILE]: "   ",
+  });
+  t.is(result, undefined);
+});

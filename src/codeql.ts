@@ -512,18 +512,17 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
+      async function runCliVersion() {
+        return await runCliJson<VersionInfo>(
+          cmd,
+          ["version", "--format=json"],
+          { noStreamStdout: true },
+        );
+      }
+
       let result = util.getCachedCodeQlVersion(cmd);
       if (result === undefined) {
-        const output = await runCli(cmd, ["version", "--format=json"], {
-          noStreamStdout: true,
-        });
-        try {
-          result = JSON.parse(output) as VersionInfo;
-        } catch {
-          throw Error(
-            `Invalid JSON output from \`version --format=json\`: ${output}`,
-          );
-        }
+        result = await runCliVersion();
         util.cacheCodeQlVersion(cmd, result);
       }
       return result;
@@ -774,15 +773,7 @@ async function getCodeQLForCmd(
       if (workingDir !== undefined) {
         codeqlArgs.push("--working-dir", workingDir);
       }
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        return JSON.parse(output) as ResolveBuildEnvironmentOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`,
-        );
-      }
+      return await runCliJson<ResolveBuildEnvironmentOutput>(cmd, codeqlArgs);
     },
     async databaseRunQueries(
       databasePath: string,
@@ -963,15 +954,9 @@ async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
         ...queries,
       ];
-      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
-
-      try {
-        return JSON.parse(output) as string[];
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve queries --format=startingpacks: ${e}`,
-        );
-      }
+      return await runCliJson<string[]>(cmd, codeqlArgs, {
+        noStreamStdout: true,
+      });
     },
     async resolveDatabase(
       databasePath: string,
@@ -983,15 +968,9 @@ async function getCodeQLForCmd(
         "--format=json",
         ...getExtraOptionsFromEnv(["resolve", "database"]),
       ];
-      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
-
-      try {
-        return JSON.parse(output) as ResolveDatabaseOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve database --format=json: ${e}`,
-        );
-      }
+      return await runCliJson<ResolveDatabaseOutput>(cmd, codeqlArgs, {
+        noStreamStdout: true,
+      });
     },
     async mergeResults(
       sarifFiles: string[],
@@ -1144,6 +1123,19 @@ async function runCli(
       throw wrapCliConfigurationError(new CliError(e));
     }
     throw e;
+  }
+}
+
+async function runCliJson<T>(
+  cmd: string,
+  args: string[] = [],
+  opts: { stdin?: string; noStreamStdout?: boolean } = {},
+): Promise<T> {
+  const output = await runCli(cmd, args, opts);
+  try {
+    return JSON.parse(output) as T;
+  } catch {
+    throw Error(`Invalid JSON output from \`${args.join(" ")}\`: ${output}`);
   }
 }
 

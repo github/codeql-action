@@ -270,8 +270,20 @@ export function isResolveLanguagesOutput(
   x: unknown,
 ): x is ResolveLanguagesOutput {
   return (
-    json.isObject(x)
-    // TODO: finish this with Copilot
+    json.isObject<ResolveLanguagesOutput>(x) &&
+    json.isObject(x.extractors) &&
+    Object.values(x.extractors).every(
+      (extractorList) =>
+        json.isArray(extractorList) &&
+        extractorList.every(
+          (extractor) =>
+            json.isObject<{ extractor_root: unknown }>(extractor) &&
+            json.isString(extractor.extractor_root),
+        ),
+    ) &&
+    (x.aliases === undefined ||
+      (json.isObject(x.aliases) &&
+        Object.values(x.aliases).every((alias) => json.isString(alias))))
   );
 }
 
@@ -525,6 +537,31 @@ export async function getCodeQLForTesting(
 }
 
 /**
+ * Returns the cached output for a `codeql` command, resolving through the three
+ * caching tiers in order: the in-memory memo, then the temporary file (both via
+ * {@link getCachedCommandOutput}), and finally the CLI itself by invoking `run`
+ * on a miss and persisting its result back into the first two tiers.
+ *
+ * @param key The cache key identifying the command's output.
+ * @param cmd The path to the CodeQL CLI the output is obtained from.
+ * @param run Invokes the CLI to compute the output when it isn't cached.
+ * @param validate Optional type guard for values loaded from the temporary file.
+ */
+async function getCachedOrRun<T>(
+  key: string,
+  cmd: string,
+  run: () => Promise<T>,
+  validate?: (output: unknown) => output is T,
+): Promise<T> {
+  let result = getCachedCommandOutput<T>(key, cmd, validate);
+  if (result === undefined) {
+    result = await run();
+    cacheCommandOutput(key, cmd, result);
+  }
+  return result;
+}
+
+/**
  * Return a CodeQL object for CodeQL CLI access.
  *
  * @param cmd Path to CodeQL CLI
@@ -541,20 +578,15 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      async function runCliVersion() {
-        return await runCliJson<VersionInfo>(
-          cmd,
-          ["version", "--format=json"],
-          { noStreamStdout: true },
-        );
-      }
-
-      let result = util.getCachedCodeQlVersion(cmd);
-      if (result === undefined) {
-        result = await runCliVersion();
-        util.cacheCodeQlVersion(cmd, result);
-      }
-      return result;
+      return getCachedOrRun(
+        CommandCacheKey.Version,
+        cmd,
+        () =>
+          runCliJson<VersionInfo>(cmd, ["version", "--format=json"], {
+            noStreamStdout: true,
+          }),
+        isVersionInfo,
+      );
     },
     async printVersion() {
       // Reuse the cached version information rather than invoking the CLI again.
@@ -752,7 +784,13 @@ async function getCodeQLForCmd(
       ];
       await runCli(cmd, args);
     },
-    async resolveLanguages() {
+    async resolveLanguages(
+      {
+        filterToLanguagesWithQueries,
+      }: {
+        filterToLanguagesWithQueries: boolean;
+      } = { filterToLanguagesWithQueries: false },
+    ) {
       return getCachedOrRun(
         CommandCacheKey.ResolveLanguages,
         cmd,
@@ -955,8 +993,8 @@ async function getCodeQLForCmd(
       // A previous implementation executed `codeql resolve extractor`.
       // This can be a bit slow due to the JVM startup cost. Instead, get
       // the extractor path from resolveLanguages(), which caches its output.
-      const extractors = await this.resolveLanguages();
-      return extractors[language][0];
+      const output = await this.resolveLanguages();
+      return output.extractors[language][0].extractor_root;
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
       const codeqlArgs = [

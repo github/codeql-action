@@ -24,3 +24,9 @@ export const BUILTIN_LANGUAGES_FILE = path.join(
   "languages",
   "builtin.json",
 );
+
+/** Path to the api-compatibility.json file. */
+export const API_COMPATIBILITY_FILE = path.join(
+  SOURCE_ROOT,
+  "api-compatibility.json",
+);

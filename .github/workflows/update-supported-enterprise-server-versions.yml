@@ -9,7 +9,7 @@ on:
       - main
     paths:
       - .github/workflows/update-supported-enterprise-server-versions.yml
-      - .github/workflows/update-supported-enterprise-server-versions/update.py
+      - pr-checks/update-ghes-versions.ts
 
 jobs:
   update-supported-enterprise-server-versions:
@@ -26,8 +26,19 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
+
       - name: Checkout CodeQL Action
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Checkout Enterprise Releases
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -35,17 +46,17 @@ jobs:
           token: ${{ secrets.ENTERPRISE_RELEASE_TOKEN }}
           path: ${{ github.workspace }}/enterprise-releases/
           sparse-checkout: releases.json
+
       - name: Update Supported Enterprise Server Versions
+        working-directory: pr-checks
         run: |
-          cd ./.github/workflows/update-supported-enterprise-server-versions/
-          python3 -m pip install pipenv
-          pipenv install
-          pipenv run ./update.py
+          npx tsx update-ghes-versions.ts
           rm --recursive "$ENTERPRISE_RELEASES_PATH"
-          npm ci
-          npm run build
         env:
           ENTERPRISE_RELEASES_PATH: ${{ github.workspace }}/enterprise-releases/
+
+      - name: Rebuild
+        run: npm run build
 
       - name: Update git config
         run: |

@@ -4,7 +4,7 @@ import * as path from "path";
 import * as artifact from "@actions/artifact";
 import * as artifactLegacy from "@actions/artifact-legacy";
 import * as core from "@actions/core";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 
 import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
@@ -397,7 +397,7 @@ async function createPartialDatabaseBundle(
     await fs.promises.rm(databaseBundlePath, { force: true });
   }
   const output = fs.createWriteStream(databaseBundlePath);
-  const zip = archiver("zip");
+  const zip = new ZipArchive();
 
   zip.on("error", (err) => {
     throw err;

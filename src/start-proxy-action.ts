@@ -5,7 +5,7 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
+import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -57,18 +57,12 @@ async function run(startedAt: Date) {
     const languageInput = actionsUtil.getOptionalInput("language");
     language = languageInput ? parseBuiltInLanguage(languageInput) : undefined;
 
-    // Query the FF for whether we should use the reduced registry mapping.
-    const skipUnusedRegistries = await features.getValue(
-      Feature.StartProxyRemoveUnusedRegistries,
-    );
-
     // Get the registry configurations from one of the inputs.
     const credentials = getCredentials(
       logger,
       actionsUtil.getOptionalInput("registry_secrets"),
       actionsUtil.getOptionalInput("registries_credentials"),
       language,
-      skipUnusedRegistries,
     );
 
     if (credentials.length === 0) {

@@ -189,17 +189,7 @@ function isPAT(value: string) {
 
 type RegistryMapping = Partial<Record<BuiltInLanguage, string[]>>;
 
-const LANGUAGE_TO_REGISTRY_TYPE: RegistryMapping = {
-  java: ["maven_repository"],
-  csharp: ["nuget_feed"],
-  javascript: ["npm_registry"],
-  python: ["python_index"],
-  ruby: ["rubygems_server"],
-  rust: ["cargo_registry"],
-  go: ["goproxy_server", "git_source"],
-} as const;
-
-const NEW_LANGUAGE_TO_REGISTRY_TYPE: Required<RegistryMapping> = {
+const LANGUAGE_TO_REGISTRY_TYPE: Required<RegistryMapping> = {
   actions: [],
   cpp: [],
   java: ["maven_repository"],
@@ -251,13 +241,9 @@ export function getCredentials(
   registrySecrets: string | undefined,
   registriesCredentials: string | undefined,
   language: BuiltInLanguage | undefined,
-  skipUnusedRegistries: boolean = false,
 ): Credential[] {
-  const registryMapping = skipUnusedRegistries
-    ? NEW_LANGUAGE_TO_REGISTRY_TYPE
-    : LANGUAGE_TO_REGISTRY_TYPE;
   const registryTypeForLanguage = language
-    ? registryMapping[language]
+    ? LANGUAGE_TO_REGISTRY_TYPE[language]
     : undefined;
 
   let credentialsStr: string;

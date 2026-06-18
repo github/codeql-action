@@ -10,7 +10,7 @@ import test, {
 import nock from "nock";
 import * as sinon from "sinon";
 
-import { getActionVersion } from "./actions-util";
+import { ActionsEnv, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -32,6 +32,7 @@ import {
   GitHubVariant,
   GitHubVersion,
   HTTPError,
+  resetCachedCodeQlVersion,
 } from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
@@ -101,6 +102,10 @@ export function setupTests(testFn: TestFn<any>) {
     // unless the test explicitly sets one up.
     codeql.setCodeQL({});
 
+    // Reset the in-process CodeQL version cache so that it doesn't leak between
+    // tests, which each represent a separate Actions step in production.
+    resetCachedCodeQlVersion();
+
     // Replace stdout and stderr so we can record output during tests
     t.context.testOutput = "";
     const processStdoutWrite = process.stdout.write.bind(process.stdout);
@@ -168,6 +173,15 @@ export function makeMacro<Args extends unknown[]>(
 }
 
 /**
+ * Gets an `ActionsEnv` instance for use in tests.
+ */
+export function getTestActionsEnv(): ActionsEnv {
+  return {
+    getOptionalInput: () => undefined,
+  };
+}
+
+/**
  * Default values for environment variables typically set in an Actions
  * environment. Tests can override individual variables by passing them in the
  * `overrides` parameter.
@@ -188,17 +202,37 @@ export const DEFAULT_ACTIONS_VARS = {
   RUNNER_OS: "Linux",
 } as const satisfies Record<string, string>;
 
-// Sets environment variables that make using some libraries designed for
-// use only on actions safe to use outside of actions.
-export function setupActionsVars(
-  tempDir: string,
-  toolsDir: string,
-  overrides?: Partial<Record<keyof typeof DEFAULT_ACTIONS_VARS, string>>,
-) {
+/** Partial mappings from GitHub Actions environment variables to values. */
+export type ActionVarOverrides = Partial<
+  Record<keyof typeof DEFAULT_ACTIONS_VARS, string>
+>;
+
+/**
+ * Sets environment variables that are always available on GitHub Actions,
+ * excluding some that are expected to be set to paths. See `setupActionsVars`.
+ *
+ * @param overrides Overrides for the defaults.
+ */
+export function setupBaseActionsVars(overrides?: ActionVarOverrides) {
   const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
   for (const [key, value] of Object.entries(vars)) {
     process.env[key] = value;
   }
+}
+
+/**
+ * Sets environment variables that are always available on GitHub Actions.
+ *
+ * @param tempDir A value for `RUNNER_TEMP` and `GITHUB_WORKSPACE`.
+ * @param toolsDir A value for `RUNNER_TOOL_CACHE`.
+ * @param overrides Overrides for the defaults.
+ */
+export function setupActionsVars(
+  tempDir: string,
+  toolsDir: string,
+  overrides?: ActionVarOverrides,
+) {
+  setupBaseActionsVars(overrides);
   process.env["RUNNER_TEMP"] = tempDir;
   process.env["RUNNER_TOOL_CACHE"] = toolsDir;
   process.env["GITHUB_WORKSPACE"] = tempDir;
@@ -565,6 +599,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       extraQueryExclusions: [],
       overlayDatabaseMode: OverlayDatabaseMode.None,
       useOverlayDatabaseCaching: false,
+      overlayModeSetExplicitly: false,
       repositoryProperties: {},
       enableFileCoverageInformation: true,
     } satisfies Config,

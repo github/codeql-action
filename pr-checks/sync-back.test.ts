@@ -188,6 +188,41 @@ const steps = [
     const result = updateSyncTs(syncTsPath, actionVersions);
     assert.equal(result, false);
   });
+
+  await it("updates SHA-pinned pinnedUses references", () => {
+    /** Test updating `pinnedUses(...)` references with new SHA and version */
+    const syncTsContent = `
+const steps = [
+  {
+    uses: pinnedUses(
+      "actions/setup-node",
+      "0000000000000000000000000000000000000000",
+      "v6.0.0",
+    ),
+  },
+];
+`;
+
+    fs.writeFileSync(syncTsPath, syncTsContent);
+
+    const actionVersions = {
+      "actions/setup-node": "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0",
+    };
+
+    const result = updateSyncTs(syncTsPath, actionVersions);
+    assert.equal(result, true);
+
+    const updatedContent = fs.readFileSync(syncTsPath, "utf8");
+
+    assert.ok(
+      updatedContent.includes('"48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e"'),
+    );
+    assert.ok(updatedContent.includes('"v6.4.0"'));
+    assert.ok(
+      !updatedContent.includes("0000000000000000000000000000000000000000"),
+    );
+    assert.ok(!updatedContent.includes('"v6.0.0"'));
+  });
 });
 
 describe("updateTemplateFiles", async () => {

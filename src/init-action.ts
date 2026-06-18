@@ -9,6 +9,7 @@ import { v4 as uuidV4 } from "uuid";
 
 import {
   FileCmdNotFoundError,
+  getActionsEnv,
   getActionVersion,
   getFileType,
   getOptionalInput,
@@ -24,6 +25,7 @@ import {
   shouldRestoreCache,
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
+import { getConfigFileInput } from "./config/file";
 import * as configUtils from "./config-utils";
 import {
   DependencyCacheRestoreStatusReport,
@@ -207,6 +209,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  const actionsEnv = getActionsEnv();
 
   let apiDetails: GitHubApiCombinedDetails;
   let config: configUtils.Config | undefined;
@@ -251,6 +254,7 @@ async function run(startedAt: Date) {
       repositoryNwo,
       logger,
     );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     // Create a unique identifier for this run.
     const jobRunUuid = uuidV4();
@@ -259,7 +263,7 @@ async function run(startedAt: Date) {
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
-    configFile = getOptionalInput("config-file");
+    configFile = getConfigFileInput(logger, actionsEnv, repositoryProperties);
 
     // path.resolve() respects the intended semantics of source-root. If
     // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
@@ -350,7 +354,6 @@ async function run(startedAt: Date) {
 
     analysisKinds = await getAnalysisKinds(logger, features);
     const debugMode = getOptionalInput("debug") === "true" || core.isDebug();
-    const repositoryProperties = repositoryPropertiesResult.orElse({});
     const fileCoverageResult = await getFileCoverageInformationEnabled(
       debugMode,
       codeql,
@@ -612,6 +615,11 @@ async function run(startedAt: Date) {
     // Disable Kotlin extractor if feature flag set
     if (await features.getValue(Feature.DisableKotlinAnalysisEnabled)) {
       core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+    }
+
+    // Emergency override to force the CodeQL CLI back to the JGit-based Git backend.
+    if (await features.getValue(Feature.ForceJGit)) {
+      core.exportVariable("CODEQL_GIT_BACKEND", "jgit");
     }
 
     const kotlinLimitVar =

@@ -4,8 +4,23 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 4.36.2 - 04 Jun 2026
+
+- Cache CodeQL CLI version information across Actions steps. [#3943](https://github.com/github/codeql-action/pull/3943)
+- Reduce requests while waiting for analysis processing by using exponential backoff when polling SARIF processing status. [#3937](https://github.com/github/codeql-action/pull/3937)
+- Update default CodeQL bundle version to [2.25.6](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.6). [#3948](https://github.com/github/codeql-action/pull/3948)
+
+## 4.36.1 - 02 Jun 2026
+
+No user facing changes.
+
+## 4.36.0 - 22 May 2026
+
 - _Breaking change_: Bump the minimum required CodeQL bundle version to 2.19.4. [#3894](https://github.com/github/codeql-action/pull/3894)
 - Add support for SHA-256 Git object IDs. [#3893](https://github.com/github/codeql-action/pull/3893)
+- Update default CodeQL bundle version to [2.25.5](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.25.5). [#3926](https://github.com/github/codeql-action/pull/3926)
 
 ## 4.35.5 - 15 May 2026
 

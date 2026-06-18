@@ -65,12 +65,22 @@ const onEndPlugin = {
 /** The name of the virtual `entry-points` module. */
 const SHARED_ENTRYPOINT = "entry-points";
 
+/** The property name under which `upload-lib`'s namespace is exposed in `entry-points`. */
+const UPLOAD_LIB_EXPORT = "uploadLib";
+
+/** The relative source path of the `upload-lib` module that we re-export from `entry-points`. */
+const UPLOAD_LIB_SRC = "./src/upload-lib";
+
 /**
- * This plugin finds all source files that contain Action entry points.
- * It then generates the virtual `entry-points` module which imports all identified files,
- * and re-exports their `runWrapper` functions with suitable aliases.
- * A tiny stub file is emitted for each Action entrypoint. Each stub imports the shared bundle
- * and calls the respective entry point.
+ * This plugin finds all source files that contain Action entry points. It then generates the
+ * virtual `entry-points` module which imports all identified files, and re-exports their
+ * `runWrapper` functions with suitable aliases.
+ *
+ * The virtual module additionally re-exports `upload-lib` under the `uploadLib` namespace so that
+ * external consumers can access it via the small `lib/upload-lib.js` stub emitted below.
+ * 
+ * A tiny stub file is emitted for each Action entrypoint, and one for `upload-lib`. Each stub
+ * imports the shared bundle and calls/re-exports from the respective entry point.
  *
  * @type {esbuild.Plugin}
  */
@@ -136,21 +146,28 @@ const entryPointsPlugin = {
         )
         .join("\n\n");
 
+      // Also re-export the `upload-lib` namespace so that external consumers can reach it
+      // via the `lib/upload-lib.js` stub without us having to bundle a second copy.
+      const uploadLibReExport = `export * as ${UPLOAD_LIB_EXPORT} from "${UPLOAD_LIB_SRC}";`;
+
       return {
-        contents: `"use strict";\n${imports}\n\n${wrappers}\n`,
+        contents: `"use strict";\n${imports}\n\n${uploadLibReExport}\n\n${wrappers}\n`,
         resolveDir: ".",
         loader: "ts",
       };
     });
 
     // Emit entry point stubs for each Action using the entry template.
-    build.onEnd(async (result) => {
-      // Read the entry point template.
-      const templatePath = "action-entry.js.tpl";
-      const template = await readFile(join(SRC_DIR, templatePath), "utf-8");
-
-      const makeHeader = (sourceFile) =>
+    build.onEnd(async () => {
+      const makeHeader = (templatePath, sourceFile) =>
         `// Automatically generated from '${templatePath}' for 'src/${basename(sourceFile)}'.\n\n`;
+
+      // Read the entry point template.
+      const actionTemplatePath = "action-entry.js.tpl";
+      const actionTemplate = await readFile(
+        join(SRC_DIR, actionTemplatePath),
+        "utf-8",
+      );
 
       // Write entry point stubs for each Action.
       for (const action of actions) {
@@ -159,20 +176,33 @@ const entryPointsPlugin = {
             OUT_DIR,
             `${action.name}${action.isPost ? "-post" : ""}-entry.js`,
           ),
-          makeHeader(action.path) +
-            template.replaceAll("__ACTION__", action.pascalCaseName),
+          makeHeader(actionTemplatePath, action.path) +
+            actionTemplate.replaceAll("__ACTION__", action.pascalCaseName),
         );
       }
+
+      // Write a small stub for `upload-lib` that re-exports it from the shared bundle.
+      // External callers (e.g. internal testing environments) `require("./lib/upload-lib")`
+      // and expect the same shape as before, so we expose the namespace as `module.exports`.
+      const uploadLibStubTemplatePath = "upload-lib-stub.js.tpl";
+      const uploadLibStubTemplate = await readFile(
+        join(SRC_DIR, uploadLibStubTemplatePath),
+        "utf-8",
+      );
+      await writeFile(
+        join(OUT_DIR, "upload-lib.js"),
+        makeHeader(uploadLibStubTemplatePath, `${UPLOAD_LIB_SRC}.ts`) +
+          uploadLibStubTemplate.replaceAll(
+            "__UPLOAD_LIB_EXPORT__",
+            UPLOAD_LIB_EXPORT,
+          ),
+      );
     });
   },
 };
 
 const context = await esbuild.context({
-  // Include upload-lib.ts as an entry point for use in testing environments.
-  entryPoints: [
-    { in: SHARED_ENTRYPOINT, out: SHARED_ENTRYPOINT },
-    join(SRC_DIR, "upload-lib.ts"),
-  ],
+  entryPoints: [{ in: SHARED_ENTRYPOINT, out: SHARED_ENTRYPOINT }],
   bundle: true,
   format: "cjs",
   outdir: OUT_DIR,

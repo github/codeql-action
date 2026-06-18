@@ -14,6 +14,7 @@ import { ActionsEnv, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
+import { resetCachedCommandOutputs } from "./cache";
 import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
@@ -32,7 +33,6 @@ import {
   GitHubVariant,
   GitHubVersion,
   HTTPError,
-  resetCachedCodeQlVersion,
 } from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
@@ -102,9 +102,9 @@ export function setupTests(testFn: TestFn<any>) {
     // unless the test explicitly sets one up.
     codeql.setCodeQL({});
 
-    // Reset the in-process CodeQL version cache so that it doesn't leak between
-    // tests, which each represent a separate Actions step in production.
-    resetCachedCodeQlVersion();
+    // Reset the in-process CodeQL command-output cache so that it doesn't leak
+    // between tests, which each represent a separate Actions step in production.
+    resetCachedCommandOutputs();
 
     // Replace stdout and stderr so we can record output during tests
     t.context.testOutput = "";

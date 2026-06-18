@@ -12,6 +12,8 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
+import { getCachedCommandOutput, CommandCacheKey } from "./cache";
+import { isVersionInfo } from "./codeql";
 import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
 import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
@@ -24,7 +26,6 @@ import { ToolsSource } from "./setup-codeql";
 import {
   ConfigurationError,
   getRequiredEnvParam,
-  getCachedCodeQlVersion,
   isInTestMode,
   GITHUB_DOTCOM_URL,
   DiskUsage,
@@ -283,7 +284,11 @@ export async function createStatusReportBase(
       core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
     }
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
-    const codeQlCliVersion = getCachedCodeQlVersion();
+    const codeQlCliVersion = getCachedCommandOutput(
+      CommandCacheKey.Version,
+      undefined,
+      isVersionInfo,
+    );
     const actionRef = process.env["GITHUB_ACTION_REF"] || "";
     const testingEnvironment = getTestingEnvironment();
     // re-export the testing environment variable so that it is available to subsequent steps,

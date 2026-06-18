@@ -12,6 +12,11 @@ import {
   runTool,
 } from "./actions-util";
 import * as api from "./api-client";
+import {
+  cacheCommandOutput,
+  getCachedCommandOutput,
+  CommandCacheKey,
+} from "./cache";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
@@ -22,6 +27,7 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import { isAnalyzingDefaultBranch } from "./git-utils";
+import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
@@ -230,6 +236,20 @@ export interface VersionInfo {
   overlayVersion?: number;
 }
 
+export function isVersionInfo(x: unknown): x is VersionInfo {
+  return (
+    json.isObject(x) &&
+    json.validateSchema(
+      {
+        version: json.string,
+        features: json.undefinable(json.object),
+        overlayVersion: json.undefinable(json.number),
+      },
+      x,
+    )
+  );
+}
+
 export interface ResolveDatabaseOutput {
   overlayBaseSpecifier?: string;
 }
@@ -244,6 +264,15 @@ export interface ResolveLanguagesOutput {
       extractor_options?: any;
     }>;
   };
+}
+
+export function isResolveLanguagesOutput(
+  x: unknown,
+): x is ResolveLanguagesOutput {
+  return (
+    json.isObject(x)
+    // TODO: finish this with Copilot
+  );
 }
 
 export interface ResolveBuildEnvironmentOutput {
@@ -723,41 +752,24 @@ async function getCodeQLForCmd(
       ];
       await runCli(cmd, args);
     },
-    async resolveLanguages(
-      {
-        filterToLanguagesWithQueries,
-      }: {
-        filterToLanguagesWithQueries: boolean;
-      } = { filterToLanguagesWithQueries: false },
-    ) {
-      async function runCliResolveLanguages() {
-        const codeqlArgs = [
-          "resolve",
-          "languages",
-          "--format=betterjson",
-          "--extractor-options-verbosity=4",
-          "--extractor-include-aliases",
-          ...(filterToLanguagesWithQueries
-            ? ["--filter-to-languages-with-queries"]
-            : []),
-          ...getExtraOptionsFromEnv(["resolve", "languages"]),
-        ];
-        const output = await runCli(cmd, codeqlArgs);
-
-        try {
-          return JSON.parse(output) as ResolveLanguagesOutput;
-        } catch (e) {
-          throw new Error(
-            `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
-          );
-        }
-      }
-      let result = util.getCachedCodeQlResolveLanguages(cmd);
-      if (result === undefined) {
-        result = await runCliResolveLanguages();
-        util.cacheCodeQlResolveLanguages(cmd, result);
-      }
-      return result;
+    async resolveLanguages() {
+      return getCachedOrRun(
+        CommandCacheKey.ResolveLanguages,
+        cmd,
+        () =>
+          runCliJson<ResolveLanguagesOutput>(cmd, [
+            "resolve",
+            "languages",
+            "--format=betterjson",
+            "--extractor-options-verbosity=4",
+            "--extractor-include-aliases",
+            ...(filterToLanguagesWithQueries
+              ? ["--filter-to-languages-with-queries"]
+              : []),
+            ...getExtraOptionsFromEnv(["resolve", "languages"]),
+          ]),
+        isResolveLanguagesOutput,
+      );
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,

@@ -126,9 +126,7 @@ export interface CodeQL {
   /**
    * Run 'codeql resolve languages' with '--format=betterjson'.
    */
-  resolveLanguages(options?: {
-    filterToLanguagesWithQueries: boolean;
-  }): Promise<ResolveLanguagesOutput>;
+  resolveLanguages(): Promise<ResolveLanguagesOutput>;
   /**
    * Run 'codeql resolve build-environment'
    */
@@ -784,28 +782,30 @@ async function getCodeQLForCmd(
       ];
       await runCli(cmd, args);
     },
-    async resolveLanguages(
-      {
-        filterToLanguagesWithQueries,
-      }: {
-        filterToLanguagesWithQueries: boolean;
-      } = { filterToLanguagesWithQueries: false },
-    ) {
+    async resolveLanguages() {
       return getCachedOrRun(
         CommandCacheKey.ResolveLanguages,
         cmd,
-        () =>
-          runCliJson<ResolveLanguagesOutput>(cmd, [
+        async () => {
+          const isFilterToLanguagesWithQueriesSupported =
+            await this.supportsFeature(
+              ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
+            );
+          return runCliJson<ResolveLanguagesOutput>(cmd, [
             "resolve",
             "languages",
             "--format=betterjson",
             "--extractor-options-verbosity=4",
             "--extractor-include-aliases",
-            ...(filterToLanguagesWithQueries
+            // TODO: Unconditionally include `--filter-to-languages-with-queries`
+            //       once CODEQL_MINIMUM_VERSION is at least v2.23.0
+            //       — the first version to support this flag.
+            ...(isFilterToLanguagesWithQueriesSupported
               ? ["--filter-to-languages-with-queries"]
               : []),
             ...getExtraOptionsFromEnv(["resolve", "languages"]),
-          ]),
+          ]);
+        },
         isResolveLanguagesOutput,
       );
     },

@@ -266,9 +266,7 @@ async function getSupportedLanguageMap(
   const resolveSupportedLanguagesUsingCli = await codeql.supportsFeature(
     ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   );
-  const resolveResult = await codeql.resolveLanguages({
-    filterToLanguagesWithQueries: resolveSupportedLanguagesUsingCli,
-  });
+  const resolveResult = await codeql.resolveLanguages();
   if (resolveSupportedLanguagesUsingCli) {
     logger.debug(
       `The CodeQL CLI supports the following languages: ${Object.keys(resolveResult.extractors).join(", ")}`,
@@ -277,9 +275,9 @@ async function getSupportedLanguageMap(
   const supportedLanguages: Record<string, string> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
-    // If the CLI supports resolving languages with default queries, use these
-    // as the set of supported languages. Otherwise, require the language to be
-    // a built-in language.
+    // TODO: Delete this `if` condition once CODEQL_MINIMUM_VERSION
+    //       is at least v2.23.0 — the first version to support the
+    //       BuiltinExtractorsSpecifyDefaultQueries feature.
     if (
       resolveSupportedLanguagesUsingCli ||
       BuiltInLanguage[extractor] !== undefined

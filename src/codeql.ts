@@ -994,7 +994,13 @@ async function getCodeQLForCmd(
       // This can be a bit slow due to the JVM startup cost. Instead, get
       // the extractor path from resolveLanguages(), which caches its output.
       const output = await this.resolveLanguages();
-      return output.extractors[language][0].extractor_root;
+      const extractors = output.extractors[language];
+      if (extractors === undefined) {
+        throw new Error(
+          `Unable to resolve an extractor for the language '${language}'.`,
+        );
+      }
+      return extractors[0].extractor_root;
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
       const codeqlArgs = [

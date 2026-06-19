@@ -47,13 +47,11 @@ function getCommandCacheFilePath(): string {
  * or otherwise unreadable file is treated as an empty cache.
  */
 function readCommandCacheFile(): Record<string, CommandCacheEntry> {
-  let contents: string;
-  try {
-    contents = fs.readFileSync(getCommandCacheFilePath(), "utf8");
-  } catch {
+  if (!fs.existsSync(getCommandCacheFilePath())) {
     return {};
   }
   try {
+    const contents = fs.readFileSync(getCommandCacheFilePath(), "utf8");
     const parsed = json.parseString(contents);
     if (json.isObject(parsed)) {
       return parsed;

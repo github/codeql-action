@@ -3,6 +3,7 @@ import * as path from "path";
 
 import { getTemporaryDirectory } from "./actions-util";
 import * as json from "./json";
+import { getActionsLogger } from "./logging";
 
 /**
  * The name of the temporary file that backs the on-disk cache of
@@ -37,6 +38,7 @@ interface CommandCacheEntry {
  * (tier 3).
  */
 const inMemoryCache = new Map<CommandCacheKey, CommandCacheEntry>();
+const logger = getActionsLogger();
 
 function getCommandCacheFilePath(): string {
   return path.join(getTemporaryDirectory(), COMMAND_CACHE_FILENAME);
@@ -56,8 +58,8 @@ function readCommandCacheFile(): Record<string, CommandCacheEntry> {
     if (json.isObject(parsed)) {
       return parsed;
     }
-  } catch {
-    // Fall through and treat a malformed file as empty.
+  } catch (e) {
+    logger.warning(`Failed to read or parse command cache file: ${e}`);
   }
   return {};
 }
@@ -69,8 +71,8 @@ function readCommandCacheFile(): Record<string, CommandCacheEntry> {
 function writeCommandCacheFile(data: Record<string, CommandCacheEntry>): void {
   try {
     fs.writeFileSync(getCommandCacheFilePath(), JSON.stringify(data));
-  } catch {
-    // Best-effort; ignore write failures.
+  } catch (e) {
+    logger.warning(`Failed to write command cache file: ${e}`);
   }
 }
 

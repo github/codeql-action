@@ -216,19 +216,3 @@ test.serial(
     });
   },
 );
-
-test.serial(
-  "cacheCommandOutput throws if called twice for the same key",
-  async (t) => {
-    await withCacheDir(() => {
-      cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
-        value: 1,
-      });
-      t.throws(() =>
-        cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
-          value: 2,
-        }),
-      );
-    });
-  },
-);

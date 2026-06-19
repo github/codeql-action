@@ -79,21 +79,12 @@ function writeCommandCacheFile(data: Record<string, CommandCacheEntry>): void {
 /**
  * Stores the output of a command under `key`, writing it to both the in-memory
  * memo (tier 1) and the temporary file (tier 2).
- *
- * Should only be called once per key within a single process; doing otherwise
- * indicates a logic error, since a value that has already been cached should be
- * served from the memo rather than recomputed.
  */
 export function cacheCommandOutput(
   key: CommandCacheKey,
   cmd: string,
   output: unknown,
 ): void {
-  if (inMemoryCache.has(key)) {
-    throw new Error(
-      `cacheCommandOutput() should be called only once per key, but was called more than once for '${key}'.`,
-    );
-  }
   const entry: CommandCacheEntry = { cmd, output };
   inMemoryCache.set(key, entry);
 

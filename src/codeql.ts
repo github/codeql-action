@@ -240,8 +240,8 @@ export function isVersionInfo(x: unknown): x is VersionInfo {
     json.validateSchema(
       {
         version: json.string,
-        features: json.undefinable(json.object),
-        overlayVersion: json.undefinable(json.number),
+        features: json.optional(json.object),
+        overlayVersion: json.optional(json.number),
       },
       x,
     )

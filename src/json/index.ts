@@ -76,7 +76,7 @@ export const object = {
  * Transforms a validator to be optional, accepting `undefined` or `null` for an
  * absent value.
  */
-export function optional<T>(validator: Validator<T>) {
+export function optionalOrNull<T>(validator: Validator<T>) {
   return {
     validate: (val: unknown) => {
       return val === undefined || val === null || validator.validate(val);
@@ -87,9 +87,9 @@ export function optional<T>(validator: Validator<T>) {
 
 /**
  * Transforms a validator to be optional, accepting `undefined` for an absent
- * value but, unlike `optional`, rejecting `null`.
+ * value but, unlike `optionalOrNull`, rejecting `null`.
  */
-export function undefinable<T>(validator: Validator<T>) {
+export function optional<T>(validator: Validator<T>) {
   return {
     validate: (val: unknown): val is T | undefined => {
       return val === undefined || validator.validate(val);

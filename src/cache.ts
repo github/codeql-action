@@ -125,7 +125,7 @@ export function getCachedCommandOutput<T>(
   }
 
   // Memoize so subsequent lookups in this process hit tier 1.
-  inMemoryCache.set(key, { cmd: entry.cmd, output: entry.output });
+  cacheCommandOutput(key, entry.cmd, entry.output);
   return entry.output as T;
 }
 

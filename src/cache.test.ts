@@ -174,7 +174,7 @@ test.serial(
   "cacheCommandOutput persists the output to both the memo and the file",
   async (t) => {
     await withCacheDir((cacheFilePath) => {
-      cacheCommandOutput("some-command", "/path/to/codeql", {
+      cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
         hello: "world",
       });
 
@@ -182,16 +182,17 @@ test.serial(
       const onDisk = JSON.parse(
         fs.readFileSync(cacheFilePath, "utf8"),
       ) as Record<string, unknown>;
-      t.deepEqual(onDisk["some-command"], {
+      t.deepEqual(onDisk[CommandCacheKey.Version], {
         cmd: "/path/to/codeql",
         output: { hello: "world" },
       });
 
       // Tier 1: the value is served from the memo even after the file is gone.
       fs.rmSync(cacheFilePath);
-      t.deepEqual(getCachedCommandOutput("some-command", "/path/to/codeql"), {
-        hello: "world",
-      });
+      t.deepEqual(
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+        { hello: "world" },
+      );
     });
   },
 );
@@ -200,15 +201,18 @@ test.serial(
   "getCachedCommandOutput prefers the in-memory memo over the file",
   async (t) => {
     await withCacheDir((cacheFilePath) => {
-      cacheCommandOutput("some-command", "/path/to/codeql", { value: 1 });
+      cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
+        value: 1,
+      });
 
       // Overwrite the file with a different value; the memo (tier 1) should win.
       writeCacheFile(cacheFilePath, {
-        "some-command": { cmd: "/path/to/codeql", output: { value: 2 } },
+        [CommandCacheKey.Version]: { cmd: "/path/to/codeql", output: { value: 2 } },
       });
-      t.deepEqual(getCachedCommandOutput("some-command", "/path/to/codeql"), {
-        value: 1,
-      });
+      t.deepEqual(
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+        { value: 1 },
+      );
     });
   },
 );
@@ -217,9 +221,13 @@ test.serial(
   "cacheCommandOutput throws if called twice for the same key",
   async (t) => {
     await withCacheDir(() => {
-      cacheCommandOutput("some-command", "/path/to/codeql", { value: 1 });
+      cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
+        value: 1,
+      });
       t.throws(() =>
-        cacheCommandOutput("some-command", "/path/to/codeql", { value: 2 }),
+        cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
+          value: 2,
+        }),
       );
     });
   },

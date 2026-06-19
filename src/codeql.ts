@@ -548,7 +548,7 @@ export async function getCodeQLForTesting(
  * @param validate Optional type guard for values loaded from the temporary file.
  */
 async function getCachedOrRun<T>(
-  key: string,
+  key: CommandCacheKey,
   cmd: string,
   run: () => Promise<T>,
   validate?: (output: unknown) => output is T,

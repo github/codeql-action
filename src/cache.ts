@@ -10,11 +10,15 @@ import * as json from "./json";
  */
 const COMMAND_CACHE_FILENAME = "codeql-action-command-cache.json";
 
-/** The keys for cached CLI commands. */
-export enum CommandCacheKey {
-  Version = "version",
-  ResolveLanguages = "resolveLanguages",
-}
+/** Named keys for the CLI command-output cache. */
+export const CommandCacheKey = {
+  Version: "version",
+  ResolveLanguages: "resolveLanguages",
+} as const;
+
+/** A key used to identify cached command output. */
+export type CommandCacheKey =
+  (typeof CommandCacheKey)[keyof typeof CommandCacheKey];
 
 /** A single cached command output together with the CLI path it came from. */
 interface CacheEntry {
@@ -32,7 +36,7 @@ interface CacheEntry {
  * whenever a value is read from the file (tier 2) or computed via the CLI
  * (tier 3).
  */
-const inMemoryCache = new Map<string, CacheEntry>();
+const inMemoryCache = new Map<CommandCacheKey, CacheEntry>();
 
 function getCommandCacheFilePath(): string {
   return path.join(getTemporaryDirectory(), COMMAND_CACHE_FILENAME);
@@ -81,7 +85,7 @@ function writeCommandCacheFile(data: Record<string, CacheEntry>): void {
  * served from the memo rather than recomputed.
  */
 export function cacheCommandOutput(
-  key: string,
+  key: CommandCacheKey,
   cmd: string,
   output: unknown,
 ): void {
@@ -110,7 +114,7 @@ export function cacheCommandOutput(
  * CLI).
  */
 export function getCachedCommandOutput<T>(
-  key: string,
+  key: CommandCacheKey,
   cmd?: string,
   validate?: (output: unknown) => output is T,
 ): T | undefined {

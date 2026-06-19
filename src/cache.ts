@@ -4,15 +4,13 @@ import * as path from "path";
 import { getTemporaryDirectory } from "./actions-util";
 import * as json from "./json";
 
-/** The name of the temporary file backing the cache (tier 2). */
+/**
+ * The name of the temporary file that backs the on-disk cache of
+ * CLI responses between workflow steps.
+ */
 const COMMAND_CACHE_FILENAME = "codeql-action-command-cache.json";
 
-/**
- * The keys under which the output of cached `codeql` commands is stored. Each
- * key is shared by the producer (the corresponding method in `codeql.ts`) and
- * any consumers (e.g. `status-report.ts`, which peeks the cached version
- * without invoking the CLI).
- */
+/** The keys for cached CLI commands. */
 export enum CommandCacheKey {
   Version = "version",
   ResolveLanguages = "resolveLanguages",

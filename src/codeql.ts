@@ -234,6 +234,7 @@ export interface VersionInfo {
   overlayVersion?: number;
 }
 
+/** Returns true if `x` is a {@link VersionInfo}. */
 export function isVersionInfo(x: unknown): x is VersionInfo {
   return (
     json.isObject(x) &&
@@ -264,6 +265,7 @@ export interface ResolveLanguagesOutput {
   };
 }
 
+/** Returns true if `x` is a {@link ResolveLanguagesOutput}. */
 export function isResolveLanguagesOutput(
   x: unknown,
 ): x is ResolveLanguagesOutput {

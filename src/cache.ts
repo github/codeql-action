@@ -65,20 +65,22 @@ function readCommandCacheFile(): Record<string, CommandCacheEntry> {
 }
 
 /**
- * Persists the cache to the temporary file. Best-effort: a failure to write
+ * Persists the in-memory cache to the temporary file. Best-effort: a failure to write
  * just means a later step re-runs the CLI.
  */
-function writeCommandCacheFile(data: Record<string, CommandCacheEntry>): void {
+export function writeCommandCacheFile(): void {
   try {
-    fs.writeFileSync(getCommandCacheFilePath(), JSON.stringify(data));
+    fs.writeFileSync(
+      getCommandCacheFilePath(),
+      JSON.stringify(Object.fromEntries(inMemoryCache)),
+    );
   } catch (e) {
     logger.warning(`Failed to write command cache file: ${e}`);
   }
 }
 
 /**
- * Stores the output of a command under `key`, writing it to both the in-memory
- * memo (tier 1) and the temporary file (tier 2).
+ * Stores the output of a CLI command under `key` in a module-global object.
  */
 export function cacheCommandOutput(
   key: CommandCacheKey,
@@ -87,10 +89,6 @@ export function cacheCommandOutput(
 ): void {
   const entry: CommandCacheEntry = { cmd, output };
   inMemoryCache.set(key, entry);
-
-  const data = readCommandCacheFile();
-  data[key] = entry;
-  writeCommandCacheFile(data);
 }
 
 /**

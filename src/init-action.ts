@@ -19,6 +19,7 @@ import {
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion, GitHubApiCombinedDetails } from "./api-client";
+import { writeCommandCacheFile } from "./cache";
 import {
   getDependencyCachingEnabled,
   getTotalCacheSize,
@@ -322,6 +323,11 @@ async function run(startedAt: Date) {
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
     zstdAvailability = initCodeQLResult.zstdAvailability;
+
+    // Populate the in-memory command cache with CLI version and languages.
+    // These results will be persisted to disk at the end of the init action.
+    await codeql.getVersion();
+    await codeql.resolveLanguages();
 
     // Check the workflow for problems. If there are any problems, they are reported
     // to the workflow log. No exceptions are thrown.
@@ -766,6 +772,9 @@ async function run(startedAt: Date) {
 
     core.setOutput("codeql-path", config.codeQLCmd);
     core.setOutput("codeql-version", (await codeql.getVersion()).version);
+
+    // Persist the command cache to disk at the end of a successful init.
+    writeCommandCacheFile();
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

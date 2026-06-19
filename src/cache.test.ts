@@ -170,32 +170,19 @@ test.serial(
   },
 );
 
-test.serial(
-  "cacheCommandOutput persists the output to both the memo and the file",
-  async (t) => {
-    await withCacheDir((cacheFilePath) => {
-      cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
-        hello: "world",
-      });
-
-      // Tier 2: the temporary file contains the entry.
-      const onDisk = JSON.parse(
-        fs.readFileSync(cacheFilePath, "utf8"),
-      ) as Record<string, unknown>;
-      t.deepEqual(onDisk[CommandCacheKey.Version], {
-        cmd: "/path/to/codeql",
-        output: { hello: "world" },
-      });
-
-      // Tier 1: the value is served from the memo even after the file is gone.
-      fs.rmSync(cacheFilePath);
-      t.deepEqual(
-        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
-        { hello: "world" },
-      );
+test.serial("cacheCommandOutput persists the output to the memo", async (t) => {
+  await withCacheDir(() => {
+    cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
+      hello: "world",
     });
-  },
-);
+
+    // Tier 1: the value is immediately available from the memo.
+    t.deepEqual(
+      getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+      { hello: "world" },
+    );
+  });
+});
 
 test.serial(
   "getCachedCommandOutput prefers the in-memory memo over the file",
@@ -207,7 +194,10 @@ test.serial(
 
       // Overwrite the file with a different value; the memo (tier 1) should win.
       writeCacheFile(cacheFilePath, {
-        [CommandCacheKey.Version]: { cmd: "/path/to/codeql", output: { value: 2 } },
+        [CommandCacheKey.Version]: {
+          cmd: "/path/to/codeql",
+          output: { value: 2 },
+        },
       });
       t.deepEqual(
         getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),

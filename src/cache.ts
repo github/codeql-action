@@ -121,6 +121,7 @@ export function getCachedCommandOutput<T>(
     (cmd !== undefined && entry.cmd !== cmd) ||
     (validate !== undefined && !validate(entry.output))
   ) {
+    logger.warning("Received invalid data from the command-cache file.");
     return undefined;
   }
 

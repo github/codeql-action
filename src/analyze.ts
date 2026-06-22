@@ -281,11 +281,11 @@ extensions:
         .join(checkoutPath, range.path)
         .replaceAll(path.sep, "/");
 
-      // Using yaml.dump() with `forceQuotes: true` ensures that all special
+      // Using yaml.dump() with `quoteStyle: "double"` ensures that all special
       // characters are escaped, and that the path is always rendered as a
       // quoted string on a single line.
       return (
-        `      - [${yaml.dump(filename, { forceQuotes: true }).trim()}, ` +
+        `      - [${yaml.dump(filename, { quoteStyle: "single" }).trim()}, ` +
         `${range.startLine}, ${range.endLine}]\n`
       );
     })

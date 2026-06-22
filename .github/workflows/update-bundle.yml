@@ -114,7 +114,6 @@ jobs:
             --title "Update default bundle to $cli_version" \
             --body "$pr_body" \
             --assignee "$GITHUB_ACTOR" \
-            --draft \
           )
           echo "CLI_VERSION=$cli_version" | tee -a "$GITHUB_ENV"
           echo "PR_URL=$pr_url" | tee -a "$GITHUB_ENV"

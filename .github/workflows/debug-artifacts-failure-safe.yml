@@ -9,11 +9,6 @@ on:
     - main
     - releases/v*
   pull_request:
-    types:
-    - opened
-    - synchronize
-    - reopened
-    - ready_for_review
   merge_group:
     types: [checks_requested]
   schedule:

@@ -2,12 +2,6 @@ name: Label PR with size
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - edited
-      - ready_for_review
 
 permissions:
   contents: read

@@ -424,34 +424,6 @@ test.serial("load input outside of workspace", async (t) => {
   });
 });
 
-test.serial("load non-local input with invalid repo syntax", async (t) => {
-  return await withTmpDir(async (tempDir) => {
-    // no filename given, just a repo
-    const configFile = "octo-org/codeql-config@main";
-
-    try {
-      await configUtils.initConfig(
-        createFeatures([]),
-        createTestInitConfigInputs({
-          configFile,
-          tempDir,
-          workspacePath: tempDir,
-        }),
-      );
-      throw new Error("initConfig did not throw error");
-    } catch (err) {
-      t.deepEqual(
-        err,
-        new ConfigurationError(
-          errorMessages.getConfigFileRepoFormatInvalidMessage(
-            "octo-org/codeql-config@main",
-          ),
-        ),
-      );
-    }
-  });
-});
-
 test.serial("load non-existent input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const languagesInput = "javascript";

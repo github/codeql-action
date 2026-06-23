@@ -1,5 +1,8 @@
 import test from "ava";
+import sinon from "sinon";
 
+import { ActionsEnvVars } from "../actions-util";
+import { getTestEnv } from "../testing-utils";
 import { ConfigurationError } from "../util";
 
 import {
@@ -10,7 +13,9 @@ import {
 } from "./remote-file";
 
 test("expandConfigFileInput accepts full remote addresses", async (t) => {
-  t.deepEqual(parseRemoteFileAddress("owner/repo/path@ref"), {
+  const env = getTestEnv();
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path@ref"), {
     owner: "owner",
     repo: "repo",
     path: "path",
@@ -18,7 +23,7 @@ test("expandConfigFileInput accepts full remote addresses", async (t) => {
   } satisfies RemoteFileAddress);
 
   t.deepEqual(
-    parseRemoteFileAddress("owner/repo/path/to/codeql.yml@ref/feature"),
+    parseRemoteFileAddress(env, "owner/repo/path/to/codeql.yml@ref/feature"),
     {
       owner: "owner",
       repo: "repo",
@@ -28,15 +33,50 @@ test("expandConfigFileInput accepts full remote addresses", async (t) => {
   );
 });
 
+test("expandConfigFileInput accepts remote address without an owner", async (t) => {
+  const env = getTestEnv();
+  const owner = "test-owner";
+  const getRequired = sinon.stub(env, "getRequired");
+  getRequired
+    .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
+    .returns(`${owner}/current-repo`);
+
+  t.deepEqual(parseRemoteFileAddress(env, "repo@ref"), {
+    owner,
+    repo: "repo",
+    path: DEFAULT_CONFIG_FILE_NAME,
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress(env, "repo"), {
+    owner,
+    repo: "repo",
+    path: DEFAULT_CONFIG_FILE_NAME,
+    ref: DEFAULT_CONFIG_FILE_REF,
+  } satisfies RemoteFileAddress);
+});
+
+test("expandConfigFileInput throws for invalid `GITHUB_REPOSITORY`", async (t) => {
+  const env = getTestEnv();
+  const getRequired = sinon.stub(env, "getRequired");
+  getRequired.withArgs(ActionsEnvVars.GITHUB_REPOSITORY).returns(`not-valid`);
+
+  t.throws(() => parseRemoteFileAddress(env, "repo@ref"), {
+    instanceOf: Error,
+  });
+});
+
 test("expandConfigFileInput accepts remote address without a path", async (t) => {
-  t.deepEqual(parseRemoteFileAddress("owner/repo@ref"), {
+  const env = getTestEnv();
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo@ref"), {
     owner: "owner",
     repo: "repo",
     path: DEFAULT_CONFIG_FILE_NAME,
     ref: "ref",
   } satisfies RemoteFileAddress);
 
-  t.deepEqual(parseRemoteFileAddress("owner/repo"), {
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo"), {
     owner: "owner",
     repo: "repo",
     path: DEFAULT_CONFIG_FILE_NAME,
@@ -45,14 +85,16 @@ test("expandConfigFileInput accepts remote address without a path", async (t) =>
 });
 
 test("expandConfigFileInput accepts remote address without a ref", async (t) => {
-  t.deepEqual(parseRemoteFileAddress("owner/repo/path"), {
+  const env = getTestEnv();
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path"), {
     owner: "owner",
     repo: "repo",
     path: "path",
     ref: DEFAULT_CONFIG_FILE_REF,
   } satisfies RemoteFileAddress);
 
-  t.deepEqual(parseRemoteFileAddress("owner/repo/path@"), {
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path@"), {
     owner: "owner",
     repo: "repo",
     path: "path",
@@ -61,13 +103,17 @@ test("expandConfigFileInput accepts remote address without a ref", async (t) => 
 });
 
 test("expandConfigFileInput rejects invalid values", async (t) => {
-  t.throws(() => parseRemoteFileAddress("  "), {
+  const env = getTestEnv();
+  const owner = "owner";
+  const getRequired = sinon.stub(env, "getRequired");
+  getRequired
+    .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
+    .returns(`${owner}/current-repo`);
+
+  t.throws(() => parseRemoteFileAddress(env, "  "), {
     instanceOf: ConfigurationError,
   });
-  t.throws(() => parseRemoteFileAddress("repo//absolute"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress("repo:file.yml:unexpected"), {
+  t.throws(() => parseRemoteFileAddress(env, "repo//absolute"), {
     instanceOf: ConfigurationError,
   });
 });

@@ -6,7 +6,7 @@ import {
   RepositoryPropertyName,
 } from "../feature-flags/properties";
 import { Logger } from "../logging";
-import { ConfigurationError } from "../util";
+import { ConfigurationError, getEnv } from "../util";
 
 import { parseUserConfig, UserConfig } from "./db-config";
 import { parseRemoteFileAddress } from "./remote-file";
@@ -55,7 +55,7 @@ export async function getRemoteConfig(
   apiDetails: api.GitHubApiCombinedDetails,
   validateConfig: boolean,
 ): Promise<UserConfig> {
-  const address = parseRemoteFileAddress(configFile);
+  const address = parseRemoteFileAddress(getEnv(), configFile);
 
   const response = await api
     .getApiClientWithExternalAuth(apiDetails)

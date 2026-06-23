@@ -27,6 +27,7 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
+import { getRemoteConfig } from "./config/file";
 import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
@@ -1365,54 +1366,6 @@ function getLocalConfig(
     logger,
     configFile,
     fs.readFileSync(configFile, "utf-8"),
-    validateConfig,
-  );
-}
-
-async function getRemoteConfig(
-  logger: Logger,
-  configFile: string,
-  apiDetails: api.GitHubApiCombinedDetails,
-  validateConfig: boolean,
-): Promise<UserConfig> {
-  // retrieve the various parts of the config location, and ensure they're present
-  const format = new RegExp(
-    "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)",
-  );
-  const pieces = format.exec(configFile);
-  // 5 = 4 groups + the whole expression
-  if (pieces?.groups === undefined || pieces.length < 5) {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
-    );
-  }
-
-  const response = await api
-    .getApiClientWithExternalAuth(apiDetails)
-    .rest.repos.getContent({
-      owner: pieces.groups.owner,
-      repo: pieces.groups.repo,
-      path: pieces.groups.path,
-      ref: pieces.groups.ref,
-    });
-
-  let fileContents: string;
-  if ("content" in response.data && response.data.content !== undefined) {
-    fileContents = response.data.content;
-  } else if (Array.isArray(response.data)) {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileDirectoryGivenMessage(configFile),
-    );
-  } else {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileFormatInvalidMessage(configFile),
-    );
-  }
-
-  return parseUserConfig(
-    logger,
-    configFile,
-    Buffer.from(fileContents, "base64").toString("binary"),
     validateConfig,
   );
 }

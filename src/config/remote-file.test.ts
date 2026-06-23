@@ -31,6 +31,19 @@ test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
       ref: "ref/feature",
     } satisfies RemoteFileAddress,
   );
+
+  t.deepEqual(
+    parseRemoteFileAddress(
+      env,
+      "  owner/repo/path/to/codeql.yml@ref/feature  ",
+    ),
+    {
+      owner: "owner",
+      repo: "repo",
+      path: "path/to/codeql.yml",
+      ref: "ref/feature",
+    } satisfies RemoteFileAddress,
+  );
 });
 
 test("parseRemoteFileAddress accepts remote address without an owner", async (t) => {

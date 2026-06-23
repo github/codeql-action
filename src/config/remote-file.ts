@@ -51,9 +51,9 @@ export function parseRemoteFileAddress(
 ): RemoteFileAddress {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
-    "((?<owner>[^/]+)/)?(?<repo>[^/@]+)(/(?<path>[^@]+))?(@(?<ref>.*))?",
+    "^((?<owner>[^/]+)/)?(?<repo>[^/@]+)(/(?<path>[^@]+))?(@(?<ref>.*))?$",
   );
-  const pieces = format.exec(configFile);
+  const pieces = format.exec(configFile.trim());
 
   // Check that the regular expression matched and that we have at least the repo name.
   if (!pieces?.groups?.repo || pieces.groups.repo.trim().length === 0) {

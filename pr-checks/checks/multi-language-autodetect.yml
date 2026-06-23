@@ -2,16 +2,8 @@ name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems:
   - ubuntu
-  # Newer CodeQL CLI versions support Swift 6.2, so analyse Swift on the latest macOS runner
-  # (currently macOS 26) with its default Xcode. This exercises the common combination of a
-  # recent CLI on a recent runner.
   - os: macos
     runner-image: macos-latest-xlarge
-    codeql-versions:
-      - stable-v2.24.3
-      - default
-      - linked
-      - nightly-latest
   # Older CodeQL CLI versions only support Swift up to 6.1, which requires Xcode 16. That is
   # not available on macOS 26, so run these versions on macOS 15 where we select Xcode 16
   # below. See https://github.com/actions/runner-images/issues/14167.
@@ -22,7 +14,6 @@ operatingSystems:
       - stable-v2.20.7
       - stable-v2.21.4
       - stable-v2.22.4
-      - stable-v2.23.9
 env:
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true

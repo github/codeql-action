@@ -55,24 +55,30 @@ export function parseRemoteFileAddress(
   );
   const pieces = format.exec(configFile.trim());
 
+  const repo: string | undefined = pieces?.groups?.repo?.trim();
+
   // Check that the regular expression matched and that we have at least the repo name.
-  if (!pieces?.groups?.repo || pieces.groups.repo.trim().length === 0) {
+  if (!pieces?.groups || !repo || repo.length === 0) {
     throw new ConfigurationError(
       errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
     );
   }
 
+  const owner: string | undefined = pieces.groups.owner?.trim();
+  const path: string | undefined = pieces.groups.path?.trim();
+  const ref: string | undefined = pieces.groups.ref?.trim();
+
   // Ensure that the path is a relative path.
-  if (pieces.groups.path?.startsWith("/")) {
+  if (path?.startsWith("/")) {
     throw new ConfigurationError(
       `The path component of '${configFile}' cannot be an absolute path.`,
     );
   }
 
   return {
-    owner: pieces.groups.owner || getDefaultOwner(env),
-    repo: pieces.groups.repo.trim(),
-    path: pieces.groups.path || DEFAULT_CONFIG_FILE_NAME,
-    ref: pieces.groups.ref || DEFAULT_CONFIG_FILE_REF,
+    owner: owner || getDefaultOwner(env),
+    repo,
+    path: path || DEFAULT_CONFIG_FILE_NAME,
+    ref: ref || DEFAULT_CONFIG_FILE_REF,
   };
 }

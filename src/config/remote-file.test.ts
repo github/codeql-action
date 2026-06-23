@@ -22,6 +22,48 @@ test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
     ref: "ref",
   } satisfies RemoteFileAddress);
 
+  t.deepEqual(parseRemoteFileAddress(env, "owner  /repo/path@ref"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/   repo/path@ref"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo   /path@ref"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/   path@ref"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path   @ref"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path@   ref"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
   t.deepEqual(
     parseRemoteFileAddress(env, "owner/repo/path/to/codeql.yml@ref/feature"),
     {
@@ -127,6 +169,12 @@ test("parseRemoteFileAddress rejects invalid values", async (t) => {
     instanceOf: ConfigurationError,
   });
   t.throws(() => parseRemoteFileAddress(env, "repo//absolute"), {
+    instanceOf: ConfigurationError,
+  });
+  t.throws(() => parseRemoteFileAddress(env, "/repo@ref"), {
+    instanceOf: ConfigurationError,
+  });
+  t.throws(() => parseRemoteFileAddress(env, "   /repo@ref"), {
     instanceOf: ConfigurationError,
   });
 });

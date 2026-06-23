@@ -39,6 +39,16 @@ export function getConfigFileInput(
   return undefined;
 }
 
+/**
+ * Attempts to fetch a `UserConfig` from a remote `address`.
+ *
+ * @param logger The logger to use.
+ * @param configFile The remote address of the configuration file.
+ * @param apiDetails Information about how to connect to the API.
+ * @param validateConfig Whether to validate the configuration.
+ *
+ * @returns The `UserConfig`, if it could be fetched and parsed successfully.
+ */
 export async function getRemoteConfig(
   logger: Logger,
   configFile: string,

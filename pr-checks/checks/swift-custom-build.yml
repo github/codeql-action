@@ -5,7 +5,11 @@ versions:
   - default
   - nightly-latest
 operatingSystems:
-  - macos
+  # Pin to macOS 15 rather than `macos-latest`: the `linked`/`default` CodeQL CLI versions
+  # are analysed with Xcode 16, which is not available on macOS 26 (ships Xcode 26 / Swift
+  # 6.2). See https://github.com/actions/runner-images/issues/14167.
+  - os: macos
+    runner-image: macos-15
 installGo: true
 installDotNet: true
 env:

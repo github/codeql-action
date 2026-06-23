@@ -2,8 +2,11 @@ name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems:
   - ubuntu
+  # Pin to macOS 15 rather than `macos-latest`: the older CodeQL CLI versions in the
+  # matrix only support Swift up to 6.1 (Xcode 16), which is not available on macOS 26
+  # (ships Xcode 26 / Swift 6.2). See https://github.com/actions/runner-images/issues/14167.
   - os: macos
-    runner-image: macos-latest-xlarge
+    runner-image: macos-15-xlarge
 env:
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true

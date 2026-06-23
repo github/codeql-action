@@ -13,6 +13,9 @@ export interface RemoteFileAddress {
   ref: string;
 }
 
+/** The default ref to use in configuration file shorthands. */
+export const DEFAULT_CONFIG_FILE_REF = "main";
+
 /**
  * Attempts to parse `configFile` into an array of `RemoteFileAddress` components.
  *
@@ -23,12 +26,16 @@ export interface RemoteFileAddress {
 export function parseRemoteFileAddress(configFile: string): RemoteFileAddress {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
-    "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)",
+    "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)(@(?<ref>.*))?",
   );
   const pieces = format.exec(configFile);
 
-  // 5 = 4 groups + the whole expression
-  if (pieces?.groups === undefined || pieces.length < 5) {
+  // Check that the regular expression matched and that we have at least the required components.
+  if (
+    !pieces?.groups?.owner ||
+    !pieces?.groups?.repo ||
+    !pieces?.groups?.path
+  ) {
     throw new ConfigurationError(
       errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
     );
@@ -38,6 +45,6 @@ export function parseRemoteFileAddress(configFile: string): RemoteFileAddress {
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
     path: pieces.groups.path,
-    ref: pieces.groups.ref,
+    ref: pieces.groups.ref || DEFAULT_CONFIG_FILE_REF,
   };
 }

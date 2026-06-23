@@ -2,7 +2,11 @@ import test from "ava";
 
 import { ConfigurationError } from "../util";
 
-import { parseRemoteFileAddress, RemoteFileAddress } from "./remote-file";
+import {
+  DEFAULT_CONFIG_FILE_REF,
+  parseRemoteFileAddress,
+  RemoteFileAddress,
+} from "./remote-file";
 
 test("expandConfigFileInput accepts full remote addresses", async (t) => {
   t.deepEqual(parseRemoteFileAddress("owner/repo/path@ref"), {
@@ -21,6 +25,22 @@ test("expandConfigFileInput accepts full remote addresses", async (t) => {
       ref: "ref/feature",
     } satisfies RemoteFileAddress,
   );
+});
+
+test("expandConfigFileInput accepts remote address without a ref", async (t) => {
+  t.deepEqual(parseRemoteFileAddress("owner/repo/path"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: DEFAULT_CONFIG_FILE_REF,
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress("owner/repo/path@"), {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: DEFAULT_CONFIG_FILE_REF,
+  } satisfies RemoteFileAddress);
 });
 
 test("expandConfigFileInput rejects invalid values", async (t) => {

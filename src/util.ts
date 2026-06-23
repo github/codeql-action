@@ -570,7 +570,7 @@ export function initializeEnvironment(version: string) {
 export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
   return {
     getRequired: (name) => getRequiredEnvVar(env, name),
-    getOptional: (name) => getOptionalEnvVar(name),
+    getOptional: (name) => getOptionalEnvVarFrom(env, name),
   };
 }
 

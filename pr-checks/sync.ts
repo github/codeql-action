@@ -54,6 +54,13 @@ type OperatingSystem =
       os: OperatingSystemIdentifier;
       /** Optional runner image label. */
       "runner-image"?: string;
+      /**
+       * Optional CodeQL versions to run on this entry. If specified, this entry runs only these
+       * versions. A sibling entry for the same OS that omits `codeql-versions` runs all versions
+       * not claimed by any sibling entry. This allows pinning specific CodeQL versions to a
+       * particular runner image while letting the remaining versions default to another.
+       */
+      "codeql-versions"?: string[];
     };
 
 /**
@@ -352,6 +359,28 @@ function generateJobMatrix(
 ): Array<Record<string, any>> {
   let matrix: Array<Record<string, any>> = [];
 
+  const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
+
+  // For each OS, collect the CodeQL versions explicitly claimed by entries that specify
+  // `codeql-versions`. A sibling entry for the same OS that omits `codeql-versions` runs all
+  // versions not in this set.
+  const claimedVersionsByOs = new Map<string, Set<string>>();
+  for (const operatingSystemConfig of operatingSystems) {
+    if (typeof operatingSystemConfig === "string") {
+      continue;
+    }
+    const entryVersions = operatingSystemConfig["codeql-versions"];
+    if (!entryVersions) {
+      continue;
+    }
+    const claimed =
+      claimedVersionsByOs.get(operatingSystemConfig.os) ?? new Set<string>();
+    for (const entryVersion of entryVersions) {
+      claimed.add(entryVersion);
+    }
+    claimedVersionsByOs.set(operatingSystemConfig.os, claimed);
+  }
+
   for (const version of checkSpecification.versions ?? defaultTestVersions) {
     if (version === "latest") {
       throw new Error(
@@ -364,7 +393,6 @@ function generateJobMatrix(
       "macos-latest",
       "windows-latest",
     ];
-    const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
 
     for (const operatingSystemConfig of operatingSystems) {
       const operatingSystem =
@@ -376,6 +404,19 @@ function generateJobMatrix(
       const allowedVersions =
         checkSpecification.osCodeQlVersions?.[operatingSystem];
       if (allowedVersions && !allowedVersions.includes(version)) {
+        continue;
+      }
+
+      // An entry that specifies `codeql-versions` runs only those versions. A sibling entry for
+      // the same OS that omits `codeql-versions` runs all versions not claimed by its siblings.
+      const entryVersions =
+        typeof operatingSystemConfig === "string"
+          ? undefined
+          : operatingSystemConfig["codeql-versions"];
+      const runsThisVersion = entryVersions
+        ? entryVersions.includes(version)
+        : !claimedVersionsByOs.get(operatingSystem)?.has(version);
+      if (!runsThisVersion) {
         continue;
       }
 

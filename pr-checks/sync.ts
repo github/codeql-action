@@ -765,9 +765,7 @@ function main(): void {
         push: {
           branches: ["main", "releases/v*"],
         },
-        pull_request: {
-          types: ["opened", "synchronize", "reopened", "ready_for_review"],
-        },
+        pull_request: {},
         merge_group: {
           types: ["checks_requested"],
         },

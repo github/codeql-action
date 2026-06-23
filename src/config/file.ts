@@ -9,6 +9,7 @@ import { Logger } from "../logging";
 import { ConfigurationError } from "../util";
 
 import { parseUserConfig, UserConfig } from "./db-config";
+import { parseRemoteFileAddress } from "./remote-file";
 
 /**
  * Gets the value that is configured for the configuration file, if any.
@@ -44,25 +45,15 @@ export async function getRemoteConfig(
   apiDetails: api.GitHubApiCombinedDetails,
   validateConfig: boolean,
 ): Promise<UserConfig> {
-  // retrieve the various parts of the config location, and ensure they're present
-  const format = new RegExp(
-    "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)",
-  );
-  const pieces = format.exec(configFile);
-  // 5 = 4 groups + the whole expression
-  if (pieces?.groups === undefined || pieces.length < 5) {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
-    );
-  }
+  const groups = parseRemoteFileAddress(configFile);
 
   const response = await api
     .getApiClientWithExternalAuth(apiDetails)
     .rest.repos.getContent({
-      owner: pieces.groups.owner,
-      repo: pieces.groups.repo,
-      path: pieces.groups.path,
-      ref: pieces.groups.ref,
+      owner: groups.owner,
+      repo: groups.repo,
+      path: groups.path,
+      ref: groups.ref,
     });
 
   let fileContents: string;

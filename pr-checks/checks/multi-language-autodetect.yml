@@ -2,11 +2,27 @@ name: "Multi-language repository"
 description: "An end-to-end integration test of a multi-language repository using automatic language detection"
 operatingSystems:
   - ubuntu
-  # Pin to macOS 15 rather than `macos-latest`: the older CodeQL CLI versions in the
-  # matrix only support Swift up to 6.1 (Xcode 16), which is not available on macOS 26
-  # (ships Xcode 26 / Swift 6.2). See https://github.com/actions/runner-images/issues/14167.
+  # Newer CodeQL CLI versions support Swift 6.2, so analyse Swift on the latest macOS runner
+  # (currently macOS 26) with its default Xcode. This exercises the common combination of a
+  # recent CLI on a recent runner.
+  - os: macos
+    runner-image: macos-latest-xlarge
+    codeql-versions:
+      - stable-v2.24.3
+      - default
+      - linked
+      - nightly-latest
+  # Older CodeQL CLI versions only support Swift up to 6.1, which requires Xcode 16. That is
+  # not available on macOS 26, so run these versions on macOS 15 where we select Xcode 16
+  # below. See https://github.com/actions/runner-images/issues/14167.
   - os: macos
     runner-image: macos-15-xlarge
+    codeql-versions:
+      - stable-v2.19.4
+      - stable-v2.20.7
+      - stable-v2.21.4
+      - stable-v2.22.4
+      - stable-v2.23.9
 env:
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true
@@ -21,7 +37,8 @@ steps:
       python-version: "3.13"
 
   - name: Use Xcode 16
-    if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+    # Only the older CodeQL CLI versions need Xcode 16, and these run on macOS 15.
+    if: matrix.os == 'macos-15-xlarge'
     run: sudo xcode-select -s "/Applications/Xcode_16.app"
 
   - uses: ./../action/init

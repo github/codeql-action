@@ -54,6 +54,12 @@ type OperatingSystem =
       os: OperatingSystemIdentifier;
       /** Optional runner image label. */
       "runner-image"?: string;
+      /**
+       * Optional CodeQL versions to run on this entry. If specified, only these versions are
+       * tested on this runner image. This allows running different runner images for different
+       * CodeQL versions of the same OS.
+       */
+      "codeql-versions"?: string[];
     };
 
 /**
@@ -376,6 +382,15 @@ function generateJobMatrix(
       const allowedVersions =
         checkSpecification.osCodeQlVersions?.[operatingSystem];
       if (allowedVersions && !allowedVersions.includes(version)) {
+        continue;
+      }
+
+      // If this OS entry restricts itself to specific CodeQL versions, skip other versions.
+      const entryVersions =
+        typeof operatingSystemConfig === "string"
+          ? undefined
+          : operatingSystemConfig["codeql-versions"];
+      if (entryVersions && !entryVersions.includes(version)) {
         continue;
       }
 

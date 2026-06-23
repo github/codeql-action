@@ -81,19 +81,19 @@ jobs:
             version: stable-v2.23.9
           - os: ubuntu-latest
             version: stable-v2.24.3
-          - os: macos-15-xlarge
+          - os: macos-latest-xlarge
             version: stable-v2.24.3
           - os: ubuntu-latest
             version: default
-          - os: macos-15-xlarge
+          - os: macos-latest-xlarge
             version: default
           - os: ubuntu-latest
             version: linked
-          - os: macos-15-xlarge
+          - os: macos-latest-xlarge
             version: linked
           - os: ubuntu-latest
             version: nightly-latest
-          - os: macos-15-xlarge
+          - os: macos-latest-xlarge
             version: nightly-latest
     name: Multi-language repository
     if: github.triggering_actor != 'dependabot[bot]'
@@ -130,7 +130,8 @@ jobs:
           python-version: '3.13'
 
       - name: Use Xcode 16
-        if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+        # Only the older CodeQL CLI versions need Xcode 16, and these run on macOS 15.
+        if: matrix.os == 'macos-15-xlarge'
         run: sudo xcode-select -s "/Applications/Xcode_16.app"
 
       - uses: ./../action/init

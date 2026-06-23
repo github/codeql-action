@@ -3,6 +3,7 @@ import test from "ava";
 import { ConfigurationError } from "../util";
 
 import {
+  DEFAULT_CONFIG_FILE_NAME,
   DEFAULT_CONFIG_FILE_REF,
   parseRemoteFileAddress,
   RemoteFileAddress,
@@ -27,6 +28,22 @@ test("expandConfigFileInput accepts full remote addresses", async (t) => {
   );
 });
 
+test("expandConfigFileInput accepts remote address without a path", async (t) => {
+  t.deepEqual(parseRemoteFileAddress("owner/repo@ref"), {
+    owner: "owner",
+    repo: "repo",
+    path: DEFAULT_CONFIG_FILE_NAME,
+    ref: "ref",
+  } satisfies RemoteFileAddress);
+
+  t.deepEqual(parseRemoteFileAddress("owner/repo"), {
+    owner: "owner",
+    repo: "repo",
+    path: DEFAULT_CONFIG_FILE_NAME,
+    ref: DEFAULT_CONFIG_FILE_REF,
+  } satisfies RemoteFileAddress);
+});
+
 test("expandConfigFileInput accepts remote address without a ref", async (t) => {
   t.deepEqual(parseRemoteFileAddress("owner/repo/path"), {
     owner: "owner",
@@ -47,7 +64,7 @@ test("expandConfigFileInput rejects invalid values", async (t) => {
   t.throws(() => parseRemoteFileAddress("  "), {
     instanceOf: ConfigurationError,
   });
-  t.throws(() => parseRemoteFileAddress("repo:/absolute"), {
+  t.throws(() => parseRemoteFileAddress("repo//absolute"), {
     instanceOf: ConfigurationError,
   });
   t.throws(() => parseRemoteFileAddress("repo:file.yml:unexpected"), {

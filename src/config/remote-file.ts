@@ -13,6 +13,9 @@ export interface RemoteFileAddress {
   ref: string;
 }
 
+/** The default file path to use in configuration file shorthands. */
+export const DEFAULT_CONFIG_FILE_NAME = ".github/codeql-action.yaml";
+
 /** The default ref to use in configuration file shorthands. */
 export const DEFAULT_CONFIG_FILE_REF = "main";
 
@@ -26,16 +29,12 @@ export const DEFAULT_CONFIG_FILE_REF = "main";
 export function parseRemoteFileAddress(configFile: string): RemoteFileAddress {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
-    "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)(@(?<ref>.*))?",
+    "(?<owner>[^/]+)/(?<repo>[^/@]+)(/(?<path>[^@]+))?(@(?<ref>.*))?",
   );
   const pieces = format.exec(configFile);
 
   // Check that the regular expression matched and that we have at least the required components.
-  if (
-    !pieces?.groups?.owner ||
-    !pieces?.groups?.repo ||
-    !pieces?.groups?.path
-  ) {
+  if (!pieces?.groups?.owner || !pieces?.groups?.repo) {
     throw new ConfigurationError(
       errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
     );
@@ -44,7 +43,7 @@ export function parseRemoteFileAddress(configFile: string): RemoteFileAddress {
   return {
     owner: pieces.groups.owner,
     repo: pieces.groups.repo,
-    path: pieces.groups.path,
+    path: pieces.groups.path || DEFAULT_CONFIG_FILE_NAME,
     ref: pieces.groups.ref || DEFAULT_CONFIG_FILE_REF,
   };
 }

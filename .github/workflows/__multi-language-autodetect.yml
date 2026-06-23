@@ -61,19 +61,19 @@ jobs:
         include:
           - os: ubuntu-latest
             version: stable-v2.19.4
-          - os: macos-latest-xlarge
+          - os: macos-15-xlarge
             version: stable-v2.19.4
           - os: ubuntu-latest
             version: stable-v2.20.7
-          - os: macos-latest-xlarge
+          - os: macos-15-xlarge
             version: stable-v2.20.7
           - os: ubuntu-latest
             version: stable-v2.21.4
-          - os: macos-latest-xlarge
+          - os: macos-15-xlarge
             version: stable-v2.21.4
           - os: ubuntu-latest
             version: stable-v2.22.4
-          - os: macos-latest-xlarge
+          - os: macos-15-xlarge
             version: stable-v2.22.4
           - os: ubuntu-latest
             version: stable-v2.23.9
@@ -130,7 +130,8 @@ jobs:
           python-version: '3.13'
 
       - name: Use Xcode 16
-        if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+        # Only the older CodeQL CLI versions need Xcode 16, and these run on macOS 15.
+        if: matrix.os == 'macos-15-xlarge'
         run: sudo xcode-select -s "/Applications/Xcode_16.app"
 
       - uses: ./../action/init

@@ -20,7 +20,7 @@ export interface RemoteFileAddress {
  * @returns The successful result of executing the regex.
  * @throws `ConfigurationError` if the format of `configFile` is not valid.
  */
-export function parseRemoteFileAddress(configFile: string) {
+export function parseRemoteFileAddress(configFile: string): RemoteFileAddress {
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
     "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)",
@@ -34,5 +34,10 @@ export function parseRemoteFileAddress(configFile: string) {
     );
   }
 
-  return pieces.groups;
+  return {
+    owner: pieces.groups.owner,
+    repo: pieces.groups.repo,
+    path: pieces.groups.path,
+    ref: pieces.groups.ref,
+  };
 }

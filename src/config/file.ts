@@ -45,15 +45,15 @@ export async function getRemoteConfig(
   apiDetails: api.GitHubApiCombinedDetails,
   validateConfig: boolean,
 ): Promise<UserConfig> {
-  const groups = parseRemoteFileAddress(configFile);
+  const address = parseRemoteFileAddress(configFile);
 
   const response = await api
     .getApiClientWithExternalAuth(apiDetails)
     .rest.repos.getContent({
-      owner: groups.owner,
-      repo: groups.repo,
-      path: groups.path,
-      ref: groups.ref,
+      owner: address.owner,
+      repo: address.repo,
+      path: address.path,
+      ref: address.ref,
     });
 
   let fileContents: string;

@@ -12,7 +12,7 @@ import {
   RemoteFileAddress,
 } from "./remote-file";
 
-test("expandConfigFileInput accepts full remote addresses", async (t) => {
+test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
   const env = getTestEnv();
 
   t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path@ref"), {
@@ -33,7 +33,7 @@ test("expandConfigFileInput accepts full remote addresses", async (t) => {
   );
 });
 
-test("expandConfigFileInput accepts remote address without an owner", async (t) => {
+test("parseRemoteFileAddress accepts remote address without an owner", async (t) => {
   const env = getTestEnv();
   const owner = "test-owner";
   const getRequired = sinon.stub(env, "getRequired");
@@ -56,7 +56,7 @@ test("expandConfigFileInput accepts remote address without an owner", async (t) 
   } satisfies RemoteFileAddress);
 });
 
-test("expandConfigFileInput throws for invalid `GITHUB_REPOSITORY`", async (t) => {
+test("parseRemoteFileAddress throws for invalid `GITHUB_REPOSITORY`", async (t) => {
   const env = getTestEnv();
   const getRequired = sinon.stub(env, "getRequired");
   getRequired.withArgs(ActionsEnvVars.GITHUB_REPOSITORY).returns(`not-valid`);
@@ -66,7 +66,7 @@ test("expandConfigFileInput throws for invalid `GITHUB_REPOSITORY`", async (t) =
   });
 });
 
-test("expandConfigFileInput accepts remote address without a path", async (t) => {
+test("parseRemoteFileAddress accepts remote address without a path", async (t) => {
   const env = getTestEnv();
 
   t.deepEqual(parseRemoteFileAddress(env, "owner/repo@ref"), {
@@ -84,7 +84,7 @@ test("expandConfigFileInput accepts remote address without a path", async (t) =>
   } satisfies RemoteFileAddress);
 });
 
-test("expandConfigFileInput accepts remote address without a ref", async (t) => {
+test("parseRemoteFileAddress accepts remote address without a ref", async (t) => {
   const env = getTestEnv();
 
   t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path"), {
@@ -102,7 +102,7 @@ test("expandConfigFileInput accepts remote address without a ref", async (t) => 
   } satisfies RemoteFileAddress);
 });
 
-test("expandConfigFileInput rejects invalid values", async (t) => {
+test("parseRemoteFileAddress rejects invalid values", async (t) => {
   const env = getTestEnv();
   const owner = "owner";
   const getRequired = sinon.stub(env, "getRequired");

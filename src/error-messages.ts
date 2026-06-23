@@ -34,7 +34,7 @@ export function getConfigFileRepoFormatInvalidMessage(
   configFile: string,
 ): string {
   let error = `The configuration file "${configFile}" is not a supported remote file reference.`;
-  error += " Expected format <owner>/<repository>/<file-path>@<ref>";
+  error += " Expected format [<owner>/]<repository>[/<file-path>][@<ref>]";
 
   return error;
 }

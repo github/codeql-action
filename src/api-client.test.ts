@@ -181,6 +181,7 @@ test.serial(
       "Code Security must be enabled for this repository to use code scanning",
       "Advanced Security must be enabled for this repository to use code scanning",
       "Code Scanning is not enabled for this repository. Please enable code scanning in the repository settings.",
+      "Code quality is not enabled for this repository. Please enable code quality in the repository settings.",
     ];
     const transforms = [
       (msg: string) => msg,

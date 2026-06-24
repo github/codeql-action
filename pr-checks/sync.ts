@@ -233,8 +233,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: pinnedUses(
           "actions/setup-go",
-          "4a3601121dd01d1626a1e23e37211e3254c1c06c",
-          "v6.4.0",
+          "924ae3a1cded613372ab5595356fb5720e22ba16",
+          "v6.5.0",
         ),
         with: {
           "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
@@ -271,8 +271,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "a309ff8b426b58ec0e2a45f0f869d46889d02405",
-          "v6.2.0",
+          "ece7cb06caefa5fff74198d8649806c4678c61a1",
+          "v6.3.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,

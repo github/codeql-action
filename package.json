@@ -64,7 +64,7 @@
     "eslint-plugin-import-x": "^4.16.2",
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "glob": "^11.1.0",
+    "glob": "^13.0.6",
     "globals": "^17.6.0",
     "nock": "^14.0.15",
     "sinon": "^22.0.0",
@@ -90,7 +90,7 @@
     "eslint-plugin-jsx-a11y": {
       "semver": ">=6.3.1"
     },
-    "glob": "^11.1.0",
+    "glob": "^13.0.6",
     "undici": "^6.24.0"
   }
 }

@@ -22,7 +22,7 @@
   "dependencies": {
     "@actions/artifact": "^5.0.3",
     "@actions/artifact-legacy": "npm:@actions/artifact@^1.1.2",
-    "@actions/cache": "^5.0.5",
+    "@actions/cache": "^5.1.0",
     "@actions/core": "^2.0.3",
     "@actions/exec": "^2.0.0",
     "@actions/github": "^8.0.1",
@@ -51,7 +51,7 @@
     "@types/archiver": "^8.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.19.42",
+    "@types/node": "^20.19.43",
     "@types/node-forge": "^1.3.14",
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
@@ -69,7 +69,7 @@
     "nock": "^14.0.15",
     "sinon": "^22.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.0"
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "@actions/tool-cache": {

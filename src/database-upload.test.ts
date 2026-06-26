@@ -481,3 +481,48 @@ test.serial("Does not measure clear cleanup size in debug mode", async (t) => {
     t.is(results[0].clear_cleanup_measurement_duration_ms, undefined);
   });
 });
+
+test.serial(
+  "Does not record a clear cleanup duration when the clear cleanup fails",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon
+        .stub(actionsUtil, "getRequiredInput")
+        .withArgs("upload-database")
+        .returns("true");
+      sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
+
+      await mockHttpRequests(201);
+
+      const codeql = createStubCodeQL({
+        async databaseCleanupCluster(_config, cleanupLevel) {
+          if (cleanupLevel === CleanupLevel.Clear) {
+            throw new Error("clear cleanup failed");
+          }
+        },
+        async databaseBundle(_databasePath, outputFilePath) {
+          fs.writeFileSync(outputFilePath, "x".repeat(100));
+        },
+      });
+
+      const config = getTestConfig(tmpDir);
+      config.overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
+
+      const results = await cleanupAndUploadDatabases(
+        testRepoName,
+        codeql,
+        config,
+        testApiDetails,
+        createFeatures([Feature.UploadOverlayDbToApi]),
+        getRecordingLogger([]),
+      );
+
+      // When the `clear` cleanup fails, no size is measured, so we should not
+      // report a measurement duration either.
+      t.is(results[0].is_overlay_base, true);
+      t.is(results[0].clear_cleanup_zipped_size_bytes, undefined);
+      t.is(results[0].clear_cleanup_measurement_duration_ms, undefined);
+    });
+  },
+);

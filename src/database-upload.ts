@@ -189,8 +189,8 @@ export async function cleanupAndUploadDatabases(
 
 /**
  * Cleans up the databases at the `clear` cleanup level and records the resulting zipped size for
- * each language in `clear_cleanup_zipped_size_bytes`, along with the time spent taking the
- * measurement in `clear_cleanup_measurement_duration_ms`.
+ * each language in `clear_cleanup_zipped_size_bytes`. If the cleanup succeeds, also records the
+ * time spent taking the measurement in `clear_cleanup_measurement_duration_ms`.
  *
  * This mutates the entries of `reports` in place. It must run only after all overlay-base uploads
  * have completed, since the `clear` cleanup discards overlay data that the uploaded database
@@ -206,46 +206,47 @@ async function recordClearCleanupSizes(
   logger: Logger,
 ): Promise<void> {
   const startTime = performance.now();
+
   try {
+    await codeql.databaseCleanupCluster(config, CleanupLevel.Clear);
+  } catch (e) {
+    // The cleanup didn't run, so there are no sizes to measure. Return without recording a
+    // duration, so that we don't report a measurement duration with no accompanying sizes.
+    logger.warning(
+      `Failed to clean up databases at the '${CleanupLevel.Clear}' level for ` +
+        `size measurement: ${util.getErrorMessage(e)}`,
+    );
+    return;
+  }
+
+  for (const language of config.languages) {
+    const report = reports.find((r) => r.language === language);
+    if (report === undefined) {
+      continue;
+    }
     try {
-      await codeql.databaseCleanupCluster(config, CleanupLevel.Clear);
+      const bundledDb = await bundleDb(config, language, codeql, language, {
+        includeDiagnostics: false,
+      });
+      report.clear_cleanup_zipped_size_bytes = fs.statSync(bundledDb).size;
+      logger.debug(
+        `Database for ${language} is ` +
+          `${report.clear_cleanup_zipped_size_bytes} bytes zipped at the ` +
+          `'${CleanupLevel.Clear}' cleanup level ` +
+          `(vs. ${report.zipped_upload_size_bytes ?? "unknown"} bytes at the ` +
+          `'${CleanupLevel.Overlay}' level).`,
+      );
     } catch (e) {
       logger.warning(
-        `Failed to clean up databases at the '${CleanupLevel.Clear}' level for ` +
-          `size measurement: ${util.getErrorMessage(e)}`,
+        `Failed to measure the '${CleanupLevel.Clear}' cleanup database size ` +
+          `for ${language}: ${util.getErrorMessage(e)}`,
       );
-      return;
     }
+  }
 
-    for (const language of config.languages) {
-      const report = reports.find((r) => r.language === language);
-      if (report === undefined) {
-        continue;
-      }
-      try {
-        const bundledDb = await bundleDb(config, language, codeql, language, {
-          includeDiagnostics: false,
-        });
-        report.clear_cleanup_zipped_size_bytes = fs.statSync(bundledDb).size;
-        logger.debug(
-          `Database for ${language} is ` +
-            `${report.clear_cleanup_zipped_size_bytes} bytes zipped at the ` +
-            `'${CleanupLevel.Clear}' cleanup level ` +
-            `(vs. ${report.zipped_upload_size_bytes} bytes at the ` +
-            `'${CleanupLevel.Overlay}' level).`,
-        );
-      } catch (e) {
-        logger.warning(
-          `Failed to measure the '${CleanupLevel.Clear}' cleanup database size ` +
-            `for ${language}: ${util.getErrorMessage(e)}`,
-        );
-      }
-    }
-  } finally {
-    const durationMs = performance.now() - startTime;
-    for (const report of reports) {
-      report.clear_cleanup_measurement_duration_ms = durationMs;
-    }
+  const durationMs = performance.now() - startTime;
+  for (const report of reports) {
+    report.clear_cleanup_measurement_duration_ms = durationMs;
   }
 }
 

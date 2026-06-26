@@ -1,7 +1,7 @@
 import { ActionsEnvVars } from "../actions-util";
 import { Env } from "../environment";
 import * as errorMessages from "../error-messages";
-import { ConfigurationError } from "../util";
+import { ConfigurationError, Failure, Result, Success } from "../util";
 
 /** Represents remote file addresses. */
 export interface RemoteFileAddress {
@@ -38,6 +38,38 @@ function getDefaultOwner(env: Env): string {
 }
 
 /**
+ * The old remote address format that's always been supported for the `config-file` input.
+ * All the components are required. Unchanged from the previous implementation.
+ */
+const OLD_REMOTE_ADDRESS_FORMAT = new RegExp(
+  "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)",
+);
+
+/**
+ * Attempts to parse `input` as a `RemoteFileAddress` using the old format.
+ *
+ * @param input The input to try and parse.
+ * @returns A `RemoteFileAddress` value if successful or `undefined` otherwise.
+ */
+function parseOldRemoteFileAddress(
+  input: string,
+): Result<RemoteFileAddress, undefined> {
+  const pieces = OLD_REMOTE_ADDRESS_FORMAT.exec(input);
+
+  // 5 = 4 groups + the whole expression
+  if (pieces?.groups === undefined || pieces.length < 5) {
+    return new Failure(undefined);
+  }
+
+  return new Success({
+    owner: pieces.groups.owner.trim(),
+    repo: pieces.groups.repo.trim(),
+    path: pieces.groups.path.trim(),
+    ref: pieces.groups.ref.trim(),
+  });
+}
+
+/**
  * Attempts to parse `configFile` into an array of `RemoteFileAddress` components.
  *
  * @param env The current environment variables.
@@ -49,9 +81,17 @@ export function parseRemoteFileAddress(
   env: Env,
   configFile: string,
 ): RemoteFileAddress {
+  // Try to parse the input using the old format. If successful, return the
+  // resulting `RemoteFileAddress`. Otherwise, continue using the new format.
+  const oldFormatAddressResult = parseOldRemoteFileAddress(configFile);
+
+  if (oldFormatAddressResult.isSuccess()) {
+    return oldFormatAddressResult.value;
+  }
+
   // retrieve the various parts of the config location, and ensure they're present
   const format = new RegExp(
-    "^((?<owner>[^/]+)/)?(?<repo>[^/@]+)(/(?<path>[^@]+))?(@(?<ref>.*))?$",
+    "^((?<owner>[^:@/]+)/)?(?<repo>[^:@/]+)(@(?<ref>[^:]+))?(:(?<path>.+))?$",
   );
   const pieces = format.exec(configFile.trim());
 
@@ -59,6 +99,9 @@ export function parseRemoteFileAddress(
 
   // Check that the regular expression matched and that we have at least the repo name.
   if (!pieces?.groups || !repo || repo.length === 0) {
+    // Neither the old format nor the new format worked. Throw an error that
+    // explains the format we accept. We only mention the new format, since that's
+    // what we want to be used going forward.
     throw new ConfigurationError(
       errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
     );

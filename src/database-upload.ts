@@ -205,6 +205,8 @@ async function recordClearCleanupSizes(
   reports: DatabaseUploadResult[],
   logger: Logger,
 ): Promise<void> {
+  // Include both the cleanup and the re-bundling to record how much time taking this measurement adds
+  // to the run.
   const startTime = performance.now();
 
   try {

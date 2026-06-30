@@ -30,6 +30,11 @@ export function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
+/** Asserts that `value` is a number. */
+export function isNumber(value: unknown): value is number {
+  return typeof value === "number";
+}
+
 /** Asserts that `value` is either a string or undefined. */
 export function isStringOrUndefined(
   value: unknown,
@@ -54,6 +59,12 @@ export const string = {
   validate: isString,
   required: true,
 } as const satisfies Validator<string>;
+
+/** A validator for number fields in schemas. */
+export const number = {
+  validate: isNumber,
+  required: true,
+} as const satisfies Validator<number>;
 
 /** Transforms a validator to be optional. */
 export function optional<T>(validator: Validator<T>) {

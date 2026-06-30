@@ -14,15 +14,97 @@ const COMMAND_CACHE_FILENAME = "codeql-action-command-cache.json";
 /** A key used to identify cached command output. */
 export type CommandCacheKey = "version" | "resolve languages";
 
+export interface VersionInfo {
+  version: string;
+  features?: { [name: string]: boolean };
+  /**
+   * The overlay version helps deal with backward incompatible changes for
+   * overlay analysis. When a precompiled query pack reports the same overlay
+   * version as the CodeQL CLI, we can use the CodeQL CLI to perform overlay
+   * analysis with that pack. Otherwise, if the overlay versions are different,
+   * or if either the pack or the CLI does not report an overlay version,
+   * we need to revert to non-overlay analysis.
+   */
+  overlayVersion?: number;
+}
+
+/** Returns true if `x` is a {@link VersionInfo}. */
+export function isVersionInfo(x: unknown): x is VersionInfo {
+  return (
+    json.isObject(x) &&
+    json.validateSchema(
+      {
+        version: json.string,
+        features: json.optional(json.object),
+        overlayVersion: json.optional(json.number),
+      },
+      x,
+    )
+  );
+}
+
+export interface ResolveLanguagesOutput {
+  aliases?: {
+    [alias: string]: string;
+  };
+  extractors: {
+    [language: string]: Array<{
+      extractor_root: string;
+      extractor_options?: any;
+    }>;
+  };
+}
+
+/** Returns true if `x` is a {@link ResolveLanguagesOutput}. */
+export function isResolveLanguagesOutput(
+  x: unknown,
+): x is ResolveLanguagesOutput {
+  return (
+    json.isObject<ResolveLanguagesOutput>(x) &&
+    json.isObject(x.extractors) &&
+    Object.values(x.extractors).every(
+      (extractorList) =>
+        json.isArray(extractorList) &&
+        extractorList.every(
+          (extractor) =>
+            json.isObject<{ extractor_root: unknown }>(extractor) &&
+            json.isString(extractor.extractor_root),
+        ),
+    ) &&
+    (x.aliases === undefined ||
+      (json.isObject(x.aliases) &&
+        Object.values(x.aliases).every((alias) => json.isString(alias))))
+  );
+}
+
+export type CommandCacheKeyOutputMap = {
+  version: VersionInfo;
+  "resolve languages": ResolveLanguagesOutput;
+};
+
+const commandCacheValidators: {
+  [K in CommandCacheKey]: (
+    output: unknown,
+  ) => output is CommandCacheKeyOutputMap[K];
+} = {
+  version: isVersionInfo,
+  "resolve languages": isResolveLanguagesOutput,
+};
+
+interface StoredCommandCacheEntry {
+  cmd: string;
+  output: unknown;
+}
+
 /** A single cached command output together with the CLI path it came from. */
-interface CommandCacheEntry {
+export interface CommandCacheEntry<K extends CommandCacheKey> {
   /**
    * The path to the CodeQL CLI that produced `output`. Persisted so that a
    * different step using a different CodeQL bundle doesn't pick up a stale
    * value.
    */
   cmd: string;
-  output: unknown;
+  output: CommandCacheKeyOutputMap[K];
 }
 
 /**
@@ -30,7 +112,10 @@ interface CommandCacheEntry {
  * whenever a value is read from the file (tier 2) or computed via the CLI
  * (tier 3).
  */
-const inMemoryCache = new Map<CommandCacheKey, CommandCacheEntry>();
+const inMemoryCache = new Map<
+  CommandCacheKey,
+  CommandCacheEntry<CommandCacheKey>
+>();
 const logger = getActionsLogger();
 
 function getCommandCacheFilePath(): string {
@@ -41,7 +126,7 @@ function getCommandCacheFilePath(): string {
  * Reads and parses the temporary cache file. Best-effort: a missing, malformed,
  * or otherwise unreadable file is treated as an empty cache.
  */
-function readCommandCacheFile(): Record<string, CommandCacheEntry> {
+function readCommandCacheFile(): Record<string, StoredCommandCacheEntry> {
   if (!fs.existsSync(getCommandCacheFilePath())) {
     return {};
   }
@@ -75,12 +160,12 @@ export function writeCommandCacheFile(): void {
 /**
  * Stores the output of a CLI command under `key` in a module-global object.
  */
-export function cacheCommandOutput(
-  key: CommandCacheKey,
+export function cacheCommandOutput<K extends CommandCacheKey>(
+  key: K,
   cmd: string,
-  output: unknown,
+  output: CommandCacheKeyOutputMap[K],
 ): void {
-  const entry: CommandCacheEntry = { cmd, output };
+  const entry: CommandCacheEntry<K> = { cmd, output };
   inMemoryCache.set(key, entry);
 }
 
@@ -95,32 +180,33 @@ export function cacheCommandOutput(
  * A return value of `undefined` signals the caller to fall back to tier 3 (the
  * CLI).
  */
-export function getCachedCommandOutput<T>(
-  key: CommandCacheKey,
+export function getCachedCommandOutput<K extends CommandCacheKey>(
+  key: K,
   cmd?: string,
-  validate?: (output: unknown) => output is T,
-): T | undefined {
+): CommandCacheKeyOutputMap[K] | undefined {
   // Tier 1: the in-memory variable.
   const memoized = inMemoryCache.get(key);
   if (memoized !== undefined) {
-    return memoized.output as T;
+    return memoized.output as CommandCacheKeyOutputMap[K];
   }
 
   // Tier 2: the temporary file persisted by an earlier step, if any.
   const entry = readCommandCacheFile()[key] as unknown;
   if (
-    !json.isObject<CommandCacheEntry>(entry) ||
+    !json.isObject<StoredCommandCacheEntry>(entry) ||
     !json.isString(entry.cmd) ||
     (cmd !== undefined && entry.cmd !== cmd) ||
-    (validate !== undefined && !validate(entry.output))
+    !commandCacheValidators[key](entry.output)
   ) {
     logger.warning("Received invalid data from the command-cache file.");
     return undefined;
   }
 
   // Memoize so subsequent lookups in this process hit tier 1.
-  cacheCommandOutput(key, entry.cmd, entry.output);
-  return entry.output as T;
+  const cachedEntry = entry as StoredCommandCacheEntry;
+  const output = cachedEntry.output as CommandCacheKeyOutputMap[K];
+  cacheCommandOutput(key, cachedEntry.cmd, output);
+  return output;
 }
 
 /**

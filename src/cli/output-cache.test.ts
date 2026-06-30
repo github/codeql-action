@@ -4,13 +4,13 @@ import path from "path";
 
 import test from "ava";
 
-import { isVersionInfo } from "../codeql";
 import { setupTests } from "../testing-utils";
 
 import {
   cacheCommandOutput,
   getCachedCommandOutput,
   resetCachedCommandOutputs,
+  type VersionInfo,
 } from "./output-cache";
 
 setupTests(test);
@@ -60,7 +60,6 @@ test.serial(
         getCachedCommandOutput(
           "version",
           "/path/to/codeql",
-          isVersionInfo,
         ),
         { version: "2.20.0" },
       );
@@ -82,7 +81,6 @@ test.serial(
         getCachedCommandOutput(
           "version",
           "/path/to/codeql",
-          isVersionInfo,
         ),
         undefined,
       );
@@ -99,7 +97,6 @@ test.serial(
         getCachedCommandOutput(
           "version",
           "/path/to/codeql",
-          isVersionInfo,
         ),
         undefined,
       );
@@ -115,7 +112,6 @@ test.serial(
         getCachedCommandOutput(
           "version",
           "/path/to/codeql",
-          isVersionInfo,
         ),
         undefined,
       );
@@ -141,7 +137,6 @@ test.serial(
           getCachedCommandOutput(
             "version",
             "/path/to/codeql",
-            isVersionInfo,
           ),
           undefined,
           JSON.stringify(output),
@@ -162,7 +157,6 @@ test.serial(
         getCachedCommandOutput(
           "version",
           "/path/to/codeql",
-          isVersionInfo,
         ),
         undefined,
       );
@@ -172,15 +166,11 @@ test.serial(
 
 test.serial("cacheCommandOutput persists the output to the memo", async (t) => {
   await withCacheDir(() => {
-    cacheCommandOutput("version", "/path/to/codeql", {
-      hello: "world",
-    });
+    const output: VersionInfo = { version: "2.20.0" };
+    cacheCommandOutput("version", "/path/to/codeql", output);
 
     // Tier 1: the value is immediately available from the memo.
-    t.deepEqual(
-      getCachedCommandOutput("version", "/path/to/codeql"),
-      { hello: "world" },
-    );
+    t.deepEqual(getCachedCommandOutput("version", "/path/to/codeql"), output);
   });
 });
 
@@ -188,21 +178,17 @@ test.serial(
   "getCachedCommandOutput prefers the in-memory memo over the file",
   async (t) => {
     await withCacheDir((cacheFilePath) => {
-      cacheCommandOutput("version", "/path/to/codeql", {
-        value: 1,
-      });
+      const output: VersionInfo = { version: "2.20.0", overlayVersion: 1 };
+      cacheCommandOutput("version", "/path/to/codeql", output);
 
       // Overwrite the file with a different value; the memo (tier 1) should win.
       writeCacheFile(cacheFilePath, {
         version: {
           cmd: "/path/to/codeql",
-          output: { value: 2 },
+          output: { version: "2.21.0" },
         },
       });
-      t.deepEqual(
-        getCachedCommandOutput("version", "/path/to/codeql"),
-        { value: 1 },
-      );
+      t.deepEqual(getCachedCommandOutput("version", "/path/to/codeql"), output);
     });
   },
 );

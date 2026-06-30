@@ -15,6 +15,7 @@ import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { CachingKind } from "./caching-utils";
+import type { VersionInfo } from "./cli/output-cache";
 import { resetCachedCommandOutputs } from "./cli/output-cache";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
@@ -479,7 +480,7 @@ export const makeVersionInfo = (
   version: string,
   features?: { [name: string]: boolean },
   overlayVersion?: number,
-): codeql.VersionInfo => ({
+): VersionInfo => ({
   version,
   features,
   overlayVersion,

@@ -15,7 +15,10 @@ import * as api from "./api-client";
 import {
   cacheCommandOutput,
   getCachedCommandOutput,
+  type CommandCacheKeyOutputMap,
   type CommandCacheKey,
+  type ResolveLanguagesOutput,
+  type VersionInfo,
 } from "./cli/output-cache";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
@@ -27,7 +30,6 @@ import {
   FeatureEnablement,
 } from "./feature-flags";
 import { isAnalyzingDefaultBranch } from "./git-utils";
-import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
@@ -41,11 +43,6 @@ import * as util from "./util";
 import { BuildMode, CleanupLevel, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
-
-type CommandCacheKeyOutputMap = {
-  version: VersionInfo;
-  "resolve languages": ResolveLanguagesOutput;
-};
 
 /**
  * Extra command line options for the codeql commands.
@@ -225,71 +222,8 @@ export interface CodeQL {
   ): Promise<void>;
 }
 
-export interface VersionInfo {
-  version: string;
-  features?: { [name: string]: boolean };
-  /**
-   * The overlay version helps deal with backward incompatible changes for
-   * overlay analysis. When a precompiled query pack reports the same overlay
-   * version as the CodeQL CLI, we can use the CodeQL CLI to perform overlay
-   * analysis with that pack. Otherwise, if the overlay versions are different,
-   * or if either the pack or the CLI does not report an overlay version,
-   * we need to revert to non-overlay analysis.
-   */
-  overlayVersion?: number;
-}
-
-/** Returns true if `x` is a {@link VersionInfo}. */
-export function isVersionInfo(x: unknown): x is VersionInfo {
-  return (
-    json.isObject(x) &&
-    json.validateSchema(
-      {
-        version: json.string,
-        features: json.optional(json.object),
-        overlayVersion: json.optional(json.number),
-      },
-      x,
-    )
-  );
-}
-
 export interface ResolveDatabaseOutput {
   overlayBaseSpecifier?: string;
-}
-
-export interface ResolveLanguagesOutput {
-  aliases?: {
-    [alias: string]: string;
-  };
-  extractors: {
-    [language: string]: Array<{
-      extractor_root: string;
-      extractor_options?: any;
-    }>;
-  };
-}
-
-/** Returns true if `x` is a {@link ResolveLanguagesOutput}. */
-export function isResolveLanguagesOutput(
-  x: unknown,
-): x is ResolveLanguagesOutput {
-  return (
-    json.isObject<ResolveLanguagesOutput>(x) &&
-    json.isObject(x.extractors) &&
-    Object.values(x.extractors).every(
-      (extractorList) =>
-        json.isArray(extractorList) &&
-        extractorList.every(
-          (extractor) =>
-            json.isObject<{ extractor_root: unknown }>(extractor) &&
-            json.isString(extractor.extractor_root),
-        ),
-    ) &&
-    (x.aliases === undefined ||
-      (json.isObject(x.aliases) &&
-        Object.values(x.aliases).every((alias) => json.isString(alias))))
-  );
 }
 
 export interface ResolveBuildEnvironmentOutput {
@@ -550,19 +484,13 @@ export async function getCodeQLForTesting(
  * @param key The cache key identifying the command's output.
  * @param cmd The path to the CodeQL CLI the output is obtained from.
  * @param run Invokes the CLI to compute the output when it isn't cached.
- * @param validate Optional type guard for values loaded from the temporary file.
  */
 async function getCachedOrRun<K extends CommandCacheKey>(
   key: K,
   cmd: string,
   run: () => Promise<CommandCacheKeyOutputMap[K]>,
-  validate?: (output: unknown) => output is CommandCacheKeyOutputMap[K],
 ): Promise<CommandCacheKeyOutputMap[K]> {
-  let result = getCachedCommandOutput<CommandCacheKeyOutputMap[K]>(
-    key,
-    cmd,
-    validate,
-  );
+  let result = getCachedCommandOutput(key, cmd);
   if (result === undefined) {
     result = await run();
     cacheCommandOutput(key, cmd, result);
@@ -587,14 +515,10 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      return getCachedOrRun(
-        "version",
-        cmd,
-        () =>
-          runCliJson<VersionInfo>(cmd, ["version", "--format=json"], {
-            noStreamStdout: true,
-          }),
-        isVersionInfo,
+      return getCachedOrRun("version", cmd, () =>
+        runCliJson<VersionInfo>(cmd, ["version", "--format=json"], {
+          noStreamStdout: true,
+        }),
       );
     },
     async printVersion() {
@@ -794,31 +718,26 @@ async function getCodeQLForCmd(
       await runCli(cmd, args);
     },
     async resolveLanguages() {
-      return getCachedOrRun(
-        "resolve languages",
-        cmd,
-        async () => {
-          const isFilterToLanguagesWithQueriesSupported =
-            await this.supportsFeature(
-              ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
-            );
-          return runCliJson<ResolveLanguagesOutput>(cmd, [
-            "resolve",
-            "languages",
-            "--format=betterjson",
-            "--extractor-options-verbosity=4",
-            "--extractor-include-aliases",
-            // TODO: Unconditionally include `--filter-to-languages-with-queries`
-            //       once CODEQL_MINIMUM_VERSION is at least v2.23.0
-            //       — the first version to support this flag.
-            ...(isFilterToLanguagesWithQueriesSupported
-              ? ["--filter-to-languages-with-queries"]
-              : []),
-            ...getExtraOptionsFromEnv(["resolve", "languages"]),
-          ]);
-        },
-        isResolveLanguagesOutput,
-      );
+      return getCachedOrRun("resolve languages", cmd, async () => {
+        const isFilterToLanguagesWithQueriesSupported =
+          await this.supportsFeature(
+            ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
+          );
+        return runCliJson<ResolveLanguagesOutput>(cmd, [
+          "resolve",
+          "languages",
+          "--format=betterjson",
+          "--extractor-options-verbosity=4",
+          "--extractor-include-aliases",
+          // TODO: Unconditionally include `--filter-to-languages-with-queries`
+          //       once CODEQL_MINIMUM_VERSION is at least v2.23.0
+          //       — the first version to support this flag.
+          ...(isFilterToLanguagesWithQueriesSupported
+            ? ["--filter-to-languages-with-queries"]
+            : []),
+          ...getExtraOptionsFromEnv(["resolve", "languages"]),
+        ]);
+      });
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,

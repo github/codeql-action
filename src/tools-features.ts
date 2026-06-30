@@ -1,6 +1,6 @@
 import * as semver from "semver";
 
-import type { VersionInfo } from "./codeql";
+import type { VersionInfo } from "./cli/output-cache";
 
 export enum ToolsFeature {
   BuiltinExtractorsSpecifyDefaultQueries = "builtinExtractorsSpecifyDefaultQueries",

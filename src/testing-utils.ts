@@ -10,6 +10,7 @@ import test, {
 import nock from "nock";
 import * as sinon from "sinon";
 
+import { ActionState } from "./action-common";
 import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
@@ -186,6 +187,82 @@ export function getTestActionsEnv(): ActionsEnv {
   return {
     getOptionalInput: () => undefined,
   };
+}
+
+/**
+ * Wraps a function that accepts an `ActionEnv` for testing in different environments.
+ */
+export class TestEnv<Args extends readonly any[], R> {
+  private readonly fn: (state: ActionState, ...args: Args) => R;
+  private args?: Args;
+  private state: ActionState;
+
+  constructor(
+    fn: (state: ActionState, ...args: Args) => R,
+    args?: Args,
+    initialState?: ActionState,
+  ) {
+    this.fn = fn;
+    this.args = args;
+    this.state = initialState || {
+      logger: new RecordingLogger(),
+      env: getTestEnv(),
+      features: createFeatures([]),
+    };
+  }
+
+  private clone(): TestEnv<Args, R> {
+    return new TestEnv(this.fn, this.args, { ...this.state });
+  }
+
+  public getState(): ActionState {
+    return this.state;
+  }
+
+  public getArgs(): Args | undefined {
+    return this.args;
+  }
+
+  public withArgs(...args: Args) {
+    const result = this.clone();
+    result.args = args;
+    return result;
+  }
+
+  public withFeatures(enabled: Feature[]): TestEnv<Args, R> {
+    const result = this.clone();
+    result.state.features = createFeatures(enabled);
+    return result;
+  }
+
+  public withEnv(env: Env): TestEnv<Args, R> {
+    const result = this.clone();
+    result.state.env = env;
+    return result;
+  }
+
+  call(): R {
+    if (!this.args) {
+      throw new Error("Trying to call function in TestEnv without arguments.");
+    }
+    return this.fn(this.state, ...this.args);
+  }
+
+  public passes<T>(
+    assertion: (makeCall: () => R) => T | Promise<T>,
+  ): T | Promise<T> {
+    return assertion(() => {
+      const result = this.call();
+      return result;
+    });
+  }
+}
+
+/** Utility function to construct a `TestEnv`. */
+export function callee<Args extends readonly any[], R>(
+  fn: (state: ActionState, ...args: Args) => R,
+): TestEnv<Args, R> {
+  return new TestEnv(fn);
 }
 
 /**

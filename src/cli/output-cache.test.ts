@@ -4,14 +4,15 @@ import path from "path";
 
 import test from "ava";
 
+import { isVersionInfo } from "../codeql";
+import { setupTests } from "../testing-utils";
+
 import {
   cacheCommandOutput,
   getCachedCommandOutput,
   resetCachedCommandOutputs,
   CommandCacheKey,
-} from "./cache";
-import { isVersionInfo } from "./codeql";
-import { setupTests } from "./testing-utils";
+} from "./output-cache";
 
 setupTests(test);
 

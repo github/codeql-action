@@ -19,12 +19,12 @@ import {
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion, GitHubApiCombinedDetails } from "./api-client";
-import { writeCommandCacheFile } from "./cache";
 import {
   getDependencyCachingEnabled,
   getTotalCacheSize,
   shouldRestoreCache,
 } from "./caching-utils";
+import { writeCommandCacheFile } from "./cli/output-cache";
 import { CodeQL } from "./codeql";
 import { getConfigFileInput } from "./config/file";
 import * as configUtils from "./config-utils";

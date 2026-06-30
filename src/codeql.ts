@@ -16,7 +16,7 @@ import {
   cacheCommandOutput,
   getCachedCommandOutput,
   CommandCacheKey,
-} from "./cache";
+} from "./cli/output-cache";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";

@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import { getTemporaryDirectory } from "./actions-util";
-import * as json from "./json";
-import { getActionsLogger } from "./logging";
+import { getTemporaryDirectory } from "../actions-util";
+import * as json from "../json";
+import { getActionsLogger } from "../logging";
 
 /**
  * The name of the temporary file that backs the on-disk cache of

@@ -12,7 +12,7 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { getCachedCommandOutput, CommandCacheKey } from "./cache";
+import { getCachedCommandOutput, CommandCacheKey } from "./cli/output-cache";
 import { isVersionInfo } from "./codeql";
 import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
 import { DependencyCacheRestoreStatusReport } from "./dependency-caching";

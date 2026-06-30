@@ -10,7 +10,7 @@ import test, {
 import nock from "nock";
 import * as sinon from "sinon";
 
-import { ActionState } from "./action-common";
+import { ActionState, StateFeature } from "./action-common";
 import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
@@ -189,18 +189,25 @@ export function getTestActionsEnv(): ActionsEnv {
   };
 }
 
+/** For testing purposes, we make all available state features accessible in `TestEnv`. */
+type AllState = ["Logger", "Env", "FeatureFlags"];
+
 /**
  * Wraps a function that accepts an `ActionEnv` for testing in different environments.
  */
-export class TestEnv<Args extends readonly any[], R> {
-  private readonly fn: (state: ActionState, ...args: Args) => R;
+export class TestEnv<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> {
+  private readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
   private args?: Args;
-  private state: ActionState;
+  private state: ActionState<AllState>;
 
   constructor(
-    fn: (state: ActionState, ...args: Args) => R,
+    fn: (state: ActionState<Fs>, ...args: Args) => R,
     args?: Args,
-    initialState?: ActionState,
+    initialState?: ActionState<AllState>,
   ) {
     this.fn = fn;
     this.args = args;
@@ -211,11 +218,11 @@ export class TestEnv<Args extends readonly any[], R> {
     };
   }
 
-  private clone(): TestEnv<Args, R> {
+  private clone(): TestEnv<Args, R, Fs> {
     return new TestEnv(this.fn, this.args, { ...this.state });
   }
 
-  public getState(): ActionState {
+  public getState(): ActionState<AllState> {
     return this.state;
   }
 
@@ -229,13 +236,13 @@ export class TestEnv<Args extends readonly any[], R> {
     return result;
   }
 
-  public withFeatures(enabled: Feature[]): TestEnv<Args, R> {
+  public withFeatures(enabled: Feature[]): TestEnv<Args, R, Fs> {
     const result = this.clone();
     result.state.features = createFeatures(enabled);
     return result;
   }
 
-  public withEnv(env: Env): TestEnv<Args, R> {
+  public withEnv(env: Env): TestEnv<Args, R, Fs> {
     const result = this.clone();
     result.state.env = env;
     return result;
@@ -245,7 +252,7 @@ export class TestEnv<Args extends readonly any[], R> {
     if (!this.args) {
       throw new Error("Trying to call function in TestEnv without arguments.");
     }
-    return this.fn(this.state, ...this.args);
+    return this.fn(this.state as ActionState<Fs>, ...this.args);
   }
 
   public passes<T>(
@@ -259,9 +266,11 @@ export class TestEnv<Args extends readonly any[], R> {
 }
 
 /** Utility function to construct a `TestEnv`. */
-export function callee<Args extends readonly any[], R>(
-  fn: (state: ActionState, ...args: Args) => R,
-): TestEnv<Args, R> {
+export function callee<
+  Args extends readonly any[],
+  R,
+  Fs extends readonly StateFeature[],
+>(fn: (state: ActionState<Fs>, ...args: Args) => R): TestEnv<Args, R, Fs> {
   return new TestEnv(fn);
 }
 

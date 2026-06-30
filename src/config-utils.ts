@@ -602,7 +602,7 @@ async function downloadCacheWithTime(
 }
 
 async function loadUserConfig(
-  actionState: ActionState,
+  actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   configFile: string,
   workspacePath: string,
   apiDetails: api.GitHubApiCombinedDetails,
@@ -1160,7 +1160,7 @@ export async function initConfig(
     logger.debug("No configuration file was provided");
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
-    const actionState: ActionState = { logger, features, env: getEnv() };
+    const actionState = { logger, features, env: getEnv() };
     userConfig = await loadUserConfig(
       actionState,
       inputs.configFile,

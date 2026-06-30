@@ -51,7 +51,7 @@ export function getConfigFileInput(
  * @returns The `UserConfig`, if it could be fetched and parsed successfully.
  */
 export async function getRemoteConfig(
-  actionState: ActionState,
+  actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   configFile: string,
   apiDetails: api.GitHubApiCombinedDetails,
 ): Promise<UserConfig> {

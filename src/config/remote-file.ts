@@ -80,7 +80,7 @@ function parseOldRemoteFileAddress(
  * @throws `ConfigurationError` if the format of `configFile` is not valid.
  */
 export async function parseRemoteFileAddress(
-  actionState: ActionState,
+  actionState: ActionState<["FeatureFlags", "Env"]>,
   configFile: string,
 ): Promise<RemoteFileAddress> {
   // Try to parse the input using the old format. If successful, return the

@@ -1,6 +1,8 @@
+import { ActionState } from "../action-common";
 import { ActionsEnvVars } from "../actions-util";
 import { Env } from "../environment";
 import * as errorMessages from "../error-messages";
+import { Feature } from "../feature-flags";
 import { ConfigurationError, Failure, Result, Success } from "../util";
 
 /** Represents remote file addresses. */
@@ -72,21 +74,31 @@ function parseOldRemoteFileAddress(
 /**
  * Attempts to parse `configFile` into an array of `RemoteFileAddress` components.
  *
- * @param env The current environment variables.
+ * @param actionState The current Action state.
  * @param configFile The string to try and parse.
  * @returns The successful result of executing the regex.
  * @throws `ConfigurationError` if the format of `configFile` is not valid.
  */
-export function parseRemoteFileAddress(
-  env: Env,
+export async function parseRemoteFileAddress(
+  actionState: ActionState,
   configFile: string,
-): RemoteFileAddress {
+): Promise<RemoteFileAddress> {
   // Try to parse the input using the old format. If successful, return the
   // resulting `RemoteFileAddress`. Otherwise, continue using the new format.
   const oldFormatAddressResult = parseOldRemoteFileAddress(configFile);
 
   if (oldFormatAddressResult.isSuccess()) {
     return oldFormatAddressResult.value;
+  }
+
+  // If the FF for the new format is not enabled, throw the old format error.
+  const allowNewFormat = await actionState.features.getValue(
+    Feature.NewRemoteFileAddresses,
+  );
+  if (!allowNewFormat) {
+    throw new ConfigurationError(
+      errorMessages.getConfigFileRepoOldFormatInvalidMessage(configFile),
+    );
   }
 
   // retrieve the various parts of the config location, and ensure they're present
@@ -119,7 +131,7 @@ export function parseRemoteFileAddress(
   }
 
   return {
-    owner: owner || getDefaultOwner(env),
+    owner: owner || getDefaultOwner(actionState.env),
     repo,
     path: path || DEFAULT_CONFIG_FILE_NAME,
     ref: ref || DEFAULT_CONFIG_FILE_REF,

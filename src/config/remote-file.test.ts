@@ -2,7 +2,9 @@ import test from "ava";
 import sinon from "sinon";
 
 import { ActionsEnvVars } from "../actions-util";
-import { getTestEnv } from "../testing-utils";
+import * as errors from "../error-messages";
+import { Feature } from "../feature-flags";
+import { callee, getTestEnv } from "../testing-utils";
 import { ConfigurationError } from "../util";
 
 import {
@@ -12,230 +14,220 @@ import {
   RemoteFileAddress,
 } from "./remote-file";
 
+type ParseRemoteFileAddressTest = {
+  input: string;
+  expected: RemoteFileAddress;
+};
+
 test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
-  const env = getTestEnv();
+  const target = callee(parseRemoteFileAddress);
 
-  // Old format.
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path@ref"), {
+  const expected: RemoteFileAddress = {
     owner: "owner",
     repo: "repo",
     path: "path",
     ref: "ref",
-  } satisfies RemoteFileAddress);
+  };
 
-  t.deepEqual(parseRemoteFileAddress(env, "owner  /repo/path@ref"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/   repo/path@ref"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo   /path@ref"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/   path@ref"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path   @ref"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo/path@   ref"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(
-    parseRemoteFileAddress(env, "owner/repo/path/to/codeql.yml@ref/feature"),
+  const oldFormatInputs: ParseRemoteFileAddressTest[] = [
+    { input: "owner/repo/path@ref", expected },
+    { input: "owner  /repo/path@ref", expected },
+    { input: "owner/   repo/path@ref", expected },
+    { input: "owner/repo   /path@ref", expected },
+    { input: "owner/repo/   path@ref", expected },
+    { input: "owner/repo/path   @ref", expected },
+    { input: "owner/repo/path@   ref", expected },
     {
-      owner: "owner",
-      repo: "repo",
-      path: "path/to/codeql.yml",
-      ref: "ref/feature",
-    } satisfies RemoteFileAddress,
-  );
-
-  t.deepEqual(
-    parseRemoteFileAddress(
-      env,
-      "  owner/repo/path/to/codeql.yml@ref/feature  ",
-    ),
+      input: "owner/repo/path/to/codeql.yml@ref/feature",
+      expected: { ...expected, path: "path/to/codeql.yml", ref: "ref/feature" },
+    },
     {
-      owner: "owner",
-      repo: "repo",
-      path: "path/to/codeql.yml",
-      ref: "ref/feature",
-    } satisfies RemoteFileAddress,
-  );
+      input: "  owner/repo/path/to/codeql.yml@ref/feature  ",
+      expected: { ...expected, path: "path/to/codeql.yml", ref: "ref/feature" },
+    },
+  ];
+
+  for (const oldFormatInput of oldFormatInputs) {
+    await target
+      .withArgs(oldFormatInput.input)
+      .passes(async (fn) => t.deepEqual(await fn(), oldFormatInput.expected));
+  }
 
   // New format.
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo@ref:path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner  /repo@ref:path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/   repo@ref:path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo   @ref:path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo@   ref:path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo@ref   :path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo@ref:   path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
-
-  t.deepEqual(
-    parseRemoteFileAddress(env, "owner/repo@ref/feature:path/to/codeql.yml"),
+  const newFormatInputs: ParseRemoteFileAddressTest[] = [
+    { input: "owner/repo@ref:path", expected },
+    { input: "owner  /repo@ref:path", expected },
+    { input: "owner/   repo@ref:path", expected },
+    { input: "owner/repo   @ref:path", expected },
+    { input: "owner/repo@   ref:path", expected },
+    { input: "owner/repo@ref   :path", expected },
+    { input: "owner/repo@ref:   path", expected },
     {
-      owner: "owner",
-      repo: "repo",
-      path: "path/to/codeql.yml",
-      ref: "ref/feature",
-    } satisfies RemoteFileAddress,
-  );
-
-  t.deepEqual(
-    parseRemoteFileAddress(
-      env,
-      "  owner/repo@ref/feature:path/to/codeql.yml  ",
-    ),
+      input: "owner/repo@ref/feature:path/to/codeql.yml",
+      expected: { ...expected, path: "path/to/codeql.yml", ref: "ref/feature" },
+    },
     {
-      owner: "owner",
-      repo: "repo",
-      path: "path/to/codeql.yml",
-      ref: "ref/feature",
-    } satisfies RemoteFileAddress,
-  );
+      input: "  owner/repo@ref/feature:path/to/codeql.yml  ",
+      expected: { ...expected, path: "path/to/codeql.yml", ref: "ref/feature" },
+    },
+  ];
+
+  for (const newFormatInput of newFormatInputs) {
+    const targetWithArgs = target.withArgs(newFormatInput.input);
+
+    // Should fail when the FF is not enabled.
+    await targetWithArgs
+      .withFeatures([])
+      .passes(async (fn) =>
+        t.throwsAsync(fn, { instanceOf: ConfigurationError }),
+      );
+
+    // And pass when the FF is enabled.
+    await targetWithArgs
+      .withFeatures([Feature.NewRemoteFileAddresses])
+      .passes(async (fn) => t.deepEqual(await fn(), newFormatInput.expected));
+  }
 });
 
 test("parseRemoteFileAddress accepts remote address without an owner", async (t) => {
-  const env = getTestEnv();
+  const target = callee(parseRemoteFileAddress);
+
+  const env = target.getState().env;
   const owner = "test-owner";
   const getRequired = sinon.stub(env, "getRequired");
   getRequired
     .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
     .returns(`${owner}/current-repo`);
 
-  t.deepEqual(parseRemoteFileAddress(env, "repo@ref:path.yml"), {
-    owner,
-    repo: "repo",
-    path: "path.yml",
-    ref: "ref",
-  } satisfies RemoteFileAddress);
+  const targetWithEnv = target.withEnv(env);
 
-  t.deepEqual(parseRemoteFileAddress(env, "repo@ref"), {
-    owner,
-    repo: "repo",
-    path: DEFAULT_CONFIG_FILE_NAME,
-    ref: "ref",
-  } satisfies RemoteFileAddress);
+  const testCases: ParseRemoteFileAddressTest[] = [
+    {
+      input: "repo@ref:path.yml",
+      expected: {
+        owner,
+        repo: "repo",
+        path: "path.yml",
+        ref: "ref",
+      },
+    },
+    {
+      input: "repo@ref",
+      expected: {
+        owner,
+        repo: "repo",
+        path: DEFAULT_CONFIG_FILE_NAME,
+        ref: "ref",
+      },
+    },
+    {
+      input: "repo:path.yml",
+      expected: {
+        owner,
+        repo: "repo",
+        path: "path.yml",
+        ref: DEFAULT_CONFIG_FILE_REF,
+      },
+    },
+    {
+      input: "repo",
+      expected: {
+        owner,
+        repo: "repo",
+        path: DEFAULT_CONFIG_FILE_NAME,
+        ref: DEFAULT_CONFIG_FILE_REF,
+      },
+    },
+  ];
 
-  t.deepEqual(parseRemoteFileAddress(env, "repo:path.yml"), {
-    owner,
-    repo: "repo",
-    path: "path.yml",
-    ref: DEFAULT_CONFIG_FILE_REF,
-  } satisfies RemoteFileAddress);
+  for (const testCase of testCases) {
+    const targetWithArgs = targetWithEnv.withArgs(testCase.input);
 
-  t.deepEqual(parseRemoteFileAddress(env, "repo"), {
-    owner,
-    repo: "repo",
-    path: DEFAULT_CONFIG_FILE_NAME,
-    ref: DEFAULT_CONFIG_FILE_REF,
-  } satisfies RemoteFileAddress);
+    // Should fail when the FF is not enabled.
+    await targetWithArgs
+      .withFeatures([])
+      .passes(async (fn) =>
+        t.throwsAsync(fn, { instanceOf: ConfigurationError }),
+      );
+
+    // And pass when the FF is enabled.
+    await targetWithArgs
+      .withFeatures([Feature.NewRemoteFileAddresses])
+      .passes(async (fn) => t.deepEqual(await fn(), testCase.expected));
+  }
 });
 
 test("parseRemoteFileAddress throws for invalid `GITHUB_REPOSITORY`", async (t) => {
-  const env = getTestEnv();
+  const target = callee(parseRemoteFileAddress).withArgs("repo@ref");
+
+  const env = target.getState().env;
   const getRequired = sinon.stub(env, "getRequired");
   getRequired.withArgs(ActionsEnvVars.GITHUB_REPOSITORY).returns(`not-valid`);
 
-  t.throws(() => parseRemoteFileAddress(env, "repo@ref"), {
-    instanceOf: Error,
-  });
+  await target
+    .withEnv(env)
+    .withFeatures([Feature.NewRemoteFileAddresses])
+    .passes(async (fn) => t.throwsAsync(fn, { instanceOf: Error }));
+
+  t.assert(getRequired.calledOnceWith(ActionsEnvVars.GITHUB_REPOSITORY));
 });
 
 test("parseRemoteFileAddress accepts remote address without a path", async (t) => {
-  const env = getTestEnv();
+  const target = callee(parseRemoteFileAddress);
 
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo@ref"), {
-    owner: "owner",
-    repo: "repo",
-    path: DEFAULT_CONFIG_FILE_NAME,
-    ref: "ref",
-  } satisfies RemoteFileAddress);
+  const testCases: ParseRemoteFileAddressTest[] = [
+    {
+      input: "owner/repo@ref",
+      expected: {
+        owner: "owner",
+        repo: "repo",
+        path: DEFAULT_CONFIG_FILE_NAME,
+        ref: "ref",
+      },
+    },
+    {
+      input: "owner/repo",
+      expected: {
+        owner: "owner",
+        repo: "repo",
+        path: DEFAULT_CONFIG_FILE_NAME,
+        ref: DEFAULT_CONFIG_FILE_REF,
+      },
+    },
+  ];
 
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo"), {
-    owner: "owner",
-    repo: "repo",
-    path: DEFAULT_CONFIG_FILE_NAME,
-    ref: DEFAULT_CONFIG_FILE_REF,
-  } satisfies RemoteFileAddress);
+  for (const testCase of testCases) {
+    const targetWithArgs = target.withArgs(testCase.input);
+
+    // Should fail when the FF is not enabled.
+    await targetWithArgs
+      .withFeatures([])
+      .passes(async (fn) =>
+        t.throwsAsync(fn, { instanceOf: ConfigurationError }),
+      );
+
+    // And pass when the FF is enabled.
+    await targetWithArgs
+      .withFeatures([Feature.NewRemoteFileAddresses])
+      .passes(async (fn) => t.deepEqual(await fn(), testCase.expected));
+  }
 });
 
 test("parseRemoteFileAddress accepts remote address without a ref", async (t) => {
-  const env = getTestEnv();
+  const target = callee(parseRemoteFileAddress).withArgs("owner/repo:path");
 
-  t.deepEqual(parseRemoteFileAddress(env, "owner/repo:path"), {
-    owner: "owner",
-    repo: "repo",
-    path: "path",
-    ref: DEFAULT_CONFIG_FILE_REF,
-  } satisfies RemoteFileAddress);
+  // Should only accept the input if the FF is enabled.
+  await target.withFeatures([]).passes(t.throwsAsync);
+  await target
+    .withFeatures([Feature.NewRemoteFileAddresses])
+    .passes(async (fn) =>
+      t.deepEqual(await fn(), {
+        owner: "owner",
+        repo: "repo",
+        path: "path",
+        ref: DEFAULT_CONFIG_FILE_REF,
+      } satisfies RemoteFileAddress),
+    );
 });
 
 test("parseRemoteFileAddress rejects invalid values", async (t) => {
@@ -246,49 +238,45 @@ test("parseRemoteFileAddress rejects invalid values", async (t) => {
     .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
     .returns(`${owner}/current-repo`);
 
-  t.throws(() => parseRemoteFileAddress(env, "  "), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "repo//absolute"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "repo:/absolute"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "/repo@ref"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "   /repo@ref"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "repo@"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "repo:"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "repo/"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "/repo"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, ":path"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "@ref"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "@ref:path"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "owner/@ref:path"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "owner/@ref"), {
-    instanceOf: ConfigurationError,
-  });
-  t.throws(() => parseRemoteFileAddress(env, "owner/:path"), {
-    instanceOf: ConfigurationError,
-  });
+  const target = callee(parseRemoteFileAddress).withEnv(env);
+
+  const testInputs = [
+    "  ",
+    "repo//absolute",
+    "repo:/absolute",
+    "/repo@ref",
+    "   /repo@ref",
+    "repo@",
+    "repo:",
+    "repo/",
+    "/repo",
+    ":path",
+    "@ref",
+    "@ref:path",
+    "owner/@ref:path",
+    "owner/@ref",
+    "owner/:path",
+  ];
+
+  for (const testInput of testInputs) {
+    const targetWithArgs = target.withArgs(testInput);
+
+    // Should throw both when the new format is and isn't accepted.
+    await targetWithArgs.withFeatures([]).passes(async (fn) =>
+      t.throwsAsync(fn, {
+        instanceOf: ConfigurationError,
+        message: errors.getConfigFileRepoOldFormatInvalidMessage(testInput),
+      }),
+    );
+    await targetWithArgs
+      .withFeatures([Feature.NewRemoteFileAddresses])
+      .passes(async (fn) =>
+        t.throwsAsync(fn, {
+          // When the new format is accepted, there are some more specific
+          // errors in some cases. It is sufficient for us to check that
+          // an exception is thrown.
+          instanceOf: ConfigurationError,
+        }),
+      );
+  }
 });

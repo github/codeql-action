@@ -5,6 +5,7 @@ import { performance } from "perf_hooks";
 import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
+import { ActionState } from "./action-common";
 import {
   getActionVersion,
   getOptionalInput,
@@ -78,6 +79,7 @@ import {
   Success,
   Failure,
   isHostedRunner,
+  getEnv,
 } from "./util";
 
 /**
@@ -600,12 +602,11 @@ async function downloadCacheWithTime(
 }
 
 async function loadUserConfig(
-  logger: Logger,
+  actionState: ActionState,
   configFile: string,
   workspacePath: string,
   apiDetails: api.GitHubApiCombinedDetails,
   tempDir: string,
-  validateConfig: boolean,
 ): Promise<UserConfig> {
   if (isLocal(configFile)) {
     if (configFile !== userConfigFromActionPath(tempDir)) {
@@ -618,14 +619,12 @@ async function loadUserConfig(
         );
       }
     }
-    return getLocalConfig(logger, configFile, validateConfig);
-  } else {
-    return await getRemoteConfig(
-      logger,
-      configFile,
-      apiDetails,
-      validateConfig,
+    const validateConfig = await actionState.features.getValue(
+      Feature.ValidateDbConfig,
     );
+    return getLocalConfig(actionState.logger, configFile, validateConfig);
+  } else {
+    return await getRemoteConfig(actionState, configFile, apiDetails);
   }
 }
 
@@ -1161,14 +1160,13 @@ export async function initConfig(
     logger.debug("No configuration file was provided");
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
-    const validateConfig = await features.getValue(Feature.ValidateDbConfig);
+    const actionState: ActionState = { logger, features, env: getEnv() };
     userConfig = await loadUserConfig(
-      logger,
+      actionState,
       inputs.configFile,
       inputs.workspacePath,
       inputs.apiDetails,
       tempDir,
-      validateConfig,
     );
   }
 

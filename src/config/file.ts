@@ -1,6 +1,8 @@
+import { ActionState } from "../action-common";
 import { ActionsEnv } from "../actions-util";
 import * as api from "../api-client";
 import * as errorMessages from "../error-messages";
+import { Feature } from "../feature-flags";
 import {
   RepositoryProperties,
   RepositoryPropertyName,
@@ -42,18 +44,16 @@ export function getConfigFileInput(
 /**
  * Attempts to fetch a `UserConfig` from a remote `address`.
  *
- * @param logger The logger to use.
+ * @param actionState The current Action state.
  * @param configFile The remote address of the configuration file.
  * @param apiDetails Information about how to connect to the API.
- * @param validateConfig Whether to validate the configuration.
  *
  * @returns The `UserConfig`, if it could be fetched and parsed successfully.
  */
 export async function getRemoteConfig(
-  logger: Logger,
+  actionState: ActionState,
   configFile: string,
   apiDetails: api.GitHubApiCombinedDetails,
-  validateConfig: boolean,
 ): Promise<UserConfig> {
   const address = parseRemoteFileAddress(getEnv(), configFile);
 
@@ -79,8 +79,11 @@ export async function getRemoteConfig(
     );
   }
 
+  const validateConfig = await actionState.features.getValue(
+    Feature.ValidateDbConfig,
+  );
   return parseUserConfig(
-    logger,
+    actionState.logger,
     configFile,
     Buffer.from(fileContents, "base64").toString("binary"),
     validateConfig,

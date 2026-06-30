@@ -8,6 +8,7 @@ import { setupTests } from "../testing-utils";
 
 import {
   cacheCommandOutput,
+  CommandCacheKey,
   getCachedCommandOutput,
   resetCachedCommandOutputs,
   type VersionInfo,
@@ -51,16 +52,13 @@ test.serial(
   async (t) => {
     await withCacheDir((cacheFilePath) => {
       writeCacheFile(cacheFilePath, {
-        version: {
+        [CommandCacheKey.Version]: {
           cmd: "/path/to/codeql",
           output: { version: "2.20.0" },
         },
       });
       t.deepEqual(
-        getCachedCommandOutput(
-          "version",
-          "/path/to/codeql",
-        ),
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
         { version: "2.20.0" },
       );
     });
@@ -72,16 +70,13 @@ test.serial(
   async (t) => {
     await withCacheDir((cacheFilePath) => {
       writeCacheFile(cacheFilePath, {
-        version: {
+        [CommandCacheKey.Version]: {
           cmd: "/path/to/other-codeql",
           output: { version: "2.20.0" },
         },
       });
       t.is(
-        getCachedCommandOutput(
-          "version",
-          "/path/to/codeql",
-        ),
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
         undefined,
       );
     });
@@ -94,10 +89,7 @@ test.serial(
     await withCacheDir((cacheFilePath) => {
       fs.writeFileSync(cacheFilePath, "not valid json");
       t.is(
-        getCachedCommandOutput(
-          "version",
-          "/path/to/codeql",
-        ),
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
         undefined,
       );
     });
@@ -109,10 +101,7 @@ test.serial(
   async (t) => {
     await withCacheDir(() => {
       t.is(
-        getCachedCommandOutput(
-          "version",
-          "/path/to/codeql",
-        ),
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
         undefined,
       );
     });
@@ -131,13 +120,10 @@ test.serial(
       ]) {
         resetCachedCommandOutputs();
         writeCacheFile(cacheFilePath, {
-          version: { cmd: "/path/to/codeql", output },
+          [CommandCacheKey.Version]: { cmd: "/path/to/codeql", output },
         });
         t.is(
-          getCachedCommandOutput(
-            "version",
-            "/path/to/codeql",
-          ),
+          getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
           undefined,
           JSON.stringify(output),
         );
@@ -151,13 +137,10 @@ test.serial(
   async (t) => {
     await withCacheDir((cacheFilePath) => {
       writeCacheFile(cacheFilePath, {
-        version: { output: { version: "2.20.0" } },
+        [CommandCacheKey.Version]: { output: { version: "2.20.0" } },
       });
       t.is(
-        getCachedCommandOutput(
-          "version",
-          "/path/to/codeql",
-        ),
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
         undefined,
       );
     });
@@ -167,10 +150,13 @@ test.serial(
 test.serial("cacheCommandOutput persists the output to the memo", async (t) => {
   await withCacheDir(() => {
     const output: VersionInfo = { version: "2.20.0" };
-    cacheCommandOutput("version", "/path/to/codeql", output);
+    cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", output);
 
     // Tier 1: the value is immediately available from the memo.
-    t.deepEqual(getCachedCommandOutput("version", "/path/to/codeql"), output);
+    t.deepEqual(
+      getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+      output,
+    );
   });
 });
 
@@ -179,16 +165,19 @@ test.serial(
   async (t) => {
     await withCacheDir((cacheFilePath) => {
       const output: VersionInfo = { version: "2.20.0", overlayVersion: 1 };
-      cacheCommandOutput("version", "/path/to/codeql", output);
+      cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", output);
 
       // Overwrite the file with a different value; the memo (tier 1) should win.
       writeCacheFile(cacheFilePath, {
-        version: {
+        [CommandCacheKey.Version]: {
           cmd: "/path/to/codeql",
           output: { version: "2.21.0" },
         },
       });
-      t.deepEqual(getCachedCommandOutput("version", "/path/to/codeql"), output);
+      t.deepEqual(
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+        output,
+      );
     });
   },
 );

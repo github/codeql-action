@@ -14,9 +14,9 @@ import {
 import * as api from "./api-client";
 import {
   cacheCommandOutput,
+  CommandCacheKey,
   getCachedCommandOutput,
   type CommandCacheKeyOutputMap,
-  type CommandCacheKey,
   type ResolveLanguagesOutput,
   type VersionInfo,
 } from "./cli/output-cache";
@@ -515,7 +515,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      return getCachedOrRun("version", cmd, () =>
+      return getCachedOrRun(CommandCacheKey.Version, cmd, () =>
         runCliJson<VersionInfo>(cmd, ["version", "--format=json"], {
           noStreamStdout: true,
         }),
@@ -718,7 +718,7 @@ async function getCodeQLForCmd(
       await runCli(cmd, args);
     },
     async resolveLanguages() {
-      return getCachedOrRun("resolve languages", cmd, async () => {
+      return getCachedOrRun(CommandCacheKey.ResolveLanguages, cmd, async () => {
         const isFilterToLanguagesWithQueriesSupported =
           await this.supportsFeature(
             ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,

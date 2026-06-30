@@ -12,7 +12,7 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { getCachedCommandOutput } from "./cli/output-cache";
+import { CommandCacheKey, getCachedCommandOutput } from "./cli/output-cache";
 import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
 import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
@@ -283,7 +283,10 @@ export async function createStatusReportBase(
       core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
     }
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
-    const codeQlCliVersion = getCachedCommandOutput("version", undefined);
+    const codeQlCliVersion = getCachedCommandOutput(
+      CommandCacheKey.Version,
+      undefined,
+    );
     const actionRef = process.env["GITHUB_ACTION_REF"] || "";
     const testingEnvironment = getTestingEnvironment();
     // re-export the testing environment variable so that it is available to subsequent steps,

@@ -12,7 +12,10 @@ import { getActionsLogger } from "../logging";
 const COMMAND_CACHE_FILENAME = "codeql-action-command-cache.json";
 
 /** A key used to identify cached command output. */
-export type CommandCacheKey = "version" | "resolve languages";
+export enum CommandCacheKey {
+  Version = "version",
+  ResolveLanguages = "resolve languages",
+}
 
 export interface VersionInfo {
   version: string;
@@ -78,8 +81,8 @@ export function isResolveLanguagesOutput(
 }
 
 export type CommandCacheKeyOutputMap = {
-  version: VersionInfo;
-  "resolve languages": ResolveLanguagesOutput;
+  [CommandCacheKey.Version]: VersionInfo;
+  [CommandCacheKey.ResolveLanguages]: ResolveLanguagesOutput;
 };
 
 const commandCacheValidators: {
@@ -87,8 +90,8 @@ const commandCacheValidators: {
     output: unknown,
   ) => output is CommandCacheKeyOutputMap[K];
 } = {
-  version: isVersionInfo,
-  "resolve languages": isResolveLanguagesOutput,
+  [CommandCacheKey.Version]: isVersionInfo,
+  [CommandCacheKey.ResolveLanguages]: isResolveLanguagesOutput,
 };
 
 interface StoredCommandCacheEntry {
@@ -174,8 +177,8 @@ export function cacheCommandOutput<K extends CommandCacheKey>(
  *
  * Resolves tier 1 (in-memory memo) first, then tier 2 (temporary file). A value
  * loaded from the file is ignored unless its `cmd` matches the optional `cmd`
- * argument, and it satisfies the optional `validate` type guard; valid values
- * are memoized into tier 1 before being returned.
+ * argument and its output satisfies the internal validator for `key`; valid
+ * values are memoized into tier 1 before being returned.
  *
  * A return value of `undefined` signals the caller to fall back to tier 3 (the
  * CLI).

@@ -15,7 +15,7 @@ import * as api from "./api-client";
 import {
   cacheCommandOutput,
   getCachedCommandOutput,
-  CommandCacheKey,
+  type CommandCacheKey,
 } from "./cli/output-cache";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
@@ -41,6 +41,11 @@ import * as util from "./util";
 import { BuildMode, CleanupLevel, getErrorMessage } from "./util";
 
 type Options = Array<string | number | boolean>;
+
+type CommandCacheKeyOutputMap = {
+  version: VersionInfo;
+  "resolve languages": ResolveLanguagesOutput;
+};
 
 /**
  * Extra command line options for the codeql commands.
@@ -547,13 +552,17 @@ export async function getCodeQLForTesting(
  * @param run Invokes the CLI to compute the output when it isn't cached.
  * @param validate Optional type guard for values loaded from the temporary file.
  */
-async function getCachedOrRun<T>(
-  key: CommandCacheKey,
+async function getCachedOrRun<K extends CommandCacheKey>(
+  key: K,
   cmd: string,
-  run: () => Promise<T>,
-  validate?: (output: unknown) => output is T,
-): Promise<T> {
-  let result = getCachedCommandOutput<T>(key, cmd, validate);
+  run: () => Promise<CommandCacheKeyOutputMap[K]>,
+  validate?: (output: unknown) => output is CommandCacheKeyOutputMap[K],
+): Promise<CommandCacheKeyOutputMap[K]> {
+  let result = getCachedCommandOutput<CommandCacheKeyOutputMap[K]>(
+    key,
+    cmd,
+    validate,
+  );
   if (result === undefined) {
     result = await run();
     cacheCommandOutput(key, cmd, result);
@@ -579,7 +588,7 @@ async function getCodeQLForCmd(
     },
     async getVersion() {
       return getCachedOrRun(
-        CommandCacheKey.Version,
+        "version",
         cmd,
         () =>
           runCliJson<VersionInfo>(cmd, ["version", "--format=json"], {
@@ -786,7 +795,7 @@ async function getCodeQLForCmd(
     },
     async resolveLanguages() {
       return getCachedOrRun(
-        CommandCacheKey.ResolveLanguages,
+        "resolve languages",
         cmd,
         async () => {
           const isFilterToLanguagesWithQueriesSupported =

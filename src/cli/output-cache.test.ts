@@ -11,7 +11,6 @@ import {
   cacheCommandOutput,
   getCachedCommandOutput,
   resetCachedCommandOutputs,
-  CommandCacheKey,
 } from "./output-cache";
 
 setupTests(test);
@@ -52,14 +51,14 @@ test.serial(
   async (t) => {
     await withCacheDir((cacheFilePath) => {
       writeCacheFile(cacheFilePath, {
-        [CommandCacheKey.Version]: {
+        version: {
           cmd: "/path/to/codeql",
           output: { version: "2.20.0" },
         },
       });
       t.deepEqual(
         getCachedCommandOutput(
-          CommandCacheKey.Version,
+          "version",
           "/path/to/codeql",
           isVersionInfo,
         ),
@@ -74,14 +73,14 @@ test.serial(
   async (t) => {
     await withCacheDir((cacheFilePath) => {
       writeCacheFile(cacheFilePath, {
-        [CommandCacheKey.Version]: {
+        version: {
           cmd: "/path/to/other-codeql",
           output: { version: "2.20.0" },
         },
       });
       t.is(
         getCachedCommandOutput(
-          CommandCacheKey.Version,
+          "version",
           "/path/to/codeql",
           isVersionInfo,
         ),
@@ -98,7 +97,7 @@ test.serial(
       fs.writeFileSync(cacheFilePath, "not valid json");
       t.is(
         getCachedCommandOutput(
-          CommandCacheKey.Version,
+          "version",
           "/path/to/codeql",
           isVersionInfo,
         ),
@@ -114,7 +113,7 @@ test.serial(
     await withCacheDir(() => {
       t.is(
         getCachedCommandOutput(
-          CommandCacheKey.Version,
+          "version",
           "/path/to/codeql",
           isVersionInfo,
         ),
@@ -136,11 +135,11 @@ test.serial(
       ]) {
         resetCachedCommandOutputs();
         writeCacheFile(cacheFilePath, {
-          [CommandCacheKey.Version]: { cmd: "/path/to/codeql", output },
+          version: { cmd: "/path/to/codeql", output },
         });
         t.is(
           getCachedCommandOutput(
-            CommandCacheKey.Version,
+            "version",
             "/path/to/codeql",
             isVersionInfo,
           ),
@@ -157,11 +156,11 @@ test.serial(
   async (t) => {
     await withCacheDir((cacheFilePath) => {
       writeCacheFile(cacheFilePath, {
-        [CommandCacheKey.Version]: { output: { version: "2.20.0" } },
+        version: { output: { version: "2.20.0" } },
       });
       t.is(
         getCachedCommandOutput(
-          CommandCacheKey.Version,
+          "version",
           "/path/to/codeql",
           isVersionInfo,
         ),
@@ -173,13 +172,13 @@ test.serial(
 
 test.serial("cacheCommandOutput persists the output to the memo", async (t) => {
   await withCacheDir(() => {
-    cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
+    cacheCommandOutput("version", "/path/to/codeql", {
       hello: "world",
     });
 
     // Tier 1: the value is immediately available from the memo.
     t.deepEqual(
-      getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+      getCachedCommandOutput("version", "/path/to/codeql"),
       { hello: "world" },
     );
   });
@@ -189,19 +188,19 @@ test.serial(
   "getCachedCommandOutput prefers the in-memory memo over the file",
   async (t) => {
     await withCacheDir((cacheFilePath) => {
-      cacheCommandOutput(CommandCacheKey.Version, "/path/to/codeql", {
+      cacheCommandOutput("version", "/path/to/codeql", {
         value: 1,
       });
 
       // Overwrite the file with a different value; the memo (tier 1) should win.
       writeCacheFile(cacheFilePath, {
-        [CommandCacheKey.Version]: {
+        version: {
           cmd: "/path/to/codeql",
           output: { value: 2 },
         },
       });
       t.deepEqual(
-        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+        getCachedCommandOutput("version", "/path/to/codeql"),
         { value: 1 },
       );
     });

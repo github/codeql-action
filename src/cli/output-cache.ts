@@ -11,15 +11,8 @@ import { getActionsLogger } from "../logging";
  */
 const COMMAND_CACHE_FILENAME = "codeql-action-command-cache.json";
 
-/** Named keys for the CLI command-output cache. */
-export const CommandCacheKey = {
-  Version: "version",
-  ResolveLanguages: "resolveLanguages",
-} as const;
-
 /** A key used to identify cached command output. */
-export type CommandCacheKey =
-  (typeof CommandCacheKey)[keyof typeof CommandCacheKey];
+export type CommandCacheKey = "version" | "resolve languages";
 
 /** A single cached command output together with the CLI path it came from. */
 interface CommandCacheEntry {

@@ -12,7 +12,7 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { getCachedCommandOutput, CommandCacheKey } from "./cli/output-cache";
+import { getCachedCommandOutput } from "./cli/output-cache";
 import { isVersionInfo } from "./codeql";
 import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
 import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
@@ -285,7 +285,7 @@ export async function createStatusReportBase(
     }
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
     const codeQlCliVersion = getCachedCommandOutput(
-      CommandCacheKey.Version,
+      "version",
       undefined,
       isVersionInfo,
     );

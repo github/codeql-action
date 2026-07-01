@@ -38,7 +38,12 @@ export function isVersionInfo(x: unknown): x is VersionInfo {
     json.validateSchema(
       {
         version: json.string,
-        features: json.optional(json.object),
+        features: {
+          validate: (obj): obj is Record<string, boolean> =>
+            json.isObject(obj) &&
+            Object.values(obj).every((val) => typeof val === "boolean"),
+          required: false,
+        },
         overlayVersion: json.optional(json.number),
       },
       x,

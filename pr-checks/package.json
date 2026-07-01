@@ -11,7 +11,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@types/node": "^20.19.43",
+    "@types/node": "^26.0.0",
     "tsx": "^4.22.4"
   }
 }

@@ -82,3 +82,23 @@ test("getConfigFileInput ignores empty repository property value", async (t) => 
   );
   t.is(result, undefined);
 });
+
+test("getConfigFileInput ignores repository property value when FF is off", async (t) => {
+  const logger = new RecordingLogger();
+  const actionsEnv = getTestActionsEnv();
+
+  // Since the FF is off, we should ignore the repository property value.
+  const result = getConfigFileInput(
+    logger,
+    actionsEnv,
+    repositoryProperties,
+    false,
+  );
+  t.is(result, undefined);
+
+  t.false(
+    logger.hasMessage(
+      "Using configuration file input from repository property",
+    ),
+  );
+});

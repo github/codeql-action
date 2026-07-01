@@ -28,7 +28,7 @@ test("validateSchema - required properties are required", async (t) => {
   t.true(json.validateSchema(testSchema, { requiredKey: "foo" }));
 });
 
-test("validateSchema - optional properties are optional", async (t) => {
+test("validateSchema - optionalOrNullSchema properties are optional or null", async (t) => {
   // Optional fields may be absent
   t.true(json.validateSchema(optionalOrNullSchema, {}));
   t.true(json.validateSchema(optionalOrNullSchema, { optionalKey: undefined }));
@@ -49,7 +49,7 @@ const optionalSchema = {
   optionalKey: json.optional(json.string),
 };
 
-test("validateSchema - optional properties may be absent or undefined, but reject null", async (t) => {
+test("validateSchema - optional properties are optional", async (t) => {
   // Optional fields may be absent or explicitly undefined
   t.true(json.validateSchema(optionalSchema, {}));
   t.true(json.validateSchema(optionalSchema, { optionalKey: undefined }));

@@ -12,12 +12,18 @@ export function getConfigFileInput(
   logger: Logger,
   actions: ActionsEnv,
   repositoryProperties: Partial<RepositoryProperties>,
+  useRepositoryProperty: boolean,
 ): string | undefined {
   const input = actions.getOptionalInput("config-file");
 
   if (input !== undefined) {
     logger.info(`Using configuration file input from workflow: ${input}`);
     return input;
+  }
+
+  // Don't take the repository property into consideration if the FF is not enabled.
+  if (!useRepositoryProperty) {
+    return undefined;
   }
 
   const propertyValue =

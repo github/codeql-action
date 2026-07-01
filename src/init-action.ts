@@ -7,9 +7,9 @@ import * as io from "@actions/io";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
+import { Action, ActionState, runInActions } from "./action-common";
 import {
   FileCmdNotFoundError,
-  getActionsEnv,
   getActionVersion,
   getFileType,
   getOptionalInput,
@@ -56,7 +56,7 @@ import {
   runDatabaseInitCluster,
 } from "./init";
 import { JavaEnvVars, BuiltInLanguage } from "./languages";
-import { getActionsLogger, Logger, withGroupAsync } from "./logging";
+import { Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
   OverlayBaseDatabaseDownloadStats,
@@ -73,7 +73,6 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
-  sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -204,12 +203,12 @@ async function sendCompletedStatusReport(
   }
 }
 
-async function run(startedAt: Date) {
+async function run(actionState: ActionState<["Logger", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
-  const logger = getActionsLogger();
-  const actionsEnv = getActionsEnv();
+  const startedAt = actionState.startedAt;
+  const logger = actionState.logger;
 
   let apiDetails: GitHubApiCombinedDetails;
   let config: configUtils.Config | undefined;
@@ -854,19 +853,13 @@ async function recordZstdAvailability(
   );
 }
 
+/** Defines the `init` Action. */
+const init: Action = {
+  name: ActionName.Init,
+  run,
+};
+
 export async function runWrapper() {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(`init action failed: ${getErrorMessage(error)}`);
-    await sendUnhandledErrorStatusReport(
-      ActionName.Init,
-      startedAt,
-      error,
-      logger,
-    );
-  }
+  await runInActions(init);
   await checkForTimeout();
 }

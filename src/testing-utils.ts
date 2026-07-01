@@ -11,7 +11,12 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import { ActionState, StateFeature } from "./action-common";
-import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
+import {
+  ActionsEnv,
+  ActionsEnvVars,
+  getActionsEnv,
+  getActionVersion,
+} from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -190,7 +195,7 @@ export function getTestActionsEnv(): ActionsEnv {
 }
 
 /** For testing purposes, we make all available state features accessible in `TestEnv`. */
-type AllState = ["Logger", "Env", "FeatureFlags"];
+type AllState = ["Logger", "Env", "Actions", "FeatureFlags"];
 
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
@@ -218,6 +223,7 @@ export class TestEnv<
         : {
             logger: new RecordingLogger(),
             env: getTestEnv(),
+            actions: getActionsEnv(),
             features: createFeatures([]),
           };
   }
@@ -253,6 +259,12 @@ export class TestEnv<
   public withEnv(env: Env): TestEnv<Args, R, Fs> {
     const result = this.clone();
     result.state.env = env;
+    return result;
+  }
+
+  public withActions(actions: ActionsEnv): TestEnv<Args, R, Fs> {
+    const result = this.clone();
+    result.state.actions = actions;
     return result;
   }
 

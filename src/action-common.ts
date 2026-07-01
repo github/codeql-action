@@ -1,3 +1,4 @@
+import { ActionsEnv } from "./actions-util";
 import { Env } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
@@ -11,6 +12,10 @@ export interface FeatureState {
   Env: {
     /** Information about environment variables. */
     env: Env;
+  };
+  Actions: {
+    /** Access to Actions-related functionality. */
+    actions: ActionsEnv;
   };
   FeatureFlags: {
     /** Information about enabled feature flags. */

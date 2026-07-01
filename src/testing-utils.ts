@@ -220,11 +220,11 @@ export class TestEnv<
     this.logger = new RecordingLogger();
     this.state =
       cloneFrom !== undefined
-        ? { ...cloneFrom.state }
+        ? { ...cloneFrom.state, logger: this.logger }
         : {
             name: ActionName.Init,
             startedAt: new Date(),
-            logger: new RecordingLogger(),
+            logger: this.logger,
             env: getTestEnv(),
             actions: getActionsEnv(),
             features: createFeatures([]),

@@ -1139,9 +1139,10 @@ async function runCliJson<T>(
   const output = await runCli(cmd, args, opts);
   try {
     return JSON.parse(output) as T;
-  } catch {
-    const command = [cmd, ...args].join(" ");
-    throw Error(`Invalid JSON output from \`${command}\`: ${output}`);
+  } catch (e) {
+    throw Error(
+      `Unexpected output from codeql ${args.join(" ")}: ${getErrorMessage(e)}`,
+    );
   }
 }
 

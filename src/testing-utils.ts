@@ -33,6 +33,7 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -221,6 +222,8 @@ export class TestEnv<
       cloneFrom !== undefined
         ? { ...cloneFrom.state }
         : {
+            name: ActionName.Init,
+            startedAt: new Date(),
             logger: new RecordingLogger(),
             env: getTestEnv(),
             actions: getActionsEnv(),
@@ -272,7 +275,7 @@ export class TestEnv<
     if (!this.args) {
       throw new Error("Trying to call function in TestEnv without arguments.");
     }
-    return this.fn(this.state as ActionState<Fs>, ...this.args);
+    return this.fn(this.state as unknown as ActionState<Fs>, ...this.args);
   }
 
   public passes<T>(

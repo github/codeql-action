@@ -30,11 +30,6 @@ export function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
-/** Asserts that `value` is a number. */
-export function isNumber(value: unknown): value is number {
-  return typeof value === "number";
-}
-
 /** Asserts that `value` is either a string or undefined. */
 export function isStringOrUndefined(
   value: unknown,
@@ -60,42 +55,14 @@ export const string = {
   required: true,
 } as const satisfies Validator<string>;
 
-/** A validator for number fields in schemas. */
-export const number = {
-  validate: isNumber,
-  required: true,
-} as const satisfies Validator<number>;
-
-/** A validator for object fields in schemas. */
-export const object = {
-  validate: isObject,
-  required: true,
-} as const satisfies Validator<UnvalidatedObject<unknown>>;
-
-/**
- * Transforms a validator to be optional, accepting `undefined` or `null` for an
- * absent value.
- */
-export function optionalOrNull<T>(validator: Validator<T>) {
+/** Transforms a validator to be optional. */
+export function optional<T>(validator: Validator<T>) {
   return {
     validate: (val: unknown) => {
       return val === undefined || val === null || validator.validate(val);
     },
     required: false,
   } as const satisfies Validator<T | undefined | null>;
-}
-
-/**
- * Transforms a validator to be optional, accepting `undefined` for an absent
- * value but, unlike `optionalOrNull`, rejecting `null`.
- */
-export function optional<T>(validator: Validator<T>) {
-  return {
-    validate: (val: unknown): val is T | undefined => {
-      return val === undefined || validator.validate(val);
-    },
-    required: false,
-  } as const satisfies Validator<T | undefined>;
 }
 
 /** Represents an arbitrary object schema. */

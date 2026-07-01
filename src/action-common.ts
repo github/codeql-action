@@ -51,7 +51,10 @@ export type FieldsOf<Fs extends readonly StateFeature[]> = Fs extends []
 /** Describes the state of an Action that has access to the state corresponding to `Fs`. */
 export type ActionState<Fs extends readonly StateFeature[]> = FieldsOf<Fs>;
 
-/** The type of an Action's main entry point. */
+/** The type of an Action's main entry point. This is a function that is provided
+ * with a basic `ActionState` object with features that are always available.
+ * Each Action can then augment the `state` further if additional features are required.
+ */
 export type ActionMain = (
   state: ActionState<["Logger", "Env", "Actions"]>,
 ) => Promise<void>;
@@ -64,7 +67,7 @@ export interface Action {
   run: ActionMain;
 }
 
-/** A generic entry point that sets up the environment for the `action` and runs it. */
+/** A generic entry point that sets up the basic environment for the `action` and runs it. */
 export async function runInActions(action: Action) {
   const startedAt = new Date();
   const logger = getActionsLogger();

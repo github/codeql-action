@@ -1140,7 +1140,8 @@ async function runCliJson<T>(
   try {
     return JSON.parse(output) as T;
   } catch {
-    throw Error(`Invalid JSON output from \`${args.join(" ")}\`: ${output}`);
+    const command = [cmd, ...args].join(" ");
+    throw Error(`Invalid JSON output from \`${command}\`: ${output}`);
   }
 }
 

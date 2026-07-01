@@ -101,4 +101,9 @@ test("getConfigFileInput ignores repository property value when FF is off", asyn
       "Using configuration file input from repository property",
     ),
   );
+  t.true(
+    logger.hasMessage(
+      "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",
+    ),
+  );
 });

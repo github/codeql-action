@@ -21,19 +21,21 @@ export function getConfigFileInput(
     return input;
   }
 
-  // Don't take the repository property into consideration if the FF is not enabled.
-  if (!useRepositoryProperty) {
-    return undefined;
-  }
-
   const propertyValue =
     repositoryProperties[RepositoryPropertyName.CONFIG_FILE];
 
   if (propertyValue !== undefined && propertyValue.trim().length > 0) {
-    logger.info(
-      `Using configuration file input from repository property: ${propertyValue}`,
-    );
-    return propertyValue;
+    // Only use the repository property value if the FF is enabled.
+    if (useRepositoryProperty) {
+      logger.info(
+        `Using configuration file input from repository property: ${propertyValue}`,
+      );
+      return propertyValue;
+    } else {
+      logger.info(
+        "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",
+      );
+    }
   }
 
   return undefined;

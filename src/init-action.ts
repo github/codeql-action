@@ -262,14 +262,9 @@ async function run(actionState: ActionState<["Logger", "Actions"]>) {
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
-    const useConfigFileProperty = await features.getValue(
-      Feature.ConfigFileRepositoryProperty,
-    );
-    configFile = getConfigFileInput(
-      logger,
-      actionsEnv,
+    configFile = await getConfigFileInput(
+      { ...actionState, features },
       repositoryProperties,
-      useConfigFileProperty,
     );
 
     // path.resolve() respects the intended semantics of source-root. If

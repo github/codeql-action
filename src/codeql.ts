@@ -1131,6 +1131,15 @@ async function runCli(
   }
 }
 
+/**
+ * Wraps the command executor {@link runCli} and tries to parse the output as JSON.
+ * @param cmd The command to run.
+ * @param args The arguments to pass to the command.
+ * @param opts The options for running the command.
+ * @param opts.stdin Optional string to pass to the command's standard input.
+ * @param opts.noStreamStdout Optional boolean to indicate whether to stream the command's standard output.
+ * @returns The parsed JSON output from the command.
+ */
 async function runCliJson<T>(
   cmd: string,
   args: string[] = [],

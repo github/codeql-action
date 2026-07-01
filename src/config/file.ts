@@ -12,6 +12,7 @@ export function getConfigFileInput(
   logger: Logger,
   actions: ActionsEnv,
   repositoryProperties: Partial<RepositoryProperties>,
+  useRepositoryProperty: boolean,
 ): string | undefined {
   const input = actions.getOptionalInput("config-file");
 
@@ -24,10 +25,17 @@ export function getConfigFileInput(
     repositoryProperties[RepositoryPropertyName.CONFIG_FILE];
 
   if (propertyValue !== undefined && propertyValue.trim().length > 0) {
-    logger.info(
-      `Using configuration file input from repository property: ${propertyValue}`,
-    );
-    return propertyValue;
+    // Only use the repository property value if the FF is enabled.
+    if (useRepositoryProperty) {
+      logger.info(
+        `Using configuration file input from repository property: ${propertyValue}`,
+      );
+      return propertyValue;
+    } else {
+      logger.info(
+        "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",
+      );
+    }
   }
 
   return undefined;

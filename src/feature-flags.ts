@@ -74,6 +74,8 @@ export enum Feature {
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
   AllowToolcacheInput = "allow_toolcache_input",
   CleanupTrapCaches = "cleanup_trap_caches",
+  /** Whether to allow the `config-file` input to be specified via a repository property. */
+  ConfigFileRepositoryProperty = "config_file_repository_property",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CsharpCacheBuildModeNone = "csharp_cache_bmn",
   CsharpNewCacheKey = "csharp_new_cache_key",
@@ -134,7 +136,6 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
-  StartProxyRemoveUnusedRegistries = "start_proxy_remove_unused_registries",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   ValidateDbConfig = "validate_db_config",
@@ -183,6 +184,11 @@ export const featureConfig = {
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
+    minimumVersion: undefined,
+  },
+  [Feature.ConfigFileRepositoryProperty]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CONFIG_FILE_REPOSITORY_PROPERTY",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {
@@ -374,11 +380,6 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS",
     minimumVersion: undefined,
     toolsFeature: ToolsFeature.SuppressesMissingFileBaselineWarning,
-  },
-  [Feature.StartProxyRemoveUnusedRegistries]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_START_PROXY_REMOVE_UNUSED_REGISTRIES",
-    minimumVersion: undefined,
   },
   [Feature.StartProxyUseFeaturesRelease]: {
     defaultValue: false,

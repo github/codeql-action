@@ -86,7 +86,7 @@ async function groupLanguagesByExtractor(
   languages: string[],
   codeql: CodeQL,
 ): Promise<{ [extractorName: string]: string[] } | undefined> {
-  const resolveResult = await codeql.betterResolveLanguages();
+  const resolveResult = await codeql.resolveLanguages();
   if (!resolveResult.aliases) {
     return undefined;
   }

@@ -77,6 +77,7 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
     status: 200,
     url: "",
     data: [
+      { property_name: "github-codeql-config-file", value: "owner/repo" },
       { property_name: "github-codeql-extra-queries", value: "+queries" },
       { property_name: "unknown-property", value: "something" },
     ] satisfies properties.GitHubPropertiesResponse,
@@ -87,7 +88,10 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
     logger,
     mockRepositoryNwo,
   );
-  t.deepEqual(response, { "github-codeql-extra-queries": "+queries" });
+  t.deepEqual(response, {
+    "github-codeql-config-file": "owner/repo",
+    "github-codeql-extra-queries": "+queries",
+  });
 });
 
 test.serial("loadPropertiesFromApi parses true boolean property", async (t) => {

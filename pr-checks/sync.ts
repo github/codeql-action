@@ -54,6 +54,13 @@ type OperatingSystem =
       os: OperatingSystemIdentifier;
       /** Optional runner image label. */
       "runner-image"?: string;
+      /**
+       * Optional CodeQL versions to run on this entry. If specified, this entry runs only these
+       * versions. A sibling entry for the same OS that omits `codeql-versions` runs all versions
+       * not claimed by any sibling entry. This allows pinning specific CodeQL versions to a
+       * particular runner image while letting the remaining versions default to another.
+       */
+      "codeql-versions"?: string[];
     };
 
 /**
@@ -226,8 +233,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: pinnedUses(
           "actions/setup-go",
-          "4a3601121dd01d1626a1e23e37211e3254c1c06c",
-          "v6.4.0",
+          "924ae3a1cded613372ab5595356fb5720e22ba16",
+          "v6.5.0",
         ),
         with: {
           "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
@@ -246,8 +253,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "be666c2fcd27ec809703dec50e508c2fdc7f6654",
-          "v5.2.0",
+          "ad2b38190b15e4d6bdf0c97fb4fca8412226d287",
+          "v5.3.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -264,8 +271,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "a309ff8b426b58ec0e2a45f0f869d46889d02405",
-          "v6.2.0",
+          "ece7cb06caefa5fff74198d8649806c4678c61a1",
+          "v6.3.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
@@ -352,6 +359,28 @@ function generateJobMatrix(
 ): Array<Record<string, any>> {
   let matrix: Array<Record<string, any>> = [];
 
+  const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
+
+  // For each OS, collect the CodeQL versions explicitly claimed by entries that specify
+  // `codeql-versions`. A sibling entry for the same OS that omits `codeql-versions` runs all
+  // versions not in this set.
+  const claimedVersionsByOs = new Map<string, Set<string>>();
+  for (const operatingSystemConfig of operatingSystems) {
+    if (typeof operatingSystemConfig === "string") {
+      continue;
+    }
+    const entryVersions = operatingSystemConfig["codeql-versions"];
+    if (!entryVersions) {
+      continue;
+    }
+    const claimed =
+      claimedVersionsByOs.get(operatingSystemConfig.os) ?? new Set<string>();
+    for (const entryVersion of entryVersions) {
+      claimed.add(entryVersion);
+    }
+    claimedVersionsByOs.set(operatingSystemConfig.os, claimed);
+  }
+
   for (const version of checkSpecification.versions ?? defaultTestVersions) {
     if (version === "latest") {
       throw new Error(
@@ -364,7 +393,6 @@ function generateJobMatrix(
       "macos-latest",
       "windows-latest",
     ];
-    const operatingSystems = checkSpecification.operatingSystems ?? ["ubuntu"];
 
     for (const operatingSystemConfig of operatingSystems) {
       const operatingSystem =
@@ -376,6 +404,19 @@ function generateJobMatrix(
       const allowedVersions =
         checkSpecification.osCodeQlVersions?.[operatingSystem];
       if (allowedVersions && !allowedVersions.includes(version)) {
+        continue;
+      }
+
+      // An entry that specifies `codeql-versions` runs only those versions. A sibling entry for
+      // the same OS that omits `codeql-versions` runs all versions not claimed by its siblings.
+      const entryVersions =
+        typeof operatingSystemConfig === "string"
+          ? undefined
+          : operatingSystemConfig["codeql-versions"];
+      const runsThisVersion = entryVersions
+        ? entryVersions.includes(version)
+        : !claimedVersionsByOs.get(operatingSystem)?.has(version);
+      if (!runsThisVersion) {
         continue;
       }
 
@@ -488,8 +529,8 @@ function generateJob(
       name: "Check out repository",
       uses: pinnedUses(
         "actions/checkout",
-        "df4cb1c069e1874edd31b4311f1884172cec0e10",
-        "v6.0.3",
+        "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+        "v7.0.0",
       ),
     },
     ...setupInfo.steps,
@@ -724,9 +765,7 @@ function main(): void {
         push: {
           branches: ["main", "releases/v*"],
         },
-        pull_request: {
-          types: ["opened", "synchronize", "reopened", "ready_for_review"],
-        },
+        pull_request: {},
         merge_group: {
           types: ["checks_requested"],
         },

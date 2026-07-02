@@ -10,7 +10,7 @@ import test, {
 import nock from "nock";
 import * as sinon from "sinon";
 
-import { getActionVersion } from "./actions-util";
+import { ActionsEnv, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -170,6 +170,15 @@ export function makeMacro<Args extends unknown[]>(
   wrapper.fn = decl.exec;
 
   return wrapper;
+}
+
+/**
+ * Gets an `ActionsEnv` instance for use in tests.
+ */
+export function getTestActionsEnv(): ActionsEnv {
+  return {
+    getOptionalInput: () => undefined,
+  };
 }
 
 /**

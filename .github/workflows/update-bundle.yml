@@ -33,7 +33,7 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "$GITHUB_CONTEXT"
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Update git config
         run: |
@@ -41,7 +41,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
 
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.12'
 
@@ -114,7 +114,6 @@ jobs:
             --title "Update default bundle to $cli_version" \
             --body "$pr_body" \
             --assignee "$GITHUB_ACTOR" \
-            --draft \
           )
           echo "CLI_VERSION=$cli_version" | tee -a "$GITHUB_ENV"
           echo "PR_URL=$pr_url" | tee -a "$GITHUB_ENV"

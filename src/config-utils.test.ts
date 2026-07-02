@@ -75,7 +75,7 @@ function createTestInitConfigInputs(
       repository: { owner: "github", repo: "example" },
       tempDir: "",
       codeql: createStubCodeQL({
-        async betterResolveLanguages() {
+        async resolveLanguages() {
           return {
             extractors: {
               html: [{ extractor_root: "" }],
@@ -150,7 +150,7 @@ test.serial("load empty config", async (t) => {
     setupActionsVars(tempDir, tempDir);
 
     const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
+      async resolveLanguages() {
         return {
           extractors: {
             javascript: [{ extractor_root: "" }],
@@ -193,7 +193,7 @@ test.serial("load code quality config", async (t) => {
     setupActionsVars(tempDir, tempDir);
 
     const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
+      async resolveLanguages() {
         return {
           extractors: {
             actions: [{ extractor_root: "" }],
@@ -247,7 +247,7 @@ test.serial(
       setupActionsVars(tempDir, tempDir);
 
       const codeql = createStubCodeQL({
-        async betterResolveLanguages() {
+        async resolveLanguages() {
           return {
             extractors: {
               javascript: [{ extractor_root: "" }],
@@ -305,7 +305,7 @@ test.serial("loading a saved config produces the same config", async (t) => {
     const logger = getRunnerLogger(true);
 
     const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
+      async resolveLanguages() {
         return {
           extractors: {
             javascript: [{ extractor_root: "" }],
@@ -352,7 +352,7 @@ test.serial("loading config with version mismatch throws", async (t) => {
     const logger = getRunnerLogger(true);
 
     const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
+      async resolveLanguages() {
         return {
           extractors: {
             javascript: [{ extractor_root: "" }],
@@ -487,7 +487,7 @@ test.serial("load non-empty input", async (t) => {
     setupActionsVars(tempDir, tempDir);
 
     const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
+      async resolveLanguages() {
         return {
           extractors: {
             javascript: [{ extractor_root: "" }],
@@ -582,7 +582,7 @@ test.serial(
       fs.mkdirSync(path.join(tempDir, "foo"));
 
       const codeql = createStubCodeQL({
-        async betterResolveLanguages() {
+        async resolveLanguages() {
           return {
             extractors: {
               javascript: [{ extractor_root: "" }],
@@ -615,7 +615,7 @@ test.serial(
 test.serial("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = createStubCodeQL({
-      async betterResolveLanguages() {
+      async resolveLanguages() {
         return {
           extractors: {
             javascript: [{ extractor_root: "" }],
@@ -725,7 +725,7 @@ test.serial("No detected languages", async (t) => {
     mockListLanguages([]);
     const codeql = createStubCodeQL({
       async resolveLanguages() {
-        return {};
+        return { extractors: {} };
       },
     });
 
@@ -891,7 +891,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
       extractor_root: "",
     };
     const codeQL = createStubCodeQL({
-      betterResolveLanguages: (options) =>
+      resolveLanguages: (options) =>
         Promise.resolve({
           aliases: {
             "c#": BuiltInLanguage.csharp,

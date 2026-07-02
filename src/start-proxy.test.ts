@@ -585,7 +585,6 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
     undefined,
     credentialsInput,
     BuiltInLanguage.java,
-    false,
   );
 
   t.is(credentials.length, 3);
@@ -604,8 +603,7 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
       getRunnerLogger(true),
       undefined,
       toEncodedJSON([{ ...baseInvalid, "replaces-base": null }]),
-      BuiltInLanguage.actions,
-      false,
+      BuiltInLanguage.java,
     ),
   );
   t.throws(() =>
@@ -613,8 +611,7 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
       getRunnerLogger(true),
       undefined,
       toEncodedJSON([{ ...baseInvalid, "replaces-base": 123 }]),
-      BuiltInLanguage.actions,
-      false,
+      BuiltInLanguage.java,
     ),
   );
   t.throws(() =>
@@ -622,13 +619,12 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
       getRunnerLogger(true),
       undefined,
       toEncodedJSON([{ ...baseInvalid, "replaces-base": "true" }]),
-      BuiltInLanguage.actions,
-      false,
+      BuiltInLanguage.java,
     ),
   );
 });
 
-test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
+test("getCredentials returns no credentials for Actions", async (t) => {
   const credentialsInput = toEncodedJSON(mixedCredentials);
 
   const credentials = startProxyExports.getCredentials(
@@ -636,20 +632,6 @@ test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_
     undefined,
     credentialsInput,
     BuiltInLanguage.actions,
-    false,
-  );
-  t.is(credentials.length, mixedCredentials.length);
-});
-
-test("getCredentials returns no credentials for Actions when using NEW_LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
-  const credentialsInput = toEncodedJSON(mixedCredentials);
-
-  const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
-    undefined,
-    credentialsInput,
-    BuiltInLanguage.actions,
-    true,
   );
   t.deepEqual(credentials, []);
 });

@@ -22,6 +22,21 @@ import {
 declare const __CODEQL_ACTION_VERSION__: string;
 
 /**
+ * Abstracts over GitHub Actions functions so that we do not have to stub
+ * global functions in tests.
+ */
+export interface ActionsEnv {
+  getOptionalInput: (name: string) => string | undefined;
+}
+
+/**
+ * Gets the real `ActionsEnv` used by production code.
+ */
+export function getActionsEnv(): ActionsEnv {
+  return { getOptionalInput };
+}
+
+/**
  * Wrapper around core.getInput for inputs that always have a value.
  * Also see getOptionalInput.
  *

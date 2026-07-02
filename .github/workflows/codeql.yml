@@ -4,9 +4,6 @@ on:
   push:
     branches: [main, releases/v*]
   pull_request:
-    # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
-    # by other workflows.
-    types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
     types: [checks_requested]
   schedule:
@@ -35,7 +32,7 @@ jobs:
       security-events: read
 
     steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
     - name: Set up default CodeQL bundle
       id: setup-default
       uses: ./setup-codeql
@@ -87,7 +84,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
     - name: Initialize CodeQL
       uses: ./init
       id: init
@@ -124,7 +121,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
     - name: Initialize CodeQL
       uses: ./init
       with:

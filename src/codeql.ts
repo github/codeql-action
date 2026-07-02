@@ -282,7 +282,7 @@ const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.16";
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-06-25";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-07-01";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";

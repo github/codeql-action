@@ -6,6 +6,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 No user facing changes.
 
+## 4.36.3 - 01 Jul 2026
+
+No user facing changes.
+
 ## 4.36.2 - 04 Jun 2026
 
 - Cache CodeQL CLI version information across Actions steps. [#3943](https://github.com/github/codeql-action/pull/3943)

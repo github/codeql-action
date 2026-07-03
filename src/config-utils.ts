@@ -1132,17 +1132,17 @@ export async function applyIncrementalAnalysisSettings(
 }
 
 /**
- * Load and return the config.
+ * Determines where to load the `UserConfig` for the CLI from and loads it.
  *
- * This will parse the config from the user input if present, or generate
- * a default config. The parsed config is then stored to a known location.
+ * @returns The loaded `UserConfig`, which might be empty if no configuration
+ *          was specified.
  */
-export async function initConfig(
+async function determineUserConfig(
+  logger: Logger,
   features: FeatureEnablement,
+  tempDir: string,
   inputs: InitConfigInputs,
-): Promise<Config> {
-  const { logger, tempDir } = inputs;
-
+): Promise<UserConfig> {
   // if configInput is set, it takes precedence over configFile
   if (inputs.configInput) {
     if (inputs.configFile) {
@@ -1155,13 +1155,13 @@ export async function initConfig(
     logger.debug(`Using config from action input: ${inputs.configFile}`);
   }
 
-  let userConfig: UserConfig = {};
   if (!inputs.configFile) {
     logger.debug("No configuration file was provided");
+    return {};
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
     const validateConfig = await features.getValue(Feature.ValidateDbConfig);
-    userConfig = await loadUserConfig(
+    return await loadUserConfig(
       logger,
       inputs.configFile,
       inputs.workspacePath,
@@ -1170,6 +1170,26 @@ export async function initConfig(
       validateConfig,
     );
   }
+}
+
+/**
+ * Load and return the config.
+ *
+ * This will parse the config from the user input if present, or generate
+ * a default config. The parsed config is then stored to a known location.
+ */
+export async function initConfig(
+  features: FeatureEnablement,
+  inputs: InitConfigInputs,
+): Promise<Config> {
+  const { logger, tempDir } = inputs;
+
+  const userConfig = await determineUserConfig(
+    logger,
+    features,
+    tempDir,
+    inputs,
+  );
 
   const config = await initActionState(inputs, userConfig);
 

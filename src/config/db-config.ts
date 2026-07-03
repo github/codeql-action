@@ -28,6 +28,14 @@ export interface QuerySpec {
   uses: string;
 }
 
+/** Not intended to be provided directly by a user. */
+export interface DefaultSetupConfig {
+  org?: {
+    /** An array of model pack names. */
+    "model-packs"?: string[];
+  };
+}
+
 /**
  * Format of the config file supplied by the user.
  */
@@ -46,6 +54,15 @@ export interface UserConfig {
   // Set of query filters to include and exclude extra queries based on
   // codeql query suite `include` and `exclude` properties
   "query-filters"?: QueryFilter[];
+
+  /** An array (possibly empty or absent) of threat models to use. */
+  "threat-models"?: string[];
+
+  /**
+   * Configuration options that are reserved for us in Default Setup and
+   * not intended to be supplied directly by users.
+   */
+  "default-setup"?: DefaultSetupConfig;
 }
 
 /**

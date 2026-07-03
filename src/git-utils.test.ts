@@ -252,6 +252,7 @@ test.serial(
   "determineBaseBranchHeadCommitOid not git repository",
   async (t) => {
     const infoStub = sinon.stub(core, "info");
+    const debugStub = sinon.stub(core, "debug");
 
     process.env["GITHUB_EVENT_NAME"] = "pull_request";
     process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
@@ -260,17 +261,19 @@ test.serial(
       await gitUtils.determineBaseBranchHeadCommitOid(tmpDir);
     });
 
-    t.deepEqual(1, infoStub.callCount);
-    t.deepEqual(
-      infoStub.firstCall.args[0],
-      "git call failed. Will calculate the base branch SHA on the server. Error: " +
-        "The checkout path provided to the action does not appear to be a git repository.",
+    t.deepEqual(0, infoStub.callCount);
+    t.assert(
+      debugStub.calledWithMatch(
+        "git call failed. Will calculate the base branch SHA on the server. Error: " +
+          "The checkout path provided to the action does not appear to be a git repository.",
+      ),
     );
   },
 );
 
 test.serial("determineBaseBranchHeadCommitOid other error", async (t) => {
   const infoStub = sinon.stub(core, "info");
+  const debugStub = sinon.stub(core, "debug");
 
   process.env["GITHUB_EVENT_NAME"] = "pull_request";
   process.env["GITHUB_SHA"] = "100912429fab4cb230e66ffb11e738ac5194e73a";
@@ -278,14 +281,14 @@ test.serial("determineBaseBranchHeadCommitOid other error", async (t) => {
     path.join(__dirname, "../../i-dont-exist"),
   );
   t.deepEqual(result, undefined);
-  t.deepEqual(1, infoStub.callCount);
+  t.deepEqual(0, infoStub.callCount);
   t.assert(
-    infoStub.firstCall.args[0].startsWith(
+    debugStub.calledWithMatch(
       "git call failed. Will calculate the base branch SHA on the server. Error: ",
     ),
   );
   t.assert(
-    !infoStub.firstCall.args[0].endsWith(
+    !debugStub.firstCall.args[0].endsWith(
       "The checkout path provided to the action does not appear to be a git repository.",
     ),
   );

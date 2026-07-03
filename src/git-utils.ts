@@ -92,7 +92,7 @@ export const runGitCommand = async function (
       reason =
         "The checkout path provided to the action does not appear to be a git repository.";
     }
-    core.info(`git call failed. ${customErrorMessage} Error: ${reason}`);
+    core.debug(`git call failed. ${customErrorMessage} Error: ${reason}`);
     throw error;
   }
 };
@@ -119,6 +119,9 @@ export const getCommitOid = async function (
     );
     return stdout.trim();
   } catch {
+    core.info(
+      "Could not retrieve commit SHA from git; falling back to environment.",
+    );
     return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
   }
 };

@@ -66,6 +66,56 @@ export interface UserConfig {
 }
 
 /**
+ * Merges supported properties from two configuration files. This is intended only for
+ * use with merging the `config` input provided by Default Setup with a potentially
+ * richer configuration file provided by a user.
+ *
+ * @param logger The logger to use.
+ * @param fromConfigInput The configuration from Default Setup.
+ * @param fromConfigFile The user-supplied configuration.
+ * @returns The combination of both configuration files.
+ */
+export function mergeUserConfigs(
+  logger: Logger,
+  fromConfigInput: UserConfig,
+  fromConfigFile: UserConfig,
+): UserConfig {
+  logger.debug(
+    "Combining configuration files from 'config' and 'config-file' inputs",
+  );
+
+  // Combine all specified threat models from both sources.
+  const threatModels = new Set(fromConfigInput["threat-models"] || []);
+  for (const configFileThreatModel of fromConfigFile["threat-models"] || []) {
+    threatModels.add(configFileThreatModel);
+  }
+
+  // Warn if there is a 'default-setup' configuration key in the user-supplied configuration,
+  // since it is not meant to be used and we therefore ignore it here.
+  if (fromConfigFile["default-setup"]) {
+    logger.warning(
+      `The 'default-setup' configuration key is not supported in user-supplied configuration files and will be ignored.`,
+    );
+  }
+
+  // Since we expect the `fromConfigInput` configuration to be provided by Default Setup,
+  // we expect a limited set of options. Therefore, we base the overall configuration on
+  // the one provided via the `config-file` input, which may be richer.
+  const result = { ...fromConfigFile };
+  delete result["threat-models"];
+  delete result["default-setup"];
+
+  if (fromConfigInput["default-setup"]) {
+    result["default-setup"] = fromConfigInput["default-setup"];
+  }
+  if (threatModels.size > 0) {
+    result["threat-models"] = Array.from(threatModels);
+  }
+
+  return result;
+}
+
+/**
  * Represents additional configuration data from a source other than
  * a configuration file.
  */

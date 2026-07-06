@@ -9,6 +9,7 @@ import {
   getActionVersion,
   getOptionalInput,
   isAnalyzingPullRequest,
+  isDefaultSetup,
   isDynamicWorkflow,
 } from "./actions-util";
 import {
@@ -24,6 +25,7 @@ import {
   calculateAugmentation,
   ExcludeQueryFilter,
   generateCodeScanningConfig,
+  mergeUserConfigs,
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
@@ -1162,16 +1164,61 @@ export async function determineUserConfig(
 ): Promise<UserConfig> {
   const validateConfig = await features.getValue(Feature.ValidateDbConfig);
 
-  // if configInput is set, it takes precedence over configFile
+  // We have the following cases:
+  // 1. A `config` or `config-file` input is provided, but not both: use the provided one.
+  // 2. Both are provided and we are in an advanced workflow: ignore the `config-file` input.
+  // 3. Both are provided and we are in Default Setup: the `config` input uses a limited
+  //    set of options, which are supported by `mergeUserConfigs`, and we merge the two configs.
   if (inputs.configInput) {
-    if (inputs.configFile) {
-      logger.warning(
-        `Both a config file and config input were provided. Ignoring config file.`,
+    const computedConfigPath = userConfigFromActionPath(tempDir);
+
+    // Get a promise which enables us to determine whether the FF that allows us to
+    // merge supported configuration file properties is enabled. We only execute
+    // the promise lazily if the other checks pass.
+    const allowMergeConfigs = features.getValue(Feature.AllowMergeConfigFiles);
+
+    // Check whether we also have a `config-file` input and decide what to do.
+    if (inputs.configFile && isDefaultSetup(env) && (await allowMergeConfigs)) {
+      // If the FF is enabled and we are in Default Setup, combine the supported
+      // configuration file properties and write the result to disk.
+      const fromConfigInput = parseUserConfig(
+        logger,
+        "`config` input",
+        inputs.configInput,
+        validateConfig,
       );
+      const fromConfigFile = await loadUserConfig(
+        logger,
+        inputs.configFile,
+        inputs.workspacePath,
+        inputs.apiDetails,
+        tempDir,
+        validateConfig,
+      );
+
+      fs.writeFileSync(
+        computedConfigPath,
+        yaml.dump(mergeUserConfigs(logger, fromConfigInput, fromConfigFile)),
+      );
+      logger.debug(
+        `Using merged configurations from 'config' input with configuration from '${inputs.configFile}': ${computedConfigPath}`,
+      );
+    } else {
+      // If we are in this branch and there is a `config-file` input, then it means
+      // we didn't meet the conditions for merging the configurations. Warn the user
+      // that the configuration file will be ignored.
+      if (inputs.configFile) {
+        logger.warning(
+          `Both a config file and config input were provided. Ignoring config file.`,
+        );
+      }
+
+      // Write the `config` input straight to disk.
+      fs.writeFileSync(computedConfigPath, inputs.configInput);
+      logger.debug(`Using config from action input: ${computedConfigPath}`);
     }
-    inputs.configFile = userConfigFromActionPath(tempDir);
-    fs.writeFileSync(inputs.configFile, inputs.configInput);
-    logger.debug(`Using config from action input: ${inputs.configFile}`);
+
+    inputs.configFile = computedConfigPath;
   }
 
   // Load whatever configuration file we have, if any.

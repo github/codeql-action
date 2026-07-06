@@ -567,8 +567,7 @@ test.serial(
   "Using config input and file together, config input should be used.",
   async (t) => {
     return await withTmpDir(async (tempDir) => {
-      process.env["RUNNER_TEMP"] = tempDir;
-      process.env["GITHUB_WORKSPACE"] = tempDir;
+      setupActionsVars(tempDir, tempDir);
 
       const configFilePath = createConfigFile(
         simpleConfigFileContents,
@@ -2398,6 +2397,156 @@ test("determineUserConfig - ignores config file input when both specified", asyn
       logger,
       env,
       createFeatures([]),
+      tmpDir,
+      createTestInitConfigInputs({
+        configInput: simpleConfigFileContents,
+        configFile: configFilePath,
+      }),
+    );
+
+    // The loaded configuration should match `simpleConfigFileContents`.
+    t.deepEqual(result, {
+      name: "my config",
+      queries: [{ uses: "./foo_file" }],
+    });
+    // And the path of the generated config file should have been logged.
+    t.true(
+      logger.hasMessage(
+        `Using config from action input: ${expectedConfigPath}`,
+      ),
+    );
+    t.true(
+      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
+    );
+    t.false(logger.hasMessage("No configuration file was provided"));
+    // And the warning about both inputs should have been logged.
+    t.true(
+      logger.hasMessage(
+        "Both a config file and config input were provided. Ignoring config file.",
+      ),
+    );
+  });
+});
+
+/** A `config` input that we might get from Default Setup. */
+const defaultSetupConfigInput = `
+  threat-models: [local, remote]
+  default-setup:
+    org:
+      model-packs: [foo, bar]`;
+
+test("determineUserConfig - merges configs if FF is enabled in Default Setup", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger(true);
+    const env = util.getEnv({
+      ...DEFAULT_ACTIONS_VARS,
+      [actionsUtil.ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
+    });
+    const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const result = await configUtils.determineUserConfig(
+      logger,
+      env,
+      createFeatures([Feature.AllowMergeConfigFiles]),
+      tmpDir,
+      createTestInitConfigInputs({
+        configInput: defaultSetupConfigInput,
+        configFile: configFilePath,
+      }),
+    );
+
+    // The loaded configuration should match the result of merging
+    // `defaultSetupConfigInput` and `simpleConfigFileContents`.
+    t.deepEqual(result, {
+      name: "my config",
+      queries: [{ uses: "./foo_file" }],
+      "threat-models": ["local", "remote"],
+      "default-setup": {
+        org: {
+          "model-packs": ["foo", "bar"],
+        },
+      },
+    } satisfies UserConfig);
+    // And the appropriate origin messages should have been logged.
+    t.true(
+      logger.hasMessage(
+        `Using merged configurations from 'config' input with configuration from '${configFilePath}': ${expectedConfigPath}`,
+      ),
+    );
+    t.true(
+      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
+    );
+    t.false(logger.hasMessage("No configuration file was provided"));
+    t.false(
+      logger.hasMessage(
+        `Using config from action input: ${expectedConfigPath}`,
+      ),
+    );
+    t.false(
+      logger.hasMessage(
+        "Both a config file and config input were provided. Ignoring config file.",
+      ),
+    );
+  });
+});
+
+test("determineUserConfig - ignores config file input in Default Setup if FF is off", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger(true);
+    const env = util.getEnv({
+      ...DEFAULT_ACTIONS_VARS,
+      [actionsUtil.ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
+    });
+    const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const result = await configUtils.determineUserConfig(
+      logger,
+      env,
+      createFeatures([]),
+      tmpDir,
+      createTestInitConfigInputs({
+        configInput: simpleConfigFileContents,
+        configFile: configFilePath,
+      }),
+    );
+
+    // The loaded configuration should match `simpleConfigFileContents`.
+    t.deepEqual(result, {
+      name: "my config",
+      queries: [{ uses: "./foo_file" }],
+    });
+    // And the path of the generated config file should have been logged.
+    t.true(
+      logger.hasMessage(
+        `Using config from action input: ${expectedConfigPath}`,
+      ),
+    );
+    t.true(
+      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
+    );
+    t.false(logger.hasMessage("No configuration file was provided"));
+    // And the warning about both inputs should have been logged.
+    t.true(
+      logger.hasMessage(
+        "Both a config file and config input were provided. Ignoring config file.",
+      ),
+    );
+  });
+});
+
+test("determineUserConfig - ignores config file input outside Default Setup if FF is on", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger(true);
+    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
+    const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const result = await configUtils.determineUserConfig(
+      logger,
+      env,
+      createFeatures([Feature.AllowMergeConfigFiles]),
       tmpDir,
       createTestInitConfigInputs({
         configInput: simpleConfigFileContents,

@@ -12,7 +12,8 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
+import type { Config } from "./config/action-config";
+import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
 import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";

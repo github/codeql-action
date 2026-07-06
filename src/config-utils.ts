@@ -32,7 +32,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
-import { EnvVar } from "./environment";
+import { Env, EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import {
@@ -77,6 +77,7 @@ import {
   Success,
   Failure,
   isHostedRunner,
+  getEnv,
 } from "./util";
 
 /**
@@ -1154,6 +1155,7 @@ export async function applyIncrementalAnalysisSettings(
  */
 export async function determineUserConfig(
   logger: Logger,
+  env: Env,
   features: FeatureEnablement,
   tempDir: string,
   inputs: InitConfigInputs,
@@ -1203,6 +1205,7 @@ export async function initConfig(
 
   const userConfig = await determineUserConfig(
     logger,
+    getEnv(),
     features,
     tempDir,
     inputs,

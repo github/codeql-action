@@ -37,6 +37,7 @@ import {
   createTestConfig,
   makeMacro,
   RecordingLogger,
+  DEFAULT_ACTIONS_VARS,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -2282,9 +2283,11 @@ test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only r
 test("determineUserConfig - empty config when neither input is specified", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
+    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
 
     const result = await configUtils.determineUserConfig(
       logger,
+      env,
       createFeatures([]),
       tmpDir,
       createTestInitConfigInputs({
@@ -2313,9 +2316,11 @@ test("determineUserConfig - loads config file", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
     const logger = new RecordingLogger();
+    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
 
     const result = await configUtils.determineUserConfig(
       logger,
+      env,
       createFeatures([]),
       tmpDir,
       createTestInitConfigInputs({
@@ -2346,9 +2351,11 @@ test("determineUserConfig - loads config file", async (t) => {
 test("determineUserConfig - loads config input", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
+    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
 
     const result = await configUtils.determineUserConfig(
       logger,
+      env,
       createFeatures([]),
       tmpDir,
       createTestInitConfigInputs({
@@ -2383,11 +2390,13 @@ test("determineUserConfig - loads config input", async (t) => {
 test("determineUserConfig - ignores config file input when both specified", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
+    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
     const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
     const result = await configUtils.determineUserConfig(
       logger,
+      env,
       createFeatures([]),
       tmpDir,
       createTestInitConfigInputs({

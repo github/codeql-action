@@ -572,6 +572,9 @@ export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
     getRequired: (name) => getRequiredEnvVar(env, name),
     getOptional: (name) => getOptionalEnvVarFrom(env, name),
     entries: () => Object.entries(env),
+    set: (name, value) => {
+      env[name] = value;
+    },
   };
 }
 

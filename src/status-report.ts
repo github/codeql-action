@@ -14,14 +14,14 @@ import {
 import { getAnalysisKey, getApiClient } from "./api-client";
 import type { Config } from "./config/action-config";
 import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
-import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
+import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
-import { Logger } from "./logging";
-import { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
+import type { Logger } from "./logging";
+import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";
-import { ToolsSource } from "./setup-codeql";
+import type { ToolsSource } from "./setup-codeql";
 import {
   ConfigurationError,
   getRequiredEnvParam,

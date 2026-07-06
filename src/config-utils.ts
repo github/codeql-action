@@ -1175,13 +1175,18 @@ export async function determineUserConfig(
   if (inputs.configInput) {
     const computedConfigPath = userConfigFromActionPath(tempDir);
 
-    // Get a promise which enables us to determine whether the FF that allows us to
+    // Get a function which enables us to determine whether the FF that allows us to
     // merge supported configuration file properties is enabled. We only execute
-    // the promise lazily if the other checks pass.
-    const allowMergeConfigs = features.getValue(Feature.AllowMergeConfigFiles);
+    // this lazily if the other checks pass.
+    const allowMergeConfigs = () =>
+      features.getValue(Feature.AllowMergeConfigFiles);
 
     // Check whether we also have a `config-file` input and decide what to do.
-    if (inputs.configFile && isDefaultSetup(env) && (await allowMergeConfigs)) {
+    if (
+      inputs.configFile &&
+      isDefaultSetup(env) &&
+      (await allowMergeConfigs())
+    ) {
       // If the FF is enabled and we are in Default Setup, combine the supported
       // configuration file properties and write the result to disk.
       const fromConfigInput = parseUserConfig(

@@ -10,6 +10,7 @@ import test, {
 import nock from "nock";
 import * as sinon from "sinon";
 
+import { ActionState, StateFeature } from "./action-common";
 import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
@@ -27,6 +28,7 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -186,6 +188,108 @@ export function getTestActionsEnv(): ActionsEnv {
   return {
     getOptionalInput: () => undefined,
   };
+}
+
+/** For testing purposes, we make all available state features accessible in `TestEnv`. */
+type AllState = ["Logger", "Env", "Actions", "FeatureFlags"];
+
+/**
+ * Wraps a function that accepts an `ActionState` for testing in different environments.
+ */
+export class TestEnv<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> {
+  private readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
+  private args?: Args;
+  private logger: RecordingLogger;
+  private state: ActionState<AllState>;
+
+  constructor(
+    fn: (state: ActionState<Fs>, ...args: Args) => R,
+    cloneFrom?: TestEnv<Args, R, Fs>,
+  ) {
+    this.fn = fn;
+    this.args = cloneFrom?.args;
+    this.logger = new RecordingLogger();
+    this.state =
+      cloneFrom !== undefined
+        ? { ...cloneFrom.state, logger: this.logger }
+        : {
+            name: ActionName.Init,
+            startedAt: new Date(),
+            logger: this.logger,
+            env: getTestEnv(),
+            actions: getTestActionsEnv(),
+            features: createFeatures([]),
+          };
+  }
+
+  private clone(): TestEnv<Args, R, Fs> {
+    return new TestEnv(this.fn, this);
+  }
+
+  public getLogger(): RecordingLogger {
+    return this.logger;
+  }
+
+  public getState(): ActionState<AllState> {
+    return this.state;
+  }
+
+  public getArgs(): Args | undefined {
+    return this.args;
+  }
+
+  public withArgs(...args: Args) {
+    const result = this.clone();
+    result.args = args;
+    return result;
+  }
+
+  public withFeatures(enabled: Feature[]): TestEnv<Args, R, Fs> {
+    const result = this.clone();
+    result.state.features = createFeatures(enabled);
+    return result;
+  }
+
+  public withEnv(env: Env): TestEnv<Args, R, Fs> {
+    const result = this.clone();
+    result.state.env = env;
+    return result;
+  }
+
+  public withActions(actions: ActionsEnv): TestEnv<Args, R, Fs> {
+    const result = this.clone();
+    result.state.actions = actions;
+    return result;
+  }
+
+  call(): R {
+    if (!this.args) {
+      throw new Error("Trying to call function in TestEnv without arguments.");
+    }
+    return this.fn(this.state as unknown as ActionState<Fs>, ...this.args);
+  }
+
+  public passes<T>(
+    assertion: (makeCall: () => R) => T | Promise<T>,
+  ): T | Promise<T> {
+    return assertion(() => {
+      const result = this.call();
+      return result;
+    });
+  }
+}
+
+/** Utility function to construct a `TestEnv`. */
+export function callee<
+  Args extends readonly any[],
+  R,
+  Fs extends readonly StateFeature[],
+>(fn: (state: ActionState<Fs>, ...args: Args) => R): TestEnv<Args, R, Fs> {
+  return new TestEnv(fn);
 }
 
 /**

@@ -598,6 +598,17 @@ async function downloadCacheWithTime(
   return { trapCaches, trapCacheDownloadTime };
 }
 
+/**
+ * Loads a CLI configuration file from `configFile`.
+ *
+ * @param logger The logger to use.
+ * @param configFile The address of the configuration file.
+ * @param workspacePath The workspace path, used to check that the configuration file exists relative to it.
+ * @param apiDetails Information for how to access the API to fetch remote files.
+ * @param tempDir The temporary directory which may contain a CodeQL Action-generated configuration file.
+ * @param validateConfig Whether to validate the configuration file.
+ * @returns The loaded configuration file, if successful.
+ */
 async function loadUserConfig(
   logger: Logger,
   configFile: string,

@@ -1154,6 +1154,8 @@ async function determineUserConfig(
   tempDir: string,
   inputs: InitConfigInputs,
 ): Promise<UserConfig> {
+  const validateConfig = await features.getValue(Feature.ValidateDbConfig);
+
   // if configInput is set, it takes precedence over configFile
   if (inputs.configInput) {
     if (inputs.configFile) {
@@ -1166,12 +1168,12 @@ async function determineUserConfig(
     logger.debug(`Using config from action input: ${inputs.configFile}`);
   }
 
+  // Load whatever configuration file we have, if any.
   if (!inputs.configFile) {
     logger.debug("No configuration file was provided");
     return {};
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
-    const validateConfig = await features.getValue(Feature.ValidateDbConfig);
     return await loadUserConfig(
       logger,
       inputs.configFile,

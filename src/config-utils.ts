@@ -85,7 +85,6 @@ import {
   Success,
   Failure,
   isHostedRunner,
-  getEnv,
 } from "./util";
 
 export { type Config } from "./config/action-config";
@@ -1004,10 +1003,11 @@ export async function applyIncrementalAnalysisSettings(
  * a default config. The parsed config is then stored to a known location.
  */
 export async function initConfig(
-  features: FeatureEnablement,
+  actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   inputs: InitConfigInputs,
 ): Promise<Config> {
-  const { logger, tempDir } = inputs;
+  const { logger, features } = actionState;
+  const { tempDir } = inputs;
 
   // if configInput is set, it takes precedence over configFile
   if (inputs.configInput) {
@@ -1026,7 +1026,6 @@ export async function initConfig(
     logger.debug("No configuration file was provided");
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
-    const actionState = { logger, features, env: getEnv() };
     userConfig = await loadUserConfig(
       actionState,
       inputs.configFile,

@@ -99,6 +99,7 @@ import {
   getOptionalEnvVar,
   Success,
   Failure,
+  getEnv,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -361,7 +362,8 @@ async function run(startedAt: Date) {
       repositoryProperties,
     );
 
-    config = await initConfig(features, {
+    const actionState = { logger, env: getEnv(), features };
+    config = await initConfig(actionState, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),

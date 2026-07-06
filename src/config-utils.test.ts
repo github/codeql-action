@@ -2292,6 +2292,7 @@ test("determineUserConfig - empty config when neither input is specified", async
       createTestInitConfigInputs({
         configInput: undefined,
         configFile: undefined,
+        workspacePath: tmpDir,
       }),
     );
 
@@ -2320,6 +2321,7 @@ test("determineUserConfig - loads config file", async (t) => {
     const inputs = createTestInitConfigInputs({
       configInput: undefined,
       configFile: configFilePath,
+      workspacePath: tmpDir,
     });
     const result = await configUtils.determineUserConfig(
       logger,
@@ -2359,6 +2361,7 @@ test("determineUserConfig - loads config input", async (t) => {
     const inputs = createTestInitConfigInputs({
       configInput: simpleConfigFileContents,
       configFile: undefined,
+      workspacePath: tmpDir,
     });
     const result = await configUtils.determineUserConfig(
       logger,
@@ -2401,6 +2404,7 @@ test("determineUserConfig - ignores config file input when both specified", asyn
     const inputs = createTestInitConfigInputs({
       configInput: simpleConfigFileContents,
       configFile: configFilePath,
+      workspacePath: tmpDir,
     });
     const result = await configUtils.determineUserConfig(
       logger,
@@ -2461,6 +2465,7 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
       createTestInitConfigInputs({
         configInput: defaultSetupConfigInput,
         configFile: configFilePath,
+        workspacePath: tmpDir,
       }),
     );
 
@@ -2517,6 +2522,7 @@ test("determineUserConfig - ignores config file input in Default Setup if FF is 
       createTestInitConfigInputs({
         configInput: simpleConfigFileContents,
         configFile: configFilePath,
+        workspacePath: tmpDir,
       }),
     );
 
@@ -2559,6 +2565,7 @@ test("determineUserConfig - ignores config file input outside Default Setup if F
       createTestInitConfigInputs({
         configInput: simpleConfigFileContents,
         configFile: configFilePath,
+        workspacePath: tmpDir,
       }),
     );
 

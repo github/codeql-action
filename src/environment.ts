@@ -83,6 +83,9 @@ export enum EnvVar {
   /** Whether to suppress the warning if the current CLI will soon be unsupported. */
   SUPPRESS_DEPRECATED_SOON_WARNING = "CODEQL_ACTION_SUPPRESS_DEPRECATED_SOON_WARNING",
 
+  /** Used to dictate or persist the temporary directory used by the CodeQL Action. */
+  TEMP = "CODEQL_ACTION_TEMP",
+
   /** Whether to disable uploading SARIF results or status reports to the GitHub API */
   TEST_MODE = "CODEQL_ACTION_TEST_MODE",
 
@@ -167,4 +170,6 @@ export interface Env {
   getRequired(name: string): string;
   /** Gets the value for `name`, or `undefined` if it isn't set or empty. */
   getOptional(name: string): string | undefined;
+  /** Gets the entries of the underlying `ProcessEnv`. */
+  entries(): Array<[string, string | undefined]>;
 }

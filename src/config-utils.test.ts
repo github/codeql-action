@@ -2317,15 +2317,16 @@ test("determineUserConfig - loads config file", async (t) => {
     const logger = new RecordingLogger();
     const env = util.getEnv(DEFAULT_ACTIONS_VARS);
 
+    const inputs = createTestInitConfigInputs({
+      configInput: undefined,
+      configFile: configFilePath,
+    });
     const result = await configUtils.determineUserConfig(
       logger,
       env,
       createFeatures([]),
       tmpDir,
-      createTestInitConfigInputs({
-        configInput: undefined,
-        configFile: configFilePath,
-      }),
+      inputs,
     );
 
     // The loaded configuration should match `simpleConfigFileContents`.
@@ -2333,6 +2334,8 @@ test("determineUserConfig - loads config file", async (t) => {
       name: "my config",
       queries: [{ uses: "./foo_file" }],
     });
+    // The `configFile` input should not have changed.
+    t.is(inputs.configFile, configFilePath);
     // And the path of the input config file should have been logged, while the
     // other two origin messages should not have been logged.
     t.true(logger.hasMessage(`Using configuration file: ${configFilePath}`));
@@ -2351,16 +2354,18 @@ test("determineUserConfig - loads config input", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
     const env = util.getEnv(DEFAULT_ACTIONS_VARS);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
+    const inputs = createTestInitConfigInputs({
+      configInput: simpleConfigFileContents,
+      configFile: undefined,
+    });
     const result = await configUtils.determineUserConfig(
       logger,
       env,
       createFeatures([]),
       tmpDir,
-      createTestInitConfigInputs({
-        configInput: simpleConfigFileContents,
-        configFile: undefined,
-      }),
+      inputs,
     );
 
     // The loaded configuration should match `simpleConfigFileContents`.
@@ -2368,13 +2373,13 @@ test("determineUserConfig - loads config input", async (t) => {
       name: "my config",
       queries: [{ uses: "./foo_file" }],
     });
+    // The `configFile` input should have been mutated to the generated path.
+    t.is(inputs.configFile, expectedConfigPath);
     // And the input source and path of the generated config file should have been logged,
     // while the message about no configuration input should not have been logged.
     t.true(logger.hasMessage("Using config from action input:"));
     t.true(
-      logger.hasMessage(
-        `Using configuration file: ${configUtils.userConfigFromActionPath(tmpDir)}`,
-      ),
+      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
     );
     t.false(logger.hasMessage("No configuration file was provided"));
     // But the warning about both inputs should not have been logged.
@@ -2393,15 +2398,16 @@ test("determineUserConfig - ignores config file input when both specified", asyn
     const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
+    const inputs = createTestInitConfigInputs({
+      configInput: simpleConfigFileContents,
+      configFile: configFilePath,
+    });
     const result = await configUtils.determineUserConfig(
       logger,
       env,
       createFeatures([]),
       tmpDir,
-      createTestInitConfigInputs({
-        configInput: simpleConfigFileContents,
-        configFile: configFilePath,
-      }),
+      inputs,
     );
 
     // The loaded configuration should match `simpleConfigFileContents`.
@@ -2409,6 +2415,8 @@ test("determineUserConfig - ignores config file input when both specified", asyn
       name: "my config",
       queries: [{ uses: "./foo_file" }],
     });
+    // The `configFile` input should have been mutated to the generated path.
+    t.is(inputs.configFile, expectedConfigPath);
     // And the path of the generated config file should have been logged.
     t.true(
       logger.hasMessage(

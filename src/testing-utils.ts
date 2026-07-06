@@ -219,11 +219,19 @@ export type ActionVarOverrides = Partial<
  * excluding some that are expected to be set to paths. See `setupActionsVars`.
  *
  * @param overrides Overrides for the defaults.
+ * @param env The environment to set the variables for.
  */
-export function setupBaseActionsVars(overrides?: ActionVarOverrides) {
+export function setupBaseActionsVars(
+  overrides?: ActionVarOverrides,
+  env?: Env,
+) {
   const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
   for (const [key, value] of Object.entries(vars)) {
-    process.env[key] = value;
+    if (env) {
+      env.set(key, value);
+    } else {
+      process.env[key] = value;
+    }
   }
 }
 

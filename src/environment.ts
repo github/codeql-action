@@ -172,4 +172,6 @@ export interface Env {
   getOptional(name: string): string | undefined;
   /** Gets the entries of the underlying `ProcessEnv`. */
   entries(): Array<[string, string | undefined]>;
+  /** Sets an environment variable. */
+  set(name: string, value: string): void;
 }

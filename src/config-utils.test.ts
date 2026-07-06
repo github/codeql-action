@@ -2474,7 +2474,7 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
         `Using merged configurations from 'config' input with configuration from '${configFilePath}': ${expectedConfigPath}`,
       ),
     );
-    t.true(
+    t.false(
       logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
     );
     t.false(logger.hasMessage("No configuration file was provided"));

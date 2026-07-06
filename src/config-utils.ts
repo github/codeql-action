@@ -1199,13 +1199,20 @@ export async function determineUserConfig(
         validateConfig,
       );
 
-      fs.writeFileSync(
-        computedConfigPath,
-        yaml.dump(mergeUserConfigs(logger, fromConfigInput, fromConfigFile)),
+      // Write the merged configuration to disk so that it can be loaded subsequently by
+      // the CLI or other CodeQL Action steps.
+      const mergedConfig = mergeUserConfigs(
+        logger,
+        fromConfigInput,
+        fromConfigFile,
       );
+      fs.writeFileSync(computedConfigPath, yaml.dump(mergedConfig));
       logger.debug(
         `Using merged configurations from 'config' input with configuration from '${inputs.configFile}': ${computedConfigPath}`,
       );
+
+      inputs.configFile = computedConfigPath;
+      return mergedConfig;
     } else {
       // If we are in this branch and there is a `config-file` input, then it means
       // we didn't meet the conditions for merging the configurations. Warn the user
@@ -1218,10 +1225,9 @@ export async function determineUserConfig(
 
       // Write the `config` input straight to disk.
       fs.writeFileSync(computedConfigPath, inputs.configInput);
-      logger.debug(`Using config from action input: ${computedConfigPath}`);
+      inputs.configFile = computedConfigPath;
+      logger.debug(`Using config from action input: ${inputs.configFile}`);
     }
-
-    inputs.configFile = computedConfigPath;
   }
 
   // Load whatever configuration file we have, if any.

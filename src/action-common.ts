@@ -42,12 +42,12 @@ export interface FeatureState {
 /** Identifies a type of state an Action may have. */
 export type StateFeature = keyof FeatureState;
 
-/** Constructs the union of all state types identifies by `Fs`. */
+/** Constructs the intersection of all state types identifies by `Fs`. */
 export type FieldsOf<Fs extends readonly StateFeature[]> = Fs extends []
   ? BaseState
   : Fs extends [
         infer Head extends StateFeature,
-        ...infer Tail extends StateFeature[],
+        ...infer Tail extends readonly StateFeature[],
       ]
     ? FeatureState[Head] & FieldsOf<Tail>
     : never;

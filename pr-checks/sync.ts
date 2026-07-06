@@ -233,8 +233,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: pinnedUses(
           "actions/setup-go",
-          "4a3601121dd01d1626a1e23e37211e3254c1c06c",
-          "v6.4.0",
+          "924ae3a1cded613372ab5595356fb5720e22ba16",
+          "v6.5.0",
         ),
         with: {
           "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
@@ -253,8 +253,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "ad2b38190b15e4d6bdf0c97fb4fca8412226d287",
-          "v5.3.0",
+          "1bcf9fb12cf4aa7d266a90ae39939e61372fe520",
+          "v5.4.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -271,8 +271,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "a309ff8b426b58ec0e2a45f0f869d46889d02405",
-          "v6.2.0",
+          "ece7cb06caefa5fff74198d8649806c4678c61a1",
+          "v6.3.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
@@ -288,8 +288,8 @@ const languageSetups: LanguageSetups = {
         name: "Install .NET",
         uses: pinnedUses(
           "actions/setup-dotnet",
-          "9a946fdbd5fb07b82b2f5a4466058b876ab72bb2",
-          "v5.3.0",
+          "26b0ec14cb23fa6904739307f278c14f94c95bf1",
+          "v5.4.0",
         ),
         with: {
           "dotnet-version": `\${{ inputs.dotnet-version || '${defaultLanguageVersions.csharp}' }}`,
@@ -529,8 +529,8 @@ function generateJob(
       name: "Check out repository",
       uses: pinnedUses(
         "actions/checkout",
-        "df4cb1c069e1874edd31b4311f1884172cec0e10",
-        "v6.0.3",
+        "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+        "v7.0.0",
       ),
     },
     ...setupInfo.steps,
@@ -765,9 +765,7 @@ function main(): void {
         push: {
           branches: ["main", "releases/v*"],
         },
-        pull_request: {
-          types: ["opened", "synchronize", "reopened", "ready_for_review"],
-        },
+        pull_request: {},
         merge_group: {
           types: ["checks_requested"],
         },

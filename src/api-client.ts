@@ -315,6 +315,7 @@ function isEnablementError(msg: string) {
     /Code Security must be enabled/i,
     /Advanced Security must be enabled/i,
     /Code Scanning is not enabled/i,
+    /Code Quality is not enabled/i,
   ].some((pattern) => pattern.test(msg));
 }
 

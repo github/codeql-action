@@ -74,6 +74,8 @@ export enum Feature {
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
   AllowToolcacheInput = "allow_toolcache_input",
   CleanupTrapCaches = "cleanup_trap_caches",
+  /** Whether to allow the `config-file` input to be specified via a repository property. */
+  ConfigFileRepositoryProperty = "config_file_repository_property",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CsharpCacheBuildModeNone = "csharp_cache_bmn",
   CsharpNewCacheKey = "csharp_new_cache_key",
@@ -184,6 +186,11 @@ export const featureConfig = {
   [Feature.CleanupTrapCaches]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
+    minimumVersion: undefined,
+  },
+  [Feature.ConfigFileRepositoryProperty]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CONFIG_FILE_REPOSITORY_PROPERTY",
     minimumVersion: undefined,
   },
   [Feature.CppDependencyInstallation]: {

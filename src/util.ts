@@ -740,7 +740,13 @@ export function getBaseDatabaseOidsFilePath(config: Config): string {
   return path.join(config.dbLocation, BASE_DATABASE_OIDS_FILE_NAME);
 }
 
-// Create a bundle for the given DB, if it doesn't already exist
+/**
+ * Bundles the database for the given language into a `.zip` file, returning the path to it.
+ *
+ * If a bundle for `dbName` already exists (e.g. from an earlier call), it is deleted and
+ * re-created, so each call produces a fresh bundle reflecting the current database contents and the
+ * given `includeDiagnostics` value.
+ */
 export async function bundleDb(
   config: Config,
   language: Language,

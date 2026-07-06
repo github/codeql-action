@@ -48,6 +48,17 @@ export enum ActionName {
 }
 
 /**
+ * Maps an `ActionName` to its display name. Usually that is the same, except
+ * for `ActionName.Analyze` where it is `"analyze"` instead of `"finish"`.
+ */
+export function getDisplayActionName(actionName: ActionName): string {
+  if (actionName === ActionName.Analyze) {
+    return "analyze";
+  }
+  return actionName;
+}
+
+/**
  * @returns a boolean indicating whether the analysis is considered to be first party.
  *
  * This is based on whether the init action has been used, which is only used for first party analysis.

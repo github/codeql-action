@@ -136,7 +136,7 @@ def open_pr(
   body.append(f' - [ ] Check that there are not any unexpected commits being merged into the `{target_branch}` branch.')
   body.append(' - [ ] Ensure the docs team is aware of any documentation changes that need to be released.')
 
-  body.append(' - [ ] Mark the PR as ready for review to trigger the full set of PR checks.')
+  body.append(' - [ ] Approve running the full set of PR checks if you have not pushed any changes.')
   body.append(' - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.')
 
   if is_primary_release:
@@ -146,9 +146,7 @@ def open_pr(
   title = f'Merge {source_branch} into {target_branch}'
 
   # Create the pull request
-  # PR checks won't be triggered on PRs created by Actions. Therefore mark the PR as draft so that
-  # a maintainer can take the PR out of draft, thereby triggering the PR checks.
-  pr = repo.create_pull(title=title, body='\n'.join(body), head=new_branch_name, base=target_branch, draft=True)
+  pr = repo.create_pull(title=title, body='\n'.join(body), head=new_branch_name, base=target_branch)
   print(f'Created PR #{str(pr.number)}')
 
   # Assign the conductor

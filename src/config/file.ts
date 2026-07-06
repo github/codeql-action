@@ -1,5 +1,4 @@
 import { ActionState } from "../action-common";
-import { ActionsEnv } from "../actions-util";
 import * as api from "../api-client";
 import * as errorMessages from "../error-messages";
 import { Feature } from "../feature-flags";
@@ -7,7 +6,6 @@ import {
   RepositoryProperties,
   RepositoryPropertyName,
 } from "../feature-flags/properties";
-import { Logger } from "../logging";
 import { ConfigurationError } from "../util";
 
 import { parseUserConfig, UserConfig } from "./db-config";
@@ -16,11 +14,14 @@ import { parseRemoteFileAddress } from "./remote-file";
 /**
  * Gets the value that is configured for the configuration file, if any.
  */
-export function getConfigFileInput(
-  logger: Logger,
-  actions: ActionsEnv,
+export async function getConfigFileInput(
+  {
+    logger,
+    actions,
+    features,
+  }: ActionState<["Logger", "Actions", "FeatureFlags"]>,
   repositoryProperties: Partial<RepositoryProperties>,
-): string | undefined {
+): Promise<string | undefined> {
   const input = actions.getOptionalInput("config-file");
 
   if (input !== undefined) {
@@ -32,10 +33,21 @@ export function getConfigFileInput(
     repositoryProperties[RepositoryPropertyName.CONFIG_FILE];
 
   if (propertyValue !== undefined && propertyValue.trim().length > 0) {
-    logger.info(
-      `Using configuration file input from repository property: ${propertyValue}`,
+    // Only use the repository property value if the FF is enabled.
+    const useRepositoryProperty = await features.getValue(
+      Feature.ConfigFileRepositoryProperty,
     );
-    return propertyValue;
+
+    if (useRepositoryProperty) {
+      logger.info(
+        `Using configuration file input from repository property: ${propertyValue}`,
+      );
+      return propertyValue;
+    } else {
+      logger.info(
+        "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",
+      );
+    }
   }
 
   return undefined;

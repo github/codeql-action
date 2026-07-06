@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.36.3",
+  "version": "4.36.4",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -22,7 +22,7 @@
   "dependencies": {
     "@actions/artifact": "^5.0.3",
     "@actions/artifact-legacy": "npm:@actions/artifact@^1.1.2",
-    "@actions/cache": "^5.0.5",
+    "@actions/cache": "^5.1.0",
     "@actions/core": "^2.0.3",
     "@actions/exec": "^2.0.0",
     "@actions/github": "^8.0.1",
@@ -36,12 +36,12 @@
     "follow-redirects": "^1.16.0",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
-    "js-yaml": "^5.0.0",
+    "js-yaml": "^5.1.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
-    "semver": "^7.8.4",
-    "uuid": "^14.0.0"
+    "semver": "^7.8.5",
+    "uuid": "^14.0.1"
   },
   "devDependencies": {
     "@ava/typescript": "6.0.0",
@@ -51,7 +51,7 @@
     "@types/archiver": "^8.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.19.42",
+    "@types/node": "^20.19.43",
     "@types/node-forge": "^1.3.14",
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.7.1",
@@ -61,15 +61,15 @@
     "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-github": "^6.0.0",
-    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-import-x": "^4.17.0",
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "glob": "^11.1.0",
-    "globals": "^17.6.0",
+    "glob": "^13.0.6",
+    "globals": "^17.7.0",
     "nock": "^14.0.15",
     "sinon": "^22.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.0"
+    "typescript-eslint": "^8.62.0"
   },
   "overrides": {
     "@actions/tool-cache": {
@@ -90,7 +90,7 @@
     "eslint-plugin-jsx-a11y": {
       "semver": ">=6.3.1"
     },
-    "glob": "^11.1.0",
+    "glob": "^13.0.6",
     "undici": "^6.24.0"
   }
 }

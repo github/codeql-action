@@ -25,6 +25,19 @@ export interface DatabaseUploadResult {
   zipped_upload_size_bytes?: number;
   /** Whether the uploaded database is an overlay base. */
   is_overlay_base?: boolean;
+  /**
+   * For overlay-base uploads only: the size in bytes that the zipped database
+   * would have been if it had been cleaned at the `clear` cleanup level instead
+   * of the `overlay` level.
+   */
+  clear_cleanup_zipped_size_bytes?: number;
+  /**
+   * For overlay-base uploads only: the time in milliseconds spent measuring the
+   * `clear` cleanup size (cleaning up the cluster at the `clear` level and
+   * bundling each database). This is a cluster-wide measurement, so it is the
+   * same for every language in a run.
+   */
+  clear_cleanup_measurement_duration_ms?: number;
   /** Time taken to upload database in milliseconds. */
   upload_duration_ms?: number;
   /** If there was an error during database upload, this is its message. */
@@ -156,7 +169,87 @@ export async function cleanupAndUploadDatabases(
       });
     }
   }
+
+  // When we upload an overlay-base database, we cleaned the databases at the `overlay` level, which
+  // retains more data than the `clear` level used for regular uploads. Measure what the zipped size
+  // would have been at the `clear` level too, so we can compare the storage cost of overlay-base
+  // databases against regular databases for the same repository.
+  //
+  // We skip this in debug mode, where the databases are preserved and uploaded as debug artifacts,
+  // since cleaning them up at the `clear` level would discard data that is useful for debugging.
+  if (shouldUploadOverlayBase && !config.debugMode) {
+    await withGroupAsync(
+      "Measuring database size at the clear cleanup level",
+      () => recordClearCleanupSizes(codeql, config, reports, logger),
+    );
+  }
+
   return reports;
+}
+
+/**
+ * Cleans up the databases at the `clear` cleanup level and records the resulting zipped size for
+ * each language in `clear_cleanup_zipped_size_bytes`. If the cleanup succeeds, also records the
+ * time spent taking the measurement in `clear_cleanup_measurement_duration_ms`.
+ *
+ * This mutates the entries of `reports` in place. It must run only after all overlay-base uploads
+ * have completed, since the `clear` cleanup discards overlay data that the uploaded database
+ * depends on.
+ *
+ * Failures here are non-fatal: this is telemetry-only, so we log and move on rather than failing
+ * the workflow.
+ */
+async function recordClearCleanupSizes(
+  codeql: CodeQL,
+  config: Config,
+  reports: DatabaseUploadResult[],
+  logger: Logger,
+): Promise<void> {
+  // Include both the cleanup and the re-bundling to record how much time taking this measurement adds
+  // to the run.
+  const startTime = performance.now();
+
+  try {
+    await codeql.databaseCleanupCluster(config, CleanupLevel.Clear);
+  } catch (e) {
+    // The cleanup didn't run, so there are no sizes to measure. Return without recording a
+    // duration, so that we don't report a measurement duration with no accompanying sizes.
+    logger.warning(
+      `Failed to clean up databases at the '${CleanupLevel.Clear}' level for ` +
+        `size measurement: ${util.getErrorMessage(e)}`,
+    );
+    return;
+  }
+
+  for (const language of config.languages) {
+    const report = reports.find((r) => r.language === language);
+    if (report === undefined) {
+      continue;
+    }
+    try {
+      const bundledDb = await bundleDb(config, language, codeql, language, {
+        includeDiagnostics: false,
+      });
+      report.clear_cleanup_zipped_size_bytes = fs.statSync(bundledDb).size;
+      logger.debug(
+        `Database for ${language} is ` +
+          `${report.clear_cleanup_zipped_size_bytes} bytes zipped at the ` +
+          `'${CleanupLevel.Clear}' cleanup level ` +
+          `(vs. ${report.zipped_upload_size_bytes ?? "unknown"} bytes at the ` +
+          `'${CleanupLevel.Overlay}' level).`,
+      );
+    } catch (e) {
+      logger.warning(
+        `Failed to measure the '${CleanupLevel.Clear}' cleanup database size ` +
+          `for ${language}: ${util.getErrorMessage(e)}`,
+      );
+    }
+  }
+
+  const durationMs = performance.now() - startTime;
+  for (const report of reports) {
+    report.clear_cleanup_measurement_duration_ms = durationMs;
+  }
 }
 
 /**

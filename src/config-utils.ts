@@ -1152,7 +1152,7 @@ export async function applyIncrementalAnalysisSettings(
 /**
  * Determines where to load the `UserConfig` for the CLI from and loads it.
  *
- * @param inputs The Action inputs. The `inputConfigFile` value will be mutated
+ * @param inputs The Action inputs. The `configFile` value will be mutated
  *               if a CodeQL Action-generated file should be used.
  *
  * @returns The loaded `UserConfig`, which might be empty if no configuration

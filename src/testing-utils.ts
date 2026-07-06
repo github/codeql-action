@@ -11,12 +11,7 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import { ActionState, StateFeature } from "./action-common";
-import {
-  ActionsEnv,
-  ActionsEnvVars,
-  getActionsEnv,
-  getActionVersion,
-} from "./actions-util";
+import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -226,7 +221,7 @@ export class TestEnv<
             startedAt: new Date(),
             logger: this.logger,
             env: getTestEnv(),
-            actions: getActionsEnv(),
+            actions: getTestActionsEnv(),
             features: createFeatures([]),
           };
   }

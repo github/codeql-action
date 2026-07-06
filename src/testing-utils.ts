@@ -10,7 +10,7 @@ import test, {
 import nock from "nock";
 import * as sinon from "sinon";
 
-import { ActionsEnv, getActionVersion } from "./actions-util";
+import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -18,6 +18,7 @@ import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
+import { Env } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -29,6 +30,7 @@ import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  getEnv,
   GitHubVariant,
   GitHubVersion,
   HTTPError,
@@ -172,6 +174,11 @@ export function makeMacro<Args extends unknown[]>(
   return wrapper;
 }
 
+export function getTestEnv(): Env {
+  const testEnv: NodeJS.ProcessEnv = {};
+  return getEnv(testEnv);
+}
+
 /**
  * Gets an `ActionsEnv` instance for use in tests.
  */
@@ -200,7 +207,7 @@ export const DEFAULT_ACTIONS_VARS = {
   GITHUB_WORKFLOW: "test-workflow",
   RUNNER_NAME: "my-runner",
   RUNNER_OS: "Linux",
-} as const satisfies Record<string, string>;
+} as const satisfies Partial<Record<ActionsEnvVars, string>>;
 
 /** Partial mappings from GitHub Actions environment variables to values. */
 export type ActionVarOverrides = Partial<

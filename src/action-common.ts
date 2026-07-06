@@ -4,7 +4,11 @@ import { ActionsEnv, getActionsEnv } from "./actions-util";
 import { Env } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import { getActionsLogger, Logger } from "./logging";
-import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
+import {
+  ActionName,
+  getDisplayActionName,
+  sendUnhandledErrorStatusReport,
+} from "./status-report";
 import { getEnv, getErrorMessage } from "./util";
 
 /** Common state that is always available in `ActionState`. */
@@ -83,7 +87,9 @@ export async function runInActions(action: Action) {
       actions: actionsEnv,
     });
   } catch (error) {
-    core.setFailed(`${action.name} action failed: ${getErrorMessage(error)}`);
+    core.setFailed(
+      `${getDisplayActionName(action.name)} action failed: ${getErrorMessage(error)}`,
+    );
     await sendUnhandledErrorStatusReport(action.name, startedAt, error, logger);
   }
 }

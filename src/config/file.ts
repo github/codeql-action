@@ -1,19 +1,21 @@
-import { ActionsEnv } from "../actions-util";
+import { ActionState } from "../action-common";
+import { Feature } from "../feature-flags";
 import {
   RepositoryProperties,
   RepositoryPropertyName,
 } from "../feature-flags/properties";
-import { Logger } from "../logging";
 
 /**
  * Gets the value that is configured for the configuration file, if any.
  */
-export function getConfigFileInput(
-  logger: Logger,
-  actions: ActionsEnv,
+export async function getConfigFileInput(
+  {
+    logger,
+    actions,
+    features,
+  }: ActionState<["Logger", "Actions", "FeatureFlags"]>,
   repositoryProperties: Partial<RepositoryProperties>,
-  useRepositoryProperty: boolean,
-): string | undefined {
+): Promise<string | undefined> {
   const input = actions.getOptionalInput("config-file");
 
   if (input !== undefined) {
@@ -26,6 +28,10 @@ export function getConfigFileInput(
 
   if (propertyValue !== undefined && propertyValue.trim().length > 0) {
     // Only use the repository property value if the FF is enabled.
+    const useRepositoryProperty = await features.getValue(
+      Feature.ConfigFileRepositoryProperty,
+    );
+
     if (useRepositoryProperty) {
       logger.info(
         `Using configuration file input from repository property: ${propertyValue}`,

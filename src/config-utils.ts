@@ -1082,7 +1082,11 @@ function dbLocationOrDefault(
   return dbLocation || path.resolve(tempDir, "codeql_databases");
 }
 
-function userConfigFromActionPath(tempDir: string): string {
+/**
+ * Gets the path for the CodeQL Action-generated configuration file,
+ * which is used to store the `config` input.
+ */
+export function userConfigFromActionPath(tempDir: string): string {
   return path.resolve(tempDir, "user-config-from-action.yml");
 }
 
@@ -1148,7 +1152,7 @@ export async function applyIncrementalAnalysisSettings(
  * @returns The loaded `UserConfig`, which might be empty if no configuration
  *          was specified.
  */
-async function determineUserConfig(
+export async function determineUserConfig(
   logger: Logger,
   features: FeatureEnablement,
   tempDir: string,

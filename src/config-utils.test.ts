@@ -36,6 +36,7 @@ import {
   mockCodeQLVersion,
   createTestConfig,
   makeMacro,
+  RecordingLogger,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -482,6 +483,24 @@ test.serial("load non-existent input", async (t) => {
   });
 });
 
+/** A non-empty, but fairly minimal configuration file. */
+const simpleConfigFileContents = `
+  name: my config
+  queries:
+    - uses: ./foo_file`;
+
+/** A less minimal configuration file. */
+const otherConfigFileContents = `
+  name: my config
+  disable-default-queries: true
+  queries:
+    - uses: ./foo
+  paths-ignore:
+    - a
+    - b
+  paths:
+    - c/d`;
+
 test.serial("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     setupActionsVars(tempDir, tempDir);
@@ -495,18 +514,6 @@ test.serial("load non-empty input", async (t) => {
         };
       },
     });
-
-    // Just create a generic config object with non-default values for all fields
-    const inputFileContents = `
-      name: my config
-      disable-default-queries: true
-      queries:
-        - uses: ./foo
-      paths-ignore:
-        - a
-        - b
-      paths:
-        - c/d`;
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
@@ -534,7 +541,7 @@ test.serial("load non-empty input", async (t) => {
     });
 
     const languagesInput = "javascript";
-    const configFilePath = createConfigFile(inputFileContents, tempDir);
+    const configFilePath = createConfigFile(otherConfigFileContents, tempDir);
 
     const actualConfig = await configUtils.initConfig(
       createFeatures([]),
@@ -562,11 +569,10 @@ test.serial(
       process.env["RUNNER_TEMP"] = tempDir;
       process.env["GITHUB_WORKSPACE"] = tempDir;
 
-      const inputFileContents = `
-      name: my config
-      queries:
-        - uses: ./foo_file`;
-      const configFilePath = createConfigFile(inputFileContents, tempDir);
+      const configFilePath = createConfigFile(
+        simpleConfigFileContents,
+        tempDir,
+      );
 
       const configInput = `
       name: my config
@@ -2271,4 +2277,145 @@ test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only r
   t.deepEqual(config.extraQueryExclusions, [
     { exclude: { tags: "exclude-from-incremental" } },
   ]);
+});
+
+test("determineUserConfig - empty config when neither input is specified", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+
+    const result = await configUtils.determineUserConfig(
+      logger,
+      createFeatures([]),
+      tmpDir,
+      createTestInitConfigInputs({
+        configInput: undefined,
+        configFile: undefined,
+      }),
+    );
+
+    // The returned configuration should be empty.
+    t.deepEqual(result, {});
+    // And the fact that no configuration was provided should have been logged,
+    // but not the messages for the two input sources.
+    t.true(logger.hasMessage("No configuration file was provided"));
+    t.false(logger.hasMessage("Using config from action input:"));
+    t.false(logger.hasMessage("Using configuration file:"));
+    // And the warning about both inputs should not have been logged.
+    t.false(
+      logger.hasMessage(
+        "Both a config file and config input were provided. Ignoring config file.",
+      ),
+    );
+  });
+});
+
+test("determineUserConfig - loads config file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
+    const logger = new RecordingLogger();
+
+    const result = await configUtils.determineUserConfig(
+      logger,
+      createFeatures([]),
+      tmpDir,
+      createTestInitConfigInputs({
+        configInput: undefined,
+        configFile: configFilePath,
+      }),
+    );
+
+    // The loaded configuration should match `simpleConfigFileContents`.
+    t.deepEqual(result, {
+      name: "my config",
+      queries: [{ uses: "./foo_file" }],
+    });
+    // And the path of the input config file should have been logged, while the
+    // other two origin messages should not have been logged.
+    t.true(logger.hasMessage(`Using configuration file: ${configFilePath}`));
+    t.false(logger.hasMessage("No configuration file was provided"));
+    t.false(logger.hasMessage("Using config from action input:"));
+    // But the warning about both inputs should not have been logged.
+    t.false(
+      logger.hasMessage(
+        "Both a config file and config input were provided. Ignoring config file.",
+      ),
+    );
+  });
+});
+
+test("determineUserConfig - loads config input", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+
+    const result = await configUtils.determineUserConfig(
+      logger,
+      createFeatures([]),
+      tmpDir,
+      createTestInitConfigInputs({
+        configInput: simpleConfigFileContents,
+        configFile: undefined,
+      }),
+    );
+
+    // The loaded configuration should match `simpleConfigFileContents`.
+    t.deepEqual(result, {
+      name: "my config",
+      queries: [{ uses: "./foo_file" }],
+    });
+    // And the input source and path of the generated config file should have been logged,
+    // while the message about no configuration input should not have been logged.
+    t.true(logger.hasMessage("Using config from action input:"));
+    t.true(
+      logger.hasMessage(
+        `Using configuration file: ${configUtils.userConfigFromActionPath(tmpDir)}`,
+      ),
+    );
+    t.false(logger.hasMessage("No configuration file was provided"));
+    // But the warning about both inputs should not have been logged.
+    t.false(
+      logger.hasMessage(
+        "Both a config file and config input were provided. Ignoring config file.",
+      ),
+    );
+  });
+});
+
+test("determineUserConfig - ignores config file input when both specified", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const result = await configUtils.determineUserConfig(
+      logger,
+      createFeatures([]),
+      tmpDir,
+      createTestInitConfigInputs({
+        configInput: simpleConfigFileContents,
+        configFile: configFilePath,
+      }),
+    );
+
+    // The loaded configuration should match `simpleConfigFileContents`.
+    t.deepEqual(result, {
+      name: "my config",
+      queries: [{ uses: "./foo_file" }],
+    });
+    // And the path of the generated config file should have been logged.
+    t.true(
+      logger.hasMessage(
+        `Using config from action input: ${expectedConfigPath}`,
+      ),
+    );
+    t.true(
+      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
+    );
+    t.false(logger.hasMessage("No configuration file was provided"));
+    // And the warning about both inputs should have been logged.
+    t.true(
+      logger.hasMessage(
+        "Both a config file and config input were provided. Ignoring config file.",
+      ),
+    );
+  });
 });

@@ -6,7 +6,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { DO_NOT_RETRY_STATUSES } from "./api-client";
-import { ActionsEnvVars } from "./environment";
+import { ActionsEnvVars, RegistryProxyVars } from "./environment";
 import { getTestEnv, setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -27,14 +27,17 @@ test.serial("getApiClient", async (t) => {
 
   sinon.stub(actionsUtil, "getRequiredInput").withArgs("token").returns("xyz");
 
-  api.getApiClient(env);
+  const apiClient = api.getApiClient(env);
+  t.truthy(apiClient);
 
+  t.true(githubStub.calledOnce);
   t.assert(
     githubStub.calledOnceWithExactly({
       auth: "token xyz",
       baseUrl: "http://api.github.localhost",
       log: sinon.match.any,
       userAgent: `CodeQL-Action/${actionsUtil.getActionVersion()}`,
+      request: sinon.match.any,
       retry: {
         doNotRetry: DO_NOT_RETRY_STATUSES,
       },
@@ -204,3 +207,32 @@ test.serial(
     }
   },
 );
+
+test("getRegistryProxy - returns undefined if the proxy is not configured", async (t) => {
+  // Empty environment.
+  t.is(api.getRegistryProxy(getTestEnv()), undefined);
+  // Only the host.
+  t.is(
+    api.getRegistryProxy(
+      getTestEnv({ [RegistryProxyVars.PROXY_HOST]: "localhost" }),
+    ),
+    undefined,
+  );
+  // Only the port.
+  t.is(
+    api.getRegistryProxy(
+      getTestEnv({ [RegistryProxyVars.PROXY_PORT]: "1234" }),
+    ),
+    undefined,
+  );
+});
+
+test("getRegistryProxy - returns value when both vars are set", async (t) => {
+  const proxy = api.getRegistryProxy(
+    getTestEnv({
+      [RegistryProxyVars.PROXY_HOST]: "localhost",
+      [RegistryProxyVars.PROXY_PORT]: "1234",
+    }),
+  );
+  t.truthy(proxy);
+});

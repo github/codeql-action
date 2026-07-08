@@ -1,9 +1,21 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
+import {
+  ProxyAgent,
+  RequestInfo,
+  RequestInit,
+  fetch as undiciFetch,
+} from "undici";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { EnvVar, ReadOnlyEnv, ActionsEnvVars, getEnv } from "./environment";
+import {
+  ActionsEnvVars,
+  EnvVar,
+  ReadOnlyEnv,
+  RegistryProxyVars,
+  getEnv,
+} from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -43,6 +55,47 @@ export interface GitHubApiExternalRepoDetails {
   apiURL: string | undefined;
 }
 
+/**
+ * Gets the configuration for the private registry authentication proxy,
+ * if it is available in the environment.
+ *
+ * @param env The environment to query for the proxy host and port.
+ * @returns A `ProxyAgent` corresponding to the private registry proxy,
+ *          or `undefined` if we couldn't retrieve the host and port.
+ */
+export function getRegistryProxy(env: ReadOnlyEnv): ProxyAgent | undefined {
+  const host = env.getOptional(RegistryProxyVars.PROXY_HOST);
+  const port = env.getOptional(RegistryProxyVars.PROXY_PORT);
+  const cert = env.getOptional(RegistryProxyVars.PROXY_CA_CERTIFICATE);
+
+  if (host && port) {
+    return new ProxyAgent({
+      uri: `http://${host}:${port}`,
+      keepAliveTimeout: 10,
+      keepAliveMaxTimeout: 10,
+      requestTls: cert ? { ca: cert } : undefined,
+    });
+  }
+
+  return undefined;
+}
+
+/**
+ * Returns an implementation of `fetch` to use for API requests.
+ * This will run API requests through the private registry authentication proxy
+ * if it is configured.
+ *
+ * @param env The environment to query for the proxy host and port.
+ */
+export function getApiFetch(env: ReadOnlyEnv): typeof undiciFetch {
+  const dispatcher = getRegistryProxy(env);
+
+  const proxiedFetch = (req: RequestInfo, init?: RequestInit) => {
+    return undiciFetch(req, { ...init, dispatcher });
+  };
+  return proxiedFetch;
+}
+
 function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
   { allowExternal = false } = {},
@@ -60,6 +113,7 @@ function createApiClientWithDetails(
         warn: core.warning,
         error: core.error,
       },
+      request: { fetch: getApiFetch(getEnv()) },
       retry: {
         doNotRetry: DO_NOT_RETRY_STATUSES,
       },

@@ -160,3 +160,11 @@ export enum EnvVar {
   /** Used by Code Scanning Risk Assessment to communicate the assessment ID to the CodeQL Action. */
   RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }
+
+/** A wrapper around an environment, to allow abstracting away from `process.env` in tests. */
+export interface Env {
+  /** Tries to get the value for `name` and throws if there isn't one. */
+  getRequired(name: string): string;
+  /** Gets the value for `name`, or `undefined` if it isn't set or empty. */
+  getOptional(name: string): string | undefined;
+}

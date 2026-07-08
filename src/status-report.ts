@@ -12,15 +12,16 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
-import { parseRegistriesWithoutCredentials, type Config } from "./config-utils";
-import { DependencyCacheRestoreStatusReport } from "./dependency-caching";
+import type { Config } from "./config/action-config";
+import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
+import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
 import { EnvVar } from "./environment";
 import { getRef } from "./git-utils";
-import { Logger } from "./logging";
-import { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
+import type { Logger } from "./logging";
+import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";
-import { ToolsSource } from "./setup-codeql";
+import type { ToolsSource } from "./setup-codeql";
 import {
   ConfigurationError,
   getRequiredEnvParam,
@@ -44,6 +45,17 @@ export enum ActionName {
   SetupCodeQL = "setup-codeql",
   StartProxy = "start-proxy",
   UploadSarif = "upload-sarif",
+}
+
+/**
+ * Maps an `ActionName` to its display name. Usually that is the same, except
+ * for `ActionName.Analyze` where it is `"analyze"` instead of `"finish"`.
+ */
+export function getDisplayActionName(actionName: ActionName): string {
+  if (actionName === ActionName.Analyze) {
+    return "analyze";
+  }
+  return actionName;
 }
 
 /**

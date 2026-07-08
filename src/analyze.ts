@@ -285,7 +285,7 @@ extensions:
       // characters are escaped, and that the path is always rendered as a
       // quoted string on a single line.
       return (
-        `      - [${yaml.dump(filename, { quoteStyle: "single" }).trim()}, ` +
+        `      - [${yaml.dump(filename, { forceQuotes: true, quoteStyle: "single" }).trim()}, ` +
         `${range.startLine}, ${range.endLine}]\n`
       );
     })

@@ -2,7 +2,11 @@ import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 
-import { getActionVersion, getRequiredInput } from "./actions-util";
+import {
+  ActionsEnvVars,
+  getActionVersion,
+  getRequiredInput,
+} from "./actions-util";
 import { EnvVar } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
@@ -70,8 +74,8 @@ function createApiClientWithDetails(
 export function getApiDetails(): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
-    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+    url: getRequiredEnvParam(ActionsEnvVars.GITHUB_SERVER_URL),
+    apiURL: getRequiredEnvParam(ActionsEnvVars.GITHUB_API_URL),
   };
 }
 

@@ -30,11 +30,20 @@ export function getInvalidConfigFileMessage(
   return `The configuration file "${configFile}" is invalid: ${messages.slice(0, 10).join(", ")}${andMore}`;
 }
 
-export function getConfigFileRepoFormatInvalidMessage(
+export function getConfigFileRepoOldFormatInvalidMessage(
   configFile: string,
 ): string {
   let error = `The configuration file "${configFile}" is not a supported remote file reference.`;
   error += " Expected format <owner>/<repository>/<file-path>@<ref>";
+
+  return error;
+}
+
+export function getConfigFileRepoFormatInvalidMessage(
+  configFile: string,
+): string {
+  let error = `The configuration file "${configFile}" is not a supported remote file reference.`;
+  error += " Expected format [<owner>/]<repository>[@<ref>][:<file-path>]";
 
   return error;
 }

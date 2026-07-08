@@ -203,7 +203,7 @@ async function sendCompletedStatusReport(
   }
 }
 
-async function run(actionState: ActionState<["Logger", "Actions"]>) {
+async function run(actionState: ActionState<["Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
@@ -262,8 +262,9 @@ async function run(actionState: ActionState<["Logger", "Actions"]>) {
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
+    const actionStateWithFeatures = { ...actionState, features };
     configFile = await getConfigFileInput(
-      { ...actionState, features },
+      actionStateWithFeatures,
       repositoryProperties,
     );
 
@@ -363,7 +364,7 @@ async function run(actionState: ActionState<["Logger", "Actions"]>) {
       repositoryProperties,
     );
 
-    config = await initConfig(features, {
+    config = await initConfig(actionStateWithFeatures, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
       queriesInput: getOptionalInput("queries"),

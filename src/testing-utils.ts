@@ -193,6 +193,21 @@ export function getTestActionsEnv(): ActionsEnv {
 /** For testing purposes, we make all available state features accessible in `TestEnv`. */
 type AllState = ["Logger", "Env", "Actions", "FeatureFlags"];
 
+/** Initialise a fresh `ActionState<AllState>` value. */
+export function initAllState(
+  overrides?: Partial<ActionState<AllState>>,
+): ActionState<AllState> {
+  return {
+    name: ActionName.Init,
+    startedAt: new Date(),
+    logger: new RecordingLogger(),
+    env: getTestEnv(),
+    actions: getTestActionsEnv(),
+    features: createFeatures([]),
+    ...overrides,
+  };
+}
+
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
  */
@@ -216,14 +231,7 @@ export class TestEnv<
     this.state =
       cloneFrom !== undefined
         ? { ...cloneFrom.state, logger: this.logger }
-        : {
-            name: ActionName.Init,
-            startedAt: new Date(),
-            logger: this.logger,
-            env: getTestEnv(),
-            actions: getTestActionsEnv(),
-            features: createFeatures([]),
-          };
+        : initAllState({ logger: this.logger });
   }
 
   private clone(): TestEnv<Args, R, Fs> {

@@ -7,6 +7,7 @@ import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
+import { ActionState } from "./action-common";
 import {
   getOptionalInput,
   isAnalyzingPullRequest,
@@ -81,11 +82,11 @@ export async function initCodeQL(
 }
 
 export async function initConfig(
-  features: FeatureEnablement,
+  actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   inputs: configUtils.InitConfigInputs,
 ): Promise<configUtils.Config> {
   return await withGroupAsync("Load language configuration", async () => {
-    return await configUtils.initConfig(features, inputs);
+    return await configUtils.initConfig(actionState, inputs);
   });
 }
 

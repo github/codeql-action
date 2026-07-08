@@ -514,16 +514,13 @@ async function getCodeQLForCmd(
     async getVersion() {
       let result = util.getCachedCodeQlVersion(cmd);
       if (result === undefined) {
-        const output = await runCli(cmd, ["version", "--format=json"], {
-          noStreamStdout: true,
-        });
-        try {
-          result = JSON.parse(output) as VersionInfo;
-        } catch {
-          throw Error(
-            `Invalid JSON output from \`version --format=json\`: ${output}`,
-          );
-        }
+        result = await runCliJson<VersionInfo>(
+          cmd,
+          ["version", "--format=json"],
+          {
+            noStreamStdout: true,
+          },
+        );
         util.cacheCodeQlVersion(cmd, result);
       }
       return result;
@@ -731,26 +728,20 @@ async function getCodeQLForCmd(
         filterToLanguagesWithQueries: boolean;
       } = { filterToLanguagesWithQueries: false },
     ) {
-      const codeqlArgs = [
+      return runCliJson<ResolveLanguagesOutput>(cmd, [
         "resolve",
         "languages",
         "--format=betterjson",
         "--extractor-options-verbosity=4",
         "--extractor-include-aliases",
+        // TODO: Unconditionally include `--filter-to-languages-with-queries`
+        //       once CODEQL_MINIMUM_VERSION is at least v2.23.0
+        //       — the first version to support this flag.
         ...(filterToLanguagesWithQueries
           ? ["--filter-to-languages-with-queries"]
           : []),
         ...getExtraOptionsFromEnv(["resolve", "languages"]),
-      ];
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        return JSON.parse(output) as ResolveLanguagesOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
-        );
-      }
+      ]);
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,
@@ -766,15 +757,7 @@ async function getCodeQLForCmd(
       if (workingDir !== undefined) {
         codeqlArgs.push("--working-dir", workingDir);
       }
-      const output = await runCli(cmd, codeqlArgs);
-
-      try {
-        return JSON.parse(output) as ResolveBuildEnvironmentOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`,
-        );
-      }
+      return await runCliJson<ResolveBuildEnvironmentOutput>(cmd, codeqlArgs);
     },
     async databaseRunQueries(
       databasePath: string,
@@ -976,15 +959,9 @@ async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
         ...queries,
       ];
-      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
-
-      try {
-        return JSON.parse(output) as string[];
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve queries --format=startingpacks: ${e}`,
-        );
-      }
+      return await runCliJson<string[]>(cmd, codeqlArgs, {
+        noStreamStdout: true,
+      });
     },
     async resolveDatabase(
       databasePath: string,
@@ -996,15 +973,9 @@ async function getCodeQLForCmd(
         "--format=json",
         ...getExtraOptionsFromEnv(["resolve", "database"]),
       ];
-      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
-
-      try {
-        return JSON.parse(output) as ResolveDatabaseOutput;
-      } catch (e) {
-        throw new Error(
-          `Unexpected output from codeql resolve database --format=json: ${e}`,
-        );
-      }
+      return await runCliJson<ResolveDatabaseOutput>(cmd, codeqlArgs, {
+        noStreamStdout: true,
+      });
     },
     async mergeResults(
       sarifFiles: string[],
@@ -1157,6 +1128,30 @@ async function runCli(
       throw wrapCliConfigurationError(new CliError(e));
     }
     throw e;
+  }
+}
+
+/**
+ * Wraps the command executor {@link runCli} and tries to parse the output as JSON.
+ * @param cmd The command to run.
+ * @param args The arguments to pass to the command.
+ * @param opts The options for running the command.
+ * @param opts.stdin Optional string to pass to the command's standard input.
+ * @param opts.noStreamStdout Optional boolean to indicate whether to stream the command's standard output.
+ * @returns The parsed JSON output from the command.
+ */
+async function runCliJson<T>(
+  cmd: string,
+  args: string[] = [],
+  opts: { stdin?: string; noStreamStdout?: boolean } = {},
+): Promise<T> {
+  const output = await runCli(cmd, args, opts);
+  try {
+    return JSON.parse(output) as T;
+  } catch (e) {
+    throw Error(
+      `Unexpected output from codeql ${args.join(" ")}: ${getErrorMessage(e)}`,
+    );
   }
 }
 

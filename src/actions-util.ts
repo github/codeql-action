@@ -22,6 +22,28 @@ import {
 declare const __CODEQL_ACTION_VERSION__: string;
 
 /**
+ * Enumerates known GitHub Actions environment variables that we expect
+ * to be set in a GitHub Actions environment.
+ */
+export enum ActionsEnvVars {
+  GITHUB_ACTION_REPOSITORY = "GITHUB_ACTION_REPOSITORY",
+  GITHUB_API_URL = "GITHUB_API_URL",
+  GITHUB_EVENT_NAME = "GITHUB_EVENT_NAME",
+  GITHUB_EVENT_PATH = "GITHUB_EVENT_PATH",
+  GITHUB_JOB = "GITHUB_JOB",
+  GITHUB_REF = "GITHUB_REF",
+  GITHUB_REPOSITORY = "GITHUB_REPOSITORY",
+  GITHUB_RUN_ATTEMPT = "GITHUB_RUN_ATTEMPT",
+  GITHUB_RUN_ID = "GITHUB_RUN_ID",
+  GITHUB_SERVER_URL = "GITHUB_SERVER_URL",
+  GITHUB_SHA = "GITHUB_SHA",
+  GITHUB_WORKFLOW = "GITHUB_WORKFLOW",
+  RUNNER_NAME = "RUNNER_NAME",
+  RUNNER_OS = "RUNNER_OS",
+  RUNNER_TEMP = "RUNNER_TEMP",
+}
+
+/**
  * Abstracts over GitHub Actions functions so that we do not have to stub
  * global functions in tests.
  */
@@ -65,7 +87,7 @@ export function getTemporaryDirectory(): string {
   const value = process.env["CODEQL_ACTION_TEMP"];
   return value !== undefined && value !== ""
     ? value
-    : getRequiredEnvParam("RUNNER_TEMP");
+    : getRequiredEnvParam(ActionsEnvVars.RUNNER_TEMP);
 }
 
 const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";
@@ -84,7 +106,7 @@ export function getActionVersion(): string {
  * This will be "dynamic" for default setup workflow runs.
  */
 export function getWorkflowEventName() {
-  return getRequiredEnvParam("GITHUB_EVENT_NAME");
+  return getRequiredEnvParam(ActionsEnvVars.GITHUB_EVENT_NAME);
 }
 
 /**
@@ -104,14 +126,14 @@ export function isRunningLocalAction(): boolean {
  * This can be used to get the Action's name or tell if we're running a local Action.
  */
 function getRelativeScriptPath(): string {
-  const runnerTemp = getRequiredEnvParam("RUNNER_TEMP");
+  const runnerTemp = getRequiredEnvParam(ActionsEnvVars.RUNNER_TEMP);
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
 }
 
 /** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
 export function getWorkflowEvent(): any {
-  const eventJsonFile = getRequiredEnvParam("GITHUB_EVENT_PATH");
+  const eventJsonFile = getRequiredEnvParam(ActionsEnvVars.GITHUB_EVENT_PATH);
   try {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));
   } catch (e) {
@@ -181,16 +203,16 @@ export function getUploadValue(input: string | undefined): UploadKind {
  * Get the workflow run ID.
  */
 export function getWorkflowRunID(): number {
-  const workflowRunIdString = getRequiredEnvParam("GITHUB_RUN_ID");
+  const workflowRunIdString = getRequiredEnvParam(ActionsEnvVars.GITHUB_RUN_ID);
   const workflowRunID = parseInt(workflowRunIdString, 10);
   if (Number.isNaN(workflowRunID)) {
     throw new Error(
-      `GITHUB_RUN_ID must define a non NaN workflow run ID. Current value is ${workflowRunIdString}`,
+      `${ActionsEnvVars.GITHUB_RUN_ID} must define a non NaN workflow run ID. Current value is ${workflowRunIdString}`,
     );
   }
   if (workflowRunID < 0) {
     throw new Error(
-      `GITHUB_RUN_ID must be a non-negative integer. Current value is ${workflowRunIdString}`,
+      `${ActionsEnvVars.GITHUB_RUN_ID} must be a non-negative integer. Current value is ${workflowRunIdString}`,
     );
   }
   return workflowRunID;
@@ -200,16 +222,18 @@ export function getWorkflowRunID(): number {
  * Get the workflow run attempt number.
  */
 export function getWorkflowRunAttempt(): number {
-  const workflowRunAttemptString = getRequiredEnvParam("GITHUB_RUN_ATTEMPT");
+  const workflowRunAttemptString = getRequiredEnvParam(
+    ActionsEnvVars.GITHUB_RUN_ATTEMPT,
+  );
   const workflowRunAttempt = parseInt(workflowRunAttemptString, 10);
   if (Number.isNaN(workflowRunAttempt)) {
     throw new Error(
-      `GITHUB_RUN_ATTEMPT must define a non NaN workflow run attempt. Current value is ${workflowRunAttemptString}`,
+      `${ActionsEnvVars.GITHUB_RUN_ATTEMPT} must define a non NaN workflow run attempt. Current value is ${workflowRunAttemptString}`,
     );
   }
   if (workflowRunAttempt <= 0) {
     throw new Error(
-      `GITHUB_RUN_ATTEMPT must be a positive integer. Current value is ${workflowRunAttemptString}`,
+      `${ActionsEnvVars.GITHUB_RUN_ATTEMPT} must be a positive integer. Current value is ${workflowRunAttemptString}`,
     );
   }
   return workflowRunAttempt;

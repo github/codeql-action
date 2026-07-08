@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
+import { Action, ActionState, runInActions } from "./action-common";
 import {
   getActionVersion,
   getOptionalInput,
@@ -14,7 +15,7 @@ import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { initCodeQL } from "./init";
-import { getActionsLogger, Logger } from "./logging";
+import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -24,7 +25,6 @@ import {
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
-  sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import {
@@ -36,7 +36,6 @@ import {
   ConfigurationError,
   wrapError,
   checkActionVersion,
-  getErrorMessage,
 } from "./util";
 
 /**
@@ -88,11 +87,12 @@ async function sendCompletedStatusReport(
 }
 
 /** The main behaviour of this action. */
-async function run(startedAt: Date): Promise<void> {
+async function run({
+  startedAt,
+  logger,
+}: ActionState<["Logger"]>): Promise<void> {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
-
-  const logger = getActionsLogger();
 
   let codeql: CodeQL;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
@@ -195,20 +195,14 @@ async function run(startedAt: Date): Promise<void> {
   );
 }
 
+/** Defines the `setup-codeql` Action. */
+const setupCodeQL: Action = {
+  name: ActionName.SetupCodeQL,
+  run,
+};
+
 /** Run the action and catch any unhandled errors. */
 export async function runWrapper(): Promise<void> {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(`setup-codeql action failed: ${getErrorMessage(error)}`);
-    await sendUnhandledErrorStatusReport(
-      ActionName.SetupCodeQL,
-      startedAt,
-      error,
-      logger,
-    );
-  }
+  await runInActions(setupCodeQL);
   await checkForTimeout();
 }

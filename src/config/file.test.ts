@@ -1,22 +1,19 @@
 import test from "ava";
 import sinon from "sinon";
 
+import { Feature } from "../feature-flags";
 import { RepositoryPropertyName } from "../feature-flags/properties";
-import {
-  getTestActionsEnv,
-  RecordingLogger,
-  setupTests,
-} from "../testing-utils";
+import { callee, setupTests } from "../testing-utils";
 
 import { getConfigFileInput } from "./file";
 
 setupTests(test);
 
 test("getConfigFileInput returns undefined by default", async (t) => {
-  const logger = new RecordingLogger();
-  const actionsEnv = getTestActionsEnv();
-  const result = getConfigFileInput(logger, actionsEnv, {}, true);
-  t.is(result, undefined);
+  await callee(getConfigFileInput)
+    .withArgs({})
+    .withFeatures([Feature.ConfigFileRepositoryProperty])
+    .passes(async (fn) => t.is(await fn(), undefined));
 });
 
 const repositoryProperties = {
@@ -24,9 +21,12 @@ const repositoryProperties = {
 };
 
 test("getConfigFileInput returns input value", async (t) => {
-  const logger = new RecordingLogger();
-  const actionsEnv = getTestActionsEnv();
   const testInput = "/some/path";
+  const target = callee(getConfigFileInput).withFeatures([
+    Feature.ConfigFileRepositoryProperty,
+  ]);
+
+  const actionsEnv = target.getState().actions;
   sinon
     .stub(actionsEnv, "getOptionalInput")
     .withArgs("config-file")
@@ -34,76 +34,63 @@ test("getConfigFileInput returns input value", async (t) => {
 
   // Even though both an input and repository property are configured,
   // we prefer the direct input to the Action.
-  const result = getConfigFileInput(
-    logger,
-    actionsEnv,
-    repositoryProperties,
-    true,
-  );
-  t.is(result, testInput);
-
-  // Check for the expected log message.
-  t.true(logger.hasMessage("Using configuration file input from workflow"));
-});
-
-test("getConfigFileInput returns repository property value", async (t) => {
-  const logger = new RecordingLogger();
-  const actionsEnv = getTestActionsEnv();
-
-  // Since there is no direct input, we should use the repository property.
-  const result = getConfigFileInput(
-    logger,
-    actionsEnv,
-    repositoryProperties,
-    true,
-  );
-  t.is(result, repositoryProperties[RepositoryPropertyName.CONFIG_FILE]);
+  const targetWithArgs = target
+    .withActions(actionsEnv)
+    .withArgs(repositoryProperties);
+  await targetWithArgs.passes(async (fn) => t.is(await fn(), testInput));
 
   // Check for the expected log message.
   t.true(
-    logger.hasMessage(
-      "Using configuration file input from repository property",
-    ),
+    targetWithArgs
+      .getLogger()
+      .hasMessage("Using configuration file input from workflow"),
+  );
+});
+
+test("getConfigFileInput returns repository property value", async (t) => {
+  // Since there is no direct input, we should use the repository property.
+  const target = callee(getConfigFileInput)
+    .withFeatures([Feature.ConfigFileRepositoryProperty])
+    .withArgs(repositoryProperties);
+
+  await target.passes(async (fn) =>
+    t.is(await fn(), repositoryProperties[RepositoryPropertyName.CONFIG_FILE]),
+  );
+
+  // Check for the expected log message.
+  t.true(
+    target
+      .getLogger()
+      .hasMessage("Using configuration file input from repository property"),
   );
 });
 
 test("getConfigFileInput ignores empty repository property value", async (t) => {
-  const logger = new RecordingLogger();
-  const actionsEnv = getTestActionsEnv();
-
   // Since the repository property value is an empty/whitespace string, we should ignore it.
-  const result = getConfigFileInput(
-    logger,
-    actionsEnv,
-    {
-      [RepositoryPropertyName.CONFIG_FILE]: "   ",
-    },
-    true,
-  );
-  t.is(result, undefined);
+  await callee(getConfigFileInput)
+    .withFeatures([Feature.ConfigFileRepositoryProperty])
+    .withArgs({ [RepositoryPropertyName.CONFIG_FILE]: "   " })
+    .passes(async (fn) => t.is(await fn(), undefined));
 });
 
 test("getConfigFileInput ignores repository property value when FF is off", async (t) => {
-  const logger = new RecordingLogger();
-  const actionsEnv = getTestActionsEnv();
-
   // Since the FF is off, we should ignore the repository property value.
-  const result = getConfigFileInput(
-    logger,
-    actionsEnv,
-    repositoryProperties,
-    false,
-  );
-  t.is(result, undefined);
+  const target = callee(getConfigFileInput)
+    .withFeatures([])
+    .withArgs(repositoryProperties);
+
+  await target.passes(async (fn) => t.is(await fn(), undefined));
 
   t.false(
-    logger.hasMessage(
-      "Using configuration file input from repository property",
-    ),
+    target
+      .getLogger()
+      .hasMessage("Using configuration file input from repository property"),
   );
   t.true(
-    logger.hasMessage(
-      "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",
-    ),
+    target
+      .getLogger()
+      .hasMessage(
+        "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",
+      ),
   );
 });

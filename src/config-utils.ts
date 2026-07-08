@@ -5,6 +5,7 @@ import { performance } from "perf_hooks";
 import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
+import { ActionState } from "./action-common";
 import {
   getActionVersion,
   getOptionalInput,
@@ -18,8 +19,9 @@ import {
   getAnalysisConfig,
 } from "./analyses";
 import * as api from "./api-client";
-import { CachingKind, getCachingKind } from "./caching-utils";
+import { getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
+import { type Config } from "./config/action-config";
 import {
   calculateAugmentation,
   ExcludeQueryFilter,
@@ -27,6 +29,12 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
+import { getRemoteConfig } from "./config/file";
+import {
+  parseRegistries,
+  type RegistryConfigNoCredentials,
+  type RegistryConfigWithCredentials,
+} from "./config/pack-registries";
 import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
@@ -79,6 +87,8 @@ import {
   isHostedRunner,
 } from "./util";
 
+export { type Config } from "./config/action-config";
+
 /**
  * The minimum available disk space (in MB) required to perform overlay analysis.
  * If the available disk space on the runner is below the threshold when deciding
@@ -116,148 +126,6 @@ const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
  * without overlay analysis for these versions.
  */
 const CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE = "2.24.3";
-
-export type RegistryConfigWithCredentials = RegistryConfigNoCredentials & {
-  // Token to use when downloading packs from this registry.
-  token: string;
-};
-
-/**
- * The list of registries and the associated pack globs that determine where each
- * pack can be downloaded from.
- */
-export interface RegistryConfigNoCredentials {
-  // URL of a package registry, eg- https://ghcr.io/v2/
-  url: string;
-
-  // List of globs that determine which packs are associated with this registry.
-  packages: string[] | string;
-
-  // Kind of registry, either "github" or "docker". Default is "docker".
-  // "docker" refers specifically to the GitHub Container Registry, which is the usual way of sharing CodeQL packs.
-  // "github" refers to packs published as content in a GitHub repository. This kind of registry is used in scenarios
-  // where GHCR is not available, such as certain GHES environments.
-  kind?: "github" | "docker";
-}
-
-/**
- * Format of the parsed config file.
- */
-export interface Config {
-  /**
-   * The version of the CodeQL Action that the configuration is for.
-   */
-  version: string;
-  /**
-   * Set of analysis kinds that are enabled.
-   */
-  analysisKinds: AnalysisKind[];
-  /**
-   * Set of languages to run analysis for.
-   */
-  languages: Language[];
-  /**
-   * Build mode, if set. Currently only a single build mode is supported per job.
-   */
-  buildMode: BuildMode | undefined;
-  /**
-   * A unaltered copy of the original user input.
-   * Mainly intended to be used for status reporting.
-   * If any field is useful for the actual processing
-   * of the action then consider pulling it out to a
-   * top-level field above.
-   */
-  originalUserInput: UserConfig;
-  /**
-   * Directory to use for temporary files that should be
-   * deleted at the end of the job.
-   */
-  tempDir: string;
-  /**
-   * Path of the CodeQL executable.
-   */
-  codeQLCmd: string;
-  /**
-   * Version of GitHub we are talking to.
-   */
-  gitHubVersion: GitHubVersion;
-  /**
-   * The location where CodeQL databases should be stored.
-   */
-  dbLocation: string;
-  /**
-   * Specifies whether we are debugging mode and should try to produce extra
-   * output for debugging purposes when possible.
-   */
-  debugMode: boolean;
-  /**
-   * Specifies the name of the debugging artifact if we are in debug mode.
-   */
-  debugArtifactName: string;
-  /**
-   * Specifies the name of the database in the debugging artifact.
-   */
-  debugDatabaseName: string;
-  /**
-   * The configuration we computed by combining `originalUserInput` with `augmentationProperties`,
-   * as well as adjustments made to it based on unsupported or required options.
-   */
-  computedConfig: UserConfig;
-
-  /**
-   * Partial map from languages to locations of TRAP caches for that language.
-   * If a key is omitted, then TRAP caching should not be used for that language.
-   */
-  trapCaches: { [language: Language]: string };
-
-  /**
-   * Time taken to download TRAP caches. Used for status reporting.
-   */
-  trapCacheDownloadTime: number;
-
-  /** A value indicating how dependency caching should be used. */
-  dependencyCachingEnabled: CachingKind;
-
-  /** The keys of caches that we restored, if any. */
-  dependencyCachingRestoredKeys: string[];
-
-  /**
-   * Extra query exclusions to append to the config.
-   */
-  extraQueryExclusions: ExcludeQueryFilter[];
-
-  /**
-   * The overlay database mode to use.
-   */
-  overlayDatabaseMode: OverlayDatabaseMode;
-
-  /**
-   * Whether to use caching for overlay databases. If it is true, the action
-   * will upload the created overlay-base database to the actions cache, and
-   * download an overlay-base database from the actions cache before it creates
-   * a new overlay database. If it is false, the action assumes that the
-   * workflow will be responsible for managing database storage and retrieval.
-   *
-   * This property has no effect unless `overlayDatabaseMode` is `Overlay` or
-   * `OverlayBase`.
-   */
-  useOverlayDatabaseCaching: boolean;
-
-  /**
-   * Whether the overlay database mode was set explicitly.
-   */
-  overlayModeSetExplicitly: boolean;
-
-  /**
-   * A partial mapping from repository properties that affect us to their values.
-   */
-  repositoryProperties: RepositoryProperties;
-
-  /**
-   * Whether to enable file coverage information.
-   */
-  enableFileCoverageInformation: boolean;
-}
 
 async function getSupportedLanguageMap(
   codeql: CodeQL,
@@ -599,12 +467,11 @@ async function downloadCacheWithTime(
 }
 
 async function loadUserConfig(
-  logger: Logger,
+  actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   configFile: string,
   workspacePath: string,
   apiDetails: api.GitHubApiCombinedDetails,
   tempDir: string,
-  validateConfig: boolean,
 ): Promise<UserConfig> {
   if (isLocal(configFile)) {
     if (configFile !== userConfigFromActionPath(tempDir)) {
@@ -617,14 +484,12 @@ async function loadUserConfig(
         );
       }
     }
-    return getLocalConfig(logger, configFile, validateConfig);
-  } else {
-    return await getRemoteConfig(
-      logger,
-      configFile,
-      apiDetails,
-      validateConfig,
+    const validateConfig = await actionState.features.getValue(
+      Feature.ValidateDbConfig,
     );
+    return getLocalConfig(actionState.logger, configFile, validateConfig);
+  } else {
+    return await getRemoteConfig(actionState, configFile, apiDetails);
   }
 }
 
@@ -1138,10 +1003,11 @@ export async function applyIncrementalAnalysisSettings(
  * a default config. The parsed config is then stored to a known location.
  */
 export async function initConfig(
-  features: FeatureEnablement,
+  actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   inputs: InitConfigInputs,
 ): Promise<Config> {
-  const { logger, tempDir } = inputs;
+  const { logger, features } = actionState;
+  const { tempDir } = inputs;
 
   // if configInput is set, it takes precedence over configFile
   if (inputs.configInput) {
@@ -1160,14 +1026,12 @@ export async function initConfig(
     logger.debug("No configuration file was provided");
   } else {
     logger.debug(`Using configuration file: ${inputs.configFile}`);
-    const validateConfig = await features.getValue(Feature.ValidateDbConfig);
     userConfig = await loadUserConfig(
-      logger,
+      actionState,
       inputs.configFile,
       inputs.workspacePath,
       inputs.apiDetails,
       tempDir,
-      validateConfig,
     );
   }
 
@@ -1317,29 +1181,6 @@ export async function initConfig(
   return config;
 }
 
-function parseRegistries(
-  registriesInput: string | undefined,
-): RegistryConfigWithCredentials[] | undefined {
-  try {
-    return registriesInput
-      ? (yaml.load(registriesInput) as RegistryConfigWithCredentials[])
-      : undefined;
-  } catch {
-    throw new ConfigurationError(
-      "Invalid registries input. Must be a YAML string.",
-    );
-  }
-}
-
-export function parseRegistriesWithoutCredentials(
-  registriesInput?: string,
-): RegistryConfigNoCredentials[] | undefined {
-  return parseRegistries(registriesInput)?.map((r) => {
-    const { url, packages, kind } = r;
-    return { url, packages, kind };
-  });
-}
-
 function isLocal(configPath: string): boolean {
   // If the path starts with ./, look locally
   if (configPath.indexOf("./") === 0) {
@@ -1365,54 +1206,6 @@ function getLocalConfig(
     logger,
     configFile,
     fs.readFileSync(configFile, "utf-8"),
-    validateConfig,
-  );
-}
-
-async function getRemoteConfig(
-  logger: Logger,
-  configFile: string,
-  apiDetails: api.GitHubApiCombinedDetails,
-  validateConfig: boolean,
-): Promise<UserConfig> {
-  // retrieve the various parts of the config location, and ensure they're present
-  const format = new RegExp(
-    "(?<owner>[^/]+)/(?<repo>[^/]+)/(?<path>[^@]+)@(?<ref>.*)",
-  );
-  const pieces = format.exec(configFile);
-  // 5 = 4 groups + the whole expression
-  if (pieces?.groups === undefined || pieces.length < 5) {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileRepoFormatInvalidMessage(configFile),
-    );
-  }
-
-  const response = await api
-    .getApiClientWithExternalAuth(apiDetails)
-    .rest.repos.getContent({
-      owner: pieces.groups.owner,
-      repo: pieces.groups.repo,
-      path: pieces.groups.path,
-      ref: pieces.groups.ref,
-    });
-
-  let fileContents: string;
-  if ("content" in response.data && response.data.content !== undefined) {
-    fileContents = response.data.content;
-  } else if (Array.isArray(response.data)) {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileDirectoryGivenMessage(configFile),
-    );
-  } else {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileFormatInvalidMessage(configFile),
-    );
-  }
-
-  return parseUserConfig(
-    logger,
-    configFile,
-    Buffer.from(fileContents, "base64").toString("binary"),
     validateConfig,
   );
 }

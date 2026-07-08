@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## 4.37.0 - 08 Jul 2026
 
 - Update default CodeQL bundle version to [2.26.0](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.26.0). [#3995](https://github.com/github/codeql-action/pull/3995)
+- In addition to the existing input format, the `config-file` input for the `codeql-action/init` step will soon support a new `[owner/]repo[@ref][:path]` format. All components except the repository name are optional. If omitted, `owner` defaults to the same owner as the repository the analysis is running for, `ref` to `main`, and `path` to `.github/codeql-action.yaml`. Support for this format ships in this version of the CodeQL Action, but will only be enabled over the coming weeks. [#3973](https://github.com/github/codeql-action/pull/3973)
 
 ## 4.36.3 - 01 Jul 2026
 

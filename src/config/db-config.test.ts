@@ -490,9 +490,9 @@ test("parseUserConfig - throws no ConfigurationError if validation should fail, 
   );
 });
 
-test("mergeUserConfigs - combines threat models", async (t) => {
+test("mergeDefaultSetupAndUserConfigs - combines threat models", async (t) => {
   const logger = new RecordingLogger();
-  const result = dbConfig.mergeUserConfigs(
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
     logger,
     { "threat-models": ["a", "b"] },
     { "threat-models": ["local", "remote"] },
@@ -505,9 +505,13 @@ test("mergeUserConfigs - combines threat models", async (t) => {
   }
 });
 
-test("mergeUserConfigs - warns if user-supplied config contains default setup key", async (t) => {
+test("mergeDefaultSetupAndUserConfigs - warns if user-supplied config contains default setup key", async (t) => {
   const logger = new RecordingLogger();
-  const result = dbConfig.mergeUserConfigs(logger, {}, { "default-setup": {} });
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {},
+    { "default-setup": {} },
+  );
 
   // User-supplied value is ignored.
   t.deepEqual(result, {});
@@ -520,12 +524,12 @@ test("mergeUserConfigs - warns if user-supplied config contains default setup ke
   );
 });
 
-test("mergeUserConfigs - keeps default setup key from 'config' input", async (t) => {
+test("mergeDefaultSetupAndUserConfigs - keeps default setup key from 'config' input", async (t) => {
   const logger = new RecordingLogger();
   const expected: dbConfig.DefaultSetupConfig = {
     org: { "model-packs": ["some-pack"] },
   };
-  const result = dbConfig.mergeUserConfigs(
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
     logger,
     { "default-setup": expected },
     {},
@@ -542,14 +546,18 @@ test("mergeUserConfigs - keeps default setup key from 'config' input", async (t)
   );
 });
 
-test("mergeUserConfigs - keeps other properties from user-supplied configuration", async (t) => {
+test("mergeDefaultSetupAndUserConfigs - keeps other properties from user-supplied configuration", async (t) => {
   const logger = new RecordingLogger();
   const configFile: dbConfig.UserConfig = {
     "query-filters": [{ exclude: { a: "b" } }],
     "paths-ignore": ["path"],
   };
 
-  const result = dbConfig.mergeUserConfigs(logger, {}, configFile);
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {},
+    configFile,
+  );
 
   t.deepEqual(result, configFile);
 });

@@ -75,7 +75,7 @@ export interface UserConfig {
  * @param fromConfigFile The user-supplied configuration.
  * @returns The combination of both configuration files.
  */
-export function mergeUserConfigs(
+export function mergeDefaultSetupAndUserConfigs(
   logger: Logger,
   fromConfigInput: UserConfig,
   fromConfigFile: UserConfig,

@@ -27,7 +27,7 @@ import {
   calculateAugmentation,
   ExcludeQueryFilter,
   generateCodeScanningConfig,
-  mergeUserConfigs,
+  mergeDefaultSetupAndUserConfigs,
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
@@ -1036,7 +1036,8 @@ export async function determineUserConfig(
   // 1. A `config` or `config-file` input is provided, but not both: use the provided one.
   // 2. Both are provided and we are in an advanced workflow: ignore the `config-file` input.
   // 3. Both are provided and we are in Default Setup: the `config` input uses a limited
-  //    set of options, which are supported by `mergeUserConfigs`, and we merge the two configs.
+  //    set of options, which are supported by `mergeDefaultSetupAndUserConfigs`,
+  //    and we merge the two configs.
   if (inputs.configInput) {
     const computedConfigPath = userConfigFromActionPath(tempDir);
 
@@ -1070,7 +1071,7 @@ export async function determineUserConfig(
 
       // Write the merged configuration to disk so that it can be loaded subsequently by
       // the CLI or other CodeQL Action steps.
-      const mergedConfig = mergeUserConfigs(
+      const mergedConfig = mergeDefaultSetupAndUserConfigs(
         action.logger,
         fromConfigInput,
         fromConfigFile,

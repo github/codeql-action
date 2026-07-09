@@ -246,7 +246,7 @@ abstract class BaseEnvBuilder<
 
   /**
    * Creates a clone of this object. Used internally.
-   * Must be overriden by subclasses.
+   * Must be overridden by subclasses.
    */
   protected abstract clone(): this;
 

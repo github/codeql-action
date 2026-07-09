@@ -241,6 +241,8 @@ abstract class BaseEnvBuilder<
       cloneFrom !== undefined
         ? ({
             ...cloneFrom.state,
+            env: Object.create(cloneFrom.state.env),
+            actions: Object.create(cloneFrom.state.actions),
             logger: this.logger,
           } satisfies ActionState<AllState>)
         : initAllState({ logger: this.logger });

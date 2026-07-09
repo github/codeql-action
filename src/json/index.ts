@@ -121,24 +121,72 @@ export function validateSchema<S extends Schema>(
   schema: S,
   obj: UnvalidatedObject<any>,
 ): obj is FromSchema<S> {
+  const result = checkSchema(schema, obj, { failFast: true });
+  return result.valid;
+}
+
+export interface CheckSchemaOptions {
+  /** Whether to stop validation after the first error. */
+  failFast?: boolean;
+}
+
+export interface CheckSchemaResult {
+  /** Whether the `obj` satisfies the schema. */
+  valid: boolean;
+  /** Unknown keys that were found during validation. */
+  unknownKeys: string[];
+}
+
+export function checkSchema<S extends Schema>(
+  schema: S,
+  obj: UnvalidatedObject<any>,
+  options: CheckSchemaOptions = {},
+  path: string = "",
+): CheckSchemaResult {
+  const result: CheckSchemaResult = { valid: true, unknownKeys: [] };
+  const inputKeys = new Set(Object.keys(obj));
+
   for (const [key, validator] of Object.entries(schema)) {
     const hasKey = key in obj;
 
     // If the property is required, but absent, fail.
     if (validator.required && !hasKey) {
-      return false;
+      result.valid = false;
+
+      if (options.failFast) {
+        return result;
+      }
+      continue;
     }
 
     // If the property is required, but undefined or null, fail.
     if (validator.required && (obj[key] === undefined || obj[key] === null)) {
-      return false;
+      result.valid = false;
+
+      if (options.failFast) {
+        return result;
+      }
+      continue;
     }
 
     // If the property is present, validate it.
     if (hasKey && !validator.validate(obj[key])) {
-      return false;
+      result.valid = false;
+
+      if (options.failFast) {
+        return result;
+      }
+      continue;
     }
+
+    // If we reach this point, the key has been successfully validated.
+    inputKeys.delete(key);
   }
 
-  return true;
+  // If there are any remaining keys in `inputKeys`, add them to `unknownKeys`.
+  for (const remainingKey of inputKeys) {
+    result.unknownKeys.push(`${path}${remainingKey}`);
+  }
+
+  return result;
 }

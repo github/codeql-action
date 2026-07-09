@@ -281,9 +281,7 @@ export class TestEnv<
     return this.fn(this.state as unknown as ActionState<Fs>, ...this.args);
   }
 
-  public passes<T>(
-    assertion: (makeCall: () => R) => T | Promise<T>,
-  ): T | Promise<T> {
+  public passes<T>(assertion: (makeCall: () => R) => Promise<T>): Promise<T> {
     return assertion(() => {
       const result = this.call();
       return result;

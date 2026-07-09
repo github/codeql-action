@@ -335,15 +335,11 @@ export type ActionVarOverrides = Partial<
  */
 export function setupBaseActionsVars(
   overrides?: ActionVarOverrides,
-  env?: Env,
+  env: Env = getEnv(),
 ) {
   const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
   for (const [key, value] of Object.entries(vars)) {
-    if (env) {
-      env.set(key, value);
-    } else {
-      process.env[key] = value;
-    }
+    env.set(key, value);
   }
 }
 

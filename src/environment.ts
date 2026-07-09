@@ -164,6 +164,60 @@ export enum EnvVar {
   RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }
 
+/**
+ * Gets an environment variable, but throws an error if it is not set.
+ */
+export function getRequiredEnvVar(
+  env: NodeJS.ProcessEnv,
+  paramName: string,
+): string {
+  const value = env[paramName];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`${paramName} environment variable must be set`);
+  }
+  return value;
+}
+
+/**
+ * Get an environment parameter, but throw an error if it is not set.
+ */
+export function getRequiredEnvParam(paramName: string): string {
+  return getRequiredEnvVar(process.env, paramName);
+}
+
+/**
+ * Gets an environment variable, but returns `undefined` if it is not set or empty.
+ */
+export function getOptionalEnvVarFrom(
+  env: NodeJS.ProcessEnv,
+  paramName: string,
+): string | undefined {
+  const value = env[paramName];
+  if (value?.trim().length === 0) {
+    return undefined;
+  }
+  return value;
+}
+
+/**
+ * Get an environment variable, but return `undefined` if it is not set or empty.
+ */
+export function getOptionalEnvVar(paramName: string): string | undefined {
+  return getOptionalEnvVarFrom(process.env, paramName);
+}
+
+/** Gets an `Env` instance for `env`, which is `process.env` by default. */
+export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
+  return {
+    getRequired: (name) => getRequiredEnvVar(env, name),
+    getOptional: (name) => getOptionalEnvVarFrom(env, name),
+    entries: () => Object.entries(env),
+    set: (name, value) => {
+      env[name] = value;
+    },
+  };
+}
+
 /** A wrapper around an environment, to allow abstracting away from `process.env` in tests. */
 export interface Env {
   /** Tries to get the value for `name` and throws if there isn't one. */

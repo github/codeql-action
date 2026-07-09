@@ -36,7 +36,7 @@
     "follow-redirects": "^1.16.0",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
-    "js-yaml": "^5.1.0",
+    "js-yaml": "^5.2.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
@@ -61,15 +61,15 @@
     "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-github": "^6.0.0",
-    "eslint-plugin-import-x": "^4.17.0",
+    "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^13.0.6",
     "globals": "^17.7.0",
-    "nock": "^14.0.15",
+    "nock": "^14.0.16",
     "sinon": "^22.0.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.62.0"
+    "typescript-eslint": "^8.62.1"
   },
   "overrides": {
     "@actions/tool-cache": {

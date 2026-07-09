@@ -7,12 +7,13 @@ import * as github from "@actions/github";
 import * as io from "@actions/io";
 
 import type { Config } from "./config-utils";
+import { Env, EnvVar, ActionsEnvVars } from "./environment";
 import { Logger } from "./logging";
 import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
-  getRequiredEnvParam,
   ConfigurationError,
+  getEnv,
 } from "./util";
 
 /**
@@ -20,28 +21,6 @@ import {
  * It is also set in `ava.setup.mjs` for tests.
  */
 declare const __CODEQL_ACTION_VERSION__: string;
-
-/**
- * Enumerates known GitHub Actions environment variables that we expect
- * to be set in a GitHub Actions environment.
- */
-export enum ActionsEnvVars {
-  GITHUB_ACTION_REPOSITORY = "GITHUB_ACTION_REPOSITORY",
-  GITHUB_API_URL = "GITHUB_API_URL",
-  GITHUB_EVENT_NAME = "GITHUB_EVENT_NAME",
-  GITHUB_EVENT_PATH = "GITHUB_EVENT_PATH",
-  GITHUB_JOB = "GITHUB_JOB",
-  GITHUB_REF = "GITHUB_REF",
-  GITHUB_REPOSITORY = "GITHUB_REPOSITORY",
-  GITHUB_RUN_ATTEMPT = "GITHUB_RUN_ATTEMPT",
-  GITHUB_RUN_ID = "GITHUB_RUN_ID",
-  GITHUB_SERVER_URL = "GITHUB_SERVER_URL",
-  GITHUB_SHA = "GITHUB_SHA",
-  GITHUB_WORKFLOW = "GITHUB_WORKFLOW",
-  RUNNER_NAME = "RUNNER_NAME",
-  RUNNER_OS = "RUNNER_OS",
-  RUNNER_TEMP = "RUNNER_TEMP",
-}
 
 /**
  * Abstracts over GitHub Actions functions so that we do not have to stub
@@ -83,17 +62,21 @@ export const getOptionalInput = function (name: string): string | undefined {
   return value.length > 0 ? value : undefined;
 };
 
-export function getTemporaryDirectory(): string {
-  const value = process.env["CODEQL_ACTION_TEMP"];
-  return value !== undefined && value !== ""
-    ? value
-    : getRequiredEnvParam(ActionsEnvVars.RUNNER_TEMP);
+/**
+ * Gets the temporary directory used by the CodeQL Action. This will either be the temporary
+ * directory that has been set in `CODEQL_ACTION_TEMP` by e.g. a previous step, or the
+ * value of `RUNNER_TEMP` otherwise.
+ */
+export function getTemporaryDirectory(env: Env = getEnv()): string {
+  return (
+    env.getOptional(EnvVar.TEMP) ?? env.getRequired(ActionsEnvVars.RUNNER_TEMP)
+  );
 }
 
 const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";
 
-export function getDiffRangesJsonFilePath(): string {
-  return path.join(getTemporaryDirectory(), PR_DIFF_RANGE_JSON_FILENAME);
+export function getDiffRangesJsonFilePath(env: Env = getEnv()): string {
+  return path.join(getTemporaryDirectory(env), PR_DIFF_RANGE_JSON_FILENAME);
 }
 
 export function getActionVersion(): string {
@@ -105,16 +88,16 @@ export function getActionVersion(): string {
  *
  * This will be "dynamic" for default setup workflow runs.
  */
-export function getWorkflowEventName() {
-  return getRequiredEnvParam(ActionsEnvVars.GITHUB_EVENT_NAME);
+export function getWorkflowEventName(env: Env = getEnv()) {
+  return env.getRequired(ActionsEnvVars.GITHUB_EVENT_NAME);
 }
 
 /**
  * Returns whether the current workflow is executing a local copy of the Action, e.g. we're running
  * a workflow on the codeql-action repo itself.
  */
-export function isRunningLocalAction(): boolean {
-  const relativeScriptPath = getRelativeScriptPath();
+export function isRunningLocalAction(env: Env = getEnv()): boolean {
+  const relativeScriptPath = getRelativeScriptPath(env);
   return (
     relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)
   );
@@ -125,15 +108,15 @@ export function isRunningLocalAction(): boolean {
  *
  * This can be used to get the Action's name or tell if we're running a local Action.
  */
-function getRelativeScriptPath(): string {
-  const runnerTemp = getRequiredEnvParam(ActionsEnvVars.RUNNER_TEMP);
+function getRelativeScriptPath(env: Env): string {
+  const runnerTemp = env.getRequired(ActionsEnvVars.RUNNER_TEMP);
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
 }
 
 /** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
-export function getWorkflowEvent(): any {
-  const eventJsonFile = getRequiredEnvParam(ActionsEnvVars.GITHUB_EVENT_PATH);
+export function getWorkflowEvent(env: Env = getEnv()): any {
+  const eventJsonFile = env.getRequired(ActionsEnvVars.GITHUB_EVENT_PATH);
   try {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));
   } catch (e) {
@@ -202,8 +185,8 @@ export function getUploadValue(input: string | undefined): UploadKind {
 /**
  * Get the workflow run ID.
  */
-export function getWorkflowRunID(): number {
-  const workflowRunIdString = getRequiredEnvParam(ActionsEnvVars.GITHUB_RUN_ID);
+export function getWorkflowRunID(env: Env = getEnv()): number {
+  const workflowRunIdString = env.getRequired(ActionsEnvVars.GITHUB_RUN_ID);
   const workflowRunID = parseInt(workflowRunIdString, 10);
   if (Number.isNaN(workflowRunID)) {
     throw new Error(
@@ -221,8 +204,8 @@ export function getWorkflowRunID(): number {
 /**
  * Get the workflow run attempt number.
  */
-export function getWorkflowRunAttempt(): number {
-  const workflowRunAttemptString = getRequiredEnvParam(
+export function getWorkflowRunAttempt(env: Env = getEnv()): number {
+  const workflowRunAttemptString = env.getRequired(
     ActionsEnvVars.GITHUB_RUN_ATTEMPT,
   );
   const workflowRunAttempt = parseInt(workflowRunAttemptString, 10);
@@ -290,18 +273,18 @@ export const getFileType = async (filePath: string): Promise<string> => {
   }
 };
 
-export function isSelfHostedRunner() {
-  return process.env.RUNNER_ENVIRONMENT === "self-hosted";
+export function isSelfHostedRunner(env: Env = getEnv()) {
+  return env.getOptional(ActionsEnvVars.RUNNER_ENVIRONMENT) === "self-hosted";
 }
 
 /** Determines whether the workflow trigger is `dynamic`. */
-export function isDynamicWorkflow(): boolean {
-  return getWorkflowEventName() === "dynamic";
+export function isDynamicWorkflow(env: Env = getEnv()): boolean {
+  return getWorkflowEventName(env) === "dynamic";
 }
 
 /** Determines whether we are running in default setup. */
-export function isDefaultSetup(): boolean {
-  return isDynamicWorkflow();
+export function isDefaultSetup(env: Env = getEnv()): boolean {
+  return isDynamicWorkflow(env);
 }
 
 export function prettyPrintInvocation(cmd: string, args: string[]): string {
@@ -399,9 +382,10 @@ const persistedInputsKey = "persisted_inputs";
  * This would be simplified if actions/runner#3514 is addressed.
  * https://github.com/actions/runner/issues/3514
  */
-export const persistInputs = function () {
-  const inputEnvironmentVariables = Object.entries(process.env).filter(
-    ([name]) => name.startsWith("INPUT_"),
+export const persistInputs = function (env: Env = getEnv()) {
+  const entries = env.entries();
+  const inputEnvironmentVariables = entries.filter(([name]) =>
+    name.startsWith("INPUT_"),
   );
   core.saveState(persistedInputsKey, JSON.stringify(inputEnvironmentVariables));
 };
@@ -429,7 +413,9 @@ export interface PullRequestBranches {
  * @returns the base and head branches of the pull request, or undefined if
  * we are not analyzing a pull request.
  */
-export function getPullRequestBranches(): PullRequestBranches | undefined {
+export function getPullRequestBranches(
+  env: Env = getEnv(),
+): PullRequestBranches | undefined {
   const pullRequest = github.context.payload.pull_request;
   if (pullRequest) {
     return {
@@ -443,8 +429,10 @@ export function getPullRequestBranches(): PullRequestBranches | undefined {
 
   // PR analysis under Default Setup does not have the pull_request context,
   // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
-  const codeScanningRef = process.env.CODE_SCANNING_REF;
-  const codeScanningBaseBranch = process.env.CODE_SCANNING_BASE_BRANCH;
+  const codeScanningRef = env.getOptional(EnvVar.CODE_SCANNING_REF);
+  const codeScanningBaseBranch = env.getOptional(
+    EnvVar.CODE_SCANNING_BASE_BRANCH,
+  );
   if (codeScanningRef && codeScanningBaseBranch) {
     return {
       base: codeScanningBaseBranch,
@@ -459,8 +447,8 @@ export function getPullRequestBranches(): PullRequestBranches | undefined {
 /**
  * Returns whether we are analyzing a pull request.
  */
-export function isAnalyzingPullRequest(): boolean {
-  return getPullRequestBranches() !== undefined;
+export function isAnalyzingPullRequest(env: Env = getEnv()): boolean {
+  return getPullRequestBranches(env) !== undefined;
 }
 
 /**
@@ -484,13 +472,14 @@ const qualityCategoryMapping: Record<string, string> = {
 export function fixCodeQualityCategory(
   logger: Logger,
   category?: string,
+  env: Env = getEnv(),
 ): string | undefined {
   // The `category` should always be set by Default Setup. We perform this check
   // to avoid potential issues if Code Quality supports Advanced Setup in the future
   // and before this workaround is removed.
   if (
     category !== undefined &&
-    isDefaultSetup() &&
+    isDefaultSetup(env) &&
     category.startsWith("/language:")
   ) {
     const language = category.substring("/language:".length);

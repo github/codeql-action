@@ -213,7 +213,7 @@ export function initAllState(
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
  */
-export class TestEnv<
+class EnvBuilder<
   Args extends readonly any[],
   R,
   Fs extends ReadonlyArray<AllState[number]>,
@@ -225,7 +225,7 @@ export class TestEnv<
 
   constructor(
     fn: (state: ActionState<Fs>, ...args: Args) => R,
-    cloneFrom?: TestEnv<Args, R, Fs>,
+    cloneFrom?: EnvBuilder<Args, R, Fs>,
   ) {
     this.fn = fn;
     this.args = cloneFrom?.args;
@@ -236,8 +236,8 @@ export class TestEnv<
         : initAllState({ logger: this.logger });
   }
 
-  private clone(): TestEnv<Args, R, Fs> {
-    return new TestEnv(this.fn, this);
+  private clone(): EnvBuilder<Args, R, Fs> {
+    return new EnvBuilder(this.fn, this);
   }
 
   public getLogger(): RecordingLogger {
@@ -258,19 +258,19 @@ export class TestEnv<
     return result;
   }
 
-  public withFeatures(enabled: Feature[]): TestEnv<Args, R, Fs> {
+  public withFeatures(enabled: Feature[]): EnvBuilder<Args, R, Fs> {
     const result = this.clone();
     result.state.features = createFeatures(enabled);
     return result;
   }
 
-  public withEnv(env: Env): TestEnv<Args, R, Fs> {
+  public withEnv(env: Env): EnvBuilder<Args, R, Fs> {
     const result = this.clone();
     result.state.env = env;
     return result;
   }
 
-  public withActions(actions: ActionsEnv): TestEnv<Args, R, Fs> {
+  public withActions(actions: ActionsEnv): EnvBuilder<Args, R, Fs> {
     const result = this.clone();
     result.state.actions = actions;
     return result;
@@ -319,8 +319,8 @@ export function callee<
   Args extends readonly any[],
   R,
   Fs extends readonly StateFeature[],
->(fn: (state: ActionState<Fs>, ...args: Args) => R): TestEnv<Args, R, Fs> {
-  return new TestEnv(fn);
+>(fn: (state: ActionState<Fs>, ...args: Args) => R): EnvBuilder<Args, R, Fs> {
+  return new EnvBuilder(fn);
 }
 
 /**

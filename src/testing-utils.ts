@@ -466,16 +466,18 @@ export function setupBaseActionsVars(
  * @param tempDir A value for `RUNNER_TEMP` and `GITHUB_WORKSPACE`.
  * @param toolsDir A value for `RUNNER_TOOL_CACHE`.
  * @param overrides Overrides for the defaults.
+ * @param env The environment to set the variables for.
  */
 export function setupActionsVars(
   tempDir: string,
   toolsDir: string,
   overrides?: ActionVarOverrides,
+  env: Env = getEnv(),
 ) {
-  setupBaseActionsVars(overrides);
-  process.env["RUNNER_TEMP"] = tempDir;
-  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
-  process.env["GITHUB_WORKSPACE"] = tempDir;
+  setupBaseActionsVars(overrides, env);
+  env.set(ActionsEnvVars.RUNNER_TEMP, tempDir);
+  env.set(ActionsEnvVars.RUNNER_TOOL_CACHE, toolsDir);
+  env.set(ActionsEnvVars.GITHUB_WORKSPACE, tempDir);
 }
 
 type LogLevel = "debug" | "info" | "warning" | "error";

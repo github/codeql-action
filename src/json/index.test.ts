@@ -85,6 +85,24 @@ test("validateSchema - validates arrays", async (t) => {
   t.false(json.validateSchema(arraySchema, { arrayKey: [4, 8, 15, null] }));
 });
 
+const objectSchema = {
+  objectKey: json.object(arraySchema),
+};
+
+test("validateSchema - validates objects", async (t) => {
+  // Objects of the given schema are accepted.
+  t.true(json.validateSchema(objectSchema, { objectKey: { arrayKey: [] } }));
+  t.true(json.validateSchema(objectSchema, { objectKey: { arrayKey: [4] } }));
+
+  // Other values are not accepted.
+  t.false(json.validateSchema(objectSchema, {}));
+  t.false(json.validateSchema(objectSchema, { objectKey: [] }));
+  t.false(json.validateSchema(objectSchema, { objectKey: undefined }));
+  t.false(json.validateSchema(objectSchema, { objectKey: null }));
+  t.false(json.validateSchema(objectSchema, { objectKey: "foo" }));
+  t.false(json.validateSchema(objectSchema, { objectKey: 123 }));
+});
+
 test("validateSchema - checkSchema reports unknown keys", async (t) => {
   const result = json.checkSchema(testSchema, {
     requiredKey: "foo",

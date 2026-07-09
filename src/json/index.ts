@@ -76,6 +76,16 @@ export function array<T>(validator: Validator<T>) {
   } as const satisfies Validator<T[]>;
 }
 
+/** A validator for objects. */
+export function object(schema: Schema) {
+  return {
+    validate: (val: unknown) => {
+      return isObject(val) && validateSchema(schema, val);
+    },
+    required: true,
+  } as const satisfies Validator<FromSchema<typeof schema>>;
+}
+
 /**
  * Transforms a validator to be optional, accepting `undefined` or `null` for an
  * absent value.

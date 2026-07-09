@@ -68,10 +68,9 @@ export const getOptionalInput = function (name: string): string | undefined {
  * value of `RUNNER_TEMP` otherwise.
  */
 export function getTemporaryDirectory(env: Env = getEnv()): string {
-  const value = env.getOptional(EnvVar.TEMP);
-  return value !== undefined && value !== ""
-    ? value
-    : env.getRequired(ActionsEnvVars.RUNNER_TEMP);
+  return (
+    env.getOptional(EnvVar.TEMP) ?? env.getRequired(ActionsEnvVars.RUNNER_TEMP)
+  );
 }
 
 const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";

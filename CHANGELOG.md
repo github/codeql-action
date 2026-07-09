@@ -4,7 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.20.6 and earlier. These versions of CodeQL were discontinued on 1 July 2026 alongside GitHub Enterprise Server 3.16, and will be unsupported by the next minor release of the CodeQL Action. [#3956](https://github.com/github/codeql-action/pull/3956)
+No user facing changes.
+
+## v4.37.1 - 09 Jul 2026
+
+This release rolls back 4.37.0 due to issues with that release. It is identical to 0.0.0.
 
 ## 4.37.0 - 08 Jul 2026
 
@@ -1237,3 +1241,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

@@ -128,7 +128,9 @@ export interface CodeQL {
   /**
    * Run 'codeql resolve languages' with '--format=betterjson'.
    */
-  resolveLanguages(): Promise<ResolveLanguagesOutput>;
+  resolveLanguages(options?: {
+    filterToLanguagesWithQueries: boolean;
+  }): Promise<ResolveLanguagesOutput>;
   /**
    * Run 'codeql resolve build-environment'
    */
@@ -515,11 +517,18 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      return getCachedOrRun(CommandCacheKey.Version, cmd, () =>
-        runCliJson<VersionInfo>(cmd, ["version", "--format=json"], {
+      return getCachedOrRun(CommandCacheKey.Version, cmd, async () => {
+        const output = await runCli(cmd, ["version", "--format=json"], {
           noStreamStdout: true,
-        }),
-      );
+        });
+        try {
+          return JSON.parse(output) as VersionInfo;
+        } catch {
+          throw Error(
+            `Invalid JSON output from \`version --format=json\`: ${output}`,
+          );
+        }
+      });
     },
     async printVersion() {
       // Reuse the cached version information rather than invoking the CLI again.
@@ -717,27 +726,33 @@ async function getCodeQLForCmd(
       ];
       await runCli(cmd, args);
     },
-    async resolveLanguages() {
-      return getCachedOrRun(CommandCacheKey.ResolveLanguages, cmd, async () => {
-        const isFilterToLanguagesWithQueriesSupported =
-          await this.supportsFeature(
-            ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
-          );
-        return runCliJson<ResolveLanguagesOutput>(cmd, [
-          "resolve",
-          "languages",
-          "--format=betterjson",
-          "--extractor-options-verbosity=4",
-          "--extractor-include-aliases",
-          // TODO: Unconditionally include `--filter-to-languages-with-queries`
-          //       once CODEQL_MINIMUM_VERSION is at least v2.23.0
-          //       — the first version to support this flag.
-          ...(isFilterToLanguagesWithQueriesSupported
-            ? ["--filter-to-languages-with-queries"]
-            : []),
-          ...getExtraOptionsFromEnv(["resolve", "languages"]),
-        ]);
-      });
+    async resolveLanguages(
+      {
+        filterToLanguagesWithQueries,
+      }: {
+        filterToLanguagesWithQueries: boolean;
+      } = { filterToLanguagesWithQueries: false },
+    ) {
+      const codeqlArgs = [
+        "resolve",
+        "languages",
+        "--format=betterjson",
+        "--extractor-options-verbosity=4",
+        "--extractor-include-aliases",
+        ...(filterToLanguagesWithQueries
+          ? ["--filter-to-languages-with-queries"]
+          : []),
+        ...getExtraOptionsFromEnv(["resolve", "languages"]),
+      ];
+      const output = await runCli(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output) as ResolveLanguagesOutput;
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve languages with --format=betterjson: ${e}`,
+        );
+      }
     },
     async resolveBuildEnvironment(
       workingDir: string | undefined,
@@ -753,7 +768,15 @@ async function getCodeQLForCmd(
       if (workingDir !== undefined) {
         codeqlArgs.push("--working-dir", workingDir);
       }
-      return await runCliJson<ResolveBuildEnvironmentOutput>(cmd, codeqlArgs);
+      const output = await runCli(cmd, codeqlArgs);
+
+      try {
+        return JSON.parse(output) as ResolveBuildEnvironmentOutput;
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve build-environment: ${e} in\n${output}`,
+        );
+      }
     },
     async databaseRunQueries(
       databasePath: string,
@@ -955,9 +978,15 @@ async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
         ...queries,
       ];
-      return await runCliJson<string[]>(cmd, codeqlArgs, {
-        noStreamStdout: true,
-      });
+      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+
+      try {
+        return JSON.parse(output) as string[];
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve queries --format=startingpacks: ${e}`,
+        );
+      }
     },
     async resolveDatabase(
       databasePath: string,
@@ -969,9 +998,15 @@ async function getCodeQLForCmd(
         "--format=json",
         ...getExtraOptionsFromEnv(["resolve", "database"]),
       ];
-      return await runCliJson<ResolveDatabaseOutput>(cmd, codeqlArgs, {
-        noStreamStdout: true,
-      });
+      const output = await runCli(cmd, codeqlArgs, { noStreamStdout: true });
+
+      try {
+        return JSON.parse(output) as ResolveDatabaseOutput;
+      } catch (e) {
+        throw new Error(
+          `Unexpected output from codeql resolve database --format=json: ${e}`,
+        );
+      }
     },
     async mergeResults(
       sarifFiles: string[],
@@ -1124,19 +1159,6 @@ async function runCli(
       throw wrapCliConfigurationError(new CliError(e));
     }
     throw e;
-  }
-}
-
-async function runCliJson<T>(
-  cmd: string,
-  args: string[] = [],
-  opts: { stdin?: string; noStreamStdout?: boolean } = {},
-): Promise<T> {
-  const output = await runCli(cmd, args, opts);
-  try {
-    return JSON.parse(output) as T;
-  } catch {
-    throw Error(`Invalid JSON output from \`${args.join(" ")}\`: ${output}`);
   }
 }
 

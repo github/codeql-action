@@ -427,7 +427,7 @@ class CallableEnvBuilder<
   ): Promise<ThrownError<ErrorType>> {
     // Run the main assertion.
     const error = await t.throwsAsync(
-      () => Promise.resolve(this.call()),
+      async () => Promise.resolve(this.call()),
       expectations,
     );
 

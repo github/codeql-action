@@ -429,8 +429,10 @@ export function getPullRequestBranches(
 
   // PR analysis under Default Setup does not have the pull_request context,
   // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
-  const codeScanningRef = env.getOptional("CODE_SCANNING_REF");
-  const codeScanningBaseBranch = env.getOptional("CODE_SCANNING_BASE_BRANCH");
+  const codeScanningRef = env.getOptional(EnvVar.CODE_SCANNING_REF);
+  const codeScanningBaseBranch = env.getOptional(
+    EnvVar.CODE_SCANNING_BASE_BRANCH,
+  );
   if (codeScanningRef && codeScanningBaseBranch) {
     return {
       base: codeScanningBaseBranch,

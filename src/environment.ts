@@ -18,6 +18,18 @@ export enum EnvVar {
   CLI_VERBOSITY = "CODEQL_VERBOSITY",
 
   /**
+   * Set by Default Setup to the base branch of the PR being analysed, if analysing a PR.
+   * This is needed because the `pull_request` context is not available for `dynamic` events.
+   */
+  CODE_SCANNING_BASE_BRANCH = "CODE_SCANNING_BASE_BRANCH",
+
+  /**
+   * Set by Default Setup to the full ref being analysed, if analysing a PR.
+   * This is needed because the `pull_request` context is not available for `dynamic` events.
+   */
+  CODE_SCANNING_REF = "CODE_SCANNING_REF",
+
+  /**
    * `PersistedVersionInfo` for the CodeQL CLI, so later Actions steps can reuse it instead of
    * invoking `codeql version` again.
    */

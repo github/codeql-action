@@ -7,6 +7,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
+import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
@@ -637,8 +638,8 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      process.env["CODE_SCANNING_REF"] = "refs/heads/feature-branch";
-      process.env["CODE_SCANNING_BASE_BRANCH"] = "main";
+      process.env[EnvVar.CODE_SCANNING_REF] = "refs/heads/feature-branch";
+      process.env[EnvVar.CODE_SCANNING_BASE_BRANCH] = "main";
 
       sinon.stub(api, "getAutomationID").resolves("test/");
       const listStub = sinon.stub(api, "listActionsCaches").resolves([

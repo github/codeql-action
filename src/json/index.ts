@@ -77,13 +77,16 @@ export function array<T>(validator: Validator<T>) {
 }
 
 /** A validator for objects. */
-export function object(schema: Schema) {
+export function object<
+  S extends Schema,
+  T extends UnvalidatedObject<any> = FromSchema<S>,
+>(schema: S) {
   return {
     validate: (val: unknown) => {
-      return isObject(val) && validateSchema(schema, val);
+      return isObject(val) && validateSchema<S, T>(schema, val);
     },
     required: true,
-  } as const satisfies Validator<FromSchema<typeof schema>>;
+  } as const satisfies Validator<T>;
 }
 
 /**
@@ -137,10 +140,10 @@ export type FromSchema<S extends Schema> = {
  * @param obj The object to validate.
  * @returns Asserts that `obj` is of the `schema`'s type if validation is successful.
  */
-export function validateSchema<S extends Schema>(
-  schema: S,
-  obj: UnvalidatedObject<any>,
-): obj is FromSchema<S> {
+export function validateSchema<
+  S extends Schema,
+  T extends UnvalidatedObject<any> = FromSchema<S>,
+>(schema: S, obj: UnvalidatedObject<any>): obj is T {
   const result = checkSchema(schema, obj, { failFast: true });
   return result.valid;
 }

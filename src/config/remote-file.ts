@@ -1,6 +1,5 @@
 import { ActionState } from "../action-common";
-import { ActionsEnvVars } from "../actions-util";
-import { Env } from "../environment";
+import { Env, ActionsEnvVars } from "../environment";
 import * as errorMessages from "../error-messages";
 import { Feature } from "../feature-flags";
 import { ConfigurationError, Failure, Result, Success } from "../util";

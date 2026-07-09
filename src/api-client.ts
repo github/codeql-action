@@ -2,12 +2,8 @@ import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 
-import {
-  ActionsEnvVars,
-  getActionVersion,
-  getRequiredInput,
-} from "./actions-util";
-import { EnvVar, ReadOnlyEnv, getEnv } from "./environment";
+import { getActionVersion, getRequiredInput } from "./actions-util";
+import { EnvVar, ReadOnlyEnv, ActionsEnvVars, getEnv } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {

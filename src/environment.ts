@@ -165,6 +165,31 @@ export enum EnvVar {
 }
 
 /**
+ * Enumerates known GitHub Actions environment variables that we expect
+ * to be set in a GitHub Actions environment.
+ */
+export enum ActionsEnvVars {
+  GITHUB_ACTION_REPOSITORY = "GITHUB_ACTION_REPOSITORY",
+  GITHUB_API_URL = "GITHUB_API_URL",
+  GITHUB_EVENT_NAME = "GITHUB_EVENT_NAME",
+  GITHUB_EVENT_PATH = "GITHUB_EVENT_PATH",
+  GITHUB_JOB = "GITHUB_JOB",
+  GITHUB_REF = "GITHUB_REF",
+  GITHUB_REPOSITORY = "GITHUB_REPOSITORY",
+  GITHUB_RUN_ATTEMPT = "GITHUB_RUN_ATTEMPT",
+  GITHUB_RUN_ID = "GITHUB_RUN_ID",
+  GITHUB_SERVER_URL = "GITHUB_SERVER_URL",
+  GITHUB_SHA = "GITHUB_SHA",
+  GITHUB_WORKFLOW = "GITHUB_WORKFLOW",
+  RUNNER_NAME = "RUNNER_NAME",
+  RUNNER_OS = "RUNNER_OS",
+  RUNNER_TEMP = "RUNNER_TEMP",
+}
+
+/** A type representing all known environment variables. */
+export type KnownEnvVar = EnvVar | ActionsEnvVars;
+
+/**
  * Gets an environment variable, but throws an error if it is not set.
  */
 function getRequiredEnvVar(env: NodeJS.ProcessEnv, paramName: string): string {

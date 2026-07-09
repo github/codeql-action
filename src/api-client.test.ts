@@ -6,6 +6,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { DO_NOT_RETRY_STATUSES } from "./api-client";
+import { ActionsEnvVars } from "./environment";
 import { getTestEnv, setupTests } from "./testing-utils";
 import * as util from "./util";
 
@@ -21,14 +22,8 @@ test.serial("getApiClient", async (t) => {
   pluginStub.returns(githubStub);
 
   const env = getTestEnv();
-  env.set(
-    actionsUtil.ActionsEnvVars.GITHUB_SERVER_URL,
-    "http://github.localhost",
-  );
-  env.set(
-    actionsUtil.ActionsEnvVars.GITHUB_API_URL,
-    "http://api.github.localhost",
-  );
+  env.set(ActionsEnvVars.GITHUB_SERVER_URL, "http://github.localhost");
+  env.set(ActionsEnvVars.GITHUB_API_URL, "http://api.github.localhost");
 
   sinon.stub(actionsUtil, "getRequiredInput").withArgs("token").returns("xyz");
 

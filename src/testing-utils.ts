@@ -11,7 +11,7 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import { ActionState, StateFeature } from "./action-common";
-import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
+import { ActionsEnv, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -19,7 +19,7 @@ import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { Env } from "./environment";
+import { Env, ActionsEnvVars } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,

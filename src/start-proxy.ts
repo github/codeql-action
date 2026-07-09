@@ -300,7 +300,7 @@ export function getCredentials(
     const address = getRegistryAddress(e);
 
     // Filter credentials based on language if specified. `type` is the registry type.
-    // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
+    // E.g., "maven_repository" for Java/Kotlin, "nuget_feed" for C#.
     // We always allow types in `ALWAYS_ENABLED_REGISTRY_TYPE` since they can be used by
     // other parts of the workflow.
     if (

@@ -7,11 +7,11 @@
     "@octokit/core": "^7.0.6",
     "@octokit/plugin-paginate-rest": ">=9.2.2",
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
-    "semver": "^7.8.0",
+    "semver": "^7.8.5",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@types/node": "^20.19.42",
+    "@types/node": "^20.19.43",
     "tsx": "^4.22.4"
   }
 }

@@ -4,6 +4,7 @@ import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 
+import { Action, ActionState, runInActions } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import {
@@ -40,7 +41,6 @@ import {
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
-  sendUnhandledErrorStatusReport,
   StatusReportBase,
 } from "./status-report";
 import {
@@ -212,7 +212,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
-async function run(startedAt: Date) {
+async function run({ startedAt, logger }: ActionState<["Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
@@ -228,7 +228,6 @@ async function run(startedAt: Date) {
   let didUploadTrapCaches = false;
   let dependencyCacheResults: DependencyCacheUploadStatusReport | undefined;
   let databaseUploadResults: DatabaseUploadResult[] = [];
-  const logger = getActionsLogger();
 
   try {
     util.initializeEnvironment(actionsUtil.getActionVersion());
@@ -523,19 +522,13 @@ async function run(startedAt: Date) {
   }
 }
 
+/** Defines the `analyze` Action. */
+const analyze: Action = {
+  name: ActionName.Analyze,
+  run,
+};
+
 export async function runWrapper() {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(`analyze action failed: ${util.getErrorMessage(error)}`);
-    await sendUnhandledErrorStatusReport(
-      ActionName.Analyze,
-      startedAt,
-      error,
-      logger,
-    );
-  }
+  await runInActions(analyze);
   await util.checkForTimeout();
 }

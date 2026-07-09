@@ -3,7 +3,7 @@ import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { EnvVar } from "./environment";
+import { EnvVar, ReadOnlyEnv, ActionsEnvVars, getEnv } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -67,16 +67,16 @@ function createApiClientWithDetails(
   );
 }
 
-export function getApiDetails(): GitHubApiDetails {
+export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
-    url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-    apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+    url: env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
+    apiURL: env.getRequired(ActionsEnvVars.GITHUB_API_URL),
   };
 }
 
-export function getApiClient() {
-  return createApiClientWithDetails(getApiDetails());
+export function getApiClient(env: ReadOnlyEnv = getEnv()) {
+  return createApiClientWithDetails(getApiDetails(env));
 }
 
 export function getApiClientWithExternalAuth(
@@ -311,6 +311,7 @@ function isEnablementError(msg: string) {
     /Code Security must be enabled/i,
     /Advanced Security must be enabled/i,
     /Code Scanning is not enabled/i,
+    /Code Quality is not enabled/i,
   ].some((pattern) => pattern.test(msg));
 }
 

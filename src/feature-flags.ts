@@ -74,6 +74,8 @@ export enum Feature {
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
   AllowToolcacheInput = "allow_toolcache_input",
   CleanupTrapCaches = "cleanup_trap_caches",
+  /** Whether to allow the `config-file` input to be specified via a repository property. */
+  ConfigFileRepositoryProperty = "config_file_repository_property",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
   CsharpCacheBuildModeNone = "csharp_cache_bmn",
   CsharpNewCacheKey = "csharp_new_cache_key",
@@ -90,6 +92,8 @@ export enum Feature {
   ForceNightly = "force_nightly",
   IgnoreGeneratedFiles = "ignore_generated_files",
   JavaNetworkDebugging = "java_network_debugging",
+  /** Allow the new remote file address format. */
+  NewRemoteFileAddresses = "new_remote_file_addresses",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisCodeScanningCpp = "overlay_analysis_code_scanning_cpp",
   OverlayAnalysisCodeScanningCsharp = "overlay_analysis_code_scanning_csharp",
@@ -184,6 +188,11 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
     minimumVersion: undefined,
   },
+  [Feature.ConfigFileRepositoryProperty]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CONFIG_FILE_REPOSITORY_PROPERTY",
+    minimumVersion: undefined,
+  },
   [Feature.CppDependencyInstallation]: {
     defaultValue: false,
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
@@ -246,6 +255,11 @@ export const featureConfig = {
   [Feature.JavaNetworkDebugging]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_JAVA_NETWORK_DEBUGGING",
+    minimumVersion: undefined,
+  },
+  [Feature.NewRemoteFileAddresses]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_NEW_REMOTE_FILE_ADDRESSES",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

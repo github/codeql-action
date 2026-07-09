@@ -1,17 +1,17 @@
 import * as core from "@actions/core";
 
+import { Action, ActionState, runInActions } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { initFeatures } from "./feature-flags";
-import { Logger, getActionsLogger } from "./logging";
+import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import { InvalidSarifUploadError } from "./sarif";
 import {
   createStatusReportBase,
   sendStatusReport,
-  sendUnhandledErrorStatusReport,
   StatusReportBase,
   getActionsStatus,
   ActionName,
@@ -23,7 +23,6 @@ import {
   ConfigurationError,
   checkActionVersion,
   checkDiskUsage,
-  getErrorMessage,
   initializeEnvironment,
   shouldSkipSarifUpload,
   wrapError,
@@ -55,12 +54,9 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function run(startedAt: Date) {
+async function run({ startedAt, logger }: ActionState<["Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
-
-  const logger = getActionsLogger();
-
   try {
     initializeEnvironment(getActionVersion());
 
@@ -165,20 +161,12 @@ async function run(startedAt: Date) {
   }
 }
 
+/** Defines the `upload-sarif` Action. */
+const uploadSarif: Action = {
+  name: ActionName.UploadSarif,
+  run,
+};
+
 export async function runWrapper() {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(
-      `codeql/upload-sarif action failed: ${getErrorMessage(error)}`,
-    );
-    await sendUnhandledErrorStatusReport(
-      ActionName.UploadSarif,
-      startedAt,
-      error,
-      logger,
-    );
-  }
+  await runInActions(uploadSarif);
 }

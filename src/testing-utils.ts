@@ -210,6 +210,12 @@ export function initAllState(
   };
 }
 
+type DelayedCheck<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> = (env: Readonly<BaseEnvBuilder<Args, R, Fs>>) => Promise<any>;
+
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
  */
@@ -221,6 +227,7 @@ abstract class BaseEnvBuilder<
   protected readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
   private logger: RecordingLogger;
   protected state: ActionState<AllState>;
+  protected checks: Array<DelayedCheck<Args, R, Fs>>;
 
   constructor(
     fn: (state: ActionState<Fs>, ...args: Args) => R,
@@ -232,6 +239,7 @@ abstract class BaseEnvBuilder<
       cloneFrom !== undefined
         ? { ...cloneFrom.state, logger: this.logger }
         : initAllState({ logger: this.logger });
+    this.checks = [...(cloneFrom?.checks ?? [])];
   }
 
   /**
@@ -268,6 +276,30 @@ abstract class BaseEnvBuilder<
   public withActions(actions: ActionsEnv): this {
     const result = this.clone();
     result.state.actions = actions;
+    return result;
+  }
+
+  /**
+   * Adds a delayed check that `messages` are logged. The check will be
+   * performed after the main assertion passes.
+   */
+  public logs(t: ExecutionContext<unknown>, ...messages: string[]): this {
+    const result = this.clone();
+    result.checks.push(async (env) => {
+      checkExpectedLogMessages(t, env.getLogger().messages, messages);
+    });
+    return result;
+  }
+
+  /**
+   * Adds a delayed check that `messages` are not logged. The check will be
+   * performed after the main assertion passes.
+   */
+  public notLogs(t: ExecutionContext<unknown>, ...messages: string[]): this {
+    const result = this.clone();
+    result.checks.push(async (env) => {
+      checkUnexpectedLogMessages(t, env.getLogger().messages, messages);
+    });
     return result;
   }
 }
@@ -322,8 +354,21 @@ class CallableEnvBuilder<
     assertion: (val: Awaited<R>, ...assertionArgs: AArgs) => AResult,
     ...assertionArgs: AArgs
   ): Promise<AResult> {
+    // this.call() may or may not return a promise,
+    // `Promise.resolve` turns the result into one if it isn't already,
+    // and we then await it. That ensures that `result` is an `Awaited<R>`.
     const result = await Promise.resolve(this.call());
-    return assertion(result, ...assertionArgs);
+
+    // Run the main assertion on the `result`.
+    const assertionResult = await assertion(result, ...assertionArgs);
+
+    // Run other delayed checks.
+    for (const delayedCheck of this.checks) {
+      await delayedCheck(this);
+    }
+
+    // Return the result of the main assertion.
+    return assertionResult;
   }
 
   /**
@@ -337,7 +382,19 @@ class CallableEnvBuilder<
     t: ExecutionContext<unknown>,
     expectations?: ThrowsExpectation<ErrorType>,
   ): Promise<ThrownError<ErrorType>> {
-    return t.throwsAsync(() => Promise.resolve(this.call()), expectations);
+    // Run the main assertion.
+    const error = await t.throwsAsync(
+      () => Promise.resolve(this.call()),
+      expectations,
+    );
+
+    // Run other delayed checks.
+    for (const delayedCheck of this.checks) {
+      await delayedCheck(this);
+    }
+
+    // Return the error.
+    return error;
   }
 }
 
@@ -536,6 +593,34 @@ export function checkExpectedLogMessages(
 
     t.fail(
       `Expected\n\n${listify(missingMessages)}\n\nin the logger output, but didn't find it in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
+    );
+  } else {
+    t.pass();
+  }
+}
+
+/**
+ * Checks that `messages` contains none of `unexpectedMessages`.
+ */
+export function checkUnexpectedLogMessages(
+  t: ExecutionContext<any>,
+  messages: LoggedMessage[],
+  unexpectedMessages: string[],
+) {
+  const presentMessages: string[] = [];
+
+  for (const unexpectedMessage of unexpectedMessages) {
+    if (hasLoggedMessage(messages, unexpectedMessage)) {
+      presentMessages.push(unexpectedMessage);
+    }
+  }
+
+  if (presentMessages.length > 0) {
+    const listify = (lines: string[]) =>
+      lines.map((m) => ` - '${m}'`).join("\n");
+
+    t.fail(
+      `Did not expect\n\n${listify(presentMessages)}\n\nin the logger output, but found them in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
     );
   } else {
     t.pass();

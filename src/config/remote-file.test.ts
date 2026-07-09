@@ -50,7 +50,7 @@ test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
   for (const oldFormatInput of oldFormatInputs) {
     await target
       .withArgs(oldFormatInput.input)
-      .passes(async (fn) => t.deepEqual(await fn(), oldFormatInput.expected));
+      .passes(t.deepEqual, oldFormatInput.expected);
   }
 
   // New format.
@@ -78,14 +78,12 @@ test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
     // Should fail when the FF is not enabled.
     await targetWithArgs
       .withFeatures([])
-      .passes(async (fn) =>
-        t.throwsAsync(fn, { instanceOf: ConfigurationError }),
-      );
+      .throws(t, { instanceOf: ConfigurationError });
 
     // And pass when the FF is enabled.
     await targetWithArgs
       .withFeatures([Feature.NewRemoteFileAddresses])
-      .passes(async (fn) => t.deepEqual(await fn(), newFormatInput.expected));
+      .passes(t.deepEqual, newFormatInput.expected);
   }
 });
 
@@ -146,14 +144,12 @@ test("parseRemoteFileAddress accepts remote address without an owner", async (t)
     // Should fail when the FF is not enabled.
     await targetWithArgs
       .withFeatures([])
-      .passes(async (fn) =>
-        t.throwsAsync(fn, { instanceOf: ConfigurationError }),
-      );
+      .throws(t, { instanceOf: ConfigurationError });
 
     // And pass when the FF is enabled.
     await targetWithArgs
       .withFeatures([Feature.NewRemoteFileAddresses])
-      .passes(async (fn) => t.deepEqual(await fn(), testCase.expected));
+      .passes(t.deepEqual, testCase.expected);
   }
 });
 
@@ -167,7 +163,7 @@ test("parseRemoteFileAddress throws for invalid `GITHUB_REPOSITORY`", async (t) 
   await target
     .withEnv(env)
     .withFeatures([Feature.NewRemoteFileAddresses])
-    .passes(async (fn) => t.throwsAsync(fn, { instanceOf: Error }));
+    .throws(t, { instanceOf: Error });
 
   t.assert(getRequired.calledOnceWith(ActionsEnvVars.GITHUB_REPOSITORY));
 });
@@ -202,14 +198,12 @@ test("parseRemoteFileAddress accepts remote address without a path", async (t) =
     // Should fail when the FF is not enabled.
     await targetWithArgs
       .withFeatures([])
-      .passes(async (fn) =>
-        t.throwsAsync(fn, { instanceOf: ConfigurationError }),
-      );
+      .throws(t, { instanceOf: ConfigurationError });
 
     // And pass when the FF is enabled.
     await targetWithArgs
       .withFeatures([Feature.NewRemoteFileAddresses])
-      .passes(async (fn) => t.deepEqual(await fn(), testCase.expected));
+      .passes(t.deepEqual, testCase.expected);
   }
 });
 
@@ -217,17 +211,15 @@ test("parseRemoteFileAddress accepts remote address without a ref", async (t) =>
   const target = callee(parseRemoteFileAddress).withArgs("owner/repo:path");
 
   // Should only accept the input if the FF is enabled.
-  await target.withFeatures([]).passes(t.throwsAsync);
+  await target.withFeatures([]).throws(t);
   await target
     .withFeatures([Feature.NewRemoteFileAddresses])
-    .passes(async (fn) =>
-      t.deepEqual(await fn(), {
-        owner: "owner",
-        repo: "repo",
-        path: "path",
-        ref: DEFAULT_CONFIG_FILE_REF,
-      } satisfies RemoteFileAddress),
-    );
+    .passes(t.deepEqual, {
+      owner: "owner",
+      repo: "repo",
+      path: "path",
+      ref: DEFAULT_CONFIG_FILE_REF,
+    } satisfies RemoteFileAddress);
 });
 
 test("parseRemoteFileAddress rejects invalid values", async (t) => {
@@ -262,21 +254,17 @@ test("parseRemoteFileAddress rejects invalid values", async (t) => {
     const targetWithArgs = target.withArgs(testInput);
 
     // Should throw both when the new format is and isn't accepted.
-    await targetWithArgs.withFeatures([]).passes(async (fn) =>
-      t.throwsAsync(fn, {
-        instanceOf: ConfigurationError,
-        message: errors.getConfigFileRepoOldFormatInvalidMessage(testInput),
-      }),
-    );
+    await targetWithArgs.withFeatures([]).throws(t, {
+      instanceOf: ConfigurationError,
+      message: errors.getConfigFileRepoOldFormatInvalidMessage(testInput),
+    });
     await targetWithArgs
       .withFeatures([Feature.NewRemoteFileAddresses])
-      .passes(async (fn) =>
-        t.throwsAsync(fn, {
-          // When the new format is accepted, there are some more specific
-          // errors in some cases. It is sufficient for us to check that
-          // an exception is thrown.
-          instanceOf: ConfigurationError,
-        }),
-      );
+      .throws(t, {
+        // When the new format is accepted, there are some more specific
+        // errors in some cases. It is sufficient for us to check that
+        // an exception is thrown.
+        instanceOf: ConfigurationError,
+      });
   }
 });

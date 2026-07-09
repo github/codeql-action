@@ -3,6 +3,8 @@ import path from "path";
 
 import * as github from "@actions/github";
 import test, {
+  type ThrownError,
+  type ThrowsExpectation,
   type ExecutionContext,
   type MacroDeclarationOptions,
   type TestFn,
@@ -281,11 +283,34 @@ export class TestEnv<
     return this.fn(this.state as unknown as ActionState<Fs>, ...this.args);
   }
 
-  public passes<T>(assertion: (makeCall: () => R) => Promise<T>): Promise<T> {
-    return assertion(() => {
-      const result = this.call();
-      return result;
-    });
+  /**
+   * Calls the underlying function in the configured environment and passes
+   * the result to `assertion` along with extra `assertionArgs`.
+   *
+   * @param assertion The assertion to apply to the result.
+   * @param assertionArgs Extra arguments for the assertion.
+   * @returns The result of the assertion.
+   */
+  public async passes<AArgs extends readonly any[], AResult>(
+    assertion: (val: Awaited<R>, ...assertionArgs: AArgs) => AResult,
+    ...assertionArgs: AArgs
+  ): Promise<AResult> {
+    const result = await Promise.resolve(this.call());
+    return assertion(result, ...assertionArgs);
+  }
+
+  /**
+   * Asserts that calling the underlying function should throw an exception.
+   *
+   * @param t The execution context for the assertion.
+   * @param expectations Expectations for the error.
+   * @returns The error that was thrown.
+   */
+  public async throws<ErrorType extends ErrorConstructor | Error>(
+    t: ExecutionContext<unknown>,
+    expectations?: ThrowsExpectation<ErrorType>,
+  ): Promise<ThrownError<ErrorType>> {
+    return t.throwsAsync(() => Promise.resolve(this.call()), expectations);
   }
 }
 

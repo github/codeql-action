@@ -13,7 +13,7 @@ test("getConfigFileInput returns undefined by default", async (t) => {
   await callee(getConfigFileInput)
     .withArgs({})
     .withFeatures([Feature.ConfigFileRepositoryProperty])
-    .passes(async (fn) => t.is(await fn(), undefined));
+    .passes(t.is, undefined);
 });
 
 const repositoryProperties = {
@@ -37,7 +37,7 @@ test("getConfigFileInput returns input value", async (t) => {
   const targetWithArgs = target
     .withActions(actionsEnv)
     .withArgs(repositoryProperties);
-  await targetWithArgs.passes(async (fn) => t.is(await fn(), testInput));
+  await targetWithArgs.passes(t.is, testInput);
 
   // Check for the expected log message.
   t.true(
@@ -53,8 +53,9 @@ test("getConfigFileInput returns repository property value", async (t) => {
     .withFeatures([Feature.ConfigFileRepositoryProperty])
     .withArgs(repositoryProperties);
 
-  await target.passes(async (fn) =>
-    t.is(await fn(), repositoryProperties[RepositoryPropertyName.CONFIG_FILE]),
+  await target.passes(
+    t.is,
+    repositoryProperties[RepositoryPropertyName.CONFIG_FILE],
   );
 
   // Check for the expected log message.
@@ -70,7 +71,7 @@ test("getConfigFileInput ignores empty repository property value", async (t) => 
   await callee(getConfigFileInput)
     .withFeatures([Feature.ConfigFileRepositoryProperty])
     .withArgs({ [RepositoryPropertyName.CONFIG_FILE]: "   " })
-    .passes(async (fn) => t.is(await fn(), undefined));
+    .passes(t.is, undefined);
 });
 
 test("getConfigFileInput ignores repository property value when FF is off", async (t) => {
@@ -79,7 +80,7 @@ test("getConfigFileInput ignores repository property value when FF is off", asyn
     .withFeatures([])
     .withArgs(repositoryProperties);
 
-  await target.passes(async (fn) => t.is(await fn(), undefined));
+  await target.passes(t.is, undefined);
 
   t.false(
     target

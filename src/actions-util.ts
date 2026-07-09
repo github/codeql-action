@@ -275,7 +275,7 @@ export const getFileType = async (filePath: string): Promise<string> => {
 };
 
 export function isSelfHostedRunner(env: Env = getEnv()) {
-  return env.getOptional("RUNNER_ENVIRONMENT") === "self-hosted";
+  return env.getOptional(ActionsEnvVars.RUNNER_ENVIRONMENT) === "self-hosted";
 }
 
 /** Determines whether the workflow trigger is `dynamic`. */

@@ -4,6 +4,10 @@ import * as yaml from "js-yaml";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
+import {
+  addNoLanguageDiagnostic,
+  makeTelemetryDiagnostic,
+} from "../diagnostics";
 import * as errorMessages from "../error-messages";
 import {
   RepositoryProperties,
@@ -111,6 +115,16 @@ export function mergeDefaultSetupAndUserConfigs(
   if (schemaCheckResult.unknownKeys.length > 0) {
     logger.warning(
       `Unrecognised keys in Default Setup configuration: ${schemaCheckResult.unknownKeys.join(", ")}`,
+    );
+    addNoLanguageDiagnostic(
+      undefined,
+      makeTelemetryDiagnostic(
+        "codeql-action/unrecognised-default-setup-config-keys",
+        "Unrecognised Default Setup configuration keys",
+        {
+          unrecognisedKeys: schemaCheckResult.unknownKeys,
+        },
+      ),
     );
   }
 

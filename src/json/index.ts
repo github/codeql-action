@@ -48,29 +48,65 @@ export function isStringOrUndefined(
  */
 export type Validator<T> = {
   validate: (val: unknown) => val is T;
+  check: (val: unknown, path: string) => CheckSchemaResult;
   required: boolean;
 };
+
+function defaultCheck(
+  validate: (val: unknown) => val is any,
+): (arg: unknown) => CheckSchemaResult {
+  return (arg) => ({ unknownKeys: [], valid: validate(arg) });
+}
+
+function makeValidator<T>(
+  validate: (arg: unknown) => arg is T,
+  required: boolean = true,
+) {
+  return {
+    validate,
+    check: defaultCheck(validate),
+    required,
+  } as const satisfies Validator<T>;
+}
 
 /** Extracts `T` from `Validator<T>`. */
 export type UnwrapValidator<V> = V extends Validator<infer A> ? A : never;
 
 /** A validator for string fields in schemas. */
-export const string = {
-  validate: isString,
-  required: true,
-} as const satisfies Validator<string>;
+export const string = makeValidator(isString);
 
 /** A validator for number fields in schemas. */
-export const number = {
-  validate: isNumber,
-  required: true,
-} as const satisfies Validator<number>;
+export const number = makeValidator(isNumber);
 
 /** A validator for arrays. */
 export function array<T>(validator: Validator<T>) {
+  const validate = (val: unknown) => {
+    return isArray(val) && val.every((e) => validator.validate(e));
+  };
   return {
-    validate: (val: unknown) => {
-      return isArray(val) && val.every((e) => validator.validate(e));
+    validate,
+    check: (val: unknown, path: string) => {
+      const result: CheckSchemaResult = { valid: true, unknownKeys: [] };
+
+      if (!isArray(val)) {
+        result.valid = false;
+        return result;
+      }
+
+      let index = 0;
+      for (const e of val) {
+        const eResult = validator.check(e, `${path}[${index}].`);
+
+        result.unknownKeys.push(...eResult.unknownKeys);
+        index++;
+
+        if (!eResult.valid) {
+          result.valid = false;
+          continue;
+        }
+      }
+
+      return result;
     },
     required: true,
   } as const satisfies Validator<T[]>;
@@ -85,6 +121,12 @@ export function object<
     validate: (val: unknown) => {
       return isObject(val) && validateSchema<S, T>(schema, val);
     },
+    check: (val, path) => {
+      if (!isObject(val)) {
+        return { valid: false, unknownKeys: [] };
+      }
+      return checkSchema(schema, val, {}, path);
+    },
     required: true,
   } as const satisfies Validator<T>;
 }
@@ -98,6 +140,12 @@ export function optionalOrNull<T>(validator: Validator<T>) {
     validate: (val: unknown) => {
       return val === undefined || val === null || validator.validate(val);
     },
+    check: (val, path) => {
+      if (val === undefined || val === null) {
+        return { valid: true, unknownKeys: [] };
+      }
+      return validator.check(val, path);
+    },
     required: false,
   } as const satisfies Validator<T | undefined | null>;
 }
@@ -110,6 +158,12 @@ export function optional<T>(validator: Validator<T>) {
   return {
     validate: (val: unknown): val is T | undefined => {
       return val === undefined || validator.validate(val);
+    },
+    check: (val, path) => {
+      if (val === undefined) {
+        return { valid: true, unknownKeys: [] };
+      }
+      return validator.check(val, path);
     },
     required: false,
   } as const satisfies Validator<T | undefined>;
@@ -193,13 +247,19 @@ export function checkSchema<S extends Schema>(
     }
 
     // If the property is present, validate it.
-    if (hasKey && !validator.validate(obj[key])) {
-      result.valid = false;
+    if (hasKey) {
+      const checkResult = validator.check(obj[key], `${path}${key}.`);
 
-      if (options.failFast) {
-        return result;
+      result.unknownKeys.push(...checkResult.unknownKeys);
+
+      if (!checkResult.valid) {
+        result.valid = false;
+
+        if (options.failFast) {
+          return result;
+        }
+        continue;
       }
-      continue;
     }
 
     // If we reach this point, the key has been successfully validated.

@@ -269,6 +269,34 @@ abstract class BaseEnvBuilder<
     return result;
   }
 
+  /**
+   * Sets environment variables that are always available to GitHub Actions,
+   * excluding some that are expected to be set to paths.
+   *
+   * @param overrides Overrides for the defaults.
+   */
+  public withDefaultActionsEnv(overrides?: ActionVarOverrides): this {
+    const result = this.clone();
+    setupBaseActionsVars(overrides, result.state.env);
+    return result;
+  }
+
+  /**
+   * Sets environment variables that are always available to GitHub Actions.
+   * @param tempDir A value for `RUNNER_TEMP` and `GITHUB_WORKSPACE`.
+   * @param toolsDir A value for `RUNNER_TOOL_CACHE`.
+   * @param overrides Overrides for the defaults.
+   */
+  public withActionsEnv(
+    tempDir: string,
+    toolsDir: string,
+    overrides?: ActionVarOverrides,
+  ): this {
+    const result = this.clone();
+    setupActionsVars(tempDir, toolsDir, overrides);
+    return result;
+  }
+
   public withEnv(arg: ValueOrMutation<Env>): this {
     const result = this.clone();
     if (typeof arg === "function") {

@@ -239,7 +239,10 @@ abstract class BaseEnvBuilder<
     this.logger = new RecordingLogger();
     this.state =
       cloneFrom !== undefined
-        ? { ...cloneFrom.state, logger: this.logger }
+        ? ({
+            ...cloneFrom.state,
+            logger: this.logger,
+          } satisfies ActionState<AllState>)
         : initAllState({ logger: this.logger });
     this.checks = [...(cloneFrom?.checks ?? [])];
   }

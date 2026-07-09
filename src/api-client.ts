@@ -2,12 +2,8 @@ import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
 
-import {
-  ActionsEnvVars,
-  getActionVersion,
-  getRequiredInput,
-} from "./actions-util";
-import { EnvVar } from "./environment";
+import { getActionVersion, getRequiredInput } from "./actions-util";
+import { EnvVar, ReadOnlyEnv, ActionsEnvVars, getEnv } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -71,16 +67,16 @@ function createApiClientWithDetails(
   );
 }
 
-export function getApiDetails(): GitHubApiDetails {
+export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
-    url: getRequiredEnvParam(ActionsEnvVars.GITHUB_SERVER_URL),
-    apiURL: getRequiredEnvParam(ActionsEnvVars.GITHUB_API_URL),
+    url: env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
+    apiURL: env.getRequired(ActionsEnvVars.GITHUB_API_URL),
   };
 }
 
-export function getApiClient() {
-  return createApiClientWithDetails(getApiDetails());
+export function getApiClient(env: ReadOnlyEnv = getEnv()) {
+  return createApiClientWithDetails(getApiDetails(env));
 }
 
 export function getApiClientWithExternalAuth(

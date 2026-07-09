@@ -1,7 +1,7 @@
 import test from "ava";
 import sinon from "sinon";
 
-import { ActionsEnvVars } from "../actions-util";
+import { ActionsEnvVars } from "../environment";
 import * as errors from "../error-messages";
 import { Feature } from "../feature-flags";
 import { callee, getTestEnv } from "../testing-utils";

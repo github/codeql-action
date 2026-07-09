@@ -11,7 +11,7 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import { ActionState, StateFeature } from "./action-common";
-import { ActionsEnv, ActionsEnvVars, getActionVersion } from "./actions-util";
+import { ActionsEnv, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -19,7 +19,7 @@ import { CachingKind } from "./caching-utils";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
-import { Env } from "./environment";
+import { Env, ActionsEnvVars } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -331,11 +331,15 @@ export type ActionVarOverrides = Partial<
  * excluding some that are expected to be set to paths. See `setupActionsVars`.
  *
  * @param overrides Overrides for the defaults.
+ * @param env The environment to set the variables for.
  */
-export function setupBaseActionsVars(overrides?: ActionVarOverrides) {
+export function setupBaseActionsVars(
+  overrides?: ActionVarOverrides,
+  env: Env = getEnv(),
+) {
   const vars = { ...DEFAULT_ACTIONS_VARS, ...overrides };
   for (const [key, value] of Object.entries(vars)) {
-    process.env[key] = value;
+    env.set(key, value);
   }
 }
 

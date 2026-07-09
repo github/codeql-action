@@ -7,7 +7,7 @@ import {
   getActionVersion,
   getRequiredInput,
 } from "./actions-util";
-import { EnvVar } from "./environment";
+import { EnvVar, ReadOnlyEnv, getEnv } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -71,16 +71,16 @@ function createApiClientWithDetails(
   );
 }
 
-export function getApiDetails(): GitHubApiDetails {
+export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
-    url: getRequiredEnvParam(ActionsEnvVars.GITHUB_SERVER_URL),
-    apiURL: getRequiredEnvParam(ActionsEnvVars.GITHUB_API_URL),
+    url: env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
+    apiURL: env.getRequired(ActionsEnvVars.GITHUB_API_URL),
   };
 }
 
-export function getApiClient() {
-  return createApiClientWithDetails(getApiDetails());
+export function getApiClient(env: ReadOnlyEnv = getEnv()) {
+  return createApiClientWithDetails(getApiDetails(env));
 }
 
 export function getApiClientWithExternalAuth(

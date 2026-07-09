@@ -167,10 +167,7 @@ export enum EnvVar {
 /**
  * Gets an environment variable, but throws an error if it is not set.
  */
-export function getRequiredEnvVar(
-  env: NodeJS.ProcessEnv,
-  paramName: string,
-): string {
+function getRequiredEnvVar(env: NodeJS.ProcessEnv, paramName: string): string {
   const value = env[paramName];
   if (value === undefined || value.length === 0) {
     throw new Error(`${paramName} environment variable must be set`);
@@ -180,6 +177,8 @@ export function getRequiredEnvVar(
 
 /**
  * Get an environment parameter, but throw an error if it is not set.
+ *
+ * @deprecated Use `getRequired` of a `ReadOnlyEnv` or `Env` instance instead.
  */
 export function getRequiredEnvParam(paramName: string): string {
   return getRequiredEnvVar(process.env, paramName);
@@ -188,7 +187,7 @@ export function getRequiredEnvParam(paramName: string): string {
 /**
  * Gets an environment variable, but returns `undefined` if it is not set or empty.
  */
-export function getOptionalEnvVarFrom(
+function getOptionalEnvVarFrom(
   env: NodeJS.ProcessEnv,
   paramName: string,
 ): string | undefined {
@@ -201,31 +200,52 @@ export function getOptionalEnvVarFrom(
 
 /**
  * Get an environment variable, but return `undefined` if it is not set or empty.
+ *
+ * @deprecated Use `getOptional` of a `ReadOnlyEnv` or `Env` instance instead.
  */
 export function getOptionalEnvVar(paramName: string): string | undefined {
   return getOptionalEnvVarFrom(process.env, paramName);
 }
 
-/** Gets an `Env` instance for `env`, which is `process.env` by default. */
-export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
-  return {
-    getRequired: (name) => getRequiredEnvVar(env, name),
-    getOptional: (name) => getOptionalEnvVarFrom(env, name),
-    entries: () => Object.entries(env),
-    set: (name, value) => {
-      env[name] = value;
-    },
-  };
+/**
+ * An abstraction around read-only environment variables, to allow abstracting away from `process.env`
+ * in tests, while clearly signalling in regular code that the consumer of the `ReadOnlyEnv` instance
+ * will only read from it.
+ */
+export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
+  constructor(protected readonly vars: Record<string, T>) {}
+
+  /** Tries to get the value for `name` and throws if there isn't one. */
+  public getRequired(name: string): string {
+    return getRequiredEnvVar(this.vars, name);
+  }
+
+  /** Gets the value for `name`, or `undefined` if it isn't set or empty. */
+  public getOptional(name: string): string | undefined {
+    return getOptionalEnvVarFrom(this.vars, name);
+  }
+
+  /** Gets the entries of the underlying `ProcessEnv`. */
+  public entries(): Array<[string, T]> {
+    return Object.entries(this.vars);
+  }
 }
 
-/** A wrapper around an environment, to allow abstracting away from `process.env` in tests. */
-export interface Env {
-  /** Tries to get the value for `name` and throws if there isn't one. */
-  getRequired(name: string): string;
-  /** Gets the value for `name`, or `undefined` if it isn't set or empty. */
-  getOptional(name: string): string | undefined;
-  /** Gets the entries of the underlying `ProcessEnv`. */
-  entries(): Array<[string, string | undefined]>;
+/**
+ * A wrapper around an environment, to allow abstracting away from `process.env` in tests.
+ * Use `ReadOnlyEnv` instead if you only plan to read from the environment.
+ * This type allows writing to the environment.
+ */
+export class Env<
+  T extends string | undefined = string | undefined,
+> extends ReadOnlyEnv<T> {
   /** Sets an environment variable. */
-  set(name: string, value: string): void;
+  public set(name: string, value: T): void {
+    this.vars[name] = value;
+  }
+}
+
+/** Gets an `Env` instance for `env`, which is `process.env` by default. */
+export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
+  return new Env(env);
 }

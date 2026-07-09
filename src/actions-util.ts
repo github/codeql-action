@@ -7,7 +7,7 @@ import * as github from "@actions/github";
 import * as io from "@actions/io";
 
 import type { Config } from "./config-utils";
-import { Env, EnvVar } from "./environment";
+import { Env, EnvVar, ActionsEnvVars } from "./environment";
 import { Logger } from "./logging";
 import {
   doesDirectoryExist,
@@ -21,28 +21,6 @@ import {
  * It is also set in `ava.setup.mjs` for tests.
  */
 declare const __CODEQL_ACTION_VERSION__: string;
-
-/**
- * Enumerates known GitHub Actions environment variables that we expect
- * to be set in a GitHub Actions environment.
- */
-export enum ActionsEnvVars {
-  GITHUB_ACTION_REPOSITORY = "GITHUB_ACTION_REPOSITORY",
-  GITHUB_API_URL = "GITHUB_API_URL",
-  GITHUB_EVENT_NAME = "GITHUB_EVENT_NAME",
-  GITHUB_EVENT_PATH = "GITHUB_EVENT_PATH",
-  GITHUB_JOB = "GITHUB_JOB",
-  GITHUB_REF = "GITHUB_REF",
-  GITHUB_REPOSITORY = "GITHUB_REPOSITORY",
-  GITHUB_RUN_ATTEMPT = "GITHUB_RUN_ATTEMPT",
-  GITHUB_RUN_ID = "GITHUB_RUN_ID",
-  GITHUB_SERVER_URL = "GITHUB_SERVER_URL",
-  GITHUB_SHA = "GITHUB_SHA",
-  GITHUB_WORKFLOW = "GITHUB_WORKFLOW",
-  RUNNER_NAME = "RUNNER_NAME",
-  RUNNER_OS = "RUNNER_OS",
-  RUNNER_TEMP = "RUNNER_TEMP",
-}
 
 /**
  * Abstracts over GitHub Actions functions so that we do not have to stub
@@ -90,10 +68,9 @@ export const getOptionalInput = function (name: string): string | undefined {
  * value of `RUNNER_TEMP` otherwise.
  */
 export function getTemporaryDirectory(env: Env = getEnv()): string {
-  const value = env.getOptional(EnvVar.TEMP);
-  return value !== undefined && value !== ""
-    ? value
-    : env.getRequired(ActionsEnvVars.RUNNER_TEMP);
+  return (
+    env.getOptional(EnvVar.TEMP) ?? env.getRequired(ActionsEnvVars.RUNNER_TEMP)
+  );
 }
 
 const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";
@@ -297,7 +274,7 @@ export const getFileType = async (filePath: string): Promise<string> => {
 };
 
 export function isSelfHostedRunner(env: Env = getEnv()) {
-  return env.getOptional("RUNNER_ENVIRONMENT") === "self-hosted";
+  return env.getOptional(ActionsEnvVars.RUNNER_ENVIRONMENT) === "self-hosted";
 }
 
 /** Determines whether the workflow trigger is `dynamic`. */
@@ -452,8 +429,10 @@ export function getPullRequestBranches(
 
   // PR analysis under Default Setup does not have the pull_request context,
   // but it should set CODE_SCANNING_REF and CODE_SCANNING_BASE_BRANCH.
-  const codeScanningRef = env.getOptional("CODE_SCANNING_REF");
-  const codeScanningBaseBranch = env.getOptional("CODE_SCANNING_BASE_BRANCH");
+  const codeScanningRef = env.getOptional(EnvVar.CODE_SCANNING_REF);
+  const codeScanningBaseBranch = env.getOptional(
+    EnvVar.CODE_SCANNING_BASE_BRANCH,
+  );
   if (codeScanningRef && codeScanningBaseBranch) {
     return {
       base: codeScanningBaseBranch,

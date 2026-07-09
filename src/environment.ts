@@ -18,6 +18,18 @@ export enum EnvVar {
   CLI_VERBOSITY = "CODEQL_VERBOSITY",
 
   /**
+   * Set by Default Setup to the base branch of the PR being analysed, if analysing a PR.
+   * This is needed because the `pull_request` context is not available for `dynamic` events.
+   */
+  CODE_SCANNING_BASE_BRANCH = "CODE_SCANNING_BASE_BRANCH",
+
+  /**
+   * Set by Default Setup to the full ref being analysed, if analysing a PR.
+   * This is needed because the `pull_request` context is not available for `dynamic` events.
+   */
+  CODE_SCANNING_REF = "CODE_SCANNING_REF",
+
+  /**
    * `PersistedVersionInfo` for the CodeQL CLI, so later Actions steps can reuse it instead of
    * invoking `codeql version` again.
    */
@@ -164,14 +176,122 @@ export enum EnvVar {
   RISK_ASSESSMENT_ID = "CODEQL_ACTION_RISK_ASSESSMENT_ID",
 }
 
-/** A wrapper around an environment, to allow abstracting away from `process.env` in tests. */
-export interface Env {
+/**
+ * Enumerates known GitHub Actions environment variables that we expect
+ * to be set in a GitHub Actions environment.
+ */
+export enum ActionsEnvVars {
+  GITHUB_ACTION_REPOSITORY = "GITHUB_ACTION_REPOSITORY",
+  GITHUB_API_URL = "GITHUB_API_URL",
+  GITHUB_EVENT_NAME = "GITHUB_EVENT_NAME",
+  GITHUB_EVENT_PATH = "GITHUB_EVENT_PATH",
+  GITHUB_JOB = "GITHUB_JOB",
+  GITHUB_REF = "GITHUB_REF",
+  GITHUB_REPOSITORY = "GITHUB_REPOSITORY",
+  GITHUB_RUN_ATTEMPT = "GITHUB_RUN_ATTEMPT",
+  GITHUB_RUN_ID = "GITHUB_RUN_ID",
+  GITHUB_SERVER_URL = "GITHUB_SERVER_URL",
+  GITHUB_SHA = "GITHUB_SHA",
+  GITHUB_WORKFLOW = "GITHUB_WORKFLOW",
+  RUNNER_ENVIRONMENT = "RUNNER_ENVIRONMENT",
+  RUNNER_NAME = "RUNNER_NAME",
+  RUNNER_OS = "RUNNER_OS",
+  RUNNER_TEMP = "RUNNER_TEMP",
+}
+
+/** A type representing all known environment variables. */
+export type KnownEnvVar = EnvVar | ActionsEnvVars;
+
+/**
+ * Gets an environment variable, but throws an error if it is not set.
+ */
+function getRequiredEnvVar(env: NodeJS.ProcessEnv, paramName: string): string {
+  const value = env[paramName];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`${paramName} environment variable must be set`);
+  }
+  return value;
+}
+
+/**
+ * Get an environment parameter, but throw an error if it is not set.
+ *
+ * @deprecated Use `getRequired` of a `ReadOnlyEnv` or `Env` instance instead.
+ */
+export function getRequiredEnvParam(paramName: string): string {
+  return getRequiredEnvVar(process.env, paramName);
+}
+
+/**
+ * Gets an environment variable, but returns `undefined` if it is not set or empty.
+ */
+function getOptionalEnvVarFrom(
+  env: NodeJS.ProcessEnv,
+  paramName: string,
+): string | undefined {
+  const value = env[paramName];
+  if (value?.trim().length === 0) {
+    return undefined;
+  }
+  return value;
+}
+
+/**
+ * Get an environment variable, but return `undefined` if it is not set or empty.
+ *
+ * @deprecated Use `getOptional` of a `ReadOnlyEnv` or `Env` instance instead.
+ */
+export function getOptionalEnvVar(paramName: string): string | undefined {
+  return getOptionalEnvVarFrom(process.env, paramName);
+}
+
+/**
+ * An abstraction around read-only environment variables, to allow abstracting away from `process.env`
+ * in tests, while clearly signalling in regular code that the consumer of the `ReadOnlyEnv` instance
+ * will only read from it.
+ */
+export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
+  constructor(protected readonly vars: Record<string, T>) {}
+
   /** Tries to get the value for `name` and throws if there isn't one. */
-  getRequired(name: string): string;
+  public getRequired(name: string): string {
+    return getRequiredEnvVar(this.vars, name);
+  }
+
   /** Gets the value for `name`, or `undefined` if it isn't set or empty. */
-  getOptional(name: string): string | undefined;
+  public getOptional(name: string): string | undefined {
+    return getOptionalEnvVarFrom(this.vars, name);
+  }
+
   /** Gets the entries of the underlying `ProcessEnv`. */
-  entries(): Array<[string, string | undefined]>;
+  public entries(): Array<[string, T]> {
+    return Object.entries(this.vars);
+  }
+}
+
+/**
+ * A wrapper around an environment, to allow abstracting away from `process.env` in tests.
+ * Use `ReadOnlyEnv` instead if you only plan to read from the environment.
+ * This type allows writing to the environment.
+ */
+export class Env<
+  T extends string | undefined = string | undefined,
+> extends ReadOnlyEnv<T> {
+  private changed: boolean = false;
+
   /** Sets an environment variable. */
-  set(name: string, value: string): void;
+  public set(name: string, value: T): void {
+    this.vars[name] = value;
+    this.changed = true;
+  }
+
+  /** Gets a value indicating whether `set` was called at least once. */
+  public hasChanged(): boolean {
+    return this.changed;
+  }
+}
+
+/** Gets an `Env` instance for `env`, which is `process.env` by default. */
+export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
+  return new Env(env);
 }

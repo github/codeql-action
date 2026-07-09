@@ -13,6 +13,7 @@ import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import { UserConfig } from "./config/db-config";
 import * as configUtils from "./config-utils";
+import { ActionsEnvVars } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
@@ -2433,7 +2434,7 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
     const logger = new RecordingLogger(true);
     const env = util.getEnv({
       ...DEFAULT_ACTIONS_VARS,
-      [actionsUtil.ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
+      [ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
     });
     const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
@@ -2492,7 +2493,7 @@ test("determineUserConfig - ignores config file input in Default Setup if FF is 
     const logger = new RecordingLogger(true);
     const env = util.getEnv({
       ...DEFAULT_ACTIONS_VARS,
-      [actionsUtil.ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
+      [ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
     });
     const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);

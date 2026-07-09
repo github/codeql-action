@@ -42,7 +42,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
-import { Env, EnvVar } from "./environment";
+import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import {
@@ -87,7 +87,6 @@ import {
   Success,
   Failure,
   isHostedRunner,
-  getEnv,
 } from "./util";
 
 export { type Config } from "./config/action-config";
@@ -472,7 +471,7 @@ async function downloadCacheWithTime(
 /**
  * Loads a CLI configuration file from `configFile`.
  *
- * @param logger The logger to use.
+ * @param actionState The Action state.
  * @param configFile The address of the configuration file.
  * @param workspacePath The workspace path, used to check that the configuration file exists relative to it.
  * @param apiDetails Information for how to access the API to fetch remote files.

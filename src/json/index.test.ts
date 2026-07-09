@@ -67,3 +67,13 @@ test("validateSchema - optional properties are optional", async (t) => {
   t.true(json.validateSchema(optionalSchema, { optionalKey: "" }));
   t.true(json.validateSchema(optionalSchema, { optionalKey: "foo" }));
 });
+
+test("validateSchema - checkSchema reports unknown keys", async (t) => {
+  const result = json.checkSchema(testSchema, {
+    requiredKey: "foo",
+    extraKey: "bar",
+  });
+
+  t.true(result.valid);
+  t.deepEqual(result.unknownKeys, ["extraKey"]);
+});

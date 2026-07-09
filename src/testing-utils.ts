@@ -298,7 +298,7 @@ abstract class BaseEnvBuilder<
     overrides?: ActionVarOverrides,
   ): this {
     const result = this.clone();
-    setupActionsVars(tempDir, toolsDir, overrides);
+    setupActionsVars(tempDir, toolsDir, overrides, result.state.env);
     return result;
   }
 

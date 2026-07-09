@@ -1286,7 +1286,7 @@ function isLocal(configPath: string): boolean {
   return configPath.indexOf("@") === -1;
 }
 
-function getLocalConfig(
+export function getLocalConfig(
   logger: Logger,
   configFile: string,
   validateConfig: boolean,

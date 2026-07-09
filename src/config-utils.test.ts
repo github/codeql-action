@@ -2439,6 +2439,11 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
     const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
+    const inputs = createTestInitConfigInputs({
+      configInput: defaultSetupConfigInput,
+      configFile: configFilePath,
+      workspacePath: tmpDir,
+    });
     const result = await configUtils.determineUserConfig(
       initAllState({
         logger,
@@ -2446,16 +2451,12 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
         features: createFeatures([Feature.AllowMergeConfigFiles]),
       }),
       tmpDir,
-      createTestInitConfigInputs({
-        configInput: defaultSetupConfigInput,
-        configFile: configFilePath,
-        workspacePath: tmpDir,
-      }),
+      inputs,
     );
 
     // The loaded configuration should match the result of merging
     // `defaultSetupConfigInput` and `simpleConfigFileContents`.
-    t.deepEqual(result, {
+    const expectedConfig = {
       name: "my config",
       queries: [{ uses: "./foo_file" }],
       "threat-models": ["local", "remote"],
@@ -2464,7 +2465,22 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
           "model-packs": ["foo", "bar"],
         },
       },
-    } satisfies UserConfig);
+    } satisfies UserConfig;
+    t.deepEqual(result, expectedConfig);
+
+    // The `configFile` input should have been mutated to the generated path.
+    t.is(inputs.configFile, expectedConfigPath);
+
+    // Since `result` is the result of merging the configurations in-memory,
+    // also check whether loading the configuration from disk that was written
+    // by `determineUserConfig` matches our expectations.
+    const loadedFromDisk = configUtils.getLocalConfig(
+      logger,
+      expectedConfigPath,
+      false,
+    );
+    t.deepEqual(loadedFromDisk, expectedConfig);
+
     // And the appropriate origin messages should have been logged.
     t.true(
       logger.hasMessage(

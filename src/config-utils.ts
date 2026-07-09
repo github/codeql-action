@@ -476,7 +476,6 @@ async function downloadCacheWithTime(
  * @param workspacePath The workspace path, used to check that the configuration file exists relative to it.
  * @param apiDetails Information for how to access the API to fetch remote files.
  * @param tempDir The temporary directory which may contain a CodeQL Action-generated configuration file.
- * @param validateConfig Whether to validate the configuration file.
  * @returns The loaded configuration file, if successful.
  */
 async function loadUserConfig(

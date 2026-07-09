@@ -239,9 +239,17 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
 export class Env<
   T extends string | undefined = string | undefined,
 > extends ReadOnlyEnv<T> {
+  private changed: boolean = false;
+
   /** Sets an environment variable. */
   public set(name: string, value: T): void {
     this.vars[name] = value;
+    this.changed = true;
+  }
+
+  /** Gets a value indicating whether `set` was called at least once. */
+  public hasChanged(): boolean {
+    return this.changed;
   }
 }
 

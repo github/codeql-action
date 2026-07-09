@@ -218,17 +218,15 @@ class EnvBuilder<
   R,
   Fs extends ReadonlyArray<AllState[number]>,
 > {
-  private readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
-  private args?: Args;
+  protected readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
   private logger: RecordingLogger;
-  private state: ActionState<AllState>;
+  protected state: ActionState<AllState>;
 
   constructor(
     fn: (state: ActionState<Fs>, ...args: Args) => R,
     cloneFrom?: EnvBuilder<Args, R, Fs>,
   ) {
     this.fn = fn;
-    this.args = cloneFrom?.args;
     this.logger = new RecordingLogger();
     this.state =
       cloneFrom !== undefined
@@ -236,8 +234,12 @@ class EnvBuilder<
         : initAllState({ logger: this.logger });
   }
 
-  private clone(): EnvBuilder<Args, R, Fs> {
-    return new EnvBuilder(this.fn, this);
+  /**
+   * Creates a clone of this object. Used internally.
+   * Must be overriden by subclasses.
+   */
+  protected clone(): this {
+    return new EnvBuilder(this.fn, this) as this;
   }
 
   public getLogger(): RecordingLogger {
@@ -248,38 +250,55 @@ class EnvBuilder<
     return this.state;
   }
 
-  public getArgs(): Args | undefined {
-    return this.args;
-  }
-
-  public withArgs(...args: Args) {
-    const result = this.clone();
-    result.args = args;
+  public withArgs(...args: Args): CallableEnvBuilder<Args, R, Fs> {
+    const result = new CallableEnvBuilder(this.fn, args, this.clone());
     return result;
   }
 
-  public withFeatures(enabled: Feature[]): EnvBuilder<Args, R, Fs> {
+  public withFeatures(enabled: Feature[]): this {
     const result = this.clone();
     result.state.features = createFeatures(enabled);
     return result;
   }
 
-  public withEnv(env: Env): EnvBuilder<Args, R, Fs> {
+  public withEnv(env: Env): this {
     const result = this.clone();
     result.state.env = env;
     return result;
   }
 
-  public withActions(actions: ActionsEnv): EnvBuilder<Args, R, Fs> {
+  public withActions(actions: ActionsEnv): this {
     const result = this.clone();
     result.state.actions = actions;
     return result;
   }
+}
+
+class CallableEnvBuilder<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> extends EnvBuilder<Args, R, Fs> {
+  private args: Args;
+
+  constructor(
+    fn: (state: ActionState<Fs>, ...args: Args) => R,
+    args: Args,
+    cloneFrom?: EnvBuilder<Args, R, Fs>,
+  ) {
+    super(fn, cloneFrom);
+    this.args = args;
+  }
+
+  protected clone(): this {
+    return new CallableEnvBuilder(this.fn, this.args, this) as this;
+  }
+
+  public getArgs(): Args {
+    return this.args;
+  }
 
   call(): R {
-    if (!this.args) {
-      throw new Error("Trying to call function in TestEnv without arguments.");
-    }
     return this.fn(this.state as unknown as ActionState<Fs>, ...this.args);
   }
 

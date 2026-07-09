@@ -103,12 +103,24 @@ test("validateSchema - validates objects", async (t) => {
   t.false(json.validateSchema(objectSchema, { objectKey: 123 }));
 });
 
+const checkSchemaTestSchema = {
+  rootKey: json.object(objectSchema),
+};
+
 test("validateSchema - checkSchema reports unknown keys", async (t) => {
-  const result = json.checkSchema(testSchema, {
-    requiredKey: "foo",
+  const result = json.checkSchema(checkSchemaTestSchema, {
+    rootKey: {
+      objectKey: {
+        arrayKey: [],
+      },
+      nestedExtraKey: "foo",
+    },
     extraKey: "bar",
   });
 
   t.true(result.valid);
-  t.deepEqual(result.unknownKeys, ["extraKey"]);
+  t.deepEqual(
+    result.unknownKeys.sort(),
+    ["extraKey", "rootKey.nestedExtraKey"].sort(),
+  );
 });

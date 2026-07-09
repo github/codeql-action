@@ -4,7 +4,7 @@ import sinon from "sinon";
 import { ActionsEnvVars } from "../environment";
 import * as errors from "../error-messages";
 import { Feature } from "../feature-flags";
-import { callee, getTestEnv } from "../testing-utils";
+import { callee } from "../testing-utils";
 import { ConfigurationError } from "../util";
 
 import {
@@ -88,16 +88,13 @@ test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
 });
 
 test("parseRemoteFileAddress accepts remote address without an owner", async (t) => {
-  const target = callee(parseRemoteFileAddress);
-
-  const env = target.getState().env;
   const owner = "test-owner";
-  const getRequired = sinon.stub(env, "getRequired");
-  getRequired
-    .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
-    .returns(`${owner}/current-repo`);
-
-  const targetWithEnv = target.withEnv(env);
+  const target = callee(parseRemoteFileAddress).withEnv((env) => {
+    const getRequired = sinon.stub(env, "getRequired");
+    getRequired
+      .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
+      .returns(`${owner}/current-repo`);
+  });
 
   const testCases: ParseRemoteFileAddressTest[] = [
     {
@@ -139,7 +136,7 @@ test("parseRemoteFileAddress accepts remote address without an owner", async (t)
   ];
 
   for (const testCase of testCases) {
-    const targetWithArgs = targetWithEnv.withArgs(testCase.input);
+    const targetWithArgs = target.withArgs(testCase.input);
 
     // Should fail when the FF is not enabled.
     await targetWithArgs
@@ -154,14 +151,16 @@ test("parseRemoteFileAddress accepts remote address without an owner", async (t)
 });
 
 test("parseRemoteFileAddress throws for invalid `GITHUB_REPOSITORY`", async (t) => {
-  const target = callee(parseRemoteFileAddress).withArgs("repo@ref");
-
-  const env = target.getState().env;
-  const getRequired = sinon.stub(env, "getRequired");
+  const getRequired: sinon.SinonStub = sinon.stub();
   getRequired.withArgs(ActionsEnvVars.GITHUB_REPOSITORY).returns(`not-valid`);
 
+  const target = callee(parseRemoteFileAddress)
+    .withArgs("repo@ref")
+    .withEnv((env) => {
+      sinon.define(env, "getRequired", getRequired);
+    });
+
   await target
-    .withEnv(env)
     .withFeatures([Feature.NewRemoteFileAddresses])
     .throws(t, { instanceOf: Error });
 
@@ -223,14 +222,13 @@ test("parseRemoteFileAddress accepts remote address without a ref", async (t) =>
 });
 
 test("parseRemoteFileAddress rejects invalid values", async (t) => {
-  const env = getTestEnv();
   const owner = "owner";
-  const getRequired = sinon.stub(env, "getRequired");
-  getRequired
-    .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
-    .returns(`${owner}/current-repo`);
-
-  const target = callee(parseRemoteFileAddress).withEnv(env);
+  const target = callee(parseRemoteFileAddress).withEnv((env) => {
+    const getRequired = sinon.stub(env, "getRequired");
+    getRequired
+      .withArgs(ActionsEnvVars.GITHUB_REPOSITORY)
+      .returns(`${owner}/current-repo`);
+  });
 
   const testInputs = [
     "  ",

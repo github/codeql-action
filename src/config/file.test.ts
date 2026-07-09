@@ -22,20 +22,17 @@ const repositoryProperties = {
 
 test("getConfigFileInput returns input value", async (t) => {
   const testInput = "/some/path";
-  const target = callee(getConfigFileInput).withFeatures([
-    Feature.ConfigFileRepositoryProperty,
-  ]);
-
-  const actionsEnv = target.getState().actions;
-  sinon
-    .stub(actionsEnv, "getOptionalInput")
-    .withArgs("config-file")
-    .returns(testInput);
 
   // Even though both an input and repository property are configured,
   // we prefer the direct input to the Action.
-  await target
-    .withActions(actionsEnv)
+  await callee(getConfigFileInput)
+    .withFeatures([Feature.ConfigFileRepositoryProperty])
+    .withActions((actionsEnv) => {
+      sinon
+        .stub(actionsEnv, "getOptionalInput")
+        .withArgs("config-file")
+        .returns(testInput);
+    })
     .withArgs(repositoryProperties)
     .logs(t, "Using configuration file input from workflow")
     .passes(t.is, testInput);

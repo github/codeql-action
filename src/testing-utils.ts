@@ -216,6 +216,8 @@ type DelayedCheck<
   Fs extends ReadonlyArray<AllState[number]>,
 > = (env: Readonly<BaseEnvBuilder<Args, R, Fs>>) => Promise<any>;
 
+export type ValueOrMutation<T> = T | ((val: T) => void);
+
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
  */
@@ -267,15 +269,23 @@ abstract class BaseEnvBuilder<
     return result;
   }
 
-  public withEnv(env: Env): this {
+  public withEnv(arg: ValueOrMutation<Env>): this {
     const result = this.clone();
-    result.state.env = env;
+    if (typeof arg === "function") {
+      arg(result.state.env);
+    } else {
+      result.state.env = arg;
+    }
     return result;
   }
 
-  public withActions(actions: ActionsEnv): this {
+  public withActions(arg: ValueOrMutation<ActionsEnv>): this {
     const result = this.clone();
-    result.state.actions = actions;
+    if (typeof arg === "function") {
+      arg(result.state.actions);
+    } else {
+      result.state.actions = arg;
+    }
     return result;
   }
 

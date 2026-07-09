@@ -213,7 +213,7 @@ export function initAllState(
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
  */
-class EnvBuilder<
+abstract class BaseEnvBuilder<
   Args extends readonly any[],
   R,
   Fs extends ReadonlyArray<AllState[number]>,
@@ -224,7 +224,7 @@ class EnvBuilder<
 
   constructor(
     fn: (state: ActionState<Fs>, ...args: Args) => R,
-    cloneFrom?: EnvBuilder<Args, R, Fs>,
+    cloneFrom?: BaseEnvBuilder<Args, R, Fs>,
   ) {
     this.fn = fn;
     this.logger = new RecordingLogger();
@@ -238,9 +238,7 @@ class EnvBuilder<
    * Creates a clone of this object. Used internally.
    * Must be overriden by subclasses.
    */
-  protected clone(): this {
-    return new EnvBuilder(this.fn, this) as this;
-  }
+  protected abstract clone(): this;
 
   public getLogger(): RecordingLogger {
     return this.logger;
@@ -274,17 +272,27 @@ class EnvBuilder<
   }
 }
 
+class EnvBuilder<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> extends BaseEnvBuilder<Args, R, Fs> {
+  protected clone(): this {
+    return new EnvBuilder(this.fn, this) as this;
+  }
+}
+
 class CallableEnvBuilder<
   Args extends readonly any[],
   R,
   Fs extends ReadonlyArray<AllState[number]>,
-> extends EnvBuilder<Args, R, Fs> {
+> extends BaseEnvBuilder<Args, R, Fs> {
   private args: Args;
 
   constructor(
     fn: (state: ActionState<Fs>, ...args: Args) => R,
     args: Args,
-    cloneFrom?: EnvBuilder<Args, R, Fs>,
+    cloneFrom?: BaseEnvBuilder<Args, R, Fs>,
   ) {
     super(fn, cloneFrom);
     this.args = args;

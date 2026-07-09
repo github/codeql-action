@@ -66,6 +66,16 @@ export const number = {
   required: true,
 } as const satisfies Validator<number>;
 
+/** A validator for arrays. */
+export function array<T>(validator: Validator<T>) {
+  return {
+    validate: (val: unknown) => {
+      return isArray(val) && val.every((e) => validator.validate(e));
+    },
+    required: true,
+  } as const satisfies Validator<T[]>;
+}
+
 /**
  * Transforms a validator to be optional, accepting `undefined` or `null` for an
  * absent value.

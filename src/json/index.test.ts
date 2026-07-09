@@ -68,6 +68,23 @@ test("validateSchema - optional properties are optional", async (t) => {
   t.true(json.validateSchema(optionalSchema, { optionalKey: "foo" }));
 });
 
+const arraySchema = {
+  arrayKey: json.array(json.number),
+};
+
+test("validateSchema - validates arrays", async (t) => {
+  // Arrays of numeric elements are accepted.
+  t.true(json.validateSchema(arraySchema, { arrayKey: [] }));
+  t.true(json.validateSchema(arraySchema, { arrayKey: [4] }));
+  t.true(json.validateSchema(arraySchema, { arrayKey: [4, 8] }));
+  t.true(json.validateSchema(arraySchema, { arrayKey: [4, 8, 15] }));
+
+  // Other array elements are not accepted.
+  t.false(json.validateSchema(arraySchema, { arrayKey: [4, 8, 15, "bar"] }));
+  t.false(json.validateSchema(arraySchema, { arrayKey: [4, 8, undefined] }));
+  t.false(json.validateSchema(arraySchema, { arrayKey: [4, 8, 15, null] }));
+});
+
 test("validateSchema - checkSchema reports unknown keys", async (t) => {
   const result = json.checkSchema(testSchema, {
     requiredKey: "foo",

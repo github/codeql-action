@@ -9,6 +9,7 @@ import {
   RepositoryProperties,
   RepositoryPropertyName,
 } from "../feature-flags/properties";
+import * as json from "../json";
 import { Language } from "../languages";
 import { Logger } from "../logging";
 import { cloneObject, ConfigurationError, prettyPrintPack } from "../util";
@@ -28,13 +29,20 @@ export interface QuerySpec {
   uses: string;
 }
 
+const ORG_SCHEMA = {
+  /** An array of model pack names. */
+  "model-packs": json.optional(json.array(json.string)),
+} as const satisfies json.Schema;
+
 /** Not intended to be provided directly by a user. */
-export interface DefaultSetupConfig {
-  org?: {
-    /** An array of model pack names. */
-    "model-packs"?: string[];
-  };
-}
+export type OrgType = json.FromSchema<typeof ORG_SCHEMA>;
+
+const DEFAULT_SETUP_SCHEMA = {
+  org: json.optional<OrgType>(json.object(ORG_SCHEMA)),
+} as const satisfies json.Schema;
+
+/** Not intended to be provided directly by a user. */
+export type DefaultSetupConfig = json.FromSchema<typeof DEFAULT_SETUP_SCHEMA>;
 
 /**
  * Format of the config file supplied by the user.
@@ -65,6 +73,14 @@ export interface UserConfig {
   "default-setup"?: DefaultSetupConfig;
 }
 
+/** A subset of the `UserConfig` schema that is used by Default Setup. */
+const DEFAULT_SETUP_CONFIG_SCHEMA = {
+  "threat-models": json.optional(json.array(json.string)),
+  "default-setup": json.optional<DefaultSetupConfig>(
+    json.object(DEFAULT_SETUP_SCHEMA),
+  ),
+} as const satisfies json.Schema;
+
 /**
  * Merges supported properties from two configuration files. This is intended only for
  * use with merging the `config` input provided by Default Setup with a potentially
@@ -83,6 +99,20 @@ export function mergeDefaultSetupAndUserConfigs(
   logger.debug(
     "Combining configuration files from 'config' and 'config-file' inputs",
   );
+
+  // Check for unexpected keys in the configuration from the `config` input
+  // that was provided by Default Setup. This should only contain the keys
+  // we would expect to receive from Default Setup.
+  const schemaCheckResult = json.checkSchema(
+    DEFAULT_SETUP_CONFIG_SCHEMA,
+    fromConfigInput as json.UnvalidatedObject<any>,
+  );
+
+  if (schemaCheckResult.unknownKeys.length > 0) {
+    logger.warning(
+      `Unrecognised keys in Default Setup configuration: ${schemaCheckResult.unknownKeys.join(", ")}`,
+    );
+  }
 
   // Combine all specified threat models from both sources.
   const threatModels = new Set(fromConfigInput["threat-models"] || []);

@@ -561,3 +561,24 @@ test("mergeDefaultSetupAndUserConfigs - keeps other properties from user-supplie
 
   t.deepEqual(result, configFile);
 });
+
+test("mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys from Default Setup", async (t) => {
+  const logger = new RecordingLogger();
+  const configFile: dbConfig.UserConfig = {
+    "query-filters": [{ exclude: { a: "b" } }],
+    "paths-ignore": ["path"],
+  };
+
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {
+      "paths-ignore": ["other-path"],
+    },
+    configFile,
+  );
+
+  t.deepEqual(result, configFile);
+  checkExpectedLogMessages(t, logger.messages, [
+    "Unrecognised keys in Default Setup configuration: paths-ignore",
+  ]);
+});

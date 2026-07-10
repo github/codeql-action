@@ -579,6 +579,6 @@ test("mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys f
 
   t.deepEqual(result, configFile);
   checkExpectedLogMessages(t, logger.messages, [
-    "Unrecognised keys in Default Setup configuration: paths-ignore",
+    "Unrecognised keys in Default Setup configuration: .paths-ignore",
   ]);
 });

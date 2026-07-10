@@ -150,8 +150,12 @@ export function mergeDefaultSetupAndUserConfigs(
   delete result["threat-models"];
   delete result["default-setup"];
 
-  if (fromConfigInput["default-setup"]) {
-    result["default-setup"] = fromConfigInput["default-setup"];
+  if (fromConfigInput["default-setup"]?.org?.["model-packs"]) {
+    result["default-setup"] = {
+      org: {
+        "model-packs": fromConfigInput["default-setup"].org["model-packs"],
+      },
+    };
   }
   if (threatModels.size > 0) {
     result["threat-models"] = Array.from(threatModels);

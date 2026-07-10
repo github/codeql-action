@@ -572,13 +572,29 @@ test("mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys f
   const result = dbConfig.mergeDefaultSetupAndUserConfigs(
     logger,
     {
+      "default-setup": {
+        borg: [],
+        org: {
+          unknown: "foo",
+          "model-packs": [],
+        },
+      } as unknown as dbConfig.DefaultSetupConfig,
       "paths-ignore": ["other-path"],
     },
     configFile,
   );
 
-  t.deepEqual(result, configFile);
+  t.deepEqual(result, {
+    ...configFile,
+    "default-setup": { org: { "model-packs": [] } },
+  });
+
+  const expectedUnrecognisedKeys = [
+    ".default-setup.org.unknown",
+    ".default-setup.borg",
+    ".paths-ignore",
+  ].join(", ");
   checkExpectedLogMessages(t, logger.messages, [
-    "Unrecognised keys in Default Setup configuration: .paths-ignore",
+    `Unrecognised keys in Default Setup configuration: ${expectedUnrecognisedKeys}`,
   ]);
 });

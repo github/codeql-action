@@ -226,6 +226,9 @@ export function checkSchema<S extends Schema>(
   for (const [key, validator] of Object.entries(schema)) {
     const hasKey = key in obj;
 
+    // Remove key from set of unrecognised keys.
+    inputKeys.delete(key);
+
     // If the property is required, but absent, fail.
     if (validator.required && !hasKey) {
       result.valid = false;
@@ -263,7 +266,6 @@ export function checkSchema<S extends Schema>(
     }
 
     // If we reach this point, the key has been successfully validated.
-    inputKeys.delete(key);
   }
 
   // If there are any remaining keys in `inputKeys`, add them to `unknownKeys`.

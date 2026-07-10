@@ -48,7 +48,11 @@ export function isStringOrUndefined(
  */
 export type Validator<T> = {
   validate: (val: unknown) => val is T;
-  check: (val: unknown, path: string) => CheckSchemaResult;
+  check: (
+    val: unknown,
+    opts: CheckSchemaOptions,
+    path: string,
+  ) => CheckSchemaResult;
   required: boolean;
 };
 
@@ -85,7 +89,7 @@ export function array<T>(validator: Validator<T>) {
   };
   return {
     validate,
-    check: (val: unknown, path: string) => {
+    check: (val: unknown, opts: CheckSchemaOptions, path: string) => {
       const result: CheckSchemaResult = successfulCheckSchema();
 
       // The value must be an array.
@@ -98,7 +102,7 @@ export function array<T>(validator: Validator<T>) {
       let index = 0;
       for (const e of val) {
         const elementPath = `${path}[${index}]`;
-        const eResult = validator.check(e, `${elementPath}`);
+        const eResult = validator.check(e, opts, `${elementPath}`);
 
         result.unknownKeys.push(...eResult.unknownKeys);
         index++;
@@ -106,6 +110,11 @@ export function array<T>(validator: Validator<T>) {
         if (!eResult.valid) {
           result.valid = false;
           result.invalidKeys.push(elementPath);
+
+          if (opts.failFast) {
+            return result;
+          }
+
           continue;
         }
       }
@@ -125,11 +134,11 @@ export function object<
     validate: (val: unknown) => {
       return isObject(val) && validateSchema<S, T>(schema, val);
     },
-    check: (val, path) => {
+    check: (val, opts, path) => {
       if (!isObject(val)) {
         return invalidCheckSchema();
       }
-      return checkSchema(schema, val, {}, path);
+      return checkSchema(schema, val, opts, path);
     },
     required: true,
   } as const satisfies Validator<T>;
@@ -144,11 +153,11 @@ export function optionalOrNull<T>(validator: Validator<T>) {
     validate: (val: unknown) => {
       return val === undefined || val === null || validator.validate(val);
     },
-    check: (val, path) => {
+    check: (val, opts, path) => {
       if (val === undefined || val === null) {
         return successfulCheckSchema();
       }
-      return validator.check(val, path);
+      return validator.check(val, opts, path);
     },
     required: false,
   } as const satisfies Validator<T | undefined | null>;
@@ -163,11 +172,11 @@ export function optional<T>(validator: Validator<T>) {
     validate: (val: unknown): val is T | undefined => {
       return val === undefined || validator.validate(val);
     },
-    check: (val, path) => {
+    check: (val, opts, path) => {
       if (val === undefined) {
         return successfulCheckSchema();
       }
-      return validator.check(val, path);
+      return validator.check(val, opts, path);
     },
     required: false,
   } as const satisfies Validator<T | undefined>;
@@ -284,7 +293,7 @@ export function checkSchema<S extends Schema>(
 
     // If the property is present, validate it.
     if (hasKey) {
-      const checkResult = validator.check(obj[key], `${path}.${key}`);
+      const checkResult = validator.check(obj[key], options, `${path}.${key}`);
 
       result.unknownKeys.push(...checkResult.unknownKeys);
       result.invalidKeys.push(...checkResult.invalidKeys);

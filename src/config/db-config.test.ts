@@ -598,3 +598,30 @@ test("mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys f
     `Unrecognised keys in Default Setup configuration: ${expectedUnrecognisedKeys}`,
   ]);
 });
+
+test("mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Setup", async (t) => {
+  const logger = new RecordingLogger();
+  const configFile: dbConfig.UserConfig = {};
+
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {
+      "default-setup": {
+        org: {
+          "model-packs": [123],
+        },
+      } as unknown as dbConfig.DefaultSetupConfig,
+    },
+    configFile,
+  );
+
+  t.deepEqual(result, {
+    ...configFile,
+    "default-setup": { org: { "model-packs": [123] } },
+  });
+
+  const expectedInvalidKeys = [".default-setup.org.model-packs[0]"].join(", ");
+  checkExpectedLogMessages(t, logger.messages, [
+    `Invalid keys in Default Setup configuration: ${expectedInvalidKeys}`,
+  ]);
+});

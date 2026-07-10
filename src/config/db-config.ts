@@ -112,6 +112,22 @@ export function mergeDefaultSetupAndUserConfigs(
     fromConfigInput as json.UnvalidatedObject<any>,
   );
 
+  // Report any invalid or unrecognised keys.
+  if (schemaCheckResult.invalidKeys.length > 0) {
+    logger.warning(
+      `Invalid keys in Default Setup configuration: ${schemaCheckResult.invalidKeys.join(", ")}`,
+    );
+    addNoLanguageDiagnostic(
+      undefined,
+      makeTelemetryDiagnostic(
+        "codeql-action/invalid-default-setup-config-keys",
+        "Invalid Default Setup configuration keys",
+        {
+          invalidKeys: schemaCheckResult.invalidKeys,
+        },
+      ),
+    );
+  }
   if (schemaCheckResult.unknownKeys.length > 0) {
     logger.warning(
       `Unrecognised keys in Default Setup configuration: ${schemaCheckResult.unknownKeys.join(", ")}`,
@@ -122,7 +138,6 @@ export function mergeDefaultSetupAndUserConfigs(
         "codeql-action/unrecognised-default-setup-config-keys",
         "Unrecognised Default Setup configuration keys",
         {
-          invalidKeys: schemaCheckResult.invalidKeys,
           unrecognisedKeys: schemaCheckResult.unknownKeys,
         },
       ),

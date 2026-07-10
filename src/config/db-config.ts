@@ -122,6 +122,7 @@ export function mergeDefaultSetupAndUserConfigs(
         "codeql-action/unrecognised-default-setup-config-keys",
         "Unrecognised Default Setup configuration keys",
         {
+          invalidKeys: schemaCheckResult.invalidKeys,
           unrecognisedKeys: schemaCheckResult.unknownKeys,
         },
       ),

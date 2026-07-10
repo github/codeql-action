@@ -55,7 +55,7 @@ export type Validator<T> = {
 function defaultCheck(
   validate: (val: unknown) => val is any,
 ): (arg: unknown) => CheckSchemaResult {
-  return (arg) => ({ unknownKeys: [], valid: validate(arg) });
+  return (arg) => ({ unknownKeys: [], invalidKeys: [], valid: validate(arg) });
 }
 
 function makeValidator<T>(
@@ -88,20 +88,24 @@ export function array<T>(validator: Validator<T>) {
     check: (val: unknown, path: string) => {
       const result: CheckSchemaResult = successfulCheckSchema();
 
+      // The value must be an array.
       if (!isArray(val)) {
         result.valid = false;
         return result;
       }
 
+      // Validate all elements of the array.
       let index = 0;
       for (const e of val) {
-        const eResult = validator.check(e, `${path}[${index}].`);
+        const elementPath = `${path}[${index}]`;
+        const eResult = validator.check(e, `${elementPath}`);
 
         result.unknownKeys.push(...eResult.unknownKeys);
         index++;
 
         if (!eResult.valid) {
           result.valid = false;
+          result.invalidKeys.push(elementPath);
           continue;
         }
       }
@@ -212,6 +216,8 @@ export interface CheckSchemaResult {
   valid: boolean;
   /** Unknown keys that were found during validation. */
   unknownKeys: string[];
+  /** Known keys that failed validation. */
+  invalidKeys: string[];
 }
 
 /**
@@ -221,6 +227,7 @@ function successfulCheckSchema(): CheckSchemaResult {
   return {
     valid: true,
     unknownKeys: [],
+    invalidKeys: [],
   };
 }
 
@@ -231,6 +238,7 @@ function invalidCheckSchema(): CheckSchemaResult {
   return {
     valid: false,
     unknownKeys: [],
+    invalidKeys: [],
   };
 }
 
@@ -242,12 +250,17 @@ export function checkSchema<S extends Schema>(
 ): CheckSchemaResult {
   const result: CheckSchemaResult = successfulCheckSchema();
   const inputKeys = new Set(Object.keys(obj));
+  const invalidKeys = new Set();
 
   for (const [key, validator] of Object.entries(schema)) {
     const hasKey = key in obj;
 
     // Remove key from set of unrecognised keys.
     inputKeys.delete(key);
+
+    // Add the key to the set of invalid keys. We remove it later once
+    // it passes validation.
+    invalidKeys.add(key);
 
     // If the property is required, but absent, fail.
     if (validator.required && !hasKey) {
@@ -271,9 +284,16 @@ export function checkSchema<S extends Schema>(
 
     // If the property is present, validate it.
     if (hasKey) {
-      const checkResult = validator.check(obj[key], `${path}${key}.`);
+      const checkResult = validator.check(obj[key], `${path}.${key}`);
 
       result.unknownKeys.push(...checkResult.unknownKeys);
+      result.invalidKeys.push(...checkResult.invalidKeys);
+
+      // If we have invalid keys from the validator, then that means that
+      // we have a more specific key than `key`. Remove `key` from the results.
+      if (checkResult.invalidKeys.length > 0) {
+        invalidKeys.delete(key);
+      }
 
       if (!checkResult.valid) {
         result.valid = false;
@@ -286,11 +306,17 @@ export function checkSchema<S extends Schema>(
     }
 
     // If we reach this point, the key has been successfully validated.
+    invalidKeys.delete(key);
   }
 
   // If there are any remaining keys in `inputKeys`, add them to `unknownKeys`.
   for (const remainingKey of inputKeys) {
-    result.unknownKeys.push(`${path}${remainingKey}`);
+    result.unknownKeys.push(`${path}.${remainingKey}`);
+  }
+
+  // If there are any remaining keys in `invalidKeys`, add them to the result.
+  for (const invalidKey of invalidKeys) {
+    result.invalidKeys.push(`${path}.${invalidKey}`);
   }
 
   return result;

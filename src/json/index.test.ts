@@ -121,6 +121,22 @@ test("validateSchema - checkSchema reports unknown keys", async (t) => {
   t.true(result.valid);
   t.deepEqual(
     result.unknownKeys.sort(),
-    ["extraKey", "rootKey.nestedExtraKey"].sort(),
+    [".extraKey", ".rootKey.nestedExtraKey"].sort(),
+  );
+});
+
+test("validateSchema - checkSchema reports invalid keys", async (t) => {
+  const result = json.checkSchema(checkSchemaTestSchema, {
+    rootKey: {
+      objectKey: {
+        arrayKey: ["foo"],
+      },
+    },
+  });
+
+  t.false(result.valid);
+  t.deepEqual(
+    result.invalidKeys.sort(),
+    [".rootKey.objectKey.arrayKey[0]"].sort(),
   );
 });

@@ -86,7 +86,7 @@ export function array<T>(validator: Validator<T>) {
   return {
     validate,
     check: (val: unknown, path: string) => {
-      const result: CheckSchemaResult = { valid: true, unknownKeys: [] };
+      const result: CheckSchemaResult = successfulCheckSchema();
 
       if (!isArray(val)) {
         result.valid = false;
@@ -123,7 +123,7 @@ export function object<
     },
     check: (val, path) => {
       if (!isObject(val)) {
-        return { valid: false, unknownKeys: [] };
+        return invalidCheckSchema();
       }
       return checkSchema(schema, val, {}, path);
     },
@@ -142,7 +142,7 @@ export function optionalOrNull<T>(validator: Validator<T>) {
     },
     check: (val, path) => {
       if (val === undefined || val === null) {
-        return { valid: true, unknownKeys: [] };
+        return successfulCheckSchema();
       }
       return validator.check(val, path);
     },
@@ -161,7 +161,7 @@ export function optional<T>(validator: Validator<T>) {
     },
     check: (val, path) => {
       if (val === undefined) {
-        return { valid: true, unknownKeys: [] };
+        return successfulCheckSchema();
       }
       return validator.check(val, path);
     },
@@ -214,13 +214,33 @@ export interface CheckSchemaResult {
   unknownKeys: string[];
 }
 
+/**
+ * Convenience function to produce a `CheckSchemaResult` where `valid: true`.
+ */
+function successfulCheckSchema(): CheckSchemaResult {
+  return {
+    valid: true,
+    unknownKeys: [],
+  };
+}
+
+/**
+ * Convenience function to produce a `CheckSchemaResult` where `valid: false`.
+ */
+function invalidCheckSchema(): CheckSchemaResult {
+  return {
+    valid: false,
+    unknownKeys: [],
+  };
+}
+
 export function checkSchema<S extends Schema>(
   schema: S,
   obj: UnvalidatedObject<any>,
   options: CheckSchemaOptions = {},
   path: string = "",
 ): CheckSchemaResult {
-  const result: CheckSchemaResult = { valid: true, unknownKeys: [] };
+  const result: CheckSchemaResult = successfulCheckSchema();
   const inputKeys = new Set(Object.keys(obj));
 
   for (const [key, validator] of Object.entries(schema)) {

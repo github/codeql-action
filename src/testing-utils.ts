@@ -3,6 +3,8 @@ import path from "path";
 
 import * as github from "@actions/github";
 import test, {
+  type ThrownError,
+  type ThrowsExpectation,
   type ExecutionContext,
   type MacroDeclarationOptions,
   type TestFn,
@@ -208,35 +210,50 @@ export function initAllState(
   };
 }
 
+type DelayedCheck<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> = (env: Readonly<BaseEnvBuilder<Args, R, Fs>>) => Promise<any>;
+
+export type ValueOrMutation<T> = T | ((val: T) => void);
+
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
  */
-export class TestEnv<
+abstract class BaseEnvBuilder<
   Args extends readonly any[],
   R,
   Fs extends ReadonlyArray<AllState[number]>,
 > {
-  private readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
-  private args?: Args;
+  protected readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
   private logger: RecordingLogger;
-  private state: ActionState<AllState>;
+  protected state: ActionState<AllState>;
+  protected checks: Array<DelayedCheck<Args, R, Fs>>;
 
   constructor(
     fn: (state: ActionState<Fs>, ...args: Args) => R,
-    cloneFrom?: TestEnv<Args, R, Fs>,
+    cloneFrom?: BaseEnvBuilder<Args, R, Fs>,
   ) {
     this.fn = fn;
-    this.args = cloneFrom?.args;
     this.logger = new RecordingLogger();
     this.state =
       cloneFrom !== undefined
-        ? { ...cloneFrom.state, logger: this.logger }
+        ? ({
+            ...cloneFrom.state,
+            env: Object.create(cloneFrom.state.env),
+            actions: Object.create(cloneFrom.state.actions),
+            logger: this.logger,
+          } satisfies ActionState<AllState>)
         : initAllState({ logger: this.logger });
+    this.checks = [...(cloneFrom?.checks ?? [])];
   }
 
-  private clone(): TestEnv<Args, R, Fs> {
-    return new TestEnv(this.fn, this);
-  }
+  /**
+   * Creates a clone of this object. Used internally.
+   * Must be overridden by subclasses.
+   */
+  protected abstract clone(): this;
 
   public getLogger(): RecordingLogger {
     return this.logger;
@@ -246,48 +263,181 @@ export class TestEnv<
     return this.state;
   }
 
-  public getArgs(): Args | undefined {
-    return this.args;
-  }
-
-  public withArgs(...args: Args) {
-    const result = this.clone();
-    result.args = args;
+  public withArgs(...args: Args): CallableEnvBuilder<Args, R, Fs> {
+    const result = new CallableEnvBuilder(this.fn, args, this.clone());
     return result;
   }
 
-  public withFeatures(enabled: Feature[]): TestEnv<Args, R, Fs> {
+  public withFeatures(enabled: Feature[]): this {
     const result = this.clone();
     result.state.features = createFeatures(enabled);
     return result;
   }
 
-  public withEnv(env: Env): TestEnv<Args, R, Fs> {
+  /**
+   * Sets environment variables that are always available to GitHub Actions,
+   * excluding some that are expected to be set to paths.
+   *
+   * @param overrides Overrides for the defaults.
+   */
+  public withDefaultActionsEnv(overrides?: ActionVarOverrides): this {
     const result = this.clone();
-    result.state.env = env;
+    setupBaseActionsVars(overrides, result.state.env);
     return result;
   }
 
-  public withActions(actions: ActionsEnv): TestEnv<Args, R, Fs> {
+  /**
+   * Sets environment variables that are always available to GitHub Actions.
+   * @param tempDir A value for `RUNNER_TEMP` and `GITHUB_WORKSPACE`.
+   * @param toolsDir A value for `RUNNER_TOOL_CACHE`.
+   * @param overrides Overrides for the defaults.
+   */
+  public withActionsEnv(
+    tempDir: string,
+    toolsDir: string,
+    overrides?: ActionVarOverrides,
+  ): this {
     const result = this.clone();
-    result.state.actions = actions;
+    setupActionsVars(tempDir, toolsDir, overrides, result.state.env);
     return result;
+  }
+
+  public withEnv(arg: ValueOrMutation<Env>): this {
+    const result = this.clone();
+    if (typeof arg === "function") {
+      arg(result.state.env);
+    } else {
+      result.state.env = arg;
+    }
+    return result;
+  }
+
+  public withActions(arg: ValueOrMutation<ActionsEnv>): this {
+    const result = this.clone();
+    if (typeof arg === "function") {
+      arg(result.state.actions);
+    } else {
+      result.state.actions = arg;
+    }
+    return result;
+  }
+
+  /**
+   * Adds a delayed check that `messages` are logged. The check will be
+   * performed after the main assertion passes.
+   */
+  public logs(t: ExecutionContext<unknown>, ...messages: string[]): this {
+    const result = this.clone();
+    result.checks.push(async (env) => {
+      checkExpectedLogMessages(t, env.getLogger().messages, messages);
+    });
+    return result;
+  }
+
+  /**
+   * Adds a delayed check that `messages` are not logged. The check will be
+   * performed after the main assertion passes.
+   */
+  public notLogs(t: ExecutionContext<unknown>, ...messages: string[]): this {
+    const result = this.clone();
+    result.checks.push(async (env) => {
+      checkUnexpectedLogMessages(t, env.getLogger().messages, messages);
+    });
+    return result;
+  }
+}
+
+class EnvBuilder<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> extends BaseEnvBuilder<Args, R, Fs> {
+  protected clone(): this {
+    return new EnvBuilder(this.fn, this) as this;
+  }
+}
+
+class CallableEnvBuilder<
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+> extends BaseEnvBuilder<Args, R, Fs> {
+  private args: Args;
+
+  constructor(
+    fn: (state: ActionState<Fs>, ...args: Args) => R,
+    args: Args,
+    cloneFrom?: BaseEnvBuilder<Args, R, Fs>,
+  ) {
+    super(fn, cloneFrom);
+    this.args = args;
+  }
+
+  protected clone(): this {
+    return new CallableEnvBuilder(this.fn, this.args, this) as this;
+  }
+
+  public getArgs(): Args {
+    return this.args;
   }
 
   call(): R {
-    if (!this.args) {
-      throw new Error("Trying to call function in TestEnv without arguments.");
-    }
     return this.fn(this.state as unknown as ActionState<Fs>, ...this.args);
   }
 
-  public passes<T>(
-    assertion: (makeCall: () => R) => T | Promise<T>,
-  ): T | Promise<T> {
-    return assertion(() => {
-      const result = this.call();
-      return result;
-    });
+  /**
+   * Calls the underlying function in the configured environment and passes
+   * the result to `assertion` along with extra `assertionArgs`.
+   *
+   * @param assertion The assertion to apply to the result.
+   * @param assertionArgs Extra arguments for the assertion.
+   * @returns The result of the assertion.
+   */
+  public async passes<AArgs extends readonly any[], AResult>(
+    assertion: (val: Awaited<R>, ...assertionArgs: AArgs) => AResult,
+    ...assertionArgs: AArgs
+  ): Promise<AResult> {
+    // this.call() may or may not return a promise,
+    // `Promise.resolve` turns the result into one if it isn't already,
+    // and we then await it. That ensures that `result` is an `Awaited<R>`.
+    const result = await Promise.resolve(this.call());
+
+    // Run the main assertion on the `result`.
+    const assertionResult = await assertion(result, ...assertionArgs);
+
+    // Run other delayed checks.
+    for (const delayedCheck of this.checks) {
+      await delayedCheck(this);
+    }
+
+    // Return the result of the main assertion.
+    return assertionResult;
+  }
+
+  /**
+   * Asserts that calling the underlying function should throw an exception.
+   *
+   * @param t The execution context for the assertion.
+   * @param expectations Expectations for the error.
+   * @returns The error that was thrown.
+   */
+  public async throws<ErrorType extends ErrorConstructor | Error>(
+    t: ExecutionContext<unknown>,
+    expectations?: ThrowsExpectation<ErrorType>,
+  ): Promise<ThrownError<ErrorType>> {
+    // Run the main assertion.
+    const error = await t.throwsAsync(
+      async () => Promise.resolve(this.call()),
+      expectations,
+    );
+
+    // Run other delayed checks.
+    for (const delayedCheck of this.checks) {
+      await delayedCheck(this);
+    }
+
+    // Return the error.
+    return error;
   }
 }
 
@@ -296,8 +446,8 @@ export function callee<
   Args extends readonly any[],
   R,
   Fs extends readonly StateFeature[],
->(fn: (state: ActionState<Fs>, ...args: Args) => R): TestEnv<Args, R, Fs> {
-  return new TestEnv(fn);
+>(fn: (state: ActionState<Fs>, ...args: Args) => R): EnvBuilder<Args, R, Fs> {
+  return new EnvBuilder(fn);
 }
 
 /**
@@ -349,16 +499,18 @@ export function setupBaseActionsVars(
  * @param tempDir A value for `RUNNER_TEMP` and `GITHUB_WORKSPACE`.
  * @param toolsDir A value for `RUNNER_TOOL_CACHE`.
  * @param overrides Overrides for the defaults.
+ * @param env The environment to set the variables for.
  */
 export function setupActionsVars(
   tempDir: string,
   toolsDir: string,
   overrides?: ActionVarOverrides,
+  env: Env = getEnv(),
 ) {
-  setupBaseActionsVars(overrides);
-  process.env["RUNNER_TEMP"] = tempDir;
-  process.env["RUNNER_TOOL_CACHE"] = toolsDir;
-  process.env["GITHUB_WORKSPACE"] = tempDir;
+  setupBaseActionsVars(overrides, env);
+  env.set(ActionsEnvVars.RUNNER_TEMP, tempDir);
+  env.set(ActionsEnvVars.RUNNER_TOOL_CACHE, toolsDir);
+  env.set(ActionsEnvVars.GITHUB_WORKSPACE, tempDir);
 }
 
 type LogLevel = "debug" | "info" | "warning" | "error";
@@ -486,6 +638,34 @@ export function checkExpectedLogMessages(
 
     t.fail(
       `Expected\n\n${listify(missingMessages)}\n\nin the logger output, but didn't find it in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
+    );
+  } else {
+    t.pass();
+  }
+}
+
+/**
+ * Checks that `messages` contains none of `unexpectedMessages`.
+ */
+export function checkUnexpectedLogMessages(
+  t: ExecutionContext<any>,
+  messages: LoggedMessage[],
+  unexpectedMessages: string[],
+) {
+  const presentMessages: string[] = [];
+
+  for (const unexpectedMessage of unexpectedMessages) {
+    if (hasLoggedMessage(messages, unexpectedMessage)) {
+      presentMessages.push(unexpectedMessage);
+    }
+  }
+
+  if (presentMessages.length > 0) {
+    const listify = (lines: string[]) =>
+      lines.map((m) => ` - '${m}'`).join("\n");
+
+    t.fail(
+      `Did not expect\n\n${listify(presentMessages)}\n\nin the logger output, but found them in:\n\n${messages.map((m) => ` - '${m.message}'`).join("\n")}`,
     );
   } else {
     t.pass();

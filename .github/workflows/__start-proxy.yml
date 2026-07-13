@@ -57,11 +57,6 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - uses: ./../action/init
-        with:
-          languages: csharp
-          tools: ${{ steps.prepare-test.outputs.tools-url }}
-
       - name: Setup proxy for registries
         id: proxy
         uses: ./../action/start-proxy
@@ -94,5 +89,10 @@ jobs:
           || !contains(steps.proxy.outputs.proxy_urls, 'https://repo.maven.apache.org/maven2/')
           || !contains(steps.proxy.outputs.proxy_urls, 'https://repo1.maven.org/maven2')
         run: exit 1
+
+      - uses: ./../action/init
+        with:
+          languages: csharp
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       CODEQL_ACTION_TEST_MODE: true

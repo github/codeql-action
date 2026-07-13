@@ -13,7 +13,6 @@ import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import { UserConfig } from "./config/db-config";
 import * as configUtils from "./config-utils";
-import { ActionsEnvVars } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
@@ -37,8 +36,6 @@ import {
   mockCodeQLVersion,
   createTestConfig,
   makeMacro,
-  RecordingLogger,
-  DEFAULT_ACTIONS_VARS,
   initAllState,
   callee,
 } from "./testing-utils";
@@ -2301,45 +2298,40 @@ test("determineUserConfig - empty config when neither input is specified", async
 test("determineUserConfig - loads config file", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
-    const logger = new RecordingLogger();
-    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
 
     const inputs = createTestInitConfigInputs({
       configInput: undefined,
       configFile: configFilePath,
       workspacePath: tmpDir,
     });
-    const result = await configUtils.determineUserConfig(
-      initAllState({ logger, env }),
-      tmpDir,
-      inputs,
-    );
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withArgs(tmpDir, inputs);
 
-    // The loaded configuration should match `simpleConfigFileContents`.
-    t.deepEqual(result, {
-      name: "my config",
-      queries: [{ uses: "./foo_file" }],
-    });
+    await target
+      // The path of the input config file should have been logged,
+      .logs(t, `Using configuration file: ${configFilePath}`)
+      .notLogs(
+        t,
+        // The other two origin messages and the warning about both inputs should
+        // not have been logged.
+        "No configuration file was provided",
+        "Using config from action input:",
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      // The loaded configuration should match `simpleConfigFileContents`.
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+
     // The `configFile` input should not have changed.
     t.is(inputs.configFile, configFilePath);
-    // And the path of the input config file should have been logged, while the
-    // other two origin messages should not have been logged.
-    t.true(logger.hasMessage(`Using configuration file: ${configFilePath}`));
-    t.false(logger.hasMessage("No configuration file was provided"));
-    t.false(logger.hasMessage("Using config from action input:"));
-    // But the warning about both inputs should not have been logged.
-    t.false(
-      logger.hasMessage(
-        "Both a config file and config input were provided. Ignoring config file.",
-      ),
-    );
   });
 });
 
 test("determineUserConfig - loads config input", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger();
-    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
     const inputs = createTestInitConfigInputs({
@@ -2347,39 +2339,37 @@ test("determineUserConfig - loads config input", async (t) => {
       configFile: undefined,
       workspacePath: tmpDir,
     });
-    const result = await configUtils.determineUserConfig(
-      initAllState({ logger, env }),
-      tmpDir,
-      inputs,
-    );
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withArgs(tmpDir, inputs);
 
-    // The loaded configuration should match `simpleConfigFileContents`.
-    t.deepEqual(result, {
-      name: "my config",
-      queries: [{ uses: "./foo_file" }],
-    });
+    await target
+      // The input source and path of the generated config file should have been logged.
+      .logs(
+        t,
+        "Using config from action input:",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
+      // The message about no configuration input and
+      // the warning about both inputs should not have been logged.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      // The loaded configuration should match `simpleConfigFileContents`.
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+
     // The `configFile` input should have been mutated to the generated path.
     t.is(inputs.configFile, expectedConfigPath);
-    // And the input source and path of the generated config file should have been logged,
-    // while the message about no configuration input should not have been logged.
-    t.true(logger.hasMessage("Using config from action input:"));
-    t.true(
-      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
-    );
-    t.false(logger.hasMessage("No configuration file was provided"));
-    // But the warning about both inputs should not have been logged.
-    t.false(
-      logger.hasMessage(
-        "Both a config file and config input were provided. Ignoring config file.",
-      ),
-    );
   });
 });
 
 test("determineUserConfig - ignores config file input when both specified", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger();
-    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
     const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
@@ -2388,35 +2378,28 @@ test("determineUserConfig - ignores config file input when both specified", asyn
       configFile: configFilePath,
       workspacePath: tmpDir,
     });
-    const result = await configUtils.determineUserConfig(
-      initAllState({ logger, env }),
-      tmpDir,
-      inputs,
-    );
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withArgs(tmpDir, inputs);
 
-    // The loaded configuration should match `simpleConfigFileContents`.
-    t.deepEqual(result, {
-      name: "my config",
-      queries: [{ uses: "./foo_file" }],
-    });
+    await target
+      // The path of the generated config file and
+      // the warning about both inputs should have been logged.
+      .logs(
+        t,
+        `Using config from action input: ${expectedConfigPath}`,
+        `Using configuration file: ${expectedConfigPath}`,
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      .notLogs(t, "No configuration file was provided")
+      // The loaded configuration should match `simpleConfigFileContents`.
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+
     // The `configFile` input should have been mutated to the generated path.
     t.is(inputs.configFile, expectedConfigPath);
-    // And the path of the generated config file should have been logged.
-    t.true(
-      logger.hasMessage(
-        `Using config from action input: ${expectedConfigPath}`,
-      ),
-    );
-    t.true(
-      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
-    );
-    t.false(logger.hasMessage("No configuration file was provided"));
-    // And the warning about both inputs should have been logged.
-    t.true(
-      logger.hasMessage(
-        "Both a config file and config input were provided. Ignoring config file.",
-      ),
-    );
   });
 });
 
@@ -2429,11 +2412,6 @@ const defaultSetupConfigInput = `
 
 test("determineUserConfig - merges configs if FF is enabled in Default Setup", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger(true);
-    const env = util.getEnv({
-      ...DEFAULT_ACTIONS_VARS,
-      [ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
-    });
     const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
@@ -2442,15 +2420,10 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
       configFile: configFilePath,
       workspacePath: tmpDir,
     });
-    const result = await configUtils.determineUserConfig(
-      initAllState({
-        logger,
-        env,
-        features: createFeatures([Feature.AllowMergeConfigFiles]),
-      }),
-      tmpDir,
-      inputs,
-    );
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv({ GITHUB_EVENT_NAME: "dynamic" })
+      .withFeatures([Feature.AllowMergeConfigFiles])
+      .withArgs(tmpDir, inputs);
 
     // The loaded configuration should match the result of merging
     // `defaultSetupConfigInput` and `simpleConfigFileContents`.
@@ -2464,7 +2437,20 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
         },
       },
     } satisfies UserConfig;
-    t.deepEqual(result, expectedConfig);
+
+    await target
+      .logs(
+        t,
+        `Using merged configurations from 'config' input with configuration from '${configFilePath}': ${expectedConfigPath}`,
+      )
+      .notLogs(
+        t,
+        `Using configuration file: ${expectedConfigPath}`,
+        "No configuration file was provided",
+        `Using config from action input: ${expectedConfigPath}`,
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      .passes(t.deepEqual, expectedConfig);
 
     // The `configFile` input should have been mutated to the generated path.
     t.is(inputs.configFile, expectedConfigPath);
@@ -2473,120 +2459,73 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
     // also check whether loading the configuration from disk that was written
     // by `determineUserConfig` matches our expectations.
     const loadedFromDisk = configUtils.getLocalConfig(
-      logger,
+      getRunnerLogger(true),
       expectedConfigPath,
       false,
     );
     t.deepEqual(loadedFromDisk, expectedConfig);
-
-    // And the appropriate origin messages should have been logged.
-    t.true(
-      logger.hasMessage(
-        `Using merged configurations from 'config' input with configuration from '${configFilePath}': ${expectedConfigPath}`,
-      ),
-    );
-    t.false(
-      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
-    );
-    t.false(logger.hasMessage("No configuration file was provided"));
-    t.false(
-      logger.hasMessage(
-        `Using config from action input: ${expectedConfigPath}`,
-      ),
-    );
-    t.false(
-      logger.hasMessage(
-        "Both a config file and config input were provided. Ignoring config file.",
-      ),
-    );
   });
 });
 
 test("determineUserConfig - ignores config file input in Default Setup if FF is off", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger(true);
-    const env = util.getEnv({
-      ...DEFAULT_ACTIONS_VARS,
-      [ActionsEnvVars.GITHUB_EVENT_NAME]: "dynamic",
-    });
     const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
-    const result = await configUtils.determineUserConfig(
-      initAllState({ logger, env }),
-      tmpDir,
-      createTestInitConfigInputs({
-        configInput: simpleConfigFileContents,
-        configFile: configFilePath,
-        workspacePath: tmpDir,
-      }),
-    );
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv({ GITHUB_EVENT_NAME: "dynamic" })
+      .withArgs(
+        tmpDir,
+        createTestInitConfigInputs({
+          configInput: simpleConfigFileContents,
+          configFile: configFilePath,
+          workspacePath: tmpDir,
+        }),
+      );
 
-    // The loaded configuration should match `simpleConfigFileContents`.
-    t.deepEqual(result, {
-      name: "my config",
-      queries: [{ uses: "./foo_file" }],
-    });
-    // And the path of the generated config file should have been logged.
-    t.true(
-      logger.hasMessage(
+    await target
+      .logs(
+        t,
         `Using config from action input: ${expectedConfigPath}`,
-      ),
-    );
-    t.true(
-      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
-    );
-    t.false(logger.hasMessage("No configuration file was provided"));
-    // And the warning about both inputs should have been logged.
-    t.true(
-      logger.hasMessage(
+        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
-      ),
-    );
+      )
+      .notLogs(t, "No configuration file was provided")
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
   });
 });
 
 test("determineUserConfig - ignores config file input outside Default Setup if FF is on", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger(true);
-    const env = util.getEnv(DEFAULT_ACTIONS_VARS);
     const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
-    const result = await configUtils.determineUserConfig(
-      initAllState({
-        logger,
-        env,
-        features: createFeatures([Feature.AllowMergeConfigFiles]),
-      }),
-      tmpDir,
-      createTestInitConfigInputs({
-        configInput: simpleConfigFileContents,
-        configFile: configFilePath,
-        workspacePath: tmpDir,
-      }),
-    );
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withFeatures([Feature.AllowMergeConfigFiles])
+      .withArgs(
+        tmpDir,
+        createTestInitConfigInputs({
+          configInput: simpleConfigFileContents,
+          configFile: configFilePath,
+          workspacePath: tmpDir,
+        }),
+      );
 
-    // The loaded configuration should match `simpleConfigFileContents`.
-    t.deepEqual(result, {
-      name: "my config",
-      queries: [{ uses: "./foo_file" }],
-    });
-    // And the path of the generated config file should have been logged.
-    t.true(
-      logger.hasMessage(
+    await target
+      .logs(
+        t,
         `Using config from action input: ${expectedConfigPath}`,
-      ),
-    );
-    t.true(
-      logger.hasMessage(`Using configuration file: ${expectedConfigPath}`),
-    );
-    t.false(logger.hasMessage("No configuration file was provided"));
-    // And the warning about both inputs should have been logged.
-    t.true(
-      logger.hasMessage(
+        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
-      ),
-    );
+      )
+      .notLogs(t, "No configuration file was provided")
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
   });
 });

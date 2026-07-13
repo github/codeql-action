@@ -264,9 +264,16 @@ export function checkSchema<S extends Schema>(
   path: string = "",
 ): CheckSchemaResult {
   const result: CheckSchemaResult = successfulCheckSchema();
+
+  // Track the set of input keys. We remove keys from this set as we recognise them
+  // during validation.
   const inputKeys = new Set(Object.keys(obj));
+
+  // Track keys that have failed validation, starting with the empty set.
   const invalidKeys = new Set();
 
+  // Loop through all keys in the object schema and validate that the given object
+  // satisfies the schema key.
   for (const [key, validator] of Object.entries(schema)) {
     const hasKey = key in obj;
 
@@ -282,7 +289,7 @@ export function checkSchema<S extends Schema>(
       result.valid = false;
 
       if (options.failFast) {
-        return result;
+        break;
       }
       continue;
     }
@@ -292,7 +299,7 @@ export function checkSchema<S extends Schema>(
       result.valid = false;
 
       if (options.failFast) {
-        return result;
+        break;
       }
       continue;
     }
@@ -314,7 +321,7 @@ export function checkSchema<S extends Schema>(
         result.valid = false;
 
         if (options.failFast) {
-          return result;
+          break;
         }
         continue;
       }

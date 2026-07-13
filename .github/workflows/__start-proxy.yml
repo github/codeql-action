@@ -92,6 +92,10 @@ jobs:
         run: exit 1
 
       - uses: ./../action/init
+        env:
+          CODEQL_PROXY_HOST: ${{ steps.proxy.outputs.proxy_host }}
+          CODEQL_PROXY_PORT: ${{ steps.proxy.outputs.proxy_port }}
+          CODEQL_PROXY_CA_CERTIFICATE: ${{ steps.proxy.outputs.proxy_ca_certificate }}
         with:
           languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}

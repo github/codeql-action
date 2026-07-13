@@ -1,4 +1,14 @@
 /**
+ * Environment variables used by Default Setup to communicate the private registry proxy configuration.
+ */
+export enum RegistryProxyVars {
+  PROXY_HOST = "CODEQL_PROXY_HOST",
+  PROXY_PORT = "CODEQL_PROXY_PORT",
+  PROXY_CA_CERTIFICATE = "CODEQL_PROXY_CA_CERTIFICATE",
+  PROXY_URLS = "CODEQL_PROXY_URLS",
+}
+
+/**
  * Environment variables used by the CodeQL Action.
  *
  * We recommend prefixing environment variables with `CODEQL_ACTION_`
@@ -202,7 +212,7 @@ export enum ActionsEnvVars {
 }
 
 /** A type representing all known environment variables. */
-export type KnownEnvVar = EnvVar | ActionsEnvVars;
+export type KnownEnvVar = EnvVar | ActionsEnvVars | RegistryProxyVars;
 
 /**
  * Gets an environment variable, but throws an error if it is not set.

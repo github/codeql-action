@@ -193,7 +193,14 @@ export function getTestActionsEnv(): ActionsEnv {
 }
 
 /** For testing purposes, we make all available state features accessible in `TestEnv`. */
-type AllState = ["Logger", "Env", "ReadOnlyEnv", "Actions", "FeatureFlags"];
+type AllState = [
+  "Logger",
+  "Env",
+  "ReadOnlyEnv",
+  "Actions",
+  "Api",
+  "FeatureFlags",
+];
 
 /** Initialise a fresh `ActionState<AllState>` value. */
 export function initAllState(
@@ -205,6 +212,7 @@ export function initAllState(
     logger: new RecordingLogger(),
     env: getTestEnv(),
     actions: getTestActionsEnv(),
+    apiClient: github.getOctokit("123"),
     features: createFeatures([]),
     ...overrides,
   };

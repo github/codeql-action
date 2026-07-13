@@ -1,8 +1,9 @@
 import * as core from "@actions/core";
 
 import { ActionsEnv, getActionsEnv } from "./actions-util";
+import type { ApiClient } from "./api-client";
 import { Env, ReadOnlyEnv } from "./environment";
-import { FeatureEnablement } from "./feature-flags";
+import type { FeatureEnablement } from "./feature-flags";
 import { getActionsLogger, Logger } from "./logging";
 import {
   ActionName,
@@ -35,6 +36,10 @@ export interface FeatureState {
   Actions: {
     /** Access to Actions-related functionality. */
     actions: ActionsEnv;
+  };
+  Api: {
+    /** A GitHub API client. */
+    apiClient: ApiClient;
   };
   FeatureFlags: {
     /** Information about enabled feature flags. */

@@ -178,8 +178,7 @@ export function makeMacro<Args extends unknown[]>(
   return wrapper;
 }
 
-export function getTestEnv(): Env {
-  const testEnv: NodeJS.ProcessEnv = {};
+export function getTestEnv(testEnv: NodeJS.ProcessEnv = {}): Env {
   return getEnv(testEnv);
 }
 

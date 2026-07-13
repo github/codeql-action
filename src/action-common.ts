@@ -1,7 +1,7 @@
 import * as core from "@actions/core";
 
 import { ActionsEnv, getActionsEnv } from "./actions-util";
-import { Env } from "./environment";
+import { Env, ReadOnlyEnv } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import { getActionsLogger, Logger } from "./logging";
 import {
@@ -28,6 +28,9 @@ export interface FeatureState {
   Env: {
     /** Information about environment variables. */
     env: Env;
+  };
+  ReadOnlyEnv: {
+    env: ReadOnlyEnv;
   };
   Actions: {
     /** Access to Actions-related functionality. */

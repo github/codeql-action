@@ -104,12 +104,18 @@ export function array<T>(validator: Validator<T>) {
         const elementPath = `${path}[${index}]`;
         const eResult = validator.check(e, opts, `${elementPath}`);
 
+        result.invalidKeys.push(...eResult.invalidKeys);
         result.unknownKeys.push(...eResult.unknownKeys);
         index++;
 
         if (!eResult.valid) {
           result.valid = false;
-          result.invalidKeys.push(elementPath);
+
+          // Add the element path to `invalidKeys` if we didn't get
+          // any more specific ones from the element validator.
+          if (eResult.invalidKeys.length === 0) {
+            result.invalidKeys.push(elementPath);
+          }
 
           if (opts.failFast) {
             return result;

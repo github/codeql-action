@@ -2271,7 +2271,7 @@ test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only r
 test("determineUserConfig - empty config when neither input is specified", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const target = callee(configUtils.determineUserConfig)
-      .withEnv(util.getEnv(DEFAULT_ACTIONS_VARS))
+      .withDefaultActionsEnv()
       .withFeatures([])
       .withArgs(
         tmpDir,
@@ -2283,20 +2283,18 @@ test("determineUserConfig - empty config when neither input is specified", async
       );
 
     // The returned configuration should be empty.
-    await target.passes(async (fn) => t.deepEqual(await fn(), {}));
-
-    const logger = target.getLogger();
-    // And the fact that no configuration was provided should have been logged,
-    // but not the messages for the two input sources.
-    t.true(logger.hasMessage("No configuration file was provided"));
-    t.false(logger.hasMessage("Using config from action input:"));
-    t.false(logger.hasMessage("Using configuration file:"));
-    // And the warning about both inputs should not have been logged.
-    t.false(
-      logger.hasMessage(
+    await target
+      // The fact that no configuration was provided should have been logged,
+      .logs(t, "No configuration file was provided")
+      // But not the messages for the two input sources
+      // or the warning about both inputs.
+      .notLogs(
+        t,
+        "Using config from action input:",
+        "Using configuration file:",
         "Both a config file and config input were provided. Ignoring config file.",
-      ),
-    );
+      )
+      .passes(t.deepEqual, {});
   });
 });
 

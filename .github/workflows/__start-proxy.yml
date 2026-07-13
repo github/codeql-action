@@ -61,6 +61,7 @@ jobs:
         id: proxy
         uses: ./../action/start-proxy
         with:
+          language: java
           registry_secrets: |
             [
               {
@@ -92,7 +93,7 @@ jobs:
 
       - uses: ./../action/init
         with:
-          languages: csharp
+          languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}
     env:
       CODEQL_ACTION_TEST_MODE: true

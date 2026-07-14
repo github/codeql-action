@@ -682,10 +682,14 @@ export async function prepareNewBranch(
     console.log(
       `Migrating changelog notes from v${sourceBranchMajorVersion} to v${targetBranchMajorVersion}`,
     );
-    changelog.processChangelogForBackports(
+    changelog.withChangelog(
+      (contents) =>
+        changelog.processChangelogForBackports(
+          sourceBranchMajorVersion,
+          targetBranchMajorVersion,
+          contents,
+        ),
       options,
-      sourceBranchMajorVersion,
-      targetBranchMajorVersion,
     );
 
     runGit(["add", "CHANGELOG.md"], {
@@ -706,7 +710,10 @@ export async function prepareNewBranch(
     );
 
     console.log("Updating changelog");
-    changelog.setVersionAndDate(options, version);
+    changelog.withChangelog(
+      (contents) => changelog.setVersionAndDate(version, contents),
+      { ...options, initChangelog: true },
+    );
 
     runGit(["add", "CHANGELOG.md"], {
       dryRun: options.dryRun,

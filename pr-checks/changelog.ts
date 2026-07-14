@@ -11,9 +11,8 @@ No user facing changes.
 
 `;
 
-/** Returns today's date formatted as `DD Mon YYYY`. */
-export function getTodayString(): string {
-  const today = new Date();
+/** Returns `date` formatted as `DD Mon YYYY`. */
+export function getReleaseDateString(today: Date = new Date()): string {
   return today.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
@@ -21,32 +20,40 @@ export function getTodayString(): string {
   });
 }
 
+export interface OpenChangelogOptions {
+  initChangelog?: boolean;
+}
+
+export function withChangelog(
+  transformer: (contents: string) => string,
+  options: DryRunOption & OpenChangelogOptions,
+): void {
+  let content: string;
+
+  if (options.initChangelog && !fs.existsSync(CHANGELOG_FILE)) {
+    content = EMPTY_CHANGELOG;
+  } else {
+    content = fs.readFileSync(CHANGELOG_FILE, "utf8");
+  }
+
+  if (!options.dryRun) {
+    fs.writeFileSync(CHANGELOG_FILE, transformer(content), "utf8");
+  } else {
+    console.info(`[DRY RUN] Would have written updated changelog.`);
+  }
+}
+
 /**
  * Updates the `[UNRELEASED]` marker in `CHANGELOG.md` with the given version
  * and today's date.
  */
 export function setVersionAndDate(
-  options: DryRunOption,
   version: string,
-): void {
-  let content: string;
-
-  if (fs.existsSync(CHANGELOG_FILE)) {
-    content = fs.readFileSync(CHANGELOG_FILE, "utf8");
-  } else {
-    content = EMPTY_CHANGELOG;
-  }
-
-  const versionAndDate = `${version} - ${getTodayString()}`;
-  const newContent = content.replace("[UNRELEASED]", versionAndDate);
-
-  if (!options.dryRun) {
-    fs.writeFileSync(CHANGELOG_FILE, newContent, "utf8");
-  } else {
-    console.info(
-      `[DRY RUN] Would have replaced '[UNRELEASED]' in '${CHANGELOG_FILE}' with '${versionAndDate}'.`,
-    );
-  }
+  content: string,
+  date: Date = new Date(),
+): string {
+  const versionAndDate = `${version} - ${getReleaseDateString(date)}`;
+  return content.replace("[UNRELEASED]", versionAndDate);
 }
 
 /**
@@ -55,12 +62,14 @@ export function setVersionAndDate(
  * entries that only apply to newer versions.
  */
 export function processChangelogForBackports(
-  options: DryRunOption,
   sourceBranchMajorVersion: string,
   targetBranchMajorVersion: string,
-): void {
-  const content = fs.readFileSync(CHANGELOG_FILE, "utf8");
+  content: string,
+): string {
   const lines = content.split("\n");
+
+  // Changelog entries can use the following format to indicate
+  // that they only apply to newer versions
   const someVersionsOnlyRegex = /\[v(\d+)\+ only\]/;
 
   let output = "";
@@ -86,6 +95,7 @@ export function processChangelogForBackports(
   }
 
   // Process remaining lines.
+  // `foundContent` tracks whether we hit two headings in a row
   let foundContent = false;
   output += "\n";
 
@@ -121,11 +131,5 @@ export function processChangelogForBackports(
     }
   }
 
-  if (!options.dryRun) {
-    fs.writeFileSync(CHANGELOG_FILE, output, "utf8");
-  } else {
-    console.info(
-      `[DRY RUN] Would have written updated changelog to replace 'v${sourceBranchMajorVersion}' with 'v${targetBranchMajorVersion}'.`,
-    );
-  }
+  return output;
 }

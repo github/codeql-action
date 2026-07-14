@@ -12,15 +12,8 @@ import { getCodeQLDatabasePath } from "./util";
  */
 export type DiagnosticTag = "internal-error";
 
-/** Represents information about the origin of a diagnostic. */
-export interface DiagnosticSource {
-  /**
-   * An identifier under which it makes sense to group this diagnostic message.
-   * This is used to build the SARIF reporting descriptor object.
-   */
-  id: string;
-  /** Display name for the ID. This is used to build the SARIF reporting descriptor object. */
-  name: string;
+/** Optional information about the origin of a diagnostic. */
+export type DiagnosticSourceOptions = {
   /**
    * Name of the CodeQL extractor. This is used to identify which tool component the reporting
    * descriptor object should be nested under in SARIF.
@@ -28,14 +21,30 @@ export interface DiagnosticSource {
   extractorName?: string;
   /** An array of tags for the diagnostic. */
   tags?: DiagnosticTag[];
-}
+};
 
-/** Represents a diagnostic message for the tool status page, etc. */
-export interface DiagnosticMessage {
+/** Represents information about the origin of a diagnostic. */
+export type DiagnosticSource = {
+  /**
+   * An identifier under which it makes sense to group this diagnostic message.
+   * This is used to build the SARIF reporting descriptor object.
+   */
+  id: string;
+  /** Display name for the ID. This is used to build the SARIF reporting descriptor object. */
+  name: string;
+} & DiagnosticSourceOptions;
+
+/**
+ * Represents a diagnostic message for the tool status page, etc.
+ *
+ * Unlike {@link DiagnosticMessage}, properties which can automatically
+ * be populated are optional in this type.
+ */
+export type DiagnosticMessageOptions = {
   /** ISO 8601 timestamp */
-  timestamp: string;
+  timestamp?: string;
   /** Information about the origin of the diagnostic. */
-  source: DiagnosticSource;
+  source?: DiagnosticSourceOptions;
   /** GitHub flavored Markdown formatted message. Should include inline links to any help pages. */
   markdownMessage?: string;
   /** Plain text message. Used by components where the string processing needed to support Markdown is cumbersome. */
@@ -65,7 +74,15 @@ export interface DiagnosticMessage {
   };
   /** Structured metadata about the diagnostic message */
   attributes?: { [key: string]: any };
-}
+};
+
+/** Represents a diagnostic message for the tool status page, etc. */
+export type DiagnosticMessage = DiagnosticMessageOptions & {
+  /** ISO 8601 timestamp */
+  timestamp: string;
+  /** Information about the origin of the diagnostic. */
+  source: DiagnosticSource;
+};
 
 /** Represents a diagnostic message that has not yet been written to the database. */
 interface UnwrittenDiagnostic {
@@ -102,7 +119,7 @@ let diagnosticCounter = 0;
 export function makeDiagnostic(
   id: string,
   name: string,
-  data: Partial<DiagnosticMessage> | undefined = undefined,
+  data: DiagnosticMessageOptions | undefined = undefined,
 ): DiagnosticMessage {
   return {
     ...data,

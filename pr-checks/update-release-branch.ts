@@ -55,6 +55,8 @@ export function getGitHubToken(): string {
 interface RunGitOptions {
   /** When true, non-zero exit codes will not throw. */
   allowNonZeroExitCode?: boolean;
+  /** A value indicating whether to just log the command, rather than run it. */
+  dryRun?: boolean;
 }
 
 /**
@@ -73,8 +75,13 @@ export function runGit(args: string[], options?: RunGitOptions): string {
   };
 
   try {
-    const result = execFileSync("git", args, execOptions) as string;
-    return result.trimEnd();
+    if (!options?.dryRun) {
+      const result = execFileSync("git", args, execOptions) as string;
+      return result.trimEnd();
+    } else {
+      console.info(`[DRY RUN] Would have executed 'git ${args.join(" ")}'`);
+      return "";
+    }
   } catch (error: unknown) {
     if (options?.allowNonZeroExitCode) {
       // execFileSync throws an object with `stdout` when the process exits
@@ -174,6 +181,7 @@ export async function getCommitDifference(
 }
 
 interface MainOptions {
+  dryRun: boolean;
   repositoryNwo: string;
   sourceBranch: string;
   targetBranch: string;
@@ -184,6 +192,7 @@ interface MainOptions {
 function parseCliOptions(): MainOptions {
   const { values } = parseArgs({
     options: {
+      "dry-run": { type: "boolean", default: false },
       "repository-nwo": { type: "string" },
       "source-branch": { type: "string" },
       "target-branch": { type: "string" },
@@ -207,6 +216,7 @@ function parseCliOptions(): MainOptions {
   }
 
   return {
+    dryRun: values["dry-run"],
     repositoryNwo: values["repository-nwo"],
     sourceBranch: values["source-branch"],
     targetBranch: values["target-branch"],
@@ -290,7 +300,9 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Push the new branch to the remote.
   console.log(`Creating branch ${newBranchName}.`);
+  runGit(["push", ORIGIN, newBranchName], { dryRun: options.dryRun });
 }
 
 // Only call `main` if this script was run directly.

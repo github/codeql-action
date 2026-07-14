@@ -1,0 +1,53 @@
+name: Get changed files
+description: Outputs a stringified JSON array of changed files for a PR
+inputs:
+  github-token:
+    description: GitHub token
+    required: true
+  pattern:
+    description: "The glob pattern to use to check for changed files"
+    required: true
+    default: "${{ github.workspace }}/**/*"
+  exclude:
+    description: "A stringified JSON array of files to exclude"
+    required: false
+    default: "[]"
+outputs:
+  files:
+    description: Stringified JSON array of changed file paths
+    value: ${{ steps.changed-files.outputs.files }}
+runs:
+  using: "composite"
+  steps:
+    - name: Get changed files
+      id: changed-files
+      uses: actions/github-script@v7
+      env:
+        PATTERN: ${{ inputs.pattern }}
+        EXCLUDE: ${{ inputs.exclude }}
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const exclude = JSON.parse(process.env['EXCLUDE']);
+          const path = require('path');
+          const pr = context.payload.pull_request;
+          if (!pr) {
+            core.setOutput('files', JSON.stringify([]));
+            return;
+          }
+          const files = await github.paginate(
+            github.rest.pulls.listFiles,
+            {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            }
+          );
+          const results = files
+            .filter(f => path.matchesGlob(
+              f.filename, process.env['PATTERN']
+            ) && !exclude.includes(f.filename))
+            .map(f => f.filename);
+          console.debug(results);
+          core.setOutput('files', JSON.stringify(results));

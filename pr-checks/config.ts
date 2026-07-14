@@ -15,6 +15,9 @@ export const PR_CHECK_EXCLUDED_FILE = path.join(PR_CHECKS_DIR, "excluded.yml");
 /** The path of the main `package.json`. */
 export const PACKAGE_JSON = path.join(REPO_ROOT, "package.json");
 
+/** THe path of the changelog. */
+export const CHANGELOG_FILE = path.join(REPO_ROOT, "CHANGELOG.md");
+
 /** The path to the esbuild metadata file. */
 export const BUNDLE_METADATA_FILE = path.join(REPO_ROOT, "meta.json");
 

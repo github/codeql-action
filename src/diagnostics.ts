@@ -272,6 +272,7 @@ export function makeTelemetryDiagnostic(
   id: string,
   name: string,
   attributes: { [key: string]: any },
+  tags?: DiagnosticTag[],
 ): DiagnosticMessage {
   return makeDiagnostic(id, name, {
     attributes,
@@ -279,6 +280,9 @@ export function makeTelemetryDiagnostic(
       cliSummaryTable: false,
       statusPage: false,
       telemetry: true,
+    },
+    source: {
+      tags,
     },
   });
 }

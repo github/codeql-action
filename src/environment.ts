@@ -265,6 +265,11 @@ export function getOptionalEnvVar(paramName: string): string | undefined {
 export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
   constructor(protected readonly vars: Record<string, T>) {}
 
+  /** Clones the object while detaching the underlying environment from the original. */
+  public clone(): this {
+    return Object.create(this, { vars: { value: { ...this.vars } } }) as this;
+  }
+
   /** Tries to get the value for `name` and throws if there isn't one. */
   public getRequired(name: string): string {
     return getRequiredEnvVar(this.vars, name);

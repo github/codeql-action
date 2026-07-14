@@ -240,7 +240,7 @@ abstract class BaseEnvBuilder<
       cloneFrom !== undefined
         ? ({
             ...cloneFrom.state,
-            env: Object.create(cloneFrom.state.env),
+            env: cloneFrom.state.env.clone(),
             actions: Object.create(cloneFrom.state.actions),
             logger: this.logger,
           } satisfies ActionState<AllState>)

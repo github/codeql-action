@@ -4,6 +4,7 @@ import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
 import * as fs from "node:fs";
 import { parseArgs } from "node:util";
 
+import { type ApiClient, getApiClient } from "./api-client";
 import { PACKAGE_JSON } from "./config";
 
 /** Placeholder changelog content for a new release. */
@@ -99,6 +100,73 @@ export function getCurrentVersion(): string | undefined {
   return pkg.version;
 }
 
+/** Represents commits returned by the GitHub API (relevant fields only). */
+export interface GitHubCommit {
+  sha: string;
+  commit: { message: string; author: { date?: string } | null };
+  author: { login: string } | null;
+  committer: { login: string } | null;
+  parents: Array<{ sha: string }>;
+}
+
+/** Returns true if the commit is an automatic PR merge commit made by GitHub. */
+export function isPrMergeCommit(commit: GitHubCommit): boolean {
+  return commit.committer?.login === "web-flow" && commit.parents.length > 1;
+}
+
+/**
+ * Gets a list of commits on the source branch that are not on the target branch,
+ * excluding automatic PR merge commits.
+ *
+ * Uses `git log` to find the SHAs, then fetches each commit from the GitHub API
+ * to obtain full metadata (author, parents, associated PRs, etc.).
+ *
+ * @param client - An authenticated GitHub API client.
+ * @param owner - The repository owner.
+ * @param repo - The repository name.
+ * @param sourceBranch - The source branch name (without `origin/` prefix).
+ * @param targetBranch - The target branch name (without `origin/` prefix).
+ * @returns The list of non-merge commits unique to the source branch.
+ */
+export async function getCommitDifference(
+  client: ApiClient,
+  owner: string,
+  repo: string,
+  sourceBranch: string,
+  targetBranch: string,
+): Promise<GitHubCommit[]> {
+  const logOutput = runGit([
+    "log",
+    "--pretty=format:%H",
+    `${ORIGIN}/${targetBranch}..${ORIGIN}/${sourceBranch}`,
+  ]);
+
+  // An empty log output means no commits to merge.
+  if (logOutput === "") {
+    return [];
+  }
+
+  const shas = logOutput.split("\n");
+
+  // Fetch full commit objects from the API.
+  console.info(
+    `Fetching information about ${shas.length} commits from the API...`,
+  );
+
+  const commits: GitHubCommit[] = [];
+  for (const sha of shas) {
+    const { data } = await client.rest.repos.getCommit({
+      owner,
+      repo,
+      ref: sha,
+    });
+    commits.push(data as GitHubCommit);
+  }
+
+  // Filter out automatic PR merge commits.
+  return commits.filter((c) => !isPrMergeCommit(c));
+}
+
 interface MainOptions {
   repositoryNwo: string;
   sourceBranch: string;
@@ -144,10 +212,16 @@ function parseCliOptions(): MainOptions {
 async function main(): Promise<void> {
   const options = parseCliOptions();
   const token = getGitHubToken();
+  const client = getApiClient(token);
 
   if (!options.targetBranch.startsWith(RELEASE_BRANCH_PREFIX)) {
     throw new Error(
       `Expected target branch to start with '${RELEASE_BRANCH_PREFIX}', but got '${options.targetBranch}'.`,
+    );
+  }
+  if (!options.repositoryNwo.includes("/")) {
+    throw new Error(
+      `Expected repository name with owner in 'owner/repo' format, but got '${options.repositoryNwo}'`,
     );
   }
 
@@ -177,6 +251,22 @@ async function main(): Promise<void> {
   console.log(
     `Current head of ${options.sourceBranch} is ${sourceBranchShortSha}.`,
   );
+
+  const [owner, repo] = options.repositoryNwo.split("/");
+  const commits = await getCommitDifference(
+    client,
+    owner,
+    repo,
+    options.sourceBranch,
+    options.targetBranch,
+  );
+
+  if (commits.length === 0) {
+    console.log(
+      `No commits to merge from ${options.sourceBranch} to ${options.targetBranch}.`,
+    );
+    return;
+  }
 
   console.log(`Target version: ${version}`);
 }

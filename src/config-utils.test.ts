@@ -41,6 +41,7 @@ import {
   initAllState,
   callee,
   SAMPLE_DOTCOM_API_DETAILS,
+  setupBaseActionsVars,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -443,6 +444,7 @@ test.serial("load non-existent input", async (t) => {
 
     try {
       const state = initAllState();
+      setupBaseActionsVars({}, state.env);
       await configUtils.initConfig(
         state,
         createTestInitConfigInputs({
@@ -2604,16 +2606,51 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       const getRemoteConfig = sinon.stub(file, "getRemoteConfig").resolves({});
+      const target = callee(configUtils.loadUserConfig)
+        .withDefaultActionsEnv()
+        .withFeatures([Feature.NewRemoteFileAddresses]);
 
-      const remoteAddress = "repo:file";
-      await callee(configUtils.loadUserConfig)
-        .withArgs(remoteAddress, tmpDir, SAMPLE_DOTCOM_API_DETAILS, tmpDir)
-        .passes(t.deepEqual, {});
+      const testTargetWith = async (remoteAddress: string) => {
+        getRemoteConfig.resetHistory();
 
-      t.true(
+        await target
+          .withArgs(remoteAddress, tmpDir, SAMPLE_DOTCOM_API_DETAILS, tmpDir)
+          .passes(t.deepEqual, {});
+
+        t.true(
+          getRemoteConfig.calledOnceWithExactly(
+            sinon.match.any,
+            remoteAddress,
+            SAMPLE_DOTCOM_API_DETAILS,
+          ),
+        );
+      };
+
+      // When the new format FF is enabled, all inputs that don't explicitly refer
+      // to a local file that can be found will be tried as remote addresses.
+      await testTargetWith("repo:file");
+      await testTargetWith("input");
+      await testTargetWith("../input");
+      await testTargetWith("repo@main");
+
+      // An explicitly local path can still override this.
+      const explicitlyLocalAddress = "./repo@main";
+
+      getRemoteConfig.resetHistory();
+
+      await target
+        .withArgs(
+          explicitlyLocalAddress,
+          tmpDir,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+        )
+        .throws(t);
+
+      t.false(
         getRemoteConfig.calledOnceWithExactly(
           sinon.match.any,
-          remoteAddress,
+          explicitlyLocalAddress,
           SAMPLE_DOTCOM_API_DETAILS,
         ),
       );

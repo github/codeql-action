@@ -1,6 +1,9 @@
 #!/usr/bin/env npx tsx
 
+import * as fs from "node:fs";
 import { parseArgs } from "node:util";
+
+import { PACKAGE_JSON } from "./config";
 
 /** Placeholder changelog content for a new release. */
 const EMPTY_CHANGELOG = `# CodeQL Action Changelog
@@ -44,6 +47,14 @@ export function getGitHubToken(): string {
     }
   }
   throw new Error("Missing GitHub token. Set GITHUB_TOKEN or GH_TOKEN.");
+}
+
+/** Reads the current version from `package.json`. */
+export function getCurrentVersion(): string | undefined {
+  const pkg: { version: string } = JSON.parse(
+    fs.readFileSync(PACKAGE_JSON, "utf8"),
+  );
+  return pkg.version;
 }
 
 interface MainOptions {
@@ -102,6 +113,15 @@ async function main(): Promise<void> {
     RELEASE_BRANCH_PREFIX,
     "",
   );
+
+  const currentVersion = getCurrentVersion();
+
+  if (!currentVersion) {
+    throw new Error("Failed to read current version from package.json");
+  }
+
+  const [, vMinor, vPatch] = currentVersion.split(".");
+  const version = `${targetBranchMajorVersion}.${vMinor}.${vPatch}`;
 }
 
 // Only call `main` if this script was run directly.

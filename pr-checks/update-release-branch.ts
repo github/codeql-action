@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import { parseArgs } from "node:util";
 
 import { type ApiClient, getApiClient } from "./api-client";
-import { PACKAGE_JSON } from "./config";
+import { PACKAGE_JSON, REPO_ROOT } from "./config";
 
 /** Placeholder changelog content for a new release. */
 const EMPTY_CHANGELOG = `# CodeQL Action Changelog
@@ -51,8 +51,45 @@ export function getGitHubToken(): string {
   throw new Error("Missing GitHub token. Set GITHUB_TOKEN or GH_TOKEN.");
 }
 
+/** Options for {@link runCommand}. */
+export interface RunCommandOptions {
+  /** A value indicating whether to just log the command, rather than run it. */
+  dryRun?: boolean;
+
+  /** Options for `execFileSync`. */
+  execOptions?: ExecFileSyncOptions;
+}
+
+/**
+ * Runs a command, streaming output to the console by default.
+ *
+ * @param command The name of the command to run.
+ * @param args The arguments for the command.
+ * @throws When the process exists with a non-zero exit code.
+ * @param options How to run the command.
+ */
+export function runCommand(
+  command: string,
+  args: string[],
+  options?: RunCommandOptions,
+) {
+  if (!options?.dryRun) {
+    console.log(`Running \`${command} ${args.join(" ")}\`.`);
+    return execFileSync(command, args, {
+      stdio: "inherit",
+      cwd: REPO_ROOT,
+      ...options?.execOptions,
+    });
+  } else {
+    console.info(
+      `[DRY RUN] Would have executed '${command} ${args.join(" ")}'`,
+    );
+    return "";
+  }
+}
+
 /** Options for {@link runGit}. */
-interface RunGitOptions {
+export interface RunGitOptions {
   /** When true, non-zero exit codes will not throw. */
   allowNonZeroExitCode?: boolean;
   /** A value indicating whether to just log the command, rather than run it. */
@@ -75,13 +112,11 @@ export function runGit(args: string[], options?: RunGitOptions): string {
   };
 
   try {
-    if (!options?.dryRun) {
-      const result = execFileSync("git", args, execOptions) as string;
-      return result.trimEnd();
-    } else {
-      console.info(`[DRY RUN] Would have executed 'git ${args.join(" ")}'`);
-      return "";
-    }
+    const result = runCommand("git", args, {
+      dryRun: options?.dryRun,
+      execOptions,
+    }) as string;
+    return result.trimEnd();
   } catch (error: unknown) {
     if (options?.allowNonZeroExitCode) {
       // execFileSync throws an object with `stdout` when the process exits

@@ -1277,13 +1277,43 @@ export async function initConfig(
   return config;
 }
 
+/**
+ * Determines if `configPath` is explicitly local. That is, it starts with "./".
+ * A configuration file path that starts with "./" is always treated as a local path.
+ *
+ * @param configPath The path to test.
+ */
+function isRelativePath(configPath: string): boolean {
+  return configPath.startsWith("./");
+}
+
+/**
+ * Determines if `configPath` contains a '@' character.
+ *
+ * @param configPath The path to test.
+ */
+function containsAtRef(configPath: string): boolean {
+  return configPath.includes("@");
+}
+
+/**
+ * Determines if `configPath` refers to a local configuration file.
+ * This assumes the `OLD_REMOTE_ADDRESS_FORMAT` which must contain a '@'
+ * character for remote addresses.
+ *
+ * @param configPath The path to test.
+ * @returns True if it is local, or false otherwise.
+ */
 function isLocal(configPath: string): boolean {
-  // If the path starts with ./, look locally
-  if (configPath.indexOf("./") === 0) {
+  // If the path starts with "./", it is explicitly local.
+  // This allows local paths that would otherwise contain '@'
+  // to be used with a "./" prefix.
+  if (isRelativePath(configPath)) {
     return true;
   }
 
-  return configPath.indexOf("@") === -1;
+  // Otherwise, the path is also local if it does not contain '@'.
+  return !containsAtRef(configPath);
 }
 
 export function getLocalConfig(

@@ -66,15 +66,19 @@ export interface GitHubApiExternalRepoDetails {
  *          or `undefined` if we couldn't retrieve the host and port.
  */
 export function getRegistryProxy(
-  action: ActionState<["Env"]>,
+  action: ActionState<["Logger", "Env"]>,
 ): ProxyAgent | undefined {
   const host = action.env.getOptional(RegistryProxyVars.PROXY_HOST);
   const port = action.env.getOptional(RegistryProxyVars.PROXY_PORT);
   const cert = action.env.getOptional(RegistryProxyVars.PROXY_CA_CERTIFICATE);
 
   if (host && port) {
+    const uri = `http://${host}:${port}`;
+    action.logger.debug(
+      `Using private registry proxy at '${uri}' for API client.`,
+    );
     return new ProxyAgent({
-      uri: `http://${host}:${port}`,
+      uri,
       keepAliveTimeout: 10,
       keepAliveMaxTimeout: 10,
       requestTls: cert ? { ca: cert } : undefined,
@@ -107,7 +111,9 @@ export function makeProxyRequestOptions(
  *
  * @param action The required Action state.
  */
-export function getApiFetch(action: ActionState<["Env"]>): typeof undiciFetch {
+export function getApiFetch(
+  action: ActionState<["Logger", "Env"]>,
+): typeof undiciFetch {
   const dispatcher = getRegistryProxy(action);
 
   const proxiedFetch = (req: RequestInfo, init?: RequestInit) => {

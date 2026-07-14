@@ -12,26 +12,30 @@ import { getCodeQLDatabasePath } from "./util";
  */
 export type DiagnosticTag = "internal-error";
 
+/** Represents information about the origin of a diagnostic. */
+export interface DiagnosticSource {
+  /**
+   * An identifier under which it makes sense to group this diagnostic message.
+   * This is used to build the SARIF reporting descriptor object.
+   */
+  id: string;
+  /** Display name for the ID. This is used to build the SARIF reporting descriptor object. */
+  name: string;
+  /**
+   * Name of the CodeQL extractor. This is used to identify which tool component the reporting
+   * descriptor object should be nested under in SARIF.
+   */
+  extractorName?: string;
+  /** An array of tags for the diagnostic. */
+  tags?: DiagnosticTag[];
+}
+
 /** Represents a diagnostic message for the tool status page, etc. */
 export interface DiagnosticMessage {
   /** ISO 8601 timestamp */
   timestamp: string;
-  source: {
-    /**
-     * An identifier under which it makes sense to group this diagnostic message.
-     * This is used to build the SARIF reporting descriptor object.
-     */
-    id: string;
-    /** Display name for the ID. This is used to build the SARIF reporting descriptor object. */
-    name: string;
-    /**
-     * Name of the CodeQL extractor. This is used to identify which tool component the reporting
-     * descriptor object should be nested under in SARIF.
-     */
-    extractorName?: string;
-    /** An array of tags for the diagnostic. */
-    tags?: DiagnosticTag[];
-  };
+  /** Information about the origin of the diagnostic. */
+  source: DiagnosticSource;
   /** GitHub flavored Markdown formatted message. Should include inline links to any help pages. */
   markdownMessage?: string;
   /** Plain text message. Used by components where the string processing needed to support Markdown is cumbersome. */

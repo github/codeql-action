@@ -22,6 +22,7 @@ export interface BaseState {
 
 /** Describes different state features that an Action may have. */
 export interface FeatureState {
+  Base: BaseState;
   Logger: {
     /** The logger that is in use. */
     logger: Logger;
@@ -52,7 +53,7 @@ export type StateFeature = keyof FeatureState;
 
 /** Constructs the intersection of all state types identifies by `Fs`. */
 export type FieldsOf<Fs extends readonly StateFeature[]> = Fs extends []
-  ? BaseState
+  ? Record<never, never>
   : Fs extends [
         infer Head extends StateFeature,
         ...infer Tail extends readonly StateFeature[],
@@ -68,7 +69,7 @@ export type ActionState<Fs extends readonly StateFeature[]> = FieldsOf<Fs>;
  * Each Action can then augment the `state` further if additional features are required.
  */
 export type ActionMain = (
-  state: ActionState<["Logger", "Env", "Actions"]>,
+  state: ActionState<["Base", "Logger", "Env", "Actions"]>,
 ) => Promise<void>;
 
 /** A specification for a CodeQL Action step. */

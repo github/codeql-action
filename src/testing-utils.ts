@@ -194,6 +194,7 @@ export function getTestActionsEnv(): ActionsEnv {
 
 /** For testing purposes, we make all available state features accessible in `TestEnv`. */
 type AllState = [
+  "Base",
   "Logger",
   "Env",
   "ReadOnlyEnv",

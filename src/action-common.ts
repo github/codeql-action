@@ -12,7 +12,7 @@ import {
 } from "./status-report";
 import { getEnv, getErrorMessage } from "./util";
 
-/** Common state that is always available in `ActionState`. */
+/** Base state that is available to an Action on startup. */
 export interface BaseState {
   /** The name of the Action. */
   name: ActionName;

@@ -72,7 +72,7 @@ export interface RunCommandOptions extends DryRunOption {
  *
  * @param command The name of the command to run.
  * @param args The arguments for the command.
- * @throws When the process exists with a non-zero exit code.
+ * @throws When the process exits with a non-zero exit code.
  * @param options How to run the command.
  */
 export function runCommand(

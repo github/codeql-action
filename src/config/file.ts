@@ -73,7 +73,7 @@ export async function getRemoteConfig(
     Feature.ProxyApiRequests,
   );
   const proxy = shouldProxyRequest
-    ? api.getRegistryProxy(actionState.env)
+    ? api.getRegistryProxy(actionState)
     : undefined;
 
   const response = await api

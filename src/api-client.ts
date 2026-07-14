@@ -9,6 +9,7 @@ import {
   fetch as undiciFetch,
 } from "undici";
 
+import type { ActionState } from "./action-common";
 import { getActionVersion, getRequiredInput } from "./actions-util";
 import {
   ActionsEnvVars,
@@ -60,14 +61,16 @@ export interface GitHubApiExternalRepoDetails {
  * Gets the configuration for the private registry authentication proxy,
  * if it is available in the environment.
  *
- * @param env The environment to query for the proxy host and port.
+ * @param action The required Action state.
  * @returns A `ProxyAgent` corresponding to the private registry proxy,
  *          or `undefined` if we couldn't retrieve the host and port.
  */
-export function getRegistryProxy(env: ReadOnlyEnv): ProxyAgent | undefined {
-  const host = env.getOptional(RegistryProxyVars.PROXY_HOST);
-  const port = env.getOptional(RegistryProxyVars.PROXY_PORT);
-  const cert = env.getOptional(RegistryProxyVars.PROXY_CA_CERTIFICATE);
+export function getRegistryProxy(
+  action: ActionState<["Env"]>,
+): ProxyAgent | undefined {
+  const host = action.env.getOptional(RegistryProxyVars.PROXY_HOST);
+  const port = action.env.getOptional(RegistryProxyVars.PROXY_PORT);
+  const cert = action.env.getOptional(RegistryProxyVars.PROXY_CA_CERTIFICATE);
 
   if (host && port) {
     return new ProxyAgent({
@@ -102,10 +105,10 @@ export function makeProxyRequestOptions(
  * This will run API requests through the private registry authentication proxy
  * if it is configured.
  *
- * @param env The environment to query for the proxy host and port.
+ * @param action The required Action state.
  */
-export function getApiFetch(env: ReadOnlyEnv): typeof undiciFetch {
-  const dispatcher = getRegistryProxy(env);
+export function getApiFetch(action: ActionState<["Env"]>): typeof undiciFetch {
+  const dispatcher = getRegistryProxy(action);
 
   const proxiedFetch = (req: RequestInfo, init?: RequestInit) => {
     return undiciFetch(req, { ...init, dispatcher });

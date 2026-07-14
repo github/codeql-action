@@ -7,7 +7,7 @@ import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { DO_NOT_RETRY_STATUSES } from "./api-client";
 import { ActionsEnvVars, RegistryProxyVars } from "./environment";
-import { getTestEnv, setupTests } from "./testing-utils";
+import { callee, getTestEnv, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -209,30 +209,28 @@ test.serial(
 );
 
 test("getRegistryProxy - returns undefined if the proxy is not configured", async (t) => {
+  const target = callee(api.getRegistryProxy).withArgs();
+
   // Empty environment.
-  t.is(api.getRegistryProxy(getTestEnv()), undefined);
+  await target.passes(t.is, undefined);
   // Only the host.
-  t.is(
-    api.getRegistryProxy(
-      getTestEnv({ [RegistryProxyVars.PROXY_HOST]: "localhost" }),
-    ),
-    undefined,
-  );
+  await target
+    .withEnv(getTestEnv({ [RegistryProxyVars.PROXY_HOST]: "localhost" }))
+    .passes(t.is, undefined);
   // Only the port.
-  t.is(
-    api.getRegistryProxy(
-      getTestEnv({ [RegistryProxyVars.PROXY_PORT]: "1234" }),
-    ),
-    undefined,
-  );
+  await target
+    .withEnv(getTestEnv({ [RegistryProxyVars.PROXY_PORT]: "1234" }))
+    .passes(t.is, undefined);
 });
 
 test("getRegistryProxy - returns value when both vars are set", async (t) => {
-  const proxy = api.getRegistryProxy(
-    getTestEnv({
-      [RegistryProxyVars.PROXY_HOST]: "localhost",
-      [RegistryProxyVars.PROXY_PORT]: "1234",
-    }),
-  );
-  t.truthy(proxy);
+  await callee(api.getRegistryProxy)
+    .withArgs()
+    .withEnv(
+      getTestEnv({
+        [RegistryProxyVars.PROXY_HOST]: "localhost",
+        [RegistryProxyVars.PROXY_PORT]: "1234",
+      }),
+    )
+    .passes(t.truthy);
 });

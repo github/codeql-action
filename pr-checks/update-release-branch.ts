@@ -148,6 +148,30 @@ export function getCurrentVersion(): string | undefined {
   return pkg.version;
 }
 
+/**
+ * Replaces the version in `package.json` textually. Only updates the version
+ * field that immediately follows the `"name": "codeql"` line.
+ */
+export function replaceVersionInPackageJson(
+  prevVersion: string,
+  newVersion: string,
+): void {
+  const lines = fs.readFileSync(PACKAGE_JSON, "utf8").split("\n");
+  let prevLineIsCodeql = false;
+  const output: string[] = [];
+
+  for (const line of lines) {
+    if (prevLineIsCodeql && line.includes(`"version": "${prevVersion}"`)) {
+      output.push(line.replace(prevVersion, newVersion));
+    } else {
+      output.push(line);
+    }
+    prevLineIsCodeql = line.includes('"name": "codeql",');
+  }
+
+  fs.writeFileSync(PACKAGE_JSON, `${output.join("\n")}\n`, "utf8");
+}
+
 /** Returns today's date formatted as `DD Mon YYYY`. */
 export function getTodayString(): string {
   const today = new Date();
@@ -162,7 +186,7 @@ export function getTodayString(): string {
  * Updates the `[UNRELEASED]` marker in `CHANGELOG.md` with the given version
  * and today's date.
  */
-export function updateChangelog(version: string): void {
+export function updateChangelog(options: MainOptions, version: string): void {
   let content: string;
 
   if (fs.existsSync(CHANGELOG_FILE)) {
@@ -171,12 +195,16 @@ export function updateChangelog(version: string): void {
     content = EMPTY_CHANGELOG;
   }
 
-  const newContent = content.replace(
-    "[UNRELEASED]",
-    `${version} - ${getTodayString()}`,
-  );
+  const versionAndDate = `${version} - ${getTodayString()}`;
+  const newContent = content.replace("[UNRELEASED]", versionAndDate);
 
-  fs.writeFileSync(CHANGELOG_FILE, newContent, "utf8");
+  if (!options.dryRun) {
+    fs.writeFileSync(CHANGELOG_FILE, newContent, "utf8");
+  } else {
+    console.info(
+      `[DRY RUN] Would have replaced '[UNRELEASED]' in '${CHANGELOG_FILE}' with '${versionAndDate}'.`,
+    );
+  }
 }
 
 /**
@@ -386,6 +414,165 @@ export function rebuildAction(options: MainOptions): void {
   }
 }
 
+/**
+ * Prepares the new update/backport branch.
+ *
+ * @param options The options we are running with.
+ * @param newBranchName The name of the new branch to create.
+ * @param targetBranchMajorVersion The target branch's major version.
+ * @param version The target version.
+ */
+export async function prepareNewBranch(
+  options: MainOptions,
+  newBranchName: string,
+  targetBranchMajorVersion: string,
+  version: string,
+): Promise<void> {
+  // The process of creating the v{Older} release can run into merge conflicts. We commit the unresolved
+  // conflicts so a maintainer can easily resolve them (vs erroring and requiring maintainers to
+  // reconstruct the release manually)
+  let conflictedFiles: string[] = [];
+
+  if (!options.isPrimaryRelease) {
+    // For backports, the source branch is also a release branch.
+    const sourceBranchMajorVersion = options.sourceBranch.replace(
+      RELEASE_BRANCH_PREFIX,
+      "",
+    );
+
+    // Start from the target branch.
+    console.log(
+      `Creating ${newBranchName} from the ${ORIGIN}/${options.targetBranch} branch`,
+    );
+
+    runGit(
+      ["checkout", "-b", newBranchName, `${ORIGIN}/${options.targetBranch}`],
+      { dryRun: options.dryRun },
+    );
+
+    // Revert the commit that updated the version number and changelog to refer
+    // to older variants. This avoids merge conflicts when we merge in the newer
+    // release branch. The commit won't exist the first time we release a new
+    // major version, so we search for it conditionally.
+    console.log(
+      "Reverting the version number and changelog updates from the last release to avoid conflicts",
+    );
+    const vOlderUpdateCommits = runGit([
+      "log",
+      "--grep",
+      `^${BACKPORT_COMMIT_MESSAGE}`,
+      "--format=%H",
+    ])
+      .split("\n")
+      .filter((s) => s !== "");
+
+    if (vOlderUpdateCommits.length > 0) {
+      // Only revert the newest commit as older ones will already have been
+      // reverted in previous releases.
+      console.log(`  Reverting ${vOlderUpdateCommits[0]}`);
+      runGit(["revert", vOlderUpdateCommits[0], "--no-edit"], {
+        dryRun: options.dryRun,
+      });
+
+      // Also revert the "Rebuild" commit, whether created by this script or
+      // by the `Rebuild Action` workflow.
+      const rebuildCommits = runGit([
+        "log",
+        "--grep",
+        `^${REBUILD_COMMIT_MESSAGE}$`,
+        "--format=%H",
+      ])
+        .split("\n")
+        .filter((s) => s !== "");
+      const rebuildCommit = rebuildCommits[0];
+      console.log(`  Reverting ${rebuildCommit}`);
+      runGit(["revert", rebuildCommit, "--no-edit"], {
+        dryRun: options.dryRun,
+      });
+    } else {
+      console.log("  Nothing to revert.");
+    }
+
+    // Merge the source branch into the release prep branch.
+    console.log(
+      `Merging ${ORIGIN}/${options.sourceBranch} into the release prep branch`,
+    );
+    runGit(["merge", `${ORIGIN}/${options.sourceBranch}`], {
+      allowNonZeroExitCode: true,
+      dryRun: options.dryRun,
+    });
+    conflictedFiles = runGit(["diff", "--name-only", "--diff-filter", "U"])
+      .split("\n")
+      .filter((s) => s !== "");
+    if (conflictedFiles.length > 0) {
+      runGit(["add", "."], {
+        dryRun: options.dryRun,
+      });
+      runGit(["commit", "--no-edit"], {
+        dryRun: options.dryRun,
+      });
+    }
+
+    // Migrate the package version number.
+    console.log(`Setting version number to '${version}' in package.json`);
+    const currentPkgVersion = getCurrentVersion();
+    if (currentPkgVersion) {
+      replaceVersionInPackageJson(currentPkgVersion, version);
+    }
+    runGit(["add", "package.json"], {
+      dryRun: options.dryRun,
+    });
+
+    // Migrate the changelog notes from the source major version to the target.
+    console.log(
+      `Migrating changelog notes from v${sourceBranchMajorVersion} to v${targetBranchMajorVersion}`,
+    );
+    processChangelogForBackports(
+      sourceBranchMajorVersion,
+      targetBranchMajorVersion,
+    );
+
+    runGit(["add", "CHANGELOG.md"], {
+      dryRun: options.dryRun,
+    });
+    runGit(["commit", "-m", `${BACKPORT_COMMIT_MESSAGE}${version}`], {
+      dryRun: options.dryRun,
+    });
+  } else {
+    // For a standard (primary) release, there won't be new commits on the
+    // target branch that aren't already on the source branch, so we can just
+    // start from the source branch.
+    runGit(
+      ["checkout", "-b", newBranchName, `${ORIGIN}/${options.sourceBranch}`],
+      {
+        dryRun: options.dryRun,
+      },
+    );
+
+    console.log("Updating changelog");
+    updateChangelog(options, version);
+
+    runGit(["add", "CHANGELOG.md"], {
+      dryRun: options.dryRun,
+    });
+    runGit(["commit", "-m", `Update changelog for v${version}`], {
+      dryRun: options.dryRun,
+    });
+  }
+
+  // For backports, rebuild the action unless there were merge conflicts.
+  if (!options.isPrimaryRelease) {
+    if (conflictedFiles.length === 0) {
+      console.log("Rebuilding the Action.");
+      rebuildAction(options);
+    } else {
+      console.log(
+        `Skipping automatic rebuild because the merge produced conflicts in: ${conflictedFiles.join(", ")}`,
+      );
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const options = parseCliOptions();
   const token = getGitHubToken();
@@ -394,6 +581,14 @@ async function main(): Promise<void> {
   if (!options.targetBranch.startsWith(RELEASE_BRANCH_PREFIX)) {
     throw new Error(
       `Expected target branch to start with '${RELEASE_BRANCH_PREFIX}', but got '${options.targetBranch}'.`,
+    );
+  }
+  if (
+    !options.isPrimaryRelease &&
+    !options.sourceBranch.startsWith(RELEASE_BRANCH_PREFIX)
+  ) {
+    throw new Error(
+      `Expected source branch to start with '${RELEASE_BRANCH_PREFIX}' for backports, but got '${options.sourceBranch}'.`,
     );
   }
   if (!options.repositoryNwo.includes("/")) {
@@ -460,6 +655,14 @@ async function main(): Promise<void> {
     console.log(`Branch '${newBranchName}' already exists. Nothing to do.`);
     return;
   }
+
+  // Prepare the update/backport branch.
+  await prepareNewBranch(
+    options,
+    newBranchName,
+    targetBranchMajorVersion,
+    version,
+  );
 
   // Push the new branch to the remote.
   console.log(`Creating branch ${newBranchName}.`);

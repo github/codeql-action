@@ -8,6 +8,7 @@ import {
   getRecordingLogger,
   LoggedMessage,
   makeMacro,
+  RecordingLogger,
 } from "../testing-utils";
 import { ConfigurationError, prettyPrintPack } from "../util";
 
@@ -487,4 +488,140 @@ test("parseUserConfig - throws no ConfigurationError if validation should fail, 
       false,
     ),
   );
+});
+
+test("mergeDefaultSetupAndUserConfigs - combines threat models", async (t) => {
+  const logger = new RecordingLogger();
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    { "threat-models": ["a", "b"] },
+    { "threat-models": ["local", "remote"] },
+  );
+
+  const threatModels = result["threat-models"];
+
+  if (t.truthy(threatModels)) {
+    t.deepEqual(threatModels, ["a", "b", "local", "remote"]);
+  }
+});
+
+test("mergeDefaultSetupAndUserConfigs - warns if user-supplied config contains default setup key", async (t) => {
+  const logger = new RecordingLogger();
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {},
+    { "default-setup": {} },
+  );
+
+  // User-supplied value is ignored.
+  t.deepEqual(result, {});
+
+  // Warning is logged.
+  t.true(
+    logger.hasMessage(
+      "The 'default-setup' configuration key is not supported in user-supplied configuration files",
+    ),
+  );
+});
+
+test("mergeDefaultSetupAndUserConfigs - keeps default setup key from 'config' input", async (t) => {
+  const logger = new RecordingLogger();
+  const expected: dbConfig.DefaultSetupConfig = {
+    org: { "model-packs": ["some-pack"] },
+  };
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    { "default-setup": expected },
+    {},
+  );
+
+  // Result matches the input.
+  t.deepEqual(result["default-setup"], expected);
+
+  // No warning is logged.
+  t.false(
+    logger.hasMessage(
+      "The 'default-setup' configuration key is not supported in user-supplied configuration files",
+    ),
+  );
+});
+
+test("mergeDefaultSetupAndUserConfigs - keeps other properties from user-supplied configuration", async (t) => {
+  const logger = new RecordingLogger();
+  const configFile: dbConfig.UserConfig = {
+    "query-filters": [{ exclude: { a: "b" } }],
+    "paths-ignore": ["path"],
+  };
+
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {},
+    configFile,
+  );
+
+  t.deepEqual(result, configFile);
+});
+
+test("mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys from Default Setup", async (t) => {
+  const logger = new RecordingLogger();
+  const configFile: dbConfig.UserConfig = {
+    "query-filters": [{ exclude: { a: "b" } }],
+    "paths-ignore": ["path"],
+  };
+
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {
+      "default-setup": {
+        borg: [],
+        org: {
+          unknown: "foo",
+          "model-packs": [],
+        },
+      } as unknown as dbConfig.DefaultSetupConfig,
+      "paths-ignore": ["other-path"],
+    },
+    configFile,
+  );
+
+  t.deepEqual(result, {
+    ...configFile,
+    "default-setup": { org: { "model-packs": [] } },
+  });
+
+  const expectedUnrecognisedKeys = [
+    ".default-setup.org.unknown",
+    ".default-setup.borg",
+    ".paths-ignore",
+  ].join(", ");
+  checkExpectedLogMessages(t, logger.messages, [
+    `Unrecognised keys in Default Setup configuration: ${expectedUnrecognisedKeys}`,
+  ]);
+});
+
+test("mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Setup", async (t) => {
+  const logger = new RecordingLogger();
+  const configFile: dbConfig.UserConfig = {};
+
+  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+    logger,
+    {
+      "default-setup": {
+        org: {
+          "model-packs": [123],
+        },
+      } as unknown as dbConfig.DefaultSetupConfig,
+    },
+    configFile,
+  );
+
+  t.deepEqual(result, {
+    ...configFile,
+    "default-setup": { org: { "model-packs": [123] } },
+  });
+
+  const expectedInvalidKeys = [".default-setup.org.model-packs[0]"].join(", ");
+  checkExpectedLogMessages(t, logger.messages, [
+    `Invalid keys in Default Setup configuration: ${expectedInvalidKeys}`,
+  ]);
 });

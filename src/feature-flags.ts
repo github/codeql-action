@@ -136,6 +136,8 @@ export enum Feature {
   /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  /** Routes (some) API requests through the registry proxy. */
+  ProxyApiRequests = "proxy_api_requests",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
@@ -380,6 +382,11 @@ export const featureConfig = {
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.ProxyApiRequests]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_PROXY_API_REQUESTS",
     minimumVersion: undefined,
   },
   [Feature.SkipFileCoverageOnPrs]: {

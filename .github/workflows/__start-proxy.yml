@@ -102,4 +102,5 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           config-file: codeql-action@main:tests/multi-language-repo/.github/codeql/custom-queries.yml
     env:
+      CODEQL_ACTION_PROXY_API_REQUESTS: 'true'
       CODEQL_ACTION_TEST_MODE: true

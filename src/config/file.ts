@@ -68,7 +68,13 @@ export async function getRemoteConfig(
   apiDetails: api.GitHubApiCombinedDetails,
 ): Promise<UserConfig> {
   const address = await parseRemoteFileAddress(actionState, configFile);
-  const proxy = api.getRegistryProxy(actionState.env);
+
+  const shouldProxyRequest = await actionState.features.getValue(
+    Feature.ProxyApiRequests,
+  );
+  const proxy = shouldProxyRequest
+    ? api.getRegistryProxy(actionState.env)
+    : undefined;
 
   const response = await api
     .getApiClientWithExternalAuth(apiDetails, proxy)

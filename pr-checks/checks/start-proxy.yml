@@ -6,6 +6,8 @@ operatingSystems:
   - windows
 versions:
   - linked
+env:
+  CODEQL_ACTION_PROXY_API_REQUESTS: "true"
 steps:
   - name: Setup proxy for registries
     id: proxy

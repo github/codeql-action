@@ -156,6 +156,8 @@ export function getCurrentVersion(): string | undefined {
 /**
  * Replaces the version in `package.json` textually. Only updates the version
  * field that immediately follows the `"name": "codeql"` line.
+ * `npm version` doesn't always work because of merge conflicts, so we
+ * replace the version in package.json textually.
  */
 export function replaceVersionInPackageJson(
   prevVersion: string,
@@ -193,7 +195,8 @@ export function isPrMergeCommit(commit: GitHubCommit): boolean {
 
 /**
  * Gets a list of commits on the source branch that are not on the target branch,
- * excluding automatic PR merge commits.
+ * excluding automatic PR merge commits. This will not include any commits that
+ * exist on the target branch that aren't on the source branch.
  *
  * Uses `git log` to find the SHAs, then fetches each commit from the GitHub API
  * to obtain full metadata (author, parents, associated PRs, etc.).
@@ -289,6 +292,9 @@ export async function getPrForCommit(
 /**
  * Get the login of the person who merged a pull request.
  * Falls back to the commit author of the merge commit.
+ * For most cases this will be the same as the author, but for PRs opened
+ * by external contributors getting the merger will get us the GitHub
+ * employee who reviewed and merged the PR.
  */
 export async function getMergerOfPr(
   client: ApiClient,
@@ -543,6 +549,8 @@ function parseCliOptions(): MainOptions {
  * Rebuilds the action (npm ci + npm run build) and commits any changes.
  */
 export function rebuildAction(options: MainOptions): void {
+  // For backports, the only source-level change vs the source branch is the new version number,
+  // so we just need to refresh the version embedded in `lib/`.
   runCommand("npm", ["ci"]);
   runCommand("npm", ["run", "build"]);
 
@@ -596,10 +604,11 @@ export async function prepareNewBranch(
       { dryRun: options.dryRun },
     );
 
-    // Revert the commit that updated the version number and changelog to refer
-    // to older variants. This avoids merge conflicts when we merge in the newer
-    // release branch. The commit won't exist the first time we release a new
-    // major version, so we search for it conditionally.
+    // Revert the commit that we made as part of the last release that updated the version number and
+    // changelog to refer to {older}.x.x variants. This avoids merge conflicts in the changelog and
+    // package.json files when we merge in the v{latest} branch.
+    // This commit will not exist the first time we release the v{N-1} branch from the v{N} branch, so we
+    // use `git log --grep` to conditionally revert the commit.
     console.log(
       "Reverting the version number and changelog updates from the last release to avoid conflicts",
     );

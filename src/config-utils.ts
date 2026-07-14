@@ -478,7 +478,7 @@ async function downloadCacheWithTime(
  * @param tempDir The temporary directory which may contain a CodeQL Action-generated configuration file.
  * @returns The loaded configuration file, if successful.
  */
-async function loadUserConfig(
+export async function loadUserConfig(
   actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   configFile: string,
   workspacePath: string,

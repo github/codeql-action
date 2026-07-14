@@ -23,7 +23,12 @@ import * as fs from "node:fs";
 import { parseArgs } from "node:util";
 
 import { type ApiClient, getApiClient } from "./api-client";
-import { CHANGELOG_FILE, PACKAGE_JSON, REPO_ROOT } from "./config";
+import {
+  CHANGELOG_FILE,
+  DryRunOption,
+  PACKAGE_JSON,
+  REPO_ROOT,
+} from "./config";
 
 /** Placeholder changelog content for a new release. */
 const EMPTY_CHANGELOG = `# CodeQL Action Changelog
@@ -70,10 +75,7 @@ export function getGitHubToken(): string {
 }
 
 /** Options for {@link runCommand}. */
-export interface RunCommandOptions {
-  /** A value indicating whether to just log the command, rather than run it. */
-  dryRun?: boolean;
-
+export interface RunCommandOptions extends DryRunOption {
   /** Options for `execFileSync`. */
   execOptions?: ExecFileSyncOptions;
 }
@@ -107,11 +109,9 @@ export function runCommand(
 }
 
 /** Options for {@link runGit}. */
-export interface RunGitOptions {
+export interface RunGitOptions extends DryRunOption {
   /** When true, non-zero exit codes will not throw. */
   allowNonZeroExitCode?: boolean;
-  /** A value indicating whether to just log the command, rather than run it. */
-  dryRun?: boolean;
 }
 
 /**

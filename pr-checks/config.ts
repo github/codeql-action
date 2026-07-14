@@ -36,3 +36,9 @@ export const API_COMPATIBILITY_FILE = path.join(
   SOURCE_ROOT,
   "api-compatibility.json",
 );
+
+/** A common interface for operations that support dry runs. */
+export interface DryRunOption {
+  /** A value indicating whether to perform operations with side effects. */
+  dryRun?: boolean;
+}

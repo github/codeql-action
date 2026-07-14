@@ -107,7 +107,7 @@ const checkSchemaTestSchema = {
   rootKey: json.object(objectSchema),
 };
 
-test("validateSchema - checkSchema reports unknown keys", async (t) => {
+test("checkSchema - reports unknown keys", async (t) => {
   const result = json.checkSchema(checkSchemaTestSchema, {
     rootKey: {
       objectKey: {
@@ -125,7 +125,7 @@ test("validateSchema - checkSchema reports unknown keys", async (t) => {
   );
 });
 
-test("validateSchema - checkSchema reports invalid keys", async (t) => {
+test("checkSchema - reports invalid keys", async (t) => {
   const result = json.checkSchema(checkSchemaTestSchema, {
     rootKey: {
       objectKey: {

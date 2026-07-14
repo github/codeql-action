@@ -33,15 +33,22 @@ export interface VersionInfo {
 
 /** Returns true if `x` is a {@link VersionInfo}. */
 export function isVersionInfo(x: unknown): x is VersionInfo {
+  const isBooleanRecord = (obj: unknown): obj is Record<string, boolean> =>
+    json.isObject(obj) &&
+    Object.values(obj).every((val) => typeof val === "boolean");
+
   return (
     json.isObject(x) &&
     json.validateSchema(
       {
         version: json.string,
         features: {
-          validate: (obj): obj is Record<string, boolean> =>
-            json.isObject(obj) &&
-            Object.values(obj).every((val) => typeof val === "boolean"),
+          validate: isBooleanRecord,
+          check: (obj) => ({
+            unknownKeys: [],
+            invalidKeys: [],
+            valid: isBooleanRecord(obj),
+          }),
           required: false,
         },
         overlayVersion: json.optional(json.number),

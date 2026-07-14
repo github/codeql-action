@@ -878,7 +878,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
       extractor_root: "",
     };
     const codeQL = createStubCodeQL({
-      resolveLanguages: () =>
+      resolveLanguages: (options) =>
         Promise.resolve({
           aliases: {
             "c#": BuiltInLanguage.csharp,
@@ -892,9 +892,11 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
             java: [stubExtractorEntry],
             javascript: [stubExtractorEntry],
             python: [stubExtractorEntry],
-            // `html` is an extractor without default queries. It should be
-            // excluded from the supported language map.
-            html: [stubExtractorEntry],
+            ...(options?.filterToLanguagesWithQueries
+              ? {}
+              : {
+                  html: [stubExtractorEntry],
+                }),
           },
         }),
     });

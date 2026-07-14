@@ -510,7 +510,10 @@ export async function loadUserConfig(
     const workspaceRelative = isWorkspaceRelative(localFilePath);
 
     // If the path is relative to the workspace and the file exists, then we use it.
-    if (workspaceRelative && fs.existsSync(localFilePath)) {
+    if (
+      workspaceRelative &&
+      fs.statSync(localFilePath, { throwIfNoEntry: false })?.isFile()
+    ) {
       configFile = localFilePath;
       localFile = true;
     } else {

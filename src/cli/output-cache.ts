@@ -195,7 +195,12 @@ export function getCachedCommandOutput<K extends CommandCacheKey>(
   // Tier 1: the in-memory variable.
   const memoized = inMemoryCache.get(key);
   if (memoized !== undefined) {
-    return memoized.output as CommandCacheKeyOutputMap[K];
+    if (cmd === undefined || memoized.cmd === cmd) {
+      return memoized.output as CommandCacheKeyOutputMap[K];
+    }
+    // If the memoized entry doesn't match the requested CLI,
+    // treat it as a miss and fall back to tier 2, the file.
+    inMemoryCache.delete(key);
   }
 
   // Tier 2: the temporary file persisted by an earlier step, if any.

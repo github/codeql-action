@@ -161,6 +161,21 @@ test.serial("cacheCommandOutput persists the output to the memo", async (t) => {
 });
 
 test.serial(
+  "getCachedCommandOutput treats a memoized output from another CLI as a miss",
+  async (t) => {
+    await withCacheDir(() => {
+      cacheCommandOutput(CommandCacheKey.Version, "/path/to/other-codeql", {
+        version: "2.20.0",
+      });
+      t.is(
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+        undefined,
+      );
+    });
+  },
+);
+
+test.serial(
   "getCachedCommandOutput prefers the in-memory memo over the file",
   async (t) => {
     await withCacheDir((cacheFilePath) => {
@@ -177,6 +192,28 @@ test.serial(
       t.deepEqual(
         getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
         output,
+      );
+    });
+  },
+);
+
+test.serial(
+  "getCachedCommandOutput falls back to file when memoized output comes from another CLI",
+  async (t) => {
+    await withCacheDir((cacheFilePath) => {
+      cacheCommandOutput(CommandCacheKey.Version, "/path/to/other-codeql", {
+        version: "2.19.0",
+      });
+      writeCacheFile(cacheFilePath, {
+        [CommandCacheKey.Version]: {
+          cmd: "/path/to/codeql",
+          output: { version: "2.20.0", overlayVersion: 1 },
+        },
+      });
+
+      t.deepEqual(
+        getCachedCommandOutput(CommandCacheKey.Version, "/path/to/codeql"),
+        { version: "2.20.0", overlayVersion: 1 },
       );
     });
   },

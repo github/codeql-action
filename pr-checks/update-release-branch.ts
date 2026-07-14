@@ -27,6 +27,20 @@ const ORIGIN = "origin";
 /** Environment variables checked (in order) for a GitHub API token. */
 const TOKEN_ENVIRONMENT_VARIABLES = ["GH_TOKEN", "GITHUB_TOKEN"] as const;
 
+/**
+ * Gets a GitHub API token from one of the supported environment variables.
+ * @throws If none of the supported environment variables is set.
+ */
+export function getGitHubToken(): string {
+  for (const name of TOKEN_ENVIRONMENT_VARIABLES) {
+    const token = process.env[name]?.trim();
+    if (token) {
+      return token;
+    }
+  }
+  throw new Error("Missing GitHub token. Set GITHUB_TOKEN or GH_TOKEN.");
+}
+
 async function main(): Promise<void> {
 }
 

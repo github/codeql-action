@@ -2647,13 +2647,7 @@ test.serial(
         )
         .throws(t);
 
-      t.false(
-        getRemoteConfig.calledOnceWithExactly(
-          sinon.match.any,
-          explicitlyLocalAddress,
-          SAMPLE_DOTCOM_API_DETAILS,
-        ),
-      );
+      t.is(getRemoteConfig.callCount, 0);
     });
   },
 );

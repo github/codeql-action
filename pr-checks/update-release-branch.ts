@@ -160,6 +160,7 @@ export function getCurrentVersion(): string | undefined {
  * replace the version in package.json textually.
  */
 export function replaceVersionInPackageJson(
+  options: DryRunOption,
   prevVersion: string,
   newVersion: string,
 ): void {
@@ -176,7 +177,13 @@ export function replaceVersionInPackageJson(
     prevLineIsCodeql = line.includes('"name": "codeql",');
   }
 
-  fs.writeFileSync(PACKAGE_JSON, `${output.join("\n")}\n`, "utf8");
+  if (!options.dryRun) {
+    fs.writeFileSync(PACKAGE_JSON, `${output.join("\n")}\n`, "utf8");
+  } else {
+    console.info(
+      `[DRY RUN] Would have replaced '${prevVersion}' with '${newVersion}' in package.json`,
+    );
+  }
 }
 
 /** Represents commits returned by the GitHub API (relevant fields only). */
@@ -672,7 +679,7 @@ export async function prepareNewBranch(
     console.log(`Setting version number to '${version}' in package.json`);
     const currentPkgVersion = getCurrentVersion();
     if (currentPkgVersion) {
-      replaceVersionInPackageJson(currentPkgVersion, version);
+      replaceVersionInPackageJson(options, currentPkgVersion, version);
     }
     runGit(["add", "package.json"], {
       dryRun: options.dryRun,

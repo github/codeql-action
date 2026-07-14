@@ -6,6 +6,12 @@ import { Language } from "./languages";
 import { getActionsLogger } from "./logging";
 import { getCodeQLDatabasePath } from "./util";
 
+/**
+ * Known tags for diagnostics. There is currently only "internal-error",
+ * but others may be added in the future.
+ */
+export type DiagnosticTag = "internal-error";
+
 /** Represents a diagnostic message for the tool status page, etc. */
 export interface DiagnosticMessage {
   /** ISO 8601 timestamp */
@@ -23,6 +29,8 @@ export interface DiagnosticMessage {
      * descriptor object should be nested under in SARIF.
      */
     extractorName?: string;
+    /** An array of tags for the diagnostic. */
+    tags?: DiagnosticTag[];
   };
   /** GitHub flavored Markdown formatted message. Should include inline links to any help pages. */
   markdownMessage?: string;

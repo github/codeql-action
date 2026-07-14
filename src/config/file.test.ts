@@ -86,7 +86,22 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
     .stub(client.rest.repos, "getContent")
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     .resolves(response as any);
-  sinon.stub(api, "getApiClientWithExternalAuth").value(() => client);
+
+  // We stub `getApiClientWithExternalAuth` so that it throws if no
+  // proxy is provided and returns the client otherwise. This allows us
+  // to verify the result in the following test cases.
+  const errorMessage = "No `proxy` was provided by the caller.";
+  sinon
+    .stub(api, "getApiClientWithExternalAuth")
+    .callsFake((_details, proxy) => {
+      // Throw if proxy isn't defined.
+      if (proxy === undefined) {
+        throw new Error(errorMessage);
+      }
+      // Otherwise return the client object.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return client as unknown as any;
+    });
 
   const target = callee(getRemoteConfig)
     .withDefaultActionsEnv()
@@ -110,11 +125,11 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
       env.set(RegistryProxyVars.PROXY_PORT, "1234");
     })
     .notLogs(t, "Using private registry proxy at 'http://localhost:1234'")
-    .passes(t.truthy);
+    .throws(t, { message: errorMessage });
 
   // And not when the environment variables aren't set.
   await target
     .withFeatures([Feature.ProxyApiRequests, Feature.NewRemoteFileAddresses])
     .notLogs(t, "Using private registry proxy at 'http://localhost:1234'")
-    .passes(t.truthy);
+    .throws(t, { message: errorMessage });
 });

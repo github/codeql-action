@@ -348,6 +348,256 @@ export async function getCommitDifference(
   return commits.filter((c) => !isPrMergeCommit(c));
 }
 
+/** Truncates a commit message for display. */
+export function getTruncatedCommitMessage(message: string): string {
+  const firstLine = message.split("\n")[0];
+  if (firstLine.length > 60) {
+    return `${firstLine.slice(0, 57)}...`;
+  }
+  return firstLine;
+}
+
+/** Represents pull requests associated with a commit (relevant fields only). */
+export interface AssociatedPullRequest {
+  number: number;
+  user: { login: string; site_admin: boolean } | null;
+  merge_commit_sha: string | null;
+}
+
+/**
+ * Gets the pull request that introduced a commit to the source branch.
+ * Returns the earliest PR by number if multiple are associated.
+ */
+export async function getPrForCommit(
+  client: ApiClient,
+  owner: string,
+  repo: string,
+  commit: GitHubCommit,
+): Promise<AssociatedPullRequest | undefined> {
+  const { data: prs } =
+    await client.rest.repos.listPullRequestsAssociatedWithCommit({
+      owner,
+      repo,
+      commit_sha: commit.sha,
+    });
+
+  if (prs.length === 0) {
+    return undefined;
+  }
+
+  // Return the earliest PR by number.
+  const sorted = [...prs].sort((a, b) => a.number - b.number);
+  return sorted[0];
+}
+
+/**
+ * Get the login of the person who merged a pull request.
+ * Falls back to the commit author of the merge commit.
+ */
+export async function getMergerOfPr(
+  client: ApiClient,
+  owner: string,
+  repo: string,
+  pr: AssociatedPullRequest,
+): Promise<string> {
+  if (!pr.merge_commit_sha) {
+    return "unknown";
+  }
+  const { data: commit } = await client.rest.repos.getCommit({
+    owner,
+    repo,
+    ref: pr.merge_commit_sha,
+  });
+  return commit.author?.login ?? "unknown";
+}
+
+/**
+ * Returns the PR author's login if they are GitHub staff (site_admin),
+ * otherwise undefined.
+ */
+export function getPrAuthorIfStaff(
+  pr: AssociatedPullRequest,
+): string | undefined {
+  if (pr.user?.site_admin) {
+    return pr.user.login;
+  }
+  return undefined;
+}
+
+/** Parameters for {@link openPr}. */
+interface OpenPrParams {
+  client: ApiClient;
+  owner: string;
+  repo: string;
+  commits: GitHubCommit[];
+  sourceBranchShortSha: string;
+  newBranchName: string;
+  sourceBranch: string;
+  targetBranch: string;
+  conductor: string;
+  isPrimaryRelease: boolean;
+  conflictedFiles: string[];
+  dryRun: boolean;
+}
+
+/**
+ * Opens a pull request from the new branch to the target branch and assigns
+ * the conductor.
+ */
+export async function openPr(params: OpenPrParams): Promise<void> {
+  const {
+    client,
+    owner,
+    repo,
+    commits,
+    sourceBranchShortSha,
+    newBranchName,
+    sourceBranch,
+    targetBranch,
+    conductor,
+    isPrimaryRelease,
+    conflictedFiles,
+    dryRun,
+  } = params;
+
+  // Sort the commits into those with and without associated PRs.
+  const pullRequests: AssociatedPullRequest[] = [];
+  const commitsWithoutPrs: GitHubCommit[] = [];
+
+  console.info(`Finding PRs for ${commits.length} commits...`);
+
+  for (const commit of commits) {
+    const pr = await getPrForCommit(client, owner, repo, commit);
+    if (!pr) {
+      commitsWithoutPrs.push(commit);
+    } else if (!pullRequests.some((p) => p.number === pr.number)) {
+      pullRequests.push(pr);
+    }
+  }
+
+  console.log(`Found ${pullRequests.length} pull requests.`);
+  console.log(
+    `Found ${commitsWithoutPrs.length} commits not in a pull request.`,
+  );
+
+  // Sort PRs by number (ascending) and commits by date.
+  pullRequests.sort((a, b) => a.number - b.number);
+  commitsWithoutPrs.sort((a, b) => {
+    const dateA = a.commit.author?.date ?? "";
+    const dateB = b.commit.author?.date ?? "";
+    return dateA.localeCompare(dateB);
+  });
+
+  // Build the PR body.
+  const body: string[] = [];
+  body.push(`Merging ${sourceBranchShortSha} into \`${targetBranch}\`.`);
+  body.push("");
+  body.push(`Conductor for this PR is @${conductor}.`);
+
+  if (pullRequests.length > 0) {
+    body.push("");
+    body.push("Contains the following pull requests:");
+    for (const pr of pullRequests) {
+      const displayUser =
+        getPrAuthorIfStaff(pr) ??
+        (await getMergerOfPr(client, owner, repo, pr));
+      body.push(`- #${pr.number} (@${displayUser})`);
+    }
+  }
+
+  if (commitsWithoutPrs.length > 0) {
+    body.push("");
+    body.push("Contains the following commits not from a pull request:");
+    for (const commit of commitsWithoutPrs) {
+      const authorDesc = commit.author ? ` (@${commit.author.login})` : "";
+      body.push(
+        `- ${commit.sha} - ${getTruncatedCommitMessage(commit.commit.message)}${authorDesc}`,
+      );
+    }
+  }
+
+  body.push("");
+  body.push("Please do the following:");
+  if (conflictedFiles.length > 0) {
+    body.push(
+      " - [ ] Ensure `package.json` file contains the correct version.",
+    );
+    body.push(
+      " - [ ] Add a commit to this branch to resolve the merge conflicts in the following files:",
+    );
+    for (const file of conflictedFiles) {
+      body.push(`    - \`${file}\``);
+    }
+    body.push(
+      ` - [ ] Rebuild the Action locally (\`npm run build\`) and push any changes to the built output in \`lib\` as a separate commit named exactly \`${REBUILD_COMMIT_MESSAGE}\`.`,
+    );
+    body.push(
+      " - [ ] Ensure another maintainer has reviewed the additional commits you added to this branch to resolve the merge conflicts.",
+    );
+  }
+  body.push(
+    " - [ ] Ensure the CHANGELOG displays the correct version and date.",
+  );
+  body.push(
+    " - [ ] Ensure the CHANGELOG includes all relevant, user-facing changes since the last release.",
+  );
+  body.push(
+    ` - [ ] Check that there are not any unexpected commits being merged into the \`${targetBranch}\` branch.`,
+  );
+  body.push(
+    " - [ ] Ensure the docs team is aware of any documentation changes that need to be released.",
+  );
+  body.push(
+    " - [ ] Approve running the full set of PR checks if you have not pushed any changes.",
+  );
+  body.push(
+    " - [ ] Approve and merge this PR. Make sure `Create a merge commit` is selected rather than `Squash and merge` or `Rebase and merge`.",
+  );
+
+  if (isPrimaryRelease) {
+    body.push(
+      " - [ ] Merge the mergeback PR that will automatically be created once this PR is merged.",
+    );
+    body.push(
+      " - [ ] Merge all backport PRs to older release branches, that will automatically be created once this PR is merged.",
+    );
+  }
+
+  const title = `Merge ${sourceBranch} into ${targetBranch}`;
+
+  if (dryRun) {
+    console.info(`[DRY RUN] Would create PR: "${title}" with body:`);
+
+    for (const line of body) {
+      console.info(`[DRY RUN] > ${line}`);
+    }
+
+    console.info(`[DRY RUN] and assign it to @${conductor}`);
+
+    return;
+  }
+
+  // Create the pull request.
+  const { data: pr } = await client.rest.pulls.create({
+    owner,
+    repo,
+    title,
+    body: body.join("\n"),
+    head: newBranchName,
+    base: targetBranch,
+  });
+  console.log(`Created PR #${pr.number}`);
+
+  // Assign the conductor.
+  await client.rest.issues.addAssignees({
+    owner,
+    repo,
+    issue_number: pr.number,
+    assignees: [conductor],
+  });
+  console.log(`Assigned PR to ${conductor}`);
+}
+
 interface MainOptions {
   dryRun: boolean;
   repositoryNwo: string;
@@ -427,7 +677,7 @@ export async function prepareNewBranch(
   newBranchName: string,
   targetBranchMajorVersion: string,
   version: string,
-): Promise<void> {
+): Promise<string[]> {
   // The process of creating the v{Older} release can run into merge conflicts. We commit the unresolved
   // conflicts so a maintainer can easily resolve them (vs erroring and requiring maintainers to
   // reconstruct the release manually)
@@ -571,6 +821,8 @@ export async function prepareNewBranch(
       );
     }
   }
+
+  return conflictedFiles;
 }
 
 async function main(): Promise<void> {
@@ -657,7 +909,7 @@ async function main(): Promise<void> {
   }
 
   // Prepare the update/backport branch.
-  await prepareNewBranch(
+  const conflictedFiles = await prepareNewBranch(
     options,
     newBranchName,
     targetBranchMajorVersion,
@@ -667,6 +919,22 @@ async function main(): Promise<void> {
   // Push the new branch to the remote.
   console.log(`Creating branch ${newBranchName}.`);
   runGit(["push", ORIGIN, newBranchName], { dryRun: options.dryRun });
+
+  // Open a PR to merge the new branch into the target branch.
+  await openPr({
+    client,
+    owner,
+    repo,
+    commits,
+    sourceBranchShortSha,
+    newBranchName,
+    sourceBranch: options.sourceBranch,
+    targetBranch: options.targetBranch,
+    conductor: options.conductor,
+    isPrimaryRelease: options.isPrimaryRelease,
+    conflictedFiles,
+    dryRun: options.dryRun,
+  });
 }
 
 // Only call `main` if this script was run directly.

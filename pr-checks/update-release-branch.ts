@@ -1,5 +1,7 @@
 #!/usr/bin/env npx tsx
 
+import { parseArgs } from "node:util";
+
 /** Placeholder changelog content for a new release. */
 const EMPTY_CHANGELOG = `# CodeQL Action Changelog
 
@@ -41,7 +43,51 @@ export function getGitHubToken(): string {
   throw new Error("Missing GitHub token. Set GITHUB_TOKEN or GH_TOKEN.");
 }
 
+interface MainOptions {
+  repositoryNwo: string;
+  sourceBranch: string;
+  targetBranch: string;
+  isPrimaryRelease: boolean;
+  conductor: string;
+}
+
+function parseCliOptions(): MainOptions {
+  const { values } = parseArgs({
+    options: {
+      "repository-nwo": { type: "string" },
+      "source-branch": { type: "string" },
+      "target-branch": { type: "string" },
+      "is-primary-release": { type: "boolean", default: false },
+      conductor: { type: "string" },
+    },
+    strict: true,
+  });
+
+  if (!values["repository-nwo"]) {
+    throw new Error("--repository-nwo is required");
+  }
+  if (!values["source-branch"]) {
+    throw new Error("--source-branch is required");
+  }
+  if (!values["target-branch"]) {
+    throw new Error("--target-branch is required");
+  }
+  if (!values["conductor"]) {
+    throw new Error("--conductor is required");
+  }
+
+  return {
+    repositoryNwo: values["repository-nwo"],
+    sourceBranch: values["source-branch"],
+    targetBranch: values["target-branch"],
+    isPrimaryRelease: values["is-primary-release"] ?? false,
+    conductor: values["conductor"],
+  };
+}
+
 async function main(): Promise<void> {
+  const options = parseCliOptions();
+  const token = getGitHubToken();
 }
 
 // Only call `main` if this script was run directly.

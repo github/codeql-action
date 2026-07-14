@@ -674,6 +674,7 @@ export async function prepareNewBranch(
       `Migrating changelog notes from v${sourceBranchMajorVersion} to v${targetBranchMajorVersion}`,
     );
     changelog.processChangelogForBackports(
+      options,
       sourceBranchMajorVersion,
       targetBranchMajorVersion,
     );

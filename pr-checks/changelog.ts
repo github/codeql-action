@@ -55,6 +55,7 @@ export function setVersionAndDate(
  * entries that only apply to newer versions.
  */
 export function processChangelogForBackports(
+  options: DryRunOption,
   sourceBranchMajorVersion: string,
   targetBranchMajorVersion: string,
 ): void {
@@ -120,5 +121,11 @@ export function processChangelogForBackports(
     }
   }
 
-  fs.writeFileSync(CHANGELOG_FILE, output, "utf8");
+  if (!options.dryRun) {
+    fs.writeFileSync(CHANGELOG_FILE, output, "utf8");
+  } else {
+    console.info(
+      `[DRY RUN] Would have written updated changelog to replace 'v${sourceBranchMajorVersion}' with 'v${targetBranchMajorVersion}'.`,
+    );
+  }
 }

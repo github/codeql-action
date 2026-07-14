@@ -2598,3 +2598,25 @@ test.serial("loadUserConfig - loads remote configuration files", async (t) => {
     );
   });
 });
+
+test.serial(
+  "loadUserConfig - loads remote configuration files (new format, partial)",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const getRemoteConfig = sinon.stub(file, "getRemoteConfig").resolves({});
+
+      const remoteAddress = "repo:file";
+      await callee(configUtils.loadUserConfig)
+        .withArgs(remoteAddress, tmpDir, SAMPLE_DOTCOM_API_DETAILS, tmpDir)
+        .passes(t.deepEqual, {});
+
+      t.true(
+        getRemoteConfig.calledOnceWithExactly(
+          sinon.match.any,
+          remoteAddress,
+          SAMPLE_DOTCOM_API_DETAILS,
+        ),
+      );
+    });
+  },
+);

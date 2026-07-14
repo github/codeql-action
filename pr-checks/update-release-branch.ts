@@ -24,7 +24,11 @@ import { parseArgs } from "node:util";
 import { type ApiClient, getApiClient } from "./api-client";
 import * as changelog from "./changelog";
 import { DryRunOption, REPO_ROOT } from "./config";
-import { getCurrentVersion, replaceVersionInPackageJson } from "./versions";
+import {
+  getCurrentVersion,
+  replaceVersionInPackageJson,
+  withPackageJson,
+} from "./versions";
 
 /**
  * NB: This exact commit message is used to find commits for reverting during backports.
@@ -636,10 +640,20 @@ export async function prepareNewBranch(
 
     // Migrate the package version number.
     console.log(`Setting version number to '${version}' in package.json`);
-    const currentPkgVersion = getCurrentVersion();
-    if (currentPkgVersion) {
-      replaceVersionInPackageJson(options, currentPkgVersion, version);
-    }
+    withPackageJson((content) => {
+      const currentPkgVersion = getCurrentVersion(content);
+      if (currentPkgVersion) {
+        return {
+          content: replaceVersionInPackageJson(
+            currentPkgVersion,
+            version,
+            content,
+          ),
+          value: currentPkgVersion,
+        };
+      }
+      return { value: currentPkgVersion };
+    }, options);
     runGit(["add", "package.json"], {
       dryRun: options.dryRun,
     });
@@ -733,7 +747,9 @@ async function main(): Promise<void> {
     "",
   );
 
-  const currentVersion = getCurrentVersion();
+  const currentVersion = withPackageJson((content) => {
+    return { value: getCurrentVersion(content) };
+  }, options);
 
   if (!currentVersion) {
     throw new Error("Failed to read current version from package.json");

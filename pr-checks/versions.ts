@@ -2,11 +2,27 @@ import * as fs from "node:fs";
 
 import { DryRunOption, PACKAGE_JSON } from "./config";
 
+export function withPackageJson<T>(
+  transformer: (content: string) => { value: T; content?: string },
+  options: DryRunOption,
+): T {
+  const content = fs.readFileSync(PACKAGE_JSON, "utf8");
+  const result = transformer(content);
+
+  if (result.content !== undefined) {
+    if (!options.dryRun) {
+      fs.writeFileSync(PACKAGE_JSON, result.content, "utf8");
+    } else {
+      console.info(`[DRY RUN] Would have written an updated package.json`);
+    }
+  }
+
+  return result.value;
+}
+
 /** Reads the current version from `package.json`. */
-export function getCurrentVersion(): string | undefined {
-  const pkg: { version: string } = JSON.parse(
-    fs.readFileSync(PACKAGE_JSON, "utf8"),
-  );
+export function getCurrentVersion(content: string): string | undefined {
+  const pkg: { version: string } = JSON.parse(content);
   return pkg.version;
 }
 
@@ -17,11 +33,11 @@ export function getCurrentVersion(): string | undefined {
  * replace the version in package.json textually.
  */
 export function replaceVersionInPackageJson(
-  options: DryRunOption,
   prevVersion: string,
   newVersion: string,
-): void {
-  const lines = fs.readFileSync(PACKAGE_JSON, "utf8").split("\n");
+  content: string,
+): string {
+  const lines = content.split("\n");
   let prevLineIsCodeql = false;
   const output: string[] = [];
 
@@ -34,11 +50,5 @@ export function replaceVersionInPackageJson(
     prevLineIsCodeql = line.includes('"name": "codeql",');
   }
 
-  if (!options.dryRun) {
-    fs.writeFileSync(PACKAGE_JSON, `${output.join("\n")}\n`, "utf8");
-  } else {
-    console.info(
-      `[DRY RUN] Would have replaced '${prevVersion}' with '${newVersion}' in package.json`,
-    );
-  }
+  return output.join("\n");
 }

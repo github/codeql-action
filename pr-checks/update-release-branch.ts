@@ -29,6 +29,9 @@ const ORIGIN = "origin";
 /** Environment variables checked (in order) for a GitHub API token. */
 const TOKEN_ENVIRONMENT_VARIABLES = ["GH_TOKEN", "GITHUB_TOKEN"] as const;
 
+/** The expected prefix for release branch names. */
+const RELEASE_BRANCH_PREFIX = "releases/v";
+
 /**
  * Gets a GitHub API token from one of the supported environment variables.
  * @throws If none of the supported environment variables is set.
@@ -88,6 +91,17 @@ function parseCliOptions(): MainOptions {
 async function main(): Promise<void> {
   const options = parseCliOptions();
   const token = getGitHubToken();
+
+  if (!options.targetBranch.startsWith(RELEASE_BRANCH_PREFIX)) {
+    throw new Error(
+      `Expected target branch to start with '${RELEASE_BRANCH_PREFIX}', but got '${options.targetBranch}'.`,
+    );
+  }
+
+  const targetBranchMajorVersion = options.targetBranch.replace(
+    RELEASE_BRANCH_PREFIX,
+    "",
+  );
 }
 
 // Only call `main` if this script was run directly.

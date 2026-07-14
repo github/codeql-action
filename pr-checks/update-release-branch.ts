@@ -1,5 +1,6 @@
 #!/usr/bin/env npx tsx
 
+import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
 import * as fs from "node:fs";
 import { parseArgs } from "node:util";
 
@@ -47,6 +48,47 @@ export function getGitHubToken(): string {
     }
   }
   throw new Error("Missing GitHub token. Set GITHUB_TOKEN or GH_TOKEN.");
+}
+
+/** Options for {@link runGit}. */
+interface RunGitOptions {
+  /** When true, non-zero exit codes will not throw. */
+  allowNonZeroExitCode?: boolean;
+}
+
+/**
+ * Runs `git` with the given `args` and returns the stdout.
+ *
+ * @param args - Arguments to pass to `git`.
+ * @param options - Optional settings.
+ * @throws If `git` does not exit successfully, unless
+ *         `options.allowNonZeroExitCode` is `true`.
+ * @returns The trimmed stdout output.
+ */
+export function runGit(args: string[], options?: RunGitOptions): string {
+  const execOptions: ExecFileSyncOptions = {
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"],
+  };
+
+  try {
+    const result = execFileSync("git", args, execOptions) as string;
+    return result.trimEnd();
+  } catch (error: unknown) {
+    if (options?.allowNonZeroExitCode) {
+      // execFileSync throws an object with `stdout` when the process exits
+      // with a non-zero code.
+      const execError = error as { stdout?: Buffer | string };
+      if (typeof execError.stdout === "string") {
+        return execError.stdout.trimEnd();
+      }
+      if (Buffer.isBuffer(execError.stdout)) {
+        return execError.stdout.toString("utf8").trimEnd();
+      }
+      return "";
+    }
+    throw error;
+  }
 }
 
 /** Reads the current version from `package.json`. */
@@ -122,6 +164,21 @@ async function main(): Promise<void> {
 
   const [, vMinor, vPatch] = currentVersion.split(".");
   const version = `${targetBranchMajorVersion}.${vMinor}.${vPatch}`;
+
+  console.log(
+    `Considering difference between ${options.sourceBranch} and ${options.targetBranch}...`,
+  );
+
+  const sourceBranchShortSha = runGit([
+    "rev-parse",
+    "--short",
+    `${ORIGIN}/${options.sourceBranch}`,
+  ]);
+  console.log(
+    `Current head of ${options.sourceBranch} is ${sourceBranchShortSha}.`,
+  );
+
+  console.log(`Target version: ${version}`);
 }
 
 // Only call `main` if this script was run directly.

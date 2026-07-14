@@ -1,6 +1,7 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
 import * as retry from "@octokit/plugin-retry";
+import { RequestRequestOptions } from "@octokit/types";
 import {
   ProxyAgent,
   RequestInfo,
@@ -81,6 +82,22 @@ export function getRegistryProxy(env: ReadOnlyEnv): ProxyAgent | undefined {
 }
 
 /**
+ * Constructs a `RequestRequestOptions` with a custom `fetch` implementation
+ * that uses `dispatcher` as a proxy for requests.
+ *
+ * @param dispatcher The proxy to use.
+ */
+export function makeProxyRequestOptions(
+  dispatcher: ProxyAgent,
+): RequestRequestOptions {
+  return {
+    fetch: (req: RequestInfo, init?: RequestInit) => {
+      return undiciFetch(req, { ...init, dispatcher });
+    },
+  };
+}
+
+/**
  * Returns an implementation of `fetch` to use for API requests.
  * This will run API requests through the private registry authentication proxy
  * if it is configured.
@@ -96,13 +113,20 @@ export function getApiFetch(env: ReadOnlyEnv): typeof undiciFetch {
   return proxiedFetch;
 }
 
+interface CreateApiClientOptions {
+  allowExternal?: boolean;
+  proxy?: ProxyAgent;
+}
+
 function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
-  { allowExternal = false } = {},
+  { allowExternal = false, proxy = undefined }: CreateApiClientOptions = {},
 ) {
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+  const requestOptions =
+    proxy === undefined ? undefined : makeProxyRequestOptions(proxy);
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiDetails.apiURL,
@@ -113,7 +137,7 @@ function createApiClientWithDetails(
         warn: core.warning,
         error: core.error,
       },
-      request: { fetch: getApiFetch(getEnv()) },
+      request: requestOptions,
       retry: {
         doNotRetry: DO_NOT_RETRY_STATUSES,
       },
@@ -135,8 +159,9 @@ export function getApiClient(env: ReadOnlyEnv = getEnv()) {
 
 export function getApiClientWithExternalAuth(
   apiDetails: GitHubApiCombinedDetails,
+  proxy?: ProxyAgent,
 ) {
-  return createApiClientWithDetails(apiDetails, { allowExternal: true });
+  return createApiClientWithDetails(apiDetails, { allowExternal: true, proxy });
 }
 
 /**

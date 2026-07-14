@@ -92,6 +92,12 @@ export function runGit(args: string[], options?: RunGitOptions): string {
   }
 }
 
+/** Returns true if the given branch exists on the origin remote. */
+export function branchExistsOnRemote(branchName: string): boolean {
+  const result = runGit(["ls-remote", "--heads", ORIGIN, branchName]);
+  return result !== "";
+}
+
 /** Reads the current version from `package.json`. */
 export function getCurrentVersion(): string | undefined {
   const pkg: { version: string } = JSON.parse(
@@ -268,7 +274,23 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(`Target version: ${version}`);
+  // Use a distinct branch prefix to support specific PR checks on backports.
+  const branchPrefix = options.isPrimaryRelease ? "update" : "backport";
+
+  // The branch name is based on the target version and the SHA of the source
+  // branch head. If the branch already exists we can assume this script has
+  // already run for this combination.
+  const newBranchName = `${branchPrefix}-v${version}-${sourceBranchShortSha}`;
+  console.log(`Branch name is '${newBranchName}'.`);
+
+  // Check if the branch already exists. If so we can abort as this script
+  // has already run on this combination of branches.
+  if (branchExistsOnRemote(newBranchName)) {
+    console.log(`Branch '${newBranchName}' already exists. Nothing to do.`);
+    return;
+  }
+
+  console.log(`Creating branch ${newBranchName}.`);
 }
 
 // Only call `main` if this script was run directly.

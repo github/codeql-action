@@ -327,10 +327,9 @@ async function run(actionState: ActionState<["Logger", "Env", "Actions"]>) {
     toolsSource = initCodeQLResult.toolsSource;
     zstdAvailability = initCodeQLResult.zstdAvailability;
 
-    // Populate the in-memory command cache with CLI version and languages.
-    // These results will be persisted to disk at the end of the init action.
+    // Populate the in-memory command cache with CLI version.
+    // This result will be persisted to disk at the end of the init action.
     await codeql.getVersion();
-    await codeql.resolveLanguages();
 
     // Check the workflow for problems. If there are any problems, they are reported
     // to the workflow log. No exceptions are thrown.

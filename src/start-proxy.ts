@@ -187,9 +187,16 @@ function isPAT(value: string) {
   ]);
 }
 
+/**
+ * A list of always-enabled registry types. The registry types in this list are always
+ * enabled, because generic CodeQL workflow components may use them rather than just
+ * language-specific components.
+ */
+export const ALWAYS_ENABLED_REGISTRY_TYPE = ["git_source"] as const;
+
 type RegistryMapping = Partial<Record<BuiltInLanguage, string[]>>;
 
-const LANGUAGE_TO_REGISTRY_TYPE: Required<RegistryMapping> = {
+export const LANGUAGE_TO_REGISTRY_TYPE: Required<RegistryMapping> = {
   actions: [],
   cpp: [],
   java: ["maven_repository"],
@@ -233,9 +240,11 @@ function getRegistryAddress(
   }
 }
 
-// getCredentials returns registry credentials from action inputs.
-// It prefers `registries_credentials` over `registry_secrets`.
-// If neither is set, it returns an empty array.
+/**
+ * Returns registry credentials from action inputs.
+ * It prefers `registriesCredentials` over `registrySecrets`.
+ * If neither is set, it returns an empty array.
+ */
 export function getCredentials(
   logger: Logger,
   registrySecrets: string | undefined,
@@ -291,8 +300,11 @@ export function getCredentials(
     const address = getRegistryAddress(e);
 
     // Filter credentials based on language if specified. `type` is the registry type.
-    // E.g., "maven_feed" for Java/Kotlin, "nuget_repository" for C#.
+    // E.g., "maven_repository" for Java/Kotlin, "nuget_feed" for C#.
+    // We always allow types in `ALWAYS_ENABLED_REGISTRY_TYPE` since they can be used by
+    // other parts of the workflow.
     if (
+      !ALWAYS_ENABLED_REGISTRY_TYPE.some((t) => t === e.type) &&
       registryTypeForLanguage &&
       !registryTypeForLanguage.some((t) => t === e.type)
     ) {

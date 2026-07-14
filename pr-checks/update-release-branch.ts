@@ -1,5 +1,23 @@
 #!/usr/bin/env npx tsx
 
+/**
+ * Creates a release preparation branch and opens a PR to merge changes from a
+ * source branch into a target release branch.
+ *
+ * For primary releases this merges `main` into the latest `releases/vN` branch.
+ * For backports this merges a newer release branch into an older one, handling
+ * version number and changelog migration automatically.
+ *
+ * Usage:
+ *   update-release-branch.ts \
+ *     --repository-nwo github/codeql-action \
+ *     --source-branch main \
+ *     --target-branch releases/v4 \
+ *     --conductor username \
+ *     [--is-primary-release] \
+ *     [--dry-run]
+ */
+
 import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
 import * as fs from "node:fs";
 import { parseArgs } from "node:util";

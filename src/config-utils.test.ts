@@ -6,12 +6,14 @@ import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
+import { ActionState } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { AnalysisKind, supportedAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import { UserConfig } from "./config/db-config";
+import * as file from "./config/file";
 import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
@@ -38,6 +40,7 @@ import {
   makeMacro,
   initAllState,
   callee,
+  SAMPLE_DOTCOM_API_DETAILS,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -2527,5 +2530,71 @@ test("determineUserConfig - ignores config file input outside Default Setup if F
         name: "my config",
         queries: [{ uses: "./foo_file" }],
       });
+  });
+});
+
+test("loadUserConfig - loads local configuration files", async (t) => {
+  await withTmpDir(async (workspaceDir) => {
+    await withTmpDir(async (tmpDir) => {
+      // Construct the test target.
+      const loadUserConfig = (
+        actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
+        filePath: string,
+      ) =>
+        configUtils.loadUserConfig(
+          actionState,
+          filePath,
+          workspaceDir,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+        );
+      const target = callee(loadUserConfig);
+
+      // `loadUserConfig` should load local configuration files if they are inside the workspace:
+      const insideOfWorkspace = path.join(workspaceDir, "some-file.yml");
+      fs.writeFileSync(insideOfWorkspace, "test-key: present", "utf8");
+
+      await target
+        .withArgs(insideOfWorkspace)
+        .passes(t.deepEqual, { "test-key": "present" });
+
+      // `loadUserConfig` should normally throw if the path is outside of the workspace:
+      const outsideOfWorkspace = path.join(
+        tmpDir,
+        "not-the-generated-file.yml",
+      );
+      fs.writeFileSync(outsideOfWorkspace, "test-key: present", "utf8");
+
+      await target
+        .withArgs(outsideOfWorkspace)
+        .throws(t, { instanceOf: ConfigurationError });
+
+      // `loadUserConfig` does not throw if the path is the result of `userConfigFromActionPath`:
+      const generatedPath = configUtils.userConfigFromActionPath(tmpDir);
+      fs.writeFileSync(generatedPath, "test-key: present", "utf8");
+
+      await target
+        .withArgs(generatedPath)
+        .passes(t.deepEqual, { "test-key": "present" });
+    });
+  });
+});
+
+test.serial("loadUserConfig - loads remote configuration files", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const getRemoteConfig = sinon.stub(file, "getRemoteConfig").resolves({});
+
+    const remoteAddress = "owner/repo/file@ref";
+    await callee(configUtils.loadUserConfig)
+      .withArgs(remoteAddress, tmpDir, SAMPLE_DOTCOM_API_DETAILS, tmpDir)
+      .passes(t.deepEqual, {});
+
+    t.true(
+      getRemoteConfig.calledOnceWithExactly(
+        sinon.match.any,
+        remoteAddress,
+        SAMPLE_DOTCOM_API_DETAILS,
+      ),
+    );
   });
 });

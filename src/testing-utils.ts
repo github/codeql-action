@@ -356,6 +356,11 @@ class EnvBuilder<
   }
 }
 
+export interface PassedAssertion<R, T> {
+  result: Awaited<R>;
+  assertionResult: T;
+}
+
 class CallableEnvBuilder<
   Args extends readonly any[],
   R,
@@ -395,7 +400,7 @@ class CallableEnvBuilder<
   public async passes<AArgs extends readonly any[], AResult>(
     assertion: (val: Awaited<R>, ...assertionArgs: AArgs) => AResult,
     ...assertionArgs: AArgs
-  ): Promise<AResult> {
+  ): Promise<PassedAssertion<R, AResult>> {
     // this.call() may or may not return a promise,
     // `Promise.resolve` turns the result into one if it isn't already,
     // and we then await it. That ensures that `result` is an `Awaited<R>`.
@@ -409,8 +414,8 @@ class CallableEnvBuilder<
       await delayedCheck(this);
     }
 
-    // Return the result of the main assertion.
-    return assertionResult;
+    // Return the results of the function call and the main assertion.
+    return { result, assertionResult };
   }
 
   /**

@@ -10,6 +10,7 @@ import {
   getActionVersion,
   getOptionalInput,
   isAnalyzingPullRequest,
+  isDefaultSetup,
   isDynamicWorkflow,
 } from "./actions-util";
 import {
@@ -26,6 +27,7 @@ import {
   calculateAugmentation,
   ExcludeQueryFilter,
   generateCodeScanningConfig,
+  mergeDefaultSetupAndUserConfigs,
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
@@ -466,6 +468,16 @@ async function downloadCacheWithTime(
   return { trapCaches, trapCacheDownloadTime };
 }
 
+/**
+ * Loads a CLI configuration file from `configFile`.
+ *
+ * @param actionState The Action state.
+ * @param configFile The address of the configuration file.
+ * @param workspacePath The workspace path, used to check that the configuration file exists relative to it.
+ * @param apiDetails Information for how to access the API to fetch remote files.
+ * @param tempDir The temporary directory which may contain a CodeQL Action-generated configuration file.
+ * @returns The loaded configuration file, if successful.
+ */
 async function loadUserConfig(
   actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
   configFile: string,
@@ -936,7 +948,11 @@ function dbLocationOrDefault(
   return dbLocation || path.resolve(tempDir, "codeql_databases");
 }
 
-function userConfigFromActionPath(tempDir: string): string {
+/**
+ * Gets the path for the CodeQL Action-generated configuration file,
+ * which is used to store the `config` input.
+ */
+export function userConfigFromActionPath(tempDir: string): string {
   return path.resolve(tempDir, "user-config-from-action.yml");
 }
 
@@ -997,6 +1013,110 @@ export async function applyIncrementalAnalysisSettings(
 }
 
 /**
+ * Determines where to load the `UserConfig` for the CLI from and loads it.
+ *
+ * @param inputs The Action inputs. The `configFile` value will be mutated
+ *               if a CodeQL Action-generated file should be used.
+ *
+ * @returns The loaded `UserConfig`, which might be empty if no configuration
+ *          was specified.
+ */
+export async function determineUserConfig(
+  action: ActionState<["Logger", "Env", "FeatureFlags"]>,
+  tempDir: string,
+  inputs: InitConfigInputs,
+): Promise<UserConfig> {
+  const validateConfig = await action.features.getValue(
+    Feature.ValidateDbConfig,
+  );
+
+  // We have the following cases:
+  // 1. A `config` or `config-file` input is provided, but not both: use the provided one.
+  // 2. Both are provided and we are in an advanced workflow: ignore the `config-file` input.
+  // 3. Both are provided and we are in Default Setup: the `config` input uses a limited
+  //    set of options, which are supported by `mergeDefaultSetupAndUserConfigs`,
+  //    and we merge the two configs.
+  if (inputs.configInput) {
+    const computedConfigPath = userConfigFromActionPath(tempDir);
+
+    // Get a function which enables us to determine whether the FF that allows us to
+    // merge supported configuration file properties is enabled. We only execute
+    // this lazily if the other checks pass.
+    const allowMergeConfigs = () =>
+      action.features.getValue(Feature.AllowMergeConfigFiles);
+
+    // Check whether we also have a `config-file` input and decide what to do.
+    if (
+      inputs.configFile &&
+      isDefaultSetup(action.env) &&
+      (await allowMergeConfigs())
+    ) {
+      // If the FF is enabled and we are in Default Setup, combine the supported
+      // configuration file properties and write the result to disk.
+      const fromConfigInput = parseUserConfig(
+        action.logger,
+        "`config` input",
+        inputs.configInput,
+        validateConfig,
+      );
+      const fromConfigFile = await loadUserConfig(
+        action,
+        inputs.configFile,
+        inputs.workspacePath,
+        inputs.apiDetails,
+        tempDir,
+      );
+
+      // Write the merged configuration to disk so that it can be loaded subsequently by
+      // the CLI or other CodeQL Action steps.
+      const mergedConfig = mergeDefaultSetupAndUserConfigs(
+        action.logger,
+        fromConfigInput,
+        fromConfigFile,
+      );
+      fs.writeFileSync(computedConfigPath, yaml.dump(mergedConfig));
+      action.logger.debug(
+        `Using merged configurations from 'config' input with configuration from '${inputs.configFile}': ${computedConfigPath}`,
+      );
+
+      inputs.configFile = computedConfigPath;
+      return mergedConfig;
+    } else {
+      // If we are in this branch and there is a `config-file` input, then it means
+      // we didn't meet the conditions for merging the configurations. Warn the user
+      // that the configuration file will be ignored.
+      if (inputs.configFile) {
+        action.logger.warning(
+          `Both a config file and config input were provided. Ignoring config file.`,
+        );
+      }
+
+      // Write the `config` input straight to disk.
+      fs.writeFileSync(computedConfigPath, inputs.configInput);
+      inputs.configFile = computedConfigPath;
+      action.logger.debug(
+        `Using config from action input: ${inputs.configFile}`,
+      );
+    }
+  }
+
+  // Load whatever configuration file we have, if any.
+  if (!inputs.configFile) {
+    action.logger.debug("No configuration file was provided");
+    return {};
+  } else {
+    action.logger.debug(`Using configuration file: ${inputs.configFile}`);
+    return await loadUserConfig(
+      action,
+      inputs.configFile,
+      inputs.workspacePath,
+      inputs.apiDetails,
+      tempDir,
+    );
+  }
+}
+
+/**
  * Load and return the config.
  *
  * This will parse the config from the user input if present, or generate
@@ -1009,31 +1129,7 @@ export async function initConfig(
   const { logger, features } = actionState;
   const { tempDir } = inputs;
 
-  // if configInput is set, it takes precedence over configFile
-  if (inputs.configInput) {
-    if (inputs.configFile) {
-      logger.warning(
-        `Both a config file and config input were provided. Ignoring config file.`,
-      );
-    }
-    inputs.configFile = userConfigFromActionPath(tempDir);
-    fs.writeFileSync(inputs.configFile, inputs.configInput);
-    logger.debug(`Using config from action input: ${inputs.configFile}`);
-  }
-
-  let userConfig: UserConfig = {};
-  if (!inputs.configFile) {
-    logger.debug("No configuration file was provided");
-  } else {
-    logger.debug(`Using configuration file: ${inputs.configFile}`);
-    userConfig = await loadUserConfig(
-      actionState,
-      inputs.configFile,
-      inputs.workspacePath,
-      inputs.apiDetails,
-      tempDir,
-    );
-  }
+  const userConfig = await determineUserConfig(actionState, tempDir, inputs);
 
   const config = await initActionState(inputs, userConfig);
 
@@ -1190,7 +1286,7 @@ function isLocal(configPath: string): boolean {
   return configPath.indexOf("@") === -1;
 }
 
-function getLocalConfig(
+export function getLocalConfig(
   logger: Logger,
   configFile: string,
   validateConfig: boolean,

@@ -4,11 +4,16 @@ import * as yaml from "js-yaml";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
+import {
+  addNoLanguageDiagnostic,
+  makeTelemetryDiagnostic,
+} from "../diagnostics";
 import * as errorMessages from "../error-messages";
 import {
   RepositoryProperties,
   RepositoryPropertyName,
 } from "../feature-flags/properties";
+import * as json from "../json";
 import { Language } from "../languages";
 import { Logger } from "../logging";
 import { cloneObject, ConfigurationError, prettyPrintPack } from "../util";
@@ -28,6 +33,21 @@ export interface QuerySpec {
   uses: string;
 }
 
+const ORG_SCHEMA = {
+  /** An array of model pack names. */
+  "model-packs": json.optional(json.array(json.string)),
+} as const satisfies json.Schema;
+
+/** Not intended to be provided directly by a user. */
+export type OrgType = json.FromSchema<typeof ORG_SCHEMA>;
+
+const DEFAULT_SETUP_SCHEMA = {
+  org: json.optional<OrgType>(json.object(ORG_SCHEMA)),
+} as const satisfies json.Schema;
+
+/** Not intended to be provided directly by a user. */
+export type DefaultSetupConfig = json.FromSchema<typeof DEFAULT_SETUP_SCHEMA>;
+
 /**
  * Format of the config file supplied by the user.
  */
@@ -46,6 +66,117 @@ export interface UserConfig {
   // Set of query filters to include and exclude extra queries based on
   // codeql query suite `include` and `exclude` properties
   "query-filters"?: QueryFilter[];
+
+  /** An array (possibly empty or absent) of threat models to use. */
+  "threat-models"?: string[];
+
+  /**
+   * Configuration options that are reserved for us in Default Setup and
+   * not intended to be supplied directly by users.
+   */
+  "default-setup"?: DefaultSetupConfig;
+}
+
+/** A subset of the `UserConfig` schema that is used by Default Setup. */
+const DEFAULT_SETUP_CONFIG_SCHEMA = {
+  "threat-models": json.optional(json.array(json.string)),
+  "default-setup": json.optional<DefaultSetupConfig>(
+    json.object(DEFAULT_SETUP_SCHEMA),
+  ),
+} as const satisfies json.Schema;
+
+/**
+ * Merges supported properties from two configuration files. This is intended only for
+ * use with merging the `config` input provided by Default Setup with a potentially
+ * richer configuration file provided by a user.
+ *
+ * @param logger The logger to use.
+ * @param fromConfigInput The configuration from Default Setup.
+ * @param fromConfigFile The user-supplied configuration.
+ * @returns The combination of both configuration files.
+ */
+export function mergeDefaultSetupAndUserConfigs(
+  logger: Logger,
+  fromConfigInput: UserConfig,
+  fromConfigFile: UserConfig,
+): UserConfig {
+  logger.debug(
+    "Combining configuration files from 'config' and 'config-file' inputs",
+  );
+
+  // Check for unexpected keys in the configuration from the `config` input
+  // that was provided by Default Setup. This should only contain the keys
+  // we would expect to receive from Default Setup.
+  const schemaCheckResult = json.checkSchema(
+    DEFAULT_SETUP_CONFIG_SCHEMA,
+    fromConfigInput as json.UnvalidatedObject<any>,
+  );
+
+  // Report any invalid or unrecognised keys.
+  if (schemaCheckResult.invalidKeys.length > 0) {
+    logger.warning(
+      `Invalid keys in Default Setup configuration: ${schemaCheckResult.invalidKeys.join(", ")}`,
+    );
+    addNoLanguageDiagnostic(
+      undefined,
+      makeTelemetryDiagnostic(
+        "codeql-action/invalid-default-setup-config-keys",
+        "Invalid Default Setup configuration keys",
+        {
+          invalidKeys: schemaCheckResult.invalidKeys,
+        },
+      ),
+    );
+  }
+  if (schemaCheckResult.unknownKeys.length > 0) {
+    logger.warning(
+      `Unrecognised keys in Default Setup configuration: ${schemaCheckResult.unknownKeys.join(", ")}`,
+    );
+    addNoLanguageDiagnostic(
+      undefined,
+      makeTelemetryDiagnostic(
+        "codeql-action/unrecognised-default-setup-config-keys",
+        "Unrecognised Default Setup configuration keys",
+        {
+          unrecognisedKeys: schemaCheckResult.unknownKeys,
+        },
+      ),
+    );
+  }
+
+  // Combine all specified threat models from both sources.
+  const threatModels = new Set(fromConfigInput["threat-models"] || []);
+  for (const configFileThreatModel of fromConfigFile["threat-models"] || []) {
+    threatModels.add(configFileThreatModel);
+  }
+
+  // Warn if there is a 'default-setup' configuration key in the user-supplied configuration,
+  // since it is not meant to be used and we therefore ignore it here.
+  if (fromConfigFile["default-setup"]) {
+    logger.warning(
+      `The 'default-setup' configuration key is not supported in user-supplied configuration files and will be ignored.`,
+    );
+  }
+
+  // Since we expect the `fromConfigInput` configuration to be provided by Default Setup,
+  // we expect a limited set of options. Therefore, we base the overall configuration on
+  // the one provided via the `config-file` input, which may be richer.
+  const result = { ...fromConfigFile };
+  delete result["threat-models"];
+  delete result["default-setup"];
+
+  if (fromConfigInput["default-setup"]?.org?.["model-packs"]) {
+    result["default-setup"] = {
+      org: {
+        "model-packs": fromConfigInput["default-setup"].org["model-packs"],
+      },
+    };
+  }
+  if (threatModels.size > 0) {
+    result["threat-models"] = Array.from(threatModels);
+  }
+
+  return result;
 }
 
 /**

@@ -67,3 +67,76 @@ test("validateSchema - optional properties are optional", async (t) => {
   t.true(json.validateSchema(optionalSchema, { optionalKey: "" }));
   t.true(json.validateSchema(optionalSchema, { optionalKey: "foo" }));
 });
+
+const arraySchema = {
+  arrayKey: json.array(json.number),
+};
+
+test("validateSchema - validates arrays", async (t) => {
+  // Arrays of numeric elements are accepted.
+  t.true(json.validateSchema(arraySchema, { arrayKey: [] }));
+  t.true(json.validateSchema(arraySchema, { arrayKey: [4] }));
+  t.true(json.validateSchema(arraySchema, { arrayKey: [4, 8] }));
+  t.true(json.validateSchema(arraySchema, { arrayKey: [4, 8, 15] }));
+
+  // Other array elements are not accepted.
+  t.false(json.validateSchema(arraySchema, { arrayKey: [4, 8, 15, "bar"] }));
+  t.false(json.validateSchema(arraySchema, { arrayKey: [4, 8, undefined] }));
+  t.false(json.validateSchema(arraySchema, { arrayKey: [4, 8, 15, null] }));
+});
+
+const objectSchema = {
+  objectKey: json.object(arraySchema),
+};
+
+test("validateSchema - validates objects", async (t) => {
+  // Objects of the given schema are accepted.
+  t.true(json.validateSchema(objectSchema, { objectKey: { arrayKey: [] } }));
+  t.true(json.validateSchema(objectSchema, { objectKey: { arrayKey: [4] } }));
+
+  // Other values are not accepted.
+  t.false(json.validateSchema(objectSchema, {}));
+  t.false(json.validateSchema(objectSchema, { objectKey: [] }));
+  t.false(json.validateSchema(objectSchema, { objectKey: undefined }));
+  t.false(json.validateSchema(objectSchema, { objectKey: null }));
+  t.false(json.validateSchema(objectSchema, { objectKey: "foo" }));
+  t.false(json.validateSchema(objectSchema, { objectKey: 123 }));
+});
+
+const checkSchemaTestSchema = {
+  rootKey: json.object(objectSchema),
+};
+
+test("checkSchema - reports unknown keys", async (t) => {
+  const result = json.checkSchema(checkSchemaTestSchema, {
+    rootKey: {
+      objectKey: {
+        arrayKey: [],
+      },
+      nestedExtraKey: "foo",
+    },
+    extraKey: "bar",
+  });
+
+  t.true(result.valid);
+  t.deepEqual(
+    result.unknownKeys.sort(),
+    [".extraKey", ".rootKey.nestedExtraKey"].sort(),
+  );
+});
+
+test("checkSchema - reports invalid keys", async (t) => {
+  const result = json.checkSchema(checkSchemaTestSchema, {
+    rootKey: {
+      objectKey: {
+        arrayKey: ["foo"],
+      },
+    },
+  });
+
+  t.false(result.valid);
+  t.deepEqual(
+    result.invalidKeys.sort(),
+    [".rootKey.objectKey.arrayKey[0]"].sort(),
+  );
+});

@@ -260,6 +260,27 @@ function parseCliOptions(): MainOptions {
   };
 }
 
+/**
+ * Rebuilds the action (npm ci + npm run build) and commits any changes.
+ */
+export function rebuildAction(options: MainOptions): void {
+  runCommand("npm", ["ci"]);
+  runCommand("npm", ["run", "build"]);
+
+  runGit(["add", "--all"], { dryRun: options.dryRun });
+
+  // `git diff --cached --quiet` exits 0 if there are no staged changes.
+  try {
+    execFileSync("git", ["diff", "--cached", "--quiet"]);
+    console.log("Rebuild produced no changes; skipping Rebuild commit.");
+  } catch {
+    runGit(["commit", "-m", REBUILD_COMMIT_MESSAGE], {
+      dryRun: options.dryRun,
+    });
+    console.log("Created Rebuild commit.");
+  }
+}
+
 async function main(): Promise<void> {
   const options = parseCliOptions();
   const token = getGitHubToken();

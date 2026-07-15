@@ -362,11 +362,30 @@ export interface PassedAssertion<R, T> {
   assertionResult: T;
 }
 
+/**
+ * A more minimal, exported interface for `CallableEnvBuilder`. This makes it easier to
+ * define helper functions in tests which expect a value of a compatible type.
+ */
+export interface AssertableTarget<R> {
+  passes<AArgs extends readonly any[], AResult>(
+    assertion: (val: Awaited<R>, ...assertionArgs: AArgs) => AResult,
+    ...assertionArgs: AArgs
+  ): Promise<PassedAssertion<R, AResult>>;
+
+  throws<ErrorType extends ErrorConstructor | Error>(
+    t: ExecutionContext<unknown>,
+    expectations?: ThrowsExpectation<ErrorType>,
+  ): Promise<ThrownError<ErrorType>>;
+}
+
 class CallableEnvBuilder<
-  Args extends readonly any[],
-  R,
-  Fs extends ReadonlyArray<AllState[number]>,
-> extends BaseEnvBuilder<Args, R, Fs> {
+    Args extends readonly any[],
+    R,
+    Fs extends ReadonlyArray<AllState[number]>,
+  >
+  extends BaseEnvBuilder<Args, R, Fs>
+  implements AssertableTarget<R>
+{
   private args: Args;
 
   constructor(

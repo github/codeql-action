@@ -243,12 +243,14 @@ export async function getPrForCommit(
   repo: string,
   commit: GitHubCommit,
 ): Promise<AssociatedPullRequest | undefined> {
-  const { data: prs } =
-    await client.rest.repos.listPullRequestsAssociatedWithCommit({
+  const prs = await client.paginate(
+    client.rest.repos.listPullRequestsAssociatedWithCommit,
+    {
       owner,
       repo,
       commit_sha: commit.sha,
-    });
+    },
+  );
 
   if (prs.length === 0) {
     return undefined;

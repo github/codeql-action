@@ -506,7 +506,7 @@ export async function loadUserConfig(
     return getLocalConfig(actionState.logger, configFile, validateConfig);
   } else {
     // Drop the explicit prefix if it is present. Since `REMOTE_PATH_PREFIX` is chosen
-    // to not conflict with permissable characters in "owner" or "repo" components,
+    // to not conflict with permissible characters in "owner" or "repo" components,
     // this does not risk removing valid parts of either component by accident.
     if (isRemotePath(configFile)) {
       configFile = configFile.substring(REMOTE_PATH_PREFIX.length);

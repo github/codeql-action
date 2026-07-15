@@ -508,7 +508,7 @@ export async function loadUserConfig(
     // Drop the explicit prefix if it is present. Since `REMOTE_PATH_PREFIX` is chosen
     // to not conflict with permissible characters in "owner" or "repo" components,
     // this does not risk removing valid parts of either component by accident.
-    if (isRemotePath(configFile)) {
+    if (isExplicitRemotePath(configFile)) {
       configFile = configFile.substring(REMOTE_PATH_PREFIX.length);
     }
     return await getRemoteConfig(actionState, configFile, apiDetails);
@@ -1293,7 +1293,7 @@ export async function initConfig(
  *
  * @param configPath The path to test.
  */
-function isRelativePath(configPath: string): boolean {
+function isExplicitLocalPath(configPath: string): boolean {
   return configPath.startsWith(LOCAL_PATH_PREFIX);
 }
 
@@ -1303,7 +1303,7 @@ function isRelativePath(configPath: string): boolean {
  *
  * @param configPath The path to test.
  */
-function isRemotePath(configPath: string): boolean {
+function isExplicitRemotePath(configPath: string): boolean {
   return configPath.startsWith(REMOTE_PATH_PREFIX);
 }
 
@@ -1326,12 +1326,12 @@ function isLocal(configPath: string): boolean {
   // If the path starts with `LOCAL_PATH_PREFIX`, it is explicitly local.
   // This allows local paths that would otherwise contain '@'
   // to be used with a `LOCAL_PATH_PREFIX` prefix.
-  if (isRelativePath(configPath)) {
+  if (isExplicitLocalPath(configPath)) {
     return true;
   }
   // If the path starts with `REMOTE_PATH_PREFIX`, it is explicitly remote.
   // This allows users to resolve ambiguity by specifying `REMOTE_PATH_PREFIX`.
-  if (isRemotePath(configPath)) {
+  if (isExplicitRemotePath(configPath)) {
     return false;
   }
 

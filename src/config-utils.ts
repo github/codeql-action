@@ -31,7 +31,11 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
-import { getRemoteConfig, LOCAL_PATH_PREFIX } from "./config/file";
+import {
+  getRemoteConfig,
+  LOCAL_PATH_PREFIX,
+  REMOTE_PATH_PREFIX,
+} from "./config/file";
 import {
   parseRegistries,
   type RegistryConfigNoCredentials,
@@ -501,6 +505,12 @@ export async function loadUserConfig(
     );
     return getLocalConfig(actionState.logger, configFile, validateConfig);
   } else {
+    // Drop the explicit prefix if it is present. Since `REMOTE_PATH_PREFIX` is chosen
+    // to not conflict with permissable characters in "owner" or "repo" components,
+    // this does not risk removing valid parts of either component by accident.
+    if (isRemotePath(configFile)) {
+      configFile = configFile.substring(REMOTE_PATH_PREFIX.length);
+    }
     return await getRemoteConfig(actionState, configFile, apiDetails);
   }
 }
@@ -1288,6 +1298,16 @@ function isRelativePath(configPath: string): boolean {
 }
 
 /**
+ * Determines if `configPath` starts with the prefix used to explicitly mark a path
+ * as a remote path (`REMOTE_PATH_PREFIX`).
+ *
+ * @param configPath The path to test.
+ */
+function isRemotePath(configPath: string): boolean {
+  return configPath.startsWith(REMOTE_PATH_PREFIX);
+}
+
+/**
  * Determines if `configPath` contains a '@' character.
  *
  * @param configPath The path to test.
@@ -1298,8 +1318,6 @@ function containsAtRef(configPath: string): boolean {
 
 /**
  * Determines if `configPath` refers to a local configuration file.
- * This assumes the `OLD_REMOTE_ADDRESS_FORMAT` which must contain a '@'
- * character for remote addresses.
  *
  * @param configPath The path to test.
  * @returns True if it is local, or false otherwise.
@@ -1311,8 +1329,15 @@ function isLocal(configPath: string): boolean {
   if (isRelativePath(configPath)) {
     return true;
   }
+  // If the path starts with `REMOTE_PATH_PREFIX`, it is explicitly remote.
+  // This allows users to resolve ambiguity by specifying `REMOTE_PATH_PREFIX`.
+  if (isRemotePath(configPath)) {
+    return false;
+  }
 
   // Otherwise, the path is also local if it does not contain '@'.
+  // This assumes the `OLD_REMOTE_ADDRESS_FORMAT` which must contain a '@'
+  // character for remote addresses.
   return !containsAtRef(configPath);
 }
 

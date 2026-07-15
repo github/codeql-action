@@ -31,7 +31,7 @@ import {
   parseUserConfig,
   UserConfig,
 } from "./config/db-config";
-import { getRemoteConfig } from "./config/file";
+import { getRemoteConfig, LOCAL_PATH_PREFIX } from "./config/file";
 import {
   parseRegistries,
   type RegistryConfigNoCredentials,
@@ -1278,13 +1278,13 @@ export async function initConfig(
 }
 
 /**
- * Determines if `configPath` is explicitly local. That is, it starts with "./".
- * A configuration file path that starts with "./" is always treated as a local path.
+ * Determines if `configPath` is explicitly local. That is, it starts with `LOCAL_PATH_PREFIX`.
+ * A configuration file path that starts with `LOCAL_PATH_PREFIX` is always treated as a local path.
  *
  * @param configPath The path to test.
  */
 function isRelativePath(configPath: string): boolean {
-  return configPath.startsWith("./");
+  return configPath.startsWith(LOCAL_PATH_PREFIX);
 }
 
 /**
@@ -1305,9 +1305,9 @@ function containsAtRef(configPath: string): boolean {
  * @returns True if it is local, or false otherwise.
  */
 function isLocal(configPath: string): boolean {
-  // If the path starts with "./", it is explicitly local.
+  // If the path starts with `LOCAL_PATH_PREFIX`, it is explicitly local.
   // This allows local paths that would otherwise contain '@'
-  // to be used with a "./" prefix.
+  // to be used with a `LOCAL_PATH_PREFIX` prefix.
   if (isRelativePath(configPath)) {
     return true;
   }

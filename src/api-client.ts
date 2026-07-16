@@ -1,5 +1,8 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
+import { type Octokit } from "@octokit/core";
+import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
+import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 import * as retry from "@octokit/plugin-retry";
 
 import { getActionVersion, getRequiredInput } from "./actions-util";
@@ -43,10 +46,13 @@ export interface GitHubApiExternalRepoDetails {
   apiURL: string | undefined;
 }
 
+/** The type of GitHub API client we use. */
+export type ApiClient = Octokit & Api & { paginate: PaginateInterface };
+
 function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
   { allowExternal = false } = {},
-) {
+): ApiClient {
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);

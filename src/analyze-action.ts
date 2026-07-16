@@ -212,7 +212,7 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
-async function run({ startedAt, logger }: ActionState<["Logger"]>) {
+async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 

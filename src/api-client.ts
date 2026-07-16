@@ -1,5 +1,8 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
+import { type Octokit } from "@octokit/core";
+import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
+import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 import * as retry from "@octokit/plugin-retry";
 import { RequestRequestOptions } from "@octokit/types";
 import {
@@ -122,6 +125,10 @@ export function getApiFetch(
   return proxiedFetch;
 }
 
+/** The type of GitHub API client we use. */
+export type ApiClient = Octokit & Api & { paginate: PaginateInterface };
+
+/** Options for `createApiClientWithDetails`. */
 interface CreateApiClientOptions {
   allowExternal?: boolean;
   proxy?: ProxyAgent;
@@ -130,7 +137,7 @@ interface CreateApiClientOptions {
 function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
   { allowExternal = false, proxy = undefined }: CreateApiClientOptions = {},
-) {
+): ApiClient {
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);

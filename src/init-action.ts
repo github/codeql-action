@@ -203,7 +203,9 @@ async function sendCompletedStatusReport(
   }
 }
 
-async function run(actionState: ActionState<["Logger", "Env", "Actions"]>) {
+async function run(
+  actionState: ActionState<["Base", "Logger", "Env", "Actions"]>,
+) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 

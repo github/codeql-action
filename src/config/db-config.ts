@@ -125,6 +125,7 @@ export function mergeDefaultSetupAndUserConfigs(
         {
           invalidKeys: schemaCheckResult.invalidKeys,
         },
+        ["internal-error"],
       ),
     );
   }
@@ -140,6 +141,7 @@ export function mergeDefaultSetupAndUserConfigs(
         {
           unrecognisedKeys: schemaCheckResult.unknownKeys,
         },
+        ["internal-error"],
       ),
     );
   }

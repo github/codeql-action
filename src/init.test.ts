@@ -8,6 +8,7 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { createStubCodeQL } from "./codeql";
+import { ActionsEnvVars } from "./environment";
 import { Feature } from "./feature-flags";
 import {
   checkPacksForOverlayCompatibility,
@@ -84,7 +85,7 @@ for (const { runnerEnv, ErrorConstructor, message } of [
     `cleanupDatabaseClusterDirectory throws a ${ErrorConstructor.name} when cleanup fails on ${runnerEnv} runner`,
     async (t) => {
       await withTmpDir(async (tmpDir: string) => {
-        process.env["RUNNER_ENVIRONMENT"] = runnerEnv;
+        process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = runnerEnv;
 
         const dbLocation = path.resolve(tmpDir, "dbs");
         fs.mkdirSync(dbLocation, { recursive: true });

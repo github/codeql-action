@@ -211,8 +211,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Node.js",
         uses: pinnedUses(
           "actions/setup-node",
-          "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
-          "v6.4.0",
+          "820762786026740c76f36085b0efc47a31fe5020",
+          "v7.0.0",
         ),
         with: {
           "node-version": defaultLanguageVersions.javascript,
@@ -253,8 +253,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "1bcf9fb12cf4aa7d266a90ae39939e61372fe520",
-          "v5.4.0",
+          "0f481fcb613427c0f801b606911222b5b6f3083a",
+          "v5.5.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,

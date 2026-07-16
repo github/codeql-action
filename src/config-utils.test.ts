@@ -6,12 +6,14 @@ import test, { ExecutionContext } from "ava";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
+import { ActionState } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { AnalysisKind, supportedAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
 import { UserConfig } from "./config/db-config";
+import * as file from "./config/file";
 import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
@@ -37,6 +39,9 @@ import {
   createTestConfig,
   makeMacro,
   initAllState,
+  callee,
+  SAMPLE_DOTCOM_API_DETAILS,
+  AssertableTarget,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -462,6 +467,24 @@ test.serial("load non-existent input", async (t) => {
   });
 });
 
+/** A non-empty, but fairly minimal configuration file. */
+const simpleConfigFileContents = `
+  name: my config
+  queries:
+    - uses: ./foo_file`;
+
+/** A less minimal configuration file. */
+const otherConfigFileContents = `
+  name: my config
+  disable-default-queries: true
+  queries:
+    - uses: ./foo
+  paths-ignore:
+    - a
+    - b
+  paths:
+    - c/d`;
+
 test.serial("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
     setupActionsVars(tempDir, tempDir);
@@ -475,18 +498,6 @@ test.serial("load non-empty input", async (t) => {
         };
       },
     });
-
-    // Just create a generic config object with non-default values for all fields
-    const inputFileContents = `
-      name: my config
-      disable-default-queries: true
-      queries:
-        - uses: ./foo
-      paths-ignore:
-        - a
-        - b
-      paths:
-        - c/d`;
 
     fs.mkdirSync(path.join(tempDir, "foo"));
 
@@ -514,7 +525,7 @@ test.serial("load non-empty input", async (t) => {
     });
 
     const languagesInput = "javascript";
-    const configFilePath = createConfigFile(inputFileContents, tempDir);
+    const configFilePath = createConfigFile(otherConfigFileContents, tempDir);
 
     const state = initAllState();
     const actualConfig = await configUtils.initConfig(
@@ -540,14 +551,12 @@ test.serial(
   "Using config input and file together, config input should be used.",
   async (t) => {
     return await withTmpDir(async (tempDir) => {
-      process.env["RUNNER_TEMP"] = tempDir;
-      process.env["GITHUB_WORKSPACE"] = tempDir;
+      setupActionsVars(tempDir, tempDir);
 
-      const inputFileContents = `
-      name: my config
-      queries:
-        - uses: ./foo_file`;
-      const configFilePath = createConfigFile(inputFileContents, tempDir);
+      const configFilePath = createConfigFile(
+        simpleConfigFileContents,
+        tempDir,
+      );
 
       const configInput = `
       name: my config
@@ -576,7 +585,7 @@ test.serial(
       // Only JS, python packs will be ignored
       const languagesInput = "javascript";
 
-      const state = initAllState();
+      const state = initAllState({ env: util.getEnv() });
       const config = await configUtils.initConfig(
         state,
         createTestInitConfigInputs({
@@ -2259,3 +2268,442 @@ test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only r
     { exclude: { tags: "exclude-from-incremental" } },
   ]);
 });
+
+test("determineUserConfig - empty config when neither input is specified", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withFeatures([])
+      .withArgs(
+        tmpDir,
+        createTestInitConfigInputs({
+          configInput: undefined,
+          configFile: undefined,
+          workspacePath: tmpDir,
+        }),
+      );
+
+    // The returned configuration should be empty.
+    await target
+      // The fact that no configuration was provided should have been logged,
+      .logs(t, "No configuration file was provided")
+      // But not the messages for the two input sources
+      // or the warning about both inputs.
+      .notLogs(
+        t,
+        "Using config from action input:",
+        "Using configuration file:",
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      .passes(t.deepEqual, {});
+  });
+});
+
+test("determineUserConfig - loads config file", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
+
+    const inputs = createTestInitConfigInputs({
+      configInput: undefined,
+      configFile: configFilePath,
+      workspacePath: tmpDir,
+    });
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withArgs(tmpDir, inputs);
+
+    await target
+      // The path of the input config file should have been logged,
+      .logs(t, `Using configuration file: ${configFilePath}`)
+      .notLogs(
+        t,
+        // The other two origin messages and the warning about both inputs should
+        // not have been logged.
+        "No configuration file was provided",
+        "Using config from action input:",
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      // The loaded configuration should match `simpleConfigFileContents`.
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+
+    // The `configFile` input should not have changed.
+    t.is(inputs.configFile, configFilePath);
+  });
+});
+
+test("determineUserConfig - loads config input", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const inputs = createTestInitConfigInputs({
+      configInput: simpleConfigFileContents,
+      configFile: undefined,
+      workspacePath: tmpDir,
+    });
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withArgs(tmpDir, inputs);
+
+    await target
+      // The input source and path of the generated config file should have been logged.
+      .logs(
+        t,
+        "Using config from action input:",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
+      // The message about no configuration input and
+      // the warning about both inputs should not have been logged.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      // The loaded configuration should match `simpleConfigFileContents`.
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+
+    // The `configFile` input should have been mutated to the generated path.
+    t.is(inputs.configFile, expectedConfigPath);
+  });
+});
+
+test("determineUserConfig - ignores config file input when both specified", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const inputs = createTestInitConfigInputs({
+      configInput: simpleConfigFileContents,
+      configFile: configFilePath,
+      workspacePath: tmpDir,
+    });
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withArgs(tmpDir, inputs);
+
+    await target
+      // The path of the generated config file and
+      // the warning about both inputs should have been logged.
+      .logs(
+        t,
+        `Using config from action input: ${expectedConfigPath}`,
+        `Using configuration file: ${expectedConfigPath}`,
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      .notLogs(t, "No configuration file was provided")
+      // The loaded configuration should match `simpleConfigFileContents`.
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+
+    // The `configFile` input should have been mutated to the generated path.
+    t.is(inputs.configFile, expectedConfigPath);
+  });
+});
+
+/** A `config` input that we might get from Default Setup. */
+const defaultSetupConfigInput = `
+  threat-models: [local, remote]
+  default-setup:
+    org:
+      model-packs: [foo, bar]`;
+
+test("determineUserConfig - merges configs if FF is enabled in Default Setup", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const configFilePath = createConfigFile(simpleConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const inputs = createTestInitConfigInputs({
+      configInput: defaultSetupConfigInput,
+      configFile: configFilePath,
+      workspacePath: tmpDir,
+    });
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv({ GITHUB_EVENT_NAME: "dynamic" })
+      .withFeatures([Feature.AllowMergeConfigFiles])
+      .withArgs(tmpDir, inputs);
+
+    // The loaded configuration should match the result of merging
+    // `defaultSetupConfigInput` and `simpleConfigFileContents`.
+    const expectedConfig = {
+      name: "my config",
+      queries: [{ uses: "./foo_file" }],
+      "threat-models": ["local", "remote"],
+      "default-setup": {
+        org: {
+          "model-packs": ["foo", "bar"],
+        },
+      },
+    } satisfies UserConfig;
+
+    await target
+      .logs(
+        t,
+        `Using merged configurations from 'config' input with configuration from '${configFilePath}': ${expectedConfigPath}`,
+      )
+      .notLogs(
+        t,
+        `Using configuration file: ${expectedConfigPath}`,
+        "No configuration file was provided",
+        `Using config from action input: ${expectedConfigPath}`,
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      .passes(t.deepEqual, expectedConfig);
+
+    // The `configFile` input should have been mutated to the generated path.
+    t.is(inputs.configFile, expectedConfigPath);
+
+    // Since `result` is the result of merging the configurations in-memory,
+    // also check whether loading the configuration from disk that was written
+    // by `determineUserConfig` matches our expectations.
+    const loadedFromDisk = configUtils.getLocalConfig(
+      getRunnerLogger(true),
+      expectedConfigPath,
+      false,
+    );
+    t.deepEqual(loadedFromDisk, expectedConfig);
+  });
+});
+
+test("determineUserConfig - ignores config file input in Default Setup if FF is off", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv({ GITHUB_EVENT_NAME: "dynamic" })
+      .withArgs(
+        tmpDir,
+        createTestInitConfigInputs({
+          configInput: simpleConfigFileContents,
+          configFile: configFilePath,
+          workspacePath: tmpDir,
+        }),
+      );
+
+    await target
+      .logs(
+        t,
+        `Using config from action input: ${expectedConfigPath}`,
+        `Using configuration file: ${expectedConfigPath}`,
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      .notLogs(t, "No configuration file was provided")
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+  });
+});
+
+test("determineUserConfig - ignores config file input outside Default Setup if FF is on", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const configFilePath = createConfigFile(otherConfigFileContents, tmpDir);
+    const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
+
+    const target = callee(configUtils.determineUserConfig)
+      .withDefaultActionsEnv()
+      .withFeatures([Feature.AllowMergeConfigFiles])
+      .withArgs(
+        tmpDir,
+        createTestInitConfigInputs({
+          configInput: simpleConfigFileContents,
+          configFile: configFilePath,
+          workspacePath: tmpDir,
+        }),
+      );
+
+    await target
+      .logs(
+        t,
+        `Using config from action input: ${expectedConfigPath}`,
+        `Using configuration file: ${expectedConfigPath}`,
+        "Both a config file and config input were provided. Ignoring config file.",
+      )
+      .notLogs(t, "No configuration file was provided")
+      .passes(t.deepEqual, {
+        name: "my config",
+        queries: [{ uses: "./foo_file" }],
+      });
+  });
+});
+
+test("loadUserConfig - loads local configuration files", async (t) => {
+  await withTmpDir(async (workspaceDir) => {
+    await withTmpDir(async (tmpDir) => {
+      // Construct the test target.
+      const loadUserConfig = (
+        actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
+        filePath: string,
+      ) =>
+        configUtils.loadUserConfig(
+          actionState,
+          filePath,
+          workspaceDir,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+        );
+      const target = callee(loadUserConfig);
+
+      // `loadUserConfig` should load local configuration files if they are inside the workspace:
+      const insideOfWorkspace = path.join(workspaceDir, "some-file.yml");
+      fs.writeFileSync(insideOfWorkspace, "test-key: present", "utf8");
+
+      await target
+        .withArgs(insideOfWorkspace)
+        .passes(t.deepEqual, { "test-key": "present" });
+
+      // `loadUserConfig` should normally throw if the path is outside of the workspace:
+      const outsideOfWorkspace = path.join(
+        tmpDir,
+        "not-the-generated-file.yml",
+      );
+      fs.writeFileSync(outsideOfWorkspace, "test-key: present", "utf8");
+
+      await target
+        .withArgs(outsideOfWorkspace)
+        .throws(t, { instanceOf: ConfigurationError });
+
+      // `loadUserConfig` does not throw if the path is the result of `userConfigFromActionPath`:
+      const generatedPath = configUtils.userConfigFromActionPath(tmpDir);
+      fs.writeFileSync(generatedPath, "test-key: present", "utf8");
+
+      await target
+        .withArgs(generatedPath)
+        .passes(t.deepEqual, { "test-key": "present" });
+    });
+  });
+});
+
+test.serial("loadUserConfig - loads remote configuration files", async (t) => {
+  await withTmpDir(async (tmpDir) => {
+    const getRemoteConfig = sinon.stub(file, "getRemoteConfig").resolves({});
+
+    const remoteAddress = "owner/repo/file@ref";
+    await callee(configUtils.loadUserConfig)
+      .withArgs(remoteAddress, tmpDir, SAMPLE_DOTCOM_API_DETAILS, tmpDir)
+      .passes(t.deepEqual, {});
+
+    t.true(
+      getRemoteConfig.calledOnceWithExactly(
+        sinon.match.any,
+        remoteAddress,
+        SAMPLE_DOTCOM_API_DETAILS,
+      ),
+    );
+  });
+});
+
+test.serial(
+  "loadUserConfig - loads remote configuration files (new format, partial)",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const getRemoteConfig = sinon.stub(file, "getRemoteConfig").resolves({});
+
+      // Construct the basic test target.
+      const target = callee(configUtils.loadUserConfig)
+        .withDefaultActionsEnv()
+        .withFeatures([Feature.NewRemoteFileAddresses]);
+
+      // Utility function to assert that `targetWithArgs` has identified
+      // the input as a remote file address.
+      const checkIsRemote =
+        (address: string) =>
+        async <R>(targetWithArgs: AssertableTarget<R>) => {
+          // We have stubbed `getRemoteConfig` to resolve to `{}`, so we
+          // expect that result.
+          await targetWithArgs.passes(t.deepEqual, {});
+
+          // And `getRemoteConfig` should have been called exactly once.
+          t.is(getRemoteConfig.callCount, 1);
+
+          // Get the arguments for the call and check that there were three.
+          // We don't care about the first, but check that the other two
+          // match our expectations. We break it down like this to get
+          // more useful test output.
+          const args = getRemoteConfig.getCalls()[0].args;
+          t.is(args.length, 3);
+          t.deepEqual(args[1], address);
+          t.deepEqual(args[2], SAMPLE_DOTCOM_API_DETAILS);
+        };
+
+      // Utility function to assert that `targetWithArgs` has not identified
+      // the input as a remote file address.
+      const checkIsNotRemote = async <R>(
+        targetWithArgs: AssertableTarget<R>,
+      ) => {
+        // We expect `loadUserConfig` to have thrown if it thinks the path is local,
+        // since the inputs we provide aren't for files that exist.
+        await targetWithArgs.throws(t);
+
+        // Additionally, we expect that `getRemoteConfig` wasn't called.
+        t.is(getRemoteConfig.callCount, 0);
+      };
+
+      // Utility function to add the explicit `REMOTE_PATH_PREFIX` to the input.
+      const withExplicitPrefix = (str: string) =>
+        `${file.REMOTE_PATH_PREFIX}${str}`;
+
+      // Utility to set up a call to `loadUserConfig` with the provided `address`
+      // and pass it to `assertion`.
+      const testTargetWith = async (
+        address: string,
+        assertion: (
+          targetWithArgs: AssertableTarget<Promise<UserConfig>>,
+        ) => Promise<any>,
+      ) => {
+        // Reset the stub's history since we re-use it.
+        getRemoteConfig.resetHistory();
+
+        // Log the input we are testing so that, in the event of a failure,
+        // it is easier to see which input was responsible.
+        t.log(`testTargetWith("${address}")`);
+
+        // Prepare the test call to `loadUserConfig`.
+        const targetWithArgs = target.withArgs(
+          address,
+          tmpDir,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+        );
+
+        // Pass it to the provided assertion function.
+        await assertion(targetWithArgs);
+      };
+
+      // Since this input contains an '@' character, it is treated as a remote path
+      // by the old logic even without the explicit prefix.
+      const remoteWithoutPrefix = "repo@main";
+      await testTargetWith(
+        remoteWithoutPrefix,
+        checkIsRemote(remoteWithoutPrefix),
+      );
+      await testTargetWith(
+        withExplicitPrefix(remoteWithoutPrefix),
+        checkIsRemote(remoteWithoutPrefix),
+      );
+      // It is only treated as a local path with the corresponding prefix.
+      await testTargetWith(`./${remoteWithoutPrefix}`, checkIsNotRemote);
+
+      // The following test inputs are examples of ambiguous paths. They could refer to
+      // valid local or remote paths. For each, we check that they are treated as remote
+      // paths if the explicit remote file prefix is used and as local paths otherwise.
+      const testInputs = ["repo:file", "input", "../input"];
+
+      for (const testInput of testInputs) {
+        for (const addPrefix of [true, false]) {
+          await testTargetWith(
+            addPrefix ? withExplicitPrefix(testInput) : testInput,
+            addPrefix ? checkIsRemote(testInput) : checkIsNotRemote,
+          );
+        }
+      }
+    });
+  },
+);

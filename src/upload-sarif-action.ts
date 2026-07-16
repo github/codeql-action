@@ -54,7 +54,7 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function run({ startedAt, logger }: ActionState<["Logger"]>) {
+async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
   try {

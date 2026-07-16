@@ -90,7 +90,7 @@ async function sendCompletedStatusReport(
 async function run({
   startedAt,
   logger,
-}: ActionState<["Logger"]>): Promise<void> {
+}: ActionState<["Base", "Logger"]>): Promise<void> {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 

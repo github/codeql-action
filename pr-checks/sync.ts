@@ -529,8 +529,8 @@ function generateJob(
       name: "Check out repository",
       uses: pinnedUses(
         "actions/checkout",
-        "df4cb1c069e1874edd31b4311f1884172cec0e10",
-        "v6.0.3",
+        "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+        "v7.0.0",
       ),
     },
     ...setupInfo.steps,

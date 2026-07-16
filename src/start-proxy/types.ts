@@ -12,7 +12,7 @@ export type RawCredential = UnvalidatedObject<Credential>;
 /** A schema for credential objects with a username. */
 export const usernameSchema = {
   /** The username needed to authenticate to the package registry, if any. */
-  username: json.optional(json.string),
+  username: json.optionalOrNull(json.string),
 } as const satisfies json.Schema;
 
 /** Usernames may be present for both authentication with tokens or passwords. */
@@ -29,7 +29,7 @@ export function hasUsername(config: AuthConfig): config is Username {
 /** A schema for credential objects with a username and password. */
 export const usernamePasswordSchema = {
   /** The password needed to authenticate to the package registry, if any. */
-  password: json.optional(json.string),
+  password: json.optionalOrNull(json.string),
   ...usernameSchema,
 } as const satisfies json.Schema;
 
@@ -52,7 +52,7 @@ export function hasUsernameAndPassword(
 /** A schema for credential objects for token-based authentication. */
 export const tokenSchema = {
   /** The token needed to authenticate to the package registry, if any. */
-  token: json.optional(json.string),
+  token: json.optionalOrNull(json.string),
   ...usernameSchema,
 } as const satisfies json.Schema;
 
@@ -100,7 +100,7 @@ export const awsConfigSchema = {
   "role-name": json.string,
   domain: json.string,
   "domain-owner": json.string,
-  audience: json.optional(json.string),
+  audience: json.optionalOrNull(json.string),
 } as const satisfies json.Schema;
 
 /** Configuration for AWS OIDC. */
@@ -116,8 +116,8 @@ export function isAWSConfig(
 /** A schema for JFrog OIDC configurations. */
 export const jfrogConfigSchema = {
   "jfrog-oidc-provider-name": json.string,
-  audience: json.optional(json.string),
-  "identity-mapping-name": json.optional(json.string),
+  audience: json.optionalOrNull(json.string),
+  "identity-mapping-name": json.optionalOrNull(json.string),
 } as const satisfies json.Schema;
 
 /** Configuration for JFrog OIDC. */
@@ -150,8 +150,8 @@ export function isCloudsmithConfig(
 /** A schema for GCP OIDC configurations. */
 export const gcpConfigSchema = {
   "workload-identity-provider": json.string,
-  "service-account": json.optional(json.string),
-  audience: json.optional(json.string),
+  "service-account": json.optionalOrNull(json.string),
+  audience: json.optionalOrNull(json.string),
 } as const satisfies json.Schema;
 
 /** Configuration for GCP OIDC. */

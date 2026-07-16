@@ -12,6 +12,19 @@ import { parseUserConfig, UserConfig } from "./db-config";
 import { parseRemoteFileAddress } from "./remote-file";
 
 /**
+ * The prefix that can be specified to indicate that a path should be treated as a local file address.
+ */
+export const LOCAL_PATH_PREFIX = "./";
+
+/**
+ * The prefix that can be specified to indicate that a path should be treated as a remote file address.
+ * The new remote file address format must start with either an owner or repository name. Both
+ * are restricted to ASCII characters, '.', and '-'. The prefix chosen here does not interfere with
+ * those (since it contains an `=`) and is _unlikely_ (but not impossible) to appear in a local file path.
+ */
+export const REMOTE_PATH_PREFIX = "remote=";
+
+/**
  * Gets the value that is configured for the configuration file, if any.
  */
 export async function getConfigFileInput(

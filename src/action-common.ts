@@ -1,8 +1,9 @@
 import * as core from "@actions/core";
 
 import { ActionsEnv, getActionsEnv } from "./actions-util";
-import { Env } from "./environment";
-import { FeatureEnablement } from "./feature-flags";
+import type { ApiClient } from "./api-client";
+import { Env, ReadOnlyEnv } from "./environment";
+import type { FeatureEnablement } from "./feature-flags";
 import { getActionsLogger, Logger } from "./logging";
 import {
   ActionName,
@@ -11,7 +12,7 @@ import {
 } from "./status-report";
 import { getEnv, getErrorMessage } from "./util";
 
-/** Common state that is always available in `ActionState`. */
+/** Base state that is available to an Action on startup. */
 export interface BaseState {
   /** The name of the Action. */
   name: ActionName;
@@ -21,6 +22,7 @@ export interface BaseState {
 
 /** Describes different state features that an Action may have. */
 export interface FeatureState {
+  Base: BaseState;
   Logger: {
     /** The logger that is in use. */
     logger: Logger;
@@ -29,9 +31,16 @@ export interface FeatureState {
     /** Information about environment variables. */
     env: Env;
   };
+  ReadOnlyEnv: {
+    env: ReadOnlyEnv;
+  };
   Actions: {
     /** Access to Actions-related functionality. */
     actions: ActionsEnv;
+  };
+  Api: {
+    /** A GitHub API client. */
+    apiClient: ApiClient;
   };
   FeatureFlags: {
     /** Information about enabled feature flags. */
@@ -44,7 +53,7 @@ export type StateFeature = keyof FeatureState;
 
 /** Constructs the intersection of all state types identifies by `Fs`. */
 export type FieldsOf<Fs extends readonly StateFeature[]> = Fs extends []
-  ? BaseState
+  ? Record<never, never>
   : Fs extends [
         infer Head extends StateFeature,
         ...infer Tail extends readonly StateFeature[],
@@ -60,7 +69,7 @@ export type ActionState<Fs extends readonly StateFeature[]> = FieldsOf<Fs>;
  * Each Action can then augment the `state` further if additional features are required.
  */
 export type ActionMain = (
-  state: ActionState<["Logger", "Env", "Actions"]>,
+  state: ActionState<["Base", "Logger", "Env", "Actions"]>,
 ) => Promise<void>;
 
 /** A specification for a CodeQL Action step. */

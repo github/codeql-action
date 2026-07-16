@@ -1,6 +1,5 @@
 import { ActionState } from "../action-common";
-import { ActionsEnvVars } from "../actions-util";
-import { Env } from "../environment";
+import { ActionsEnvVars, ReadOnlyEnv } from "../environment";
 import * as errorMessages from "../error-messages";
 import { Feature } from "../feature-flags";
 import { ConfigurationError, Failure, Result, Success } from "../util";
@@ -24,7 +23,7 @@ export const DEFAULT_CONFIG_FILE_NAME = ".github/codeql-action.yaml";
 export const DEFAULT_CONFIG_FILE_REF = "main";
 
 /** Extracts the owner from the `GITHUB_REPOSITORY` environment variable. */
-function getDefaultOwner(env: Env): string {
+function getDefaultOwner(env: ReadOnlyEnv): string {
   const currentRepoNwo = env.getRequired(ActionsEnvVars.GITHUB_REPOSITORY);
   const nwoParts = currentRepoNwo.split("/");
 
@@ -72,6 +71,42 @@ function parseOldRemoteFileAddress(
 }
 
 /**
+ * Attempts to parse `input` as a `RemoteFileAddress` using the new format.
+ *
+ * @param env The read-only environment to obtain the owner name from if needed.
+ * @param configFile The input to try and parse.
+ * @returns A `RemoteFileAddress` value if successful or `undefined` otherwise.
+ */
+export function parseNewRemoteFileAddress(
+  env: ReadOnlyEnv,
+  configFile: string,
+): Result<RemoteFileAddress, undefined> {
+  // retrieve the various parts of the config location, and ensure they're present
+  const format = new RegExp(
+    "^((?<owner>[^:@/]+)/)?(?<repo>[^:@/]+)(@(?<ref>[^:]+))?(:(?<path>.+))?$",
+  );
+  const pieces = format.exec(configFile.trim());
+
+  const repo: string | undefined = pieces?.groups?.repo?.trim();
+
+  // Check that the regular expression matched and that we have at least the repo name.
+  if (!pieces?.groups || !repo || repo.length === 0) {
+    return new Failure(undefined);
+  }
+
+  const owner: string | undefined = pieces.groups.owner?.trim();
+  const path: string | undefined = pieces.groups.path?.trim();
+  const ref: string | undefined = pieces.groups.ref?.trim();
+
+  return new Success({
+    owner: owner || getDefaultOwner(env),
+    repo,
+    path: path || DEFAULT_CONFIG_FILE_NAME,
+    ref: ref || DEFAULT_CONFIG_FILE_REF,
+  });
+}
+
+/**
  * Attempts to parse `configFile` into an array of `RemoteFileAddress` components.
  *
  * @param actionState The current Action state.
@@ -102,15 +137,12 @@ export async function parseRemoteFileAddress(
   }
 
   // retrieve the various parts of the config location, and ensure they're present
-  const format = new RegExp(
-    "^((?<owner>[^:@/]+)/)?(?<repo>[^:@/]+)(@(?<ref>[^:]+))?(:(?<path>.+))?$",
+  const newFormatAddressResult = parseNewRemoteFileAddress(
+    actionState.env,
+    configFile,
   );
-  const pieces = format.exec(configFile.trim());
 
-  const repo: string | undefined = pieces?.groups?.repo?.trim();
-
-  // Check that the regular expression matched and that we have at least the repo name.
-  if (!pieces?.groups || !repo || repo.length === 0) {
+  if (newFormatAddressResult.isFailure()) {
     // Neither the old format nor the new format worked. Throw an error that
     // explains the format we accept. We only mention the new format, since that's
     // what we want to be used going forward.
@@ -119,21 +151,14 @@ export async function parseRemoteFileAddress(
     );
   }
 
-  const owner: string | undefined = pieces.groups.owner?.trim();
-  const path: string | undefined = pieces.groups.path?.trim();
-  const ref: string | undefined = pieces.groups.ref?.trim();
+  const address = newFormatAddressResult.value;
 
   // Ensure that the path is a relative path.
-  if (path?.startsWith("/")) {
+  if (address.path.startsWith("/")) {
     throw new ConfigurationError(
       `The path component of '${configFile}' cannot be an absolute path.`,
     );
   }
 
-  return {
-    owner: owner || getDefaultOwner(actionState.env),
-    repo,
-    path: path || DEFAULT_CONFIG_FILE_NAME,
-    ref: ref || DEFAULT_CONFIG_FILE_REF,
-  };
+  return address;
 }

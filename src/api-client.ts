@@ -107,24 +107,6 @@ export function makeProxyRequestOptions(
   };
 }
 
-/**
- * Returns an implementation of `fetch` to use for API requests.
- * This will run API requests through the private registry authentication proxy
- * if it is configured.
- *
- * @param action The required Action state.
- */
-export function getApiFetch(
-  action: ActionState<["Logger", "Env"]>,
-): typeof undiciFetch {
-  const dispatcher = getRegistryProxy(action);
-
-  const proxiedFetch = (req: RequestInfo, init?: RequestInit) => {
-    return undiciFetch(req, { ...init, dispatcher });
-  };
-  return proxiedFetch;
-}
-
 /** The type of GitHub API client we use. */
 export type ApiClient = Octokit & Api & { paginate: PaginateInterface };
 

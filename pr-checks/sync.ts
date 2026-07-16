@@ -211,8 +211,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Node.js",
         uses: pinnedUses(
           "actions/setup-node",
-          "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e",
-          "v6.4.0",
+          "820762786026740c76f36085b0efc47a31fe5020",
+          "v7.0.0",
         ),
         with: {
           "node-version": defaultLanguageVersions.javascript,

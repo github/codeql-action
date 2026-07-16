@@ -120,8 +120,13 @@ const mixedCredentials = [
   { type: "maven_repository", host: "maven.pkg.github.com", token: "def" },
   { type: "nuget_feed", host: "nuget.pkg.github.com", token: "ghi" },
   { type: "goproxy_server", host: "goproxy.example.com", token: "jkl" },
-  { type: "git_source", host: "github.com/github", token: "mno" },
 ];
+
+const gitSourceCredential = {
+  type: "git_source",
+  host: "github.com/github",
+  token: "mno",
+};
 
 test("getCredentials prefers registriesCredentials over registrySecrets", async (t) => {
   const registryCredentials = Buffer.from(
@@ -241,7 +246,7 @@ test("getCredentials returns all for a language when specified", async (t) => {
   const credentials = startProxyExports.getCredentials(
     getRunnerLogger(true),
     undefined,
-    toEncodedJSON(mixedCredentials),
+    toEncodedJSON([...mixedCredentials, gitSourceCredential]),
     BuiltInLanguage.go,
   );
   t.is(credentials.length, 2);
@@ -284,7 +289,7 @@ test("getCredentials returns all maven_repositories for Java when specified", as
       host: "maven2.pkg.github.com",
       token: "token2",
     },
-    { type: "git_source", host: "github.com/github", token: "mno" },
+    { type: "goproxy_server", host: "github.com/github", token: "mno" },
   ];
 
   const credentials = startProxyExports.getCredentials(
@@ -624,8 +629,11 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
   );
 });
 
-test("getCredentials returns no credentials for Actions", async (t) => {
-  const credentialsInput = toEncodedJSON(mixedCredentials);
+test("getCredentials returns only ALWAYS_ENABLED_REGISTRY_TYPE credentials for Actions", async (t) => {
+  const credentialsInput = toEncodedJSON([
+    ...mixedCredentials,
+    gitSourceCredential,
+  ]);
 
   const credentials = startProxyExports.getCredentials(
     getRunnerLogger(true),
@@ -633,7 +641,41 @@ test("getCredentials returns no credentials for Actions", async (t) => {
     credentialsInput,
     BuiltInLanguage.actions,
   );
-  t.deepEqual(credentials, []);
+
+  for (const credential of credentials) {
+    t.true(
+      startProxyExports.ALWAYS_ENABLED_REGISTRY_TYPE.some(
+        (ty) => ty === credential.type,
+      ),
+    );
+  }
+});
+
+test("getCredentials always returns ALWAYS_ENABLED_REGISTRY_TYPE credentials for all languages", async (t) => {
+  const alwaysEnabledCredentials: startProxyExports.Credential[] = [];
+
+  for (const alwaysEnabled of startProxyExports.ALWAYS_ENABLED_REGISTRY_TYPE) {
+    alwaysEnabledCredentials.push({
+      type: alwaysEnabled,
+      host: `host-${alwaysEnabled}`,
+      token: `bar-${alwaysEnabled}`,
+      url: `url-${alwaysEnabled}`,
+    });
+  }
+
+  const credentialsInput = toEncodedJSON(alwaysEnabledCredentials);
+
+  // Test all languages.
+  for (const language of Object.values(BuiltInLanguage)) {
+    const credentials = startProxyExports.getCredentials(
+      getRunnerLogger(true),
+      undefined,
+      credentialsInput,
+      language,
+    );
+
+    t.deepEqual(credentials, alwaysEnabledCredentials);
+  }
 });
 
 function mockGetApiClient(endpoints: any) {

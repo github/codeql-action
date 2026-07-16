@@ -70,6 +70,8 @@ export interface CodeQLDefaultVersionInfo {
  * Legacy features should end with `_enabled`.
  */
 export enum Feature {
+  /** Allows supported properties of configuration files to be merged. */
+  AllowMergeConfigFiles = "allow_merge_config_files",
   /** Controls whether we allow multiple values for the `analysis-kinds` input. */
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
   AllowToolcacheInput = "allow_toolcache_input",
@@ -173,6 +175,11 @@ export type FeatureConfig = {
 };
 
 export const featureConfig = {
+  [Feature.AllowMergeConfigFiles]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ALLOW_MERGE_CONFIG_FILES",
+    minimumVersion: undefined,
+  },
   [Feature.AllowMultipleAnalysisKinds]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",

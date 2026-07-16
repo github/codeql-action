@@ -5,7 +5,7 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import { ActionsEnvVars, EnvVar } from "./environment";
 import { Feature, featureConfig, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -126,7 +126,7 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
   if (await features.getValue(Feature.CppDependencyInstallation, codeql)) {
     // disable autoinstall on self-hosted runners unless explicitly requested
     if (
-      process.env["RUNNER_ENVIRONMENT"] === "self-hosted" &&
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] === "self-hosted" &&
       process.env[envVar] !== "true"
     ) {
       logger.info(

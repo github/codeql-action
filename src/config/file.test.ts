@@ -99,8 +99,7 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
         throw new Error(errorMessage);
       }
       // Otherwise return the client object.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      return client as unknown as any;
+      return client;
     });
 
   const target = callee(getRemoteConfig)

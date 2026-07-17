@@ -65,15 +65,28 @@ export interface GitHubApiExternalRepoDetails {
  * if it is available in the environment.
  *
  * @param action The required Action state.
+ * @returns The hostname, port, and CA retrieved from the corresponding environment variables.
+ */
+export function getRegistryProxyConfig(action: ActionState<["ReadOnlyEnv"]>) {
+  return {
+    host: action.env.getOptional(RegistryProxyVars.PROXY_HOST),
+    port: action.env.getOptional(RegistryProxyVars.PROXY_PORT),
+    ca: action.env.getOptional(RegistryProxyVars.PROXY_CA_CERTIFICATE),
+  };
+}
+
+/**
+ * Gets the configuration for the private registry authentication proxy,
+ * and uses it to initialise a corresponding `ProxyAgent`.
+ *
+ * @param action The required Action state.
  * @returns A `ProxyAgent` corresponding to the private registry proxy,
  *          or `undefined` if we couldn't retrieve the host and port.
  */
 export function getRegistryProxy(
-  action: ActionState<["Logger", "Env"]>,
+  action: ActionState<["Logger", "ReadOnlyEnv"]>,
 ): ProxyAgent | undefined {
-  const host = action.env.getOptional(RegistryProxyVars.PROXY_HOST);
-  const port = action.env.getOptional(RegistryProxyVars.PROXY_PORT);
-  const cert = action.env.getOptional(RegistryProxyVars.PROXY_CA_CERTIFICATE);
+  const { host, port, ca } = getRegistryProxyConfig(action);
 
   if (host && port) {
     const uri = `http://${host}:${port}`;
@@ -84,7 +97,7 @@ export function getRegistryProxy(
       uri,
       keepAliveTimeout: 10,
       keepAliveMaxTimeout: 10,
-      requestTls: cert ? { ca: cert } : undefined,
+      requestTls: ca ? { ca } : undefined,
     });
   }
 

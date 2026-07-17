@@ -234,3 +234,20 @@ test("getRegistryProxy - returns value when both vars are set", async (t) => {
     )
     .passes(t.truthy);
 });
+
+test("getRegistryProxyConfig - gets the configuration from the env vars", async (t) => {
+  const host = "localhost";
+  const port = "1234";
+  const ca = "cert";
+
+  await callee(api.getRegistryProxyConfig)
+    .withArgs()
+    .withEnv(
+      getTestEnv({
+        [RegistryProxyVars.PROXY_HOST]: host,
+        [RegistryProxyVars.PROXY_PORT]: port,
+        [RegistryProxyVars.PROXY_CA_CERTIFICATE]: ca,
+      }),
+    )
+    .passes(t.like, { host, port, ca });
+});

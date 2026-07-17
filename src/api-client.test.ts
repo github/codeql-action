@@ -6,8 +6,8 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { DO_NOT_RETRY_STATUSES } from "./api-client";
-import { ActionsEnvVars } from "./environment";
-import { getTestEnv, setupTests } from "./testing-utils";
+import { ActionsEnvVars, RegistryProxyVars } from "./environment";
+import { callee, getTestEnv, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -27,14 +27,17 @@ test.serial("getApiClient", async (t) => {
 
   sinon.stub(actionsUtil, "getRequiredInput").withArgs("token").returns("xyz");
 
-  api.getApiClient(env);
+  const apiClient = api.getApiClient(env);
+  t.truthy(apiClient);
 
+  t.true(githubStub.calledOnce);
   t.assert(
     githubStub.calledOnceWithExactly({
       auth: "token xyz",
       baseUrl: "http://api.github.localhost",
       log: sinon.match.any,
       userAgent: `CodeQL-Action/${actionsUtil.getActionVersion()}`,
+      request: sinon.match.any,
       retry: {
         doNotRetry: DO_NOT_RETRY_STATUSES,
       },
@@ -204,3 +207,47 @@ test.serial(
     }
   },
 );
+
+test("getRegistryProxy - returns undefined if the proxy is not configured", async (t) => {
+  const target = callee(api.getRegistryProxy).withArgs();
+
+  // Empty environment.
+  await target.passes(t.is, undefined);
+  // Only the host.
+  await target
+    .withEnv(getTestEnv({ [RegistryProxyVars.PROXY_HOST]: "localhost" }))
+    .passes(t.is, undefined);
+  // Only the port.
+  await target
+    .withEnv(getTestEnv({ [RegistryProxyVars.PROXY_PORT]: "1234" }))
+    .passes(t.is, undefined);
+});
+
+test("getRegistryProxy - returns value when both vars are set", async (t) => {
+  await callee(api.getRegistryProxy)
+    .withArgs()
+    .withEnv(
+      getTestEnv({
+        [RegistryProxyVars.PROXY_HOST]: "localhost",
+        [RegistryProxyVars.PROXY_PORT]: "1234",
+      }),
+    )
+    .passes(t.truthy);
+});
+
+test("getRegistryProxyConfig - gets the configuration from the env vars", async (t) => {
+  const host = "localhost";
+  const port = "1234";
+  const ca = "cert";
+
+  await callee(api.getRegistryProxyConfig)
+    .withArgs()
+    .withEnv(
+      getTestEnv({
+        [RegistryProxyVars.PROXY_HOST]: host,
+        [RegistryProxyVars.PROXY_PORT]: port,
+        [RegistryProxyVars.PROXY_CA_CERTIFICATE]: ca,
+      }),
+    )
+    .passes(t.like, { host, port, ca });
+});

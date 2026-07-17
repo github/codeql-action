@@ -4,9 +4,23 @@ import { type Octokit } from "@octokit/core";
 import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
 import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 import * as retry from "@octokit/plugin-retry";
+import { RequestRequestOptions } from "@octokit/types";
+import {
+  ProxyAgent,
+  RequestInfo,
+  RequestInit,
+  fetch as undiciFetch,
+} from "undici";
 
+import type { ActionState } from "./action-common";
 import { getActionVersion, getRequiredInput } from "./actions-util";
-import { EnvVar, ReadOnlyEnv, ActionsEnvVars, getEnv } from "./environment";
+import {
+  ActionsEnvVars,
+  EnvVar,
+  ReadOnlyEnv,
+  RegistryProxyVars,
+  getEnv,
+} from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -46,16 +60,84 @@ export interface GitHubApiExternalRepoDetails {
   apiURL: string | undefined;
 }
 
+/**
+ * Gets the configuration for the private registry authentication proxy,
+ * if it is available in the environment.
+ *
+ * @param action The required Action state.
+ * @returns The hostname, port, and CA retrieved from the corresponding environment variables.
+ */
+export function getRegistryProxyConfig(action: ActionState<["ReadOnlyEnv"]>) {
+  return {
+    host: action.env.getOptional(RegistryProxyVars.PROXY_HOST),
+    port: action.env.getOptional(RegistryProxyVars.PROXY_PORT),
+    ca: action.env.getOptional(RegistryProxyVars.PROXY_CA_CERTIFICATE),
+  };
+}
+
+/**
+ * Gets the configuration for the private registry authentication proxy,
+ * and uses it to initialise a corresponding `ProxyAgent`.
+ *
+ * @param action The required Action state.
+ * @returns A `ProxyAgent` corresponding to the private registry proxy,
+ *          or `undefined` if we couldn't retrieve the host and port.
+ */
+export function getRegistryProxy(
+  action: ActionState<["Logger", "ReadOnlyEnv"]>,
+): ProxyAgent | undefined {
+  const { host, port, ca } = getRegistryProxyConfig(action);
+
+  if (host && port) {
+    const uri = `http://${host}:${port}`;
+    action.logger.debug(
+      `Using private registry proxy at '${uri}' for API client.`,
+    );
+    return new ProxyAgent({
+      uri,
+      keepAliveTimeout: 10,
+      keepAliveMaxTimeout: 10,
+      requestTls: ca ? { ca } : undefined,
+    });
+  }
+
+  return undefined;
+}
+
+/**
+ * Constructs a `RequestRequestOptions` with a custom `fetch` implementation
+ * that uses `dispatcher` as a proxy for requests.
+ *
+ * @param dispatcher The proxy to use.
+ */
+export function makeProxyRequestOptions(
+  dispatcher: ProxyAgent,
+): RequestRequestOptions {
+  return {
+    fetch: (req: RequestInfo, init?: RequestInit) => {
+      return undiciFetch(req, { ...init, dispatcher });
+    },
+  };
+}
+
 /** The type of GitHub API client we use. */
 export type ApiClient = Octokit & Api & { paginate: PaginateInterface };
 
+/** Options for `createApiClientWithDetails`. */
+interface CreateApiClientOptions {
+  allowExternal?: boolean;
+  proxy?: ProxyAgent;
+}
+
 function createApiClientWithDetails(
   apiDetails: GitHubApiCombinedDetails,
-  { allowExternal = false } = {},
+  { allowExternal = false, proxy = undefined }: CreateApiClientOptions = {},
 ): ApiClient {
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+  const requestOptions =
+    proxy === undefined ? undefined : makeProxyRequestOptions(proxy);
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiDetails.apiURL,
@@ -66,6 +148,7 @@ function createApiClientWithDetails(
         warn: core.warning,
         error: core.error,
       },
+      request: requestOptions,
       retry: {
         doNotRetry: DO_NOT_RETRY_STATUSES,
       },
@@ -87,8 +170,9 @@ export function getApiClient(env: ReadOnlyEnv = getEnv()) {
 
 export function getApiClientWithExternalAuth(
   apiDetails: GitHubApiCombinedDetails,
+  proxy?: ProxyAgent,
 ) {
-  return createApiClientWithDetails(apiDetails, { allowExternal: true });
+  return createApiClientWithDetails(apiDetails, { allowExternal: true, proxy });
 }
 
 /**

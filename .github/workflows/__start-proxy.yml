@@ -57,15 +57,11 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - uses: ./../action/init
-        with:
-          languages: csharp
-          tools: ${{ steps.prepare-test.outputs.tools-url }}
-
       - name: Setup proxy for registries
         id: proxy
         uses: ./../action/start-proxy
         with:
+          language: java
           registry_secrets: |
             [
               {
@@ -94,5 +90,17 @@ jobs:
           || !contains(steps.proxy.outputs.proxy_urls, 'https://repo.maven.apache.org/maven2/')
           || !contains(steps.proxy.outputs.proxy_urls, 'https://repo1.maven.org/maven2')
         run: exit 1
+
+      - uses: ./../action/init
+        env:
+          CODEQL_PROXY_HOST: ${{ steps.proxy.outputs.proxy_host }}
+          CODEQL_PROXY_PORT: ${{ steps.proxy.outputs.proxy_port }}
+          CODEQL_PROXY_CA_CERTIFICATE: ${{ steps.proxy.outputs.proxy_ca_certificate }}
+          CODEQL_ACTION_NEW_REMOTE_FILE_ADDRESSES: 'true'
+        with:
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          config-file: codeql-action@main:tests/multi-language-repo/.github/codeql/custom-queries.yml
     env:
+      CODEQL_ACTION_PROXY_API_REQUESTS: 'true'
       CODEQL_ACTION_TEST_MODE: true

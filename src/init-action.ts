@@ -494,18 +494,6 @@ async function run(
       cleanupDatabaseClusterDirectory(config, logger);
     }
 
-    // Log CodeQL download telemetry, if appropriate
-    if (toolsDownloadStatusReport) {
-      addNoLanguageDiagnostic(
-        config,
-        makeTelemetryDiagnostic(
-          "codeql-action/bundle-download-telemetry",
-          "CodeQL bundle download telemetry",
-          toolsDownloadStatusReport,
-        ),
-      );
-    }
-
     // Forward Go flags
     const goFlags = process.env["GOFLAGS"];
     if (goFlags) {

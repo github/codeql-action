@@ -337,12 +337,6 @@ export async function setupCodeQL(
       logger,
     );
 
-    logger.debug(
-      `Bundle download status report: ${JSON.stringify(
-        toolsDownloadStatusReport,
-      )}`,
-    );
-
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
     if (process.platform === "win32") {
       codeqlCmd += ".exe";

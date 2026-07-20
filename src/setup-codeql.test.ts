@@ -194,12 +194,7 @@ test.serial(
     sinon.stub(setupCodeql, "downloadCodeQL").resolves({
       codeqlFolder: "codeql",
       statusReport: {
-        combinedDurationMs: 500,
-        compressionMethod: "gzip",
         downloadDurationMs: 200,
-        extractionDurationMs: 300,
-        streamExtraction: false,
-        toolsUrl: "toolsUrl",
       },
       toolsVersion: LINKED_CLI_VERSION.cliVersion,
     });
@@ -251,12 +246,7 @@ test.serial(
     sinon.stub(setupCodeql, "downloadCodeQL").resolves({
       codeqlFolder: "codeql",
       statusReport: {
-        combinedDurationMs: 500,
-        compressionMethod: "gzip",
         downloadDurationMs: 200,
-        extractionDurationMs: 300,
-        streamExtraction: false,
-        toolsUrl: bundleUrl,
       },
       toolsVersion: expectedVersion,
     });

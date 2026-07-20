@@ -50,23 +50,19 @@ export async function initCodeQL(
   toolsVersion: string;
 }> {
   logger.startGroup("Setup CodeQL tools");
-  const {
-    codeql,
-    toolsDownloadStatusReport,
-    toolsSource,
-    toolsVersion,
-  } = await setupCodeQL(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    defaultCliVersion,
-    rawLanguages,
-    useOverlayAwareDefaultCliVersion,
-    features,
-    logger,
-    true,
-  );
+  const { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion } =
+    await setupCodeQL(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      defaultCliVersion,
+      rawLanguages,
+      useOverlayAwareDefaultCliVersion,
+      features,
+      logger,
+      true,
+    );
   await codeql.printVersion();
   logger.endGroup();
   return {

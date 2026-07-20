@@ -1170,7 +1170,6 @@ export async function initConfig(
   try {
     gitVersion = await getGitVersionOrThrow();
     logger.info(`Using Git version ${gitVersion.fullVersion}`);
-    await logGitVersionTelemetry(config, gitVersion);
   } catch (e) {
     logger.warning(`Could not determine Git version: ${getErrorMessage(e)}`);
     // Throw the error in test mode so it's more visible, unless the environment
@@ -1646,26 +1645,6 @@ function getPrimaryAnalysisKind(config: Config): AnalysisKind {
  */
 export function getPrimaryAnalysisConfig(config: Config): AnalysisConfig {
   return getAnalysisConfig(getPrimaryAnalysisKind(config));
-}
-
-/** Logs the Git version as a telemetry diagnostic. */
-async function logGitVersionTelemetry(
-  config: Config,
-  gitVersion: GitVersionInfo,
-): Promise<void> {
-  if (config.languages.length > 0) {
-    addNoLanguageDiagnostic(
-      config,
-      makeTelemetryDiagnostic(
-        "codeql-action/git-version-telemetry",
-        "Git version telemetry",
-        {
-          fullVersion: gitVersion.fullVersion,
-          truncatedVersion: gitVersion.truncatedVersion,
-        },
-      ),
-    );
-  }
 }
 
 /**

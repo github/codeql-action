@@ -108,7 +108,7 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
 
   // Should use it when the FF is enabled and the environment variables are set.
   await target
-    .withFeatures([Feature.ProxyApiRequests, Feature.NewRemoteFileAddresses])
+    .withFeatures([Feature.ProxyApiRequests])
     .withEnv((env) => {
       env.set(RegistryProxyVars.PROXY_HOST, "localhost");
       env.set(RegistryProxyVars.PROXY_PORT, "1234");
@@ -118,7 +118,6 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
 
   // But not when the FF is not enabled.
   await target
-    .withFeatures([Feature.NewRemoteFileAddresses])
     .withEnv((env) => {
       env.set(RegistryProxyVars.PROXY_HOST, "localhost");
       env.set(RegistryProxyVars.PROXY_PORT, "1234");
@@ -128,7 +127,7 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
 
   // And not when the environment variables aren't set.
   await target
-    .withFeatures([Feature.ProxyApiRequests, Feature.NewRemoteFileAddresses])
+    .withFeatures([Feature.ProxyApiRequests])
     .notLogs(t, "Using private registry proxy at 'http://localhost:1234'")
     .throws(t, { message: errorMessage });
 });

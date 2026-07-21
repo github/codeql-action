@@ -2607,9 +2607,7 @@ test.serial(
       const getRemoteConfig = sinon.stub(file, "getRemoteConfig").resolves({});
 
       // Construct the basic test target.
-      const target = callee(configUtils.loadUserConfig)
-        .withDefaultActionsEnv()
-        .withFeatures([Feature.NewRemoteFileAddresses]);
+      const target = callee(configUtils.loadUserConfig).withDefaultActionsEnv();
 
       // Utility function to assert that `targetWithArgs` has identified
       // the input as a remote file address.

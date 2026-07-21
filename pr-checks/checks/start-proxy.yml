@@ -48,7 +48,6 @@ steps:
       CODEQL_PROXY_HOST: ${{ steps.proxy.outputs.proxy_host }}
       CODEQL_PROXY_PORT: ${{ steps.proxy.outputs.proxy_port }}
       CODEQL_PROXY_CA_CERTIFICATE: ${{ steps.proxy.outputs.proxy_ca_certificate }}
-      CODEQL_ACTION_NEW_REMOTE_FILE_ADDRESSES: "true"
     with:
       languages: java
       tools: ${{ steps.prepare-test.outputs.tools-url }}

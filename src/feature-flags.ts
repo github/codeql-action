@@ -94,8 +94,6 @@ export enum Feature {
   ForceNightly = "force_nightly",
   IgnoreGeneratedFiles = "ignore_generated_files",
   JavaNetworkDebugging = "java_network_debugging",
-  /** Allow the new remote file address format. */
-  NewRemoteFileAddresses = "new_remote_file_addresses",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisCodeScanningCpp = "overlay_analysis_code_scanning_cpp",
   OverlayAnalysisCodeScanningCsharp = "overlay_analysis_code_scanning_csharp",
@@ -264,11 +262,6 @@ export const featureConfig = {
   [Feature.JavaNetworkDebugging]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_JAVA_NETWORK_DEBUGGING",
-    minimumVersion: undefined,
-  },
-  [Feature.NewRemoteFileAddresses]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_NEW_REMOTE_FILE_ADDRESSES",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysis]: {

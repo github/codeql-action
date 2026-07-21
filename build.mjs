@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,51 @@ const __dirname = dirname(__filename);
 
 const SRC_DIR = join(__dirname, "src");
 const OUT_DIR = join(__dirname, "lib");
+
+/**
+ * Decide whether to minify the bundle.
+ *
+ * We deliberately do not minify by default to avoid making every PR's regenerated bundle conflict
+ * with every other PR. Instead, we minify only when building for a release branch so consumers of
+ * `github/codeql-action/<action>@vN` get the smaller bundle while day-to-day development on `main`
+ * stays low-churn.
+ *
+ * @returns {boolean}
+ */
+function shouldMinify() {
+  const override = process.env.CODEQL_ACTION_MINIFY;
+  if (override === "true") return true;
+  if (override === "false") return false;
+
+  // In `pull_request` and `merge_group` contexts, we can just look at the base ref.
+  if (process.env.GITHUB_BASE_REF) {
+    return process.env.GITHUB_BASE_REF.startsWith("releases/v");
+  }
+
+  // When running locally or in contexts without a base ref (e.g. `push`, `workflow_dispatch`),
+  // check whether we're running as part of the release automation by looking at the local branch
+  // name. Mergebacks target `main` and should not be minified, while update and backport branches
+  // target release branches and should be minified.
+  const localBranch = getLocalBranchName();
+  if (localBranch?.startsWith("mergeback/")) return false;
+  if (localBranch && /^(update|backport)-v\d/.test(localBranch)) return true;
+
+  // If we don't seem to be running as part of the release automation, then only minify if we're on
+  // a release branch.
+  const refName = process.env.GITHUB_REF_NAME || localBranch;
+  return !!refName && refName.startsWith("releases/v");
+}
+
+function getLocalBranchName() {
+  try {
+    return execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Clean the output directory before building.
@@ -201,10 +247,17 @@ const entryPointsPlugin = {
   },
 };
 
+const minify = shouldMinify();
+if (minify) {
+  // eslint-disable-next-line no-console
+  console.log("Minification enabled for this build.");
+}
+
 const context = await esbuild.context({
   entryPoints: [{ in: SHARED_ENTRYPOINT, out: SHARED_ENTRYPOINT }],
   bundle: true,
   format: "cjs",
+  minify,
   outdir: OUT_DIR,
   platform: "node",
   external: ["./entry-points"],

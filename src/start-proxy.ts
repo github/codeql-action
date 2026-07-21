@@ -192,7 +192,10 @@ function isPAT(value: string) {
  * enabled, because generic CodeQL workflow components may use them rather than just
  * language-specific components.
  */
-export const ALWAYS_ENABLED_REGISTRY_TYPE = ["git_source"] as const;
+export const ALWAYS_ENABLED_REGISTRY_TYPE = [
+  "git_source",
+  "docker_registry",
+] as const;
 
 type RegistryMapping = Partial<Record<BuiltInLanguage, string[]>>;
 

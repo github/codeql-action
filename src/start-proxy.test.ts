@@ -128,6 +128,12 @@ const gitSourceCredential = {
   token: "mno",
 };
 
+const dockerRegistryCredential = {
+  type: "docker_registry",
+  host: "https://registry.example.com",
+  token: "pqr",
+};
+
 test("getCredentials prefers registriesCredentials over registrySecrets", async (t) => {
   const registryCredentials = Buffer.from(
     JSON.stringify([
@@ -633,6 +639,7 @@ test("getCredentials returns only ALWAYS_ENABLED_REGISTRY_TYPE credentials for A
   const credentialsInput = toEncodedJSON([
     ...mixedCredentials,
     gitSourceCredential,
+    dockerRegistryCredential,
   ]);
 
   const credentials = startProxyExports.getCredentials(

@@ -178,8 +178,7 @@ export function makeMacro<Args extends unknown[]>(
   return wrapper;
 }
 
-export function getTestEnv(): Env {
-  const testEnv: NodeJS.ProcessEnv = {};
+export function getTestEnv(testEnv: NodeJS.ProcessEnv = {}): Env {
   return getEnv(testEnv);
 }
 
@@ -250,7 +249,7 @@ abstract class BaseEnvBuilder<
       cloneFrom !== undefined
         ? ({
             ...cloneFrom.state,
-            env: Object.create(cloneFrom.state.env),
+            env: cloneFrom.state.env.clone(),
             actions: Object.create(cloneFrom.state.actions),
             logger: this.logger,
           } satisfies ActionState<AllState>)

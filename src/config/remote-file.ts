@@ -1,7 +1,6 @@
 import { ActionState } from "../action-common";
 import { ActionsEnvVars, ReadOnlyEnv } from "../environment";
 import * as errorMessages from "../error-messages";
-import { Feature } from "../feature-flags";
 import { ConfigurationError, Failure, Result, Success } from "../util";
 
 /** Represents remote file addresses. */
@@ -124,16 +123,6 @@ export async function parseRemoteFileAddress(
 
   if (oldFormatAddressResult.isSuccess()) {
     return oldFormatAddressResult.value;
-  }
-
-  // If the FF for the new format is not enabled, throw the old format error.
-  const allowNewFormat = await actionState.features.getValue(
-    Feature.NewRemoteFileAddresses,
-  );
-  if (!allowNewFormat) {
-    throw new ConfigurationError(
-      errorMessages.getConfigFileRepoOldFormatInvalidMessage(configFile),
-    );
   }
 
   // retrieve the various parts of the config location, and ensure they're present

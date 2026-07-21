@@ -2,6 +2,11 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.37.2 - 21 Jul 2026
+
+- The new address format for the `config-file` input that was introduced in CodeQL Action 4.37.0 is now enabled by default. In addition to the format described there, the `remote=` prefix can now be used to explicitly indicate that the input refers to a remote file. All previous input formats continue to be accepted as well. [#4023](https://github.com/github/codeql-action/pull/4023)
+- The CodeQL Action can now make use of [configured private registries](https://docs.github.com/en/code-security/how-tos/secure-at-scale/configure-organization-security/manage-usage-and-access/giving-org-access-private-registries) in Default Setup to retrieve CodeQL configuration files from remote repositories that require authentication. This will allow customers to store their CodeQL configuration in a single repository that can then be referenced by Default Setup workflows in other repositories. We expect to roll this and other, related changes out to everyone in July. [#4007](https://github.com/github/codeql-action/pull/4007)
+
 ## 4.37.1 - 16 Jul 2026
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.20.6 and earlier. These versions of CodeQL were discontinued on 1 July 2026 alongside GitHub Enterprise Server 3.16, and will be unsupported by the next minor release of the CodeQL Action. [#3956](https://github.com/github/codeql-action/pull/3956)

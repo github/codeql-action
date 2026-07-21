@@ -22,7 +22,6 @@ runs:
         MAJOR_VERSION: ${{ inputs.major_version }}
         LATEST_TAG: ${{ inputs.latest_tag }}
       run: |
-        npm ci
         npx tsx ./pr-checks/release-branches.ts \
             --major-version "$MAJOR_VERSION" \
             --latest-tag "$LATEST_TAG"

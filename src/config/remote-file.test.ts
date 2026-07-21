@@ -2,8 +2,6 @@ import test from "ava";
 import sinon from "sinon";
 
 import { ActionsEnvVars } from "../environment";
-import * as errors from "../error-messages";
-import { Feature } from "../feature-flags";
 import { callee } from "../testing-utils";
 import { ConfigurationError } from "../util";
 
@@ -75,15 +73,7 @@ test("parseRemoteFileAddress accepts full remote addresses", async (t) => {
   for (const newFormatInput of newFormatInputs) {
     const targetWithArgs = target.withArgs(newFormatInput.input);
 
-    // Should fail when the FF is not enabled.
-    await targetWithArgs
-      .withFeatures([])
-      .throws(t, { instanceOf: ConfigurationError });
-
-    // And pass when the FF is enabled.
-    await targetWithArgs
-      .withFeatures([Feature.NewRemoteFileAddresses])
-      .passes(t.deepEqual, newFormatInput.expected);
+    await targetWithArgs.passes(t.deepEqual, newFormatInput.expected);
   }
 });
 
@@ -138,15 +128,7 @@ test("parseRemoteFileAddress accepts remote address without an owner", async (t)
   for (const testCase of testCases) {
     const targetWithArgs = target.withArgs(testCase.input);
 
-    // Should fail when the FF is not enabled.
-    await targetWithArgs
-      .withFeatures([])
-      .throws(t, { instanceOf: ConfigurationError });
-
-    // And pass when the FF is enabled.
-    await targetWithArgs
-      .withFeatures([Feature.NewRemoteFileAddresses])
-      .passes(t.deepEqual, testCase.expected);
+    await targetWithArgs.passes(t.deepEqual, testCase.expected);
   }
 });
 
@@ -160,9 +142,7 @@ test("parseRemoteFileAddress throws for invalid `GITHUB_REPOSITORY`", async (t) 
       sinon.define(env, "getRequired", getRequired);
     });
 
-  await target
-    .withFeatures([Feature.NewRemoteFileAddresses])
-    .throws(t, { instanceOf: Error });
+  await target.throws(t, { instanceOf: Error });
 
   t.assert(getRequired.calledOnceWith(ActionsEnvVars.GITHUB_REPOSITORY));
 });
@@ -194,31 +174,19 @@ test("parseRemoteFileAddress accepts remote address without a path", async (t) =
   for (const testCase of testCases) {
     const targetWithArgs = target.withArgs(testCase.input);
 
-    // Should fail when the FF is not enabled.
-    await targetWithArgs
-      .withFeatures([])
-      .throws(t, { instanceOf: ConfigurationError });
-
-    // And pass when the FF is enabled.
-    await targetWithArgs
-      .withFeatures([Feature.NewRemoteFileAddresses])
-      .passes(t.deepEqual, testCase.expected);
+    await targetWithArgs.passes(t.deepEqual, testCase.expected);
   }
 });
 
 test("parseRemoteFileAddress accepts remote address without a ref", async (t) => {
   const target = callee(parseRemoteFileAddress).withArgs("owner/repo:path");
 
-  // Should only accept the input if the FF is enabled.
-  await target.withFeatures([]).throws(t);
-  await target
-    .withFeatures([Feature.NewRemoteFileAddresses])
-    .passes(t.deepEqual, {
-      owner: "owner",
-      repo: "repo",
-      path: "path",
-      ref: DEFAULT_CONFIG_FILE_REF,
-    } satisfies RemoteFileAddress);
+  await target.passes(t.deepEqual, {
+    owner: "owner",
+    repo: "repo",
+    path: "path",
+    ref: DEFAULT_CONFIG_FILE_REF,
+  } satisfies RemoteFileAddress);
 });
 
 test("parseRemoteFileAddress rejects invalid values", async (t) => {
@@ -251,18 +219,11 @@ test("parseRemoteFileAddress rejects invalid values", async (t) => {
   for (const testInput of testInputs) {
     const targetWithArgs = target.withArgs(testInput);
 
-    // Should throw both when the new format is and isn't accepted.
-    await targetWithArgs.withFeatures([]).throws(t, {
+    await targetWithArgs.throws(t, {
+      // When the new format is accepted, there are some more specific
+      // errors in some cases. It is sufficient for us to check that
+      // an exception is thrown.
       instanceOf: ConfigurationError,
-      message: errors.getConfigFileRepoOldFormatInvalidMessage(testInput),
     });
-    await targetWithArgs
-      .withFeatures([Feature.NewRemoteFileAddresses])
-      .throws(t, {
-        // When the new format is accepted, there are some more specific
-        // errors in some cases. It is sufficient for us to check that
-        // an exception is thrown.
-        instanceOf: ConfigurationError,
-      });
   }
 });

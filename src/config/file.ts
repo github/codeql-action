@@ -82,8 +82,15 @@ export async function getRemoteConfig(
 ): Promise<UserConfig> {
   const address = await parseRemoteFileAddress(actionState, configFile);
 
+  const shouldProxyRequest = await actionState.features.getValue(
+    Feature.ProxyApiRequests,
+  );
+  const proxy = shouldProxyRequest
+    ? api.getRegistryProxy(actionState)
+    : undefined;
+
   const response = await api
-    .getApiClientWithExternalAuth(apiDetails)
+    .getApiClientWithExternalAuth(apiDetails, proxy)
     .rest.repos.getContent({
       owner: address.owner,
       repo: address.repo,

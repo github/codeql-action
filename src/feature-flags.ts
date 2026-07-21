@@ -94,8 +94,6 @@ export enum Feature {
   ForceNightly = "force_nightly",
   IgnoreGeneratedFiles = "ignore_generated_files",
   JavaNetworkDebugging = "java_network_debugging",
-  /** Allow the new remote file address format. */
-  NewRemoteFileAddresses = "new_remote_file_addresses",
   OverlayAnalysis = "overlay_analysis",
   OverlayAnalysisCodeScanningCpp = "overlay_analysis_code_scanning_cpp",
   OverlayAnalysisCodeScanningCsharp = "overlay_analysis_code_scanning_csharp",
@@ -138,6 +136,8 @@ export enum Feature {
   /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  /** Routes (some) API requests through the registry proxy. */
+  ProxyApiRequests = "proxy_api_requests",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
@@ -264,11 +264,6 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_JAVA_NETWORK_DEBUGGING",
     minimumVersion: undefined,
   },
-  [Feature.NewRemoteFileAddresses]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_NEW_REMOTE_FILE_ADDRESSES",
-    minimumVersion: undefined,
-  },
   [Feature.OverlayAnalysis]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS",
@@ -387,6 +382,11 @@ export const featureConfig = {
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
     legacyApi: true,
+    minimumVersion: undefined,
+  },
+  [Feature.ProxyApiRequests]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_PROXY_API_REQUESTS",
     minimumVersion: undefined,
   },
   [Feature.SkipFileCoverageOnPrs]: {

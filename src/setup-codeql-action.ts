@@ -14,6 +14,7 @@ import { CodeQL } from "./codeql";
 import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
+import { loadRepositoryProperties } from "./feature-flags/properties";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -122,6 +123,13 @@ async function run({
       getTemporaryDirectory(),
       logger,
     );
+
+    // Fetch the values of known repository properties that affect us.
+    const repositoryPropertiesResult = await loadRepositoryProperties(
+      repositoryNwo,
+      logger,
+    );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     const jobRunUuid = uuidV4();
     logger.info(`Job run UUID is ${jobRunUuid}.`);

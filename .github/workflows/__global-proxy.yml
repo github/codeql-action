@@ -55,6 +55,24 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'false'
+      - name: Block direct internet access to force proxy usage
+        run: |
+          apt-get update -qq && apt-get install -y -qq iptables >/dev/null 2>&1
+          PROXY_IP=$(getent hosts squid-proxy | awk '{ print $1 }')
+          echo "Squid proxy IP: $PROXY_IP"
+          # Allow all traffic to the proxy container
+          iptables -A OUTPUT -d "$PROXY_IP" -j ACCEPT
+          # Allow DNS resolution
+          iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+          iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+          # Allow loopback
+          iptables -A OUTPUT -o lo -j ACCEPT
+          # Allow already-established connections (from checkout/prepare-test)
+          iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+          # Block all other outbound HTTP and HTTPS, ensuring direct access fails
+          iptables -A OUTPUT -p tcp --dport 80 -j REJECT --reject-with tcp-reset
+          iptables -A OUTPUT -p tcp --dport 443 -j REJECT --reject-with tcp-reset
+          echo "Direct HTTP/HTTPS access is now blocked - all traffic must go through the proxy"
       - uses: ./../action/init
         with:
           languages: javascript
@@ -66,6 +84,7 @@ jobs:
       CODEQL_ACTION_TEST_MODE: true
     container:
       image: ubuntu:22.04
+      options: --cap-add=NET_ADMIN
     services:
       squid-proxy:
         image: ubuntu/squid:latest

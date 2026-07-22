@@ -166,6 +166,10 @@ async function sendCompletedStatusReport(
     workflow_languages: workflowLanguages || "",
   };
 
+  if (toolsInput !== undefined) {
+    initStatusReport.computed_inputs.tools = toolsInput;
+  }
+
   const initToolsDownloadFields: InitToolsDownloadFields = {};
 
   if (toolsDownloadStatusReport?.downloadDurationMs !== undefined) {

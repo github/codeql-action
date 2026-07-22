@@ -2,6 +2,7 @@ import * as github from "@actions/github";
 import * as githubUtils from "@actions/github/lib/utils";
 import test from "ava";
 import * as sinon from "sinon";
+import { ProxyAgent } from "undici";
 
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
@@ -250,4 +251,24 @@ test("getRegistryProxyConfig - gets the configuration from the env vars", async 
       }),
     )
     .passes(t.like, { host, port, ca });
+});
+
+test("makeProxyRequestOptions - returns defaults without custom proxy", async (t) => {
+  t.deepEqual(
+    api.makeProxyRequestOptions(undefined),
+    githubUtils.defaults.request,
+  );
+});
+
+test("makeProxyRequestOptions - returns fetch with custom proxy", async (t) => {
+  const opts = api.makeProxyRequestOptions(
+    new ProxyAgent("http://localhost:1080"),
+  );
+  // Fetch should be different from the defaults.
+  t.notDeepEqual(opts?.fetch, githubUtils.defaults.request?.fetch);
+  // The options should be the same aside from that.
+  t.deepEqual(
+    { ...opts, fetch: githubUtils.defaults.request?.fetch },
+    githubUtils.defaults.request,
+  );
 });

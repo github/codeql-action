@@ -253,8 +253,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "0f481fcb613427c0f801b606911222b5b6f3083a",
-          "v5.5.0",
+          "03ad4de0992f5dab5e18fcb136590ce7c4a0ac95",
+          "v5.6.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -529,8 +529,8 @@ function generateJob(
       name: "Check out repository",
       uses: pinnedUses(
         "actions/checkout",
-        "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
-        "v7.0.0",
+        "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "v7.0.1",
       ),
     },
     ...setupInfo.steps,

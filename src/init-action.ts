@@ -25,6 +25,7 @@ import {
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { getConfigFileInput } from "./config/file";
+import { EffectiveInput, getToolsInput } from "./config/inputs";
 import * as configUtils from "./config-utils";
 import {
   DependencyCacheRestoreStatusReport,
@@ -130,6 +131,7 @@ async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
   configFile: string | undefined,
+  toolsInput: EffectiveInput | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -158,7 +160,7 @@ async function sendCompletedStatusReport(
 
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
-    tools_input: getOptionalInput("tools") || "",
+    tools_input: toolsInput?.value || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: workflowLanguages || "",
@@ -211,6 +213,7 @@ async function run(
   let codeql: CodeQL;
   let features: FeatureEnablement;
   let sourceRoot: string;
+  let toolsInput: EffectiveInput | undefined;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
@@ -295,6 +298,12 @@ async function run(
       );
     }
 
+    // Get the effective `tools` input.
+    toolsInput = await getToolsInput(
+      actionStateWithFeatures,
+      repositoryProperties,
+    );
+
     const codeQLDefaultVersionInfo =
       await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
@@ -305,7 +314,7 @@ async function run(
       analysisKinds?.length === 1 &&
       analysisKinds[0] === AnalysisKind.CodeScanning;
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      toolsInput?.value,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
@@ -771,6 +780,7 @@ async function run(
       startedAt,
       config,
       undefined, // We only report config info on success.
+      toolsInput,
       toolsDownloadStatusReport,
       toolsFeatureFlagsValid,
       toolsSource,
@@ -788,6 +798,7 @@ async function run(
     startedAt,
     config,
     configFile,
+    toolsInput,
     toolsDownloadStatusReport,
     toolsFeatureFlagsValid,
     toolsSource,

@@ -11,6 +11,7 @@ import {
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
+import { EffectiveInput, getToolsInput } from "./config/inputs";
 import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
@@ -44,6 +45,7 @@ import {
  */
 async function sendCompletedStatusReport(
   startedAt: Date,
+  toolsInput: EffectiveInput | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -68,7 +70,7 @@ async function sendCompletedStatusReport(
 
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
-    tools_input: getOptionalInput("tools") || "",
+    tools_input: toolsInput?.value || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: "",
@@ -88,14 +90,15 @@ async function sendCompletedStatusReport(
 }
 
 /** The main behaviour of this action. */
-async function run({
-  startedAt,
-  logger,
-}: ActionState<["Base", "Logger"]>): Promise<void> {
+async function run(
+  actionState: ActionState<["Base", "Logger", "Actions"]>,
+): Promise<void> {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const { logger, startedAt } = actionState;
 
   let codeql: CodeQL;
+  let toolsInput: EffectiveInput | undefined;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
@@ -131,6 +134,8 @@ async function run({
     );
     const repositoryProperties = repositoryPropertiesResult.orElse({});
 
+    const actionStateWithFeatures = { ...actionState, features };
+
     const jobRunUuid = uuidV4();
     logger.info(`Job run UUID is ${jobRunUuid}.`);
     core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
@@ -146,6 +151,13 @@ async function run({
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
+
+    // Get the effective `tools` input.
+    toolsInput = await getToolsInput(
+      actionStateWithFeatures,
+      repositoryProperties,
+    );
+
     const codeQLDefaultVersionInfo =
       await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
@@ -154,7 +166,7 @@ async function run({
     );
     const analysisKinds = await getAnalysisKinds(logger, features);
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      toolsInput?.value,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
@@ -195,6 +207,7 @@ async function run({
 
   await sendCompletedStatusReport(
     startedAt,
+    toolsInput,
     toolsDownloadStatusReport,
     toolsFeatureFlagsValid,
     toolsSource,

@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.37.3 - 22 Jul 2026
+
+No user facing changes.
+
 ## 4.37.2 - 21 Jul 2026
 
 - The new address format for the `config-file` input that was introduced in CodeQL Action 4.37.0 is now enabled by default. In addition to the format described there, the `remote=` prefix can now be used to explicitly indicate that the input refers to a remote file. All previous input formats continue to be accepted as well. [#4023](https://github.com/github/codeql-action/pull/4023)

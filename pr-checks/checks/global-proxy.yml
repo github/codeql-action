@@ -12,7 +12,6 @@ services:
     ports:
       - 3128:3128
 env:
-  https_proxy: http://squid-proxy:3128
   CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION: true
 steps:
   - name: Block direct internet access to force proxy usage
@@ -33,8 +32,18 @@ steps:
       iptables -A OUTPUT -p tcp --dport 80 -j REJECT --reject-with tcp-reset
       iptables -A OUTPUT -p tcp --dport 443 -j REJECT --reject-with tcp-reset
       echo "Direct HTTP/HTTPS access is now blocked - all traffic must go through the proxy"
+
+  - name: Set proxy environment variables
+    shell: bash
+    run: |
+      echo "http_proxy=http://squid-proxy:3128" >> $GITHUB_ENV
+      echo "HTTP_PROXY=http://squid-proxy:3128" >> $GITHUB_ENV
+      echo "https_proxy=http://squid-proxy:3128" >> $GITHUB_ENV
+      echo "HTTPS_PROXY=http://squid-proxy:3128" >> $GITHUB_ENV
+
   - uses: ./../action/init
     with:
       languages: javascript
       tools: ${{ steps.prepare-test.outputs.tools-url }}
+
   - uses: ./../action/analyze

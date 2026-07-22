@@ -38,12 +38,15 @@ function stubGetToolsInput() {
   return actions;
 }
 
+const workflowLogMessage = `Using ${InputName.Tools} input from workflow:`;
+
 test("getToolsInput - returns workflow input if available", async (t) => {
   const actions = stubGetToolsInput();
 
   await callee(getToolsInput)
     .withActions(actions)
     .withArgs({})
+    .logs(t, workflowLogMessage)
     .passes(t.deepEqual, expectedWorkflowResult);
 });
 
@@ -57,10 +60,15 @@ test("getToolsInput - returns repository property value if enforced", async (t) 
     });
 
   // We expect the repository value if provided and the FF is enabled.
+  const enforcedLogMessage = `Using ${InputName.Tools} input from repository property (enforced):`;
   await target
     .withFeatures([Feature.ToolsRepositoryProperty])
+    .logs(t, enforcedLogMessage)
     .passes(t.deepEqual, expectedRepositoryPropertyResult);
-  await target.passes(t.deepEqual, expectedWorkflowResult);
+  await target
+    .notLogs(t, enforcedLogMessage)
+    .logs(t, workflowLogMessage)
+    .passes(t.deepEqual, expectedWorkflowResult);
 });
 
 test("getToolsInput - prefers workflow input", async (t) => {
@@ -75,8 +83,11 @@ test("getToolsInput - prefers workflow input", async (t) => {
   // We expect the workflow input regardless of the FF state.
   await target
     .withFeatures([Feature.ToolsRepositoryProperty])
+    .logs(t, workflowLogMessage)
     .passes(t.deepEqual, expectedWorkflowResult);
-  await target.passes(t.deepEqual, expectedWorkflowResult);
+  await target
+    .logs(t, workflowLogMessage)
+    .passes(t.deepEqual, expectedWorkflowResult);
 });
 
 test("getToolsInput - returns repository property", async (t) => {
@@ -87,6 +98,7 @@ test("getToolsInput - returns repository property", async (t) => {
   // We expect the repository property if the FF is enabled or undefined otherwise.
   await target
     .withFeatures([Feature.ToolsRepositoryProperty])
+    .logs(t, `Using ${InputName.Tools} input from repository property:`)
     .passes(t.deepEqual, expectedRepositoryPropertyResult);
   await target.passes(t.is, undefined);
 });

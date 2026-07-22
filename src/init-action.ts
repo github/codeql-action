@@ -25,7 +25,7 @@ import {
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { getConfigFileInput } from "./config/file";
-import { EffectiveInput, getToolsInput } from "./config/inputs";
+import { ComputedInput, getToolsInput } from "./config/inputs";
 import * as configUtils from "./config-utils";
 import {
   DependencyCacheRestoreStatusReport,
@@ -131,7 +131,7 @@ async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
   configFile: string | undefined,
-  toolsInput: EffectiveInput | undefined,
+  toolsInput: ComputedInput | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -213,7 +213,7 @@ async function run(
   let codeql: CodeQL;
   let features: FeatureEnablement;
   let sourceRoot: string;
-  let toolsInput: EffectiveInput | undefined;
+  let toolsInput: ComputedInput | undefined;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
@@ -298,7 +298,7 @@ async function run(
       );
     }
 
-    // Get the effective `tools` input.
+    // Get the computed `tools` input.
     toolsInput = await getToolsInput(
       actionStateWithFeatures,
       repositoryProperties,

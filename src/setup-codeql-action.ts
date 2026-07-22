@@ -11,7 +11,7 @@ import {
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
-import { EffectiveInput, getToolsInput } from "./config/inputs";
+import { ComputedInput, getToolsInput } from "./config/inputs";
 import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
@@ -45,7 +45,7 @@ import {
  */
 async function sendCompletedStatusReport(
   startedAt: Date,
-  toolsInput: EffectiveInput | undefined,
+  toolsInput: ComputedInput | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -98,7 +98,7 @@ async function run(
   const { logger, startedAt } = actionState;
 
   let codeql: CodeQL;
-  let toolsInput: EffectiveInput | undefined;
+  let toolsInput: ComputedInput | undefined;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
@@ -152,7 +152,7 @@ async function run(
       await sendStatusReport(statusReportBase);
     }
 
-    // Get the effective `tools` input.
+    // Get the computed `tools` input.
     toolsInput = await getToolsInput(
       actionStateWithFeatures,
       repositoryProperties,

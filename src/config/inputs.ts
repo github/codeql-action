@@ -20,7 +20,7 @@ export enum InputSource {
  * Represents an effective input to the CodeQL Action. That is,
  * the input value that was computed or selected from multiple sources.
  */
-export type EffectiveInput = {
+export type ComputedInput = {
   /** The name of the property. */
   name: InputName;
   /** The value of the property. */
@@ -30,17 +30,17 @@ export type EffectiveInput = {
 };
 
 /**
- * Gets the effective `tools` input. This comes from either the workflow or
+ * Gets the computed `tools` input. This comes from either the workflow or
  * the repository property.
  *
  * @param action The Action state.
  * @param repositoryProperties The values of known repository properties.
- * @returns The effective input or `undefined` if there is no input.
+ * @returns The computed input or `undefined` if there is no input.
  */
 export async function getToolsInput(
   action: ActionState<["Logger", "Actions", "FeatureFlags"]>,
   repositoryProperties: Partial<RepositoryProperties>,
-): Promise<EffectiveInput | undefined> {
+): Promise<ComputedInput | undefined> {
   const name = InputName.Tools;
   const input = action.actions.getOptionalInput(name);
   const propertyValue = repositoryProperties[RepositoryPropertyName.TOOLS];

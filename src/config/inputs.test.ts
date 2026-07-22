@@ -6,24 +6,19 @@ import { Feature } from "../feature-flags";
 import { RepositoryPropertyName } from "../feature-flags/properties";
 import { callee } from "../testing-utils";
 
-import {
-  EffectiveInput,
-  getToolsInput,
-  InputName,
-  InputSource,
-} from "./inputs";
+import { ComputedInput, getToolsInput, InputName, InputSource } from "./inputs";
 
 test("getToolsInput - undefined if there's no input", async (t) => {
   await callee(getToolsInput).withArgs({}).passes(t.is, undefined);
 });
 
-const expectedWorkflowResult: EffectiveInput = {
+const expectedWorkflowResult: ComputedInput = {
   name: InputName.Tools,
   source: InputSource.Workflow,
   value: "workflow-input-value",
 };
 
-const expectedRepositoryPropertyResult: EffectiveInput = {
+const expectedRepositoryPropertyResult: ComputedInput = {
   name: InputName.Tools,
   source: InputSource.RepositoryProperty,
   value: "repo-property-input-value",

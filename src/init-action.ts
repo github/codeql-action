@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -41,10 +40,7 @@ import {
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import {
-  loadPropertiesFromApi,
-  RepositoryProperties,
-} from "./feature-flags/properties";
+import { loadRepositoryProperties } from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -62,7 +58,7 @@ import {
   OverlayBaseDatabaseDownloadStats,
 } from "./overlay/caching";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
-import { getRepositoryNwo, RepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -94,10 +90,7 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
-  Result,
   getOptionalEnvVar,
-  Success,
-  Failure,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -803,38 +796,6 @@ async function run(
     dependencyCachingStatus,
     logger,
   );
-}
-
-/**
- * Loads [repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) if applicable.
- */
-async function loadRepositoryProperties(
-  repositoryNwo: RepositoryNwo,
-  logger: Logger,
-): Promise<Result<RepositoryProperties, unknown>> {
-  // See if we can skip loading repository properties early. In particular,
-  // repositories owned by users cannot have repository properties, so we can
-  // skip the API call entirely in that case.
-  const repositoryOwnerType = github.context.payload.repository?.owner.type;
-  logger.debug(
-    `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
-  );
-  if (repositoryOwnerType === "User") {
-    logger.debug(
-      "Skipping loading repository properties because the repository is owned by a user and " +
-        "therefore cannot have repository properties.",
-    );
-    return new Success({});
-  }
-
-  try {
-    return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
-  } catch (error) {
-    logger.warning(
-      `Failed to load repository properties: ${getErrorMessage(error)}`,
-    );
-    return new Failure(error);
-  }
 }
 
 async function recordZstdAvailability(

@@ -71,7 +71,6 @@ import {
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
-import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
 import { getCombinedTracerConfig } from "./tracer-config";
@@ -222,7 +221,6 @@ async function run(
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
   let toolsVersion: string;
-  let zstdAvailability: ZstdAvailability | undefined;
 
   try {
     initializeEnvironment(getActionVersion());
@@ -332,7 +330,6 @@ async function run(
     toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;
     toolsVersion = initCodeQLResult.toolsVersion;
     toolsSource = initCodeQLResult.toolsSource;
-    zstdAvailability = initCodeQLResult.zstdAvailability;
 
     // Check the workflow for problems. If there are any problems, they are reported
     // to the workflow log. No exceptions are thrown.
@@ -501,22 +498,6 @@ async function run(
 
     if (config.overlayDatabaseMode !== OverlayDatabaseMode.Overlay) {
       cleanupDatabaseClusterDirectory(config, logger);
-    }
-
-    if (zstdAvailability) {
-      await recordZstdAvailability(config, zstdAvailability);
-    }
-
-    // Log CodeQL download telemetry, if appropriate
-    if (toolsDownloadStatusReport) {
-      addNoLanguageDiagnostic(
-        config,
-        makeTelemetryDiagnostic(
-          "codeql-action/bundle-download-telemetry",
-          "CodeQL bundle download telemetry",
-          toolsDownloadStatusReport,
-        ),
-      );
     }
 
     // Forward Go flags
@@ -810,20 +791,6 @@ async function run(
     overlayBaseDatabaseStats,
     dependencyCachingStatus,
     logger,
-  );
-}
-
-async function recordZstdAvailability(
-  config: configUtils.Config,
-  zstdAvailability: ZstdAvailability,
-) {
-  addNoLanguageDiagnostic(
-    config,
-    makeTelemetryDiagnostic(
-      "codeql-action/zstd-availability",
-      "Zstandard availability",
-      zstdAvailability,
-    ),
   );
 }
 

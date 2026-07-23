@@ -156,6 +156,7 @@ test.serial(
         t.assert(toolcache.find("CodeQL", `0.0.0-${version}`));
         t.is(result.toolsVersion, `0.0.0-${version}`);
         t.is(result.toolsSource, ToolsSource.Download);
+        assertDownloadDurationInteger(t, result.toolsDownloadStatusReport);
       }
 
       t.is(toolcache.findAllVersions("CodeQL").length, 2);
@@ -191,9 +192,7 @@ test.serial(
       t.assert(toolcache.find("CodeQL", `2.15.0`));
       t.is(result.toolsVersion, `2.15.0`);
       t.is(result.toolsSource, ToolsSource.Download);
-      if (result.toolsDownloadStatusReport) {
-        assertDurationsInteger(t, result.toolsDownloadStatusReport);
-      }
+      assertDownloadDurationInteger(t, result.toolsDownloadStatusReport);
     });
   },
 );
@@ -230,9 +229,7 @@ test.serial(
       t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
       t.deepEqual(result.toolsVersion, "0.0.0-20200610");
       t.is(result.toolsSource, ToolsSource.Download);
-      if (result.toolsDownloadStatusReport) {
-        assertDurationsInteger(t, result.toolsDownloadStatusReport);
-      }
+      assertDownloadDurationInteger(t, result.toolsDownloadStatusReport);
     });
   },
 );
@@ -282,11 +279,7 @@ for (const {
         t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
         t.deepEqual(result.toolsVersion, expectedToolcacheVersion);
         t.is(result.toolsSource, ToolsSource.Download);
-        t.assert(
-          Number.isInteger(
-            result.toolsDownloadStatusReport?.downloadDurationMs,
-          ),
-        );
+        assertDownloadDurationInteger(t, result.toolsDownloadStatusReport);
       });
     },
   );
@@ -330,9 +323,7 @@ for (const toolcacheVersion of [
           SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
         );
         t.is(result.toolsSource, ToolsSource.Toolcache);
-        t.is(result.toolsDownloadStatusReport?.combinedDurationMs, undefined);
-        t.is(result.toolsDownloadStatusReport?.downloadDurationMs, undefined);
-        t.is(result.toolsDownloadStatusReport?.extractionDurationMs, undefined);
+        t.is(result.toolsDownloadStatusReport, undefined);
       });
     },
   );
@@ -373,9 +364,7 @@ test.serial(
       );
       t.deepEqual(result.toolsVersion, "0.0.0-20200601");
       t.is(result.toolsSource, ToolsSource.Toolcache);
-      t.is(result.toolsDownloadStatusReport?.combinedDurationMs, undefined);
-      t.is(result.toolsDownloadStatusReport?.downloadDurationMs, undefined);
-      t.is(result.toolsDownloadStatusReport?.extractionDurationMs, undefined);
+      t.is(result.toolsDownloadStatusReport, undefined);
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
       t.is(cachedVersions.length, 1);
@@ -421,9 +410,7 @@ test.serial(
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
       t.is(result.toolsSource, ToolsSource.Download);
-      if (result.toolsDownloadStatusReport) {
-        assertDurationsInteger(t, result.toolsDownloadStatusReport);
-      }
+      t.truthy(result.toolsDownloadStatusReport);
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
       t.is(cachedVersions.length, 2);
@@ -462,9 +449,7 @@ test.serial(
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
       t.is(result.toolsSource, ToolsSource.Download);
-      if (result.toolsDownloadStatusReport) {
-        assertDurationsInteger(t, result.toolsDownloadStatusReport);
-      }
+      t.truthy(result.toolsDownloadStatusReport);
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
       t.is(cachedVersions.length, 2);
@@ -506,9 +491,7 @@ test.serial(
 
       t.is(result.toolsVersion, "0.0.0-20230203");
       t.is(result.toolsSource, ToolsSource.Download);
-      if (result.toolsDownloadStatusReport) {
-        assertDurationsInteger(t, result.toolsDownloadStatusReport);
-      }
+      assertDownloadDurationInteger(t, result.toolsDownloadStatusReport);
 
       const cachedVersions = toolcache.findAllVersions("CodeQL");
       t.is(cachedVersions.length, 1);
@@ -519,15 +502,11 @@ test.serial(
   },
 );
 
-function assertDurationsInteger(
+function assertDownloadDurationInteger(
   t: ExecutionContext<unknown>,
-  statusReport: ToolsDownloadStatusReport,
+  statusReport: ToolsDownloadStatusReport | undefined,
 ) {
-  t.assert(Number.isInteger(statusReport?.combinedDurationMs));
-  if (statusReport.downloadDurationMs !== undefined) {
-    t.assert(Number.isInteger(statusReport?.downloadDurationMs));
-    t.assert(Number.isInteger(statusReport?.extractionDurationMs));
-  }
+  t.assert(Number.isInteger(statusReport?.downloadDurationMs));
 }
 
 test.serial("getExtraOptions works for explicit paths", (t) => {

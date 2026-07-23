@@ -921,7 +921,6 @@ interface SetupCodeQLResult {
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
-  zstdAvailability: tar.ZstdAvailability;
 }
 
 /**
@@ -1005,7 +1004,6 @@ export async function setupCodeQLBundle(
     toolsDownloadStatusReport,
     toolsSource,
     toolsVersion,
-    zstdAvailability,
   };
 }
 

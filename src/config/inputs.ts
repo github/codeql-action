@@ -21,8 +21,6 @@ export enum InputSource {
  * the input value that was computed or selected from multiple sources.
  */
 export type ComputedInput = {
-  /** The name of the property. */
-  name: InputName;
   /** The value of the property. */
   value: string;
   /** The source of the property. */
@@ -54,7 +52,6 @@ export async function getToolsInput(
       `Using ${name} input from repository property (enforced): ${propertyValue}`,
     );
     return {
-      name,
       // Drop the '!' from the value.
       value: propertyValue.substring(1),
       source: InputSource.RepositoryProperty,
@@ -64,7 +61,7 @@ export async function getToolsInput(
   // Otherwise, the input from the workflow takes precedence.
   if (input !== undefined) {
     action.logger.info(`Using ${name} input from workflow: ${input}`);
-    return { name, value: input, source: InputSource.Workflow };
+    return { value: input, source: InputSource.Workflow };
   }
 
   // Use the repository property if there's no workflow input.
@@ -73,7 +70,6 @@ export async function getToolsInput(
       `Using ${name} input from repository property: ${propertyValue}`,
     );
     return {
-      name,
       value: propertyValue,
       source: InputSource.RepositoryProperty,
     };

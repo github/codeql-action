@@ -13,13 +13,11 @@ test("getToolsInput - undefined if there's no input", async (t) => {
 });
 
 const expectedWorkflowResult: ComputedInput = {
-  name: InputName.Tools,
   source: InputSource.Workflow,
   value: "workflow-input-value",
 };
 
 const expectedRepositoryPropertyResult: ComputedInput = {
-  name: InputName.Tools,
   source: InputSource.RepositoryProperty,
   value: "repo-property-input-value",
 };

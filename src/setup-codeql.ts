@@ -533,11 +533,7 @@ export async function getCodeQLSource(
     // We only allow `toolsInput === "toolcache"` for `dynamic` events. In general, using `toolsInput === "toolcache"`
     // can lead to alert wobble and so it shouldn't be used for an analysis where results are intended to be uploaded.
     // We also allow this in test mode.
-    const allowToolcacheValueFF = await features.getValue(
-      Feature.AllowToolcacheInput,
-    );
-    const allowToolcacheValue =
-      allowToolcacheValueFF && (isDynamicWorkflow() || util.isInTestMode());
+    const allowToolcacheValue = isDynamicWorkflow() || util.isInTestMode();
     if (allowToolcacheValue) {
       // If `toolsInput === "toolcache"`, try to find the latest version of the CLI that's available in the toolcache
       // and use that. We perform this check here since we can set `cliVersion` directly and don't want to default to
@@ -558,15 +554,9 @@ export async function getCodeQLSource(
           `Found no CodeQL CLI in the toolcache, ignoring 'tools: ${toolsInput}'...`,
         );
       } else {
-        if (allowToolcacheValueFF) {
-          logger.warning(
-            `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
-          );
-        } else {
-          logger.info(
-            `Ignoring 'tools: ${toolsInput}' because the feature is not enabled.`,
-          );
-        }
+        logger.warning(
+          `Ignoring 'tools: ${toolsInput}' because the workflow was not triggered dynamically.`,
+        );
       }
 
       const version = await resolveDefaultCliVersion(

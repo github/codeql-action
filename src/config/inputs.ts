@@ -3,6 +3,7 @@ import { Feature } from "../feature-flags";
 import {
   RepositoryProperties,
   RepositoryPropertyName,
+  StringRepositoryPropertyNames,
 } from "../feature-flags/properties";
 
 /** Enumerates input names. */
@@ -29,23 +30,35 @@ export type ComputedInput = {
 };
 
 /**
- * Gets the computed `tools` input. This comes from either the workflow or
+ * Represents options for how to compute an input.
+ */
+export interface ComputedInputOptions {
+  repositoryPropertyName?: StringRepositoryPropertyNames;
+}
+
+/**
+ * Gets the computed input for `name`. This comes from either the workflow or
  * the repository property.
  *
  * @param action The Action state.
  * @param repositoryProperties The values of known repository properties.
+ * @param name The name of the input to compute.
+ * @param options Options for how to compute the input value.
+ *
  * @returns The computed input or `undefined` if there is no input.
  */
-export async function getToolsInput(
+export async function getComputedInput(
   action: ActionState<["Logger", "Actions", "FeatureFlags"]>,
-  repositoryProperties: Partial<RepositoryProperties>,
+  repositoryProperties: RepositoryProperties,
+  name: InputName,
+  options: ComputedInputOptions,
 ): Promise<ComputedInput | undefined> {
-  const name = InputName.Tools;
   const input = action.actions.getOptionalInput(name);
-  const propertyValue = repositoryProperties[RepositoryPropertyName.TOOLS];
-  const allowRepositoryProperty = await action.features.getValue(
-    Feature.ToolsRepositoryProperty,
-  );
+  const allowRepositoryProperty = options.repositoryPropertyName !== undefined;
+  const propertyValue =
+    options.repositoryPropertyName !== undefined
+      ? repositoryProperties[options.repositoryPropertyName]
+      : undefined;
 
   // The repository property takes precedence if it starts with an '!'.
   if (allowRepositoryProperty && propertyValue?.startsWith("!")) {
@@ -78,4 +91,26 @@ export async function getToolsInput(
 
   // There's no input.
   return undefined;
+}
+
+/**
+ * Gets the computed `tools` input. This comes from either the workflow or
+ * the repository property.
+ *
+ * @param action The Action state.
+ * @param repositoryProperties The values of known repository properties.
+ * @returns The computed input or `undefined` if there is no input.
+ */
+export async function getToolsInput(
+  action: ActionState<["Logger", "Actions", "FeatureFlags"]>,
+  repositoryProperties: Partial<RepositoryProperties>,
+): Promise<ComputedInput | undefined> {
+  const allowRepositoryProperty = await action.features.getValue(
+    Feature.ToolsRepositoryProperty,
+  );
+  return getComputedInput(action, repositoryProperties, InputName.Tools, {
+    repositoryPropertyName: allowRepositoryProperty
+      ? RepositoryPropertyName.TOOLS
+      : undefined,
+  });
 }

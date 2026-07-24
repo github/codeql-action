@@ -29,6 +29,13 @@ export type AllRepositoryProperties = {
   [RepositoryPropertyName.TOOLS]: string;
 };
 
+/** The subset of known repository properties which are of type `string`. */
+export type StringRepositoryPropertyNames = keyof {
+  [K in keyof AllRepositoryProperties as AllRepositoryProperties[K] extends string
+    ? K
+    : never]: AllRepositoryProperties[K];
+};
+
 /** Parsed repository properties. */
 export type RepositoryProperties = Partial<AllRepositoryProperties>;
 

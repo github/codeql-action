@@ -8,10 +8,9 @@
 import * as fs from "node:fs";
 import { parseArgs } from "node:util";
 
-import { getErrorMessage } from "../src/util";
-
 import { NO_CHANGES_STR, parseChangelog } from "./changelog";
 import { CHANGELOG_FILE } from "./config";
+import { getErrorMessage } from "./util";
 
 /**
  * Prepare the changelog for the new release

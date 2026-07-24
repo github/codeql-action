@@ -7,8 +7,6 @@
 import * as fs from "node:fs";
 import { parseArgs } from "node:util";
 
-import { getErrorMessage } from "../src/util";
-
 import {
   Changelog,
   ChangelogSection,
@@ -17,6 +15,7 @@ import {
   renderChangelog,
 } from "./changelog";
 import { CHANGELOG_FILE } from "./config";
+import { getErrorMessage } from "./util";
 
 export interface RollbackChangelogInputs {
   "target-version": string;

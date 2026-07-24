@@ -6,14 +6,13 @@
 
 import * as fs from "node:fs";
 
-import { getErrorMessage } from "../src/util";
-
 import {
   parseChangelog,
   renderChangelog,
   UNRELEASED_PLACEHOLDER,
 } from "./changelog";
 import { CHANGELOG_FILE, CLI_BUNDLE_RELEASE_URL_PREFIX } from "./config";
+import { getErrorMessage } from "./util";
 
 export const CLI_VERSION_ENV_VAR = "CLI_VERSION";
 export const PR_URL_ENV_VAR = "PR_URL";

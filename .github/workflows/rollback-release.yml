@@ -93,7 +93,7 @@ jobs:
           LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
           VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/rollback_changelog.py \
+          npx tsx pr-checks/rollback-changelog.ts \
             --target-version "${ROLLBACK_TAG:1}" \
             --rollback-version "${LATEST_TAG:1}" \
             --new-version "$VERSION" > $NEW_CHANGELOG

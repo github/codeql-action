@@ -7,6 +7,7 @@ import {
 
 /** Enumerates input names. */
 export enum InputName {
+  ConfigFile = "config-file",
   Tools = "tools",
 }
 

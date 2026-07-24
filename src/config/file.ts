@@ -9,6 +9,7 @@ import {
 import { ConfigurationError } from "../util";
 
 import { parseUserConfig, UserConfig } from "./db-config";
+import { InputSource, type ComputedInput } from "./inputs";
 import { parseRemoteFileAddress } from "./remote-file";
 
 /**
@@ -34,12 +35,12 @@ export async function getConfigFileInput(
     features,
   }: ActionState<["Logger", "Actions", "FeatureFlags"]>,
   repositoryProperties: Partial<RepositoryProperties>,
-): Promise<string | undefined> {
+): Promise<ComputedInput | undefined> {
   const input = actions.getOptionalInput("config-file");
 
   if (input !== undefined) {
     logger.info(`Using configuration file input from workflow: ${input}`);
-    return input;
+    return { value: input, source: InputSource.Workflow };
   }
 
   const propertyValue =
@@ -55,7 +56,7 @@ export async function getConfigFileInput(
       logger.info(
         `Using configuration file input from repository property: ${propertyValue}`,
       );
-      return propertyValue;
+      return { value: propertyValue, source: InputSource.RepositoryProperty };
     } else {
       logger.info(
         "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",

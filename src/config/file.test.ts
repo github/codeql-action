@@ -13,6 +13,7 @@ import {
 } from "../testing-utils";
 
 import { getConfigFileInput, getRemoteConfig } from "./file";
+import { InputSource } from "./inputs";
 
 setupTests(test);
 
@@ -42,7 +43,7 @@ test("getConfigFileInput returns input value", async (t) => {
     })
     .withArgs(repositoryProperties)
     .logs(t, "Using configuration file input from workflow")
-    .passes(t.is, testInput);
+    .passes(t.deepEqual, { value: testInput, source: InputSource.Workflow });
 });
 
 test("getConfigFileInput returns repository property value", async (t) => {
@@ -51,7 +52,10 @@ test("getConfigFileInput returns repository property value", async (t) => {
     .withFeatures([Feature.ConfigFileRepositoryProperty])
     .withArgs(repositoryProperties)
     .logs(t, "Using configuration file input from repository property")
-    .passes(t.is, repositoryProperties[RepositoryPropertyName.CONFIG_FILE]);
+    .passes(t.deepEqual, {
+      value: repositoryProperties[RepositoryPropertyName.CONFIG_FILE],
+      source: InputSource.RepositoryProperty,
+    });
 });
 
 test("getConfigFileInput ignores empty repository property value", async (t) => {

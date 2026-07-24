@@ -554,7 +554,7 @@ export interface InitToolsDownloadFields {
  *
  * @param config The CodeQL Action configuration whose values should be added to the base status report.
  * @param initStatusReport The base status report.
- * @param configFile Optionally, the filename of the configuration file that was read.
+ * @param configFileInput Optionally, the filename of the configuration file that was read.
  * @param totalCacheSize The computed total TRAP cache size.
  * @param overlayBaseDatabaseStats Statistics about the overlay database, if any.
  * @returns
@@ -562,7 +562,7 @@ export interface InitToolsDownloadFields {
 export async function createInitWithConfigStatusReport(
   config: Config,
   initStatusReport: InitStatusReport,
-  configFile: string | undefined,
+  configFileInput: ComputedInput | undefined,
   totalCacheSize: number,
   overlayBaseDatabaseStats: OverlayBaseDatabaseDownloadStats | undefined,
   dependencyCachingResults: DependencyCacheRestoreStatusReport | undefined,
@@ -601,7 +601,7 @@ export async function createInitWithConfigStatusReport(
 
   return {
     ...initStatusReport,
-    config_file: configFile ?? "",
+    config_file: configFileInput?.value ?? "",
     disable_default_queries: disableDefaultQueries,
     paths,
     paths_ignore: pathsIgnore,

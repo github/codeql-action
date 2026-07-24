@@ -129,7 +129,7 @@ async function sendStartingStatusReport(
 async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
-  configFile: string | undefined,
+  configFileInput: ComputedInput | undefined,
   toolsInput: ComputedInput | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
@@ -168,6 +168,9 @@ async function sendCompletedStatusReport(
   if (toolsInput !== undefined) {
     initStatusReport.computed_inputs.tools = toolsInput;
   }
+  if (configFileInput !== undefined) {
+    initStatusReport.computed_inputs["config-file"] = configFileInput;
+  }
 
   const initToolsDownloadFields: InitToolsDownloadFields = {};
 
@@ -185,7 +188,7 @@ async function sendCompletedStatusReport(
       await createInitWithConfigStatusReport(
         config,
         initStatusReport,
-        configFile,
+        configFileInput,
         Math.round(
           await getTotalCacheSize(Object.values(config.trapCaches), logger),
         ),
@@ -212,7 +215,7 @@ async function run(
 
   let apiDetails: GitHubApiCombinedDetails;
   let config: configUtils.Config | undefined;
-  let configFile: string | undefined;
+  let configFileInput: ComputedInput | undefined;
   let codeql: CodeQL;
   let features: FeatureEnablement;
   let sourceRoot: string;
@@ -263,7 +266,7 @@ async function run(
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
     const actionStateWithFeatures = { ...actionState, features };
-    configFile = await getConfigFileInput(
+    configFileInput = await getConfigFileInput(
       actionStateWithFeatures,
       repositoryProperties,
     );
@@ -376,7 +379,7 @@ async function run(
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       ramInput: getOptionalInput("ram"),
-      configFile,
+      configFile: configFileInput?.value,
       dbLocation: getOptionalInput("db-location"),
       configInput: getOptionalInput("config"),
       dependencyCachingEnabled: getDependencyCachingEnabled(),
@@ -782,7 +785,7 @@ async function run(
   await sendCompletedStatusReport(
     startedAt,
     config,
-    configFile,
+    configFileInput,
     toolsInput,
     toolsDownloadStatusReport,
     toolsFeatureFlagsValid,

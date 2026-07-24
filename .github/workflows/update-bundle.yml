@@ -120,7 +120,7 @@ jobs:
 
       - name: Create changelog note
         run: |
-          python .github/workflows/script/bundle_changelog.py
+          npx tsx pr-checks/bundle-changelog.ts
 
       - name: Push changelog note
         run: |

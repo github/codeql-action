@@ -29,13 +29,18 @@ declare const __CODEQL_ACTION_VERSION__: string;
 export interface ActionsEnv {
   getRequiredInput: (name: string) => string;
   getOptionalInput: (name: string) => string | undefined;
+  exportVariable: (name: string, value: string) => void;
 }
 
 /**
  * Gets the real `ActionsEnv` used by production code.
  */
 export function getActionsEnv(): ActionsEnv {
-  return { getRequiredInput, getOptionalInput };
+  return {
+    getRequiredInput,
+    getOptionalInput,
+    exportVariable: core.exportVariable,
+  };
 }
 
 /**

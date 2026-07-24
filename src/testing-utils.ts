@@ -191,6 +191,7 @@ export function getTestActionsEnv(): ActionsEnv {
       throw new Error(`Input required and not supplied: ${name}`);
     },
     getOptionalInput: () => undefined,
+    exportVariable: () => {},
   };
 }
 

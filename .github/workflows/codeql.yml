@@ -113,7 +113,6 @@ jobs:
       matrix:
         include:
           - language: actions
-          - language: python
 
     permissions:
       contents: read

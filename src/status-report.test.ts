@@ -71,6 +71,7 @@ test.serial("createStatusReportBase", async (t) => {
       t.is(statusReport.build_mode, BuildMode.None);
       t.is(statusReport.cause, "failure cause");
       t.is(statusReport.commit_oid, process.env["GITHUB_SHA"]!);
+      t.deepEqual(statusReport.computed_inputs, {});
       t.is(statusReport.exception, "exception stack trace");
       t.is(statusReport.job_name, process.env["GITHUB_JOB"] || "");
       t.is(typeof statusReport.job_run_uuid, "string");

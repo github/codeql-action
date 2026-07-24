@@ -13,6 +13,7 @@ import {
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
 import type { Config } from "./config/action-config";
+import type { ComputedInput, InputName } from "./config/inputs";
 import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
 import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
@@ -122,6 +123,8 @@ export interface StatusReportBase {
   commit_oid: string;
   /** Time this action completed, or undefined if not yet completed. */
   completed_at?: string;
+  /** A mapping of input names to their computed values. */
+  computed_inputs: Partial<Record<InputName, ComputedInput>>;
   /** Stack trace of the failure (or undefined if status is not failure). */
   exception?: string;
   /** Whether this is a first-party (CodeQL) run of the action. */
@@ -316,6 +319,7 @@ export async function createStatusReportBase(
       analysis_key,
       build_mode: config?.buildMode,
       commit_oid: commitOid,
+      computed_inputs: {},
       first_party_analysis: isFirstPartyAnalysis(actionName),
       job_name: jobName,
       job_run_uuid: jobRunUUID,

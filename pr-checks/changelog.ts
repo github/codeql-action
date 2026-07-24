@@ -2,14 +2,15 @@ import * as fs from "node:fs";
 
 import { CHANGELOG_FILE, DryRunOption } from "./config";
 
+/** The default contents for a section in the changelog. */
+export const NO_CHANGES_STR = "No user facing changes.\n\n";
+
 /** Placeholder changelog content for a new release. */
 export const EMPTY_CHANGELOG = `# CodeQL Action Changelog
 
 ## [UNRELEASED]
 
-No user facing changes.
-
-`;
+${NO_CHANGES_STR}`;
 
 /** Returns `date` formatted as `DD Mon YYYY`. */
 export function getReleaseDateString(today: Date = new Date()): string {

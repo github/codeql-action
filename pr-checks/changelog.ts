@@ -2,13 +2,16 @@ import * as fs from "node:fs";
 
 import { CHANGELOG_FILE, DryRunOption } from "./config";
 
+/** The placeholder in the header for unreleased changes. */
+export const UNRELEASED_PLACEHOLDER = "[UNRELEASED]";
+
 /** The default contents for a section in the changelog. */
 export const NO_CHANGES_STR = "No user facing changes.\n\n";
 
 /** Placeholder changelog content for a new release. */
 export const EMPTY_CHANGELOG = `# CodeQL Action Changelog
 
-## [UNRELEASED]
+## ${UNRELEASED_PLACEHOLDER}
 
 ${NO_CHANGES_STR}`;
 
@@ -54,7 +57,7 @@ export function setVersionAndDate(
   date: Date = new Date(),
 ): string {
   const versionAndDate = `${version} - ${getReleaseDateString(date)}`;
-  return content.replace("[UNRELEASED]", versionAndDate);
+  return content.replace(UNRELEASED_PLACEHOLDER, versionAndDate);
 }
 
 /**

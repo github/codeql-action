@@ -451,7 +451,7 @@ test.serial(
   async (t) => {
     const loggedMessages: LoggedMessage[] = [];
     const logger = getRecordingLogger(loggedMessages);
-    const features = createFeatures([Feature.AllowToolcacheInput]);
+    const features = createFeatures([]);
 
     const latestToolcacheVersion = "3.2.1";
     const latestVersionPath = "/path/to/latest";
@@ -580,7 +580,7 @@ const toolcacheInputFallbackMacro = makeMacro({
 
 toolcacheInputFallbackMacro.serial(
   "the toolcache doesn't have a CodeQL CLI when tools == toolcache",
-  [Feature.AllowToolcacheInput],
+  [],
   { GITHUB_EVENT_NAME: "dynamic" },
   [],
   [
@@ -591,20 +591,12 @@ toolcacheInputFallbackMacro.serial(
 
 toolcacheInputFallbackMacro.serial(
   "the workflow trigger is not `dynamic`",
-  [Feature.AllowToolcacheInput],
+  [],
   { GITHUB_EVENT_NAME: "pull_request" },
   [],
   [
     `Ignoring 'tools: toolcache' because the workflow was not triggered dynamically.`,
   ],
-);
-
-toolcacheInputFallbackMacro.serial(
-  "the feature flag is not enabled",
-  [],
-  { GITHUB_EVENT_NAME: "dynamic" },
-  [],
-  [`Ignoring 'tools: toolcache' because the feature is not enabled.`],
 );
 
 test.serial(

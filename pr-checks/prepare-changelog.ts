@@ -10,7 +10,7 @@ import { parseArgs } from "node:util";
 
 import { getErrorMessage } from "../src/util";
 
-import { NO_CHANGES_STR } from "./changelog";
+import { NO_CHANGES_STR, parseChangelog } from "./changelog";
 import { CHANGELOG_FILE } from "./config";
 
 /**
@@ -22,28 +22,15 @@ import { CHANGELOG_FILE } from "./config";
  */
 export function extractChangelogSnippet(changelogPath: string) {
   try {
-    const lines = fs.readFileSync(changelogPath, "utf-8").split("\n");
-    const output: string[] = [];
-    let foundFirstSection = false;
+    const content = fs.readFileSync(changelogPath, "utf-8");
+    const changelog = parseChangelog(content);
 
-    // Extract the body of the first section in the changelog file.
-    for (const line of lines) {
-      if (line.startsWith("## ")) {
-        if (foundFirstSection) {
-          // This is the second section header we have found, which means that we have
-          // captured all lines in the first section in `output`. We can stop here.
-          break;
-        }
-
-        // We have discovered the first section header.
-        foundFirstSection = true;
-      } else if (foundFirstSection) {
-        // Add lines between the first section header (if any) and the next to the output.
-        output.push(line);
-      }
+    // Return an empty string if we couldn't find the first section.
+    if (changelog.sections.length === 0) {
+      return "";
     }
 
-    return output.join("\n").trim();
+    return changelog.sections[0].bodyLines.join("\n").trim();
   } catch (err) {
     if (err instanceof Error && "code" in err && err.code === "ENOENT") {
       console.error(`Changelog file at '${changelogPath}' does not exist.`);

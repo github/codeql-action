@@ -14,7 +14,7 @@ steps:
       rm -rf ./* .github .git
   # Check out the actions repo again, but at a different location.
   # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
-  - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+  - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     with:
       ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
       path: x/y/z/some-path

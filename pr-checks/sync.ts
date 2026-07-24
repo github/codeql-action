@@ -233,8 +233,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: pinnedUses(
           "actions/setup-go",
-          "924ae3a1cded613372ab5595356fb5720e22ba16",
-          "v6.5.0",
+          "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "v7.0.0",
         ),
         with: {
           "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,

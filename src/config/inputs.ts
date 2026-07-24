@@ -33,7 +33,16 @@ export type ComputedInput = {
  * Represents options for how to compute an input.
  */
 export interface ComputedInputOptions {
+  /**
+   * The name of the repository property to try and get the input value from.
+   * Repository properties are ignored if this is `undefined`.
+   */
   repositoryPropertyName?: StringRepositoryPropertyNames;
+  /**
+   * Whether the repository property value may start with `!` to take precedence
+   * over any input value provided in the workflow file.
+   */
+  allowForcedRepositoryPropertyValue?: boolean;
 }
 
 /**
@@ -61,7 +70,11 @@ export async function getComputedInput(
       : undefined;
 
   // The repository property takes precedence if it starts with an '!'.
-  if (allowRepositoryProperty && propertyValue?.startsWith("!")) {
+  if (
+    allowRepositoryProperty &&
+    options.allowForcedRepositoryPropertyValue &&
+    propertyValue?.startsWith("!")
+  ) {
     action.logger.info(
       `Using ${name} input from repository property (enforced): ${propertyValue}`,
     );
@@ -109,6 +122,7 @@ export async function getToolsInput(
     Feature.ToolsRepositoryProperty,
   );
   return getComputedInput(action, repositoryProperties, InputName.Tools, {
+    allowForcedRepositoryPropertyValue: true,
     repositoryPropertyName: allowRepositoryProperty
       ? RepositoryPropertyName.TOOLS
       : undefined,

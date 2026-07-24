@@ -155,70 +155,58 @@ export function processChangelogForBackports(
   targetBranchMajorVersion: string,
   content: string,
 ): string {
-  const lines = content.split("\n");
-
   // Changelog entries can use the following format to indicate
   // that they only apply to newer versions
   const someVersionsOnlyRegex = /\[v(\d+)\+ only\]/;
 
-  let output = "";
-  let i = 0;
+  // Parse the changelog.
+  const changelog = parseChangelog(content);
 
-  // Copy lines until we find the first section heading.
-  let foundFirstSection = false;
-  while (!foundFirstSection && i < lines.length) {
-    let line = lines[i];
-    if (line.startsWith("## ")) {
-      line = line.replace(
-        `## ${sourceBranchMajorVersion}`,
-        `## ${targetBranchMajorVersion}`,
-      );
-      foundFirstSection = true;
-    }
-    output += `${line}\n`;
-    i++;
-  }
-
-  if (!foundFirstSection) {
+  if (changelog.sections.length === 0) {
     throw new Error("Could not find any change sections in CHANGELOG.md");
   }
 
-  // Process remaining lines.
-  // `foundContent` tracks whether we hit two headings in a row
-  let foundContent = false;
-  output += "\n";
+  // Filter out changelog entries that only apply to newer versions and
+  // update the section headings with the backport major version for
+  // sections we keep.
+  for (const section of changelog.sections) {
+    // Update the section headings with the backport major version.
+    section.headerLine = section.headerLine.replace(
+      `## ${sourceBranchMajorVersion}`,
+      `## ${targetBranchMajorVersion}`,
+    );
 
-  while (i < lines.length) {
-    let line = lines[i];
-    i++;
+    const filteredEntries: string[] = [];
+    let foundContent = false;
 
-    // Filter out changelog entries that only apply to newer versions.
-    const match = someVersionsOnlyRegex.exec(line);
-    if (match) {
+    for (const line of section.bodyLines) {
+      // Skip the entry if `someVersionsOnlyRegex` matches and the major version
+      // of the target branch is smaller than the required version.
+      const match = someVersionsOnlyRegex.exec(line);
       if (
+        match &&
         Number.parseInt(targetBranchMajorVersion) < Number.parseInt(match[1])
       ) {
         continue;
       }
-    }
 
-    if (line.startsWith("## ")) {
-      line = line.replace(
-        `## ${sourceBranchMajorVersion}`,
-        `## ${targetBranchMajorVersion}`,
-      );
-      if (!foundContent) {
-        output += "No user facing changes.\n";
-      }
-      foundContent = false;
-      output += `\n${line}\n\n`;
-    } else {
+      // Keep the line.
+      filteredEntries.push(line);
+
+      // Set `foundContent` to `true` if the line is not empty.
       if (line.trim() !== "") {
         foundContent = true;
-        output += `${line}\n`;
       }
+    }
+
+    // Update the section with the retained entries.
+    section.bodyLines = filteredEntries;
+
+    // Add an entry if we didn't keep any.
+    if (!foundContent) {
+      section.bodyLines.push(NO_CHANGES_STR.trim());
     }
   }
 
-  return output;
+  return renderChangelog(changelog);
 }

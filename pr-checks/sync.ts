@@ -271,8 +271,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "ece7cb06caefa5fff74198d8649806c4678c61a1",
-          "v6.3.0",
+          "5fda3b95a4ea91299a34e894583c3862153e4b97",
+          "v7.0.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,

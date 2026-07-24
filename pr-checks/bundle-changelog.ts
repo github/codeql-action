@@ -9,7 +9,11 @@ import * as fs from "node:fs";
 import { getErrorMessage } from "../src/util";
 
 import { CHANGELOG_FILE, CLI_BUNDLE_RELEASE_URL_PREFIX } from "./config";
-import { NO_CHANGES_STR, parseChangelog, renderChangelog, UNRELEASED_PLACEHOLDER } from "./changelog";
+import {
+  parseChangelog,
+  renderChangelog,
+  UNRELEASED_PLACEHOLDER,
+} from "./changelog";
 
 export const CLI_VERSION_ENV_VAR = "CLI_VERSION";
 export const PR_URL_ENV_VAR = "PR_URL";

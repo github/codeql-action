@@ -128,7 +128,9 @@ jobs:
           NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
         run: |
-          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG > $PARTIAL_CHANGELOG
+          npx tsx pr-checks/prepare-changelog.ts \
+            --changelog="$NEW_CHANGELOG" \
+            --output="$PARTIAL_CHANGELOG"
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG

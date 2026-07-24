@@ -127,7 +127,7 @@ jobs:
         env:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
         run: |
-          python .github/workflows/script/prepare_changelog.py CHANGELOG.md > $PARTIAL_CHANGELOG
+          npx tsx pr-checks/prepare-changelog.ts --output="$PARTIAL_CHANGELOG"
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG

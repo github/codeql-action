@@ -43,4 +43,12 @@ describe("extractChangelogSnippet", async () => {
     const result = extractChangelogSnippet(changelogPath);
     assert.deepEqual(result, testBody);
   });
+
+  await it("returns an empty string if there is no first section", async () => {
+    const changelogPath = path.join(testDir, "test-readme.md");
+    fs.writeFileSync(changelogPath, "# CodeQL Action Changelog\n");
+
+    const result = extractChangelogSnippet(changelogPath);
+    assert.deepEqual(result, "");
+  });
 });

@@ -187,6 +187,9 @@ export function getTestEnv(testEnv: NodeJS.ProcessEnv = {}): Env {
  */
 export function getTestActionsEnv(): ActionsEnv {
   return {
+    getRequiredInput: (name) => {
+      throw new Error(`Input required and not supplied: ${name}`);
+    },
     getOptionalInput: () => undefined,
   };
 }

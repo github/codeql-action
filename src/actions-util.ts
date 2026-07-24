@@ -27,6 +27,7 @@ declare const __CODEQL_ACTION_VERSION__: string;
  * global functions in tests.
  */
 export interface ActionsEnv {
+  getRequiredInput: (name: string) => string;
   getOptionalInput: (name: string) => string | undefined;
 }
 
@@ -34,7 +35,7 @@ export interface ActionsEnv {
  * Gets the real `ActionsEnv` used by production code.
  */
 export function getActionsEnv(): ActionsEnv {
-  return { getOptionalInput };
+  return { getRequiredInput, getOptionalInput };
 }
 
 /**

@@ -68,8 +68,8 @@ function main() {
       strict: true,
     });
 
-    for (const key of Object.keys(values)) {
-      if (key === undefined || key.trim() === "") {
+    for (const [key, val] of Object.entries(values)) {
+      if (val === undefined || val.trim() === "") {
         throw new Error(`Argument '--${key}' is required.`);
       }
     }

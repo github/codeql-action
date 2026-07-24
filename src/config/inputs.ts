@@ -34,15 +34,18 @@ export type ComputedInput = {
  */
 export interface ComputedInputOptions {
   /**
-   * The name of the repository property to try and get the input value from.
-   * Repository properties are ignored if this is `undefined`.
+   * Whether the FF for the repository property (if any) is enabled.
    */
-  repositoryPropertyName?: StringRepositoryPropertyNames;
+  repositoryPropertyFeatureEnabled: boolean;
+  /**
+   * The name of the repository property to try and get the input value from.
+   */
+  repositoryPropertyName: StringRepositoryPropertyNames;
   /**
    * Whether the repository property value may start with `!` to take precedence
    * over any input value provided in the workflow file.
    */
-  allowForcedRepositoryPropertyValue?: boolean;
+  allowForcedRepositoryPropertyValue: boolean;
 }
 
 /**
@@ -63,15 +66,11 @@ export async function getComputedInput(
   options: ComputedInputOptions,
 ): Promise<ComputedInput | undefined> {
   const input = action.actions.getOptionalInput(name);
-  const allowRepositoryProperty = options.repositoryPropertyName !== undefined;
-  const propertyValue =
-    options.repositoryPropertyName !== undefined
-      ? repositoryProperties[options.repositoryPropertyName]
-      : undefined;
+  const propertyValue = repositoryProperties[options.repositoryPropertyName];
 
   // The repository property takes precedence if it starts with an '!'.
   if (
-    allowRepositoryProperty &&
+    options.repositoryPropertyFeatureEnabled &&
     options.allowForcedRepositoryPropertyValue &&
     propertyValue?.startsWith("!")
   ) {
@@ -92,7 +91,7 @@ export async function getComputedInput(
   }
 
   // Use the repository property if there's no workflow input.
-  if (allowRepositoryProperty && propertyValue !== undefined) {
+  if (options.repositoryPropertyFeatureEnabled && propertyValue !== undefined) {
     action.logger.info(
       `Using ${name} input from repository property: ${propertyValue}`,
     );
@@ -100,6 +99,10 @@ export async function getComputedInput(
       value: propertyValue,
       source: InputSource.RepositoryProperty,
     };
+  } else if (propertyValue !== undefined) {
+    action.logger.info(
+      `Ignoring ${name} input from repository property, because the corresponding feature flag is disabled.`,
+    );
   }
 
   // There's no input.
@@ -122,9 +125,8 @@ export async function getToolsInput(
     Feature.ToolsRepositoryProperty,
   );
   return getComputedInput(action, repositoryProperties, InputName.Tools, {
+    repositoryPropertyFeatureEnabled: allowRepositoryProperty,
     allowForcedRepositoryPropertyValue: true,
-    repositoryPropertyName: allowRepositoryProperty
-      ? RepositoryPropertyName.TOOLS
-      : undefined,
+    repositoryPropertyName: RepositoryPropertyName.TOOLS,
   });
 }

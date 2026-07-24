@@ -141,6 +141,8 @@ export enum Feature {
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
+  /** Whether to allow the `tools` input to be specified via a repository property. */
+  ToolsRepositoryProperty = "tools_repository_property",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   ValidateDbConfig = "validate_db_config",
 }
@@ -398,6 +400,11 @@ export const featureConfig = {
   [Feature.StartProxyUseFeaturesRelease]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_START_PROXY_USE_FEATURES_RELEASE",
+    minimumVersion: undefined,
+  },
+  [Feature.ToolsRepositoryProperty]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_TOOLS_REPOSITORY_PROPERTY",
     minimumVersion: undefined,
   },
   [Feature.UploadOverlayDbToApi]: {

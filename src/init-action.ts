@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as core from "@actions/core";
-import * as github from "@actions/github";
 import * as io from "@actions/io";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
@@ -26,6 +25,7 @@ import {
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
 import { getConfigFileInput } from "./config/file";
+import { ComputedInput, getToolsInput } from "./config/inputs";
 import * as configUtils from "./config-utils";
 import {
   DependencyCacheRestoreStatusReport,
@@ -41,10 +41,7 @@ import {
 } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import {
-  loadPropertiesFromApi,
-  RepositoryProperties,
-} from "./feature-flags/properties";
+import { loadRepositoryProperties } from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -62,7 +59,7 @@ import {
   OverlayBaseDatabaseDownloadStats,
 } from "./overlay/caching";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
-import { getRepositoryNwo, RepositoryNwo } from "./repository";
+import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
@@ -93,10 +90,7 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
-  Result,
   getOptionalEnvVar,
-  Success,
-  Failure,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -136,6 +130,7 @@ async function sendCompletedStatusReport(
   startedAt: Date,
   config: configUtils.Config | undefined,
   configFile: string | undefined,
+  toolsInput: ComputedInput | undefined,
   toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
   toolsFeatureFlagsValid: boolean | undefined,
   toolsSource: ToolsSource,
@@ -164,11 +159,15 @@ async function sendCompletedStatusReport(
 
   const initStatusReport: InitStatusReport = {
     ...statusReportBase,
-    tools_input: getOptionalInput("tools") || "",
+    tools_input: toolsInput?.value || "",
     tools_resolved_version: toolsVersion,
     tools_source: toolsSource || ToolsSource.Unknown,
     workflow_languages: workflowLanguages || "",
   };
+
+  if (toolsInput !== undefined) {
+    initStatusReport.computed_inputs.tools = toolsInput;
+  }
 
   const initToolsDownloadFields: InitToolsDownloadFields = {};
 
@@ -217,6 +216,7 @@ async function run(
   let codeql: CodeQL;
   let features: FeatureEnablement;
   let sourceRoot: string;
+  let toolsInput: ComputedInput | undefined;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsFeatureFlagsValid: boolean | undefined;
   let toolsSource: ToolsSource;
@@ -300,6 +300,12 @@ async function run(
       );
     }
 
+    // Get the computed `tools` input.
+    toolsInput = await getToolsInput(
+      actionStateWithFeatures,
+      repositoryProperties,
+    );
+
     const codeQLDefaultVersionInfo =
       await features.getEnabledDefaultCliVersions(gitHubVersion.type);
     toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
@@ -310,7 +316,7 @@ async function run(
       analysisKinds?.length === 1 &&
       analysisKinds[0] === AnalysisKind.CodeScanning;
     const initCodeQLResult = await initCodeQL(
-      getOptionalInput("tools"),
+      toolsInput?.value,
       apiDetails,
       getTemporaryDirectory(),
       gitHubVersion.type,
@@ -759,6 +765,7 @@ async function run(
       startedAt,
       config,
       undefined, // We only report config info on success.
+      toolsInput,
       toolsDownloadStatusReport,
       toolsFeatureFlagsValid,
       toolsSource,
@@ -776,6 +783,7 @@ async function run(
     startedAt,
     config,
     configFile,
+    toolsInput,
     toolsDownloadStatusReport,
     toolsFeatureFlagsValid,
     toolsSource,
@@ -784,38 +792,6 @@ async function run(
     dependencyCachingStatus,
     logger,
   );
-}
-
-/**
- * Loads [repository properties](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization) if applicable.
- */
-async function loadRepositoryProperties(
-  repositoryNwo: RepositoryNwo,
-  logger: Logger,
-): Promise<Result<RepositoryProperties, unknown>> {
-  // See if we can skip loading repository properties early. In particular,
-  // repositories owned by users cannot have repository properties, so we can
-  // skip the API call entirely in that case.
-  const repositoryOwnerType = github.context.payload.repository?.owner.type;
-  logger.debug(
-    `Repository owner type is '${repositoryOwnerType ?? "unknown"}'.`,
-  );
-  if (repositoryOwnerType === "User") {
-    logger.debug(
-      "Skipping loading repository properties because the repository is owned by a user and " +
-        "therefore cannot have repository properties.",
-    );
-    return new Success({});
-  }
-
-  try {
-    return new Success(await loadPropertiesFromApi(logger, repositoryNwo));
-  } catch (error) {
-    logger.warning(
-      `Failed to load repository properties: ${getErrorMessage(error)}`,
-    );
-    return new Failure(error);
-  }
 }
 
 /** Defines the `init` Action. */

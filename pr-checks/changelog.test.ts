@@ -5,14 +5,18 @@
  */
 
 import * as assert from "node:assert/strict";
+import * as fs from "node:fs";
 import { describe, it } from "node:test";
 
 import {
   EMPTY_CHANGELOG,
   getReleaseDateString,
+  parseChangelog,
   processChangelogForBackports,
+  renderChangelog,
   setVersionAndDate,
 } from "./changelog";
+import { CHANGELOG_FILE } from "./config";
 
 const testDate = new Date(2026, 7, 14);
 
@@ -34,6 +38,14 @@ describe("setVersionAndDate", async () => {
   await it("replaces the placeholder", async () => {
     const result = setVersionAndDate("9.99.9", EMPTY_CHANGELOG, testDate);
     assert.equal(result, emptyChangelogExpected);
+  });
+});
+
+describe("parseChangelog + renderChangelog", async () => {
+  await it("renderChangelog(parseChangelog(c)) == c", async () => {
+    const actualChangelog = fs.readFileSync(CHANGELOG_FILE, "utf-8");
+    const roundtrip = renderChangelog(parseChangelog(actualChangelog));
+    assert.deepEqual(roundtrip.split("\n"), actualChangelog.split("\n"));
   });
 });
 

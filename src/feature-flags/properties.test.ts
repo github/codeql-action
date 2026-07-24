@@ -177,6 +177,30 @@ test.serial(
 );
 
 test.serial(
+  "loadPropertiesFromApi returns undefined if non-empty string property is empty",
+  async (t) => {
+    sinon.stub(api, "getRepositoryProperties").resolves({
+      headers: {},
+      status: 200,
+      url: "",
+      data: [{ property_name: "github-codeql-config-file", value: "" }],
+    });
+    const logger = getRunnerLogger(true);
+    const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
+
+    // `github-codeql-config-file` is a `nonEmptyStringProperty`, so we expect to
+    // get `undefined` instead of the empty string
+    const response = await properties.loadPropertiesFromApi(
+      logger,
+      mockRepositoryNwo,
+    );
+    t.deepEqual(response, {
+      "github-codeql-config-file": undefined,
+    });
+  },
+);
+
+test.serial(
   "loadPropertiesFromApi warns if boolean property has unexpected value",
   async (t) => {
     sinon.stub(api, "getRepositoryProperties").resolves({

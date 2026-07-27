@@ -262,12 +262,6 @@ async function run(
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
-    const actionStateWithFeatures = { ...actionState, features };
-    configFile = await getConfigFileInput(
-      actionStateWithFeatures,
-      repositoryProperties,
-    );
-
     // path.resolve() respects the intended semantics of source-root. If
     // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
     // source-root is absolute, it is used as given.
@@ -289,6 +283,13 @@ async function run(
         `Failed to parse analysis kinds for 'starting' status report: ${getErrorMessage(err)}`,
       );
     }
+
+    // Compute the value of the `config-file` input.
+    const actionStateWithFeatures = { ...actionState, features };
+    configFile = await getConfigFileInput(
+      actionStateWithFeatures,
+      repositoryProperties,
+    );
 
     // Send a status report indicating that an analysis is starting.
     await sendStartingStatusReport(startedAt, { analysisKinds }, logger);

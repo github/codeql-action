@@ -1,4 +1,5 @@
 import { ActionState } from "../action-common";
+import { AnalysisKind } from "../analyses";
 import * as api from "../api-client";
 import * as errorMessages from "../error-messages";
 import { Feature } from "../feature-flags";
@@ -34,6 +35,7 @@ export async function getConfigFileInput(
     features,
   }: ActionState<["Logger", "Actions", "FeatureFlags"]>,
   repositoryProperties: Partial<RepositoryProperties>,
+  analysisKinds: AnalysisKind[] | undefined,
 ): Promise<string | undefined> {
   const input = actions.getOptionalInput("config-file");
 
@@ -45,7 +47,19 @@ export async function getConfigFileInput(
   const propertyValue =
     repositoryProperties[RepositoryPropertyName.CONFIG_FILE];
 
-  if (propertyValue !== undefined && propertyValue.trim().length > 0) {
+  // Only allow the repository property to be used for standard Code Scanning analyses,
+  // since we don't currently support some customisation options for Code Quality.
+  // We don't expect customisations for Risk Assessments either.
+  const analysisKindSupported =
+    analysisKinds === undefined ||
+    (analysisKinds.includes(AnalysisKind.CodeScanning) &&
+      analysisKinds.length === 1);
+
+  if (
+    analysisKindSupported &&
+    propertyValue !== undefined &&
+    propertyValue.trim().length > 0
+  ) {
     // Only use the repository property value if the FF is enabled.
     const useRepositoryProperty = await features.getValue(
       Feature.ConfigFileRepositoryProperty,

@@ -289,6 +289,7 @@ async function run(
     configFile = await getConfigFileInput(
       actionStateWithFeatures,
       repositoryProperties,
+      analysisKinds,
     );
 
     // Send a status report indicating that an analysis is starting.

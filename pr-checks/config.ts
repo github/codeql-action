@@ -37,6 +37,10 @@ export const API_COMPATIBILITY_FILE = path.join(
   "api-compatibility.json",
 );
 
+/** The prefix of CodeQL CLI bundle release URLs. */
+export const CLI_BUNDLE_RELEASE_URL_PREFIX =
+  "https://github.com/github/codeql-action/releases/tag/codeql-bundle-v";
+
 /** A common interface for operations that support dry runs. */
 export interface DryRunOption {
   /** A value indicating whether to perform operations with side effects. */

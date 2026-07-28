@@ -31,7 +31,19 @@ setupTests(test);
 test("getJobUUID - generates valid UUIDs", async (t) => {
   await callee(getJobUUID)
     .withArgs()
+    .logs(t, "Job run UUID is ")
     .passes((val) => t.true(uuid.validate(val)));
+});
+
+test("getJobUUID - retrieves existing job UUIDs", async (t) => {
+  const existingJobUuid = uuid.v4();
+  await callee(getJobUUID)
+    .withArgs()
+    .withEnv((env) => {
+      env.set(EnvVar.JOB_RUN_UUID, existingJobUuid);
+    })
+    .logs(t, `Existing job run UUID is ${existingJobUuid}.`)
+    .passes(t.deepEqual, existingJobUuid);
 });
 
 function setupEnvironmentAndStub(tmpDir: string) {

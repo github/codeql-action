@@ -95,7 +95,7 @@ async function sendCompletedStatusReport(
 
 /** The main behaviour of this action. */
 async function run(
-  actionState: ActionState<["Base", "Logger", "Actions"]>,
+  actionState: ActionState<["Base", "Logger", "Env", "Actions"]>,
 ): Promise<void> {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
@@ -141,7 +141,7 @@ async function run(
     const actionStateWithFeatures = { ...actionState, features };
 
     // Create a unique identifier for this run.
-    getJobUUID(logger);
+    getJobUUID(actionState);
 
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,

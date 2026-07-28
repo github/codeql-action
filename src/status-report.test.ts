@@ -1,5 +1,6 @@
 import test from "ava";
 import * as sinon from "sinon";
+import * as uuid from "uuid";
 
 import * as actionsUtil from "./actions-util";
 import { Config } from "./config-utils";
@@ -12,6 +13,7 @@ import {
   createInitWithConfigStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  getJobUUID,
   InitStatusReport,
   InitWithConfigStatusReport,
 } from "./status-report";
@@ -20,10 +22,17 @@ import {
   setupActionsVars,
   createTestConfig,
   makeMacro,
+  callee,
 } from "./testing-utils";
 import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 
 setupTests(test);
+
+test("getJobUUID - generates valid UUIDs", async (t) => {
+  await callee(getJobUUID)
+    .withArgs()
+    .passes((val) => t.true(uuid.validate(val)));
+});
 
 function setupEnvironmentAndStub(tmpDir: string) {
   setupActionsVars(tmpDir, tmpDir, {

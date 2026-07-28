@@ -256,7 +256,7 @@ async function run(
     const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     // Create a unique identifier for this run.
-    getJobUUID(logger);
+    getJobUUID(actionState);
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 

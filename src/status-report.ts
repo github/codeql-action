@@ -3,6 +3,7 @@ import * as os from "os";
 import * as core from "@actions/core";
 import { v4 as uuidV4 } from "uuid";
 
+import type { ActionState } from "./action-common";
 import {
   getWorkflowEventName,
   getOptionalInput,
@@ -64,9 +65,9 @@ export function getDisplayActionName(actionName: ActionName): string {
  * Creates a UUIDv4 for the analysis and returns it.
  * The generated UUID is also exported as an environment variable.
  */
-export function getJobUUID(logger: Logger) {
+export function getJobUUID(action: ActionState<["Logger", "ReadOnlyEnv"]>) {
   const jobRunUuid = uuidV4();
-  logger.info(`Job run UUID is ${jobRunUuid}.`);
+  action.logger.info(`Job run UUID is ${jobRunUuid}.`);
 
   core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
   return jobRunUuid;

@@ -4,7 +4,11 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-- This version of the CodeQL Action adds support for the `tools` input for the `codeql-action/init` step to be specified using a `github-codeql-tools` [repository property](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). This feature will gradually be rolled out following the release of this version. Once rolled out, this allows for the CodeQL CLI version that is used in GitHub-managed workflows, such as Default Setup, to be set to a custom value. For example, customers who run into issues with rate limits when a new CodeQL CLI version is released can set the value to `toolcache` to always use the CodeQL CLI version that is available in the runner toolcache. For Advanced Setup workflows, the value provided for `tools` in the workflow definition always takes precedence unless the value of the repository property starts with `!`. [#4037](https://github.com/github/codeql-action/pull/4037)
+No user facing changes.
+
+## v4.37.4 - 28 Jul 2026
+
+This release rolls back 4.37.3 due to issues with that release. It is identical to 0.0.0.
 
 ## 4.37.3 - 22 Jul 2026
 
@@ -1251,3 +1255,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

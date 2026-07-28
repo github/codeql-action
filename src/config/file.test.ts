@@ -2,6 +2,7 @@ import * as github from "@actions/github";
 import test from "ava";
 import sinon from "sinon";
 
+import { AnalysisKind } from "../analyses";
 import * as api from "../api-client";
 import { RegistryProxyVars } from "../environment";
 import { Feature } from "../feature-flags";
@@ -18,7 +19,7 @@ setupTests(test);
 
 test("getConfigFileInput returns undefined by default", async (t) => {
   await callee(getConfigFileInput)
-    .withArgs({})
+    .withArgs({}, undefined)
     .withFeatures([Feature.ConfigFileRepositoryProperty])
     .passes(t.is, undefined);
 });
@@ -40,7 +41,7 @@ test("getConfigFileInput returns input value", async (t) => {
         .withArgs("config-file")
         .returns(testInput);
     })
-    .withArgs(repositoryProperties)
+    .withArgs(repositoryProperties, undefined)
     .logs(t, "Using configuration file input from workflow")
     .passes(t.is, testInput);
 });
@@ -49,16 +50,48 @@ test("getConfigFileInput returns repository property value", async (t) => {
   // Since there is no direct input, we should use the repository property.
   await callee(getConfigFileInput)
     .withFeatures([Feature.ConfigFileRepositoryProperty])
-    .withArgs(repositoryProperties)
+    .withArgs(repositoryProperties, undefined)
     .logs(t, "Using configuration file input from repository property")
     .passes(t.is, repositoryProperties[RepositoryPropertyName.CONFIG_FILE]);
+});
+
+test("getConfigFileInput returns repository property value for Code Scanning", async (t) => {
+  // Since there is no direct input, we should use the repository property.
+  await callee(getConfigFileInput)
+    .withFeatures([Feature.ConfigFileRepositoryProperty])
+    .withArgs(repositoryProperties, [AnalysisKind.CodeScanning])
+    .logs(t, "Using configuration file input from repository property")
+    .passes(t.is, repositoryProperties[RepositoryPropertyName.CONFIG_FILE]);
+});
+
+test("getConfigFileInput ignores repository property for other analysis kinds", async (t) => {
+  const unsupportedCases = [
+    [AnalysisKind.CodeQuality],
+    [AnalysisKind.RiskAssessment],
+    [AnalysisKind.CodeScanning, AnalysisKind.CodeQuality],
+  ];
+
+  const target = callee(getConfigFileInput).withFeatures([
+    Feature.ConfigFileRepositoryProperty,
+  ]);
+
+  for (const unsupportedCase of unsupportedCases) {
+    // Since the analysis kind is unsupported, we should ignore the repository property.
+    await target
+      .withArgs(repositoryProperties, unsupportedCase)
+      .logs(
+        t,
+        "Ignoring configuration file input from repository property, because it is unsupported for the current analysis kind.",
+      )
+      .passes(t.is, undefined);
+  }
 });
 
 test("getConfigFileInput ignores empty repository property value", async (t) => {
   // Since the repository property value is an empty/whitespace string, we should ignore it.
   await callee(getConfigFileInput)
     .withFeatures([Feature.ConfigFileRepositoryProperty])
-    .withArgs({ [RepositoryPropertyName.CONFIG_FILE]: "   " })
+    .withArgs({ [RepositoryPropertyName.CONFIG_FILE]: "   " }, undefined)
     .passes(t.is, undefined);
 });
 
@@ -66,7 +99,7 @@ test("getConfigFileInput ignores repository property value when FF is off", asyn
   // Since the FF is off, we should ignore the repository property value.
   await callee(getConfigFileInput)
     .withFeatures([])
-    .withArgs(repositoryProperties)
+    .withArgs(repositoryProperties, undefined)
     .notLogs(t, "Using configuration file input from repository property")
     .logs(
       t,

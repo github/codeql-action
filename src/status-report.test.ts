@@ -58,6 +58,18 @@ test("getJobUUID - retrieves existing job UUIDs", async (t) => {
     .passes(t.deepEqual, existingJobUuid);
 });
 
+test("getJobUUID - doesn't retrieve invalid UUIDs", async (t) => {
+  const existingJobUuid = "not-a-uuid";
+  await callee(getJobUUID)
+    .withArgs()
+    .withEnv((env) => {
+      env.set(EnvVar.JOB_RUN_UUID, existingJobUuid);
+    })
+    .logs(t, `Job run UUID is `)
+    .notLogs(t, `Existing job run UUID is ${existingJobUuid}.`)
+    .passes(t.notDeepEqual, existingJobUuid);
+});
+
 function setupEnvironmentAndStub(tmpDir: string) {
   setupActionsVars(tmpDir, tmpDir, {
     GITHUB_EVENT_NAME: "dynamic",

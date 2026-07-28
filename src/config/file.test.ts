@@ -13,6 +13,7 @@ import {
   setupTests,
 } from "../testing-utils";
 
+import type { UserConfig } from "./db-config";
 import { getConfigFileInput, getRemoteConfig } from "./file";
 
 setupTests(test);
@@ -137,7 +138,11 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
 
   const target = callee(getRemoteConfig)
     .withDefaultActionsEnv()
-    .withArgs("file.yml", SAMPLE_DOTCOM_API_DETAILS);
+    .withArgs(
+      [AnalysisKind.CodeScanning],
+      "file.yml",
+      SAMPLE_DOTCOM_API_DETAILS,
+    );
 
   // Should use it when the FF is enabled and the environment variables are set.
   await target
@@ -163,4 +168,69 @@ test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
     .withFeatures([Feature.ProxyApiRequests])
     .notLogs(t, "Using private registry proxy at 'http://localhost:1234'")
     .throws(t, { message: errorMessage });
+});
+
+test.serial("getRemoteConfig replaces meta variables", async (t) => {
+  const client = github.getOctokit("123");
+  const response = {
+    data: {
+      content: Buffer.from("disable-default-queries: false").toString("base64"),
+    },
+  };
+  sinon.stub(client.rest.repos, "getContent").callsFake((params) => {
+    if (params?.path.endsWith("$kind.yml")) {
+      throw new Error(`Unexpected request path: ${params.path}`);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return response as any;
+  });
+
+  sinon
+    .stub(api, "getApiClientWithExternalAuth")
+    .callsFake((_details, _proxy) => {
+      return client;
+    });
+
+  const target = callee(getRemoteConfig)
+    .withDefaultActionsEnv()
+    .withArgs(
+      [AnalysisKind.CodeScanning],
+      "owner/repo:file-$kind.yml",
+      SAMPLE_DOTCOM_API_DETAILS,
+    );
+
+  // Should replace the meta variable if the FF is enabled.
+  await target
+    .withFeatures([Feature.RemoteAddressAnalysisMetaVar])
+    .logs(
+      t,
+      "Remote file address after replacing meta variables: owner/repo:file-code-scanning.yml",
+    )
+    .passes(t.deepEqual, {
+      "disable-default-queries": false,
+    } satisfies UserConfig);
+
+  // But not if the FF is off.
+  await target.throws(t, {
+    instanceOf: Error,
+    message: "Unexpected request path: file-$kind.yml",
+  });
+
+  // Or if there are multiple analysis kinds.
+  await callee(getRemoteConfig)
+    .withDefaultActionsEnv()
+    .withArgs(
+      [AnalysisKind.CodeScanning, AnalysisKind.CodeQuality],
+      "owner/repo:file-$kind.yml",
+      SAMPLE_DOTCOM_API_DETAILS,
+    )
+    .withFeatures([Feature.RemoteAddressAnalysisMetaVar])
+    .logs(
+      t,
+      `Ignoring '${Feature.RemoteAddressAnalysisMetaVar}' feature, because multiple analysis kinds are enabled.`,
+    )
+    .throws(t, {
+      instanceOf: Error,
+      message: "Unexpected request path: file-$kind.yml",
+    });
 });

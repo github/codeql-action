@@ -79,6 +79,10 @@ test("getConfigFileInput ignores repository property for other analysis kinds", 
     // Since the analysis kind is unsupported, we should ignore the repository property.
     await target
       .withArgs(repositoryProperties, unsupportedCase)
+      .logs(
+        t,
+        "Ignoring configuration file input from repository property, because it is unsupported for the current analysis kind.",
+      )
       .passes(t.is, undefined);
   }
 });

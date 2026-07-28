@@ -55,21 +55,21 @@ export async function getConfigFileInput(
     (analysisKinds.includes(AnalysisKind.CodeScanning) &&
       analysisKinds.length === 1);
 
-  if (
-    analysisKindSupported &&
-    propertyValue !== undefined &&
-    propertyValue.trim().length > 0
-  ) {
+  if (propertyValue !== undefined && propertyValue.trim().length > 0) {
     // Only use the repository property value if the FF is enabled.
     const useRepositoryProperty = await features.getValue(
       Feature.ConfigFileRepositoryProperty,
     );
 
-    if (useRepositoryProperty) {
+    if (analysisKindSupported && useRepositoryProperty) {
       logger.info(
         `Using configuration file input from repository property: ${propertyValue}`,
       );
       return propertyValue;
+    } else if (!analysisKindSupported) {
+      logger.info(
+        "Ignoring configuration file input from repository property, because it is unsupported for the current analysis kind.",
+      );
     } else {
       logger.info(
         "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",

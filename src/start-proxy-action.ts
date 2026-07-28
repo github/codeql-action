@@ -3,8 +3,10 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 
+import { ActionState } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
+import { Env } from "./environment";
 import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
@@ -23,7 +25,11 @@ import {
 import { generateCertificateAuthority } from "./start-proxy/ca";
 import { checkProxyEnvironment } from "./start-proxy/environment";
 import { checkConnections } from "./start-proxy/reachability";
-import { ActionName, sendUnhandledErrorStatusReport } from "./status-report";
+import {
+  ActionName,
+  getJobUUID,
+  sendUnhandledErrorStatusReport,
+} from "./status-report";
 import * as util from "./util";
 
 async function run(startedAt: Date) {
@@ -35,6 +41,14 @@ async function run(startedAt: Date) {
   let language: BuiltInLanguage | undefined;
 
   try {
+    const action: ActionState<["Logger", "Env"]> = {
+      logger,
+      env: new Env(process.env),
+    };
+
+    // Create a unique identifier for this run.
+    getJobUUID(action);
+
     // Make inputs accessible in the `post` step.
     actionsUtil.persistInputs();
 

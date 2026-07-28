@@ -1,5 +1,4 @@
 import * as core from "@actions/core";
-import { v4 as uuidV4 } from "uuid";
 
 import { Action, ActionState, runInActions } from "./action-common";
 import {
@@ -26,6 +25,7 @@ import {
   InitToolsDownloadFields,
   createStatusReportBase,
   getActionsStatus,
+  getJobUUID,
   sendStatusReport,
 } from "./status-report";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -140,9 +140,8 @@ async function run(
 
     const actionStateWithFeatures = { ...actionState, features };
 
-    const jobRunUuid = uuidV4();
-    logger.info(`Job run UUID is ${jobRunUuid}.`);
-    core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+    // Create a unique identifier for this run.
+    getJobUUID(logger);
 
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,

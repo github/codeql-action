@@ -41,9 +41,10 @@ async function run(startedAt: Date) {
   let language: BuiltInLanguage | undefined;
 
   try {
-    const action: ActionState<["Logger", "Env"]> = {
+    const action: ActionState<["Logger", "Env", "Actions"]> = {
       logger,
       env: new Env(process.env),
+      actions: actionsUtil.getActionsEnv(),
     };
 
     // Create a unique identifier for this run.

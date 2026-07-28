@@ -66,7 +66,9 @@ export function getDisplayActionName(actionName: ActionName): string {
  * environment and returns it.
  * If a new UUID is generated, it is also exported as an environment variable.
  */
-export function getJobUUID(action: ActionState<["Logger", "ReadOnlyEnv"]>) {
+export function getJobUUID(
+  action: ActionState<["Logger", "ReadOnlyEnv", "Actions"]>,
+) {
   // Check if we already have a UUID for the analysis and return it if so.
   const existingJobRunUuid = action.env.getOptional(EnvVar.JOB_RUN_UUID);
 
@@ -79,7 +81,7 @@ export function getJobUUID(action: ActionState<["Logger", "ReadOnlyEnv"]>) {
   const jobRunUuid = uuid.v4();
   action.logger.info(`Job run UUID is ${jobRunUuid}.`);
 
-  core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+  action.actions.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
   return jobRunUuid;
 }
 

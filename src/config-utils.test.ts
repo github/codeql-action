@@ -12,7 +12,7 @@ import { AnalysisKind, supportedAnalysisKinds } from "./analyses";
 import * as api from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { createStubCodeQL } from "./codeql";
-import { UserConfig } from "./config/db-config";
+import { UserConfig, UserConfigWithActionExtensions } from "./config/db-config";
 import * as file from "./config/file";
 import * as configUtils from "./config-utils";
 import * as errorMessages from "./error-messages";
@@ -2544,6 +2544,7 @@ test("loadUserConfig - loads local configuration files", async (t) => {
       ) =>
         configUtils.loadUserConfig(
           actionState,
+          [AnalysisKind.CodeScanning],
           filePath,
           workspaceDir,
           SAMPLE_DOTCOM_API_DETAILS,
@@ -2587,7 +2588,13 @@ test.serial("loadUserConfig - loads remote configuration files", async (t) => {
 
     const remoteAddress = "owner/repo/file@ref";
     await callee(configUtils.loadUserConfig)
-      .withArgs(remoteAddress, tmpDir, SAMPLE_DOTCOM_API_DETAILS, tmpDir)
+      .withArgs(
+        [AnalysisKind.CodeScanning],
+        remoteAddress,
+        tmpDir,
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+      )
       .passes(t.deepEqual, {});
 
     t.true(
@@ -2665,6 +2672,7 @@ test.serial(
 
         // Prepare the test call to `loadUserConfig`.
         const targetWithArgs = target.withArgs(
+          [AnalysisKind.CodeScanning],
           address,
           tmpDir,
           SAMPLE_DOTCOM_API_DETAILS,
@@ -2705,3 +2713,57 @@ test.serial(
     });
   },
 );
+
+test("loadUserConfig - applies analysis-specific settings", async (t) => {
+  await withTmpDir(async (workspaceDir) => {
+    await withTmpDir(async (tmpDir) => {
+      // Construct the test target.
+      const loadUserConfig = (
+        actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
+        filePath: string,
+        analysisKind: AnalysisKind,
+      ) =>
+        configUtils.loadUserConfig(
+          actionState,
+          [analysisKind],
+          filePath,
+          workspaceDir,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+        );
+      const target = callee(loadUserConfig);
+
+      for (const analysisKind of Object.values(AnalysisKind)) {
+        const analysisSpecificConfig: UserConfig = {
+          paths: ["custom"],
+          queries: [{ uses: "foo" }],
+        };
+        const baseConfig: UserConfig = { "threat-models": ["remote"] };
+
+        // Write a local configuration file with an `analysisKind`-specific section.
+        const configPath = path.join(workspaceDir, "codeql.yml");
+        fs.writeFileSync(
+          configPath,
+          JSON.stringify({
+            ...baseConfig,
+            [analysisKind]: analysisSpecificConfig,
+          } satisfies UserConfigWithActionExtensions),
+          "utf8",
+        );
+
+        // The resulting configuration should be the `baseConfig` with the `analysisSpecificConfig`
+        // merged into it if the FF is enabled.
+        await target
+          .withArgs(configPath, analysisKind)
+          .withFeatures([Feature.ScopedConfigurations])
+          .passes(t.deepEqual, { ...baseConfig, ...analysisSpecificConfig });
+
+        // Without the FF, it should be the `baseConfig`. This also validates that the
+        // `AnalysisKind`-specific sections are removed even if the FF is off.
+        await target
+          .withArgs(configPath, analysisKind)
+          .passes(t.deepEqual, baseConfig);
+      }
+    });
+  });
+});

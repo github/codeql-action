@@ -24,11 +24,13 @@ import { getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config/action-config";
 import {
+  applyAnalysisKindConfig,
   calculateAugmentation,
   ExcludeQueryFilter,
   generateCodeScanningConfig,
   mergeDefaultSetupAndUserConfigs,
   parseUserConfig,
+  removeAnalysisKindConfigs,
   UserConfig,
 } from "./config/db-config";
 import {
@@ -484,6 +486,7 @@ async function downloadCacheWithTime(
  */
 export async function loadUserConfig(
   actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
+  analysisKinds: AnalysisKind[],
   configFile: string,
   workspacePath: string,
   apiDetails: api.GitHubApiCombinedDetails,
@@ -516,7 +519,26 @@ export async function loadUserConfig(
     config = await getRemoteConfig(actionState, configFile, apiDetails);
   }
 
-  return config;
+  // If the `ScopedConfigurations` feature is enabled, we allow options specific to the
+  // current `AnalysisKind` to be applied on top of a base configuration.
+  const allowScopedConfig = await actionState.features.getValue(
+    Feature.ScopedConfigurations,
+  );
+
+  if (allowScopedConfig && analysisKinds.length === 1) {
+    // Apply the `analysisKind`-specific configuration.
+    return applyAnalysisKindConfig(analysisKinds[0], config);
+  } else if (allowScopedConfig) {
+    actionState.logger.info(
+      `Ignoring '${Feature.ScopedConfigurations}' feature, because multiple analysis kinds are enabled.`,
+    );
+  }
+
+  // Remove `AnalysisKind`-specific sections from `config` even if the FF is not enabled,
+  // because the CLI will warn about unknown keys in the configuration. This is to guard
+  // against the case where we ship the feature, enable the FF, start using the new keys,
+  // and then need to roll the FF back.
+  return removeAnalysisKindConfigs(config);
 }
 
 /**
@@ -1075,6 +1097,7 @@ export async function determineUserConfig(
       );
       const fromConfigFile = await loadUserConfig(
         action,
+        inputs.analysisKinds,
         inputs.configFile,
         inputs.workspacePath,
         inputs.apiDetails,
@@ -1122,6 +1145,7 @@ export async function determineUserConfig(
     action.logger.debug(`Using configuration file: ${inputs.configFile}`);
     return await loadUserConfig(
       action,
+      inputs.analysisKinds,
       inputs.configFile,
       inputs.workspacePath,
       inputs.apiDetails,

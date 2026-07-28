@@ -22,11 +22,23 @@ export enum RepositoryPropertyName {
 
 /** Parsed types of the known repository properties. */
 export type AllRepositoryProperties = {
-  [RepositoryPropertyName.CONFIG_FILE]: string;
+  [RepositoryPropertyName.CONFIG_FILE]: string | undefined;
   [RepositoryPropertyName.DISABLE_OVERLAY]: boolean;
   [RepositoryPropertyName.EXTRA_QUERIES]: string;
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: boolean;
   [RepositoryPropertyName.TOOLS]: string;
+};
+
+/**
+ * The subset of known repository properties which are of type `string`.
+ * We tolerate `undefined` for `string`-typed properties that are empty.
+ */
+export type StringRepositoryPropertyNames = keyof {
+  [K in keyof AllRepositoryProperties as AllRepositoryProperties[K] extends
+    | string
+    | undefined
+    ? K
+    : never]: AllRepositoryProperties[K];
 };
 
 /** Parsed repository properties. */
@@ -72,6 +84,12 @@ const stringProperty = {
   parse: parseStringRepositoryProperty,
 };
 
+/** A repository property that we expect to contain a non-empty string value. */
+const nonEmptyStringProperty = {
+  ...stringProperty,
+  parse: parseNonEmptyStringRepositoryProperty,
+};
+
 /** A repository property that we expect to contain a boolean value. */
 const booleanProperty = {
   // The value from the API should come as a string, which we then parse into a boolean.
@@ -83,7 +101,7 @@ const booleanProperty = {
 const repositoryPropertyParsers: {
   [K in RepositoryPropertyName]: PropertyInfo<K>;
 } = {
-  [RepositoryPropertyName.CONFIG_FILE]: stringProperty,
+  [RepositoryPropertyName.CONFIG_FILE]: nonEmptyStringProperty,
   [RepositoryPropertyName.DISABLE_OVERLAY]: booleanProperty,
   [RepositoryPropertyName.EXTRA_QUERIES]: stringProperty,
   [RepositoryPropertyName.FILE_COVERAGE_ON_PRS]: booleanProperty,
@@ -225,6 +243,17 @@ function parseBooleanRepositoryProperty(
 
 /** Parse a string repository property. */
 function parseStringRepositoryProperty(_name: string, value: string): string {
+  return value;
+}
+
+/** Parse a non-empty string repository property. */
+function parseNonEmptyStringRepositoryProperty(
+  _name: string,
+  value: string,
+): string | undefined {
+  if (value.trim().length === 0) {
+    return undefined;
+  }
   return value;
 }
 

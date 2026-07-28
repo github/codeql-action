@@ -13,6 +13,7 @@ import {
 } from "../testing-utils";
 
 import { getConfigFileInput, getRemoteConfig } from "./file";
+import { InputSource } from "./inputs";
 
 setupTests(test);
 
@@ -41,8 +42,8 @@ test("getConfigFileInput returns input value", async (t) => {
         .returns(testInput);
     })
     .withArgs(repositoryProperties)
-    .logs(t, "Using configuration file input from workflow")
-    .passes(t.is, testInput);
+    .logs(t, "Using config-file input from workflow")
+    .passes(t.deepEqual, { value: testInput, source: InputSource.Workflow });
 });
 
 test("getConfigFileInput returns repository property value", async (t) => {
@@ -50,16 +51,11 @@ test("getConfigFileInput returns repository property value", async (t) => {
   await callee(getConfigFileInput)
     .withFeatures([Feature.ConfigFileRepositoryProperty])
     .withArgs(repositoryProperties)
-    .logs(t, "Using configuration file input from repository property")
-    .passes(t.is, repositoryProperties[RepositoryPropertyName.CONFIG_FILE]);
-});
-
-test("getConfigFileInput ignores empty repository property value", async (t) => {
-  // Since the repository property value is an empty/whitespace string, we should ignore it.
-  await callee(getConfigFileInput)
-    .withFeatures([Feature.ConfigFileRepositoryProperty])
-    .withArgs({ [RepositoryPropertyName.CONFIG_FILE]: "   " })
-    .passes(t.is, undefined);
+    .logs(t, "Using config-file input from repository property")
+    .passes(t.deepEqual, {
+      value: repositoryProperties[RepositoryPropertyName.CONFIG_FILE],
+      source: InputSource.RepositoryProperty,
+    });
 });
 
 test("getConfigFileInput ignores repository property value when FF is off", async (t) => {
@@ -67,10 +63,10 @@ test("getConfigFileInput ignores repository property value when FF is off", asyn
   await callee(getConfigFileInput)
     .withFeatures([])
     .withArgs(repositoryProperties)
-    .notLogs(t, "Using configuration file input from repository property")
+    .notLogs(t, "Using config-file input from repository property")
     .logs(
       t,
-      "Ignoring configuration file input from repository property, because the corresponding feature flag is disabled.",
+      "Ignoring config-file input from repository property, because the corresponding feature flag is disabled.",
     )
     .passes(t.is, undefined);
 });

@@ -50,25 +50,16 @@ export function updateChangelog(
 
 function main() {
   try {
-    const { values } = parseArgs({
-      options: {
-        "target-version": {
-          type: "string",
-          short: "t",
-        },
-        "rollback-version": {
-          type: "string",
-          short: "r",
-        },
-        "new-version": {
-          type: "string",
-          short: "n",
-        },
-      },
-      strict: true,
-    });
+    const options = {
+      "target-version": { type: "string", short: "t" },
+      "rollback-version": { type: "string", short: "r" },
+      "new-version": { type: "string", short: "n" },
+    } as const;
 
-    for (const [key, val] of Object.entries(values)) {
+    const { values } = parseArgs({ options, strict: true });
+
+    for (const key of Object.keys(options)) {
+      const val = values[key as keyof typeof values];
       if (val === undefined || val.trim() === "") {
         throw new Error(`Argument '--${key}' is required.`);
       }

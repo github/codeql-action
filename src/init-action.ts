@@ -4,7 +4,6 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as io from "@actions/io";
 import * as semver from "semver";
-import { v4 as uuidV4 } from "uuid";
 
 import { Action, ActionState, runInActions } from "./action-common";
 import {
@@ -254,11 +253,6 @@ async function run(
       logger,
     );
     const repositoryProperties = repositoryPropertiesResult.orElse({});
-
-    // Create a unique identifier for this run.
-    const jobRunUuid = uuidV4();
-    logger.info(`Job run UUID is ${jobRunUuid}.`);
-    core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 

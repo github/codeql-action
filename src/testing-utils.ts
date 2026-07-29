@@ -34,11 +34,14 @@ import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  Failure,
   getEnv,
   GitHubVariant,
   GitHubVersion,
   HTTPError,
   resetCachedCodeQlVersion,
+  Result,
+  Success,
 } from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
@@ -182,13 +185,32 @@ export function getTestEnv(testEnv: NodeJS.ProcessEnv = {}): Env {
   return getEnv(testEnv);
 }
 
+/** An implementation of `ActionsEnv` for use in tests. */
+class TestActionsEnv implements ActionsEnv {
+  constructor(private readonly env: Env) {}
+
+  public clone(env: Env): this {
+    return Object.create(this, { env: { value: env } }) as this;
+  }
+
+  public getRequiredInput(name: string): string {
+    throw new Error(`Input required and not supplied: ${name}`);
+  }
+
+  public getOptionalInput(_name: string): string | undefined {
+    return undefined;
+  }
+
+  public exportVariable(name: string, value: string): void {
+    this.env.set(name, value);
+  }
+}
+
 /**
  * Gets an `ActionsEnv` instance for use in tests.
  */
-export function getTestActionsEnv(): ActionsEnv {
-  return {
-    getOptionalInput: () => undefined,
-  };
+export function getTestActionsEnv(env: Env): TestActionsEnv {
+  return new TestActionsEnv(env);
 }
 
 /** For testing purposes, we make all available state features accessible in `TestEnv`. */
@@ -206,12 +228,13 @@ type AllState = [
 export function initAllState(
   overrides?: Partial<ActionState<AllState>>,
 ): ActionState<AllState> {
+  const env = getTestEnv();
   return {
     name: ActionName.Init,
     startedAt: new Date(),
     logger: new RecordingLogger(),
-    env: getTestEnv(),
-    actions: getTestActionsEnv(),
+    env,
+    actions: getTestActionsEnv(env),
     apiClient: github.getOctokit("123"),
     features: createFeatures([]),
     ...overrides,
@@ -222,9 +245,13 @@ type DelayedCheck<
   Args extends readonly any[],
   R,
   Fs extends ReadonlyArray<AllState[number]>,
-> = (env: Readonly<BaseEnvBuilder<Args, R, Fs>>) => Promise<any>;
+> = (
+  env: Readonly<BaseEnvBuilder<Args, R, Fs>>,
+  result: Result<Awaited<R>, ThrownError<ErrorConstructor | Error>>,
+) => Promise<any>;
 
-export type ValueOrMutation<T> = T | ((val: T) => void);
+export type Mutation<T> = (val: T) => void;
+export type ValueOrMutation<T> = T | Mutation<T>;
 
 /**
  * Wraps a function that accepts an `ActionState` for testing in different environments.
@@ -236,6 +263,7 @@ abstract class BaseEnvBuilder<
 > {
   protected readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
   private logger: RecordingLogger;
+  private actions: TestActionsEnv;
   protected state: ActionState<AllState>;
   protected checks: Array<DelayedCheck<Args, R, Fs>>;
 
@@ -245,15 +273,26 @@ abstract class BaseEnvBuilder<
   ) {
     this.fn = fn;
     this.logger = new RecordingLogger();
-    this.state =
-      cloneFrom !== undefined
-        ? ({
-            ...cloneFrom.state,
-            env: cloneFrom.state.env.clone(),
-            actions: Object.create(cloneFrom.state.actions),
-            logger: this.logger,
-          } satisfies ActionState<AllState>)
-        : initAllState({ logger: this.logger });
+
+    if (cloneFrom !== undefined) {
+      const env = cloneFrom.state.env.clone();
+      this.actions = cloneFrom.actions.clone(env);
+      this.state = {
+        ...cloneFrom.state,
+        env,
+        actions: this.actions,
+        logger: this.logger,
+      } satisfies ActionState<AllState>;
+    } else {
+      const env = getTestEnv();
+      this.actions = getTestActionsEnv(env);
+      this.state = initAllState({
+        logger: this.logger,
+        env,
+        actions: this.actions,
+      });
+    }
+
     this.checks = [...(cloneFrom?.checks ?? [])];
   }
 
@@ -320,13 +359,10 @@ abstract class BaseEnvBuilder<
     return result;
   }
 
-  public withActions(arg: ValueOrMutation<ActionsEnv>): this {
+  /** Applies `fn` to the `ActionsEnv`. */
+  public withActions(fn: Mutation<ActionsEnv>): this {
     const result = this.clone();
-    if (typeof arg === "function") {
-      arg(result.state.actions);
-    } else {
-      result.state.actions = arg;
-    }
+    fn(result.state.actions);
     return result;
   }
 
@@ -338,6 +374,28 @@ abstract class BaseEnvBuilder<
     const result = this.clone();
     result.checks.push(async (env) => {
       checkExpectedLogMessages(t, env.getLogger().messages, messages);
+    });
+    return result;
+  }
+
+  /**
+   * Adds a delayed check that the environment variables returned by `fn`
+   * are present in the environment after the main assertion passes.
+   */
+  public hasEnv(
+    t: ExecutionContext<unknown>,
+    fn: (
+      value: Awaited<R> | undefined,
+      error: ThrownError<ErrorConstructor | Error> | undefined,
+    ) => Record<string, string | undefined>,
+  ): this {
+    const result = this.clone();
+    result.checks.push(async (env, r) => {
+      const value = r.orElse(undefined);
+      const error = r.isFailure() ? r.value : undefined;
+      const expected = fn(value, error);
+
+      t.like(env.getState().env.get(), expected);
     });
     return result;
   }
@@ -439,7 +497,7 @@ class CallableEnvBuilder<
 
     // Run other delayed checks.
     for (const delayedCheck of this.checks) {
-      await delayedCheck(this);
+      await delayedCheck(this, new Success(result));
     }
 
     // Return the results of the function call and the main assertion.
@@ -465,7 +523,7 @@ class CallableEnvBuilder<
 
     // Run other delayed checks.
     for (const delayedCheck of this.checks) {
-      await delayedCheck(this);
+      await delayedCheck(this, new Failure(error));
     }
 
     // Return the error.

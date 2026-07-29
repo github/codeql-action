@@ -3,12 +3,12 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 
-import { ActionState } from "./action-common";
+import { Action, ActionState, runInActions } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
-import { getActionsLogger, Logger } from "./logging";
+import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
   credentialToStr,
@@ -24,31 +24,18 @@ import {
 import { generateCertificateAuthority } from "./start-proxy/ca";
 import { checkProxyEnvironment } from "./start-proxy/environment";
 import { checkConnections } from "./start-proxy/reachability";
-import {
-  ActionName,
-  getJobUUID,
-  sendUnhandledErrorStatusReport,
-} from "./status-report";
+import { ActionName } from "./status-report";
 import * as util from "./util";
 
-async function run(startedAt: Date) {
+async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
-
-  const logger = getActionsLogger();
+  const startedAt = action.startedAt;
+  const logger = action.logger;
   let features: FeatureEnablement | undefined;
   let language: BuiltInLanguage | undefined;
 
   try {
-    const action: ActionState<["Logger", "Env", "Actions"]> = {
-      logger,
-      env: util.getEnv(),
-      actions: actionsUtil.getActionsEnv(),
-    };
-
-    // Create a unique identifier for this run.
-    getJobUUID(action);
-
     // Make inputs accessible in the `post` step.
     actionsUtil.persistInputs();
 
@@ -136,21 +123,15 @@ async function run(startedAt: Date) {
   }
 }
 
-export async function runWrapper() {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
+/** Defines the `start-proxy` Action. */
+const startProxyAction: Action = {
+  name: ActionName.StartProxy,
+  run,
+  transformTelemetryError: getSafeErrorMessage,
+};
 
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(`start-proxy action failed: ${util.getErrorMessage(error)}`);
-    await sendUnhandledErrorStatusReport(
-      ActionName.StartProxy,
-      startedAt,
-      getSafeErrorMessage(util.wrapError(error)),
-      logger,
-    );
-  }
+export async function runWrapper() {
+  await runInActions(startProxyAction);
 }
 
 async function startProxy(

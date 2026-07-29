@@ -17,12 +17,13 @@ import type { ComputedInput, InputName } from "./config/inputs";
 import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
 import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv, ReadOnlyEnv, RegistryProxyVars } from "./environment";
 import { getRef } from "./git-utils";
 import type { Logger } from "./logging";
 import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";
 import type { ToolsSource } from "./setup-codeql";
+import type { Registry } from "./start-proxy";
 import {
   ConfigurationError,
   getRequiredEnvParam,
@@ -269,6 +270,35 @@ export interface EventReport {
 }
 
 /**
+ * Attempts to retrieve a list of private registry types from the `CODEQL_PROXY_URLS` environment
+ * variable and returns it as a comma-separated string if successful. Returns `undefined` otherwise.
+ */
+export function getRegistryTypesFromEnv(
+  logger: Logger,
+  env: ReadOnlyEnv = getEnv(),
+): string | undefined {
+  // Try to get the value of the environment variable.
+  const value = env.getOptional(RegistryProxyVars.PROXY_URLS);
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  // Try to parse the JSON we expect to find in it and return the comma-separated list of
+  // (unique) registry types.
+  try {
+    const data = JSON.parse(value) as Registry[];
+    const types = new Set(data.map((r) => r.type));
+    return Array.from(types).sort().join(",");
+  } catch (err) {
+    logger.debug(
+      `Failed to parse '${RegistryProxyVars.PROXY_URLS}' containing '${value}': ${getErrorMessage(err)}.`,
+    );
+    return undefined;
+  }
+}
+
+/**
  * Compose a StatusReport.
  *
  * @param actionName The name of the action, e.g. 'init', 'finish', 'upload-sarif'
@@ -330,6 +360,7 @@ export async function createStatusReportBase(
       job_name: jobName,
       job_run_uuid: jobRunUUID,
       ref,
+      registry_types: getRegistryTypesFromEnv(logger),
       runner_os: runnerOs,
       started_at: workflowStartedAt,
       status,

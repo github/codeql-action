@@ -34,11 +34,14 @@ import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
+  Failure,
   getEnv,
   GitHubVariant,
   GitHubVersion,
   HTTPError,
   resetCachedCodeQlVersion,
+  Result,
+  Success,
 } from "./util";
 
 export const SAMPLE_DOTCOM_API_DETAILS = {
@@ -226,7 +229,10 @@ type DelayedCheck<
   Args extends readonly any[],
   R,
   Fs extends ReadonlyArray<AllState[number]>,
-> = (env: Readonly<BaseEnvBuilder<Args, R, Fs>>) => Promise<any>;
+> = (
+  env: Readonly<BaseEnvBuilder<Args, R, Fs>>,
+  result: Result<Awaited<R>, ThrownError<ErrorConstructor | Error>>,
+) => Promise<any>;
 
 export type Mutation<T> = (val: T) => void;
 export type ValueOrMutation<T> = T | Mutation<T>;
@@ -441,7 +447,7 @@ class CallableEnvBuilder<
 
     // Run other delayed checks.
     for (const delayedCheck of this.checks) {
-      await delayedCheck(this);
+      await delayedCheck(this, new Success(result));
     }
 
     // Return the results of the function call and the main assertion.
@@ -467,7 +473,7 @@ class CallableEnvBuilder<
 
     // Run other delayed checks.
     for (const delayedCheck of this.checks) {
-      await delayedCheck(this);
+      await delayedCheck(this, new Failure(error));
     }
 
     // Return the error.

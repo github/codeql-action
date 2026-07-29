@@ -88,7 +88,7 @@ export enum EnvVar {
   LOG_VERSION_DEPRECATION = "CODEQL_ACTION_DID_LOG_VERSION_DEPRECATION",
 
   /** UUID representing the current job run. */
-  JOB_RUN_UUID = "JOB_RUN_UUID",
+  JOB_RUN_UUID = "CODEQL_ACTION_JOB_RUN_UUID",
 
   /** Status for the entire job, submitted to the status report in `init-post` */
   JOB_STATUS = "CODEQL_ACTION_JOB_STATUS",

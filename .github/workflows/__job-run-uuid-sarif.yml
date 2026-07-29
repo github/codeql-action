@@ -71,8 +71,8 @@ jobs:
         run: |
           cd "$RUNNER_TEMP/results"
           actual=$(jq -r '.runs[0].properties.jobRunUuid' javascript.sarif)
-          if [[ "$actual" != "$JOB_RUN_UUID" ]]; then
-            echo "Expected SARIF output to contain job run UUID '$JOB_RUN_UUID', but found '$actual'."
+          if [[ "$actual" != "$CODEQL_ACTION_JOB_RUN_UUID" ]]; then
+            echo "Expected SARIF output to contain job run UUID '$CODEQL_ACTION_JOB_RUN_UUID', but found '$actual'."
             exit 1
           else
             echo "Found job run UUID '$actual'."

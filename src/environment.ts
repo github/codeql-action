@@ -270,6 +270,11 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
     return Object.create(this, { vars: { value: { ...this.vars } } }) as this;
   }
 
+  /** Gets a copy of the underlying environment. */
+  public get(): Record<string, T> {
+    return { ...this.vars };
+  }
+
   /** Tries to get the value for `name` and throws if there isn't one. */
   public getRequired(name: string): string {
     return getRequiredEnvVar(this.vars, name);

@@ -39,7 +39,7 @@
     "follow-redirects": "^1.16.0",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
-    "js-yaml": "^5.2.1",
+    "js-yaml": "^5.2.2",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
@@ -88,6 +88,7 @@
     "@octokit/plugin-paginate-rest": {
       "semver": ">=9.2.2"
     },
+    "brace-expansion": "^5.0.8",
     "eslint-plugin-import": {
       "semver": ">=6.3.1"
     },
@@ -95,6 +96,7 @@
       "semver": ">=6.3.1"
     },
     "glob": "^13.0.6",
+    "js-yaml": "^5.2.2",
     "undici": "^6.24.0"
   }
 }

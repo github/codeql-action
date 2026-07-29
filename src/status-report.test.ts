@@ -1,5 +1,6 @@
 import test from "ava";
 import * as sinon from "sinon";
+import * as uuid from "uuid";
 
 import * as actionsUtil from "./actions-util";
 import { Config } from "./config-utils";
@@ -12,6 +13,7 @@ import {
   createInitWithConfigStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  getJobUUID,
   InitStatusReport,
   InitWithConfigStatusReport,
 } from "./status-report";
@@ -20,10 +22,48 @@ import {
   setupActionsVars,
   createTestConfig,
   makeMacro,
+  callee,
 } from "./testing-utils";
 import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 
 setupTests(test);
+
+test("getJobUUID - generates valid UUIDs", async (t) => {
+  await callee(getJobUUID)
+    .withArgs()
+    .logs(t, "Job run UUID is ")
+    .hasEnv(t, (val) => {
+      return {
+        [EnvVar.JOB_RUN_UUID]: val,
+      };
+    })
+    .passes((val) => {
+      t.true(uuid.validate(val));
+    });
+});
+
+test("getJobUUID - retrieves existing job UUIDs", async (t) => {
+  const existingJobUuid = uuid.v4();
+  await callee(getJobUUID)
+    .withArgs()
+    .withEnv((env) => {
+      env.set(EnvVar.JOB_RUN_UUID, existingJobUuid);
+    })
+    .logs(t, `Existing job run UUID is ${existingJobUuid}.`)
+    .passes(t.deepEqual, existingJobUuid);
+});
+
+test("getJobUUID - doesn't retrieve invalid UUIDs", async (t) => {
+  const existingJobUuid = "not-a-uuid";
+  await callee(getJobUUID)
+    .withArgs()
+    .withEnv((env) => {
+      env.set(EnvVar.JOB_RUN_UUID, existingJobUuid);
+    })
+    .logs(t, `Job run UUID is `)
+    .notLogs(t, `Existing job run UUID is ${existingJobUuid}.`)
+    .passes(t.notDeepEqual, existingJobUuid);
+});
 
 function setupEnvironmentAndStub(tmpDir: string) {
   setupActionsVars(tmpDir, tmpDir, {

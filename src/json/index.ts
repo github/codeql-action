@@ -62,14 +62,11 @@ function defaultCheck(
   return (arg) => ({ unknownKeys: [], invalidKeys: [], valid: validate(arg) });
 }
 
-function makeValidator<T>(
-  validate: (arg: unknown) => arg is T,
-  required: boolean = true,
-) {
+function makeValidator<T>(validate: (arg: unknown) => arg is T) {
   return {
     validate,
     check: defaultCheck(validate),
-    required,
+    required: true,
   } as const satisfies Validator<T>;
 }
 

@@ -3,15 +3,17 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { Config } from "./config-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, RegistryProxyVars } from "./environment";
 import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
+import type { Registry } from "./start-proxy";
 import {
   ActionName,
   createInitWithConfigStatusReport,
   createStatusReportBase,
   getActionsStatus,
+  getRegistryTypesFromEnv,
   InitStatusReport,
   InitWithConfigStatusReport,
 } from "./status-report";
@@ -20,10 +22,53 @@ import {
   setupActionsVars,
   createTestConfig,
   makeMacro,
+  getTestEnv,
+  RecordingLogger,
 } from "./testing-utils";
 import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 
 setupTests(test);
+
+test("getRegistryTypesFromEnv - gets unique registry types from environment", async (t) => {
+  const logger = new RecordingLogger(true);
+  const env = getTestEnv({
+    [RegistryProxyVars.PROXY_URLS]: JSON.stringify([
+      { type: "git_source", url: "https://example.com" },
+      { type: "git_source", url: "https://github.com" },
+      { type: "docker_registry", url: "https://registry.example.com" },
+    ] satisfies Array<Partial<Registry>>),
+  });
+
+  const result = getRegistryTypesFromEnv(logger, env);
+  t.deepEqual(result, ["git_source", "docker_registry"].sort().join(","));
+});
+
+test("getRegistryTypesFromEnv - returns undefined if the env var is not set", async (t) => {
+  const logger = new RecordingLogger(true);
+  const env = getTestEnv({});
+
+  const result = getRegistryTypesFromEnv(logger, env);
+  t.is(result, undefined);
+});
+
+test("getRegistryTypesFromEnv - returns undefined if the env var is not valid JSON", async (t) => {
+  const logger = new RecordingLogger(true);
+  const env = getTestEnv({ [RegistryProxyVars.PROXY_URLS]: "[" });
+
+  const result = getRegistryTypesFromEnv(logger, env);
+  t.is(result, undefined);
+});
+
+test("getRegistryTypesFromEnv - returns undefined if the env var is unexpected JSON", async (t) => {
+  const logger = new RecordingLogger(true);
+  const env = getTestEnv({
+    // Top-level object rather than an array of objects.
+    [RegistryProxyVars.PROXY_URLS]: JSON.stringify({ type: "git_source" }),
+  });
+
+  const result = getRegistryTypesFromEnv(logger, env);
+  t.is(result, undefined);
+});
 
 function setupEnvironmentAndStub(tmpDir: string) {
   setupActionsVars(tmpDir, tmpDir, {

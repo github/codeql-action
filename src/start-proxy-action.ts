@@ -6,7 +6,6 @@ import * as core from "@actions/core";
 import { ActionState } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { Env } from "./environment";
 import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { getActionsLogger, Logger } from "./logging";
@@ -43,7 +42,7 @@ async function run(startedAt: Date) {
   try {
     const action: ActionState<["Logger", "Env", "Actions"]> = {
       logger,
-      env: new Env(process.env),
+      env: util.getEnv(),
       actions: actionsUtil.getActionsEnv(),
     };
 

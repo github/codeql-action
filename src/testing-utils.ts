@@ -185,17 +185,32 @@ export function getTestEnv(testEnv: NodeJS.ProcessEnv = {}): Env {
   return getEnv(testEnv);
 }
 
+/** An implementation of `ActionsEnv` for use in tests. */
+class TestActionsEnv implements ActionsEnv {
+  constructor(private readonly env: Env) {}
+
+  public clone(env: Env): this {
+    return Object.create(this, { env: { value: env } }) as this;
+  }
+
+  public getRequiredInput(name: string): string {
+    throw new Error(`Input required and not supplied: ${name}`);
+  }
+
+  public getOptionalInput(_name: string): string | undefined {
+    return undefined;
+  }
+
+  public exportVariable(name: string, value: string): void {
+    this.env.set(name, value);
+  }
+}
+
 /**
  * Gets an `ActionsEnv` instance for use in tests.
  */
-export function getTestActionsEnv(): ActionsEnv {
-  return {
-    getRequiredInput: (name) => {
-      throw new Error(`Input required and not supplied: ${name}`);
-    },
-    getOptionalInput: () => undefined,
-    exportVariable: () => {},
-  };
+export function getTestActionsEnv(env: Env): TestActionsEnv {
+  return new TestActionsEnv(env);
 }
 
 /** For testing purposes, we make all available state features accessible in `TestEnv`. */
@@ -213,12 +228,13 @@ type AllState = [
 export function initAllState(
   overrides?: Partial<ActionState<AllState>>,
 ): ActionState<AllState> {
+  const env = getTestEnv();
   return {
     name: ActionName.Init,
     startedAt: new Date(),
     logger: new RecordingLogger(),
-    env: getTestEnv(),
-    actions: getTestActionsEnv(),
+    env,
+    actions: getTestActionsEnv(env),
     apiClient: github.getOctokit("123"),
     features: createFeatures([]),
     ...overrides,
@@ -247,6 +263,7 @@ abstract class BaseEnvBuilder<
 > {
   protected readonly fn: (state: ActionState<Fs>, ...args: Args) => R;
   private logger: RecordingLogger;
+  private actions: TestActionsEnv;
   protected state: ActionState<AllState>;
   protected checks: Array<DelayedCheck<Args, R, Fs>>;
 
@@ -256,15 +273,26 @@ abstract class BaseEnvBuilder<
   ) {
     this.fn = fn;
     this.logger = new RecordingLogger();
-    this.state =
-      cloneFrom !== undefined
-        ? ({
-            ...cloneFrom.state,
-            env: cloneFrom.state.env.clone(),
-            actions: Object.create(cloneFrom.state.actions),
-            logger: this.logger,
-          } satisfies ActionState<AllState>)
-        : initAllState({ logger: this.logger });
+
+    if (cloneFrom !== undefined) {
+      const env = cloneFrom.state.env.clone();
+      this.actions = cloneFrom.actions.clone(env);
+      this.state = {
+        ...cloneFrom.state,
+        env,
+        actions: this.actions,
+        logger: this.logger,
+      } satisfies ActionState<AllState>;
+    } else {
+      const env = getTestEnv();
+      this.actions = getTestActionsEnv(env);
+      this.state = initAllState({
+        logger: this.logger,
+        env,
+        actions: this.actions,
+      });
+    }
+
     this.checks = [...(cloneFrom?.checks ?? [])];
   }
 

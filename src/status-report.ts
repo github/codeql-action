@@ -159,6 +159,12 @@ export interface StatusReportBase {
   ml_powered_javascript_queries?: string;
   /** Ref that the workflow was triggered on. */
   ref: string;
+  /**
+   * A comma-separated list of private registry types which are configured for CodeQL.
+   * This only includes registry types we support (as determined by the `start-proxy` action),
+   * not all that are configured.
+   */
+  registry_types?: string;
   /** Action runner hardware architecture (context runner.arch). */
   runner_arch?: string;
   /** Available disk space on the runner, in bytes. */

@@ -83,12 +83,6 @@ export class StartProxyError extends Error {
   }
 }
 
-interface StartProxyStatus extends StatusReportBase {
-  // A comma-separated list of registry types which are configured for CodeQL.
-  // This only includes registry types we support, not all that are configured.
-  registry_types: string;
-}
-
 /**
  * Sends a status report for the `start-proxy` action indicating a successful outcome.
  *
@@ -112,7 +106,7 @@ export async function sendSuccessStatusReport(
     logger,
   );
   if (statusReportBase !== undefined) {
-    const statusReport: StartProxyStatus = {
+    const statusReport: StatusReportBase = {
       ...statusReportBase,
       registry_types: registry_types.join(","),
     };

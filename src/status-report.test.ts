@@ -79,6 +79,9 @@ function setupEnvironmentAndStub(tmpDir: string) {
 
   process.env[EnvVar.ANALYSIS_KEY] = "analysis-key";
   process.env["ImageVersion"] = "2023.05.19.1";
+  process.env[RegistryProxyVars.PROXY_URLS] = JSON.stringify([
+    { type: "maven_repository" },
+  ] satisfies Array<Partial<Registry>>);
 
   const getRequiredInput = sinon.stub(actionsUtil, "getRequiredInput");
   getRequiredInput.withArgs("matrix").resolves("input/matrix");
@@ -122,6 +125,7 @@ test.serial("createStatusReportBase", async (t) => {
       t.is(typeof statusReport.job_run_uuid, "string");
       t.is(statusReport.languages, "java,swift");
       t.is(statusReport.ref, process.env["GITHUB_REF"]!);
+      t.is(statusReport.registry_types, "maven_repository");
       t.is(statusReport.runner_available_disk_space_bytes, 100);
       t.is(statusReport.runner_image_version, process.env["ImageVersion"]);
       t.is(statusReport.runner_os, process.env["RUNNER_OS"]!);

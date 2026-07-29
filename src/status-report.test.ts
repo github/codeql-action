@@ -61,13 +61,27 @@ test("getRegistryTypesFromEnv - returns undefined if the env var is not valid JS
 
 test("getRegistryTypesFromEnv - returns undefined if the env var is unexpected JSON", async (t) => {
   const logger = new RecordingLogger(true);
-  const env = getTestEnv({
-    // Top-level object rather than an array of objects.
-    [RegistryProxyVars.PROXY_URLS]: JSON.stringify({ type: "git_source" }),
-  });
 
-  const result = getRegistryTypesFromEnv(logger, env);
-  t.is(result, undefined);
+  t.is(
+    getRegistryTypesFromEnv(
+      logger,
+      getTestEnv({
+        // Top-level object rather than an array of objects.
+        [RegistryProxyVars.PROXY_URLS]: JSON.stringify({ type: "git_source" }),
+      }),
+    ),
+    undefined,
+  );
+  t.is(
+    getRegistryTypesFromEnv(
+      logger,
+      getTestEnv({
+        // Object has no "type" key.
+        [RegistryProxyVars.PROXY_URLS]: JSON.stringify([{}]),
+      }),
+    ),
+    undefined,
+  );
 });
 
 function setupEnvironmentAndStub(tmpDir: string) {

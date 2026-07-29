@@ -226,6 +226,23 @@ export function validateSchema<
   return result.valid;
 }
 
+/**
+ * Validates that `arr` is an array whose elements satisfy at least `elementSchema`.
+ * Additional keys are accepted in each element.
+ *
+ * @param elementSchema The schema to validate the elements against.
+ * @param arr The array to validate.
+ * @returns Asserts that `arr` has elements of `schema`'s type if validation is successful.
+ */
+export function validateArray<
+  S extends Schema,
+  T extends UnvalidatedArray = Array<FromSchema<S>>,
+>(elementSchema: S, arr: UnvalidatedArray): arr is T {
+  const elementValidator = object(elementSchema);
+
+  return array(elementValidator).validate(arr);
+}
+
 export interface CheckSchemaOptions {
   /** Whether to stop validation after the first error. */
   failFast?: boolean;

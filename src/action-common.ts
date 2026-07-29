@@ -8,6 +8,7 @@ import { getActionsLogger, Logger } from "./logging";
 import {
   ActionName,
   getDisplayActionName,
+  getJobUUID,
   sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { getEnv, getErrorMessage } from "./util";
@@ -88,13 +89,18 @@ export async function runInActions(action: Action) {
   const actionsEnv = getActionsEnv();
 
   try {
-    await action.run({
+    const actionState = {
       name: action.name,
       startedAt,
       logger,
       env,
       actions: actionsEnv,
-    });
+    };
+
+    // Create a unique identifier for this run.
+    getJobUUID(actionState);
+
+    await action.run(actionState);
   } catch (error) {
     core.setFailed(
       `${getDisplayActionName(action.name)} action failed: ${getErrorMessage(error)}`,

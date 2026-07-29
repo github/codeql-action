@@ -379,6 +379,28 @@ abstract class BaseEnvBuilder<
   }
 
   /**
+   * Adds a delayed check that the environment variables returned by `fn`
+   * are present in the environment after the main assertion passes.
+   */
+  public hasEnv(
+    t: ExecutionContext<unknown>,
+    fn: (
+      value: Awaited<R> | undefined,
+      error: ThrownError<ErrorConstructor | Error> | undefined,
+    ) => Record<string, string | undefined>,
+  ): this {
+    const result = this.clone();
+    result.checks.push(async (env, r) => {
+      const value = r.orElse(undefined);
+      const error = r.isFailure() ? r.value : undefined;
+      const expected = fn(value, error);
+
+      t.like(env.getState().env.get(), expected);
+    });
+    return result;
+  }
+
+  /**
    * Adds a delayed check that `messages` are not logged. The check will be
    * performed after the main assertion passes.
    */

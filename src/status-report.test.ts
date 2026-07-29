@@ -29,21 +29,16 @@ import { BuildMode, ConfigurationError, withTmpDir, wrapError } from "./util";
 setupTests(test);
 
 test("getJobUUID - generates valid UUIDs", async (t) => {
-  const exportVariableStub: sinon.SinonStub<[string, string], void> =
-    sinon.stub();
-
   await callee(getJobUUID)
     .withArgs()
-    .withActions((env) => {
-      env.exportVariable = exportVariableStub;
-    })
     .logs(t, "Job run UUID is ")
+    .hasEnv(t, (val) => {
+      return {
+        [EnvVar.JOB_RUN_UUID]: val,
+      };
+    })
     .passes((val) => {
       t.true(uuid.validate(val));
-
-      const calls = exportVariableStub.getCalls();
-      t.is(calls.length, 1);
-      t.deepEqual(calls[0].args, [EnvVar.JOB_RUN_UUID, val]);
     });
 });
 

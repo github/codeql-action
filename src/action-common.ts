@@ -11,7 +11,7 @@ import {
   getJobUUID,
   sendUnhandledErrorStatusReport,
 } from "./status-report";
-import { getEnv, getErrorMessage } from "./util";
+import { getEnv, getErrorMessage, wrapError } from "./util";
 
 /** Base state that is available to an Action on startup. */
 export interface BaseState {
@@ -79,6 +79,12 @@ export interface Action {
   name: ActionName;
   /** The entry point for the Action. */
   run: ActionMain;
+  /**
+   * An optional function that transforms a caught error into a message suitable for
+   * inclusion in a status report. This is primarily intended for the `start-proxy`
+   * action to replace the thrown `Error`'s message with a safe one.
+   */
+  transformTelemetryError?: (error: Error) => string;
 }
 
 /** A generic entry point that sets up the basic environment for the `action` and runs it. */
@@ -105,6 +111,16 @@ export async function runInActions(action: Action) {
     core.setFailed(
       `${getDisplayActionName(action.name)} action failed: ${getErrorMessage(error)}`,
     );
-    await sendUnhandledErrorStatusReport(action.name, startedAt, error, logger);
+
+    const statusReportError =
+      action.transformTelemetryError !== undefined
+        ? action.transformTelemetryError(wrapError(error))
+        : error;
+    await sendUnhandledErrorStatusReport(
+      action.name,
+      startedAt,
+      statusReportError,
+      logger,
+    );
   }
 }

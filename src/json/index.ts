@@ -35,6 +35,11 @@ export function isNumber(value: unknown): value is number {
   return typeof value === "number";
 }
 
+/** Asserts that `value` is a boolean. */
+export function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
 /** Asserts that `value` is either a string or undefined. */
 export function isStringOrUndefined(
   value: unknown,
@@ -78,6 +83,9 @@ export const string = makeValidator(isString);
 
 /** A validator for number fields in schemas. */
 export const number = makeValidator(isNumber);
+
+/** A validator for boolean fields in schemas. */
+export const boolean = makeValidator(isBoolean);
 
 /** A validator for arrays. */
 export function array<T>(validator: Validator<T>) {

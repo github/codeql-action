@@ -1,7 +1,9 @@
 import * as os from "os";
 
 import * as core from "@actions/core";
+import * as uuid from "uuid";
 
+import type { ActionState } from "./action-common";
 import {
   getWorkflowEventName,
   getOptionalInput,
@@ -57,6 +59,30 @@ export function getDisplayActionName(actionName: ActionName): string {
     return "analyze";
   }
   return actionName;
+}
+
+/**
+ * Either creates a UUIDv4 for the analysis or retrieves an existing one from the
+ * environment and returns it.
+ * If a new UUID is generated, it is also exported as an environment variable.
+ */
+export function getJobUUID(
+  action: ActionState<["Logger", "ReadOnlyEnv", "Actions"]>,
+) {
+  // Check if we already have a UUID for the analysis and return it if so.
+  const existingJobRunUuid = action.env.getOptional(EnvVar.JOB_RUN_UUID);
+
+  if (existingJobRunUuid !== undefined && uuid.validate(existingJobRunUuid)) {
+    action.logger.info(`Existing job run UUID is ${existingJobRunUuid}.`);
+    return existingJobRunUuid;
+  }
+
+  // Otherwise generate a new UUID.
+  const jobRunUuid = uuid.v4();
+  action.logger.info(`Job run UUID is ${jobRunUuid}.`);
+
+  action.actions.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+  return jobRunUuid;
 }
 
 /**

@@ -19,11 +19,12 @@ import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
 import { EnvVar, getEnv, ReadOnlyEnv, RegistryProxyVars } from "./environment";
 import { getRef } from "./git-utils";
+import * as json from "./json";
 import type { Logger } from "./logging";
 import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";
 import type { ToolsSource } from "./setup-codeql";
-import type { Registry } from "./start-proxy";
+import { registryBaseSchema } from "./start-proxy/types";
 import {
   ConfigurationError,
   getRequiredEnvParam,
@@ -287,12 +288,27 @@ export function getRegistryTypesFromEnv(
   // Try to parse the JSON we expect to find in it and return the comma-separated list of
   // (unique) registry types.
   try {
-    const data = JSON.parse(value) as Registry[];
+    const data = JSON.parse(value) as unknown;
+
+    // Check that the parsed JSON meets our expectations.
+    if (!json.isArray(data)) {
+      logger.debug(
+        `Expected '${RegistryProxyVars.PROXY_URLS}' to contain a JSON array, but got '${typeof data}'.`,
+      );
+      return undefined;
+    }
+    if (!json.validateArray(registryBaseSchema, data)) {
+      logger.debug(
+        `Expected '${RegistryProxyVars.PROXY_URLS}' to contain a JSON array of registry objects, but got something else.`,
+      );
+      return undefined;
+    }
+
     const types = new Set(data.map((r) => r.type));
     return Array.from(types).sort().join(",");
   } catch (err) {
     logger.debug(
-      `Failed to parse '${RegistryProxyVars.PROXY_URLS}' containing '${value}': ${getErrorMessage(err)}.`,
+      `Failed to parse '${RegistryProxyVars.PROXY_URLS}': ${getErrorMessage(err)}.`,
     );
     return undefined;
   }

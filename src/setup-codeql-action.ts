@@ -25,7 +25,6 @@ import {
   InitToolsDownloadFields,
   createStatusReportBase,
   getActionsStatus,
-  getJobUUID,
   sendStatusReport,
 } from "./status-report";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -139,9 +138,6 @@ async function run(
     const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     const actionStateWithFeatures = { ...actionState, features };
-
-    // Create a unique identifier for this run.
-    getJobUUID(actionState);
 
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,

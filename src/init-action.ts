@@ -68,7 +68,6 @@ import {
   createInitWithConfigStatusReport,
   createStatusReportBase,
   getActionsStatus,
-  getJobUUID,
   sendStatusReport,
 } from "./status-report";
 import { ToolsDownloadStatusReport } from "./tools-download";
@@ -254,9 +253,6 @@ async function run(
       logger,
     );
     const repositoryProperties = repositoryPropertiesResult.orElse({});
-
-    // Create a unique identifier for this run.
-    getJobUUID(actionState);
 
     core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
 

@@ -33,17 +33,12 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "$GITHUB_CONTEXT"
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Update git config
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-
-      - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
-        with:
-          python-version: '3.12'
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -120,7 +115,7 @@ jobs:
 
       - name: Create changelog note
         run: |
-          python .github/workflows/script/bundle_changelog.py
+          npx tsx pr-checks/bundle-changelog.ts
 
       - name: Push changelog note
         run: |

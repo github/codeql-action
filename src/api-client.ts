@@ -108,12 +108,19 @@ export function getRegistryProxy(
  * Constructs a `RequestRequestOptions` with a custom `fetch` implementation
  * that uses `dispatcher` as a proxy for requests.
  *
- * @param dispatcher The proxy to use.
+ * @param dispatcher The proxy to use, if any.
  */
 export function makeProxyRequestOptions(
-  dispatcher: ProxyAgent,
-): RequestRequestOptions {
+  dispatcher: ProxyAgent | undefined,
+): RequestRequestOptions | undefined {
+  // If we don't have a custom `ProxyAgent`, return the defaults.
+  if (dispatcher === undefined) {
+    return githubUtils.defaults.request;
+  }
+
+  // Otherwise, construct the custom `fetch` and add it onto the defaults.
   return {
+    ...githubUtils.defaults.request,
     fetch: (req: RequestInfo, init?: RequestInit) => {
       return undiciFetch(req, { ...init, dispatcher });
     },
@@ -136,10 +143,7 @@ function createApiClientWithDetails(
   const auth =
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
-  const requestOptions =
-    proxy === undefined
-      ? githubUtils.defaults.request
-      : makeProxyRequestOptions(proxy);
+  const requestOptions = makeProxyRequestOptions(proxy);
   return new retryingOctokit(
     githubUtils.getOctokitOptions(auth, {
       baseUrl: apiDetails.apiURL,

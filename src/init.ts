@@ -30,7 +30,6 @@ import {
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { ToolsSource } from "./setup-codeql";
-import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
 
@@ -49,27 +48,21 @@ export async function initCodeQL(
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: ToolsSource;
   toolsVersion: string;
-  zstdAvailability: ZstdAvailability;
 }> {
   logger.startGroup("Setup CodeQL tools");
-  const {
-    codeql,
-    toolsDownloadStatusReport,
-    toolsSource,
-    toolsVersion,
-    zstdAvailability,
-  } = await setupCodeQL(
-    toolsInput,
-    apiDetails,
-    tempDir,
-    variant,
-    defaultCliVersion,
-    rawLanguages,
-    useOverlayAwareDefaultCliVersion,
-    features,
-    logger,
-    true,
-  );
+  const { codeql, toolsDownloadStatusReport, toolsSource, toolsVersion } =
+    await setupCodeQL(
+      toolsInput,
+      apiDetails,
+      tempDir,
+      variant,
+      defaultCliVersion,
+      rawLanguages,
+      useOverlayAwareDefaultCliVersion,
+      features,
+      logger,
+      true,
+    );
   await codeql.printVersion();
   logger.endGroup();
   return {
@@ -77,7 +70,6 @@ export async function initCodeQL(
     toolsDownloadStatusReport,
     toolsSource,
     toolsVersion,
-    zstdAvailability,
   };
 }
 

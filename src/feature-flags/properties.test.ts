@@ -72,13 +72,17 @@ test.serial(
 );
 
 test.serial("loadPropertiesFromApi loads known properties", async (t) => {
+  const knownProperties = [
+    { property_name: "github-codeql-config-file", value: "owner/repo" },
+    { property_name: "github-codeql-extra-queries", value: "+queries" },
+    { property_name: "github-codeql-tools", value: "nightly" },
+  ];
   sinon.stub(api, "getRepositoryProperties").resolves({
     headers: {},
     status: 200,
     url: "",
     data: [
-      { property_name: "github-codeql-config-file", value: "owner/repo" },
-      { property_name: "github-codeql-extra-queries", value: "+queries" },
+      ...knownProperties,
       { property_name: "unknown-property", value: "something" },
     ] satisfies properties.GitHubPropertiesResponse,
   });
@@ -88,10 +92,12 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
     logger,
     mockRepositoryNwo,
   );
-  t.deepEqual(response, {
-    "github-codeql-config-file": "owner/repo",
-    "github-codeql-extra-queries": "+queries",
-  });
+  t.deepEqual(
+    response,
+    Object.fromEntries(
+      knownProperties.map((prop) => [prop.property_name, prop.value]),
+    ),
+  );
 });
 
 test.serial("loadPropertiesFromApi parses true boolean property", async (t) => {

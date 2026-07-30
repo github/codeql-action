@@ -233,8 +233,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: pinnedUses(
           "actions/setup-go",
-          "924ae3a1cded613372ab5595356fb5720e22ba16",
-          "v6.5.0",
+          "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "v7.0.0",
         ),
         with: {
           "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
@@ -253,8 +253,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "0f481fcb613427c0f801b606911222b5b6f3083a",
-          "v5.5.0",
+          "03ad4de0992f5dab5e18fcb136590ce7c4a0ac95",
+          "v5.6.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -271,8 +271,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "ece7cb06caefa5fff74198d8649806c4678c61a1",
-          "v6.3.0",
+          "5fda3b95a4ea91299a34e894583c3862153e4b97",
+          "v7.0.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
@@ -288,8 +288,8 @@ const languageSetups: LanguageSetups = {
         name: "Install .NET",
         uses: pinnedUses(
           "actions/setup-dotnet",
-          "26b0ec14cb23fa6904739307f278c14f94c95bf1",
-          "v5.4.0",
+          "a98b56852c35b8e3190ac28c8c2271da59106c68",
+          "v6.0.0",
         ),
         with: {
           "dotnet-version": `\${{ inputs.dotnet-version || '${defaultLanguageVersions.csharp}' }}`,
@@ -529,8 +529,8 @@ function generateJob(
       name: "Check out repository",
       uses: pinnedUses(
         "actions/checkout",
-        "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
-        "v7.0.0",
+        "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "v7.0.1",
       ),
     },
     ...setupInfo.steps,

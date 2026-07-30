@@ -27,7 +27,6 @@ import { Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as setupCodeql from "./setup-codeql";
-import { ZstdAvailability } from "./tar";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
@@ -319,7 +318,6 @@ export async function setupCodeQL(
   toolsDownloadStatusReport?: ToolsDownloadStatusReport;
   toolsSource: setupCodeql.ToolsSource;
   toolsVersion: string;
-  zstdAvailability: ZstdAvailability;
 }> {
   try {
     const {
@@ -327,7 +325,6 @@ export async function setupCodeQL(
       toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
-      zstdAvailability,
     } = await setupCodeql.setupCodeQLBundle(
       toolsInput,
       apiDetails,
@@ -338,12 +335,6 @@ export async function setupCodeQL(
       useOverlayAwareDefaultCliVersion,
       features,
       logger,
-    );
-
-    logger.debug(
-      `Bundle download status report: ${JSON.stringify(
-        toolsDownloadStatusReport,
-      )}`,
     );
 
     let codeqlCmd = path.join(codeqlFolder, "codeql", "codeql");
@@ -361,7 +352,6 @@ export async function setupCodeQL(
       toolsDownloadStatusReport,
       toolsSource,
       toolsVersion,
-      zstdAvailability,
     };
   } catch (rawError) {
     const e = api.wrapApiConfigurationError(rawError);

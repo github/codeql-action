@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # Need full history for calculation of diffs
 
@@ -93,7 +93,7 @@ jobs:
           LATEST_TAG: ${{ needs.prepare.outputs.latest_tag }}
           VERSION: "${{ needs.prepare.outputs.version }}"
         run: |
-          python .github/workflows/script/rollback_changelog.py \
+          npx tsx pr-checks/rollback-changelog.ts \
             --target-version "${ROLLBACK_TAG:1}" \
             --rollback-version "${LATEST_TAG:1}" \
             --new-version "$VERSION" > $NEW_CHANGELOG
@@ -128,7 +128,9 @@ jobs:
           NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
         run: |
-          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG > $PARTIAL_CHANGELOG
+          npx tsx pr-checks/prepare-changelog.ts \
+            --changelog="$NEW_CHANGELOG" \
+            --output="$PARTIAL_CHANGELOG"
 
           echo "::group::Partial CHANGELOG"
           cat $PARTIAL_CHANGELOG

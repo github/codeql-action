@@ -2,6 +2,11 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.37.4 - 29 Jul 2026
+
+- This version of the CodeQL Action adds support for the `tools` input for the `codeql-action/init` step to be specified using a `github-codeql-tools` [repository property](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). This feature will gradually be rolled out following the release of this version. Once rolled out, this allows for the CodeQL CLI version that is used in GitHub-managed workflows, such as Default Setup, to be set to a custom value. For example, customers who run into issues with rate limits when a new CodeQL CLI version is released can set the value to `toolcache` to always use the CodeQL CLI version that is available in the runner toolcache. For Advanced Setup workflows, the value provided for `tools` in the workflow definition always takes precedence unless the value of the repository property starts with `!`. [#4037](https://github.com/github/codeql-action/pull/4037)
+- Update default CodeQL bundle version to [2.26.2](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.26.2). [#4051](https://github.com/github/codeql-action/pull/4051)
+
 ## 3.37.3 - 22 Jul 2026
 
 No user facing changes.
@@ -90,6 +95,7 @@ No user facing changes.
 ## 3.33.0 - 16 Mar 2026
 
 - Upcoming change: Starting April 2026, the CodeQL Action will skip collecting file coverage information on pull requests to improve analysis performance. File coverage information will still be computed on non-PR analyses. Pull request analyses will log a warning about this upcoming change. [#3562](https://github.com/github/codeql-action/pull/3562)
+
   To opt out of this change:
   - **Repositories owned by an organization:** Create a custom repository property with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to `true` in the repository's settings. For more information, see [Managing custom properties for repositories in your organization](https://docs.github.com/en/organizations/managing-organization-settings/managing-custom-properties-for-repositories-in-your-organization). Alternatively, if you are using an advanced setup workflow, you can set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
   - **User-owned repositories using default setup:** Switch to an advanced setup workflow and set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true` in your workflow.
@@ -203,8 +209,8 @@ No user facing changes.
 
 ## 3.30.7 - 06 Oct 2025
 
-No user facing changes.
 
+No user facing changes.
 ## 3.30.6 - 02 Oct 2025
 
 - Update default CodeQL bundle version to 2.23.2. [#3168](https://github.com/github/codeql-action/pull/3168)
@@ -439,13 +445,17 @@ No user facing changes.
 ## 3.26.12 - 07 Oct 2024
 
 - _Upcoming breaking change_: Add a deprecation warning for customers using CodeQL version 2.14.5 and earlier. These versions of CodeQL were discontinued on 24 September 2024 alongside GitHub Enterprise Server 3.10, and will be unsupported by CodeQL Action versions 3.27.0 and later and versions 2.27.0 and later. [#2520](https://github.com/github/codeql-action/pull/2520)
+
   - If you are using one of these versions, please update to CodeQL CLI version 2.14.6 or later. For instance, if you have specified a custom version of the CLI using the 'tools' input to the 'init' Action, you can remove this input to use the default version.
+
   - Alternatively, if you want to continue using a version of the CodeQL CLI between 2.13.5 and 2.14.5, you can replace `github/codeql-action/*@v3` by `github/codeql-action/*@v3.26.11` and `github/codeql-action/*@v2` by `github/codeql-action/*@v2.26.11` in your code scanning workflow to ensure you continue using this version of the CodeQL Action.
 
 ## 3.26.11 - 03 Oct 2024
 
 - _Upcoming breaking change_: Add support for using `actions/download-artifact@v4` to programmatically consume CodeQL Action debug artifacts.
+
   Starting November 30, 2024, GitHub.com customers will [no longer be able to use `actions/download-artifact@v3`](https://github.blog/changelog/2024-04-16-deprecation-notice-v3-of-the-artifact-actions/). Therefore, to avoid breakage, customers who programmatically download the CodeQL Action debug artifacts should set the `CODEQL_ACTION_ARTIFACT_V4_UPGRADE` environment variable to `true` and bump `actions/download-artifact@v3` to `actions/download-artifact@v4` in their workflows. The CodeQL Action will enable this behavior by default in early November and workflows that have not yet bumped `actions/download-artifact@v3` to `actions/download-artifact@v4` will begin failing then.
+
   This change is currently unavailable for GitHub Enterprise Server customers, as `actions/upload-artifact@v4` and `actions/download-artifact@v4` are not yet compatible with GHES.
 - Update default CodeQL bundle version to 2.19.1. [#2519](https://github.com/github/codeql-action/pull/2519)
 
@@ -568,9 +578,12 @@ No user facing changes.
 ## 3.25.0 - 15 Apr 2024
 
 - The deprecated feature for extracting dependencies for a Python analysis has been removed. [#2224](https://github.com/github/codeql-action/pull/2224)
+
   As a result, the following inputs and environment variables are now ignored:
+
   - The `setup-python-dependencies` input to the `init` Action
   - The `CODEQL_ACTION_DISABLE_PYTHON_DEPENDENCY_INSTALLATION` environment variable
+
   We recommend removing any references to these from your workflows. For more information, see the release notes for CodeQL Action v3.23.0 and v2.23.0.
 - Automatically overwrite an existing database if found on the filesystem. [#2229](https://github.com/github/codeql-action/pull/2229)
 - Bump the minimum CodeQL bundle version to 2.12.6. [#2232](https://github.com/github/codeql-action/pull/2232)

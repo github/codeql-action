@@ -74,7 +74,6 @@ export enum Feature {
   AllowMergeConfigFiles = "allow_merge_config_files",
   /** Controls whether we allow multiple values for the `analysis-kinds` input. */
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
-  AllowToolcacheInput = "allow_toolcache_input",
   CleanupTrapCaches = "cleanup_trap_caches",
   /** Whether to allow the `config-file` input to be specified via a repository property. */
   ConfigFileRepositoryProperty = "config_file_repository_property",
@@ -141,6 +140,8 @@ export enum Feature {
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
+  /** Whether to allow the `tools` input to be specified via a repository property. */
+  ToolsRepositoryProperty = "tools_repository_property",
   UploadOverlayDbToApi = "upload_overlay_db_to_api",
   ValidateDbConfig = "validate_db_config",
 }
@@ -183,11 +184,6 @@ export const featureConfig = {
   [Feature.AllowMultipleAnalysisKinds]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
-    minimumVersion: undefined,
-  },
-  [Feature.AllowToolcacheInput]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_ALLOW_TOOLCACHE_INPUT",
     minimumVersion: undefined,
   },
   [Feature.CleanupTrapCaches]: {
@@ -398,6 +394,11 @@ export const featureConfig = {
   [Feature.StartProxyUseFeaturesRelease]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_START_PROXY_USE_FEATURES_RELEASE",
+    minimumVersion: undefined,
+  },
+  [Feature.ToolsRepositoryProperty]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_TOOLS_REPOSITORY_PROPERTY",
     minimumVersion: undefined,
   },
   [Feature.UploadOverlayDbToApi]: {

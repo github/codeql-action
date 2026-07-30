@@ -24,61 +24,9 @@ const STREAMING_HIGH_WATERMARK_BYTES = 4 * 1024 * 1024; // 4 MiB
  */
 const TOOLCACHE_TOOL_NAME = "CodeQL";
 
-/**
- * Timing information for the download and extraction of the CodeQL tools when
- * we fully download the bundle before extracting.
- */
-type DownloadFirstToolsDownloadDurations = {
-  combinedDurationMs: number;
-  downloadDurationMs: number;
-  extractionDurationMs: number;
-  streamExtraction: false;
-};
-
-function makeDownloadFirstToolsDownloadDurations(
-  downloadDurationMs: number,
-  extractionDurationMs: number,
-): DownloadFirstToolsDownloadDurations {
-  return {
-    combinedDurationMs: downloadDurationMs + extractionDurationMs,
-    downloadDurationMs,
-    extractionDurationMs,
-    streamExtraction: false,
-  };
-}
-
-/**
- * Timing information for the download and extraction of the CodeQL tools when
- * we stream the download and extraction of the bundle.
- */
-type StreamedToolsDownloadDurations = {
-  combinedDurationMs: number;
-  downloadDurationMs: undefined;
-  extractionDurationMs: undefined;
-  streamExtraction: true;
-};
-
-function makeStreamedToolsDownloadDurations(
-  combinedDurationMs: number,
-): StreamedToolsDownloadDurations {
-  return {
-    combinedDurationMs,
-    downloadDurationMs: undefined,
-    extractionDurationMs: undefined,
-    streamExtraction: true,
-  };
-}
-
-type ToolsDownloadDurations =
-  | DownloadFirstToolsDownloadDurations
-  | StreamedToolsDownloadDurations;
-
 export type ToolsDownloadStatusReport = {
-  cacheDurationMs?: number;
-  compressionMethod: tar.CompressionMethod;
-  toolsUrl: string;
-  zstdFailureReason?: string;
-} & ToolsDownloadDurations;
+  downloadDurationMs?: number;
+};
 
 export async function downloadAndExtract(
   codeqlURL: string,
@@ -116,11 +64,7 @@ export async function downloadAndExtract(
         )}).`,
       );
 
-      return {
-        compressionMethod,
-        toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
-        ...makeStreamedToolsDownloadDurations(combinedDurationMs),
-      };
+      return {};
     }
   } catch (e) {
     core.warning(
@@ -170,14 +114,7 @@ export async function downloadAndExtract(
     await cleanUpPath(archivedBundlePath, "CodeQL bundle archive", logger);
   }
 
-  return {
-    compressionMethod,
-    toolsUrl: sanitizeUrlForStatusReport(codeqlURL),
-    ...makeDownloadFirstToolsDownloadDurations(
-      downloadDurationMs,
-      extractionDurationMs,
-    ),
-  };
+  return { downloadDurationMs };
 }
 
 async function downloadAndExtractZstdWithStreaming(
@@ -240,12 +177,4 @@ export function writeToolcacheMarkerFile(
   const markerFilePath = `${extractedPath}.complete`;
   fs.writeFileSync(markerFilePath, "");
   logger.info(`Created toolcache marker file ${markerFilePath}`);
-}
-
-function sanitizeUrlForStatusReport(url: string): string {
-  return ["github/codeql-action", "dsp-testing/codeql-cli-nightlies"].some(
-    (repo) => url.startsWith(`https://github.com/${repo}/releases/download/`),
-  )
-    ? url
-    : "sanitized-value";
 }

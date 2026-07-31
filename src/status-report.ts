@@ -19,12 +19,14 @@ import type { ComputedInput, InputName } from "./config/inputs";
 import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
 import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv, ReadOnlyEnv, RegistryProxyVars } from "./environment";
 import { getRef } from "./git-utils";
+import * as json from "./json";
 import type { Logger } from "./logging";
 import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";
 import type { ToolsSource } from "./setup-codeql";
+import { registryBaseSchema } from "./start-proxy/types";
 import {
   ConfigurationError,
   getRequiredEnvParam,
@@ -185,6 +187,12 @@ export interface StatusReportBase {
   ml_powered_javascript_queries?: string;
   /** Ref that the workflow was triggered on. */
   ref: string;
+  /**
+   * A comma-separated list of private registry types which are configured for CodeQL.
+   * This only includes registry types we support (as determined by the `start-proxy` action),
+   * not all that are configured.
+   */
+  registry_types?: string;
   /** Action runner hardware architecture (context runner.arch). */
   runner_arch?: string;
   /** Available disk space on the runner, in bytes. */
@@ -289,6 +297,50 @@ export interface EventReport {
 }
 
 /**
+ * Attempts to retrieve a list of private registry types from the `CODEQL_PROXY_URLS` environment
+ * variable and returns it as a comma-separated string if successful. Returns `undefined` otherwise.
+ */
+export function getRegistryTypesFromEnv(
+  logger: Logger,
+  env: ReadOnlyEnv = getEnv(),
+): string | undefined {
+  // Try to get the value of the environment variable.
+  const value = env.getOptional(RegistryProxyVars.PROXY_URLS);
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  // Try to parse the JSON we expect to find in it and return the comma-separated list of
+  // (unique) registry types.
+  try {
+    const data = JSON.parse(value) as unknown;
+
+    // Check that the parsed JSON meets our expectations.
+    if (!json.isArray(data)) {
+      logger.debug(
+        `Expected '${RegistryProxyVars.PROXY_URLS}' to contain a JSON array, but got '${typeof data}'.`,
+      );
+      return undefined;
+    }
+    if (!json.validateArray(registryBaseSchema, data)) {
+      logger.debug(
+        `Expected '${RegistryProxyVars.PROXY_URLS}' to contain a JSON array of registry objects, but got something else.`,
+      );
+      return undefined;
+    }
+
+    const types = new Set(data.map((r) => r.type));
+    return Array.from(types).sort().join(",");
+  } catch (err) {
+    logger.debug(
+      `Failed to parse '${RegistryProxyVars.PROXY_URLS}': ${getErrorMessage(err)}.`,
+    );
+    return undefined;
+  }
+}
+
+/**
  * Compose a StatusReport.
  *
  * @param actionName The name of the action, e.g. 'init', 'finish', 'upload-sarif'
@@ -350,6 +402,7 @@ export async function createStatusReportBase(
       job_name: jobName,
       job_run_uuid: jobRunUUID,
       ref,
+      registry_types: getRegistryTypesFromEnv(logger),
       runner_os: runnerOs,
       started_at: workflowStartedAt,
       status,

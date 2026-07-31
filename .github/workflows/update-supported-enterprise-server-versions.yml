@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: github/enterprise-releases
-          token: ${{ secrets.CODEQL_CI_ENTERPRISE_RELEASE_PAT }}
+          token: ${{ secrets.ENTERPRISE_RELEASE_TOKEN }}
           path: ${{ github.workspace }}/enterprise-releases/
           sparse-checkout: releases.json
 

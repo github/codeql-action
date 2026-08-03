@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "3.37.4",
+  "version": "3.37.5",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -71,9 +71,9 @@
     "glob": "^13.0.6",
     "globals": "^17.7.0",
     "nock": "^14.0.16",
-    "sinon": "^22.0.0",
+    "sinon": "^22.1.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.64.0"
+    "typescript-eslint": "^8.65.0"
   },
   "overrides": {
     "@actions/tool-cache": {

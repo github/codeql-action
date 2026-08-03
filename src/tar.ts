@@ -194,10 +194,15 @@ export async function extractTarZst(
       });
 
       if (tar instanceof stream.Readable) {
-        tar.pipe(tarProcess.stdin).on("error", (err) => {
-          reject(
-            new Error(`Error while downloading and extracting tar: ${err}`),
-          );
+        // Use `pipeline` rather than `pipe` so that an error on either stream is reported here
+        // rather than being emitted as an unhandled `error` event, and so that `tar`'s standard
+        // input is closed if the download fails partway through.
+        stream.pipeline(tar, tarProcess.stdin, (err) => {
+          if (err) {
+            reject(
+              new Error(`Error while downloading and extracting tar: ${err}`),
+            );
+          }
         });
       }
 

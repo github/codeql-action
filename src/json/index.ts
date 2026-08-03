@@ -35,6 +35,11 @@ export function isNumber(value: unknown): value is number {
   return typeof value === "number";
 }
 
+/** Asserts that `value` is a boolean. */
+export function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
 /** Asserts that `value` is either a string or undefined. */
 export function isStringOrUndefined(
   value: unknown,
@@ -62,14 +67,11 @@ function defaultCheck(
   return (arg) => ({ unknownKeys: [], invalidKeys: [], valid: validate(arg) });
 }
 
-function makeValidator<T>(
-  validate: (arg: unknown) => arg is T,
-  required: boolean = true,
-) {
+function makeValidator<T>(validate: (arg: unknown) => arg is T) {
   return {
     validate,
     check: defaultCheck(validate),
-    required,
+    required: true,
   } as const satisfies Validator<T>;
 }
 
@@ -81,6 +83,9 @@ export const string = makeValidator(isString);
 
 /** A validator for number fields in schemas. */
 export const number = makeValidator(isNumber);
+
+/** A validator for boolean fields in schemas. */
+export const boolean = makeValidator(isBoolean);
 
 /** A validator for arrays. */
 export function array<T>(validator: Validator<T>) {
@@ -219,6 +224,23 @@ export function validateSchema<
 >(schema: S, obj: UnvalidatedObject<any>): obj is T {
   const result = checkSchema(schema, obj, { failFast: true });
   return result.valid;
+}
+
+/**
+ * Validates that `arr` is an array whose elements satisfy at least `elementSchema`.
+ * Additional keys are accepted in each element.
+ *
+ * @param elementSchema The schema to validate the elements against.
+ * @param arr The array to validate.
+ * @returns Asserts that `arr` has elements of `schema`'s type if validation is successful.
+ */
+export function validateArray<
+  S extends Schema,
+  T extends UnvalidatedArray = Array<FromSchema<S>>,
+>(elementSchema: S, arr: UnvalidatedArray): arr is T {
+  const elementValidator = object(elementSchema);
+
+  return array(elementValidator).validate(arr);
 }
 
 export interface CheckSchemaOptions {

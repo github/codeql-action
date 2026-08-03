@@ -1,7 +1,7 @@
 import test from "ava";
 import sinon from "sinon";
 
-import { getActionsEnv } from "../actions-util";
+import { ActionsEnv } from "../actions-util";
 import { Feature } from "../feature-flags";
 import { RepositoryPropertyName } from "../feature-flags/properties";
 import { callee } from "../testing-utils";
@@ -22,32 +22,26 @@ const expectedRepositoryPropertyResult: ComputedInput = {
   value: "repo-property-input-value",
 };
 
-function stubGetToolsInput() {
-  const actions = getActionsEnv();
+function stubGetToolsInput(actions: ActionsEnv) {
   sinon
     .stub(actions, "getOptionalInput")
     .withArgs(InputName.Tools)
     .returns(expectedWorkflowResult.value);
-  return actions;
 }
 
 const workflowLogMessage = `Using ${InputName.Tools} input from workflow:`;
 
 test("getToolsInput - returns workflow input if available", async (t) => {
-  const actions = stubGetToolsInput();
-
   await callee(getToolsInput)
-    .withActions(actions)
+    .withActions(stubGetToolsInput)
     .withArgs({})
     .logs(t, workflowLogMessage)
     .passes(t.deepEqual, expectedWorkflowResult);
 });
 
 test("getToolsInput - returns repository property value if enforced", async (t) => {
-  const actions = stubGetToolsInput();
-
   const target = callee(getToolsInput)
-    .withActions(actions)
+    .withActions(stubGetToolsInput)
     .withArgs({
       [RepositoryPropertyName.TOOLS]: `!${expectedRepositoryPropertyResult.value}`,
     });
@@ -65,10 +59,8 @@ test("getToolsInput - returns repository property value if enforced", async (t) 
 });
 
 test("getToolsInput - prefers workflow input", async (t) => {
-  const actions = stubGetToolsInput();
-
   const target = callee(getToolsInput)
-    .withActions(actions)
+    .withActions(stubGetToolsInput)
     .withArgs({
       [RepositoryPropertyName.TOOLS]: expectedRepositoryPropertyResult.value,
     });

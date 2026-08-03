@@ -16,7 +16,7 @@ export interface RemoteFileAddress {
 }
 
 /** The default file path to use in configuration file shorthands. */
-export const DEFAULT_CONFIG_FILE_NAME = ".github/codeql-action.yaml";
+export const DEFAULT_CONFIG_FILE_NAME = ".github/codeql-config.yml";
 
 /** The default ref to use in configuration file shorthands. */
 export const DEFAULT_CONFIG_FILE_REF = "main";

@@ -39,6 +39,43 @@ test.serial(
 );
 
 test.serial(
+  "downloadAndExtract falls back to downloading before extracting if streaming fails",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      sinon.stub(process, "platform").value("linux");
+      const archivePath = path.join(tmpDir, "codeql-bundle.tar.zst");
+      const destination = path.join(tmpDir, "codeql");
+      const downloadTool = sinon
+        .stub(toolcache, "downloadTool")
+        .resolves(archivePath);
+      const extract = sinon.stub(tar, "extract").resolves(destination);
+      const extractTarZst = sinon.stub(tar, "extractTarZst").resolves();
+      const request = nock("https://example.com")
+        .get("/codeql-bundle.tar.zst")
+        .replyWithError(
+          Object.assign(new Error("socket hang up"), { code: "ECONNRESET" }),
+        );
+
+      const statusReport = await downloadAndExtract(
+        "https://example.com/codeql-bundle.tar.zst",
+        "zstd",
+        destination,
+        undefined,
+        {},
+        { type: "gnu", version: "1.34" },
+        getRunnerLogger(true),
+      );
+
+      t.assert(Number.isInteger(statusReport.downloadDurationMs));
+      t.true(request.isDone());
+      t.false(extractTarZst.called);
+      t.true(downloadTool.calledOnce);
+      t.true(extract.calledOnce);
+    });
+  },
+);
+
+test.serial(
   "downloadAndExtract omits the download duration when streaming extraction",
   async (t) => {
     await withTmpDir(async (tmpDir) => {

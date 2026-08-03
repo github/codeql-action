@@ -20,6 +20,12 @@ import { cleanUpPath, getErrorMessage, getRequiredEnvParam } from "./util";
 const STREAMING_HIGH_WATERMARK_BYTES = 4 * 1024 * 1024; // 4 MiB
 
 /**
+ * How long the streaming download of the CodeQL tools may stall for before we abort it. This
+ * applies both to establishing the connection and to gaps between chunks of the response body.
+ */
+const STREAMING_STALL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
  * The name of the tool cache directory for the CodeQL tools.
  */
 const TOOLCACHE_TOOL_NAME = "CodeQL";
@@ -137,8 +143,8 @@ async function downloadAndExtractZstdWithStreaming(
     authorization ? { authorization } : {},
     headers,
   );
-  const response = await new Promise<IncomingMessage>((resolve) =>
-    https.get(
+  const response = await new Promise<IncomingMessage>((resolve, reject) => {
+    const request = https.get(
       codeqlURL,
       {
         headers,
@@ -148,10 +154,24 @@ async function downloadAndExtractZstdWithStreaming(
         agent,
       } as unknown as RequestOptions,
       (r) => resolve(r),
-    ),
-  );
+    );
+    // Without this listener, connection failures such as `ECONNRESET` are emitted as unhandled
+    // `error` events, which terminate the process instead of letting us fall back to downloading
+    // the bundle before extracting it. This listener stays attached after the response arrives, so
+    // it also handles errors that occur while the response is being streamed.
+    request.on("error", reject);
+    request.setTimeout(STREAMING_STALL_TIMEOUT_MS, () => {
+      request.destroy(
+        new Error(
+          `No data received for ${formatDuration(STREAMING_STALL_TIMEOUT_MS)}.`,
+        ),
+      );
+    });
+  });
 
   if (response.statusCode !== 200) {
+    // Discard the response body so that the connection can be released.
+    response.resume();
     throw new Error(
       `Failed to download CodeQL bundle from ${codeqlURL}. HTTP status code: ${response.statusCode}.`,
     );

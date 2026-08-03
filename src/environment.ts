@@ -88,7 +88,7 @@ export enum EnvVar {
   LOG_VERSION_DEPRECATION = "CODEQL_ACTION_DID_LOG_VERSION_DEPRECATION",
 
   /** UUID representing the current job run. */
-  JOB_RUN_UUID = "JOB_RUN_UUID",
+  JOB_RUN_UUID = "CODEQL_ACTION_JOB_RUN_UUID",
 
   /** Status for the entire job, submitted to the status report in `init-post` */
   JOB_STATUS = "CODEQL_ACTION_JOB_STATUS",
@@ -268,6 +268,11 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
   /** Clones the object while detaching the underlying environment from the original. */
   public clone(): this {
     return Object.create(this, { vars: { value: { ...this.vars } } }) as this;
+  }
+
+  /** Gets a copy of the underlying environment. */
+  public get(): Record<string, T> {
+    return { ...this.vars };
   }
 
   /** Tries to get the value for `name` and throws if there isn't one. */

@@ -1,5 +1,4 @@
 import * as core from "@actions/core";
-import { v4 as uuidV4 } from "uuid";
 
 import { Action, ActionState, runInActions } from "./action-common";
 import {
@@ -95,7 +94,7 @@ async function sendCompletedStatusReport(
 
 /** The main behaviour of this action. */
 async function run(
-  actionState: ActionState<["Base", "Logger", "Actions"]>,
+  actionState: ActionState<["Base", "Logger", "Env", "Actions"]>,
 ): Promise<void> {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
@@ -139,10 +138,6 @@ async function run(
     const repositoryProperties = repositoryPropertiesResult.orElse({});
 
     const actionStateWithFeatures = { ...actionState, features };
-
-    const jobRunUuid = uuidV4();
-    logger.info(`Job run UUID is ${jobRunUuid}.`);
-    core.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
 
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,

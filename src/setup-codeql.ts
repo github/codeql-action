@@ -209,6 +209,22 @@ export function convertToSemVer(version: string, logger: Logger): string {
   return s;
 }
 
+/**
+ * If the `tools` input is a bare CodeQL CLI version number, for example `2.19.0` or `v2.19.0`,
+ * returns the version normalized to the `x.y.z` form used elsewhere in the Action to identify
+ * CLI versions. Otherwise returns `undefined`.
+ *
+ * This allows users to request a specific version of the CodeQL CLI without needing to know the
+ * name or URL of the bundle asset for their platform: the appropriate bundle for the runner's OS,
+ * and the best compression method it supports, are selected automatically, in the same way as
+ * they are for the default and `linked` versions of the tools.
+ */
+function tryGetCliVersionFromToolsInput(
+  toolsInput: string,
+): string | undefined {
+  return semver.valid(toolsInput) ?? undefined;
+}
+
 export type CodeQLToolsSource =
   | {
       codeqlTarPath: string;
@@ -418,13 +434,15 @@ export async function getCodeQLSource(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
-  // If there is an explicit `tools` input, it's not one of the reserved values, and it doesn't appear
-  // to point to a URL, then we assume it is a local path and use the CLI from there.
+  // If there is an explicit `tools` input, it's not one of the reserved values, it doesn't appear
+  // to point to a URL, and it isn't a bare CodeQL CLI version number, then we assume it is a local
+  // path and use the CLI from there.
   // TODO: This appears to misclassify filenames that happen to start with `http` as URLs.
   if (
     toolsInput &&
     !isReservedToolsValue(toolsInput) &&
-    !toolsInput.startsWith("http")
+    !toolsInput.startsWith("http") &&
+    tryGetCliVersionFromToolsInput(toolsInput) === undefined
   ) {
     logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
     const compressionMethod = tar.inferCompressionMethod(toolsInput);
@@ -569,6 +587,19 @@ export async function getCodeQLSource(
       cliVersion = version.cliVersion;
       tagName = version.tagName;
     }
+  } else if (
+    toolsInput !== undefined &&
+    tryGetCliVersionFromToolsInput(toolsInput) !== undefined
+  ) {
+    // A bare CodeQL CLI version number, e.g. `2.19.0` or `v2.19.0`, was provided. Compute the tag
+    // name of the CodeQL bundle containing this CLI version so that the appropriate bundle for
+    // the current platform can be downloaded below.
+    cliVersion = tryGetCliVersionFromToolsInput(toolsInput);
+    tagName = `codeql-bundle-v${cliVersion}`;
+
+    logger.info(
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${cliVersion}.`,
+    );
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.
     tagName = tryGetTagNameFromUrl(toolsInput, logger);

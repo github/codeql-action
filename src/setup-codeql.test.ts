@@ -181,6 +181,151 @@ for (const {
   );
 }
 
+const CLI_VERSION_TOOLS_INPUT_TEST_CASES = [
+  {
+    toolsInput: "2.20.1",
+    platform: "linux",
+    tarSupportsZstd: true,
+    expectedBundleName: "codeql-bundle-linux64.tar.zst",
+    expectedCompressionMethod: "zstd",
+  },
+  {
+    toolsInput: "v2.20.1",
+    platform: "darwin",
+    tarSupportsZstd: true,
+    expectedBundleName: "codeql-bundle-osx64.tar.zst",
+    expectedCompressionMethod: "zstd",
+  },
+  {
+    toolsInput: "v2.20.1",
+    platform: "win32",
+    tarSupportsZstd: true,
+    expectedBundleName: "codeql-bundle-win64.tar.gz",
+    expectedCompressionMethod: "gzip",
+  },
+  {
+    toolsInput: "2.20.1",
+    platform: "linux",
+    tarSupportsZstd: false,
+    expectedBundleName: "codeql-bundle-linux64.tar.gz",
+    expectedCompressionMethod: "gzip",
+  },
+  {
+    // CodeQL versions older than 2.19.0 don't have zstd bundles, so gzip should be selected
+    // even though the runner supports zstd.
+    toolsInput: "v2.18.4",
+    platform: "linux",
+    tarSupportsZstd: true,
+    expectedBundleName: "codeql-bundle-linux64.tar.gz",
+    expectedCompressionMethod: "gzip",
+  },
+] as const;
+
+for (const {
+  toolsInput,
+  platform,
+  tarSupportsZstd,
+  expectedBundleName,
+  expectedCompressionMethod,
+} of CLI_VERSION_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource selects ${expectedBundleName} for 'tools: ${toolsInput}'`,
+    async (t) => {
+      const features = createFeatures([]);
+      sinon.stub(process, "platform").value(platform);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          tarSupportsZstd,
+          features,
+          getRunnerLogger(true),
+        );
+
+        const expectedCliVersion = toolsInput.replace(/^v/, "");
+        t.is(source.toolsVersion, expectedCliVersion);
+        t.is(source["cliVersion"], expectedCliVersion);
+        t.is(source.sourceType, "download");
+        if (source.sourceType === "download") {
+          t.is(source.compressionMethod, expectedCompressionMethod);
+          t.true(source.codeqlURL.endsWith(`/${expectedBundleName}`));
+          t.true(
+            source.codeqlURL.includes(`/codeql-bundle-v${expectedCliVersion}/`),
+          );
+        }
+      });
+    },
+  );
+}
+
+test.serial(
+  "getCodeQLSource logs a message when given a bare CLI version number",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([]);
+
+    sinon.stub(process, "platform").value("linux");
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        "v2.20.1",
+        SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        true,
+        features,
+        logger,
+      );
+
+      t.is(source.sourceType, "download");
+      t.is(source.toolsVersion, "2.20.1");
+
+      checkExpectedLogMessages(t, loggedMessages, [
+        "'tools: v2.20.1' was requested, so using CodeQL version 2.20.1.",
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource still resolves a local tarball path when the path looks like a version-ish string",
+  async (t) => {
+    const features = createFeatures([]);
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const localPath = "/path/to/codeql-bundle-2.20.1.tar.gz";
+      const source = await setupCodeql.getCodeQLSource(
+        localPath,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        getRunnerLogger(true),
+      );
+
+      t.is(source.sourceType, "local");
+      if (source.sourceType === "local") {
+        t.is(source.codeqlTarPath, localPath);
+        t.is(source.compressionMethod, "gzip");
+      }
+    });
+  },
+);
+
 test.serial(
   "getCodeQLSource correctly returns bundled CLI version when tools == latest",
   async (t) => {

@@ -10,6 +10,9 @@ inputs:
 
       - A local path to a CodeQL Bundle tarball, or
       - The URL of a CodeQL Bundle tarball GitHub release asset, or
+      - A CodeQL CLI version number, for example `2.19.0` or `v2.19.0`, in which case the CodeQL
+        Bundle containing that version will be downloaded, selecting the archive format and
+        release asset that matches the runner's operating system and architecture, or
       - A special value `linked` which uses the version of the CodeQL tools
         that the Action has been bundled with.
       - A special value `nightly` which uses the latest nightly version of the

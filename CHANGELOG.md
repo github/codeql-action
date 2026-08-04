@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## 4.37.6 - 04 Aug 2026
 
-No user facing changes.
+- Changed the default filepath for the new remote file address format that was introduced in CodeQL Action 4.37.0 / 3.37.0 to `.github/codeql-config.yml` to align it with the suggested path that is used elsewhere. [#4070](https://github.com/github/codeql-action/pull/4070)
 
 ## 4.37.5 - 03 Aug 2026
 

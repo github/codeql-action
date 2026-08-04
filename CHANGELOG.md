@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.37.6 - 04 Aug 2026
+
+- Changed the default filepath for the new remote file address format that was introduced in CodeQL Action 4.37.0 / 3.37.0 to `.github/codeql-config.yml` to align it with the suggested path that is used elsewhere. [#4070](https://github.com/github/codeql-action/pull/4070)
+
 ## 3.37.5 - 03 Aug 2026
 
 - Fixed a bug where a network error while streaming the download of the CodeQL bundle could terminate the `init` Action instead of falling back to downloading the bundle before extracting it. [#4061](https://github.com/github/codeql-action/pull/4061)

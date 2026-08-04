@@ -75,7 +75,7 @@ export function getCodeQLBundleName(
   if (process.platform === "win32") {
     platform = "win64";
   } else if (process.platform === "linux") {
-    platform = "linux64";
+    platform = process.arch === "arm64" ? "linux-arm64" : "linux64";
   } else if (process.platform === "darwin") {
     platform = "osx64";
   } else {

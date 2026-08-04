@@ -936,7 +936,9 @@ export function mockBundleDownloadApi({
     process.platform === "win32"
       ? "win64"
       : process.platform === "linux"
-        ? "linux64"
+        ? process.arch === "arm64"
+          ? "linux-arm64"
+          : "linux64"
         : "osx64";
 
   const baseUrl = apiDetails?.url ?? "https://example.com";

@@ -128,7 +128,6 @@ test("CliError constructor with empty stderr", (t) => {
 
 for (const [platform, arch] of [
   ["weird_plat", "x64"],
-  ["linux", "arm64"],
   ["win32", "arm64"],
 ]) {
   test.serial(

@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The CodeQL Action now supports running on Linux Arm64 runners, downloading the native `linux-arm64` CodeQL bundle. [#4072](https://github.com/github/codeql-action/pull/4072)
 
 ## 4.37.5 - 03 Aug 2026
 

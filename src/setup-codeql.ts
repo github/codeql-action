@@ -353,17 +353,31 @@ function parseNightlyUntilThreshold(
  * We fetch the actual release history, rather than assuming a contiguous sequence of patch
  * versions, since CodeQL CLI releases can be skipped or withdrawn, so the release before the
  * newest one is not necessarily the newest one with its patch version decremented by one.
+ *
+ * The canonical CodeQL Action repository, and its release history, only ever exists on
+ * GitHub.com, regardless of which GitHub instance this Action is running on. On GitHub.com,
+ * `variant` lets us reuse the same authenticated API client as the rest of the Action. On any
+ * other variant, such as GitHub Enterprise Server or GHEC with data residency, we instead query
+ * GitHub.com directly and without authentication: the current instance's token cannot
+ * authenticate to GitHub.com, and sending it there would both fail and needlessly expose that
+ * token to a different host, whereas reading a public repository's release history does not
+ * require authentication.
  */
 async function getSortedCliVersions(
+  variant: util.GitHubVariant,
   logger: Logger,
   includePrereleases: boolean,
 ): Promise<string[]> {
   const [owner, repo] = CODEQL_DEFAULT_ACTION_REPOSITORY.split("/");
   const versions = new Set<string>();
+  const apiClient =
+    variant === util.GitHubVariant.DOTCOM
+      ? api.getApiClient()
+      : api.getUnauthenticatedApiClientForDotcom();
 
   try {
     for (let page = 1; page <= CODEQL_BUNDLE_RELEASE_LIST_MAX_PAGES; page++) {
-      const response = await api.getApiClient().rest.repos.listReleases({
+      const response = await apiClient.rest.repos.listReleases({
         owner,
         repo,
         per_page: CODEQL_BUNDLE_RELEASE_LIST_PAGE_SIZE,
@@ -401,8 +415,11 @@ async function getSortedCliVersions(
  * published to the canonical CodeQL Action repository, sorted in descending semantic-version
  * order (newest first). See `getSortedCliVersions` for details.
  */
-async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
-  return getSortedCliVersions(logger, false);
+async function getSortedStableCliVersions(
+  variant: util.GitHubVariant,
+  logger: Logger,
+): Promise<string[]> {
+  return getSortedCliVersions(variant, logger, false);
 }
 
 /**
@@ -416,9 +433,10 @@ async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
  * prerelease.
  */
 async function getSortedCliVersionsIncludingPrereleases(
+  variant: util.GitHubVariant,
   logger: Logger,
 ): Promise<string[]> {
-  return getSortedCliVersions(logger, true);
+  return getSortedCliVersions(variant, logger, true);
 }
 
 /**
@@ -782,8 +800,10 @@ export async function getCodeQLSource(
     // CodeQL bundle release, whether it is a stable release or a GitHub prerelease. Along with
     // the non-`-stable` form of `nightly-until-<version>`, this is one of the two `tools` input
     // forms that may resolve to a prerelease.
-    const sortedVersions =
-      await getSortedCliVersionsIncludingPrereleases(logger);
+    const sortedVersions = await getSortedCliVersionsIncludingPrereleases(
+      variant,
+      logger,
+    );
 
     if (sortedVersions.length === 0) {
       throw new util.ConfigurationError(
@@ -808,8 +828,8 @@ export async function getCodeQLSource(
       tryGetNightlyUntilToolsInput(toolsInput)!;
     const threshold = parseNightlyUntilThreshold(toolsInput, rawThreshold);
     const sortedVersions = stableOnly
-      ? await getSortedStableCliVersions(logger)
-      : await getSortedCliVersionsIncludingPrereleases(logger);
+      ? await getSortedStableCliVersions(variant, logger)
+      : await getSortedCliVersionsIncludingPrereleases(variant, logger);
 
     if (sortedVersions.length > 0 && semver.gte(sortedVersions[0], threshold)) {
       logger.info(
@@ -921,7 +941,7 @@ export async function getCodeQLSource(
     // version, rather than assuming a fixed decrease in patch version, since CodeQL CLI releases
     // can be skipped or withdrawn.
     const offset = tryGetLatestOffsetFromToolsInput(toolsInput)!;
-    const sortedVersions = await getSortedStableCliVersions(logger);
+    const sortedVersions = await getSortedStableCliVersions(variant, logger);
 
     if (offset >= sortedVersions.length) {
       throw new util.ConfigurationError(
@@ -949,7 +969,7 @@ export async function getCodeQLSource(
     // A semantic version range, e.g. `2.24.x` or `^2.24.0`, was used to request the most recent
     // stable CodeQL CLI release that satisfies that range.
     const range = tryGetCliVersionRangeFromToolsInput(toolsInput)!;
-    const sortedVersions = await getSortedStableCliVersions(logger);
+    const sortedVersions = await getSortedStableCliVersions(variant, logger);
     const resolvedVersion = semver.maxSatisfying(sortedVersions, range);
 
     if (!resolvedVersion) {

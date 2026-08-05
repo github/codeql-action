@@ -18,6 +18,7 @@ import {
   LoggedMessage,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
+  SAMPLE_GHES_API_DETAILS,
   checkExpectedLogMessages,
   createFeatures,
   createTestConfig,
@@ -433,6 +434,47 @@ function mockListCodeQLBundleReleasesWithNightlyFallback(
   listReleases.withArgs(sinon.match({ owner: "dsp-testing" })).resolves({
     data: [{ tag_name: nightlyTagName }],
   } as any);
+}
+
+/**
+ * As `mockListStableCodeQLBundleReleases`, but for use when `getCodeQLSource` is called with a
+ * non-dotcom `variant` (for example `GitHubVariant.GHES` or `GitHubVariant.GHEC_DR`). The
+ * canonical CodeQL Action repository's release history only ever exists on GitHub.com, so in that
+ * case we must mock the unauthenticated GitHub.com client (`getUnauthenticatedApiClientForDotcom`)
+ * rather than the current instance's client (`getApiClient`).
+ *
+ * The current instance's client is also mocked here, but to return a different set of bogus
+ * releases and to fail to find the bundle by tag, so that tests using this helper fail if
+ * `getSortedCliVersions` regresses to (incorrectly) querying the current GitHub instance, or if
+ * `getCodeQLBundleDownloadURL`'s unrelated, pre-existing attempt to look up the bundle on the
+ * current instance is not handled gracefully.
+ */
+function mockListStableCodeQLBundleReleasesForNonDotcomVariant(
+  releases: unknown[] = STABLE_BUNDLE_RELEASES_TEST_SET,
+) {
+  const dotcomClient = github.getOctokit("123");
+  const listReleases = sinon.stub(dotcomClient.rest.repos, "listReleases");
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  listReleases.resolves({
+    data: releases,
+  } as any);
+  sinon
+    .stub(api, "getUnauthenticatedApiClientForDotcom")
+    .value(() => dotcomClient);
+
+  const currentInstanceClient = github.getOctokit("456");
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  sinon.stub(currentInstanceClient.rest.repos, "listReleases").resolves({
+    data: [
+      { tag_name: "codeql-bundle-v9.9.9", prerelease: false, draft: false },
+    ],
+  } as any);
+  sinon
+    .stub(currentInstanceClient.rest.repos, "getReleaseByTag")
+    .rejects(new Error("Not Found"));
+  sinon.stub(api, "getApiClient").value(() => currentInstanceClient);
+
+  return listReleases;
 }
 
 const LATEST_OFFSET_TOOLS_INPUT_TEST_CASES = [
@@ -922,6 +964,62 @@ for (const {
       });
     },
   );
+}
+
+/**
+ * `latest-<N>`, SemVer ranges, `latest-prerelease`, and `nightly-until-<version>`/
+ * `nightly-until-stable-<version>` all need to look up the canonical CodeQL Action repository's
+ * release history. That repository only ever exists on GitHub.com, so on a non-dotcom `variant`
+ * (GHES or GHEC with data residency) this lookup must be made directly, and unauthenticated,
+ * against GitHub.com, rather than against the current GitHub instance as for all other API
+ * requests. Otherwise, the request would either fail outright (since the canonical repository
+ * typically does not exist on the current instance), or -- if a same-named repository happens to
+ * exist there -- could silently resolve to the wrong CodeQL CLI version.
+ */
+const NON_DOTCOM_VARIANT_TOOLS_INPUT_TEST_CASES = [
+  { toolsInput: "latest-1", expectedCliVersion: "2.25.1" },
+  { toolsInput: "^2.24.0", expectedCliVersion: "2.25.3" },
+  { toolsInput: "latest-prerelease", expectedCliVersion: "2.26.0" },
+  { toolsInput: "nightly-until-2.20.0", expectedCliVersion: "2.26.0" },
+] as const;
+
+for (const variant of [GitHubVariant.GHES, GitHubVariant.GHEC_DR]) {
+  for (const {
+    toolsInput,
+    expectedCliVersion,
+  } of NON_DOTCOM_VARIANT_TOOLS_INPUT_TEST_CASES) {
+    test.serial(
+      `getCodeQLSource resolves 'tools: ${toolsInput}' to CodeQL version ${expectedCliVersion} ` +
+        `on ${variant} using GitHub.com, rather than the current instance`,
+      async (t) => {
+        const features = createFeatures([]);
+        sinon.stub(process, "platform").value("linux");
+        mockListStableCodeQLBundleReleasesForNonDotcomVariant();
+
+        await withTmpDir(async (tmpDir) => {
+          setupActionsVars(tmpDir, tmpDir);
+          const source = await setupCodeql.getCodeQLSource(
+            toolsInput,
+            SAMPLE_DEFAULT_CLI_VERSION,
+            undefined, // rawLanguages
+            false, // useOverlayAwareDefaultCliVersion
+            SAMPLE_GHES_API_DETAILS,
+            variant,
+            false,
+            features,
+            getRunnerLogger(true),
+          );
+
+          t.is(source.sourceType, "download");
+          // If resolution incorrectly used the current (non-dotcom) instance's API instead of
+          // GitHub.com, this would instead resolve to the bogus "9.9.9" release configured by
+          // `mockListStableCodeQLBundleReleasesForNonDotcomVariant`.
+          t.is(source.toolsVersion, expectedCliVersion);
+          t.is(source["cliVersion"], expectedCliVersion);
+        });
+      },
+    );
+  }
 }
 
 test.serial(

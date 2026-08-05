@@ -140,6 +140,13 @@ const LINKED_BUNDLE_TEST_CASES = [
     expectedCompressionMethod: "zstd",
   },
   {
+    platform: "darwin",
+    arch: "x64",
+    tarSupportsZstd: true,
+    expectedBundleName: "codeql-bundle-osx64.tar.zst",
+    expectedCompressionMethod: "zstd",
+  },
+  {
     platform: "win32",
     arch: "x64",
     tarSupportsZstd: true,
@@ -163,7 +170,7 @@ for (const {
   expectedCompressionMethod,
 } of LINKED_BUNDLE_TEST_CASES) {
   test.serial(
-    `getCodeQLSource selects ${expectedBundleName} for linked tools`,
+    `getCodeQLSource selects ${expectedBundleName} for linked tools on ${platform}/${arch}`,
     async (t) => {
       const features = createFeatures([]);
       sinon.stub(process, "platform").value(platform);

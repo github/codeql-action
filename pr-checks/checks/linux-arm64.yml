@@ -1,0 +1,31 @@
+name: "Linux Arm64"
+description: "An end-to-end integration test running on a Linux Arm64 runner, checking that the native linux-arm64 CodeQL bundle is downloaded and can analyze interpreted and compiled code"
+operatingSystems:
+  - os: ubuntu
+    runner-image: ubuntu-24.04-arm
+# The native linux-arm64 CodeQL bundle is only available in recent CLI releases, so we restrict this
+# check to `nightly-latest`, which is guaranteed to ship it. Older stable versions do not have an
+# arm64 asset, and `prepare-test` would resolve an x64 bundle URL for them on this runner.
+versions:
+  - nightly-latest
+installGo: true
+steps:
+  - uses: ./../action/init
+    with:
+      languages: javascript,python,go
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Build Go code
+    run: go build main.go
+  - uses: ./../action/analyze
+    with:
+      skip-queries: true
+      upload-database: false
+  - name: Assert databases exist
+    run: |
+      cd "$RUNNER_TEMP/codeql_databases"
+      for lang in javascript python go; do
+        if [[ ! -d "$lang" ]]; then
+          echo "Did not find a database for $lang"
+          exit 1
+        fi
+      done

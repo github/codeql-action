@@ -331,6 +331,32 @@ async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
   return [...versions].sort(semver.rcompare);
 }
 
+/**
+ * Returns a human-readable clause describing the oldest and newest versions in
+ * `sortedVersions` (which must be sorted in descending version order, as returned by
+ * `getSortedStableCliVersions`), suitable for appending to an error message when a requested
+ * `latest-<N>` offset or version range cannot be satisfied.
+ *
+ * Older CodeQL bundle releases are not tagged with a semantic version (for example
+ * `codeql-bundle-20211208`), so `sortedVersions` will never extend further back than the oldest
+ * release with a semantic version tag. Mentioning that oldest version here helps explain
+ * failures caused by requesting a version or range older than any semantically versioned bundle,
+ * without needing to special-case that situation separately from any other unsatisfiable
+ * request, such as one for a version newer than any release.
+ *
+ * Returns an empty string if `sortedVersions` is empty.
+ */
+function describeAvailableCliVersionRange(sortedVersions: string[]): string {
+  if (sortedVersions.length === 0) {
+    return "";
+  }
+  const newest = sortedVersions[0];
+  const oldest = sortedVersions[sortedVersions.length - 1];
+  return newest === oldest
+    ? ` The only available stable CodeQL CLI release is ${newest}.`
+    : ` Available stable CodeQL CLI releases range from ${oldest} to ${newest}.`;
+}
+
 export type CodeQLToolsSource =
   | {
       codeqlTarPath: string;
@@ -748,7 +774,9 @@ export async function getCodeQLSource(
     if (offset >= sortedVersions.length) {
       throw new util.ConfigurationError(
         `'tools: ${toolsInput}' was requested, but only ${sortedVersions.length} stable CodeQL ` +
-          "CLI release(s) could be found.",
+          `CLI release(s) could be found.${describeAvailableCliVersionRange(
+            sortedVersions,
+          )}`,
       );
     }
 
@@ -775,7 +803,9 @@ export async function getCodeQLSource(
     if (!resolvedVersion) {
       throw new util.ConfigurationError(
         `'tools: ${toolsInput}' was requested, but no stable CodeQL CLI release satisfying that ` +
-          "version range could be found.",
+          `version range could be found.${describeAvailableCliVersionRange(
+            sortedVersions,
+          )}`,
       );
     }
 

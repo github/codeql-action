@@ -463,7 +463,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      await t.throwsAsync(
+      const error = await t.throwsAsync(
         async () =>
           await setupCodeql.getCodeQLSource(
             "latest-99",
@@ -477,6 +477,13 @@ test.serial(
             getRunnerLogger(true),
           ),
         { instanceOf: ConfigurationError },
+      );
+      // The error should mention the oldest and newest available releases, to help distinguish
+      // a request that is out of range from other configuration mistakes.
+      t.true(
+        error.message.includes(
+          "Available stable CodeQL CLI releases range from 2.24.0 to 2.25.3.",
+        ),
       );
     });
   },
@@ -530,7 +537,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      await t.throwsAsync(
+      const error = await t.throwsAsync(
         async () =>
           await setupCodeql.getCodeQLSource(
             "9.x",
@@ -544,6 +551,48 @@ test.serial(
             getRunnerLogger(true),
           ),
         { instanceOf: ConfigurationError },
+      );
+      t.true(
+        error.message.includes(
+          "Available stable CodeQL CLI releases range from 2.24.0 to 2.25.3.",
+        ),
+      );
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource throws a helpful error when a version range is older than any available release",
+  async (t) => {
+    const features = createFeatures([]);
+    mockListStableCodeQLBundleReleases();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      // The oldest release in STABLE_BUNDLE_RELEASES_TEST_SET is 2.24.0, so a range entirely
+      // below that, such as this one modeled on a real user request for CodeQL 1.28.x, can never
+      // be satisfied. The error should clearly state the oldest available release, since older
+      // CodeQL bundles are tagged with a date, e.g. `codeql-bundle-20211208`, rather than a
+      // semantic version, and so are invisible to SemVer-based `tools` inputs.
+      const error = await t.throwsAsync(
+        async () =>
+          await setupCodeql.getCodeQLSource(
+            "1.28.0 - 1.28.9",
+            SAMPLE_DEFAULT_CLI_VERSION,
+            undefined, // rawLanguages
+            false, // useOverlayAwareDefaultCliVersion
+            SAMPLE_DOTCOM_API_DETAILS,
+            GitHubVariant.DOTCOM,
+            false,
+            features,
+            getRunnerLogger(true),
+          ),
+        { instanceOf: ConfigurationError },
+      );
+      t.true(
+        error.message.includes(
+          "Available stable CodeQL CLI releases range from 2.24.0 to 2.25.3.",
+        ),
       );
     });
   },

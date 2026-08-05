@@ -405,14 +405,34 @@ const STABLE_BUNDLE_RELEASES_TEST_SET = [
   { tag_name: "codeql-bundle-v2.24.0", prerelease: false, draft: false },
 ];
 
-function mockListStableCodeQLBundleReleases() {
+function mockListStableCodeQLBundleReleases(
+  releases: unknown[] = STABLE_BUNDLE_RELEASES_TEST_SET,
+) {
   const client = github.getOctokit("123");
   const listReleases = sinon.stub(client.rest.repos, "listReleases");
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   listReleases.resolves({
-    data: STABLE_BUNDLE_RELEASES_TEST_SET,
+    data: releases,
   } as any);
   sinon.stub(api, "getApiClient").value(() => client);
+  return listReleases;
+}
+
+/**
+ * As `mockListStableCodeQLBundleReleases`, but additionally mocks the CodeQL nightlies
+ * repository's release list, so that fallback to the latest nightly bundle can be tested when no
+ * release satisfies a `nightly-until<version>` or `nightly-until-stable<version>` version
+ * threshold.
+ */
+function mockListCodeQLBundleReleasesWithNightlyFallback(
+  releases: unknown[],
+  nightlyTagName: string,
+) {
+  const listReleases = mockListStableCodeQLBundleReleases(releases);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  listReleases.withArgs(sinon.match({ owner: "dsp-testing" })).resolves({
+    data: [{ tag_name: nightlyTagName }],
+  } as any);
 }
 
 const LATEST_OFFSET_TOOLS_INPUT_TEST_CASES = [
@@ -597,6 +617,312 @@ test.serial(
     });
   },
 );
+
+/**
+ * A set of CodeQL bundle releases that includes GitHub prereleases, used to test resolution of
+ * the `latest-prerelease` and `nightly-until<version>`/`nightly-until-stable<version>` forms of
+ * the `tools` input in the case where the newest release overall is a stable release, even though
+ * prereleases exist. `STABLE_BUNDLE_RELEASES_TEST_SET` above covers the opposite case, where the
+ * newest release overall is a prerelease.
+ */
+const PRERELEASE_BUNDLE_RELEASES_TEST_SET = [
+  // A draft CodeQL bundle newer than every other release here, which should be ignored: if drafts
+  // were not correctly excluded, this would incorrectly be selected as the newest release.
+  { tag_name: "codeql-bundle-v2.28.0", prerelease: false, draft: true },
+  // An old-style, date-tagged bundle, which has no semantic version and should be ignored.
+  { tag_name: "codeql-bundle-20211208", prerelease: false, draft: false },
+  { tag_name: "codeql-bundle-v2.27.0", prerelease: false, draft: false },
+  { tag_name: "codeql-bundle-v2.26.3", prerelease: true, draft: false },
+  { tag_name: "codeql-bundle-v2.26.2", prerelease: false, draft: false },
+  { tag_name: "codeql-bundle-v2.25.0", prerelease: true, draft: false },
+  { tag_name: "codeql-bundle-v2.24.0", prerelease: false, draft: false },
+];
+
+const LATEST_PRERELEASE_TOOLS_INPUT_TEST_CASES = [
+  {
+    name: "the newest release is a prerelease",
+    toolsInput: "latest-prerelease",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.26.0",
+  },
+  {
+    name: "the newest release is stable, even though prereleases exist",
+    toolsInput: "LATEST-PRERELEASE",
+    releases: PRERELEASE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.27.0",
+  },
+] as const;
+
+for (const {
+  name,
+  toolsInput,
+  releases,
+  expectedCliVersion,
+} of LATEST_PRERELEASE_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource resolves 'tools: ${toolsInput}' to CodeQL version ${expectedCliVersion} when ${name}`,
+    async (t) => {
+      const features = createFeatures([]);
+      sinon.stub(process, "platform").value("linux");
+      mockListStableCodeQLBundleReleases(releases);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          false,
+          features,
+          getRunnerLogger(true),
+        );
+
+        t.is(source.sourceType, "download");
+        t.is(source.toolsVersion, expectedCliVersion);
+        t.is(source["cliVersion"], expectedCliVersion);
+      });
+    },
+  );
+}
+
+test.serial(
+  "getCodeQLSource throws when 'latest-prerelease' is requested but no CodeQL CLI releases can be found",
+  async (t) => {
+    const features = createFeatures([]);
+    mockListStableCodeQLBundleReleases([
+      // A release of the Action itself, not a CodeQL bundle.
+      { tag_name: "v4.30.0", prerelease: false, draft: false },
+      // A draft CodeQL bundle, which should be ignored, leaving no eligible release.
+      { tag_name: "codeql-bundle-v9.9.9", prerelease: false, draft: true },
+    ]);
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const error = await t.throwsAsync(
+        async () =>
+          await setupCodeql.getCodeQLSource(
+            "latest-prerelease",
+            SAMPLE_DEFAULT_CLI_VERSION,
+            undefined, // rawLanguages
+            false, // useOverlayAwareDefaultCliVersion
+            SAMPLE_DOTCOM_API_DETAILS,
+            GitHubVariant.DOTCOM,
+            false,
+            features,
+            getRunnerLogger(true),
+          ),
+        { instanceOf: ConfigurationError },
+      );
+      t.true(
+        error.message.includes(
+          "'tools: latest-prerelease' was requested, but no CodeQL CLI releases could be found.",
+        ),
+      );
+    });
+  },
+);
+
+const NIGHTLY_UNTIL_RESOLVES_TOOLS_INPUT_TEST_CASES = [
+  {
+    name: "threshold exactly matches the newest release, which is a prerelease",
+    toolsInput: "nightly-until2.26.0",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.26.0",
+  },
+  {
+    name: "the newest release comfortably exceeds the threshold",
+    toolsInput: "nightly-until2.20.0",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.26.0",
+  },
+  {
+    name: "a prerelease is selected since it is the newest release satisfying the threshold, even though no stable release would satisfy it",
+    toolsInput: "nightly-until2.25.4",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.26.0",
+  },
+  {
+    name: "matching is case insensitive",
+    toolsInput: "NIGHTLY-UNTIL2.25.4",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.26.0",
+  },
+  {
+    name: "drafts and date-tagged releases are excluded even when they would otherwise be the newest",
+    toolsInput: "nightly-until2.20.0",
+    releases: PRERELEASE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.27.0",
+  },
+  {
+    name: "nightly-until-stable: threshold exactly matches the newest stable release",
+    toolsInput: "nightly-until-stable2.25.3",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.25.3",
+  },
+  {
+    name: "nightly-until-stable: the newest stable release comfortably exceeds the threshold",
+    toolsInput: "nightly-until-stable2.20.0",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.25.3",
+  },
+  {
+    name: "nightly-until-stable: matching is case insensitive",
+    toolsInput: "NIGHTLY-UNTIL-STABLE2.25.3",
+    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
+    expectedCliVersion: "2.25.3",
+  },
+] as const;
+
+for (const {
+  name,
+  toolsInput,
+  releases,
+  expectedCliVersion,
+} of NIGHTLY_UNTIL_RESOLVES_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource resolves 'tools: ${toolsInput}' to CodeQL version ${expectedCliVersion}: ${name}`,
+    async (t) => {
+      const features = createFeatures([]);
+      sinon.stub(process, "platform").value("linux");
+      mockListStableCodeQLBundleReleases(releases);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          false,
+          features,
+          getRunnerLogger(true),
+        );
+
+        t.is(source.sourceType, "download");
+        t.is(source.toolsVersion, expectedCliVersion);
+        t.is(source["cliVersion"], expectedCliVersion);
+      });
+    },
+  );
+}
+
+const NIGHTLY_UNTIL_FALLBACK_TOOLS_INPUT_TEST_CASES = [
+  {
+    name: "no release, stable or prerelease, satisfies the threshold",
+    toolsInput: "nightly-until9.0.0",
+  },
+  {
+    name: "only a prerelease, not a stable release, would satisfy the threshold",
+    toolsInput: "nightly-until-stable2.25.4",
+  },
+] as const;
+
+for (const {
+  name,
+  toolsInput,
+} of NIGHTLY_UNTIL_FALLBACK_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource falls back to the latest nightly bundle for 'tools: ${toolsInput}', since ${name}`,
+    async (t) => {
+      const loggedMessages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(loggedMessages);
+      const features = createFeatures([]);
+
+      const expectedDate = "30260213";
+      const expectedTag = `codeql-bundle-${expectedDate}`;
+
+      // Ensure that we consistently select "zstd" for the test.
+      sinon.stub(process, "platform").value("linux");
+      sinon.stub(tar, "isZstdAvailable").resolves({
+        available: true,
+        foundZstdBinary: true,
+      });
+      mockListCodeQLBundleReleasesWithNightlyFallback(
+        STABLE_BUNDLE_RELEASES_TEST_SET,
+        expectedTag,
+      );
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          false,
+          features,
+          logger,
+        );
+
+        const expectedVersion = `0.0.0-${expectedDate}`;
+        const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/${setupCodeql.getCodeQLBundleName("zstd")}`;
+        t.deepEqual(source, {
+          bundleVersion: expectedDate,
+          cliVersion: undefined,
+          codeqlURL: expectedURL,
+          compressionMethod: "zstd",
+          sourceType: "download",
+          toolsVersion: expectedVersion,
+        } satisfies setupCodeql.CodeQLToolsSource);
+
+        checkExpectedLogMessages(t, loggedMessages, [
+          `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}', since no`,
+        ]);
+      });
+    },
+  );
+}
+
+const MALFORMED_NIGHTLY_UNTIL_THRESHOLD_TOOLS_INPUT_TEST_CASES = [
+  { toolsInput: "nightly-untilbogus", expectedRawThreshold: "bogus" },
+  {
+    toolsInput: "nightly-until-stablebogus",
+    expectedRawThreshold: "bogus",
+  },
+] as const;
+
+for (const {
+  toolsInput,
+  expectedRawThreshold,
+} of MALFORMED_NIGHTLY_UNTIL_THRESHOLD_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource throws a configuration error for 'tools: ${toolsInput}', which has a malformed version threshold`,
+    async (t) => {
+      const features = createFeatures([]);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const error = await t.throwsAsync(
+          async () =>
+            await setupCodeql.getCodeQLSource(
+              toolsInput,
+              SAMPLE_DEFAULT_CLI_VERSION,
+              undefined, // rawLanguages
+              false, // useOverlayAwareDefaultCliVersion
+              SAMPLE_DOTCOM_API_DETAILS,
+              GitHubVariant.DOTCOM,
+              false,
+              features,
+              getRunnerLogger(true),
+            ),
+          { instanceOf: ConfigurationError },
+        );
+        t.true(
+          error.message.includes(
+            `'${expectedRawThreshold}' is not a valid semantic version`,
+          ),
+        );
+      });
+    },
+  );
+}
 
 test.serial(
   "getCodeQLSource correctly returns bundled CLI version when tools == latest",

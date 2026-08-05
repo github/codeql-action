@@ -56,6 +56,18 @@ const CODEQL_TOOLCACHE_INPUT = "toolcache";
 /** Matches the `latest-<N>` form of the `tools` input, for example `latest-1` or `LATEST-2`. */
 const LATEST_OFFSET_TOOLS_INPUT_REGEX = /^latest-(\d+)$/i;
 
+/** Matches the `latest-prerelease` form of the `tools` input (matching is case insensitive). */
+const LATEST_PRERELEASE_TOOLS_INPUT = "latest-prerelease";
+
+/**
+ * Matches the `nightly-until<version>` and `nightly-until-stable<version>` forms of the `tools`
+ * input, for example `nightly-until2.24.0` or `NIGHTLY-UNTIL-STABLE2.24.0` (matching is case
+ * insensitive). Capture group 1 is `-stable` if the `-stable` variant was used, or `undefined`
+ * otherwise. Capture group 2 is the raw version threshold, which this regular expression does not
+ * validate: see `parseNightlyUntilThreshold`.
+ */
+const NIGHTLY_UNTIL_TOOLS_INPUT_REGEX = /^nightly-until(-stable)?(.+)$/i;
+
 /** Number of releases requested per page when listing CodeQL bundle releases. */
 const CODEQL_BUNDLE_RELEASE_LIST_PAGE_SIZE = 100;
 
@@ -284,15 +296,67 @@ function tryGetCliVersionRangeFromToolsInput(
 }
 
 /**
- * Fetches the CLI versions of all stable (non-prerelease, non-draft) CodeQL bundle releases
- * published to the canonical CodeQL Action repository, sorted in descending semantic-version
- * order (newest first).
+ * If the `tools` input is the `latest-prerelease` keyword (matching is case insensitive), returns
+ * `true`. Otherwise returns `false`.
+ *
+ * `latest-prerelease` refers to the newest semantically versioned CodeQL bundle release, whether
+ * it is a stable release or a GitHub prerelease. This is the only `tools` input form that may
+ * resolve to a prerelease: every other form only ever considers stable releases.
+ */
+function isLatestPrereleaseToolsInput(toolsInput: string): boolean {
+  return toolsInput.toLowerCase() === LATEST_PRERELEASE_TOOLS_INPUT;
+}
+
+/**
+ * If the `tools` input matches the `nightly-until<version>` or `nightly-until-stable<version>`
+ * syntax, for example `nightly-until2.24.0` or `NIGHTLY-UNTIL-STABLE2.24.0` (matching is case
+ * insensitive), returns the raw version threshold (not yet validated as a semantic version: see
+ * `parseNightlyUntilThreshold`) and whether only stable releases should be considered when
+ * resolving that threshold. Otherwise returns `undefined`.
+ */
+function tryGetNightlyUntilToolsInput(
+  toolsInput: string,
+): { rawThreshold: string; stableOnly: boolean } | undefined {
+  const match = toolsInput.match(NIGHTLY_UNTIL_TOOLS_INPUT_REGEX);
+  return match
+    ? { rawThreshold: match[2], stableOnly: match[1] !== undefined }
+    : undefined;
+}
+
+/**
+ * Validates that `rawThreshold`, extracted from the `nightly-until<version>` or
+ * `nightly-until-stable<version>` form of the `tools` input by `tryGetNightlyUntilToolsInput`, is
+ * a valid semantic version, and returns it normalized to the `x.y.z` form. A version threshold
+ * that isn't a valid semantic version can never be compared against the available releases, so
+ * this throws a `ConfigurationError` describing the problem.
+ */
+function parseNightlyUntilThreshold(
+  toolsInput: string,
+  rawThreshold: string,
+): string {
+  const threshold = semver.valid(rawThreshold);
+  if (!threshold) {
+    throw new util.ConfigurationError(
+      `'tools: ${toolsInput}' was requested, but '${rawThreshold}' is not a valid semantic ` +
+        "version. The version threshold must be a semantic version, for example '2.24.0'.",
+    );
+  }
+  return threshold;
+}
+
+/**
+ * Fetches the CLI versions of CodeQL bundle releases published to the canonical CodeQL Action
+ * repository, sorted in descending semantic-version order (newest first). Draft releases are
+ * always excluded; GitHub prereleases are excluded unless `includePrereleases` is `true`.
  *
  * We fetch the actual release history, rather than assuming a contiguous sequence of patch
  * versions, since CodeQL CLI releases can be skipped or withdrawn, so the release before the
  * newest one is not necessarily the newest one with its patch version decremented by one.
  */
-async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
+async function getSortedCliVersions(
+  logger: Logger,
+  includePrereleases: boolean,
+): Promise<string[]> {
   const [owner, repo] = CODEQL_DEFAULT_ACTION_REPOSITORY.split("/");
   const versions = new Set<string>();
 
@@ -306,7 +370,7 @@ async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
       });
 
       for (const release of response.data) {
-        if (release.draft || release.prerelease) {
+        if (release.draft || (release.prerelease && !includePrereleases)) {
           continue;
         }
         const bundleVersion = tryGetBundleVersionFromTagName(
@@ -329,6 +393,31 @@ async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
   }
 
   return [...versions].sort(semver.rcompare);
+}
+
+/**
+ * Fetches the CLI versions of all stable (non-prerelease, non-draft) CodeQL bundle releases
+ * published to the canonical CodeQL Action repository, sorted in descending semantic-version
+ * order (newest first). See `getSortedCliVersions` for details.
+ */
+async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
+  return getSortedCliVersions(logger, false);
+}
+
+/**
+ * Fetches the CLI versions of all non-draft CodeQL bundle releases, including GitHub
+ * prereleases, published to the canonical CodeQL Action repository, sorted in descending
+ * semantic-version order (newest first). See `getSortedCliVersions` for details.
+ *
+ * This is only used to resolve `tools` input forms, such as `latest-prerelease` and
+ * `nightly-until<version>`, that explicitly opt in to considering prereleases. Every other
+ * `tools` input form uses `getSortedStableCliVersions` instead, so can never be resolved to a
+ * prerelease.
+ */
+async function getSortedCliVersionsIncludingPrereleases(
+  logger: Logger,
+): Promise<string[]> {
+  return getSortedCliVersions(logger, true);
 }
 
 /**
@@ -550,19 +639,26 @@ async function resolveDefaultCliVersion(
  *   2. A reserved keyword: `nightly`/`nightly-latest`, `linked`/`latest`, or `toolcache` (see
  *      `CODEQL_NIGHTLY_TOOLS_INPUTS`, `CODEQL_BUNDLE_VERSION_ALIAS`, and `CODEQL_TOOLCACHE_INPUT`
  *      below).
- *   3. A URL, i.e. a string starting with `http`: the CodeQL Bundle downloaded from that URL.
- *   4. A bare CLI version number, e.g. `2.19.0` or `v2.19.0`: the CodeQL Bundle release
+ *   3. `latest-prerelease`: the newest semantically versioned CodeQL bundle release, whether it
+ *      is a stable release or a GitHub prerelease (see `isLatestPrereleaseToolsInput`). This is
+ *      the only category that may resolve to a prerelease.
+ *   4. `nightly-until<version>` or `nightly-until-stable<version>`, e.g. `nightly-until2.24.0` or
+ *      `nightly-until-stable2.24.0`: the newest release at or above that version threshold, among
+ *      stable releases and, unless `-stable` is used, GitHub prereleases too; or the latest
+ *      nightly bundle if no such release exists (see `tryGetNightlyUntilToolsInput`).
+ *   5. A URL, i.e. a string starting with `http`: the CodeQL Bundle downloaded from that URL.
+ *   6. A bare CLI version number, e.g. `2.19.0` or `v2.19.0`: the CodeQL Bundle release
  *      containing that CLI version (see `tryGetCliVersionFromToolsInput`).
- *   5. `latest-<N>`, e.g. `latest-1` or `LATEST-2`: the stable CLI release `N` positions before
+ *   7. `latest-<N>`, e.g. `latest-1` or `LATEST-2`: the stable CLI release `N` positions before
  *      the most recent one (see `tryGetLatestOffsetFromToolsInput`).
- *   6. A semantic version range, e.g. `2.24.x`, `2.x`, `~2.24.0`, or `^2.24.0`: the newest stable
+ *   8. A semantic version range, e.g. `2.24.x`, `2.x`, `~2.24.0`, or `^2.24.0`: the newest stable
  *      CLI release satisfying that range (see `tryGetCliVersionRangeFromToolsInput`).
- *   7. Anything else: a local path to a CodeQL Bundle tarball.
+ *   9. Anything else: a local path to a CodeQL Bundle tarball.
  *
- * Categories 4-6 are all detected using the `semver` package, which only matches a bare version
+ * Categories 6-8 are all detected using the `semver` package, which only matches a bare version
  * or a range if the *entire* input string conforms to the semantic versioning spec. That spec
- * never permits a `:` or `/` character in a version or a range, whereas a URL (category 3) always
- * contains `://`. So even though the checks for categories 4-6 don't explicitly exclude URLs,
+ * never permits a `:` or `/` character in a version or a range, whereas a URL (category 5) always
+ * contains `://`. So even though the checks for categories 6-8 don't explicitly exclude URLs,
  * they can never match one: a value such as `http://example.com/codeql-bundle-linux64.tar.gz` is
  * always resolved as a URL, never as a bare version like `2.19.0` or a range like `2.24.x`, no
  * matter what version-like path segments or filenames it contains.
@@ -592,13 +688,16 @@ export async function getCodeQLSource(
 ): Promise<CodeQLToolsSource> {
   // If there is an explicit `tools` input, it's not one of the reserved values, it doesn't appear
   // to point to a URL, and it isn't a bare CodeQL CLI version number, a `latest-<N>` version
-  // offset, or a semantic version range, then we assume it is a local path and use the CLI from
+  // offset, a semantic version range, `latest-prerelease`, or `nightly-until<version>`/
+  // `nightly-until-stable<version>`, then we assume it is a local path and use the CLI from
   // there. See the order-of-operations note in this function's doc comment above for the full
   // list of categories and why a URL is never confused with a version number or a range.
   // TODO: This appears to misclassify filenames that happen to start with `http` as URLs.
   if (
     toolsInput &&
     !isReservedToolsValue(toolsInput) &&
+    !isLatestPrereleaseToolsInput(toolsInput) &&
+    tryGetNightlyUntilToolsInput(toolsInput) === undefined &&
     !toolsInput.startsWith("http") &&
     tryGetCliVersionFromToolsInput(toolsInput) === undefined &&
     tryGetLatestOffsetFromToolsInput(toolsInput) === undefined &&
@@ -673,6 +772,56 @@ export async function getCodeQLSource(
       );
     }
     toolsInput = await getNightlyToolsUrl(logger);
+  } else if (
+    toolsInput !== undefined &&
+    isLatestPrereleaseToolsInput(toolsInput)
+  ) {
+    // The `latest-prerelease` syntax was used to request the newest semantically versioned
+    // CodeQL bundle release, whether it is a stable release or a GitHub prerelease. This is the
+    // only `tools` input form that may resolve to a prerelease.
+    const sortedVersions =
+      await getSortedCliVersionsIncludingPrereleases(logger);
+
+    if (sortedVersions.length === 0) {
+      throw new util.ConfigurationError(
+        `'tools: ${toolsInput}' was requested, but no CodeQL CLI releases could be found.`,
+      );
+    }
+
+    logger.info(
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${sortedVersions[0]}, the ` +
+        "most recent CodeQL CLI release, which may be a prerelease.",
+    );
+    toolsInput = sortedVersions[0];
+  } else if (
+    toolsInput !== undefined &&
+    tryGetNightlyUntilToolsInput(toolsInput) !== undefined
+  ) {
+    // The `nightly-until<version>` or `nightly-until-stable<version>` syntax was used: use the
+    // newest release at or above the given version threshold, among stable releases and, unless
+    // `-stable` was specified, GitHub prereleases too. If no release satisfies the threshold,
+    // fall back to the latest nightly bundle.
+    const { rawThreshold, stableOnly } =
+      tryGetNightlyUntilToolsInput(toolsInput)!;
+    const threshold = parseNightlyUntilThreshold(toolsInput, rawThreshold);
+    const sortedVersions = stableOnly
+      ? await getSortedStableCliVersions(logger)
+      : await getSortedCliVersionsIncludingPrereleases(logger);
+
+    if (sortedVersions.length > 0 && semver.gte(sortedVersions[0], threshold)) {
+      logger.info(
+        `'tools: ${toolsInput}' was requested, so using CodeQL version ${sortedVersions[0]}, ` +
+          `since it satisfies the version threshold of ${threshold}.`,
+      );
+      toolsInput = sortedVersions[0];
+    } else {
+      logger.info(
+        `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}', since no ` +
+          `eligible${stableOnly ? " stable" : ""} CodeQL CLI release satisfies the version ` +
+          `threshold of ${threshold}.`,
+      );
+      toolsInput = await getNightlyToolsUrl(logger);
+    }
   }
 
   /**

@@ -421,7 +421,7 @@ function mockListStableCodeQLBundleReleases(
 /**
  * As `mockListStableCodeQLBundleReleases`, but additionally mocks the CodeQL nightlies
  * repository's release list, so that fallback to the latest nightly bundle can be tested when no
- * release satisfies a `nightly-until<version>` or `nightly-until-stable<version>` version
+ * release satisfies a `nightly-until-<version>` or `nightly-until-stable-<version>` version
  * threshold.
  */
 function mockListCodeQLBundleReleasesWithNightlyFallback(
@@ -620,7 +620,7 @@ test.serial(
 
 /**
  * A set of CodeQL bundle releases that includes GitHub prereleases, used to test resolution of
- * the `latest-prerelease` and `nightly-until<version>`/`nightly-until-stable<version>` forms of
+ * the `latest-prerelease` and `nightly-until-<version>`/`nightly-until-stable-<version>` forms of
  * the `tools` input in the case where the newest release overall is a stable release, even though
  * prereleases exist. `STABLE_BUNDLE_RELEASES_TEST_SET` above covers the opposite case, where the
  * newest release overall is a prerelease.
@@ -728,49 +728,49 @@ test.serial(
 const NIGHTLY_UNTIL_RESOLVES_TOOLS_INPUT_TEST_CASES = [
   {
     name: "threshold exactly matches the newest release, which is a prerelease",
-    toolsInput: "nightly-until2.26.0",
+    toolsInput: "nightly-until-2.26.0",
     releases: STABLE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.26.0",
   },
   {
     name: "the newest release comfortably exceeds the threshold",
-    toolsInput: "nightly-until2.20.0",
+    toolsInput: "nightly-until-2.20.0",
     releases: STABLE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.26.0",
   },
   {
     name: "a prerelease is selected since it is the newest release satisfying the threshold, even though no stable release would satisfy it",
-    toolsInput: "nightly-until2.25.4",
+    toolsInput: "nightly-until-2.25.4",
     releases: STABLE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.26.0",
   },
   {
     name: "matching is case insensitive",
-    toolsInput: "NIGHTLY-UNTIL2.25.4",
+    toolsInput: "NIGHTLY-UNTIL-2.25.4",
     releases: STABLE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.26.0",
   },
   {
     name: "drafts and date-tagged releases are excluded even when they would otherwise be the newest",
-    toolsInput: "nightly-until2.20.0",
+    toolsInput: "nightly-until-2.20.0",
     releases: PRERELEASE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.27.0",
   },
   {
     name: "nightly-until-stable: threshold exactly matches the newest stable release",
-    toolsInput: "nightly-until-stable2.25.3",
+    toolsInput: "nightly-until-stable-2.25.3",
     releases: STABLE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.25.3",
   },
   {
     name: "nightly-until-stable: the newest stable release comfortably exceeds the threshold",
-    toolsInput: "nightly-until-stable2.20.0",
+    toolsInput: "nightly-until-stable-2.20.0",
     releases: STABLE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.25.3",
   },
   {
     name: "nightly-until-stable: matching is case insensitive",
-    toolsInput: "NIGHTLY-UNTIL-STABLE2.25.3",
+    toolsInput: "NIGHTLY-UNTIL-STABLE-2.25.3",
     releases: STABLE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.25.3",
   },
@@ -814,11 +814,11 @@ for (const {
 const NIGHTLY_UNTIL_FALLBACK_TOOLS_INPUT_TEST_CASES = [
   {
     name: "no release, stable or prerelease, satisfies the threshold",
-    toolsInput: "nightly-until9.0.0",
+    toolsInput: "nightly-until-9.0.0",
   },
   {
     name: "only a prerelease, not a stable release, would satisfy the threshold",
-    toolsInput: "nightly-until-stable2.25.4",
+    toolsInput: "nightly-until-stable-2.25.4",
   },
 ] as const;
 
@@ -881,9 +881,9 @@ for (const {
 }
 
 const MALFORMED_NIGHTLY_UNTIL_THRESHOLD_TOOLS_INPUT_TEST_CASES = [
-  { toolsInput: "nightly-untilbogus", expectedRawThreshold: "bogus" },
+  { toolsInput: "nightly-until-bogus", expectedRawThreshold: "bogus" },
   {
-    toolsInput: "nightly-until-stablebogus",
+    toolsInput: "nightly-until-stable-bogus",
     expectedRawThreshold: "bogus",
   },
 ] as const;

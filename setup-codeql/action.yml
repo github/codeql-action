@@ -20,11 +20,14 @@ inputs:
         uses the CodeQL Bundle release `N` stable releases before the most recent one, or
       - A special value `latest-prerelease` (matching is case insensitive) which uses the most
         recent CodeQL Bundle release, whether it is a stable release or a GitHub prerelease, or
-      - `nightly-until-<version>` or `nightly-until-stable-<version>`, for example
-        `nightly-until-2.24.0` or `NIGHTLY-UNTIL-STABLE-2.24.0` (matching is case insensitive),
-        which uses the most recent CodeQL Bundle release satisfying that version threshold,
-        considering GitHub prereleases too unless `-stable` is specified, or falls back to the
-        latest nightly version of the CodeQL tools if no such release exists, or
+      - `nightly-until-<version>`, for example `nightly-until-2.24.0` or
+        `NIGHTLY-UNTIL-2.24.0` (matching is case insensitive), which uses the most recent CodeQL
+        Bundle release satisfying that version threshold, considering GitHub prereleases too, or
+        falls back to the latest nightly version of the CodeQL tools if no such release exists, or
+      - `nightly-until-default-<version>`, for example `nightly-until-default-2.24.0` (matching
+        is case insensitive), which uses the default CodeQL CLI version if it satisfies that
+        version threshold, or falls back to the latest nightly version of the CodeQL tools
+        otherwise, or
       - A special value `linked` which uses the version of the CodeQL tools
         that the Action has been bundled with.
       - A special value `nightly` which uses the latest nightly version of the

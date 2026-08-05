@@ -422,8 +422,7 @@ function mockListStableCodeQLBundleReleases(
 /**
  * As `mockListStableCodeQLBundleReleases`, but additionally mocks the CodeQL nightlies
  * repository's release list, so that fallback to the latest nightly bundle can be tested when no
- * release satisfies a `nightly-until-<version>` or `nightly-until-stable-<version>` version
- * threshold.
+ * release satisfies a `nightly-until-<version>` version threshold.
  */
 function mockListCodeQLBundleReleasesWithNightlyFallback(
   releases: unknown[],
@@ -662,9 +661,9 @@ test.serial(
 
 /**
  * A set of CodeQL bundle releases that includes GitHub prereleases, used to test resolution of
- * the `latest-prerelease` and `nightly-until-<version>`/`nightly-until-stable-<version>` forms of
- * the `tools` input in the case where the newest release overall is a stable release, even though
- * prereleases exist. `STABLE_BUNDLE_RELEASES_TEST_SET` above covers the opposite case, where the
+ * the `latest-prerelease` and `nightly-until-<version>` forms of the `tools` input in the case
+ * where the newest release overall is a stable release, even though prereleases exist.
+ * `STABLE_BUNDLE_RELEASES_TEST_SET` above covers the opposite case, where the
  * newest release overall is a prerelease.
  */
 const PRERELEASE_BUNDLE_RELEASES_TEST_SET = [
@@ -798,24 +797,6 @@ const NIGHTLY_UNTIL_RESOLVES_TOOLS_INPUT_TEST_CASES = [
     releases: PRERELEASE_BUNDLE_RELEASES_TEST_SET,
     expectedCliVersion: "2.27.0",
   },
-  {
-    name: "nightly-until-stable: threshold exactly matches the newest stable release",
-    toolsInput: "nightly-until-stable-2.25.3",
-    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
-    expectedCliVersion: "2.25.3",
-  },
-  {
-    name: "nightly-until-stable: the newest stable release comfortably exceeds the threshold",
-    toolsInput: "nightly-until-stable-2.20.0",
-    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
-    expectedCliVersion: "2.25.3",
-  },
-  {
-    name: "nightly-until-stable: matching is case insensitive",
-    toolsInput: "NIGHTLY-UNTIL-STABLE-2.25.3",
-    releases: STABLE_BUNDLE_RELEASES_TEST_SET,
-    expectedCliVersion: "2.25.3",
-  },
 ] as const;
 
 for (const {
@@ -853,14 +834,141 @@ for (const {
   );
 }
 
+/**
+ * `nightly-until-default-<version>` compares the given version threshold directly against
+ * `SAMPLE_DEFAULT_CLI_VERSION`'s CLI version, `2.20.0`, without ever listing CodeQL bundle
+ * releases. When the default version is at or above the threshold, resolution should proceed
+ * exactly as if `tools` were not specified at all.
+ */
+const NIGHTLY_UNTIL_DEFAULT_RESUMES_DEFAULT_TOOLS_INPUT_TEST_CASES = [
+  {
+    name: "the default CLI version exactly matches the threshold",
+    toolsInput: "nightly-until-default-2.20.0",
+  },
+  {
+    name: "the default CLI version exceeds the threshold",
+    toolsInput: "nightly-until-default-2.19.0",
+  },
+  {
+    name: "matching is case insensitive",
+    toolsInput: "NIGHTLY-UNTIL-DEFAULT-2.20.0",
+  },
+] as const;
+
+for (const {
+  name,
+  toolsInput,
+} of NIGHTLY_UNTIL_DEFAULT_RESUMES_DEFAULT_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource resumes normal default CLI version selection for 'tools: ${toolsInput}', since ${name}`,
+    async (t) => {
+      const loggedMessages: LoggedMessage[] = [];
+      const logger = getRecordingLogger(loggedMessages);
+      const features = createFeatures([]);
+
+      // No release-list API request should be made, so if one is attempted, the test will fail.
+      const client = github.getOctokit("123");
+      const listReleases = sinon.stub(client.rest.repos, "listReleases");
+      sinon.stub(api, "getApiClient").value(() => client);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          false,
+          features,
+          logger,
+        );
+
+        t.is(
+          source.toolsVersion,
+          SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+        );
+        t.true(listReleases.notCalled);
+        checkExpectedLogMessages(t, loggedMessages, [
+          `'tools: ${toolsInput}' was requested, so using the default CodeQL version`,
+        ]);
+      });
+    },
+  );
+}
+
+test.serial(
+  "getCodeQLSource falls back to the latest nightly bundle for 'tools: nightly-until-default-<version>', since the default CLI version does not satisfy the threshold",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([]);
+
+    const expectedDate = "30260213";
+    const expectedTag = `codeql-bundle-${expectedDate}`;
+
+    // Ensure that we consistently select "zstd" for the test.
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(tar, "isZstdAvailable").resolves({
+      available: true,
+      foundZstdBinary: true,
+    });
+
+    // No release-list API request for the canonical CodeQL Action repository should be made;
+    // only the nightly repository's release list should be queried, via the same authenticated
+    // client used elsewhere in this file.
+    const client = github.getOctokit("123");
+    const listReleases = sinon.stub(client.rest.repos, "listReleases");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    listReleases.resolves({
+      data: [{ tag_name: expectedTag }],
+    } as any);
+    sinon.stub(api, "getApiClient").value(() => client);
+
+    const toolsInput = "nightly-until-default-2.21.0";
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        toolsInput,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        logger,
+      );
+
+      const expectedVersion = `0.0.0-${expectedDate}`;
+      const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/${setupCodeql.getCodeQLBundleName("zstd")}`;
+      t.deepEqual(source, {
+        bundleVersion: expectedDate,
+        cliVersion: undefined,
+        codeqlURL: expectedURL,
+        compressionMethod: "zstd",
+        sourceType: "download",
+        toolsVersion: expectedVersion,
+      } satisfies setupCodeql.CodeQLToolsSource);
+
+      t.true(
+        listReleases.neverCalledWith(
+          sinon.match({ owner: "github", repo: "codeql-action" }),
+        ),
+      );
+      checkExpectedLogMessages(t, loggedMessages, [
+        `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}', since the`,
+      ]);
+    });
+  },
+);
+
 const NIGHTLY_UNTIL_FALLBACK_TOOLS_INPUT_TEST_CASES = [
   {
     name: "no release, stable or prerelease, satisfies the threshold",
     toolsInput: "nightly-until-9.0.0",
-  },
-  {
-    name: "only a prerelease, not a stable release, would satisfy the threshold",
-    toolsInput: "nightly-until-stable-2.25.4",
   },
 ] as const;
 
@@ -925,7 +1033,7 @@ for (const {
 const MALFORMED_NIGHTLY_UNTIL_THRESHOLD_TOOLS_INPUT_TEST_CASES = [
   { toolsInput: "nightly-until-bogus", expectedRawThreshold: "bogus" },
   {
-    toolsInput: "nightly-until-stable-bogus",
+    toolsInput: "nightly-until-default-bogus",
     expectedRawThreshold: "bogus",
   },
 ] as const;
@@ -967,8 +1075,8 @@ for (const {
 }
 
 /**
- * `latest-<N>`, SemVer ranges, `latest-prerelease`, and `nightly-until-<version>`/
- * `nightly-until-stable-<version>` all need to look up the canonical CodeQL Action repository's
+ * `latest-<N>`, SemVer ranges, `latest-prerelease`, and `nightly-until-<version>` all need to
+ * look up the canonical CodeQL Action repository's
  * release history. That repository only ever exists on GitHub.com, so on a non-dotcom `variant`
  * (GHES or GHEC with data residency) this lookup must be made directly, and unauthenticated,
  * against GitHub.com, rather than against the current GitHub instance as for all other API

@@ -118,6 +118,61 @@ test.serial(
   },
 );
 
+/**
+ * A URL should never be misidentified as a bare CLI version number or a version range, even when
+ * it contains version-like path segments, since neither `semver.valid` nor `semver.validRange`
+ * can ever match a string containing `://`.
+ */
+const URL_NOT_MISTAKEN_FOR_VERSION_TEST_CASES = [
+  {
+    name: "a bundle URL without a recognizable bundle tag",
+    toolsInput: "https://example.com/assets/codeql-bundle-linux64.tar.gz",
+  },
+  {
+    name: "a bundle URL containing a bare-version-like path segment",
+    toolsInput:
+      "https://example.com/download/2.19.0/codeql-bundle-linux64.tar.gz",
+  },
+  {
+    name: "a bundle URL containing a version-range-like path segment",
+    toolsInput:
+      "https://example.com/download/2.24.x/codeql-bundle-linux64.tar.gz",
+  },
+] as const;
+
+for (const { name, toolsInput } of URL_NOT_MISTAKEN_FOR_VERSION_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource resolves ${name} as a URL, not a version or range`,
+    async (t) => {
+      const features = createFeatures([]);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          false,
+          features,
+          getRunnerLogger(true),
+        );
+
+        t.is(source.sourceType, "download");
+        if (source.sourceType === "download") {
+          t.is(source.codeqlURL, toolsInput);
+          t.is(source.compressionMethod, "gzip");
+        }
+        // Neither a bare CLI version number nor a version range was detected: the bundle tag
+        // could not be determined from the URL, so no CLI version is known.
+        t.is(source["cliVersion"], undefined);
+      });
+    },
+  );
+}
+
 const LINKED_BUNDLE_TEST_CASES = [
   {
     platform: "linux",

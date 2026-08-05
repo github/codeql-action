@@ -232,6 +232,11 @@ export function convertToSemVer(version: string, logger: Logger): string {
  * name or URL of the bundle asset for their platform: the appropriate bundle for the runner's OS,
  * and the best compression method it supports, are selected automatically, in the same way as
  * they are for the default and `linked` versions of the tools.
+ *
+ * `semver.valid` only succeeds if the *entire* input string is a valid semantic version, and the
+ * semantic versioning spec never permits `:` or `/` characters in a version string. Since every
+ * URL contains `://`, a CodeQL Bundle URL can never be misidentified as a bare CLI version number
+ * by this function.
  */
 function tryGetCliVersionFromToolsInput(
   toolsInput: string,
@@ -263,6 +268,11 @@ function tryGetLatestOffsetFromToolsInput(
  * A range must contain a `.`, so that bare numbers or strings such as `2` or `20200601` are not
  * misinterpreted as version ranges and are instead handled as local paths, as they were before
  * version ranges were supported.
+ *
+ * As with `tryGetCliVersionFromToolsInput`, this delegates to `semver.validRange`, which also
+ * requires the whole input string to be a syntactically valid range and never permits `:` or `/`
+ * characters. A CodeQL Bundle URL, which always contains `://`, can therefore never be
+ * misidentified as a version range here either.
  */
 function tryGetCliVersionRangeFromToolsInput(
   toolsInput: string,
@@ -507,6 +517,30 @@ async function resolveDefaultCliVersion(
  * Determines where the CodeQL CLI we want to use comes from. This can be from a local file,
  * the Actions toolcache, or a download.
  *
+ * The `tools` input is classified into exactly one of the following mutually exclusive
+ * categories, listed here in order of precedence:
+ *
+ *   1. Not specified: the default CLI version for this environment.
+ *   2. A reserved keyword: `nightly`/`nightly-latest`, `linked`/`latest`, or `toolcache` (see
+ *      `CODEQL_NIGHTLY_TOOLS_INPUTS`, `CODEQL_BUNDLE_VERSION_ALIAS`, and `CODEQL_TOOLCACHE_INPUT`
+ *      below).
+ *   3. A URL, i.e. a string starting with `http`: the CodeQL Bundle downloaded from that URL.
+ *   4. A bare CLI version number, e.g. `2.19.0` or `v2.19.0`: the CodeQL Bundle release
+ *      containing that CLI version (see `tryGetCliVersionFromToolsInput`).
+ *   5. `latest-<N>`, e.g. `latest-1` or `LATEST-2`: the stable CLI release `N` positions before
+ *      the most recent one (see `tryGetLatestOffsetFromToolsInput`).
+ *   6. A semantic version range, e.g. `2.24.x`, `2.x`, `~2.24.0`, or `^2.24.0`: the newest stable
+ *      CLI release satisfying that range (see `tryGetCliVersionRangeFromToolsInput`).
+ *   7. Anything else: a local path to a CodeQL Bundle tarball.
+ *
+ * Categories 4-6 are all detected using the `semver` package, which only matches a bare version
+ * or a range if the *entire* input string conforms to the semantic versioning spec. That spec
+ * never permits a `:` or `/` character in a version or a range, whereas a URL (category 3) always
+ * contains `://`. So even though the checks for categories 4-6 don't explicitly exclude URLs,
+ * they can never match one: a value such as `http://example.com/codeql-bundle-linux64.tar.gz` is
+ * always resolved as a URL, never as a bare version like `2.19.0` or a range like `2.24.x`, no
+ * matter what version-like path segments or filenames it contains.
+ *
  * @param toolsInput The argument provided for the `tools` input, if any.
  * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
  * @param rawLanguages Raw set of languages.
@@ -533,7 +567,8 @@ export async function getCodeQLSource(
   // If there is an explicit `tools` input, it's not one of the reserved values, it doesn't appear
   // to point to a URL, and it isn't a bare CodeQL CLI version number, a `latest-<N>` version
   // offset, or a semantic version range, then we assume it is a local path and use the CLI from
-  // there.
+  // there. See the order-of-operations note in this function's doc comment above for the full
+  // list of categories and why a URL is never confused with a version number or a range.
   // TODO: This appears to misclassify filenames that happen to start with `http` as URLs.
   if (
     toolsInput &&

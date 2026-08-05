@@ -828,25 +828,49 @@ export async function getCodeQLSource(
     tryGetNightlyUntilDefaultToolsInput(toolsInput) !== undefined
   ) {
     // The `nightly-until-default-<version>` syntax was used: compare the given version threshold
-    // directly against this CodeQL Action's already-known default CLI version, without querying
-    // the CodeQL bundle release history. If the default CLI version is at or above the
-    // threshold, resume normal default CLI version selection, exactly as if `tools` had not been
-    // specified at all. Otherwise, fall back to the latest nightly bundle.
+    // against the CLI version that would actually be used if `tools` had not been specified at
+    // all, i.e. after normal default CLI version selection (which may be overlay-aware) and any
+    // applicable overrides (such as a pinned version found in the toolcache on Enterprise
+    // Server), without ever querying the CodeQL bundle release history. If that resolved version
+    // satisfies the threshold, we resume with that already-resolved source directly, so we never
+    // duplicate the default-selection or override logic below. Otherwise, we fall back to the
+    // latest nightly bundle.
     const rawThreshold = tryGetNightlyUntilDefaultToolsInput(toolsInput)!;
     const threshold = parseNightlyUntilThreshold(toolsInput, rawThreshold);
-    const defaultVersion = defaultCliVersion.enabledVersions[0].cliVersion;
 
-    if (semver.gte(defaultVersion, threshold)) {
+    const defaultSource = await getCodeQLSource(
+      undefined,
+      defaultCliVersion,
+      rawLanguages,
+      useOverlayAwareDefaultCliVersion,
+      apiDetails,
+      variant,
+      tarSupportsZstd,
+      features,
+      logger,
+    );
+    const resolvedVersion =
+      "cliVersion" in defaultSource
+        ? defaultSource.cliVersion
+        : defaultSource.toolsVersion;
+
+    if (
+      resolvedVersion !== undefined &&
+      semver.valid(resolvedVersion) !== null &&
+      semver.gte(resolvedVersion, threshold)
+    ) {
       logger.info(
         `'tools: ${toolsInput}' was requested, so using the default CodeQL version, since the ` +
-          `default CodeQL version ${defaultVersion} satisfies the version threshold of ${threshold}.`,
+          `resolved default CodeQL version ${resolvedVersion} satisfies the version threshold ` +
+          `of ${threshold}.`,
       );
-      toolsInput = undefined;
+      return defaultSource;
     } else {
       logger.info(
         `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}', since the ` +
-          `default CodeQL version ${defaultVersion} does not satisfy the version threshold of ` +
-          `${threshold}.`,
+          `resolved default CodeQL version${
+            resolvedVersion !== undefined ? ` ${resolvedVersion}` : ""
+          } does not satisfy the version threshold of ${threshold}.`,
       );
       toolsInput = await getNightlyToolsUrl(logger);
     }

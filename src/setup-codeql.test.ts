@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 
 import * as github from "@actions/github";
@@ -835,10 +836,12 @@ for (const {
 }
 
 /**
- * `nightly-until-default-<version>` compares the given version threshold directly against
- * `SAMPLE_DEFAULT_CLI_VERSION`'s CLI version, `2.20.0`, without ever listing CodeQL bundle
- * releases. When the default version is at or above the threshold, resolution should proceed
- * exactly as if `tools` were not specified at all.
+ * `nightly-until-default-<version>` compares the given version threshold against the CLI version
+ * that would actually be used if `tools` had not been specified at all, i.e. after normal
+ * (possibly overlay-aware) default CLI version selection and any applicable overrides, without
+ * ever listing CodeQL bundle releases. In these test cases, that resolved version is
+ * `SAMPLE_DEFAULT_CLI_VERSION`'s CLI version, `2.20.0`. When the resolved version is at or above
+ * the threshold, resolution should proceed exactly as if `tools` were not specified at all.
  */
 const NIGHTLY_UNTIL_DEFAULT_RESUMES_DEFAULT_TOOLS_INPUT_TEST_CASES = [
   {
@@ -960,6 +963,260 @@ test.serial(
       );
       checkExpectedLogMessages(t, loggedMessages, [
         `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}', since the`,
+      ]);
+    });
+  },
+);
+
+const nightlyUntilDefaultOverlayEnabledVersions = {
+  enabledVersions: [
+    { cliVersion: "2.20.2", tagName: "codeql-bundle-v2.20.2" },
+    { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
+    { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
+  ],
+  toolsFeatureFlagsValid: true,
+};
+
+async function stubOverlayBaseCacheForNightlyUntilDefaultTests(
+  cliVersion: string,
+) {
+  sinon.stub(api, "getAutomationID").resolves("test/");
+  sinon.stub(api, "listActionsCaches").resolves([
+    {
+      key: await fakeOverlayBaseCacheKey("javascript", cliVersion, "abc-1-1"),
+    },
+  ]);
+  process.env[EnvVar.CODE_SCANNING_REF] = "refs/heads/feature-branch";
+  process.env[EnvVar.CODE_SCANNING_BASE_BRANCH] = "main";
+}
+
+test.serial(
+  "getCodeQLSource stays on nightly for 'tools: nightly-until-default-<version>' when the " +
+    "newest enabled default satisfies the threshold, but overlay-aware selection resolves to " +
+    "an older version that does not",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([
+      Feature.OverlayAnalysisMatchCodeqlVersion,
+    ]);
+
+    const expectedDate = "30260213";
+    const expectedTag = `codeql-bundle-${expectedDate}`;
+
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(tar, "isZstdAvailable").resolves({
+      available: true,
+      foundZstdBinary: true,
+    });
+
+    const client = github.getOctokit("123");
+    const listReleases = sinon.stub(client.rest.repos, "listReleases");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    listReleases.resolves({
+      data: [{ tag_name: expectedTag }],
+    } as any);
+    sinon.stub(api, "getApiClient").value(() => client);
+
+    // The overlay-base cache only has an entry for 2.20.1, which is below the 2.20.2 threshold,
+    // even though the newest enabled default version, 2.20.2, satisfies it.
+    await stubOverlayBaseCacheForNightlyUntilDefaultTests("2.20.1");
+    sinon
+      .stub(toolcache, "find")
+      .withArgs("CodeQL", "2.20.1")
+      .returns("/path/to/codeql-2.20.1");
+
+    const toolsInput = "nightly-until-default-2.20.2";
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        toolsInput,
+        nightlyUntilDefaultOverlayEnabledVersions,
+        ["javascript"],
+        true, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        logger,
+      );
+
+      t.is(source.sourceType, "download");
+      t.true(
+        listReleases.neverCalledWith(
+          sinon.match({ owner: "github", repo: "codeql-action" }),
+        ),
+      );
+      checkExpectedLogMessages(t, loggedMessages, [
+        `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}', since the ` +
+          "resolved default CodeQL version 2.20.1 does not satisfy the version threshold",
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource resumes normal default CLI version selection for 'tools: " +
+    "nightly-until-default-<version>' when overlay-aware selection resolves to a version that " +
+    "satisfies the threshold",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([
+      Feature.OverlayAnalysisMatchCodeqlVersion,
+    ]);
+
+    const client = github.getOctokit("123");
+    const listReleases = sinon.stub(client.rest.repos, "listReleases");
+    sinon.stub(api, "getApiClient").value(() => client);
+
+    await stubOverlayBaseCacheForNightlyUntilDefaultTests("2.20.1");
+    sinon
+      .stub(toolcache, "find")
+      .withArgs("CodeQL", "2.20.1")
+      .returns("/path/to/codeql-2.20.1");
+
+    const toolsInput = "nightly-until-default-2.20.1";
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        toolsInput,
+        nightlyUntilDefaultOverlayEnabledVersions,
+        ["javascript"],
+        true, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        features,
+        logger,
+      );
+
+      t.is(source.sourceType, "toolcache");
+      t.is(source.toolsVersion, "2.20.1");
+      t.true(listReleases.notCalled);
+      checkExpectedLogMessages(t, loggedMessages, [
+        `'tools: ${toolsInput}' was requested, so using the default CodeQL version, since the ` +
+          "resolved default CodeQL version 2.20.1 satisfies the version threshold",
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource stays on nightly for 'tools: nightly-until-default-<version>' on GHES when " +
+    "the newest enabled default satisfies the threshold, but a pinned toolcache override " +
+    "resolves to an older version that does not",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([]);
+
+    const expectedDate = "30260213";
+    const expectedTag = `codeql-bundle-${expectedDate}`;
+
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(tar, "isZstdAvailable").resolves({
+      available: true,
+      foundZstdBinary: true,
+    });
+
+    const client = github.getOctokit("123");
+    const listReleases = sinon.stub(client.rest.repos, "listReleases");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    listReleases.resolves({
+      data: [{ tag_name: expectedTag }],
+    } as any);
+    sinon.stub(api, "getApiClient").value(() => client);
+
+    const toolsInput = "nightly-until-default-2.20.2";
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      // Nothing in the toolcache matches the resolved default version 2.20.2, but a pinned
+      // (overriding) version 2.20.1 is present, which is below the threshold.
+      const pinnedFolder = path.join(tmpDir, "pinned-codeql-2.20.1");
+      fs.mkdirSync(pinnedFolder, { recursive: true });
+      fs.writeFileSync(path.join(pinnedFolder, "pinned-version"), "");
+      sinon.stub(toolcache, "findAllVersions").returns(["2.20.1"]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs("CodeQL", "2.20.1")
+        .returns(pinnedFolder);
+
+      const source = await setupCodeql.getCodeQLSource(
+        toolsInput,
+        nightlyUntilDefaultOverlayEnabledVersions,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_GHES_API_DETAILS,
+        GitHubVariant.GHES,
+        false,
+        features,
+        logger,
+      );
+
+      t.is(source.sourceType, "download");
+      t.true(
+        listReleases.neverCalledWith(
+          sinon.match({ owner: "github", repo: "codeql-action" }),
+        ),
+      );
+      checkExpectedLogMessages(t, loggedMessages, [
+        `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}', since the ` +
+          "resolved default CodeQL version 2.20.1 does not satisfy the version threshold",
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource resumes normal default CLI version selection for 'tools: " +
+    "nightly-until-default-<version>' on GHES when a pinned toolcache override resolves to a " +
+    "version that satisfies the threshold",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    const features = createFeatures([]);
+
+    const client = github.getOctokit("123");
+    const listReleases = sinon.stub(client.rest.repos, "listReleases");
+    sinon.stub(api, "getApiClient").value(() => client);
+
+    const toolsInput = "nightly-until-default-2.20.1";
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      const pinnedFolder = path.join(tmpDir, "pinned-codeql-2.20.1");
+      fs.mkdirSync(pinnedFolder, { recursive: true });
+      fs.writeFileSync(path.join(pinnedFolder, "pinned-version"), "");
+      sinon.stub(toolcache, "findAllVersions").returns(["2.20.1"]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs("CodeQL", "2.20.1")
+        .returns(pinnedFolder);
+
+      const source = await setupCodeql.getCodeQLSource(
+        toolsInput,
+        nightlyUntilDefaultOverlayEnabledVersions,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_GHES_API_DETAILS,
+        GitHubVariant.GHES,
+        false,
+        features,
+        logger,
+      );
+
+      t.is(source.sourceType, "toolcache");
+      t.is(source.toolsVersion, "2.20.1");
+      t.true(listReleases.notCalled);
+      checkExpectedLogMessages(t, loggedMessages, [
+        `'tools: ${toolsInput}' was requested, so using the default CodeQL version, since the ` +
+          "resolved default CodeQL version 2.20.1 satisfies the version threshold",
       ]);
     });
   },

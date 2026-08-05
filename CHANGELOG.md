@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - The `tools` input for the `init` and `setup-codeql` Actions now accepts a bare CodeQL CLI version number, for example `2.19.0` or `v2.19.0`. The Action will automatically download the CodeQL Bundle release asset that matches the runner's operating system and architecture, preferring the smaller `zstd`-compressed bundle where it is supported.
+- The `tools` input also now accepts a CodeQL CLI version range, for example `2.24.x`, `2.x`, `~2.24.0`, or `^2.24.0`, as well as `latest-<N>` (for example `latest-1`), which resolves to the CodeQL Bundle release `N` stable releases before the most recent one.
 
 ## 4.37.5 - 03 Aug 2026
 

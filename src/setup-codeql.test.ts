@@ -28,6 +28,7 @@ import {
   setupTests,
 } from "./testing-utils";
 import {
+  ConfigurationError,
   getErrorMessage,
   GitHubVariant,
   initializeEnvironment,
@@ -322,6 +323,173 @@ test.serial(
         t.is(source.codeqlTarPath, localPath);
         t.is(source.compressionMethod, "gzip");
       }
+    });
+  },
+);
+
+/**
+ * A representative set of CodeQL bundle releases, as well as some non-bundle releases and
+ * non-stable bundle releases, used to test resolution of the `latest-<N>` and semantic version
+ * range forms of the `tools` input.
+ *
+ * The stable bundle releases are deliberately non-contiguous: `2.25.2` and `2.24.1` do not exist,
+ * so that tests can confirm that `latest-<N>` and version ranges are resolved against the actual
+ * release history, rather than by decrementing the patch version of the most recent release.
+ */
+const STABLE_BUNDLE_RELEASES_TEST_SET = [
+  // A release of the Action itself, which does not represent a CodeQL bundle and should be
+  // ignored.
+  { tag_name: "v4.30.0", prerelease: false, draft: false },
+  // A prerelease CodeQL bundle, which should be ignored.
+  { tag_name: "codeql-bundle-v2.26.0", prerelease: true, draft: false },
+  // A draft CodeQL bundle, which should be ignored.
+  { tag_name: "codeql-bundle-v2.23.9", prerelease: false, draft: true },
+  { tag_name: "codeql-bundle-v2.25.3", prerelease: false, draft: false },
+  { tag_name: "codeql-bundle-v2.25.1", prerelease: false, draft: false },
+  { tag_name: "codeql-bundle-v2.24.2", prerelease: false, draft: false },
+  { tag_name: "codeql-bundle-v2.24.0", prerelease: false, draft: false },
+];
+
+function mockListStableCodeQLBundleReleases() {
+  const client = github.getOctokit("123");
+  const listReleases = sinon.stub(client.rest.repos, "listReleases");
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  listReleases.resolves({
+    data: STABLE_BUNDLE_RELEASES_TEST_SET,
+  } as any);
+  sinon.stub(api, "getApiClient").value(() => client);
+}
+
+const LATEST_OFFSET_TOOLS_INPUT_TEST_CASES = [
+  { toolsInput: "latest-0", expectedCliVersion: "2.25.3" },
+  { toolsInput: "latest-1", expectedCliVersion: "2.25.1" },
+  { toolsInput: "LATEST-2", expectedCliVersion: "2.24.2" },
+  { toolsInput: "latest-3", expectedCliVersion: "2.24.0" },
+] as const;
+
+for (const {
+  toolsInput,
+  expectedCliVersion,
+} of LATEST_OFFSET_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource resolves 'tools: ${toolsInput}' to CodeQL version ${expectedCliVersion}`,
+    async (t) => {
+      const features = createFeatures([]);
+      sinon.stub(process, "platform").value("linux");
+      mockListStableCodeQLBundleReleases();
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          false,
+          features,
+          getRunnerLogger(true),
+        );
+
+        t.is(source.sourceType, "download");
+        t.is(source.toolsVersion, expectedCliVersion);
+        t.is(source["cliVersion"], expectedCliVersion);
+      });
+    },
+  );
+}
+
+test.serial(
+  "getCodeQLSource throws when 'latest-<N>' requests more stable releases than exist",
+  async (t) => {
+    const features = createFeatures([]);
+    mockListStableCodeQLBundleReleases();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      await t.throwsAsync(
+        async () =>
+          await setupCodeql.getCodeQLSource(
+            "latest-99",
+            SAMPLE_DEFAULT_CLI_VERSION,
+            undefined, // rawLanguages
+            false, // useOverlayAwareDefaultCliVersion
+            SAMPLE_DOTCOM_API_DETAILS,
+            GitHubVariant.DOTCOM,
+            false,
+            features,
+            getRunnerLogger(true),
+          ),
+        { instanceOf: ConfigurationError },
+      );
+    });
+  },
+);
+
+const CLI_VERSION_RANGE_TOOLS_INPUT_TEST_CASES = [
+  { toolsInput: "2.24.x", expectedCliVersion: "2.24.2" },
+  { toolsInput: "2.x", expectedCliVersion: "2.25.3" },
+  { toolsInput: "~2.24.0", expectedCliVersion: "2.24.2" },
+  { toolsInput: "^2.24.0", expectedCliVersion: "2.25.3" },
+] as const;
+
+for (const {
+  toolsInput,
+  expectedCliVersion,
+} of CLI_VERSION_RANGE_TOOLS_INPUT_TEST_CASES) {
+  test.serial(
+    `getCodeQLSource resolves 'tools: ${toolsInput}' to CodeQL version ${expectedCliVersion}`,
+    async (t) => {
+      const features = createFeatures([]);
+      sinon.stub(process, "platform").value("linux");
+      mockListStableCodeQLBundleReleases();
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const source = await setupCodeql.getCodeQLSource(
+          toolsInput,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          false,
+          features,
+          getRunnerLogger(true),
+        );
+
+        t.is(source.sourceType, "download");
+        t.is(source.toolsVersion, expectedCliVersion);
+        t.is(source["cliVersion"], expectedCliVersion);
+      });
+    },
+  );
+}
+
+test.serial(
+  "getCodeQLSource throws when no stable release satisfies the requested version range",
+  async (t) => {
+    const features = createFeatures([]);
+    mockListStableCodeQLBundleReleases();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      await t.throwsAsync(
+        async () =>
+          await setupCodeql.getCodeQLSource(
+            "9.x",
+            SAMPLE_DEFAULT_CLI_VERSION,
+            undefined, // rawLanguages
+            false, // useOverlayAwareDefaultCliVersion
+            SAMPLE_DOTCOM_API_DETAILS,
+            GitHubVariant.DOTCOM,
+            false,
+            features,
+            getRunnerLogger(true),
+          ),
+        { instanceOf: ConfigurationError },
+      );
     });
   },
 );

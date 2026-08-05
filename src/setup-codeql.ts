@@ -53,6 +53,20 @@ const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
 const CODEQL_TOOLCACHE_INPUT = "toolcache";
 
+/** Matches the `latest-<N>` form of the `tools` input, for example `latest-1` or `LATEST-2`. */
+const LATEST_OFFSET_TOOLS_INPUT_REGEX = /^latest-(\d+)$/i;
+
+/** Number of releases requested per page when listing CodeQL bundle releases. */
+const CODEQL_BUNDLE_RELEASE_LIST_PAGE_SIZE = 100;
+
+/**
+ * Maximum number of pages of releases to fetch when listing stable CodeQL bundle releases in
+ * order to resolve `tools` inputs such as `latest-<N>` or a semantic version range. This bounds
+ * the number of API requests made while still comfortably covering many years of CodeQL CLI
+ * releases.
+ */
+const CODEQL_BUNDLE_RELEASE_LIST_MAX_PAGES = 20;
+
 function getCodeQLBundleExtension(
   compressionMethod: tar.CompressionMethod,
 ): string {
@@ -223,6 +237,88 @@ function tryGetCliVersionFromToolsInput(
   toolsInput: string,
 ): string | undefined {
   return semver.valid(toolsInput) ?? undefined;
+}
+
+/**
+ * If the `tools` input matches the `latest-<N>` syntax, for example `latest-1` or `LATEST-2`
+ * (matching is case insensitive), returns `N`. Otherwise returns `undefined`.
+ *
+ * `latest-<N>` refers to the stable CodeQL CLI release `N` positions before the most recent
+ * stable release, when all stable releases are sorted in descending version order. `N` is
+ * resolved against the actual release history rather than by decrementing the patch version,
+ * since CodeQL CLI releases can be skipped or withdrawn.
+ */
+function tryGetLatestOffsetFromToolsInput(
+  toolsInput: string,
+): number | undefined {
+  const match = toolsInput.match(LATEST_OFFSET_TOOLS_INPUT_REGEX);
+  return match ? parseInt(match[1], 10) : undefined;
+}
+
+/**
+ * If the `tools` input is a semantic version range, for example `2.24.x`, `2.x`, `~2.24.0`, or
+ * `^2.24.0`, returns that range. Bare CLI version numbers, which are handled by
+ * `tryGetCliVersionFromToolsInput`, are not considered ranges. Otherwise returns `undefined`.
+ *
+ * A range must contain a `.`, so that bare numbers or strings such as `2` or `20200601` are not
+ * misinterpreted as version ranges and are instead handled as local paths, as they were before
+ * version ranges were supported.
+ */
+function tryGetCliVersionRangeFromToolsInput(
+  toolsInput: string,
+): string | undefined {
+  if (!toolsInput.includes(".") || semver.valid(toolsInput) !== null) {
+    return undefined;
+  }
+  return semver.validRange(toolsInput) !== null ? toolsInput : undefined;
+}
+
+/**
+ * Fetches the CLI versions of all stable (non-prerelease, non-draft) CodeQL bundle releases
+ * published to the canonical CodeQL Action repository, sorted in descending semantic-version
+ * order (newest first).
+ *
+ * We fetch the actual release history, rather than assuming a contiguous sequence of patch
+ * versions, since CodeQL CLI releases can be skipped or withdrawn, so the release before the
+ * newest one is not necessarily the newest one with its patch version decremented by one.
+ */
+async function getSortedStableCliVersions(logger: Logger): Promise<string[]> {
+  const [owner, repo] = CODEQL_DEFAULT_ACTION_REPOSITORY.split("/");
+  const versions = new Set<string>();
+
+  try {
+    for (let page = 1; page <= CODEQL_BUNDLE_RELEASE_LIST_MAX_PAGES; page++) {
+      const response = await api.getApiClient().rest.repos.listReleases({
+        owner,
+        repo,
+        per_page: CODEQL_BUNDLE_RELEASE_LIST_PAGE_SIZE,
+        page,
+      });
+
+      for (const release of response.data) {
+        if (release.draft || release.prerelease) {
+          continue;
+        }
+        const bundleVersion = tryGetBundleVersionFromTagName(
+          release.tag_name,
+          logger,
+        );
+        if (bundleVersion && semver.valid(bundleVersion)) {
+          versions.add(semver.clean(bundleVersion)!);
+        }
+      }
+
+      if (response.data.length < CODEQL_BUNDLE_RELEASE_LIST_PAGE_SIZE) {
+        break;
+      }
+    }
+  } catch (e) {
+    throw new util.ConfigurationError(
+      `Failed to list CodeQL bundle releases in ${CODEQL_DEFAULT_ACTION_REPOSITORY}: ${util.getErrorMessage(e)}`,
+    );
+  }
+
+  return [...versions].sort(semver.rcompare);
 }
 
 export type CodeQLToolsSource =
@@ -435,14 +531,17 @@ export async function getCodeQLSource(
   logger: Logger,
 ): Promise<CodeQLToolsSource> {
   // If there is an explicit `tools` input, it's not one of the reserved values, it doesn't appear
-  // to point to a URL, and it isn't a bare CodeQL CLI version number, then we assume it is a local
-  // path and use the CLI from there.
+  // to point to a URL, and it isn't a bare CodeQL CLI version number, a `latest-<N>` version
+  // offset, or a semantic version range, then we assume it is a local path and use the CLI from
+  // there.
   // TODO: This appears to misclassify filenames that happen to start with `http` as URLs.
   if (
     toolsInput &&
     !isReservedToolsValue(toolsInput) &&
     !toolsInput.startsWith("http") &&
-    tryGetCliVersionFromToolsInput(toolsInput) === undefined
+    tryGetCliVersionFromToolsInput(toolsInput) === undefined &&
+    tryGetLatestOffsetFromToolsInput(toolsInput) === undefined &&
+    tryGetCliVersionRangeFromToolsInput(toolsInput) === undefined
   ) {
     logger.info(`Using CodeQL CLI from local path ${toolsInput}`);
     const compressionMethod = tar.inferCompressionMethod(toolsInput);
@@ -599,6 +698,58 @@ export async function getCodeQLSource(
 
     logger.info(
       `'tools: ${toolsInput}' was requested, so using CodeQL version ${cliVersion}.`,
+    );
+  } else if (
+    toolsInput !== undefined &&
+    tryGetLatestOffsetFromToolsInput(toolsInput) !== undefined
+  ) {
+    // The `latest-<N>` syntax was used to request the stable CodeQL CLI release `N` positions
+    // before the most recent stable release. We look up the actual release history, sorted by
+    // version, rather than assuming a fixed decrease in patch version, since CodeQL CLI releases
+    // can be skipped or withdrawn.
+    const offset = tryGetLatestOffsetFromToolsInput(toolsInput)!;
+    const sortedVersions = await getSortedStableCliVersions(logger);
+
+    if (offset >= sortedVersions.length) {
+      throw new util.ConfigurationError(
+        `'tools: ${toolsInput}' was requested, but only ${sortedVersions.length} stable CodeQL ` +
+          "CLI release(s) could be found.",
+      );
+    }
+
+    cliVersion = sortedVersions[offset];
+    tagName = `codeql-bundle-v${cliVersion}`;
+
+    logger.info(
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${cliVersion}, which is ${
+        offset === 0
+          ? "the most recent stable CodeQL CLI release."
+          : `${offset} stable CodeQL CLI release(s) before the most recent one.`
+      }`,
+    );
+  } else if (
+    toolsInput !== undefined &&
+    tryGetCliVersionRangeFromToolsInput(toolsInput) !== undefined
+  ) {
+    // A semantic version range, e.g. `2.24.x` or `^2.24.0`, was used to request the most recent
+    // stable CodeQL CLI release that satisfies that range.
+    const range = tryGetCliVersionRangeFromToolsInput(toolsInput)!;
+    const sortedVersions = await getSortedStableCliVersions(logger);
+    const resolvedVersion = semver.maxSatisfying(sortedVersions, range);
+
+    if (!resolvedVersion) {
+      throw new util.ConfigurationError(
+        `'tools: ${toolsInput}' was requested, but no stable CodeQL CLI release satisfying that ` +
+          "version range could be found.",
+      );
+    }
+
+    cliVersion = resolvedVersion;
+    tagName = `codeql-bundle-v${cliVersion}`;
+
+    logger.info(
+      `'tools: ${toolsInput}' was requested, so using CodeQL version ${cliVersion}, the most ` +
+        "recent stable CodeQL CLI release satisfying that version range.",
     );
   } else if (toolsInput !== undefined) {
     // If a tools URL was provided, then use that.

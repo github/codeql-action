@@ -13,6 +13,11 @@ inputs:
       - A CodeQL CLI version number, for example `2.19.0` or `v2.19.0`, in which case the CodeQL
         Bundle containing that version will be downloaded, selecting the archive format and
         release asset that matches the runner's operating system and architecture, or
+      - A CodeQL CLI version range, for example `2.24.x`, `2.x`, `~2.24.0`, or `^2.24.0`, in
+        which case the most recent stable CodeQL Bundle release satisfying that range will be
+        downloaded, or
+      - `latest-<N>`, for example `latest-1` or `LATEST-2` (matching is case insensitive), which
+        uses the CodeQL Bundle release `N` stable releases before the most recent one, or
       - A special value `linked` which uses the version of the CodeQL tools
         that the Action has been bundled with.
       - A special value `nightly` which uses the latest nightly version of the

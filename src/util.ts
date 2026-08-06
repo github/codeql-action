@@ -39,6 +39,11 @@ const BROKEN_VERSIONS = ["0.0.0-20211207"];
 export const GITHUB_DOTCOM_URL = "https://github.com";
 
 /**
+ * The API URL for github.com.
+ */
+export const GITHUB_DOTCOM_API_URL = "https://api.github.com";
+
+/**
  * Default name of the debugging artifact.
  */
 export const DEFAULT_DEBUG_ARTIFACT_NAME = "debug-artifacts";

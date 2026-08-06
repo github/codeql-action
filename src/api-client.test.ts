@@ -46,6 +46,30 @@ test.serial("getApiClient", async (t) => {
   );
 });
 
+test.serial("getUnauthenticatedApiClientForDotcom", async (t) => {
+  const pluginStub: sinon.SinonStub = sinon.stub(githubUtils.GitHub, "plugin");
+  const githubStub: sinon.SinonStub = sinon.stub();
+  pluginStub.returns(githubStub);
+
+  const apiClient = api.getUnauthenticatedApiClientForDotcom();
+  t.truthy(apiClient);
+
+  t.true(githubStub.calledOnce);
+  // No `auth` should be set: this client must be unauthenticated, and it must always target
+  // GitHub.com's API, regardless of which GitHub instance the Action itself is running on.
+  t.assert(
+    githubStub.calledOnceWithExactly({
+      baseUrl: "https://api.github.com",
+      log: sinon.match.any,
+      userAgent: `CodeQL-Action/${actionsUtil.getActionVersion()}`,
+      request: sinon.match.any,
+      retry: {
+        doNotRetry: DO_NOT_RETRY_STATUSES,
+      },
+    }),
+  );
+});
+
 function mockGetMetaVersionHeader(
   versionHeader: string | undefined,
 ): sinon.SinonStub<any, any> {

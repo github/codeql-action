@@ -134,11 +134,6 @@ export enum Feature {
   OverlayAnalysisMinDisk12Gb = "overlay_analysis_min_disk_12_gb",
   OverlayAnalysisMinDisk13Gb = "overlay_analysis_min_disk_13_gb",
   OverlayAnalysisPython = "overlay_analysis_python",
-  /**
-   * Controls whether lower disk space requirements are used for overlay hardware checks.
-   * Has no effect if `OverlayAnalysisSkipResourceChecks` is enabled.
-   */
-  OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   /** Controls whether hardware checks are skipped for overlay analysis. */
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
@@ -394,11 +389,6 @@ export const featureConfig = {
   [Feature.OverlayAnalysisMinDisk13Gb]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_13_GB",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisResourceChecksV2]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RESOURCE_CHECKS_V2",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisStatusCheck]: {

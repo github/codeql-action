@@ -121,6 +121,18 @@ export enum Feature {
    * `OverlayAnalysisMatchCodeqlVersion` overrides this flag.
    */
   OverlayAnalysisMatchCodeqlVersionDryRun = "overlay_analysis_match_codeql_version_dry_run",
+  /**
+   * Feature flags that lower the amount of available disk space that the overlay hardware check
+   * requires. The lowest threshold that is enabled takes effect; if none are enabled, the default
+   * threshold applies. These flags have no effect if `OverlayAnalysisSkipResourceChecks` is
+   * enabled.
+   */
+  OverlayAnalysisMinDisk8Gb = "overlay_analysis_min_disk_8_gb",
+  OverlayAnalysisMinDisk9Gb = "overlay_analysis_min_disk_9_gb",
+  OverlayAnalysisMinDisk10Gb = "overlay_analysis_min_disk_10_gb",
+  OverlayAnalysisMinDisk11Gb = "overlay_analysis_min_disk_11_gb",
+  OverlayAnalysisMinDisk12Gb = "overlay_analysis_min_disk_12_gb",
+  OverlayAnalysisMinDisk13Gb = "overlay_analysis_min_disk_13_gb",
   OverlayAnalysisPython = "overlay_analysis_python",
   /**
    * Controls whether lower disk space requirements are used for overlay hardware checks.
@@ -352,6 +364,36 @@ export const featureConfig = {
   [Feature.OverlayAnalysisMatchCodeqlVersionDryRun]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION_DRY_RUN",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk8Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_8_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk9Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_9_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk10Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_10_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk11Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_11_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk12Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_12_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk13Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_13_GB",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisResourceChecksV2]: {

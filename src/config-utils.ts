@@ -664,7 +664,7 @@ async function runnerHasSufficientMemory(
   }
 
   logger.debug(
-    `Memory available for CodeQL analysis is ${memoryFlagValue} MB, which is above the minimum of ${OVERLAY_MINIMUM_MEMORY_MB} MB.`,
+    `Memory available for CodeQL analysis is ${memoryFlagValue} MB, which is at or above the minimum of ${OVERLAY_MINIMUM_MEMORY_MB} MB.`,
   );
   return true;
 }

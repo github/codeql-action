@@ -630,8 +630,8 @@ function runnerHasSufficientDiskSpace(
   }
 
   logger.debug(
-    `Disk space available for CodeQL analysis is ${diskSpaceMb} MB, which is above the minimum ` +
-      `of ${minimumDiskSpaceMb} MB.`,
+    `Disk space available for CodeQL analysis is ${diskSpaceMb} MB, which is at or above the ` +
+      `minimum of ${minimumDiskSpaceMb} MB.`,
   );
   return true;
 }

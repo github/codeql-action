@@ -1295,33 +1295,12 @@ checkOverlayEnablementMacro.serial(
 );
 
 checkOverlayEnablementMacro.serial(
-  "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
+  "Overlay-base database on default branch if runner disk space is above the default limit",
   {
     languages: [BuiltInLanguage.javascript],
     features: [
       Feature.OverlayAnalysis,
       Feature.OverlayAnalysisCodeScanningJavascript,
-      Feature.OverlayAnalysisResourceChecksV2,
-    ],
-    isDefaultBranch: true,
-    diskUsage: {
-      numAvailableBytes: 5_000_000_000,
-      numTotalBytes: 100_000_000_000,
-    },
-  },
-  {
-    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
-  },
-);
-
-checkOverlayEnablementMacro.serial(
-  "Overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks enabled",
-  {
-    languages: [BuiltInLanguage.javascript],
-    features: [
-      Feature.OverlayAnalysis,
-      Feature.OverlayAnalysisCodeScanningJavascript,
-      Feature.OverlayAnalysisResourceChecksV2,
     ],
     isDefaultBranch: true,
     diskUsage: {
@@ -1336,7 +1315,7 @@ checkOverlayEnablementMacro.serial(
 );
 
 checkOverlayEnablementMacro.serial(
-  "No overlay-base database on default branch if runner disk space is between v2 and v1 limits and v2 resource checks not enabled",
+  "No overlay-base database on default branch if runner disk space is below the default limit",
   {
     languages: [BuiltInLanguage.javascript],
     features: [
@@ -1345,7 +1324,71 @@ checkOverlayEnablementMacro.serial(
     ],
     isDefaultBranch: true,
     diskUsage: {
-      numAvailableBytes: 15_000_000_000,
+      numAvailableBytes: 10_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
+  },
+);
+
+checkOverlayEnablementMacro.serial(
+  "Overlay-base database on default branch if runner disk space is above the limit lowered by a feature flag",
+  {
+    languages: [BuiltInLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisMinDisk10Gb,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 11_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+checkOverlayEnablementMacro.serial(
+  "Overlay-base database on default branch if runner disk space is exactly at the lowest limit enabled by a feature flag",
+  {
+    languages: [BuiltInLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisMinDisk9Gb,
+      Feature.OverlayAnalysisMinDisk12Gb,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 9_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+checkOverlayEnablementMacro.serial(
+  "No overlay-base database on default branch if runner disk space is below the lowest limit enabled by a feature flag",
+  {
+    languages: [BuiltInLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+      Feature.OverlayAnalysisMinDisk9Gb,
+      Feature.OverlayAnalysisMinDisk12Gb,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 8_500_000_000,
       numTotalBytes: 100_000_000_000,
     },
   },

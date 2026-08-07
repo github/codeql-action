@@ -10,7 +10,7 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { getTestEnv, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -535,55 +535,83 @@ test("Failure.orElse returns the default value for a failure result", (t) => {
 
 test.serial(
   "getCachedCodeQlVersion reuses a version persisted by an earlier step",
-  (t) => {
-    process.env[EnvVar.CODEQL_VERSION_INFO] = JSON.stringify({
-      cmd: "/path/to/codeql",
-      version: { version: "2.20.0" },
-    });
-    t.deepEqual(util.getCachedCodeQlVersion("/path/to/codeql"), {
-      version: "2.20.0",
+  async (t) => {
+    await util.withTmpDir(async (tmpDir: string) => {
+      const cacheFile = path.join(tmpDir, "version.json");
+      fs.writeFileSync(
+        cacheFile,
+        JSON.stringify({
+          cmd: "/path/to/codeql",
+          version: { version: "2.20.0" },
+        }),
+        "utf8",
+      );
+      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
+      t.deepEqual(util.getCachedCodeQlVersion("/path/to/codeql", env), {
+        version: "2.20.0",
+      });
     });
   },
 );
 
 test.serial(
   "getCachedCodeQlVersion ignores a persisted version from a different CLI",
-  (t) => {
-    process.env[EnvVar.CODEQL_VERSION_INFO] = JSON.stringify({
-      cmd: "/path/to/other-codeql",
-      version: { version: "2.20.0" },
+  async (t) => {
+    await util.withTmpDir(async (tmpDir: string) => {
+      const cacheFile = path.join(tmpDir, "version.json");
+      fs.writeFileSync(
+        cacheFile,
+        JSON.stringify({
+          cmd: "/path/to/other-codeql",
+          version: { version: "2.20.0" },
+        }),
+        "utf8",
+      );
+      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
+      t.is(util.getCachedCodeQlVersion("/path/to/codeql", env), undefined);
     });
-    t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined);
   },
 );
 
 test.serial(
   "getCachedCodeQlVersion ignores a malformed persisted value",
-  (t) => {
-    process.env[EnvVar.CODEQL_VERSION_INFO] = "not valid json";
-    t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined);
+  async (t) => {
+    await util.withTmpDir(async (tmpDir: string) => {
+      const cacheFile = path.join(tmpDir, "version.json");
+      fs.writeFileSync(cacheFile, "not valid json", "utf8");
+      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
+      t.is(util.getCachedCodeQlVersion("/path/to/codeql", env), undefined);
+    });
   },
 );
 
 test.serial(
   "getCachedCodeQlVersion ignores a persisted value with the wrong structure",
-  (t) => {
-    for (const value of [
-      JSON.stringify({ cmd: "/path/to/codeql" }),
-      JSON.stringify({ cmd: "/path/to/codeql", version: {} }),
-      JSON.stringify({ cmd: "/path/to/codeql", version: { version: 2 } }),
-      JSON.stringify({ version: { version: "2.20.0" } }),
-      JSON.stringify({
-        cmd: "/path/to/codeql",
-        version: { version: "2.20.0", overlayVersion: "1" },
-      }),
-      JSON.stringify({
-        cmd: "/path/to/codeql",
-        version: { version: "2.20.0", features: "nope" },
-      }),
-    ]) {
-      process.env[EnvVar.CODEQL_VERSION_INFO] = value;
-      t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined, value);
-    }
+  async (t) => {
+    await util.withTmpDir(async (tmpDir: string) => {
+      const cacheFile = path.join(tmpDir, "version.json");
+      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
+      for (const value of [
+        JSON.stringify({ cmd: "/path/to/codeql" }),
+        JSON.stringify({ cmd: "/path/to/codeql", version: {} }),
+        JSON.stringify({ cmd: "/path/to/codeql", version: { version: 2 } }),
+        JSON.stringify({ version: { version: "2.20.0" } }),
+        JSON.stringify({
+          cmd: "/path/to/codeql",
+          version: { version: "2.20.0", overlayVersion: "1" },
+        }),
+        JSON.stringify({
+          cmd: "/path/to/codeql",
+          version: { version: "2.20.0", features: "nope" },
+        }),
+      ]) {
+        fs.writeFileSync(cacheFile, value, "utf8");
+        t.is(
+          util.getCachedCodeQlVersion("/path/to/codeql", env),
+          undefined,
+          value,
+        );
+      }
+    });
   },
 );

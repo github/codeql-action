@@ -689,10 +689,12 @@ export function getCachedCodeQlVersion(
   // Fall back to the value persisted by an earlier Actions step, if any. This is
   // best-effort: any malformed or mismatched value is ignored so that the caller
   // invokes `codeql version` instead.
-  const serialized = fs.readFileSync(
-    getPathToCodeQLVersionCacheFile(env),
-    "utf8",
-  );
+  let serialized: string;
+  try {
+    serialized = fs.readFileSync(getPathToCodeQLVersionCacheFile(env), "utf8");
+  } catch {
+    return undefined;
+  }
   let persisted: unknown;
   try {
     persisted = JSON.parse(serialized);

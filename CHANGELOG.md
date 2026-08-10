@@ -6,6 +6,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - The CodeQL Action now supports CodeQL releases that are compatible with Linux Arm64 and download the native `linux-arm64` CodeQL bundle when available. [#4072](https://github.com/github/codeql-action/pull/4072)
 
+## 4.37.6 - 04 Aug 2026
+
+- Changed the default filepath for the new remote file address format that was introduced in CodeQL Action 4.37.0 / 3.37.0 to `.github/codeql-config.yml` to align it with the suggested path that is used elsewhere. [#4070](https://github.com/github/codeql-action/pull/4070)
+
 ## 4.37.5 - 03 Aug 2026
 
 - Fixed a bug where a network error while streaming the download of the CodeQL bundle could terminate the `init` Action instead of falling back to downloading the bundle before extracting it. [#4061](https://github.com/github/codeql-action/pull/4061)

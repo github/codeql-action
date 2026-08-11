@@ -122,11 +122,6 @@ export enum Feature {
    */
   OverlayAnalysisMatchCodeqlVersionDryRun = "overlay_analysis_match_codeql_version_dry_run",
   OverlayAnalysisPython = "overlay_analysis_python",
-  /**
-   * Controls whether lower disk space requirements are used for overlay hardware checks.
-   * Has no effect if `OverlayAnalysisSkipResourceChecks` is enabled.
-   */
-  OverlayAnalysisResourceChecksV2 = "overlay_analysis_resource_checks_v2",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   /** Controls whether hardware checks are skipped for overlay analysis. */
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
@@ -352,11 +347,6 @@ export const featureConfig = {
   [Feature.OverlayAnalysisMatchCodeqlVersionDryRun]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION_DRY_RUN",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisResourceChecksV2]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_RESOURCE_CHECKS_V2",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisStatusCheck]: {

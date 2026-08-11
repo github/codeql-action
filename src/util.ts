@@ -10,7 +10,8 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { CodeQL, VersionInfo } from "./codeql";
+import type { VersionInfo } from "./cli/types";
+import type { CodeQL } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
 import { EnvVar, getRequiredEnvParam } from "./environment";

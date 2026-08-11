@@ -1295,7 +1295,7 @@ checkOverlayEnablementMacro.serial(
 );
 
 checkOverlayEnablementMacro.serial(
-  "No overlay-base database on default branch if runner disk space is below v2 limit and v2 resource checks enabled",
+  "No overlay-base database on default branch if runner disk space is below minimum",
   {
     languages: [BuiltInLanguage.javascript],
     features: [

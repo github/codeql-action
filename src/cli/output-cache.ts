@@ -6,10 +6,24 @@ import { Env, getEnv } from "../environment";
 
 import type { VersionInfo } from "./types";
 
+/**
+ * The keys of the command cache. Each key corresponds to a command whose output we cache.
+ */
+enum CommandCacheKey {
+  Version = "version",
+}
+
+/**
+ * The mapping of CLI commands to the types of the output of each command that we cache.
+ */
+type CommandCacheKeyOutputMap = {
+  [CommandCacheKey.Version]: VersionInfo;
+};
+
 /** The persisted version together with the CLI path it was obtained from. */
-interface PersistedVersionInfo {
+interface PersistedVersionInfo<K extends CommandCacheKey> {
   cmd: string;
-  version: VersionInfo;
+  entries: Map<K, CommandCacheKeyOutputMap[K]>;
 }
 
 /**
@@ -60,7 +74,7 @@ export function cacheCodeQlVersion(
   // doesn't pick up a stale version.
   fs.writeFileSync(
     getCommandCacheFilePath(env),
-    JSON.stringify({ cmd, version }),
+    JSON.stringify({ cmd, entries: { [CommandCacheKey.Version]: version } }),
     "utf8",
   );
 }
@@ -100,7 +114,7 @@ export function getCachedCodeQlVersion(
   }
   // Memoize the parsed value so that subsequent calls in this process don't
   // re-parse the environment variable.
-  cachedCodeQlVersion = persisted.version;
+  cachedCodeQlVersion = persisted.entries[CommandCacheKey.Version];
   return cachedCodeQlVersion;
 }
 
@@ -126,12 +140,17 @@ function isVersionInfo(x: unknown): x is VersionInfo {
  * Determines whether a value is a `PersistedVersionInfo` object.
  * @param x The value to test
  */
-function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
-  const candidate = x as Partial<PersistedVersionInfo> | null;
+function isPersistedVersionInfo(
+  x: unknown,
+): x is PersistedVersionInfo<CommandCacheKey.Version> {
+  const candidate = x as Partial<
+    PersistedVersionInfo<CommandCacheKey.Version>
+  > | null;
   return (
     typeof candidate === "object" &&
     candidate !== null &&
     typeof candidate.cmd === "string" &&
-    isVersionInfo(candidate.version)
+    candidate.entries !== undefined &&
+    isVersionInfo(candidate.entries[CommandCacheKey.Version])
   );
 }

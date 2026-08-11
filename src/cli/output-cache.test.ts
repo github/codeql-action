@@ -20,7 +20,7 @@ test.serial(
         cacheFile,
         JSON.stringify({
           cmd: "/path/to/codeql",
-          version: { version: "2.20.0" },
+          entries: { version: { version: "2.20.0" } },
         }),
         "utf8",
       );

@@ -20,8 +20,10 @@ type CommandCacheKeyOutputMap = {
   [CommandCacheKey.Version]: VersionInfo;
 };
 
-/** The persisted version together with the CLI path it was obtained from. */
-interface PersistedVersionInfo<K extends CommandCacheKey> {
+/**
+ * The type of the command cache that is persisted to disk.
+ */
+interface CommandCacheRecord<K extends CommandCacheKey> {
   cmd: string;
   entries: Map<K, CommandCacheKeyOutputMap[K]>;
 }
@@ -107,7 +109,7 @@ export function getCachedCodeQlVersion(
     return undefined;
   }
   if (
-    !isPersistedVersionInfo(persisted) ||
+    !isCommandCacheRecord(persisted) ||
     (cmd !== undefined && persisted.cmd !== cmd)
   ) {
     return undefined;
@@ -137,14 +139,14 @@ function isVersionInfo(x: unknown): x is VersionInfo {
 }
 
 /**
- * Determines whether a value is a `PersistedVersionInfo` object.
+ * Determines whether a value is a `CommandCacheRecord` object.
  * @param x The value to test
  */
-function isPersistedVersionInfo(
+function isCommandCacheRecord(
   x: unknown,
-): x is PersistedVersionInfo<CommandCacheKey.Version> {
+): x is CommandCacheRecord<CommandCacheKey.Version> {
   const candidate = x as Partial<
-    PersistedVersionInfo<CommandCacheKey.Version>
+    CommandCacheRecord<CommandCacheKey.Version>
   > | null;
   return (
     typeof candidate === "object" &&

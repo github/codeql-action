@@ -18,6 +18,7 @@ import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { CachingKind } from "./caching-utils";
+import { resetCachedCodeQlVersion } from "./cli/output-cache";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
@@ -39,7 +40,6 @@ import {
   GitHubVariant,
   GitHubVersion,
   HTTPError,
-  resetCachedCodeQlVersion,
   Result,
   Success,
 } from "./util";

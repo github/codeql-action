@@ -591,20 +591,23 @@ test.serial(
     await util.withTmpDir(async (tmpDir: string) => {
       const cacheFile = path.join(tmpDir, "version.json");
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-      for (const value of [
-        JSON.stringify({ cmd: "/path/to/codeql" }),
-        JSON.stringify({ cmd: "/path/to/codeql", version: {} }),
-        JSON.stringify({ cmd: "/path/to/codeql", version: { version: 2 } }),
-        JSON.stringify({ version: { version: "2.20.0" } }),
-        JSON.stringify({
+
+      const testValues = [
+        { cmd: "/path/to/codeql" },
+        { cmd: "/path/to/codeql", version: {} },
+        { cmd: "/path/to/codeql", version: { version: 2 } },
+        { version: { version: "2.20.0" } },
+        {
           cmd: "/path/to/codeql",
           version: { version: "2.20.0", overlayVersion: "1" },
-        }),
-        JSON.stringify({
+        },
+        {
           cmd: "/path/to/codeql",
           version: { version: "2.20.0", features: "nope" },
-        }),
-      ]) {
+        },
+      ].map((v) => JSON.stringify(v));
+
+      for (const value of testValues) {
         fs.writeFileSync(cacheFile, value, "utf8");
         t.is(
           util.getCachedCodeQlVersion("/path/to/codeql", env),

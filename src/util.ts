@@ -10,7 +10,6 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { VersionInfo } from "./cli/types";
 import type { CodeQL } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
@@ -597,36 +596,6 @@ export function asHTTPError(arg: any): HTTPError | undefined {
     return new HTTPError(arg.message, arg.httpStatusCode as number);
   }
   return undefined;
-}
-
-/** The persisted version together with the CLI path it was obtained from. */
-interface PersistedVersionInfo {
-  cmd: string;
-  version: VersionInfo;
-}
-
-function isVersionInfo(x: unknown): x is VersionInfo {
-  const candidate = x as Partial<VersionInfo> | null;
-  return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.version === "string" &&
-    (candidate.features === undefined ||
-      (typeof candidate.features === "object" &&
-        candidate.features !== null)) &&
-    (candidate.overlayVersion === undefined ||
-      typeof candidate.overlayVersion === "number")
-  );
-}
-
-export function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
-  const candidate = x as Partial<PersistedVersionInfo> | null;
-  return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.cmd === "string" &&
-    isVersionInfo(candidate.version)
-  );
 }
 
 export async function codeQlVersionAtLeast(

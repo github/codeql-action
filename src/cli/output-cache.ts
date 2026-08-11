@@ -66,8 +66,7 @@ export function cacheCodeQlVersion(
 }
 
 /**
- * Returns the cached CodeQL CLI version, if any. If not cached,
- * attempts to read and parse it from disk.
+ * Returns the cached CodeQL CLI version, if any.
  * @param cmd The path to the CodeQL CLI.
  * @param env The environment variables to use.
  */

@@ -12,6 +12,7 @@ import {
   runTool,
 } from "./actions-util";
 import * as api from "./api-client";
+import * as outputCache from "./cli/output-cache";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
@@ -502,7 +503,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = util.getCachedCodeQlVersion(cmd);
+      let result = outputCache.getCachedCodeQlVersion(cmd);
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
           cmd,
@@ -511,7 +512,7 @@ async function getCodeQLForCmd(
             noStreamStdout: true,
           },
         );
-        util.cacheCodeQlVersion(cmd, result);
+        outputCache.cacheCodeQlVersion(cmd, result);
       }
       return result;
     },

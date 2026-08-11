@@ -9,12 +9,11 @@ import getFolderSize from "get-folder-size";
 import * as yaml from "js-yaml";
 import * as semver from "semver";
 
-import { getTemporaryDirectory } from "./actions-util";
 import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL, VersionInfo } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
-import { Env, EnvVar, getEnv, getRequiredEnvParam } from "./environment";
+import { EnvVar, getRequiredEnvParam } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
@@ -599,16 +598,6 @@ export function asHTTPError(arg: any): HTTPError | undefined {
   return undefined;
 }
 
-let cachedCodeQlVersion: undefined | VersionInfo = undefined;
-
-/**
- * Resets the in-process cache of the CodeQL CLI version. Only for use in tests,
- * which exercise multiple "steps" within a single process.
- */
-export function resetCachedCodeQlVersion(): void {
-  cachedCodeQlVersion = undefined;
-}
-
 /** The persisted version together with the CLI path it was obtained from. */
 interface PersistedVersionInfo {
   cmd: string;
@@ -629,7 +618,7 @@ function isVersionInfo(x: unknown): x is VersionInfo {
   );
 }
 
-function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
+export function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
   const candidate = x as Partial<PersistedVersionInfo> | null;
   return (
     typeof candidate === "object" &&
@@ -637,79 +626,6 @@ function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
     typeof candidate.cmd === "string" &&
     isVersionInfo(candidate.version)
   );
-}
-
-/**
- * Returns the file path to the `codeql version` output cache.
- * @param env The environment variables to use.
- */
-function getPathToCodeQLVersionCacheFile(env: Env): string {
-  return path.join(getTemporaryDirectory(env), "version.json");
-}
-
-/**
- * Caches the CodeQL CLI version both in-memory and on disk.
- * @param cmd The path to the CodeQL CLI.
- * @param version The version information to cache.
- * @param env The environment variables to use.
- */
-export function cacheCodeQlVersion(
-  cmd: string,
-  version: VersionInfo,
-  env: Env = getEnv(),
-): void {
-  if (cachedCodeQlVersion !== undefined) {
-    throw new Error("cacheCodeQlVersion() should be called only once");
-  }
-  cachedCodeQlVersion = version;
-  // Persist the version so that subsequent Actions steps, which run in separate
-  // processes, can reuse it rather than invoking `codeql version` again. We
-  // record the CLI path so that a different step using a different CodeQL bundle
-  // doesn't pick up a stale version.
-  fs.writeFileSync(
-    getPathToCodeQLVersionCacheFile(env),
-    JSON.stringify({ cmd, version }),
-    "utf8",
-  );
-}
-
-/**
- * Returns the cached CodeQL CLI version, if any.
- * @param cmd The path to the CodeQL CLI.
- * @param env The environment variables to use.
- */
-export function getCachedCodeQlVersion(
-  cmd?: string,
-  env: Env = getEnv(),
-): undefined | VersionInfo {
-  if (cachedCodeQlVersion !== undefined) {
-    return cachedCodeQlVersion;
-  }
-  // Fall back to the value persisted by an earlier Actions step, if any. This is
-  // best-effort: any malformed or mismatched value is ignored so that the caller
-  // invokes `codeql version` instead.
-  let serialized: string;
-  try {
-    serialized = fs.readFileSync(getPathToCodeQLVersionCacheFile(env), "utf8");
-  } catch {
-    return undefined;
-  }
-  let persisted: unknown;
-  try {
-    persisted = JSON.parse(serialized);
-  } catch {
-    return undefined;
-  }
-  if (
-    !isPersistedVersionInfo(persisted) ||
-    (cmd !== undefined && persisted.cmd !== cmd)
-  ) {
-    return undefined;
-  }
-  // Memoize the parsed value so that subsequent calls in this process don't
-  // re-parse the environment variable.
-  cachedCodeQlVersion = persisted.version;
-  return cachedCodeQlVersion;
 }
 
 export async function codeQlVersionAtLeast(

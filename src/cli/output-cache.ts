@@ -2,9 +2,10 @@ import * as fs from "fs";
 import path from "path";
 
 import { getTemporaryDirectory } from "../actions-util";
-import { VersionInfo } from "../codeql";
 import { Env, getEnv } from "../environment";
 import { isPersistedVersionInfo } from "../util";
+
+import type { VersionInfo } from "./types";
 
 /**
  * The name of the temporary file that backs the on-disk cache of

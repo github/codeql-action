@@ -641,7 +641,7 @@ function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
 
 /**
  * Returns the file path to the `codeql version` output cache.
- * @param env The environment variables to use—only necessary for testing.
+ * @param env The environment variables to use.
  */
 function getPathToCodeQLVersionCacheFile(env: Env): string {
   return path.join(getTemporaryDirectory(env), "version.json");
@@ -651,7 +651,7 @@ function getPathToCodeQLVersionCacheFile(env: Env): string {
  * Caches the CodeQL CLI version both in-memory and on disk.
  * @param cmd The path to the CodeQL CLI.
  * @param version The version information to cache.
- * @param env The environment variables to use—only necessary for testing.
+ * @param env The environment variables to use.
  */
 export function cacheCodeQlVersion(
   cmd: string,
@@ -676,7 +676,7 @@ export function cacheCodeQlVersion(
 /**
  * Returns the cached CodeQL CLI version, if any.
  * @param cmd The path to the CodeQL CLI.
- * @param env The environment variables to use—only necessary for testing.
+ * @param env The environment variables to use.
  */
 export function getCachedCodeQlVersion(
   cmd?: string,

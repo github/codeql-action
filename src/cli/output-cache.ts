@@ -25,7 +25,9 @@ export type CommandCacheKeyOutputMap = {
  */
 export interface OutputCache<K extends CommandCacheKey> {
   cmd: string;
-  entries: Map<K, CommandCacheKeyOutputMap[K]>;
+  entries: {
+    [P in K]: CommandCacheKeyOutputMap[K];
+  };
 }
 
 /**
@@ -70,13 +72,17 @@ export function cacheCodeQlVersion(
     throw new Error("cacheCodeQlVersion() should be called only once");
   }
   cachedCodeQlVersion = version;
+  const outputCache = {
+    cmd,
+    entries: { [CommandCacheKey.Version]: version },
+  } satisfies OutputCache<CommandCacheKey.Version>;
   // Persist the version so that subsequent Actions steps, which run in separate
   // processes, can reuse it rather than invoking `codeql version` again. We
   // record the CLI path so that a different step using a different CodeQL bundle
   // doesn't pick up a stale version.
   fs.writeFileSync(
     getCommandCacheFilePath(env),
-    JSON.stringify({ cmd, entries: { [CommandCacheKey.Version]: version } }),
+    JSON.stringify(outputCache),
     "utf8",
   );
 }

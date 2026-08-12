@@ -123,6 +123,7 @@ async function prepareFailedSarif(
     const category = `/language:${language}`;
     const checkoutPath = ".";
     const result = await generateFailedSarif(
+      logger,
       features,
       config,
       category,
@@ -146,6 +147,7 @@ async function prepareFailedSarif(
     const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
 
     const result = await generateFailedSarif(
+      logger,
       features,
       config,
       category,
@@ -156,6 +158,7 @@ async function prepareFailedSarif(
 }
 
 async function generateFailedSarif(
+  logger: Logger,
   features: FeatureEnablement,
   config: Config,
   category: string | undefined,
@@ -163,7 +166,7 @@ async function generateFailedSarif(
   sarifFile?: string,
 ) {
   const databasePath = config.dbLocation;
-  const codeql = await getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(logger, config.codeQLCmd);
 
   // Set the filename for the SARIF file if not already set.
   if (sarifFile === undefined) {

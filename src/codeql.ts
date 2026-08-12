@@ -23,7 +23,7 @@ import {
 } from "./feature-flags";
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
-import { Logger } from "./logging";
+import { getRunnerLogger, Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as setupCodeql from "./setup-codeql";
@@ -346,7 +346,7 @@ export async function setupCodeQL(
       );
     }
 
-    cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
+    cachedCodeQL = await getCodeQLForCmd(logger, codeqlCmd, checkVersion);
     return {
       codeql: cachedCodeQL,
       toolsDownloadStatusReport,
@@ -372,9 +372,9 @@ export async function setupCodeQL(
 /**
  * Use the CodeQL executable located at the given path.
  */
-export async function getCodeQL(cmd: string): Promise<CodeQL> {
+export async function getCodeQL(logger: Logger, cmd: string): Promise<CodeQL> {
   if (cachedCodeQL === undefined) {
-    cachedCodeQL = await getCodeQLForCmd(cmd, true);
+    cachedCodeQL = await getCodeQLForCmd(logger, cmd, true);
   }
   return cachedCodeQL;
 }
@@ -481,8 +481,9 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
  */
 export async function getCodeQLForTesting(
   cmd = "codeql-for-testing",
+  logger: Logger = getRunnerLogger(true),
 ): Promise<CodeQL> {
-  return getCodeQLForCmd(cmd, false);
+  return getCodeQLForCmd(logger, cmd, false);
 }
 
 /**
@@ -494,6 +495,7 @@ export async function getCodeQLForTesting(
  * @returns A new CodeQL object
  */
 async function getCodeQLForCmd(
+  logger: Logger,
   cmd: string,
   checkVersion: boolean,
 ): Promise<CodeQL> {
@@ -539,7 +541,6 @@ async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
-      logger: Logger,
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`,

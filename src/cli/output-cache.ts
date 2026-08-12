@@ -23,7 +23,7 @@ export type CommandCacheKeyOutputMap = {
 /**
  * The type of the command cache that is persisted to disk.
  */
-export interface CommandCacheRecord<K extends CommandCacheKey> {
+export interface OutputCache<K extends CommandCacheKey> {
   cmd: string;
   entries: Map<K, CommandCacheKeyOutputMap[K]>;
 }
@@ -109,7 +109,7 @@ export function getCachedCodeQlVersion(
     return undefined;
   }
   if (
-    !isCommandCacheRecord(persisted) ||
+    !isOutputCache(persisted) ||
     (cmd !== undefined && persisted.cmd !== cmd)
   ) {
     return undefined;
@@ -139,15 +139,11 @@ function isVersionInfo(x: unknown): x is VersionInfo {
 }
 
 /**
- * Determines whether a value is a `CommandCacheRecord` object.
+ * Determines whether a value is a `OutputCache` object.
  * @param x The value to test
  */
-function isCommandCacheRecord(
-  x: unknown,
-): x is CommandCacheRecord<CommandCacheKey.Version> {
-  const candidate = x as Partial<
-    CommandCacheRecord<CommandCacheKey.Version>
-  > | null;
+function isOutputCache(x: unknown): x is OutputCache<CommandCacheKey.Version> {
+  const candidate = x as Partial<OutputCache<CommandCacheKey.Version>> | null;
   return (
     typeof candidate === "object" &&
     candidate !== null &&

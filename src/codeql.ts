@@ -91,7 +91,6 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
-    logger: Logger,
   ): Promise<void>;
   /**
    * Runs the autobuilder for the given language.

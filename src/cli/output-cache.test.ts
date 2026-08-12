@@ -78,16 +78,21 @@ test.serial(
 
       const testValues = [
         { cmd: "/path/to/codeql" },
-        { cmd: "/path/to/codeql", version: {} },
-        { cmd: "/path/to/codeql", version: { version: 2 } },
-        { version: { version: "2.20.0" } },
+        { entries: { version: { version: "2.20.0" } } },
+        { cmd: "/path/to/codeql", entries: {} },
+        { cmd: "/path/to/codeql", entries: { version: {} } },
+        { cmd: "/path/to/codeql", entries: { version: null } },
+        { cmd: "/path/to/codeql", entries: { version: "2.20.0" } },
+        { cmd: "/path/to/codeql", entries: { version: { version: null } } },
+        { cmd: "/path/to/codeql", entries: { version: { version: 2.2 } } },
+        { cmd: "/path/to/codeql", entries: { version: { version: 2 } } },
         {
           cmd: "/path/to/codeql",
-          version: { version: "2.20.0", overlayVersion: "1" },
+          entries: { version: { version: "2.20.0", overlayVersion: "1" } },
         },
         {
           cmd: "/path/to/codeql",
-          version: { version: "2.20.0", features: "nope" },
+          entries: { version: { version: "2.20.0", features: "nope" } },
         },
       ].map((v) => JSON.stringify(v));
 

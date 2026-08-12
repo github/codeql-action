@@ -9,21 +9,21 @@ import type { VersionInfo } from "./types";
 /**
  * The keys of the command cache. Each key corresponds to a command whose output we cache.
  */
-enum CommandCacheKey {
+export enum CommandCacheKey {
   Version = "version",
 }
 
 /**
  * The mapping of CLI commands to the types of the output of each command that we cache.
  */
-type CommandCacheKeyOutputMap = {
+export type CommandCacheKeyOutputMap = {
   [CommandCacheKey.Version]: VersionInfo;
 };
 
 /**
  * The type of the command cache that is persisted to disk.
  */
-interface CommandCacheRecord<K extends CommandCacheKey> {
+export interface CommandCacheRecord<K extends CommandCacheKey> {
   cmd: string;
   entries: Map<K, CommandCacheKeyOutputMap[K]>;
 }

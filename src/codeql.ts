@@ -17,7 +17,7 @@ import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -490,7 +490,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = outputCache.getCachedCodeQlVersion(cmd);
+      let result = outputCache.getCachedCodeQlVersion(getEnv(), cmd);
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
           cmd,
@@ -499,7 +499,7 @@ async function getCodeQLForCmd(
             noStreamStdout: true,
           },
         );
-        outputCache.cacheCodeQlVersion(cmd, result);
+        outputCache.cacheCodeQlVersion(cmd, result, getEnv());
       }
       return result;
     },

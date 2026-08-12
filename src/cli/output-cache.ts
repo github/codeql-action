@@ -2,7 +2,7 @@ import * as fs from "fs";
 import path from "path";
 
 import { getTemporaryDirectory } from "../actions-util";
-import { Env, getEnv } from "../environment";
+import { Env } from "../environment";
 
 import type { VersionInfo } from "./types";
 
@@ -64,7 +64,7 @@ function getCommandCacheFilePath(env: Env): string {
 export function cacheCodeQlVersion(
   cmd: string,
   version: VersionInfo,
-  env: Env = getEnv(),
+  env: Env,
 ): void {
   if (cachedCodeQlVersion !== undefined) {
     throw new Error("cacheCodeQlVersion() should be called only once");
@@ -83,12 +83,12 @@ export function cacheCodeQlVersion(
 
 /**
  * Returns the cached CodeQL CLI version, if any.
- * @param cmd The path to the CodeQL CLI.
  * @param env The environment variables to use.
+ * @param cmd The path to the CodeQL CLI.
  */
 export function getCachedCodeQlVersion(
+  env: Env,
   cmd?: string,
-  env: Env = getEnv(),
 ): undefined | VersionInfo {
   if (cachedCodeQlVersion !== undefined) {
     return cachedCodeQlVersion;

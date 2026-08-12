@@ -106,6 +106,11 @@ test.serial(
 test.serial("getCachedCodeQlVersion ignores non-existent file", async (t) => {
   await util.withTmpDir(async (tmpDir: string) => {
     const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-    t.is(outputCache.getCachedCodeQlVersion(env, "/path/to/codeql"), undefined);
+    t.notThrows(() => {
+      t.is(
+        outputCache.getCachedCodeQlVersion(env, "/path/to/codeql"),
+        undefined,
+      );
+    });
   });
 });

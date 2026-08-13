@@ -56,3 +56,4 @@ outputs:
 runs:
   using: node24
   main: '../lib/setup-codeql-entry.js'
+. 

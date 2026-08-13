@@ -80,6 +80,7 @@ test.serial(
         { cmd: "/path/to/codeql" },
         { entries: { version: { version: "2.20.0" } } },
         { cmd: "/path/to/codeql", entries: {} },
+        { cmd: "/path/to/codeql", entries: null },
         { cmd: "/path/to/codeql", entries: { version: {} } },
         { cmd: "/path/to/codeql", entries: { version: null } },
         { cmd: "/path/to/codeql", entries: { version: "2.20.0" } },

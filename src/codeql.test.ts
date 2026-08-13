@@ -580,7 +580,6 @@ const injectedConfigMacro = makeMacro({
         "",
         undefined,
         undefined,
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as string[];
@@ -856,7 +855,6 @@ test.serial(
         "",
         undefined,
         "/path/to/qlconfig.yml",
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as string[];
@@ -887,7 +885,6 @@ test.serial(
         "",
         undefined,
         undefined, // undefined qlconfigFile
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as any[];
@@ -1066,7 +1063,6 @@ test.serial(
       "sourceRoot",
       undefined,
       undefined,
-      getRunnerLogger(false),
     );
 
     t.true(runnerConstructorStub.calledOnce);

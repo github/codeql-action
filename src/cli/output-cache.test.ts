@@ -4,12 +4,15 @@ import path from "path";
 import test from "ava";
 
 import { EnvVar } from "../environment";
+import { getRunnerLogger } from "../logging";
 import { getTestEnv, setupTests } from "../testing-utils";
 import * as util from "../util";
 
 import * as outputCache from "./output-cache";
 
 setupTests(test);
+
+const logger = getRunnerLogger(true);
 
 test.serial(
   "getCachedCodeQlVersion reuses a version persisted by an earlier step",
@@ -25,9 +28,12 @@ test.serial(
         "utf8",
       );
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-      t.deepEqual(outputCache.getCachedCodeQlVersion(env, "/path/to/codeql"), {
-        version: "2.20.0",
-      });
+      t.deepEqual(
+        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
+        {
+          version: "2.20.0",
+        },
+      );
     });
   },
 );
@@ -47,7 +53,7 @@ test.serial(
       );
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
       t.is(
-        outputCache.getCachedCodeQlVersion(env, "/path/to/codeql"),
+        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
         undefined,
       );
     });
@@ -62,7 +68,7 @@ test.serial(
       fs.writeFileSync(cacheFile, "not valid json", "utf8");
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
       t.is(
-        outputCache.getCachedCodeQlVersion(env, "/path/to/codeql"),
+        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
         undefined,
       );
     });
@@ -100,7 +106,7 @@ test.serial(
       for (const value of testValues) {
         fs.writeFileSync(cacheFile, value, "utf8");
         t.is(
-          outputCache.getCachedCodeQlVersion(env, "/path/to/codeql"),
+          outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
           undefined,
           value,
         );
@@ -114,7 +120,7 @@ test.serial("getCachedCodeQlVersion ignores non-existent file", async (t) => {
     const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
     t.notThrows(() => {
       t.is(
-        outputCache.getCachedCodeQlVersion(env, "/path/to/codeql"),
+        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
         undefined,
       );
     });

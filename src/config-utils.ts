@@ -102,18 +102,9 @@ export { type Config } from "./config/action-config";
  * analysis unless overlay analysis has been explicitly enabled via environment
  * variable.
  */
-const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 20000;
+const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 14000;
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
   OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
-
-/**
- * The v2 minimum available disk space (in MB) required to perform overlay
- * analysis. This is a lower threshold than the v1 limit, allowing overlay
- * analysis to run on runners with less available disk space.
- */
-const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB = 14000;
-const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES =
-  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_MB * 1_000_000;
 
 /**
  * The minimum memory (in MB) that must be available for CodeQL to perform overlay analysis. If
@@ -592,11 +583,8 @@ async function checkOverlayAnalysisFeatureEnabled(
 function runnerHasSufficientDiskSpace(
   diskUsage: DiskUsage,
   logger: Logger,
-  useV2ResourceChecks: boolean,
 ): boolean {
-  const minimumDiskSpaceBytes = useV2ResourceChecks
-    ? OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_V2_BYTES
-    : OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
+  const minimumDiskSpaceBytes = OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
   if (diskUsage.numAvailableBytes < minimumDiskSpaceBytes) {
     const diskSpaceMb = Math.round(diskUsage.numAvailableBytes / 1_000_000);
     const minimumDiskSpaceMb = Math.round(minimumDiskSpaceBytes / 1_000_000);
@@ -651,9 +639,8 @@ async function checkRunnerResources(
   diskUsage: DiskUsage,
   ramInput: string | undefined,
   logger: Logger,
-  useV2ResourceChecks: boolean,
 ): Promise<Result<void, OverlayDisabledReason>> {
-  if (!runnerHasSufficientDiskSpace(diskUsage, logger, useV2ResourceChecks)) {
+  if (!runnerHasSufficientDiskSpace(diskUsage, logger)) {
     return new Failure(OverlayDisabledReason.InsufficientDiskSpace);
   }
   if (!(await runnerHasSufficientMemory(codeql, ramInput, logger))) {
@@ -752,9 +739,6 @@ export async function checkOverlayEnablement(
     Feature.OverlayAnalysisSkipResourceChecks,
     codeql,
   ));
-  const useV2ResourceChecks = await features.getValue(
-    Feature.OverlayAnalysisResourceChecksV2,
-  );
   const checkOverlayStatus = await features.getValue(
     Feature.OverlayAnalysisStatusCheck,
   );
@@ -768,13 +752,7 @@ export async function checkOverlayEnablement(
   }
   const resourceResult =
     performResourceChecks && diskUsage !== undefined
-      ? await checkRunnerResources(
-          codeql,
-          diskUsage,
-          ramInput,
-          logger,
-          useV2ResourceChecks,
-        )
+      ? await checkRunnerResources(codeql, diskUsage, ramInput, logger)
       : new Success<void>(undefined);
   if (resourceResult.isFailure()) {
     return resourceResult;

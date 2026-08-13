@@ -9,25 +9,14 @@ import type { VersionInfo } from "./types";
 /**
  * The keys of the command cache. Each key corresponds to a command whose output we cache.
  */
-export enum CommandCacheKey {
-  Version = "version",
-}
-
-/**
- * The mapping of CLI commands to the types of the output of each command that we cache.
- */
-export type CommandCacheKeyOutputMap = {
-  [CommandCacheKey.Version]: VersionInfo;
-};
+export type CommandCacheKey = string;
 
 /**
  * The type of the command cache that is persisted to disk.
  */
-export interface OutputCache<K extends CommandCacheKey> {
+export interface OutputCache {
   cmd: string;
-  entries: {
-    [P in K]: CommandCacheKeyOutputMap[K];
-  };
+  entries: Record<CommandCacheKey, unknown>;
 }
 
 /**
@@ -74,8 +63,8 @@ export function cacheCodeQlVersion(
   cachedCodeQlVersion = version;
   const outputCache = {
     cmd,
-    entries: { [CommandCacheKey.Version]: version },
-  } satisfies OutputCache<CommandCacheKey.Version>;
+    entries: { version },
+  } satisfies OutputCache;
   // Persist the version so that subsequent Actions steps, which run in separate
   // processes, can reuse it rather than invoking `codeql version` again. We
   // record the CLI path so that a different step using a different CodeQL bundle
@@ -122,7 +111,7 @@ export function getCachedCodeQlVersion(
   }
   // Memoize the parsed value so that subsequent calls in this process don't
   // re-parse the environment variable.
-  cachedCodeQlVersion = persisted.entries[CommandCacheKey.Version];
+  cachedCodeQlVersion = persisted.entries.version as VersionInfo;
   return cachedCodeQlVersion;
 }
 
@@ -148,13 +137,13 @@ function isVersionInfo(x: unknown): x is VersionInfo {
  * Determines whether a value is a `OutputCache` object.
  * @param x The value to test
  */
-function isOutputCache(x: unknown): x is OutputCache<CommandCacheKey.Version> {
-  const candidate = x as Partial<OutputCache<CommandCacheKey.Version>> | null;
+function isOutputCache(x: unknown): x is OutputCache {
+  const candidate = x as Partial<OutputCache> | null;
   return (
     typeof candidate === "object" &&
     candidate !== null &&
     typeof candidate.cmd === "string" &&
     candidate.entries !== undefined &&
-    isVersionInfo(candidate.entries[CommandCacheKey.Version])
+    isVersionInfo(candidate.entries.version)
   );
 }

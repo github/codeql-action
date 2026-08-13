@@ -499,7 +499,7 @@ async function getCodeQLForCmd(
             noStreamStdout: true,
           },
         );
-        outputCache.cacheCodeQlVersion(cmd, result, getEnv());
+        outputCache.cacheCodeQlVersion(getEnv(), cmd, result);
       }
       return result;
     },

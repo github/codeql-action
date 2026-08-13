@@ -59,14 +59,14 @@ function getCommandCacheFilePath(env: Env): string {
 
 /**
  * Caches the CodeQL CLI version both in-memory and on disk.
+ * @param env The environment variables to use.
  * @param cmd The path to the CodeQL CLI.
  * @param version The version information to cache.
- * @param env The environment variables to use.
  */
 export function cacheCodeQlVersion(
+  env: Env,
   cmd: string,
   version: VersionInfo,
-  env: Env,
 ): void {
   if (cachedCodeQlVersion !== undefined) {
     throw new Error("cacheCodeQlVersion() should be called only once");

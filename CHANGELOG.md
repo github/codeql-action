@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.37.7 - 13 Aug 2026
+
+- Update default CodeQL bundle version to [2.26.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.26.3). [#4085](https://github.com/github/codeql-action/pull/4085)
+
 ## 4.37.6 - 04 Aug 2026
 
 - Changed the default filepath for the new remote file address format that was introduced in CodeQL Action 4.37.0 / 3.37.0 to `.github/codeql-config.yml` to align it with the suggested path that is used elsewhere. [#4070](https://github.com/github/codeql-action/pull/4070)

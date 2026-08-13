@@ -689,7 +689,6 @@ async function run(
       sourceRoot,
       "Runner.Worker.exe",
       qlconfigFile,
-      logger,
     );
 
     // To check custom query packs for compatibility with overlay analysis, we
@@ -718,7 +717,6 @@ async function run(
         sourceRoot,
         "Runner.Worker.exe",
         qlconfigFile,
-        logger,
       );
     }
 

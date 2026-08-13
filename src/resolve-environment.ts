@@ -9,7 +9,7 @@ export async function runResolveBuildEnvironment(
 ) {
   logger.startGroup(`Attempting to resolve build environment for ${language}`);
 
-  const codeql = await getCodeQL(cmd);
+  const codeql = await getCodeQL(logger, cmd);
 
   if (workingDir !== undefined) {
     logger.info(`Using ${workingDir} as the working directory.`);

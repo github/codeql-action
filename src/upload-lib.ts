@@ -140,7 +140,7 @@ async function combineSarifFilesUsingCLI(
 
   const config = await getConfig(tempDir, logger);
   if (config !== undefined) {
-    codeQL = await getCodeQL(config.codeQLCmd);
+    codeQL = await getCodeQL(logger, config.codeQLCmd);
     tempDir = config.tempDir;
   } else {
     logger.info(

@@ -10,7 +10,7 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { CodeQL, VersionInfo } from "./codeql";
+import type { CodeQL } from "./codeql";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
 import { EnvVar, getRequiredEnvParam } from "./environment";
@@ -596,90 +596,6 @@ export function asHTTPError(arg: any): HTTPError | undefined {
     return new HTTPError(arg.message, arg.httpStatusCode as number);
   }
   return undefined;
-}
-
-let cachedCodeQlVersion: undefined | VersionInfo = undefined;
-
-/**
- * Resets the in-process cache of the CodeQL CLI version. Only for use in tests,
- * which exercise multiple "steps" within a single process.
- */
-export function resetCachedCodeQlVersion(): void {
-  cachedCodeQlVersion = undefined;
-}
-
-/** The persisted version together with the CLI path it was obtained from. */
-interface PersistedVersionInfo {
-  cmd: string;
-  version: VersionInfo;
-}
-
-function isVersionInfo(x: unknown): x is VersionInfo {
-  const candidate = x as Partial<VersionInfo> | null;
-  return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.version === "string" &&
-    (candidate.features === undefined ||
-      (typeof candidate.features === "object" &&
-        candidate.features !== null)) &&
-    (candidate.overlayVersion === undefined ||
-      typeof candidate.overlayVersion === "number")
-  );
-}
-
-function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
-  const candidate = x as Partial<PersistedVersionInfo> | null;
-  return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.cmd === "string" &&
-    isVersionInfo(candidate.version)
-  );
-}
-
-export function cacheCodeQlVersion(cmd: string, version: VersionInfo): void {
-  if (cachedCodeQlVersion !== undefined) {
-    throw new Error("cacheCodeQlVersion() should be called only once");
-  }
-  cachedCodeQlVersion = version;
-  // Persist the version so that subsequent Actions steps, which run in separate
-  // processes, can reuse it rather than invoking `codeql version` again. We
-  // record the CLI path so that a different step using a different CodeQL bundle
-  // doesn't pick up a stale version.
-  core.exportVariable(
-    EnvVar.CODEQL_VERSION_INFO,
-    JSON.stringify({ cmd, version }),
-  );
-}
-
-export function getCachedCodeQlVersion(cmd?: string): undefined | VersionInfo {
-  if (cachedCodeQlVersion !== undefined) {
-    return cachedCodeQlVersion;
-  }
-  // Fall back to the value persisted by an earlier Actions step, if any. This is
-  // best-effort: any malformed or mismatched value is ignored so that the caller
-  // invokes `codeql version` instead.
-  const serialized = process.env[EnvVar.CODEQL_VERSION_INFO];
-  if (!serialized) {
-    return undefined;
-  }
-  let persisted: unknown;
-  try {
-    persisted = JSON.parse(serialized);
-  } catch {
-    return undefined;
-  }
-  if (
-    !isPersistedVersionInfo(persisted) ||
-    (cmd !== undefined && persisted.cmd !== cmd)
-  ) {
-    return undefined;
-  }
-  // Memoize the parsed value so that subsequent calls in this process don't
-  // re-parse the environment variable.
-  cachedCodeQlVersion = persisted.version;
-  return cachedCodeQlVersion;
 }
 
 export async function codeQlVersionAtLeast(

@@ -12,10 +12,12 @@ import {
   runTool,
 } from "./actions-util";
 import * as api from "./api-client";
+import * as outputCache from "./cli/output-cache";
+import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -212,20 +214,6 @@ export interface CodeQL {
     outputFile: string,
     options: { mergeRunsFromEqualCategory?: boolean },
   ): Promise<void>;
-}
-
-export interface VersionInfo {
-  version: string;
-  features?: { [name: string]: boolean };
-  /**
-   * The overlay version helps deal with backward incompatible changes for
-   * overlay analysis. When a precompiled query pack reports the same overlay
-   * version as the CodeQL CLI, we can use the CodeQL CLI to perform overlay
-   * analysis with that pack. Otherwise, if the overlay versions are different,
-   * or if either the pack or the CLI does not report an overlay version,
-   * we need to revert to non-overlay analysis.
-   */
-  overlayVersion?: number;
 }
 
 export interface ResolveDatabaseOutput {
@@ -503,7 +491,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = util.getCachedCodeQlVersion(cmd);
+      let result = outputCache.getCachedCodeQlVersion(logger, getEnv(), cmd);
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
           cmd,
@@ -512,7 +500,7 @@ async function getCodeQLForCmd(
             noStreamStdout: true,
           },
         );
-        util.cacheCodeQlVersion(cmd, result);
+        outputCache.cacheCodeQlVersion(getEnv(), cmd, result);
       }
       return result;
     },

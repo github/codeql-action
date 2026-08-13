@@ -3,6 +3,7 @@ import path from "path";
 
 import { getTemporaryDirectory } from "../actions-util";
 import { Env } from "../environment";
+import { Logger } from "../logging";
 
 import type { VersionInfo } from "./types";
 
@@ -78,10 +79,12 @@ export function cacheCodeQlVersion(
 
 /**
  * Returns the cached CodeQL CLI version, if any.
+ * @param logger The logger to use for logging messages.
  * @param env The environment variables to use.
  * @param cmd The path to the CodeQL CLI.
  */
 export function getCachedCodeQlVersion(
+  logger: Logger,
   env: Env,
   cmd?: string,
 ): undefined | VersionInfo {
@@ -94,13 +97,17 @@ export function getCachedCodeQlVersion(
   let serialized: string;
   try {
     serialized = fs.readFileSync(getCommandCacheFilePath(env), "utf8");
-  } catch {
+  } catch (e) {
+    logger.debug(
+      `Cannot read CLI-cache file ${getCommandCacheFilePath(env)}: ${e}`,
+    );
     return undefined;
   }
   let persisted: unknown;
   try {
     persisted = JSON.parse(serialized);
-  } catch {
+  } catch (e) {
+    logger.debug(`Cannot parse CLI-cache data as JSON: ${e}`);
     return undefined;
   }
   if (

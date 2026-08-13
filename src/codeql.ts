@@ -491,7 +491,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = outputCache.getCachedCodeQlVersion(getEnv(), cmd);
+      let result = outputCache.getCachedCodeQlVersion(logger, getEnv(), cmd);
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
           cmd,

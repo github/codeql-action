@@ -44,7 +44,7 @@ export function resetCachedCodeQlVersion(): void {
  * Returns the path to the temporary file that backs the
  * on-disk cache of CLI responses between workflow steps.
  */
-function getCommandCacheFilePath(env: Env): string {
+export function getCommandCacheFilePath(env: Env): string {
   return path.join(getTemporaryDirectory(env), COMMAND_CACHE_FILENAME);
 }
 

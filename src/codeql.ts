@@ -285,7 +285,12 @@ export function isDiskConfigurationError(e: unknown): boolean {
     return false;
   }
 
-  return e.message.includes("ENOSPC"); // out of disk space
+  return (
+    // out of disk space
+    e.message.includes("ENOSPC") ||
+    // access denied
+    e.message.includes("EACCES")
+  );
 }
 
 /**

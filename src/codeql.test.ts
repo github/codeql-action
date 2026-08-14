@@ -55,6 +55,13 @@ test("isDiskConfigurationError - true for expected errors", async (t) => {
   t.true(
     codeql.isDiskConfigurationError(new Error("ENOSPC: Out of disk space")),
   );
+  t.true(
+    codeql.isDiskConfigurationError(
+      new Error(
+        "EACCES: permission denied, mkdir /opt/hostedtoolcache/CodeQL/",
+      ),
+    ),
+  );
 });
 
 test("isDiskConfigurationError - false for other errors", async (t) => {

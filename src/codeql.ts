@@ -274,6 +274,26 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-07-01";
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
 
 /**
+ * Decides whether `e` is a disk-related error outside of our control
+ * that should be classified as a `ConfigurationError`.
+ *
+ * @param e The error to check.
+ * @returns True if the error should be treated as a `ConfigurationError` or false if not.
+ */
+export function isDiskConfigurationError(e: unknown): boolean {
+  if (!(e instanceof Error)) {
+    return false;
+  }
+
+  return (
+    // out of disk space
+    e.message.includes("ENOSPC") ||
+    // access denied
+    e.message.includes("EACCES")
+  );
+}
+
+/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -343,8 +363,7 @@ export async function setupCodeQL(
   } catch (rawError) {
     const e = api.wrapApiConfigurationError(rawError);
     const ErrorClass =
-      e instanceof util.ConfigurationError ||
-      (e instanceof Error && e.message.includes("ENOSPC")) // out of disk space
+      e instanceof util.ConfigurationError || isDiskConfigurationError(e)
         ? util.ConfigurationError
         : Error;
 

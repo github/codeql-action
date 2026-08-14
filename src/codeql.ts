@@ -491,7 +491,12 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = outputCache.getCachedCodeQlVersion(logger, getEnv(), cmd);
+      const cacheFilePath = outputCache.getCommandCacheFilePath(getEnv());
+      let result = outputCache.getCachedCodeQlVersion(
+        logger,
+        cacheFilePath,
+        cmd,
+      );
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
           cmd,
@@ -500,7 +505,7 @@ async function getCodeQLForCmd(
             noStreamStdout: true,
           },
         );
-        outputCache.cacheCodeQlVersion(getEnv(), cmd, result);
+        outputCache.cacheCodeQlVersion(cacheFilePath, cmd, result);
       }
       return result;
     },

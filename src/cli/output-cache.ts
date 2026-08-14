@@ -14,12 +14,20 @@ import { VersionInfo, versionInfoBaseSchema } from "./types";
 export type CommandCacheKey = string;
 
 /**
- * The type of the command cache that is persisted to disk.
+ * The JSON schema of the command cache that is persisted to disk.
  */
-export interface OutputCache {
-  cmd: string;
-  entries: Record<CommandCacheKey, unknown>;
-}
+const outputCacheSchema = {
+  cmd: json.string,
+  entries: json.object({}),
+} as const satisfies json.Schema;
+
+/**
+ * The type that describes the command cache that is persisted to disk. This type
+ * is partially derived from {@link outputCacheSchema}.
+ */
+export type OutputCache = json.FromSchema<typeof outputCacheSchema> & {
+  entries: { version: VersionInfo };
+};
 
 /**
  * The name of the temporary file that backs the on-disk cache of
@@ -138,13 +146,7 @@ function isVersionInfo(x: unknown): x is VersionInfo {
 function isOutputCache(x: unknown): x is OutputCache {
   return (
     json.isObject(x) &&
-    json.validateSchema(
-      {
-        cmd: json.string,
-        entries: json.object({}),
-      } as const satisfies json.Schema,
-      x,
-    ) &&
+    json.validateSchema(outputCacheSchema, x) &&
     json.isObject<{ version: unknown }>(x.entries) &&
     isVersionInfo(x.entries.version)
   );

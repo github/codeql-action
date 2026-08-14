@@ -57,12 +57,12 @@ export function getCommandCacheFilePath(env: Env): string {
 
 /**
  * Caches the CodeQL CLI version both in-memory and on disk.
- * @param env The environment variables to use.
+ * @param cacheFilePath The path to the cache file.
  * @param cmd The path to the CodeQL CLI.
  * @param version The version information to cache.
  */
 export function cacheCodeQlVersion(
-  env: Env,
+  cacheFilePath: string,
   cmd: string,
   version: VersionInfo,
 ): void {
@@ -78,22 +78,18 @@ export function cacheCodeQlVersion(
   // processes, can reuse it rather than invoking `codeql version` again. We
   // record the CLI path so that a different step using a different CodeQL bundle
   // doesn't pick up a stale version.
-  fs.writeFileSync(
-    getCommandCacheFilePath(env),
-    JSON.stringify(outputCache),
-    "utf8",
-  );
+  fs.writeFileSync(cacheFilePath, JSON.stringify(outputCache), "utf8");
 }
 
 /**
  * Returns the cached CodeQL CLI version, if any.
  * @param logger The logger to use for logging messages.
- * @param env The environment variables to use.
+ * @param cacheFilePath The path to the cache file.
  * @param cmd The path to the CodeQL CLI.
  */
 export function getCachedCodeQlVersion(
   logger: Logger,
-  env: Env,
+  cacheFilePath: string,
   cmd?: string,
 ): undefined | VersionInfo {
   if (cachedCodeQlVersion !== undefined) {
@@ -104,11 +100,9 @@ export function getCachedCodeQlVersion(
   // invokes `codeql version` instead.
   let serialized: string;
   try {
-    serialized = fs.readFileSync(getCommandCacheFilePath(env), "utf8");
+    serialized = fs.readFileSync(cacheFilePath, "utf8");
   } catch (e) {
-    logger.debug(
-      `Cannot read CLI-cache file ${getCommandCacheFilePath(env)}: ${e}`,
-    );
+    logger.debug(`Cannot read CLI-cache file ${cacheFilePath}: ${e}`);
     return undefined;
   }
   let persisted: unknown;

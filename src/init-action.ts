@@ -22,6 +22,7 @@ import {
   getTotalCacheSize,
   shouldRestoreCache,
 } from "./caching-utils";
+import { getCommandCacheFilePath } from "./cli/output-cache";
 import { CodeQL } from "./codeql";
 import { getConfigFileInput } from "./config/file";
 import { ComputedInput, getToolsInput } from "./config/inputs";
@@ -294,6 +295,18 @@ async function run(
       throw new ConfigurationError(
         `The 'init' action should not be run in the same workflow as 'setup-codeql'.`,
       );
+    }
+
+    // Delete the CLI output-cache file if it exists, to avoid
+    // accidentally reusing a stale version from a previous run.
+    try {
+      fs.unlinkSync(getCommandCacheFilePath(actionState.env));
+    } catch (e: any) {
+      if (e?.code !== "ENOENT") {
+        logger.warning(
+          `Cannot delete CLI-cache file ${getCommandCacheFilePath(actionState.env)}: ${e}`,
+        );
+      }
     }
 
     // Get the computed `tools` input.

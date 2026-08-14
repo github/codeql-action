@@ -19,13 +19,11 @@ export const versionInfoBaseSchema = {
 
 /**
  * The base type that describes the expected output of the `codeql version` command.
- * This type is partially derived from {@link versionInfoBaseSchema}.
  */
 export type VersionInfoBase = json.FromSchema<typeof versionInfoBaseSchema>;
 
 /**
  * The full type that describes the expected output of the `codeql version` command.
- * This type is partially derived from {@link VersionInfoBase}.
  */
 export type VersionInfo = VersionInfoBase & {
   // `features` remains optional, but the more specific type takes precedence

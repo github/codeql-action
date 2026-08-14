@@ -3,6 +3,7 @@ import path from "path";
 
 import { getTemporaryDirectory } from "../actions-util";
 import { Env } from "../environment";
+import * as json from "../json";
 import { Logger } from "../logging";
 
 import type { VersionInfo } from "./types";
@@ -127,16 +128,16 @@ export function getCachedCodeQlVersion(
  * @param x The value to test
  */
 function isVersionInfo(x: unknown): x is VersionInfo {
-  const candidate = x as Partial<VersionInfo> | null;
   return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.version === "string" &&
-    (candidate.features === undefined ||
-      (typeof candidate.features === "object" &&
-        candidate.features !== null)) &&
-    (candidate.overlayVersion === undefined ||
-      typeof candidate.overlayVersion === "number")
+    json.isObject(x) &&
+    json.validateSchema(
+      {
+        version: json.string,
+        features: json.optional(json.object({})),
+        overlayVersion: json.optional(json.number),
+      } as const satisfies json.Schema,
+      x,
+    )
   );
 }
 
@@ -145,12 +146,16 @@ function isVersionInfo(x: unknown): x is VersionInfo {
  * @param x The value to test
  */
 function isOutputCache(x: unknown): x is OutputCache {
-  const candidate = x as Partial<OutputCache> | null;
   return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.cmd === "string" &&
-    candidate.entries !== undefined &&
-    isVersionInfo(candidate.entries.version)
+    json.isObject(x) &&
+    json.validateSchema(
+      {
+        cmd: json.string,
+        entries: json.object({}),
+      } as const satisfies json.Schema,
+      x,
+    ) &&
+    json.isObject<{ version: unknown }>(x.entries) &&
+    isVersionInfo(x.entries.version)
   );
 }

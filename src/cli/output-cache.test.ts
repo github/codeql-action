@@ -7,7 +7,10 @@ import { getRunnerLogger } from "../logging";
 import { getTestEnv, setupTests } from "../testing-utils";
 import * as util from "../util";
 
-import * as outputCache from "./output-cache";
+import {
+  getCachedCodeQlVersion,
+  getCommandCacheFilePath,
+} from "./output-cache";
 
 setupTests(test);
 
@@ -18,7 +21,7 @@ test.serial(
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-      const cacheFile = outputCache.getCommandCacheFilePath(env);
+      const cacheFile = getCommandCacheFilePath(env);
       fs.writeFileSync(
         cacheFile,
         JSON.stringify({
@@ -27,12 +30,9 @@ test.serial(
         }),
         "utf8",
       );
-      t.deepEqual(
-        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
-        {
-          version: "2.20.0",
-        },
-      );
+      t.deepEqual(getCachedCodeQlVersion(logger, env, "/path/to/codeql"), {
+        version: "2.20.0",
+      });
     });
   },
 );
@@ -42,7 +42,7 @@ test.serial(
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-      const cacheFile = outputCache.getCommandCacheFilePath(env);
+      const cacheFile = getCommandCacheFilePath(env);
       fs.writeFileSync(
         cacheFile,
         JSON.stringify({
@@ -51,10 +51,7 @@ test.serial(
         }),
         "utf8",
       );
-      t.is(
-        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
-        undefined,
-      );
+      t.is(getCachedCodeQlVersion(logger, env, "/path/to/codeql"), undefined);
     });
   },
 );
@@ -64,12 +61,9 @@ test.serial(
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-      const cacheFile = outputCache.getCommandCacheFilePath(env);
+      const cacheFile = getCommandCacheFilePath(env);
       fs.writeFileSync(cacheFile, "not valid json", "utf8");
-      t.is(
-        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
-        undefined,
-      );
+      t.is(getCachedCodeQlVersion(logger, env, "/path/to/codeql"), undefined);
     });
   },
 );
@@ -79,7 +73,7 @@ test.serial(
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-      const cacheFile = outputCache.getCommandCacheFilePath(env);
+      const cacheFile = getCommandCacheFilePath(env);
       const testValues = [
         { cmd: "/path/to/codeql" },
         { entries: { version: { version: "2.20.0" } } },
@@ -104,7 +98,7 @@ test.serial(
       for (const value of testValues) {
         fs.writeFileSync(cacheFile, value, "utf8");
         t.is(
-          outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
+          getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
           undefined,
           value,
         );
@@ -117,10 +111,7 @@ test.serial("getCachedCodeQlVersion ignores non-existent file", async (t) => {
   await util.withTmpDir(async (tmpDir: string) => {
     const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
     t.notThrows(() => {
-      t.is(
-        outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
-        undefined,
-      );
+      t.is(getCachedCodeQlVersion(logger, env, "/path/to/codeql"), undefined);
     });
   });
 });

@@ -22,8 +22,7 @@ const outputCacheSchema = {
 } as const satisfies json.Schema;
 
 /**
- * The type that describes the command cache that is persisted to disk. This type
- * is partially derived from {@link outputCacheSchema}.
+ * The type that describes the command cache that is persisted to disk.
  */
 export type OutputCache = json.FromSchema<typeof outputCacheSchema> & {
   entries: { version: VersionInfo };

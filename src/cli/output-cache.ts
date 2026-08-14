@@ -6,7 +6,7 @@ import { Env } from "../environment";
 import * as json from "../json";
 import { Logger } from "../logging";
 
-import type { VersionInfo } from "./types";
+import { VersionInfo, versionInfoBaseSchema } from "./types";
 
 /**
  * The keys of the command cache. Each key corresponds to a command whose output we cache.
@@ -128,17 +128,7 @@ export function getCachedCodeQlVersion(
  * @param x The value to test
  */
 function isVersionInfo(x: unknown): x is VersionInfo {
-  return (
-    json.isObject(x) &&
-    json.validateSchema(
-      {
-        version: json.string,
-        features: json.optional(json.object({})),
-        overlayVersion: json.optional(json.number),
-      } as const satisfies json.Schema,
-      x,
-    )
-  );
+  return json.isObject(x) && json.validateSchema(versionInfoBaseSchema, x);
 }
 
 /**

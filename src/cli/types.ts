@@ -25,8 +25,6 @@ export type VersionInfoBase = json.FromSchema<typeof versionInfoBaseSchema>;
 /**
  * The full type that describes the expected output of the `codeql version` command.
  */
-export type VersionInfo = VersionInfoBase & {
-  // `features` remains optional, but the more specific type takes precedence
-  // over the `any` type derived by `FromSchema`.
+export type VersionInfo = Omit<VersionInfoBase, "features"> & {
   features?: { [name: string]: boolean };
 };

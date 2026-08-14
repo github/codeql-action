@@ -1,5 +1,4 @@
 import * as fs from "fs";
-import path from "path";
 
 import test from "ava";
 
@@ -18,7 +17,8 @@ test.serial(
   "getCachedCodeQlVersion reuses a version persisted by an earlier step",
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
-      const cacheFile = path.join(tmpDir, "codeql-action-command-cache.json");
+      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
+      const cacheFile = outputCache.getCommandCacheFilePath(env);
       fs.writeFileSync(
         cacheFile,
         JSON.stringify({
@@ -27,7 +27,6 @@ test.serial(
         }),
         "utf8",
       );
-      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
       t.deepEqual(
         outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
         {
@@ -42,16 +41,16 @@ test.serial(
   "getCachedCodeQlVersion ignores a persisted version from a different CLI",
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
-      const cacheFile = path.join(tmpDir, "version.json");
+      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
+      const cacheFile = outputCache.getCommandCacheFilePath(env);
       fs.writeFileSync(
         cacheFile,
         JSON.stringify({
           cmd: "/path/to/other-codeql",
-          version: { version: "2.20.0" },
+          entries: { version: { version: "2.20.0" } },
         }),
         "utf8",
       );
-      const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
       t.is(
         outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
         undefined,
@@ -64,9 +63,9 @@ test.serial(
   "getCachedCodeQlVersion ignores a malformed persisted value",
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
-      const cacheFile = path.join(tmpDir, "version.json");
-      fs.writeFileSync(cacheFile, "not valid json", "utf8");
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
+      const cacheFile = outputCache.getCommandCacheFilePath(env);
+      fs.writeFileSync(cacheFile, "not valid json", "utf8");
       t.is(
         outputCache.getCachedCodeQlVersion(logger, env, "/path/to/codeql"),
         undefined,
@@ -79,9 +78,8 @@ test.serial(
   "getCachedCodeQlVersion ignores a persisted value with the wrong structure",
   async (t) => {
     await util.withTmpDir(async (tmpDir: string) => {
-      const cacheFile = path.join(tmpDir, "version.json");
       const env = getTestEnv({ [EnvVar.TEMP]: tmpDir });
-
+      const cacheFile = outputCache.getCommandCacheFilePath(env);
       const testValues = [
         { cmd: "/path/to/codeql" },
         { entries: { version: { version: "2.20.0" } } },

@@ -103,26 +103,21 @@ export { type Config } from "./config/action-config";
  * variable.
  *
  * This threshold can be lowered by the feature flags in
- * `OVERLAY_MINIMUM_DISK_SPACE_FEATURES`.
+ * `OVERLAY_MINIMUM_DISK_SPACE_MB_BY_FEATURE`.
  */
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 14000;
 
 /**
- * Feature flags that lower the minimum available disk space required to perform
- * overlay analysis, paired with the threshold (in MB) that each one enables.
- *
- * If several of these are enabled, the lowest threshold takes effect.
+ * Minimum available disk space (in MB) enabled by each overlay feature flag.
  */
-const OVERLAY_MINIMUM_DISK_SPACE_FEATURES: ReadonlyArray<
-  [FeatureWithoutCLI, number]
-> = [
-  [Feature.OverlayAnalysisMinDisk8Gb, 8000],
-  [Feature.OverlayAnalysisMinDisk9Gb, 9000],
-  [Feature.OverlayAnalysisMinDisk10Gb, 10000],
-  [Feature.OverlayAnalysisMinDisk11Gb, 11000],
-  [Feature.OverlayAnalysisMinDisk12Gb, 12000],
-  [Feature.OverlayAnalysisMinDisk13Gb, 13000],
-];
+const OVERLAY_MINIMUM_DISK_SPACE_MB_BY_FEATURE = {
+  [Feature.OverlayAnalysisMinDisk8Gb]: 8000,
+  [Feature.OverlayAnalysisMinDisk9Gb]: 9000,
+  [Feature.OverlayAnalysisMinDisk10Gb]: 10000,
+  [Feature.OverlayAnalysisMinDisk11Gb]: 11000,
+  [Feature.OverlayAnalysisMinDisk12Gb]: 12000,
+  [Feature.OverlayAnalysisMinDisk13Gb]: 13000,
+} satisfies Partial<Record<FeatureWithoutCLI, number>>;
 
 /**
  * The minimum memory (in MB) that must be available for CodeQL to perform overlay analysis. If
@@ -606,8 +601,10 @@ async function getMinimumDiskSpaceMb(
   features: FeatureEnablement,
 ): Promise<number> {
   let minimumMb = OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB;
-  for (const [feature, thresholdMb] of OVERLAY_MINIMUM_DISK_SPACE_FEATURES) {
-    if (await features.getValue(feature)) {
+  for (const [feature, thresholdMb] of Object.entries(
+    OVERLAY_MINIMUM_DISK_SPACE_MB_BY_FEATURE,
+  )) {
+    if (await features.getValue(feature as FeatureWithoutCLI)) {
       minimumMb = Math.min(minimumMb, thresholdMb);
     }
   }

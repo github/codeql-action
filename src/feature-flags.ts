@@ -122,16 +122,34 @@ export enum Feature {
    */
   OverlayAnalysisMatchCodeqlVersionDryRun = "overlay_analysis_match_codeql_version_dry_run",
   /**
-   * Feature flags that lower the amount of available disk space that the overlay hardware check
-   * requires. The lowest threshold that is enabled takes effect; if none are enabled, the default
-   * threshold applies. These flags have no effect if `OverlayAnalysisSkipResourceChecks` is
-   * enabled.
+   * Lowers the overlay minimum available disk space to 8 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
    */
   OverlayAnalysisMinDisk8Gb = "overlay_analysis_min_disk_8_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 9 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
   OverlayAnalysisMinDisk9Gb = "overlay_analysis_min_disk_9_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 10 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
   OverlayAnalysisMinDisk10Gb = "overlay_analysis_min_disk_10_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 11 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
   OverlayAnalysisMinDisk11Gb = "overlay_analysis_min_disk_11_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 12 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
   OverlayAnalysisMinDisk12Gb = "overlay_analysis_min_disk_12_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 13 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
   OverlayAnalysisMinDisk13Gb = "overlay_analysis_min_disk_13_gb",
   OverlayAnalysisPython = "overlay_analysis_python",
   OverlayAnalysisRuby = "overlay_analysis_ruby",

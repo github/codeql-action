@@ -155,7 +155,7 @@ export async function runAutobuild(
   logger: Logger,
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
-  const codeQL = await getCodeQL(config.codeQLCmd);
+  const codeQL = await getCodeQL(logger, config.codeQLCmd);
   if (language === BuiltInLanguage.cpp) {
     await setupCppAutobuild(codeQL, logger);
   }

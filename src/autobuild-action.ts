@@ -99,7 +99,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       );
     }
 
-    const codeql = await getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(logger, config.codeQLCmd);
 
     languages = await determineAutobuildLanguages(codeql, config, logger);
     if (languages !== undefined) {

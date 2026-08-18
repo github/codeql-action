@@ -1295,7 +1295,26 @@ checkOverlayEnablementMacro.serial(
 );
 
 checkOverlayEnablementMacro.serial(
-  "Overlay-base database on default branch if runner disk space is above the default limit",
+  "No overlay-base database on default branch if runner disk space is below minimum",
+  {
+    languages: [BuiltInLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisCodeScanningJavascript,
+    ],
+    isDefaultBranch: true,
+    diskUsage: {
+      numAvailableBytes: 5_000_000_000,
+      numTotalBytes: 100_000_000_000,
+    },
+  },
+  {
+    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
+  },
+);
+
+checkOverlayEnablementMacro.serial(
+  "Overlay-base database on default branch if runner disk space is above minimum",
   {
     languages: [BuiltInLanguage.javascript],
     features: [
@@ -1311,25 +1330,6 @@ checkOverlayEnablementMacro.serial(
   {
     overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
     useOverlayDatabaseCaching: true,
-  },
-);
-
-checkOverlayEnablementMacro.serial(
-  "No overlay-base database on default branch if runner disk space is below the default limit",
-  {
-    languages: [BuiltInLanguage.javascript],
-    features: [
-      Feature.OverlayAnalysis,
-      Feature.OverlayAnalysisCodeScanningJavascript,
-    ],
-    isDefaultBranch: true,
-    diskUsage: {
-      numAvailableBytes: 10_000_000_000,
-      numTotalBytes: 100_000_000_000,
-    },
-  },
-  {
-    disabledReason: OverlayDisabledReason.InsufficientDiskSpace,
   },
 );
 

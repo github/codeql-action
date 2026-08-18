@@ -121,6 +121,36 @@ export enum Feature {
    * `OverlayAnalysisMatchCodeqlVersion` overrides this flag.
    */
   OverlayAnalysisMatchCodeqlVersionDryRun = "overlay_analysis_match_codeql_version_dry_run",
+  /**
+   * Lowers the overlay minimum available disk space to 8 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
+  OverlayAnalysisMinDisk8Gb = "overlay_analysis_min_disk_8_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 9 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
+  OverlayAnalysisMinDisk9Gb = "overlay_analysis_min_disk_9_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 10 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
+  OverlayAnalysisMinDisk10Gb = "overlay_analysis_min_disk_10_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 11 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
+  OverlayAnalysisMinDisk11Gb = "overlay_analysis_min_disk_11_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 12 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
+  OverlayAnalysisMinDisk12Gb = "overlay_analysis_min_disk_12_gb",
+  /**
+   * Lowers the overlay minimum available disk space to 13 GB. The lowest enabled limit wins; if
+   * none are enabled, the default applies.
+   */
+  OverlayAnalysisMinDisk13Gb = "overlay_analysis_min_disk_13_gb",
   OverlayAnalysisPython = "overlay_analysis_python",
   OverlayAnalysisRuby = "overlay_analysis_ruby",
   /** Controls whether hardware checks are skipped for overlay analysis. */
@@ -347,6 +377,36 @@ export const featureConfig = {
   [Feature.OverlayAnalysisMatchCodeqlVersionDryRun]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION_DRY_RUN",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk8Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_8_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk9Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_9_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk10Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_10_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk11Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_11_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk12Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_12_GB",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisMinDisk13Gb]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_13_GB",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisStatusCheck]: {

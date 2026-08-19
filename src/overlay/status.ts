@@ -31,6 +31,16 @@ import {
 /** The maximum time to wait for a cache operation to complete. */
 const MAX_CACHE_OPERATION_MS = 30_000;
 
+/**
+ * Whether a cache entry was saved, given the result of `actionsCache.saveCache`.
+ *
+ * `saveCache` reports most failures, such as the key already existing or the cache being read-only,
+ * by returning `-1` rather than by throwing. `undefined` means that the operation timed out.
+ */
+function isCacheSaved(cacheId: number | undefined): boolean {
+  return cacheId !== undefined && cacheId >= 0;
+}
+
 /** File name for the serialized overlay status. */
 const STATUS_FILE_NAME = "overlay-status.json";
 
@@ -193,7 +203,7 @@ export async function saveOverlayStatus(
         logger.warning("Timed out saving overlay status to cache.");
       },
     );
-    if (cacheId === undefined) {
+    if (!isCacheSaved(cacheId)) {
       return false;
     }
     logger.debug(`Saved overlay status to Actions cache with key ${cacheKey}`);

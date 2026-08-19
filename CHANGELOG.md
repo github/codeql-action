@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- We are rolling out a change in September/October 2026 that turns off improved incremental analysis for a repository if analyses of pull requests do not complete successfully, extending the existing functionality that does this when analyses of the default branch do not complete successfully. Improved incremental analysis is automatically retried when a new version of CodeQL is released.
 
 ## 4.37.7 - 13 Aug 2026
 

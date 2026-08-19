@@ -5,7 +5,10 @@ import * as actionsCache from "@actions/cache";
 import test from "ava";
 import * as sinon from "sinon";
 
+import * as apiClient from "../api-client";
+import { Feature } from "../feature-flags";
 import {
+  createFeatures,
   getRecordingLogger,
   LoggedMessage,
   mockCodeQLVersion,
@@ -16,10 +19,13 @@ import { DiskUsage, withTmpDir } from "../util";
 
 import {
   getCacheKey,
+  getPullRequestFailureCheck,
   getPullRequestMarkerCacheKey,
   getPullRequestMarkerCacheKeyPrefix,
+  PullRequestFailureCheck,
   savePullRequestFailureMarker,
   shouldSkipOverlayAnalysis,
+  shouldSkipOverlayAnalysisAfterPullRequestFailure,
 } from "./status";
 
 setupTests(test);
@@ -225,6 +231,202 @@ test.serial(
           undefined,
         ),
         "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-42-2-unknown",
+      );
+    });
+  },
+);
+
+test("getPullRequestFailureCheck prefers enforcement over dry run", async (t) => {
+  t.is(
+    await getPullRequestFailureCheck(createFeatures([])),
+    PullRequestFailureCheck.None,
+  );
+  t.is(
+    await getPullRequestFailureCheck(
+      createFeatures([Feature.OverlayAnalysisStatusCheckPrDryRun]),
+    ),
+    PullRequestFailureCheck.DryRun,
+  );
+  t.is(
+    await getPullRequestFailureCheck(
+      createFeatures([Feature.OverlayAnalysisStatusCheckPr]),
+    ),
+    PullRequestFailureCheck.Enforce,
+  );
+  t.is(
+    await getPullRequestFailureCheck(
+      createFeatures([
+        Feature.OverlayAnalysisStatusCheckPr,
+        Feature.OverlayAnalysisStatusCheckPrDryRun,
+      ]),
+    ),
+    PullRequestFailureCheck.Enforce,
+  );
+});
+
+test.serial(
+  "shouldSkipOverlayAnalysisAfterPullRequestFailure makes no request when the check is disabled",
+  async (t) => {
+    const listStub = sinon
+      .stub(apiClient, "listActionsCachesPage")
+      .resolves([]);
+
+    t.false(
+      await shouldSkipOverlayAnalysisAfterPullRequestFailure(
+        mockCodeQLVersion("2.20.0"),
+        ["javascript"],
+        makeDiskUsage(50),
+        PullRequestFailureCheck.None,
+        getRecordingLogger([]),
+      ),
+    );
+    t.true(listStub.notCalled);
+  },
+);
+
+test.serial(
+  "shouldSkipOverlayAnalysisAfterPullRequestFailure makes a single request for the most recent marker",
+  async (t) => {
+    const listStub = sinon
+      .stub(apiClient, "listActionsCachesPage")
+      .resolves([]);
+
+    t.false(
+      await shouldSkipOverlayAnalysisAfterPullRequestFailure(
+        mockCodeQLVersion("2.20.0"),
+        ["javascript"],
+        makeDiskUsage(50),
+        PullRequestFailureCheck.Enforce,
+        getRecordingLogger([]),
+      ),
+    );
+    t.true(listStub.calledOnce);
+    t.deepEqual(listStub.firstCall.args[0], {
+      keyPrefix: "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-",
+      sort: "created_at",
+      direction: "desc",
+      perPage: 1,
+    });
+  },
+);
+
+test.serial(
+  "shouldSkipOverlayAnalysisAfterPullRequestFailure saves the overlay status when enforcing",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon.stub(apiClient, "listActionsCachesPage").resolves([
+        {
+          key: "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-1-1-2",
+        },
+      ]);
+      const saveCacheStub = sinon.stub(actionsCache, "saveCache").resolves(1);
+
+      t.true(
+        await shouldSkipOverlayAnalysisAfterPullRequestFailure(
+          mockCodeQLVersion("2.20.0"),
+          ["javascript"],
+          makeDiskUsage(50),
+          PullRequestFailureCheck.Enforce,
+          getRecordingLogger([]),
+        ),
+      );
+      t.true(saveCacheStub.calledOnce);
+      t.is(
+        saveCacheStub.firstCall.args[1],
+        "codeql-overlay-status-javascript-2.20.0-runner-50GB",
+      );
+      const savedStatus = JSON.parse(
+        await fs.promises.readFile(saveCacheStub.firstCall.args[0][0], "utf-8"),
+      ) as Record<string, unknown>;
+      t.true(savedStatus["attemptedToBuildOverlayBaseDatabase"]);
+      t.false(savedStatus["builtOverlayBaseDatabase"]);
+    });
+  },
+);
+
+test.serial(
+  "shouldSkipOverlayAnalysisAfterPullRequestFailure does not skip or save when performing a dry run",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon.stub(apiClient, "listActionsCachesPage").resolves([
+        {
+          key: "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-1-1-2",
+        },
+      ]);
+      const saveCacheStub = sinon.stub(actionsCache, "saveCache").resolves(1);
+
+      t.false(
+        await shouldSkipOverlayAnalysisAfterPullRequestFailure(
+          mockCodeQLVersion("2.20.0"),
+          ["javascript"],
+          makeDiskUsage(50),
+          PullRequestFailureCheck.DryRun,
+          getRecordingLogger([]),
+        ),
+      );
+      t.true(saveCacheStub.notCalled);
+    });
+  },
+);
+
+test.serial(
+  "shouldSkipOverlayAnalysisAfterPullRequestFailure fails open when the request fails",
+  async (t) => {
+    sinon.stub(apiClient, "listActionsCachesPage").rejects(new Error("kaboom"));
+    const messages: LoggedMessage[] = [];
+
+    t.false(
+      await shouldSkipOverlayAnalysisAfterPullRequestFailure(
+        mockCodeQLVersion("2.20.0"),
+        ["javascript"],
+        makeDiskUsage(50),
+        PullRequestFailureCheck.Enforce,
+        getRecordingLogger(messages),
+      ),
+    );
+    t.true(
+      messages.some(
+        (m) =>
+          m.type === "warning" &&
+          typeof m.message === "string" &&
+          m.message.includes("kaboom"),
+      ),
+    );
+  },
+);
+
+test.serial(
+  "shouldSkipOverlayAnalysisAfterPullRequestFailure still skips when the overlay status cannot be saved",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      sinon.stub(apiClient, "listActionsCachesPage").resolves([
+        {
+          key: "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-1-1-2",
+        },
+      ]);
+      // `saveCache` reports most failures by returning -1 rather than by throwing.
+      sinon.stub(actionsCache, "saveCache").resolves(-1);
+      const messages: LoggedMessage[] = [];
+
+      t.true(
+        await shouldSkipOverlayAnalysisAfterPullRequestFailure(
+          mockCodeQLVersion("2.20.0"),
+          ["javascript"],
+          makeDiskUsage(50),
+          PullRequestFailureCheck.Enforce,
+          getRecordingLogger(messages),
+        ),
+      );
+      t.true(
+        messages.some(
+          (m) =>
+            m.type === "warning" &&
+            typeof m.message === "string" &&
+            m.message.includes("Failed to record"),
+        ),
       );
     });
   },

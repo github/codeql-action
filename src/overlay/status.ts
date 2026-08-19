@@ -18,7 +18,9 @@ import {
   getWorkflowRunAttempt,
   getWorkflowRunID,
 } from "../actions-util";
+import { listActionsCachesPage, type ActionsCacheItem } from "../api-client";
 import { type CodeQL } from "../codeql";
+import { Feature, FeatureEnablement } from "../feature-flags";
 import * as json from "../json";
 import { Logger } from "../logging";
 import {
@@ -27,6 +29,8 @@ import {
   getRequiredEnvParam,
   waitForResultWithTimeLimit,
 } from "../util";
+
+import { addPullRequestAnalysisFailedTelemetryDiagnostic } from "./diagnostics";
 
 /** The maximum time to wait for a cache operation to complete. */
 const MAX_CACHE_OPERATION_MS = 30_000;
@@ -282,6 +286,143 @@ export async function savePullRequestFailureMarker(
     );
     return false;
   }
+}
+
+/**
+ * How to react to a pull request analysis that ran with overlay analysis and did not complete
+ * successfully.
+ */
+export enum PullRequestFailureCheck {
+  /** Do not check for failed pull request analyses. */
+  None = "none",
+  /** Check for failed pull request analyses, but do not disable overlay analysis. */
+  DryRun = "dry-run",
+  /** Check for failed pull request analyses and disable overlay analysis if one is found. */
+  Enforce = "enforce",
+}
+
+/** Determines how to react to failed pull request analyses, based on the enabled features. */
+export async function getPullRequestFailureCheck(
+  features: FeatureEnablement,
+): Promise<PullRequestFailureCheck> {
+  if (await features.getValue(Feature.OverlayAnalysisStatusCheckPr)) {
+    return PullRequestFailureCheck.Enforce;
+  }
+  if (await features.getValue(Feature.OverlayAnalysisStatusCheckPrDryRun)) {
+    return PullRequestFailureCheck.DryRun;
+  }
+  return PullRequestFailureCheck.None;
+}
+
+/**
+ * Whether overlay analysis should be skipped because a pull request analysis that ran with overlay
+ * analysis did not complete successfully.
+ *
+ * When enforcing, this also records the failure in the persistent overlay status cache entry, so
+ * that subsequent analyses skip overlay analysis without repeating this check. Reading that entry
+ * back is gated on `Feature.OverlayAnalysisStatusCheck`, which therefore needs to be enabled too
+ * for enforcement to take effect beyond the current analysis.
+ *
+ * This makes at most one API request. Any failure is treated as if no failed pull request analysis
+ * was found.
+ */
+export async function shouldSkipOverlayAnalysisAfterPullRequestFailure(
+  codeql: CodeQL,
+  languages: string[],
+  diskUsage: DiskUsage,
+  check: PullRequestFailureCheck,
+  logger: Logger,
+): Promise<boolean> {
+  if (check === PullRequestFailureCheck.None) {
+    return false;
+  }
+
+  const marker = await findPullRequestFailureMarker(
+    codeql,
+    languages,
+    diskUsage,
+    logger,
+  );
+  if (marker === undefined) {
+    return false;
+  }
+
+  const isDryRun = check === PullRequestFailureCheck.DryRun;
+  const foundMarker =
+    `Found the Actions cache entry ${marker.key}, which indicates that a pull request analysis ` +
+    "using improved incremental analysis did not complete successfully.";
+  addPullRequestAnalysisFailedTelemetryDiagnostic(languages, isDryRun);
+
+  if (isDryRun) {
+    logger.debug(
+      `${foundMarker} Improved incremental analysis would have been disabled, but this check is ` +
+        "running in dry-run mode.",
+    );
+    return false;
+  }
+
+  logger.info(foundMarker);
+
+  const saved = await saveOverlayStatus(
+    codeql,
+    languages,
+    diskUsage,
+    createOverlayStatus({
+      attemptedToBuildOverlayBaseDatabase: true,
+      builtOverlayBaseDatabase: false,
+    }),
+    logger,
+  );
+  if (!saved) {
+    logger.warning(
+      "Failed to record that pull request analyses using improved incremental analysis are not " +
+        "completing successfully. Improved incremental analysis is disabled for this analysis, but " +
+        "the Action will check for failed pull request analyses again on the next analysis.",
+    );
+  }
+  return true;
+}
+
+/**
+ * Look for the most recently created cache entry marking a pull request analysis that ran with
+ * overlay analysis and did not complete successfully.
+ */
+async function findPullRequestFailureMarker(
+  codeql: CodeQL,
+  languages: string[],
+  diskUsage: DiskUsage,
+  logger: Logger,
+): Promise<ActionsCacheItem | undefined> {
+  const keyPrefix = await getPullRequestMarkerCacheKeyPrefix(
+    codeql,
+    languages,
+    diskUsage,
+  );
+
+  let marker: ActionsCacheItem | undefined;
+  try {
+    [marker] = await listActionsCachesPage({
+      keyPrefix,
+      sort: "created_at",
+      direction: "desc",
+      perPage: 1,
+    });
+  } catch (error) {
+    logger.warning(
+      "Failed to check the Actions cache for pull request analyses that did not complete " +
+        `successfully: ${getErrorMessage(error)}`,
+    );
+    return undefined;
+  }
+
+  if (marker === undefined) {
+    logger.debug(
+      `Found no Actions cache entries with the prefix ${keyPrefix}, so no pull request analysis ` +
+        "using improved incremental analysis has recently failed.",
+    );
+    return undefined;
+  }
+  return marker;
 }
 
 export async function getCacheKey(

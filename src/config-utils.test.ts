@@ -1008,6 +1008,7 @@ interface OverlayDatabaseModeTestSetup {
   diskUsage: DiskUsage | undefined;
   memoryFlagValue: number;
   shouldSkipOverlayAnalysisDueToCachedStatus: boolean;
+  shouldSkipOverlayAnalysisDueToPullRequestFailure: boolean;
   repositoryProperties: RepositoryProperties;
 }
 
@@ -1029,6 +1030,7 @@ const defaultOverlayDatabaseModeTestSetup: OverlayDatabaseModeTestSetup = {
   },
   memoryFlagValue: 6920,
   shouldSkipOverlayAnalysisDueToCachedStatus: false,
+  shouldSkipOverlayAnalysisDueToPullRequestFailure: false,
   repositoryProperties: {},
 };
 
@@ -1071,6 +1073,13 @@ const checkOverlayEnablementMacro = makeMacro({
         sinon
           .stub(overlayStatus, "shouldSkipOverlayAnalysis")
           .resolves(setup.shouldSkipOverlayAnalysisDueToCachedStatus);
+
+        sinon
+          .stub(
+            overlayStatus,
+            "shouldSkipOverlayAnalysisAfterPullRequestFailure",
+          )
+          .resolves(setup.shouldSkipOverlayAnalysisDueToPullRequestFailure);
 
         // Mock feature flags
         const features = createFeatures(setup.features);
@@ -1202,6 +1211,59 @@ checkOverlayEnablementMacro.serial(
   },
   {
     overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+checkOverlayEnablementMacro.serial(
+  "No overlay-base database on default branch if a pull request analysis failed",
+  {
+    languages: [BuiltInLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheckPr,
+    ],
+    isDefaultBranch: true,
+    shouldSkipOverlayAnalysisDueToPullRequestFailure: true,
+  },
+  {
+    disabledReason: OverlayDisabledReason.PullRequestAnalysisFailed,
+  },
+);
+
+checkOverlayEnablementMacro.serial(
+  "Overlay-base database on default branch if no pull request analysis failed",
+  {
+    languages: [BuiltInLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheckPr,
+    ],
+    isDefaultBranch: true,
+    shouldSkipOverlayAnalysisDueToPullRequestFailure: false,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+    useOverlayDatabaseCaching: true,
+  },
+);
+
+checkOverlayEnablementMacro.serial(
+  "Pull request analyses do not consult the pull request failure status",
+  {
+    languages: [BuiltInLanguage.javascript],
+    features: [
+      Feature.OverlayAnalysis,
+      Feature.OverlayAnalysisJavascript,
+      Feature.OverlayAnalysisStatusCheckPr,
+    ],
+    isPullRequest: true,
+    shouldSkipOverlayAnalysisDueToPullRequestFailure: true,
+  },
+  {
+    overlayDatabaseMode: OverlayDatabaseMode.Overlay,
     useOverlayDatabaseCaching: true,
   },
 );

@@ -70,7 +70,12 @@ import {
   OverlayDisabledReason,
 } from "./overlay/diagnostics";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
-import { shouldSkipOverlayAnalysis } from "./overlay/status";
+import {
+  getPullRequestFailureCheck,
+  PullRequestFailureCheck,
+  shouldSkipOverlayAnalysis,
+  shouldSkipOverlayAnalysisAfterPullRequestFailure,
+} from "./overlay/status";
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
@@ -780,8 +785,16 @@ export async function checkOverlayEnablement(
   const checkOverlayStatus = await features.getValue(
     Feature.OverlayAnalysisStatusCheck,
   );
+  const pullRequestFailureCheck = await getPullRequestFailureCheck(features);
+  // The pull request failure check needs the disk usage to compute its cache key prefix, but it
+  // only applies when analyzing the default branch, and it fails open if the disk usage is
+  // unavailable rather than disabling overlay analysis.
   const needDiskUsage = performResourceChecks || checkOverlayStatus;
-  const diskUsage = needDiskUsage ? await checkDiskUsage(logger) : undefined;
+  const wantDiskUsage =
+    needDiskUsage ||
+    (pullRequestFailureCheck !== PullRequestFailureCheck.None &&
+      !isAnalyzingPullRequest());
+  const diskUsage = wantDiskUsage ? await checkDiskUsage(logger) : undefined;
   if (needDiskUsage && diskUsage === undefined) {
     logger.warning(
       `Unable to determine disk usage, therefore setting overlay database mode to ${OverlayDatabaseMode.None}.`,
@@ -822,6 +835,22 @@ export async function checkOverlayEnablement(
         "with caching because we are analyzing a pull request.",
     );
   } else if (await isAnalyzingDefaultBranch()) {
+    if (
+      diskUsage !== undefined &&
+      (await shouldSkipOverlayAnalysisAfterPullRequestFailure(
+        codeql,
+        languages,
+        diskUsage,
+        pullRequestFailureCheck,
+        logger,
+      ))
+    ) {
+      logger.info(
+        `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
+          "because a pull request analysis using overlay analysis did not complete successfully.",
+      );
+      return new Failure(OverlayDisabledReason.PullRequestAnalysisFailed);
+    }
     overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
     logger.info(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +

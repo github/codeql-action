@@ -157,6 +157,19 @@ export enum Feature {
   OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
   /** Controls whether the Actions cache is checked for overlay build outcomes. */
   OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
+  /**
+   * Controls whether the Actions cache is checked for pull request analyses that failed while
+   * using overlay analysis, and overlay analysis disabled if any are found.
+   *
+   * Requires `OverlayAnalysisStatusCheck` to be enabled as well: disabling overlay analysis for
+   * subsequent runs works by writing the cache entry that flag controls the reading of.
+   */
+  OverlayAnalysisStatusCheckPr = "overlay_analysis_status_check_pr",
+  /**
+   * Like `OverlayAnalysisStatusCheckPr`, but only logs a diagnostic instead of disabling overlay
+   * analysis. `OverlayAnalysisStatusCheckPr` overrides this flag.
+   */
+  OverlayAnalysisStatusCheckPrDryRun = "overlay_analysis_status_check_pr_dry_run",
   /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   QaTelemetryEnabled = "qa_telemetry_enabled",
@@ -412,6 +425,16 @@ export const featureConfig = {
   [Feature.OverlayAnalysisStatusCheck]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_CHECK",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisStatusCheckPr]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_CHECK_PR",
+    minimumVersion: undefined,
+  },
+  [Feature.OverlayAnalysisStatusCheckPrDryRun]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_STATUS_CHECK_PR_DRY_RUN",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisStatusSave]: {

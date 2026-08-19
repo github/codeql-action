@@ -39,6 +39,8 @@ export enum OverlayDisabledReason {
   NotPullRequestOrDefaultBranch = "not-pull-request-or-default-branch",
   /** The top-level overlay analysis feature flag is not enabled. */
   OverallFeatureNotEnabled = "overall-feature-not-enabled",
+  /** Overlay analysis was disabled because pull request analyses that used it failed. */
+  PullRequestAnalysisFailed = "pull-request-analysis-failed",
   /**
    * Overlay analysis was selected for a pull request, but diff-informed
    * analysis was not enabled for the run (for example, because the
@@ -109,6 +111,38 @@ export async function addOverlayDisablementDiagnostics(
   }
 
   if (
+    overlayDisabledReason === OverlayDisabledReason.PullRequestAnalysisFailed
+  ) {
+    addNoLanguageDiagnostic(
+      config,
+      makeDiagnostic(
+        "codeql-action/overlay-disabled-due-to-pull-request-failure",
+        "Skipped improved incremental analysis because pull request analyses did not complete successfully",
+        {
+          attributes: {
+            languages: config.languages,
+          },
+          markdownMessage:
+            "Improved incremental analysis was skipped because a pull request analysis for this " +
+            `repository did not complete successfully with CodeQL version ${(await codeql.getVersion()).version} ` +
+            "on a runner with similar hardware resources. " +
+            "One possible reason for this is that improved incremental analysis can require a significant amount of disk space for some repositories. " +
+            "If you want to try re-enabling improved incremental analysis, increase the disk space available " +
+            "to the runner. If that doesn't help, contact GitHub Support for further assistance.\n\n" +
+            "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +
+            `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` and \`codeql-overlay-pr-status-*\` entries from the Actions cache.`,
+          severity: "note",
+          visibility: {
+            cliSummaryTable: true,
+            statusPage: true,
+            telemetry: false,
+          },
+        },
+      ),
+    );
+  }
+
+  if (
     overlayDisabledReason === OverlayDisabledReason.DisabledByRepositoryProperty
   ) {
     addNoLanguageDiagnostic(
@@ -134,4 +168,22 @@ export async function addOverlayDisablementDiagnostics(
       ),
     );
   }
+}
+
+/**
+ * Add a telemetry diagnostic recording that we found a pull request analysis that ran with overlay
+ * analysis and did not complete successfully.
+ */
+export function addPullRequestAnalysisFailedTelemetryDiagnostic(
+  languages: string[],
+  isDryRun: boolean,
+) {
+  addNoLanguageDiagnostic(
+    undefined,
+    makeTelemetryDiagnostic(
+      "codeql-action/overlay-pull-request-analysis-failed",
+      "Pull request analysis using overlay analysis did not complete successfully",
+      { languages, isDryRun },
+    ),
+  );
 }

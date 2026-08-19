@@ -375,6 +375,50 @@ export async function listActionsCaches(
   );
 }
 
+/** Options for `listActionsCachesPage`. */
+interface ListActionsCachesPageOptions {
+  /** The cache key prefix to match. */
+  keyPrefix: string;
+  /** The property to sort the results by. */
+  sort?: "created_at" | "last_accessed_at" | "size_in_bytes";
+  /** The direction to sort the results in. */
+  direction?: "asc" | "desc";
+  /** The maximum number of results to return. */
+  perPage?: number;
+}
+
+/**
+ * List a single page of Actions cache entries starting with the provided key prefix.
+ *
+ * Unlike `listActionsCaches`, this makes exactly one request and does not retry, which keeps the
+ * cost of the lookup predictable for latency-sensitive callers.
+ *
+ * See https://docs.github.com/en/rest/actions/cache#list-github-actions-caches-for-a-repository.
+ */
+export async function listActionsCachesPage({
+  keyPrefix,
+  sort,
+  direction,
+  perPage,
+}: ListActionsCachesPageOptions): Promise<ActionsCacheItem[]> {
+  const repositoryNwo = getRepositoryNwo();
+
+  const response = await getApiClient().request(
+    "GET /repos/{owner}/{repo}/actions/caches",
+    {
+      owner: repositoryNwo.owner,
+      repo: repositoryNwo.repo,
+      key: keyPrefix,
+      sort,
+      direction,
+      per_page: perPage,
+      request: { retries: 0 },
+    },
+  );
+
+  return response.data.actions_caches;
+}
+
 /**
  * Delete an Actions cache item by its ID.
  *

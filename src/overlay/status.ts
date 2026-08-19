@@ -44,13 +44,28 @@ function isCacheSaved(cacheId: number | undefined): boolean {
 /** File name for the serialized overlay status. */
 const STATUS_FILE_NAME = "overlay-status.json";
 
+/** File name for the marker recording an unsuccessful pull request analysis. */
+const PULL_REQUEST_MARKER_FILE_NAME = "overlay-pull-request-status";
+
 /** Path to the local overlay status file. */
 function getStatusFilePath(languages: string[]): string {
+  return path.join(getStatusDirectory(languages), STATUS_FILE_NAME);
+}
+
+/** Path to the local pull request marker file. */
+function getPullRequestMarkerFilePath(languages: string[]): string {
+  return path.join(
+    getStatusDirectory(languages),
+    PULL_REQUEST_MARKER_FILE_NAME,
+  );
+}
+
+/** Directory holding the local files that back the overlay status cache entries. */
+function getStatusDirectory(languages: string[]): string {
   return path.join(
     getTemporaryDirectory(),
     "overlay-status",
     [...languages].sort().join("+"),
-    STATUS_FILE_NAME,
   );
 }
 
@@ -216,7 +231,99 @@ export async function saveOverlayStatus(
   }
 }
 
+/**
+ * Save a marker to the Actions cache to record that this pull request analysis ran with overlay
+ * analysis and did not complete successfully.
+ *
+ * A pull request cannot write to the Actions cache scope of the default branch, so we record the
+ * failure in the pull request's own cache scope instead. Everything the default branch needs is in
+ * the cache key, since it can list cache keys but cannot restore cache entries written by a pull
+ * request.
+ *
+ * @returns `true` if the marker was saved successfully, `false` otherwise.
+ */
+export async function savePullRequestFailureMarker(
+  codeql: CodeQL,
+  languages: string[],
+  diskUsage: DiskUsage,
+  checkRunId: number | undefined,
+  logger: Logger,
+): Promise<boolean> {
+  try {
+    const cacheKey = await getPullRequestMarkerCacheKey(
+      codeql,
+      languages,
+      diskUsage,
+      checkRunId,
+    );
+    const markerFile = getPullRequestMarkerFilePath(languages);
+
+    await fs.promises.mkdir(path.dirname(markerFile), { recursive: true });
+    await fs.promises.writeFile(markerFile, cacheKey);
+    const cacheId = await waitForResultWithTimeLimit(
+      MAX_CACHE_OPERATION_MS,
+      actionsCache.saveCache([markerFile], cacheKey),
+      () => {
+        logger.warning(
+          "Timed out saving the pull request failure marker to cache.",
+        );
+      },
+    );
+    if (!isCacheSaved(cacheId)) {
+      return false;
+    }
+    logger.debug(
+      `Saved pull request failure marker to Actions cache with key ${cacheKey}`,
+    );
+    return true;
+  } catch (error) {
+    logger.warning(
+      `Failed to save the pull request failure marker to cache: ${getErrorMessage(error)}`,
+    );
+    return false;
+  }
+}
+
 export async function getCacheKey(
+  codeql: CodeQL,
+  languages: string[],
+  diskUsage: DiskUsage,
+): Promise<string> {
+  return `codeql-overlay-status-${await getCacheKeySuffix(codeql, languages, diskUsage)}`;
+}
+
+/**
+ * The prefix of the cache keys used to mark pull request analyses that ran with overlay analysis
+ * and did not complete successfully.
+ */
+export async function getPullRequestMarkerCacheKeyPrefix(
+  codeql: CodeQL,
+  languages: string[],
+  diskUsage: DiskUsage,
+): Promise<string> {
+  return `codeql-overlay-pr-status-${await getCacheKeySuffix(codeql, languages, diskUsage)}-`;
+}
+
+/**
+ * The cache key used to mark that this pull request analysis ran with overlay analysis and did not
+ * complete successfully. The job details make the key unique across the jobs of a workflow run.
+ */
+export async function getPullRequestMarkerCacheKey(
+  codeql: CodeQL,
+  languages: string[],
+  diskUsage: DiskUsage,
+  checkRunId: number | undefined,
+): Promise<string> {
+  const prefix = await getPullRequestMarkerCacheKeyPrefix(
+    codeql,
+    languages,
+    diskUsage,
+  );
+  return `${prefix}${getWorkflowRunID()}-${getWorkflowRunAttempt()}-${checkRunId ?? "unknown"}`;
+}
+
+/** The part of the overlay status cache keys that identifies the analysis and the runner. */
+async function getCacheKeySuffix(
   codeql: CodeQL,
   languages: string[],
   diskUsage: DiskUsage,
@@ -232,5 +339,5 @@ export async function getCacheKey(
 
   // Include the CodeQL version in the cache key so we will try again to use overlay analysis when
   // new queries and libraries that may be more efficient are released.
-  return `codeql-overlay-status-${[...languages].sort().join("+")}-${(await codeql.getVersion()).version}-runner-${diskSpaceToNearest10Gb}`;
+  return `${[...languages].sort().join("+")}-${(await codeql.getVersion()).version}-runner-${diskSpaceToNearest10Gb}`;
 }

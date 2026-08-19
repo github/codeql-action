@@ -255,6 +255,8 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       );
     }
 
+    core.exportVariable(EnvVar.ANALYZE_DID_START, "true");
+
     const codeql = await getCodeQL(logger, config.codeQLCmd);
 
     if (hasBadExpectErrorInput()) {

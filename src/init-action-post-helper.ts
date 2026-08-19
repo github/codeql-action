@@ -25,6 +25,7 @@ import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import {
   createOverlayStatus,
   OverlayStatus,
+  savePullRequestFailureMarker,
   saveOverlayStatus,
 } from "./overlay/status";
 import { RepositoryNwo, getRepositoryNwo } from "./repository";
@@ -413,9 +414,13 @@ export async function uploadFailureInfo(
 }
 
 /**
- * If overlay base database creation was attempted but the analysis did not complete
- * successfully, save the failure status to the Actions cache so that subsequent runs
- * can skip overlay analysis until something changes (e.g. a new CodeQL version).
+ * If an analysis that used overlay analysis did not complete successfully, record that in the
+ * Actions cache so that subsequent runs can skip overlay analysis until something changes (e.g. a
+ * new CodeQL version).
+ *
+ * An analysis of the default branch records its failure in the overlay status cache entry that
+ * subsequent analyses read directly. A pull request analysis cannot write to the cache scope of the
+ * default branch, so it instead saves a marker cache entry whose key the default branch can find.
  */
 async function recordOverlayStatus(
   codeql: CodeQL,
@@ -423,25 +428,36 @@ async function recordOverlayStatus(
   features: FeatureEnablement,
   logger: Logger,
 ) {
+  const overlayDatabaseMode = config.overlayDatabaseMode;
   if (
-    config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
+    (overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase &&
+      overlayDatabaseMode !== OverlayDatabaseMode.Overlay) ||
     process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true" ||
     !(await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
     return;
   }
 
-  const checkRunIdInput = actionsUtil.getOptionalInput("check-run-id");
-  const checkRunId =
-    checkRunIdInput !== undefined ? parseInt(checkRunIdInput, 10) : undefined;
+  // Unlike an overlay-base database build, which the `init` Action performs, an overlay analysis
+  // can only fail in a way that is worth recording once the `analyze` Action has started.
+  //
+  // The marker also records specifically that a *pull request* analysis failed, so don't write one
+  // when overlay mode was selected manually for some other kind of run.
+  if (
+    overlayDatabaseMode === OverlayDatabaseMode.Overlay &&
+    (process.env[EnvVar.ANALYZE_DID_START] !== "true" ||
+      !actionsUtil.isAnalyzingPullRequest())
+  ) {
+    return;
+  }
 
-  const overlayStatus: OverlayStatus = createOverlayStatus(
-    {
-      attemptedToBuildOverlayBaseDatabase: true,
-      builtOverlayBaseDatabase: false,
-    },
-    checkRunId !== undefined && checkRunId >= 0 ? checkRunId : undefined,
-  );
+  const checkRunIdInput = actionsUtil.getOptionalInput("check-run-id");
+  const parsedCheckRunId =
+    checkRunIdInput !== undefined ? parseInt(checkRunIdInput, 10) : undefined;
+  const checkRunId =
+    parsedCheckRunId !== undefined && parsedCheckRunId >= 0
+      ? parsedCheckRunId
+      : undefined;
 
   const diskUsage = await checkDiskUsage(logger);
   if (diskUsage === undefined) {
@@ -451,6 +467,42 @@ async function recordOverlayStatus(
     return;
   }
 
+  const blurb =
+    "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
+    "One possible reason for this is disk space constraints, since improved incremental analysis can " +
+    "require a significant amount of disk space for some repositories.";
+  const notRecorded =
+    "The attempt to record this failure was unsuccessful, so the next analysis will try to use " +
+    "improved incremental analysis again.";
+  const advice =
+    "If you want to keep using improved incremental analysis, try increasing the disk space available " +
+    "to the runner. If that doesn't help, contact GitHub Support for further assistance.";
+
+  if (overlayDatabaseMode === OverlayDatabaseMode.Overlay) {
+    const savedMarker = await savePullRequestFailureMarker(
+      codeql,
+      config.languages,
+      diskUsage,
+      checkRunId,
+      logger,
+    );
+    logger.error(
+      savedMarker
+        ? `${blurb} This failure has been recorded. Improved incremental analysis will be turned off ` +
+            `the next time this repository's default branch is analyzed. ${advice}`
+        : `${blurb} ${notRecorded}`,
+    );
+    return;
+  }
+
+  const overlayStatus: OverlayStatus = createOverlayStatus(
+    {
+      attemptedToBuildOverlayBaseDatabase: true,
+      builtOverlayBaseDatabase: false,
+    },
+    checkRunId,
+  );
+
   const saved = await saveOverlayStatus(
     codeql,
     config.languages,
@@ -459,26 +511,12 @@ async function recordOverlayStatus(
     logger,
   );
 
-  const blurb =
-    "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
-    "One possible reason for this is disk space constraints, since improved incremental analysis can " +
-    "require a significant amount of disk space for some repositories.";
-
-  if (saved) {
-    logger.error(
-      `${blurb} ` +
-        "This failure has been recorded in the Actions cache, so the next CodeQL analysis will run " +
-        "without improved incremental analysis. If you want to enable improved incremental analysis, " +
-        "try increasing the disk space available to the runner. " +
-        "If that doesn't help, contact GitHub Support for further assistance.",
-    );
-  } else {
-    logger.error(
-      `${blurb} ` +
-        "The attempt to save this failure status to the Actions cache failed. The Action will attempt to " +
-        "run with improved incremental analysis again.",
-    );
-  }
+  logger.error(
+    saved
+      ? `${blurb} This failure has been recorded, so the next CodeQL analysis will run without ` +
+          `improved incremental analysis. ${advice}`
+      : `${blurb} ${notRecorded}`,
+  );
 }
 
 async function removeUploadedSarif(

@@ -18,6 +18,9 @@ export enum EnvVar {
   /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",
 
+  /** Whether the `analyze` Action started running. */
+  ANALYZE_DID_START = "CODEQL_ACTION_ANALYZE_DID_START",
+
   /** Whether the `autobuild` Action completes successfully. */
   AUTOBUILD_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY",
 

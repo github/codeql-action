@@ -9,11 +9,18 @@ import {
   getRecordingLogger,
   LoggedMessage,
   mockCodeQLVersion,
+  setupActionsVars,
   setupTests,
 } from "../testing-utils";
 import { DiskUsage, withTmpDir } from "../util";
 
-import { getCacheKey, shouldSkipOverlayAnalysis } from "./status";
+import {
+  getCacheKey,
+  getPullRequestMarkerCacheKey,
+  getPullRequestMarkerCacheKeyPrefix,
+  savePullRequestFailureMarker,
+  shouldSkipOverlayAnalysis,
+} from "./status";
 
 setupTests(test);
 
@@ -174,6 +181,84 @@ test.serial(
             m.message.includes(
               "Cached overlay status does not indicate a previous unsuccessful attempt",
             ),
+        ),
+      );
+    });
+  },
+);
+
+test("getPullRequestMarkerCacheKeyPrefix mirrors the status cache key dimensions", async (t) => {
+  const codeql = mockCodeQLVersion("2.20.0");
+  t.is(
+    await getPullRequestMarkerCacheKeyPrefix(
+      codeql,
+      ["python", "javascript"],
+      makeDiskUsage(50),
+    ),
+    "codeql-overlay-pr-status-javascript+python-2.20.0-runner-50GB-",
+  );
+});
+
+test.serial(
+  "getPullRequestMarkerCacheKey includes the workflow run and check run details",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir, {
+        GITHUB_RUN_ID: "42",
+        GITHUB_RUN_ATTEMPT: "2",
+      });
+      const codeql = mockCodeQLVersion("2.20.0");
+      t.is(
+        await getPullRequestMarkerCacheKey(
+          codeql,
+          ["javascript"],
+          makeDiskUsage(50),
+          7,
+        ),
+        "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-42-2-7",
+      );
+      t.is(
+        await getPullRequestMarkerCacheKey(
+          codeql,
+          ["javascript"],
+          makeDiskUsage(50),
+          undefined,
+        ),
+        "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-42-2-unknown",
+      );
+    });
+  },
+);
+
+test.serial(
+  "savePullRequestFailureMarker reports failure when the cache entry is not saved",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const saveCacheStub = sinon.stub(actionsCache, "saveCache").resolves(-1);
+
+      t.false(
+        await savePullRequestFailureMarker(
+          mockCodeQLVersion("2.20.0"),
+          ["javascript"],
+          makeDiskUsage(50),
+          7,
+          getRecordingLogger([]),
+        ),
+      );
+      t.is(
+        saveCacheStub.firstCall.args[1],
+        "codeql-overlay-pr-status-javascript-2.20.0-runner-50GB-1-1-7",
+      );
+
+      saveCacheStub.resolves(1);
+      t.true(
+        await savePullRequestFailureMarker(
+          mockCodeQLVersion("2.20.0"),
+          ["javascript"],
+          makeDiskUsage(50),
+          7,
+          getRecordingLogger([]),
         ),
       );
     });

@@ -528,6 +528,214 @@ test.serial(
   },
 );
 
+test.serial(
+  "saves a pull request failure marker when an overlay analysis did not complete successfully",
+  async (t) => {
+    return await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+      process.env[EnvVar.ANALYZE_DID_START] = "true";
+
+      const diskUsage: util.DiskUsage = {
+        numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+        numTotalBytes: 200 * NUM_BYTES_PER_GIB,
+      };
+      sinon.stub(util, "checkDiskUsage").resolves(diskUsage);
+
+      sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+      const saveMarkerStub = sinon
+        .stub(overlayStatus, "savePullRequestFailureMarker")
+        .resolves(true);
+      const saveOverlayStatusStub = sinon
+        .stub(overlayStatus, "saveOverlayStatus")
+        .resolves(true);
+
+      const stubCodeQL = codeql.createStubCodeQL({});
+
+      await initActionPostHelper.uploadFailureInfo(
+        sinon.spy(),
+        sinon.spy(),
+        stubCodeQL,
+        createTestConfig({
+          debugMode: false,
+          languages: ["javascript"],
+          overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+        }),
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([Feature.OverlayAnalysisStatusSave]),
+        getRunnerLogger(true),
+      );
+
+      t.true(
+        saveMarkerStub.calledOnce,
+        "savePullRequestFailureMarker should be called exactly once",
+      );
+      t.deepEqual(saveMarkerStub.firstCall.args[0], stubCodeQL);
+      t.deepEqual(saveMarkerStub.firstCall.args[1], ["javascript"]);
+      t.deepEqual(saveMarkerStub.firstCall.args[2], diskUsage);
+      t.is(saveMarkerStub.firstCall.args[3], undefined);
+      t.true(
+        saveOverlayStatusStub.notCalled,
+        "saveOverlayStatus should not be called for a pull request analysis",
+      );
+    });
+  },
+);
+
+test.serial(
+  "does not save a pull request failure marker when the analyze Action did not start",
+  async (t) => {
+    return await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+      delete process.env[EnvVar.ANALYZE_DID_START];
+
+      sinon.stub(util, "checkDiskUsage").resolves({
+        numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+        numTotalBytes: 200 * NUM_BYTES_PER_GIB,
+      });
+
+      sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+      const saveMarkerStub = sinon
+        .stub(overlayStatus, "savePullRequestFailureMarker")
+        .resolves(true);
+
+      await initActionPostHelper.uploadFailureInfo(
+        sinon.spy(),
+        sinon.spy(),
+        codeql.createStubCodeQL({}),
+        createTestConfig({
+          debugMode: false,
+          languages: ["javascript"],
+          overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+        }),
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([Feature.OverlayAnalysisStatusSave]),
+        getRunnerLogger(true),
+      );
+
+      t.true(saveMarkerStub.notCalled);
+    });
+  },
+);
+
+test.serial(
+  "does not save a pull request failure marker when the analysis completed successfully",
+  async (t) => {
+    return await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "true";
+      process.env[EnvVar.ANALYZE_DID_START] = "true";
+
+      sinon.stub(util, "checkDiskUsage").resolves({
+        numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+        numTotalBytes: 200 * NUM_BYTES_PER_GIB,
+      });
+
+      sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+      const saveMarkerStub = sinon
+        .stub(overlayStatus, "savePullRequestFailureMarker")
+        .resolves(true);
+
+      await initActionPostHelper.uploadFailureInfo(
+        sinon.spy(),
+        sinon.spy(),
+        codeql.createStubCodeQL({}),
+        createTestConfig({
+          debugMode: false,
+          languages: ["javascript"],
+          overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+        }),
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([Feature.OverlayAnalysisStatusSave]),
+        getRunnerLogger(true),
+      );
+
+      t.true(saveMarkerStub.notCalled);
+    });
+  },
+);
+
+test.serial(
+  "does not save a pull request failure marker when the OverlayAnalysisStatusSave feature flag is disabled",
+  async (t) => {
+    return await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+      process.env[EnvVar.ANALYZE_DID_START] = "true";
+
+      sinon.stub(util, "checkDiskUsage").resolves({
+        numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+        numTotalBytes: 200 * NUM_BYTES_PER_GIB,
+      });
+
+      sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(true);
+
+      const saveMarkerStub = sinon
+        .stub(overlayStatus, "savePullRequestFailureMarker")
+        .resolves(true);
+
+      await initActionPostHelper.uploadFailureInfo(
+        sinon.spy(),
+        sinon.spy(),
+        codeql.createStubCodeQL({}),
+        createTestConfig({
+          debugMode: false,
+          languages: ["javascript"],
+          overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+        }),
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([]),
+        getRunnerLogger(true),
+      );
+
+      t.true(saveMarkerStub.notCalled);
+    });
+  },
+);
+
+test.serial(
+  "does not save a pull request failure marker when not analyzing a pull request",
+  async (t) => {
+    return await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+      process.env[EnvVar.ANALYZE_DID_START] = "true";
+
+      sinon.stub(util, "checkDiskUsage").resolves({
+        numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+        numTotalBytes: 200 * NUM_BYTES_PER_GIB,
+      });
+
+      // Overlay mode can be selected manually for a run that is not analyzing a pull request.
+      sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(false);
+
+      const saveMarkerStub = sinon
+        .stub(overlayStatus, "savePullRequestFailureMarker")
+        .resolves(true);
+
+      await initActionPostHelper.uploadFailureInfo(
+        sinon.spy(),
+        sinon.spy(),
+        codeql.createStubCodeQL({}),
+        createTestConfig({
+          debugMode: false,
+          languages: ["javascript"],
+          overlayDatabaseMode: OverlayDatabaseMode.Overlay,
+        }),
+        parseRepositoryNwo("github/codeql-action"),
+        createFeatures([Feature.OverlayAnalysisStatusSave]),
+        getRunnerLogger(true),
+      );
+
+      t.true(saveMarkerStub.notCalled);
+    });
+  },
+);
+
 function createTestWorkflow(
   steps: workflow.WorkflowJobStep[],
 ): workflow.Workflow {

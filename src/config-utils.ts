@@ -48,7 +48,7 @@ import {
 import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";
 import {
   RepositoryProperties,
   RepositoryPropertyName,
@@ -101,10 +101,23 @@ export { type Config } from "./config/action-config";
  * whether to perform overlay analysis, then the action will not perform overlay
  * analysis unless overlay analysis has been explicitly enabled via environment
  * variable.
+ *
+ * This threshold can be lowered by the feature flags in
+ * `OVERLAY_MINIMUM_DISK_SPACE_MB_BY_FEATURE`.
  */
 const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB = 14000;
-const OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES =
-  OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB * 1_000_000;
+
+/**
+ * Minimum available disk space (in MB) enabled by each overlay feature flag.
+ */
+const OVERLAY_MINIMUM_DISK_SPACE_MB_BY_FEATURE = {
+  [Feature.OverlayAnalysisMinDisk8Gb]: 8000,
+  [Feature.OverlayAnalysisMinDisk9Gb]: 9000,
+  [Feature.OverlayAnalysisMinDisk10Gb]: 10000,
+  [Feature.OverlayAnalysisMinDisk11Gb]: 11000,
+  [Feature.OverlayAnalysisMinDisk12Gb]: 12000,
+  [Feature.OverlayAnalysisMinDisk13Gb]: 13000,
+} satisfies Partial<Record<FeatureWithoutCLI, number>>;
 
 /**
  * The minimum memory (in MB) that must be available for CodeQL to perform overlay analysis. If
@@ -579,21 +592,44 @@ async function checkOverlayAnalysisFeatureEnabled(
   return new Success(undefined);
 }
 
+/**
+ * Returns the minimum available disk space (in MB) required to perform overlay
+ * analysis, which is the lowest threshold enabled by a feature flag, or the
+ * default threshold if no such feature flag is enabled.
+ */
+async function getMinimumDiskSpaceMb(
+  features: FeatureEnablement,
+): Promise<number> {
+  let minimumMb = OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_MB;
+  for (const [feature, thresholdMb] of Object.entries(
+    OVERLAY_MINIMUM_DISK_SPACE_MB_BY_FEATURE,
+  )) {
+    if (await features.getValue(feature as FeatureWithoutCLI)) {
+      minimumMb = Math.min(minimumMb, thresholdMb);
+    }
+  }
+  return minimumMb;
+}
+
 /** Checks if the runner has enough disk space for overlay analysis. */
 function runnerHasSufficientDiskSpace(
   diskUsage: DiskUsage,
   logger: Logger,
+  minimumDiskSpaceMb: number,
 ): boolean {
-  const minimumDiskSpaceBytes = OVERLAY_MINIMUM_AVAILABLE_DISK_SPACE_BYTES;
-  if (diskUsage.numAvailableBytes < minimumDiskSpaceBytes) {
-    const diskSpaceMb = Math.round(diskUsage.numAvailableBytes / 1_000_000);
-    const minimumDiskSpaceMb = Math.round(minimumDiskSpaceBytes / 1_000_000);
+  const diskSpaceMb = Math.round(diskUsage.numAvailableBytes / 1_000_000);
+  if (diskUsage.numAvailableBytes < minimumDiskSpaceMb * 1_000_000) {
     logger.info(
       `Setting overlay database mode to ${OverlayDatabaseMode.None} ` +
         `due to insufficient disk space (${diskSpaceMb} MB, needed ${minimumDiskSpaceMb} MB).`,
     );
     return false;
   }
+
+  logger.debug(
+    `Disk space available for CodeQL analysis is ${diskSpaceMb} MB, which is at or above the ` +
+      `minimum of ${minimumDiskSpaceMb} MB.`,
+  );
   return true;
 }
 
@@ -625,7 +661,7 @@ async function runnerHasSufficientMemory(
   }
 
   logger.debug(
-    `Memory available for CodeQL analysis is ${memoryFlagValue} MB, which is above the minimum of ${OVERLAY_MINIMUM_MEMORY_MB} MB.`,
+    `Memory available for CodeQL analysis is ${memoryFlagValue} MB, which is at or above the minimum of ${OVERLAY_MINIMUM_MEMORY_MB} MB.`,
   );
   return true;
 }
@@ -636,11 +672,13 @@ async function runnerHasSufficientMemory(
  */
 async function checkRunnerResources(
   codeql: CodeQL,
+  features: FeatureEnablement,
   diskUsage: DiskUsage,
   ramInput: string | undefined,
   logger: Logger,
 ): Promise<Result<void, OverlayDisabledReason>> {
-  if (!runnerHasSufficientDiskSpace(diskUsage, logger)) {
+  const minimumDiskSpaceMb = await getMinimumDiskSpaceMb(features);
+  if (!runnerHasSufficientDiskSpace(diskUsage, logger, minimumDiskSpaceMb)) {
     return new Failure(OverlayDisabledReason.InsufficientDiskSpace);
   }
   if (!(await runnerHasSufficientMemory(codeql, ramInput, logger))) {
@@ -752,7 +790,13 @@ export async function checkOverlayEnablement(
   }
   const resourceResult =
     performResourceChecks && diskUsage !== undefined
-      ? await checkRunnerResources(codeql, diskUsage, ramInput, logger)
+      ? await checkRunnerResources(
+          codeql,
+          features,
+          diskUsage,
+          ramInput,
+          logger,
+        )
       : new Success<void>(undefined);
   if (resourceResult.isFailure()) {
     return resourceResult;

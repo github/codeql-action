@@ -12,10 +12,12 @@ import {
   runTool,
 } from "./actions-util";
 import * as api from "./api-client";
+import * as outputCache from "./cli/output-cache";
+import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -214,20 +216,6 @@ export interface CodeQL {
   ): Promise<void>;
 }
 
-export interface VersionInfo {
-  version: string;
-  features?: { [name: string]: boolean };
-  /**
-   * The overlay version helps deal with backward incompatible changes for
-   * overlay analysis. When a precompiled query pack reports the same overlay
-   * version as the CodeQL CLI, we can use the CodeQL CLI to perform overlay
-   * analysis with that pack. Otherwise, if the overlay versions are different,
-   * or if either the pack or the CLI does not report an overlay version,
-   * we need to revert to non-overlay analysis.
-   */
-  overlayVersion?: number;
-}
-
 export interface ResolveDatabaseOutput {
   overlayBaseSpecifier?: string;
 }
@@ -284,6 +272,26 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-07-01";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
+
+/**
+ * Decides whether `e` is a disk-related error outside of our control
+ * that should be classified as a `ConfigurationError`.
+ *
+ * @param e The error to check.
+ * @returns True if the error should be treated as a `ConfigurationError` or false if not.
+ */
+export function isDiskConfigurationError(e: unknown): boolean {
+  if (!(e instanceof Error)) {
+    return false;
+  }
+
+  return (
+    // out of disk space
+    e.message.includes("ENOSPC") ||
+    // access denied
+    e.message.includes("EACCES")
+  );
+}
 
 /**
  * Set up CodeQL CLI access.
@@ -355,8 +363,7 @@ export async function setupCodeQL(
   } catch (rawError) {
     const e = api.wrapApiConfigurationError(rawError);
     const ErrorClass =
-      e instanceof util.ConfigurationError ||
-      (e instanceof Error && e.message.includes("ENOSPC")) // out of disk space
+      e instanceof util.ConfigurationError || isDiskConfigurationError(e)
         ? util.ConfigurationError
         : Error;
 
@@ -503,7 +510,7 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = util.getCachedCodeQlVersion(cmd);
+      let result = outputCache.getCachedCodeQlVersion(logger, getEnv(), cmd);
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
           cmd,
@@ -512,7 +519,7 @@ async function getCodeQLForCmd(
             noStreamStdout: true,
           },
         );
-        util.cacheCodeQlVersion(cmd, result);
+        outputCache.cacheCodeQlVersion(getEnv(), cmd, result);
       }
       return result;
     },

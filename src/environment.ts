@@ -39,12 +39,6 @@ export enum EnvVar {
    */
   CODE_SCANNING_REF = "CODE_SCANNING_REF",
 
-  /**
-   * `PersistedVersionInfo` for the CodeQL CLI, so later Actions steps can reuse it instead of
-   * invoking `codeql version` again.
-   */
-  CODEQL_VERSION_INFO = "CODEQL_ACTION_CLI_VERSION_INFO",
-
   /** Whether the CodeQL Action has invoked the Go autobuilder. */
   DID_AUTOBUILD_GOLANG = "CODEQL_ACTION_DID_AUTOBUILD_GOLANG",
 

@@ -51,6 +51,31 @@ test.beforeEach(() => {
   });
 });
 
+test("isDiskConfigurationError - true for expected errors", async (t) => {
+  t.true(
+    codeql.isDiskConfigurationError(new Error("ENOSPC: Out of disk space")),
+  );
+  t.true(
+    codeql.isDiskConfigurationError(
+      new Error(
+        "EACCES: permission denied, mkdir /opt/hostedtoolcache/CodeQL/",
+      ),
+    ),
+  );
+});
+
+test("isDiskConfigurationError - false for other errors", async (t) => {
+  t.false(codeql.isDiskConfigurationError("Not an Error instance"));
+
+  const otherMessages = [
+    "Does not contain an error code we test for",
+    "ENOSP: Not quite the full error code",
+  ];
+  for (const otherMessage of otherMessages) {
+    t.false(codeql.isDiskConfigurationError(new Error(otherMessage)));
+  }
+});
+
 async function installIntoToolcache({
   apiDetails = SAMPLE_DOTCOM_API_DETAILS,
   cliVersion,
@@ -580,7 +605,6 @@ const injectedConfigMacro = makeMacro({
         "",
         undefined,
         undefined,
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as string[];
@@ -856,7 +880,6 @@ test.serial(
         "",
         undefined,
         "/path/to/qlconfig.yml",
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as string[];
@@ -887,7 +910,6 @@ test.serial(
         "",
         undefined,
         undefined, // undefined qlconfigFile
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as any[];
@@ -1066,7 +1088,6 @@ test.serial(
       "sourceRoot",
       undefined,
       undefined,
-      getRunnerLogger(false),
     );
 
     t.true(runnerConstructorStub.calledOnce);

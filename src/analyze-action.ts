@@ -255,7 +255,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       );
     }
 
-    const codeql = await getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(logger, config.codeQLCmd);
 
     if (hasBadExpectErrorInput()) {
       throw new util.ConfigurationError(

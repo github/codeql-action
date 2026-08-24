@@ -89,7 +89,6 @@ export async function runDatabaseInitCluster(
   sourceRoot: string,
   processName: string | undefined,
   qlconfigFile: string | undefined,
-  logger: Logger,
 ): Promise<void> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
   await configUtils.wrapEnvironment(
@@ -100,7 +99,6 @@ export async function runDatabaseInitCluster(
         sourceRoot,
         processName,
         qlconfigFile,
-        logger,
       ),
   );
 }

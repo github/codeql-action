@@ -620,8 +620,21 @@ export interface InitWithConfigStatusReport extends InitStatusReport {
 
 /** Fields of the init status report populated when the tools source is `download`. */
 export interface InitToolsDownloadFields {
-  /** Time taken to download the bundle, in milliseconds. */
+  /**
+   * Time taken to download the bundle, in milliseconds. Not populated when the bundle is downloaded
+   * and extracted concurrently.
+   */
   tools_download_duration_ms?: number;
+  /**
+   * Time taken to extract the bundle, in milliseconds. Not populated when the bundle is downloaded
+   * and extracted concurrently.
+   */
+  tools_extraction_duration_ms?: number;
+  /**
+   * Total time taken to make the bundle available on disk, in milliseconds. This includes any time
+   * spent on a streaming attempt that failed and fell back to downloading before extracting.
+   */
+  tools_total_duration_ms?: number;
   /**
    * Whether the relevant tools dotcom feature flags have been misconfigured.
    * Only populated if we attempt to determine the default version based on the dotcom feature flags. */

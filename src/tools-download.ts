@@ -31,7 +31,21 @@ const STREAMING_STALL_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 const TOOLCACHE_TOOL_NAME = "CodeQL";
 
 export type ToolsDownloadStatusReport = {
+  /**
+   * Time spent downloading the bundle, in milliseconds. Not populated when the bundle is downloaded
+   * and extracted concurrently, since the two cannot be told apart.
+   */
   downloadDurationMs?: number;
+  /**
+   * Time spent extracting the bundle, in milliseconds. Not populated when the bundle is downloaded
+   * and extracted concurrently, since the two cannot be told apart.
+   */
+  extractionDurationMs?: number;
+  /**
+   * Total time taken to make the bundle available on disk, in milliseconds. This includes any time
+   * spent on a streaming attempt that failed and fell back to downloading before extracting.
+   */
+  totalDurationMs: number;
 };
 
 export async function downloadAndExtract(
@@ -47,11 +61,12 @@ export async function downloadAndExtract(
     `Downloading CodeQL tools from ${codeqlURL} . This may take a while.`,
   );
 
+  const startTime = performance.now();
+
   try {
     if (compressionMethod === "zstd" && process.platform === "linux") {
       logger.info(`Streaming the extraction of the CodeQL bundle.`);
 
-      const toolsInstallStart = performance.now();
       await downloadAndExtractZstdWithStreaming(
         codeqlURL,
         dest,
@@ -61,16 +76,14 @@ export async function downloadAndExtract(
         logger,
       );
 
-      const combinedDurationMs = Math.round(
-        performance.now() - toolsInstallStart,
-      );
+      const totalDurationMs = Math.round(performance.now() - startTime);
       logger.info(
         `Finished downloading and extracting CodeQL bundle to ${dest} (${formatDuration(
-          combinedDurationMs,
+          totalDurationMs,
         )}).`,
       );
 
-      return {};
+      return { totalDurationMs };
     }
   } catch (e) {
     core.warning(
@@ -98,7 +111,7 @@ export async function downloadAndExtract(
     )}).`,
   );
 
-  let extractionDurationMs: number;
+  let extractionDurationMs: number | undefined;
 
   try {
     logger.info("Extracting CodeQL bundle.");
@@ -120,7 +133,11 @@ export async function downloadAndExtract(
     await cleanUpPath(archivedBundlePath, "CodeQL bundle archive", logger);
   }
 
-  return { downloadDurationMs };
+  return {
+    downloadDurationMs,
+    extractionDurationMs,
+    totalDurationMs: Math.round(performance.now() - startTime),
+  };
 }
 
 async function downloadAndExtractZstdWithStreaming(

@@ -26,6 +26,7 @@ export default [
       "ava.config.mjs",
       "ava.setup.mjs",
       "eslint.config.mjs",
+      "scripts/changetool/build/**/*",
       ".github/**/*",
     ],
   },
@@ -207,6 +208,20 @@ export default [
           ],
         },
       ],
+    },
+  },
+  {
+    files: ["scripts/changetool/**/*.ts"],
+
+    languageOptions: {
+      parserOptions: {
+        project: "./scripts/changetool/tsconfig.json",
+      },
+    },
+
+    rules: {
+      "no-console": "off",
+      "import/extensions": "off",
     },
   },
 ];

@@ -72,6 +72,36 @@ jobs:
           sarif_file: eslint.sarif
           category: eslint
 
+  changetool-tests:
+    name: changetool unit tests
+    permissions:
+      contents: read
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+
+    concurrency:
+      cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+      group: pr-checks-changetool-tests-${{ github.ref }}-${{ github.event_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: scripts/changetool/package-lock.json
+
+      - name: Install dependencies
+        working-directory: scripts/changetool
+        run: npm ci
+
+      - name: Run changetool unit tests
+        working-directory: scripts/changetool
+        run: npm test
+
   # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
   # job.
   other-checks:

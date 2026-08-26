@@ -29,7 +29,10 @@ import {
 import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
-import { getPerLanguageBundleLanguage } from "./per-language-bundles";
+import {
+  getPerLanguageBundleLanguage,
+  tryGetBundleLanguageFromUrl,
+} from "./per-language-bundles";
 import * as tar from "./tar";
 import {
   downloadAndExtract,
@@ -257,7 +260,11 @@ export type CodeQLToolsSource =
        */
       perLanguageBundle?: {
         language: BuiltInLanguage;
-        combinedBundleURL: string;
+        /**
+         * Absent when the bundle was requested explicitly rather than chosen by us, since in that
+         * case we should honor the request rather than substituting a different bundle.
+         */
+        combinedBundleURL?: string;
       };
       sourceType: "download";
       /** Human-readable description of the source of the tools for telemetry purposes. */
@@ -743,7 +750,7 @@ export async function getCodeQLSource(
 
   let compressionMethod: tar.CompressionMethod;
   let perLanguageBundle:
-    | { language: BuiltInLanguage; combinedBundleURL: string }
+    | { language: BuiltInLanguage; combinedBundleURL?: string }
     | undefined;
 
   if (!url) {
@@ -795,6 +802,16 @@ export async function getCodeQLSource(
       );
     }
     compressionMethod = method;
+
+    // The bundle was requested explicitly rather than chosen by us, but we still need to know
+    // whether it contains a single language so that we do not add it to the toolcache.
+    const language = tryGetBundleLanguageFromUrl(url);
+    if (language !== undefined) {
+      logger.info(
+        `${url} appears to be a CodeQL bundle that contains only ${language}.`,
+      );
+      perLanguageBundle = { language };
+    }
   }
 
   if (cliVersion) {
@@ -1098,7 +1115,12 @@ async function downloadCodeQLBundle(
         },
       };
     } catch (e) {
-      if (util.asHTTPError(e)?.status !== 404) {
+      // Without a combined bundle to fall back to, the bundle was requested explicitly, so there is
+      // nothing we can substitute for it.
+      if (
+        perLanguageBundle.combinedBundleURL === undefined ||
+        util.asHTTPError(e)?.status !== 404
+      ) {
         throw e;
       }
       logger.warning(

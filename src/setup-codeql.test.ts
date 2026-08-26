@@ -811,7 +811,7 @@ test.serial(
         );
         t.is(source.perLanguageBundle?.language, BuiltInLanguage.java);
         t.true(
-          source.perLanguageBundle?.combinedBundleURL.endsWith(
+          source.perLanguageBundle?.combinedBundleURL?.endsWith(
             "/codeql-bundle-linux64.tar.zst",
           ),
         );
@@ -1005,6 +1005,69 @@ test.serial(
       checkExpectedLogMessages(t, loggedMessages, [
         "No java CodeQL bundle was found at",
       ]);
+    });
+  },
+);
+
+test.serial(
+  "setupCodeQLBundle keeps an explicitly requested per-language bundle out of the toolcache",
+  async (t) => {
+    const downloadStub = sinon.stub(setupCodeql, "downloadCodeQL").resolves({
+      codeqlFolder: "codeql",
+      statusReport: { totalDurationMs: 100 },
+      toolsVersion: "9.9.9",
+    });
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result = await setupCodeql.setupCodeQLBundle(
+        "https://github.com/github/codeql-action/releases/download/codeql-bundle-v9.9.9/codeql-bundle-ruby-linux64.tar.zst",
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+        GitHubVariant.DOTCOM,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
+        createFeatures([]),
+        getRunnerLogger(true),
+      );
+
+      // Even though we did not choose this bundle, it is still missing most of its extractors.
+      t.true(downloadStub.calledOnce);
+      t.true(isPerLanguageBundleArg(downloadStub.firstCall));
+      t.is(
+        result.toolsDownloadStatusReport?.bundleLanguage,
+        BuiltInLanguage.ruby,
+      );
+    });
+  },
+);
+
+test.serial(
+  "setupCodeQLBundle does not substitute a bundle for an explicitly requested one that is missing",
+  async (t) => {
+    const downloadStub = sinon
+      .stub(setupCodeql, "downloadCodeQL")
+      .rejects(new util.HTTPError("Not Found", 404));
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      await t.throwsAsync(
+        setupCodeql.setupCodeQLBundle(
+          "https://github.com/github/codeql-action/releases/download/codeql-bundle-v9.9.9/codeql-bundle-ruby-linux64.tar.zst",
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+          GitHubVariant.DOTCOM,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          createFeatures([]),
+          getRunnerLogger(true),
+        ),
+      );
+
+      // Falling back would silently ignore the bundle that was asked for.
+      t.true(downloadStub.calledOnce);
     });
   },
 );

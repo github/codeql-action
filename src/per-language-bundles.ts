@@ -18,6 +18,39 @@ import { GitHubVariant } from "./util";
 export const MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION = "99.99.99";
 
 /**
+ * Matches the name of a bundle that contains a single language, capturing that language.
+ *
+ * The language comes before the platform so that the name of a per-language bundle never has the
+ * name of the combined bundle for the same platform as a prefix.
+ */
+const PER_LANGUAGE_BUNDLE_NAME =
+  /^codeql-bundle-(.+)-(?:linux64|osx64|win64)\.tar\.(?:gz|zst)$/;
+
+/**
+ * Determines whether a URL points at a bundle that contains only a single language.
+ *
+ * We need to recognise these even when we did not choose to download one ourselves, since a bundle
+ * that is missing most of its extractors must not be added to the toolcache no matter how we came
+ * to be downloading it.
+ *
+ * @returns The language that the bundle contains, or `undefined` if the URL does not point at a
+ * bundle for a single language.
+ */
+export function tryGetBundleLanguageFromUrl(
+  url: string,
+): BuiltInLanguage | undefined {
+  let assetName: string;
+  try {
+    assetName = new URL(url).pathname.split("/").pop() ?? "";
+  } catch {
+    return undefined;
+  }
+
+  const match = assetName.match(PER_LANGUAGE_BUNDLE_NAME);
+  return match ? parseBuiltInLanguage(match[1]) : undefined;
+}
+
+/**
  * The platform of the per-language bundle we use for each language.
  *
  * We publish at most one per-language bundle per language, so a language is only eligible when the

@@ -8,6 +8,7 @@ import {
   getPerLanguageBundleLanguage,
   MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   PerLanguageBundleOptions,
+  tryGetBundleLanguageFromUrl,
 } from "./per-language-bundles";
 import { createFeatures, setupTests } from "./testing-utils";
 import { GitHubVariant } from "./util";
@@ -137,6 +138,53 @@ test.serial("requires a new enough CLI version", async (t) => {
 
 test.serial("requires the feature flag", async (t) => {
   t.is(await checkEligibility({}, []), undefined);
+});
+
+test.serial("recognizes a per-language bundle from its URL", (t) => {
+  const url = (name: string) =>
+    `https://github.com/github/codeql-action/releases/download/codeql-bundle-v1.2.3/${name}`;
+
+  t.is(
+    tryGetBundleLanguageFromUrl(url("codeql-bundle-java-linux64.tar.zst")),
+    BuiltInLanguage.java,
+  );
+  t.is(
+    tryGetBundleLanguageFromUrl(url("codeql-bundle-swift-osx64.tar.zst")),
+    BuiltInLanguage.swift,
+  );
+  // We do not publish these, but should still recognize them if we ever do.
+  t.is(
+    tryGetBundleLanguageFromUrl(url("codeql-bundle-csharp-win64.tar.gz")),
+    BuiltInLanguage.csharp,
+  );
+  // A token in the URL must not prevent us from recognizing the bundle.
+  t.is(
+    tryGetBundleLanguageFromUrl(
+      `${url("codeql-bundle-ruby-linux64.tar.zst")}?token=secret`,
+    ),
+    BuiltInLanguage.ruby,
+  );
+});
+
+test.serial("does not mistake other bundles for per-language ones", (t) => {
+  const url = (name: string) =>
+    `https://github.com/github/codeql-action/releases/download/codeql-bundle-v1.2.3/${name}`;
+
+  for (const name of [
+    "codeql-bundle-linux64.tar.zst",
+    "codeql-bundle-osx64.tar.gz",
+    "codeql-bundle-win64.tar.zst",
+    // The all-platform bundle.
+    "codeql-bundle.tar.gz",
+    // A platform we do not publish per-language bundles for, whose name also contains a hyphen.
+    "codeql-bundle-linux-arm64.tar.zst",
+    // Not a language we know about.
+    "codeql-bundle-cobol-linux64.tar.zst",
+  ]) {
+    t.is(tryGetBundleLanguageFromUrl(url(name)), undefined, name);
+  }
+
+  t.is(tryGetBundleLanguageFromUrl("not a url"), undefined);
 });
 
 function decrementPatchVersion(version: string): string {

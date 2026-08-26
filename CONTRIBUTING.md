@@ -60,10 +60,13 @@ Here are a few things you can do that will increase the likelihood of your pull 
     This workflow goes through the pull requests that have been merged to `main` since the last release, creates a changelog, then opens a pull request to merge the changes since the last release into the `releases/v3` release branch.
 
     You can start a release by triggering this workflow via [workflow dispatch](https://github.com/github/codeql-action/actions/workflows/update-release-branch.yml).
-1. The workflow run will open a pull request titled "Merge main into releases/v3". Follow the steps on the checklist in the pull request. Once you've checked off all but the last two of these, approve the PR and automerge it.
+1. The workflow run will open a pull request titled "Merge main into releases/v3". Follow the steps on the checklist in the pull request. Once you've checked off all but the last two of these, approve the PR and automerge it **with a merge commit** (`gh pr merge --merge`).
 1. When the "Merge main into releases/v3" pull request is merged into the `releases/v3` branch, a mergeback pull request to `main` will be automatically created. This mergeback pull request incorporates the changelog updates into `main`, tags the release using the merge commit of the "Merge main into releases/v3" pull request, and bumps the patch version of the CodeQL Action.
 1. If a backport to an older major version is required, a pull request targeting that version's branch will also be automatically created.
-1. Approve the mergeback and backport pull request (if applicable) and automerge them.
+1. Approve the mergeback and backport pull request (if applicable) and automerge them **with a merge commit** (`gh pr merge --merge`).
+
+    > [!NOTE]
+    > The release, mergeback, and backport pull requests must always be merged with a merge commit — **never squash or rebase**. The mergeback tags the release using the merge commit of the "Merge main into releases/v3" pull request, so squashing or rebasing breaks tagging and the branch linkage the release automation relies on.
 
 Once the mergeback and backport pull request have been merged, the release is complete.
 

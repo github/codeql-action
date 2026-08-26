@@ -80,6 +80,22 @@ jobs:
               exit 1
             fi
           done
+      - name: Check that the bundle was not added to the toolcache
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+        run: |
+          # A bundle that is missing most of its extractors must never be left in the toolcache, where
+          # a later job analyzing a different language could pick it up.
+          echo "CodeQL is at $CODEQL_PATH"
+          if [[ "$CODEQL_PATH" == "$RUNNER_TOOL_CACHE"/* ]]; then
+            echo "::error::The per-language bundle was added to the toolcache at $CODEQL_PATH."
+            exit 1
+          fi
+          if [ -d "$RUNNER_TOOL_CACHE/CodeQL" ]; then
+            echo "::error::The toolcache contains CodeQL, but no bundle should have been added to it."
+            ls -R "$RUNNER_TOOL_CACHE/CodeQL"
+            exit 1
+          fi
       - uses: ./../action/analyze
         with:
           upload-database: false

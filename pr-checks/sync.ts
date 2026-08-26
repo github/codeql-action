@@ -90,6 +90,13 @@ interface Specification extends JobSpecification {
 
   /** If set, this check is part of a named collection that gets its own caller workflow. */
   collection?: string;
+
+  /**
+   * Additional branches on which a push should run this check.
+   *
+   * Useful for temporarily exercising a check on a feature branch without opening a pull request.
+   */
+  extraPushBranches?: string[];
 }
 
 /** Minimal type to represent steps in Actions workflows. */
@@ -763,7 +770,11 @@ function main(): void {
       },
       on: {
         push: {
-          branches: ["main", "releases/v*"],
+          branches: [
+            "main",
+            "releases/v*",
+            ...(checkSpecification.extraPushBranches ?? []),
+          ],
         },
         pull_request: {},
         merge_group: {

@@ -2,6 +2,10 @@ name: "Per-language bundle"
 description: "Tests that a CodeQL bundle containing only a single language can analyze that language"
 versions:
   - linked # Unused: this test pins `tools` to a specific per-language bundle.
+# TODO: Remove once per-language bundles ship in a release, so that this check no longer needs to be
+# exercised on a feature branch.
+extraPushBranches:
+  - henrymercer/per-language-bundles
 steps:
   - id: init
     uses: ./../action/init

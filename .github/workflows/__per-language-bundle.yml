@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - releases/v*
+      - henrymercer/per-language-bundles
   pull_request: {}
   merge_group:
     types:

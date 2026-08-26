@@ -36,6 +36,9 @@ jobs:
           - language: actions
             platform: linux64
             os: ubuntu-latest
+            # The Actions QL pack depends on the JavaScript one, which is the only dependency of its
+            # kind, so the Actions bundle has to carry the JavaScript extractor as well.
+            expected-extractors: actions javascript
           - language: cpp
             platform: linux64
             os: ubuntu-latest
@@ -93,24 +96,31 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix['build-mode'] }}
           tools: https://github.com/dsp-testing/henrymercer-codeql-cli-binaries/releases/download/${{ env.BUNDLE_TAG }}/codeql-bundle-${{ matrix.language }}-${{ matrix.platform }}.tar.zst
-      - name: Check that the bundle contains only the expected extractor
+      - name: Check that the bundle contains only the expected extractors
         env:
           CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
           LANGUAGE: ${{ matrix.language }}
+          EXPECTED_EXTRACTORS: ${{ matrix['expected-extractors'] || matrix.language }}
         run: |
           extractors="$("$CODEQL_PATH" resolve languages --format=json | jq -r 'keys[]')"
           echo "Extractors in the bundle:"
           echo "$extractors"
+          echo "Expected: $EXPECTED_EXTRACTORS"
 
-          if ! echo "$extractors" | grep -qx "$LANGUAGE"; then
-            echo "::error::The ${LANGUAGE} bundle does not contain the ${LANGUAGE} extractor."
-            exit 1
-          fi
+          for expected in $EXPECTED_EXTRACTORS; do
+            if ! echo "$extractors" | grep -qx "$expected"; then
+              echo "::error::The ${LANGUAGE} bundle does not contain the ${expected} extractor."
+              exit 1
+            fi
+          done
 
-          # If the bundle still contained extractors for languages we did not ask for, then it would
-          # not have been trimmed, and this job would be silently validating the combined bundle.
+          # If the bundle contained extractors beyond those the language needs, then it would not
+          # have been trimmed, and this job would be silently validating the combined bundle.
           for other in actions cpp csharp go java javascript python ruby rust swift; do
-            if [ "$other" != "$LANGUAGE" ] && echo "$extractors" | grep -qx "$other"; then
+            if echo "$EXPECTED_EXTRACTORS" | grep -qw "$other"; then
+              continue
+            fi
+            if echo "$extractors" | grep -qx "$other"; then
               echo "::error::The ${LANGUAGE} bundle also contains the ${other} extractor, so it is not trimmed."
               exit 1
             fi

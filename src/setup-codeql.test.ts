@@ -12,8 +12,10 @@ import * as api from "./api-client";
 import * as diagnostics from "./diagnostics";
 import { ActionsEnvVars, EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
+import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
+import { MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION } from "./per-language-bundles";
 import * as setupCodeql from "./setup-codeql";
 import * as tar from "./tar";
 import {
@@ -31,12 +33,14 @@ import {
   setupTests,
 } from "./testing-utils";
 import * as toolsDownload from "./tools-download";
+import { getToolcacheDirectory } from "./tools-download";
 import {
   getErrorMessage,
   GitHubVariant,
   initializeEnvironment,
   withTmpDir,
 } from "./util";
+import * as util from "./util";
 
 setupTests(test);
 
@@ -359,6 +363,7 @@ test.serial(
 
     // Ensure that we consistently select "zstd" for the test.
     sinon.stub(process, "platform").value("linux");
+    sinon.stub(process, "arch").value("x64");
     sinon.stub(tar, "isZstdAvailable").resolves({
       available: true,
       foundZstdBinary: true,
@@ -394,6 +399,7 @@ test.serial(
         cliVersion: undefined,
         codeqlURL: expectedURL,
         compressionMethod: "zstd",
+        perLanguageBundle: undefined,
         sourceType: "download",
         toolsVersion: expectedVersion,
       } satisfies setupCodeql.CodeQLToolsSource);
@@ -421,6 +427,7 @@ test.serial(
 
     // Ensure that we consistently select "zstd" for the test.
     sinon.stub(process, "platform").value("linux");
+    sinon.stub(process, "arch").value("x64");
     sinon.stub(tar, "isZstdAvailable").resolves({
       available: true,
       foundZstdBinary: true,
@@ -457,6 +464,7 @@ test.serial(
         cliVersion: undefined,
         codeqlURL: expectedURL,
         compressionMethod: "zstd",
+        perLanguageBundle: undefined,
         sourceType: "download",
         toolsVersion: expectedVersion,
       } satisfies setupCodeql.CodeQLToolsSource);
@@ -756,6 +764,282 @@ test.serial(
   },
 );
 
+const PER_LANGUAGE_CLI_VERSION = {
+  enabledVersions: [
+    {
+      cliVersion: MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
+      tagName: `codeql-bundle-v${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}`,
+    },
+  ],
+};
+
+/**
+ * Reads the `isPerLanguageBundle` argument of a call to `downloadCodeQL`, which controls whether
+ * the bundle may be added to the toolcache.
+ */
+function isPerLanguageBundleArg(
+  call: sinon.SinonSpyCall<
+    Parameters<typeof setupCodeql.downloadCodeQL>,
+    unknown
+  >,
+): boolean {
+  return call.args[4];
+}
+
+test.serial("getCodeQLBundleName names the per-language bundle", (t) => {
+  sinon.stub(process, "platform").value("linux");
+  sinon.stub(process, "arch").value("x64");
+  t.is(
+    setupCodeql.getCodeQLBundleName("zstd", BuiltInLanguage.java),
+    "codeql-bundle-java-linux64.tar.zst",
+  );
+  t.is(
+    setupCodeql.getCodeQLBundleName("zstd"),
+    "codeql-bundle-linux64.tar.zst",
+  );
+});
+
+test.serial("getCodeQLBundleName names the Swift bundle for macOS", (t) => {
+  sinon.stub(process, "platform").value("darwin");
+  t.is(
+    setupCodeql.getCodeQLBundleName("zstd", BuiltInLanguage.swift),
+    "codeql-bundle-swift-osx64.tar.zst",
+  );
+});
+
+test.serial(
+  "getCodeQLSource downloads the per-language bundle for a single explicit language",
+  async (t) => {
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(process, "arch").value("x64");
+    process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        PER_LANGUAGE_CLI_VERSION,
+        // Default setup passes the combined language name, which needs normalizing.
+        ["java-kotlin"],
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        true, // tarSupportsZstd
+        createFeatures([Feature.PerLanguageBundles]),
+        getRunnerLogger(true),
+      );
+
+      t.is(source.sourceType, "download");
+      if (source.sourceType === "download") {
+        t.true(
+          source.codeqlURL.endsWith("/codeql-bundle-java-linux64.tar.zst"),
+          `Unexpected URL ${source.codeqlURL}`,
+        );
+        t.is(source.perLanguageBundle?.language, BuiltInLanguage.java);
+        t.true(
+          source.perLanguageBundle?.combinedBundleURL.endsWith(
+            "/codeql-bundle-linux64.tar.zst",
+          ),
+        );
+      }
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource downloads the combined bundle when the feature is disabled",
+  async (t) => {
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(process, "arch").value("x64");
+    process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        PER_LANGUAGE_CLI_VERSION,
+        ["java"],
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        true, // tarSupportsZstd
+        createFeatures([]),
+        getRunnerLogger(true),
+      );
+
+      t.is(source.sourceType, "download");
+      if (source.sourceType === "download") {
+        t.true(source.codeqlURL.endsWith("/codeql-bundle-linux64.tar.zst"));
+        t.is(source.perLanguageBundle, undefined);
+      }
+    });
+  },
+);
+
+/**
+ * Stubs out the download of the CodeQL bundle, creating the destination directory as the real
+ * implementation does.
+ */
+function stubDownloadAndExtract() {
+  return sinon
+    .stub(toolsDownload, "downloadAndExtract")
+    .callsFake(async (_url, _compressionMethod, dest) => {
+      fs.mkdirSync(dest, { recursive: true });
+      return { totalDurationMs: 100 };
+    });
+}
+
+test.serial(
+  "downloadCodeQL does not add a per-language bundle to the toolcache",
+  async (t) => {
+    const extractStub = stubDownloadAndExtract();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      const { codeqlFolder } = await setupCodeql.downloadCodeQL(
+        "https://github.com/github/codeql-action/releases/download/codeql-bundle-v9.9.9/codeql-bundle-java-linux64.tar.zst",
+        "zstd",
+        "v9.9.9",
+        "9.9.9",
+        true, // isPerLanguageBundle
+        SAMPLE_DOTCOM_API_DETAILS,
+        undefined,
+        tmpDir,
+        createFeatures([]),
+        getRunnerLogger(true),
+      );
+
+      // Even though we know the bundle version, the bundle must be extracted somewhere that a
+      // later job analyzing a different language cannot pick it up from.
+      t.is(codeqlFolder, extractStub.firstCall.args[2]);
+      t.false(codeqlFolder.startsWith(getToolcacheDirectory("9.9.9")));
+      t.true(codeqlFolder.startsWith(tmpDir));
+      t.false(fs.existsSync(`${codeqlFolder}.complete`));
+    });
+  },
+);
+
+test.serial(
+  "downloadCodeQL adds the combined bundle to the toolcache",
+  async (t) => {
+    const extractStub = stubDownloadAndExtract();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      const { codeqlFolder } = await setupCodeql.downloadCodeQL(
+        "https://github.com/github/codeql-action/releases/download/codeql-bundle-v9.9.9/codeql-bundle-linux64.tar.zst",
+        "zstd",
+        "v9.9.9",
+        "9.9.9",
+        false, // isPerLanguageBundle
+        SAMPLE_DOTCOM_API_DETAILS,
+        undefined,
+        tmpDir,
+        createFeatures([]),
+        getRunnerLogger(true),
+      );
+
+      t.is(codeqlFolder, extractStub.firstCall.args[2]);
+      t.is(codeqlFolder, getToolcacheDirectory("9.9.9"));
+      t.true(fs.existsSync(`${codeqlFolder}.complete`));
+    });
+  },
+);
+
+test.serial(
+  "setupCodeQLBundle asks for the per-language bundle to be kept out of the toolcache",
+  async (t) => {
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(process, "arch").value("x64");
+    process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+    const downloadStub = sinon.stub(setupCodeql, "downloadCodeQL").resolves({
+      codeqlFolder: "codeql",
+      statusReport: { totalDurationMs: 100 },
+      toolsVersion: MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
+    });
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result = await setupCodeql.setupCodeQLBundle(
+        undefined,
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+        GitHubVariant.DOTCOM,
+        PER_LANGUAGE_CLI_VERSION,
+        ["java"],
+        false, // useOverlayAwareDefaultCliVersion
+        createFeatures([Feature.PerLanguageBundles]),
+        getRunnerLogger(true),
+      );
+
+      t.true(downloadStub.calledOnce);
+      t.true(isPerLanguageBundleArg(downloadStub.firstCall));
+      t.is(
+        result.toolsDownloadStatusReport?.bundleLanguage,
+        BuiltInLanguage.java,
+      );
+      t.is(
+        result.toolsDownloadStatusReport?.perLanguageBundleFallback,
+        undefined,
+      );
+    });
+  },
+);
+
+test.serial(
+  "setupCodeQLBundle falls back to the combined bundle if the per-language bundle is missing",
+  async (t) => {
+    const loggedMessages: LoggedMessage[] = [];
+    const logger = getRecordingLogger(loggedMessages);
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(process, "arch").value("x64");
+    process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+    const downloadStub = sinon.stub(setupCodeql, "downloadCodeQL");
+    downloadStub
+      .onFirstCall()
+      .rejects(new util.HTTPError("Not Found", 404))
+      .onSecondCall()
+      .resolves({
+        codeqlFolder: "codeql",
+        statusReport: { totalDurationMs: 100 },
+        toolsVersion: MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
+      });
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result = await setupCodeql.setupCodeQLBundle(
+        undefined,
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+        GitHubVariant.DOTCOM,
+        PER_LANGUAGE_CLI_VERSION,
+        ["java"],
+        false, // useOverlayAwareDefaultCliVersion
+        createFeatures([Feature.PerLanguageBundles]),
+        logger,
+      );
+
+      t.true(downloadStub.calledTwice);
+      t.true(
+        downloadStub.secondCall.args[0].endsWith(
+          "/codeql-bundle-linux64.tar.zst",
+        ),
+      );
+      // The combined bundle may be added to the toolcache.
+      t.false(isPerLanguageBundleArg(downloadStub.secondCall));
+      t.is(result.toolsDownloadStatusReport?.perLanguageBundleFallback, true);
+      t.is(result.toolsDownloadStatusReport?.bundleLanguage, undefined);
+      checkExpectedLogMessages(t, loggedMessages, [
+        "No java CodeQL bundle was found at",
+      ]);
+    });
+  },
+);
+
 test.serial(
   "getEnabledVersionsWithOverlayBaseDatabases returns flag-enabled versions present in cache, sorted desc",
   async (t) => {
@@ -993,6 +1277,7 @@ async function runDownloadCodeQL(
     "gzip",
     bundleVersion,
     CLEANUP_CLI_VERSION,
+    false, // isPerLanguageBundle
     SAMPLE_DOTCOM_API_DETAILS,
     undefined, // tarVersion
     toolcacheRoot, // tempDir

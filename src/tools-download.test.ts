@@ -10,7 +10,7 @@ import { getRunnerLogger } from "./logging";
 import * as tar from "./tar";
 import { setupTests } from "./testing-utils";
 import { downloadAndExtract } from "./tools-download";
-import { withTmpDir } from "./util";
+import { HTTPError, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -72,6 +72,74 @@ test.serial(
       t.assert(Number.isInteger(statusReport.totalDurationMs));
       t.true(request.isDone());
       t.false(extractTarZst.called);
+      t.true(downloadTool.calledOnce);
+      t.true(extract.calledOnce);
+    });
+  },
+);
+
+test.serial(
+  "downloadAndExtract rethrows a 404 rather than retrying the download",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      sinon.stub(process, "platform").value("linux");
+      const downloadTool = sinon.stub(toolcache, "downloadTool");
+      const extractTarZst = sinon.stub(tar, "extractTarZst").resolves();
+      const request = nock("https://example.com")
+        .get("/codeql-bundle.tar.zst")
+        .reply(404);
+
+      const error = await t.throwsAsync(
+        downloadAndExtract(
+          "https://example.com/codeql-bundle.tar.zst",
+          "zstd",
+          path.join(tmpDir, "codeql"),
+          undefined,
+          {},
+          { type: "gnu", version: "1.34" },
+          getRunnerLogger(true),
+        ),
+        { instanceOf: HTTPError },
+      );
+
+      // Callers rely on the status to decide whether to fall back to a different bundle.
+      t.is(error?.status, 404);
+      t.true(request.isDone());
+      t.false(extractTarZst.called);
+      // Downloading the missing asset a second time would just fail again.
+      t.false(downloadTool.called);
+    });
+  },
+);
+
+test.serial(
+  "downloadAndExtract falls back to downloading before extracting on a server error",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      sinon.stub(process, "platform").value("linux");
+      const archivePath = path.join(tmpDir, "codeql-bundle.tar.zst");
+      const destination = path.join(tmpDir, "codeql");
+      const downloadTool = sinon
+        .stub(toolcache, "downloadTool")
+        .resolves(archivePath);
+      const extract = sinon.stub(tar, "extract").resolves(destination);
+      const request = nock("https://example.com")
+        .get("/codeql-bundle.tar.zst")
+        .reply(500);
+
+      const statusReport = await downloadAndExtract(
+        "https://example.com/codeql-bundle.tar.zst",
+        "zstd",
+        destination,
+        undefined,
+        {},
+        { type: "gnu", version: "1.34" },
+        getRunnerLogger(true),
+      );
+
+      t.assert(Number.isInteger(statusReport.downloadDurationMs));
+      t.true(request.isDone());
+      // A server error may be transient, so it is worth retrying via `downloadTool`.
       t.true(downloadTool.calledOnce);
       t.true(extract.calledOnce);
     });

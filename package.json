@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "3.37.8",
+  "version": "3.37.9",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -61,7 +61,7 @@
     "@types/semver": "^7.8.0",
     "@types/sinon": "^22.0.0",
     "ava": "^6.4.1",
-    "esbuild": "^0.28.1",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-github": "^6.1.2",
@@ -69,11 +69,11 @@
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^13.0.6",
-    "globals": "^17.9.0",
+    "globals": "^17.11.0",
     "nock": "^14.0.17",
     "sinon": "^22.1.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.66.0"
+    "typescript-eslint": "^8.67.0"
   },
   "overrides": {
     "@actions/tool-cache": {

@@ -1,0 +1,86 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: PR Check - Per-language bundle
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request: {}
+  merge_group:
+    types:
+      - checks_requested
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: per-language-bundle-${{github.ref}}
+jobs:
+  per-language-bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Per-language bundle
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - id: init
+        uses: ./../action/init
+        with:
+          languages: actions
+          tools: https://github.com/dsp-testing/henrymercer-codeql-cli-binaries/releases/download/codeql-bundle-20260825/codeql-bundle-actions-linux64.tar.zst
+      - name: Check that the bundle contains only the Actions extractor
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+        run: |
+          languages="$("$CODEQL_PATH" resolve languages --format=json | jq -r 'keys[]')"
+          echo "Extractors in the bundle:"
+          echo "$languages"
+
+          if ! echo "$languages" | grep -qx "actions"; then
+            echo "::error::The Actions bundle does not contain the Actions extractor."
+            exit 1
+          fi
+
+          # If the bundle still contained extractors for languages we did not ask for, then it would not
+          # have been trimmed, and this test would be silently exercising the combined bundle instead.
+          for language in cpp csharp go java python ruby rust swift; do
+            if echo "$languages" | grep -qx "$language"; then
+              echo "::error::The Actions bundle also contains the ${language} extractor, so it is not trimmed."
+              exit 1
+            fi
+          done
+      - uses: ./../action/analyze
+        with:
+          upload-database: false
+    env:
+      CODEQL_ACTION_TEST_MODE: true

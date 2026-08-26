@@ -1,0 +1,34 @@
+name: "Per-language bundle"
+description: "Tests that a CodeQL bundle containing only a single language can analyze that language"
+versions:
+  - linked # Unused: this test pins `tools` to a specific per-language bundle.
+steps:
+  - id: init
+    uses: ./../action/init
+    with:
+      languages: actions
+      tools: https://github.com/dsp-testing/henrymercer-codeql-cli-binaries/releases/download/codeql-bundle-20260825/codeql-bundle-actions-linux64.tar.zst
+  - name: Check that the bundle contains only the Actions extractor
+    env:
+      CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+    run: |
+      languages="$("$CODEQL_PATH" resolve languages --format=json | jq -r 'keys[]')"
+      echo "Extractors in the bundle:"
+      echo "$languages"
+
+      if ! echo "$languages" | grep -qx "actions"; then
+        echo "::error::The Actions bundle does not contain the Actions extractor."
+        exit 1
+      fi
+
+      # If the bundle still contained extractors for languages we did not ask for, then it would not
+      # have been trimmed, and this test would be silently exercising the combined bundle instead.
+      for language in cpp csharp go java python ruby rust swift; do
+        if echo "$languages" | grep -qx "$language"; then
+          echo "::error::The Actions bundle also contains the ${language} extractor, so it is not trimmed."
+          exit 1
+        fi
+      done
+  - uses: ./../action/analyze
+    with:
+      upload-database: false

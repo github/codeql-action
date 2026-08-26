@@ -1,0 +1,157 @@
+# Validates the per-language CodeQL bundles produced by a pre-release build. Unlike the checks in
+# `pr-checks`, this is not generated, since each language needs its own platform and build steps.
+#
+# TODO(per-language-bundles): Remove this workflow, or fold it into `pr-checks`, once per-language
+# bundles are published as part of a release.
+name: Per-language bundle validation
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+  # The pre-release whose per-language bundles we are validating.
+  BUNDLE_TAG: codeql-bundle-20260826
+
+on:
+  push:
+    branches:
+      - henrymercer/per-language-bundles
+  workflow_dispatch: {}
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  cancel-in-progress: true
+  group: per-language-bundle-validation-${{ github.ref }}
+
+jobs:
+  validate:
+    name: ${{ matrix.language }}
+    if: github.triggering_actor != 'dependabot[bot]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            platform: linux64
+            os: ubuntu-latest
+          - language: cpp
+            platform: linux64
+            os: ubuntu-latest
+            build-mode: manual
+            build-command: gcc -o main main.c
+          - language: csharp
+            platform: linux64
+            os: ubuntu-latest
+            build-mode: none
+          - language: go
+            platform: linux64
+            os: ubuntu-latest
+            build-mode: autobuild
+          - language: java
+            platform: linux64
+            os: ubuntu-latest
+            build-mode: none
+          - language: javascript
+            platform: linux64
+            os: ubuntu-latest
+          - language: python
+            platform: linux64
+            os: ubuntu-latest
+          - language: ruby
+            platform: linux64
+            os: ubuntu-latest
+          - language: rust
+            platform: linux64
+            os: ubuntu-latest
+          - language: swift
+            platform: osx64
+            os: macos-latest
+            build-mode: autobuild
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          # Unused: we pin `tools` to a specific per-language bundle below.
+          version: linked
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'false'
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix['build-mode'] }}
+          tools: https://github.com/dsp-testing/henrymercer-codeql-cli-binaries/releases/download/${{ env.BUNDLE_TAG }}/codeql-bundle-${{ matrix.language }}-${{ matrix.platform }}.tar.zst
+      - name: Check that the bundle contains only the expected extractor
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+          LANGUAGE: ${{ matrix.language }}
+        run: |
+          extractors="$("$CODEQL_PATH" resolve languages --format=json | jq -r 'keys[]')"
+          echo "Extractors in the bundle:"
+          echo "$extractors"
+
+          if ! echo "$extractors" | grep -qx "$LANGUAGE"; then
+            echo "::error::The ${LANGUAGE} bundle does not contain the ${LANGUAGE} extractor."
+            exit 1
+          fi
+
+          # If the bundle still contained extractors for languages we did not ask for, then it would
+          # not have been trimmed, and this job would be silently validating the combined bundle.
+          for other in actions cpp csharp go java javascript python ruby rust swift; do
+            if [ "$other" != "$LANGUAGE" ] && echo "$extractors" | grep -qx "$other"; then
+              echo "::error::The ${LANGUAGE} bundle also contains the ${other} extractor, so it is not trimmed."
+              exit 1
+            fi
+          done
+      - name: Check that the bundle was not added to the toolcache
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+        run: |
+          # A bundle that is missing most of its extractors must never be left in the toolcache,
+          # where a later job analyzing a different language could pick it up.
+          echo "CodeQL is at $CODEQL_PATH"
+          if [[ "$CODEQL_PATH" == "$RUNNER_TOOL_CACHE"/* ]]; then
+            echo "::error::The per-language bundle was added to the toolcache at $CODEQL_PATH."
+            exit 1
+          fi
+          # The runner image ships with its own CodeQL in the toolcache, so look for the version we
+          # downloaded rather than for CodeQL in general.
+          cached_version="$RUNNER_TOOL_CACHE/CodeQL/0.0.0-${BUNDLE_TAG#codeql-bundle-}"
+          if [ -d "$cached_version" ]; then
+            echo "::error::The per-language bundle was added to the toolcache at $cached_version."
+            exit 1
+          fi
+      - name: Build code
+        if: matrix['build-command']
+        run: ${{ matrix['build-command'] }}
+      - uses: ./../action/autobuild
+        if: matrix['build-mode'] == 'autobuild'
+        timeout-minutes: 30
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check that a database was created for the language
+        env:
+          DB_LOCATIONS: ${{ steps.analysis.outputs.db-locations }}
+          LANGUAGE: ${{ matrix.language }}
+        run: |
+          database="$(echo "$DB_LOCATIONS" | jq -r --arg lang "$LANGUAGE" '.[$lang] // empty')"
+          if [ -z "$database" ] || [ ! -d "$database" ]; then
+            echo "::error::No CodeQL database was created for ${LANGUAGE}."
+            echo "Databases: $DB_LOCATIONS"
+            exit 1
+          fi
+          echo "Created a ${LANGUAGE} database at ${database}."

@@ -159,6 +159,11 @@ export enum Feature {
   OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
   /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
+  /**
+   * Controls whether we may download a bundle containing only the single language being analysed,
+   * rather than the combined bundle that contains every language.
+   */
+  PerLanguageBundles = "per_language_bundles",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Routes (some) API requests through the registry proxy. */
   ProxyApiRequests = "proxy_api_requests",
@@ -422,6 +427,11 @@ export const featureConfig = {
   [Feature.OverlayAnalysisSkipResourceChecks]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
+    minimumVersion: undefined,
+  },
+  [Feature.PerLanguageBundles]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_PER_LANGUAGE_BUNDLES",
     minimumVersion: undefined,
   },
   [Feature.QaTelemetryEnabled]: {

@@ -639,6 +639,13 @@ export interface InitToolsDownloadFields {
    * Whether the relevant tools dotcom feature flags have been misconfigured.
    * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
   tools_feature_flags_valid?: boolean;
+  /** The language of the single-language bundle that was downloaded, if any. */
+  tools_bundle_language?: string;
+  /**
+   * Whether we tried to download a single-language bundle, but it did not exist and we fell back to
+   * the combined bundle.
+   */
+  tools_per_language_bundle_fallback?: boolean;
 }
 
 /**

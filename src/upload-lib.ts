@@ -165,6 +165,9 @@ async function combineSarifFilesUsingCLI(
       tempDir,
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
+      // Leaving the languages unset is load-bearing as well as accurate: it is what stops us from
+      // downloading a bundle that contains only one language, which would not have the extractors
+      // that a later step might need. Do not start threading languages through here.
       undefined, // rawLanguages: upload-lib does not run analysis
       false, // useOverlayAwareDefaultCliVersion: upload-lib does not run analysis
       features,

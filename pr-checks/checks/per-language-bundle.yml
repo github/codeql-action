@@ -44,9 +44,11 @@ steps:
         echo "::error::The per-language bundle was added to the toolcache at $CODEQL_PATH."
         exit 1
       fi
-      if [ -d "$RUNNER_TOOL_CACHE/CodeQL" ]; then
-        echo "::error::The toolcache contains CodeQL, but no bundle should have been added to it."
-        ls -R "$RUNNER_TOOL_CACHE/CodeQL"
+      # The runner image ships with its own CodeQL in the toolcache, so look for the version we
+      # downloaded rather than for CodeQL in general.
+      cached_version="$RUNNER_TOOL_CACHE/CodeQL/0.0.0-20260825"
+      if [ -d "$cached_version" ]; then
+        echo "::error::The per-language bundle was added to the toolcache at $cached_version."
         exit 1
       fi
   - uses: ./../action/analyze

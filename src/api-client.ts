@@ -1,8 +1,5 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
-import { type Octokit } from "@octokit/core";
-import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
-import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 import * as retry from "@octokit/plugin-retry";
 import { RequestRequestOptions } from "@octokit/types";
 import {
@@ -128,7 +125,7 @@ export function makeProxyRequestOptions(
 }
 
 /** The type of GitHub API client we use. */
-export type ApiClient = Octokit & Api & { paginate: PaginateInterface };
+export type ApiClient = InstanceType<typeof githubUtils.GitHub>;
 
 /** Options for `createApiClientWithDetails`. */
 interface CreateApiClientOptions {

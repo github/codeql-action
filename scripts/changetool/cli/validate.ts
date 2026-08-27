@@ -76,9 +76,15 @@ export function hasValidChangenoteCategory(
 export function isValidChangenoteFile(filename: string): boolean {
   let isValid: boolean = true;
 
-  const { data: frontmatter, content } = matter(
-    fs.readFileSync(filename, "utf8"),
-  );
+  let fileData: string | undefined;
+  try {
+    fileData = fs.readFileSync(filename, "utf8");
+  } catch (error) {
+    console.error(`${filename}: failed to read file`, error);
+    return false;
+  }
+
+  const { data: frontmatter, content } = matter(fileData);
 
   if (!isValidChangenoteFilename(path.basename(filename))) {
     isValid = false;

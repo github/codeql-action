@@ -2,10 +2,10 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "module": "preserve",
+    "allowImportingTsExtensions": true,
     "rootDir": ".",
-    "outDir": "./build",
     "sourceMap": false
   },
   "include": ["./**/*.ts"],
-  "exclude": ["build", "node_modules"]
+  "exclude": ["node_modules"]
 }

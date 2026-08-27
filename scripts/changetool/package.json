@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx index.ts",
-    "test": "node --test --experimental-strip-types --experimental-test-module-mocks cli/*.test.ts"
+    "test": "node --test --experimental-strip-types cli/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

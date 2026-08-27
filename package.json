@@ -17,7 +17,8 @@
   },
   "license": "MIT",
   "workspaces": [
-    "pr-checks"
+    "pr-checks",
+    "scripts/changetool"
   ],
   "dependencies": {
     "@actions/artifact": "^5.0.3",

@@ -92,15 +92,12 @@ jobs:
         with:
           node-version: 24
           cache: 'npm'
-          cache-dependency-path: scripts/changetool/package-lock.json
 
       - name: Install dependencies
-        working-directory: scripts/changetool
         run: npm ci
 
       - name: Run changetool unit tests
-        working-directory: scripts/changetool
-        run: npm test
+        run: npm --workspace changetool test
 
   # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
   # job.

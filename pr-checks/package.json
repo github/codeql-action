@@ -5,7 +5,7 @@
     "@actions/core": "^2.0.3",
     "@actions/github": "^8.0.1",
     "@octokit/core": "^7.0.7",
-    "@octokit/plugin-paginate-rest": ">=9.2.2",
+    "@octokit/plugin-paginate-rest": ">=15.0.0",
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
     "semver": "^7.8.5",
     "yaml": "^2.9.0"

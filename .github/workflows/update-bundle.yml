@@ -25,6 +25,12 @@ jobs:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull requests
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          use-policy-store: true
+          api-key: ${{ secrets.STEP_SECURITY_API_KEY }}
+
       - name: Dump environment
         run: env
 

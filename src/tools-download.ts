@@ -106,10 +106,6 @@ export async function downloadAndExtract(
     // Retrying a 404 is pointless: the asset does not exist, so downloading it a different way
     // will fail in the same way. Surface it so that callers can react to it, for example by
     // falling back to a different bundle.
-    //
-    // This also sharpens what the reported durations mean: since a 404 never reaches the download
-    // below, a report that has a download duration but no extraction of its own can only have come
-    // from a streaming attempt that failed for some reason other than the asset being missing.
     if (asHTTPError(e)?.status === 404) {
       throw e;
     }

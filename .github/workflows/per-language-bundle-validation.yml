@@ -1,8 +1,11 @@
-# Validates the per-language CodeQL bundles produced by a pre-release build. Unlike the checks in
-# `pr-checks`, this is not generated, since each language needs its own platform and build steps.
+# Validates the per-language CodeQL bundles produced by a pre-release build. This is not generated
+# from `pr-checks`, since each language needs its own platform, build steps and set of expected
+# extractors, whereas the generated checks share one set of steps across a matrix that only varies
+# the operating system and CodeQL version.
 #
-# TODO(per-language-bundles): Remove this workflow, or fold it into `pr-checks`, once per-language
-# bundles are published as part of a release.
+# TODO(per-language-bundles): The bundles below are from a pre-release, so this needs revisiting once
+# they ship in a release: either point `BUNDLE_TAG` at a released bundle and run this on a schedule
+# rather than on every push, or drop it if the checks that exercise the download path are enough.
 name: Per-language bundle validation
 
 env:

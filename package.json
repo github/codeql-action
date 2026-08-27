@@ -51,7 +51,7 @@
     "@ava/typescript": "6.0.0",
     "@eslint/compat": "^2.1.0",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
-    "@octokit/types": "^16.0.0",
+    "@octokit/types": "^17.0.0",
     "@types/archiver": "^8.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",

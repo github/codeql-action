@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { matter } from "lite-matter";
+import type { List, ListItem } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
 
 // Regex for filename: YYYY-MM-DD-id.md
@@ -30,19 +31,28 @@ export const VALID_CHANGE_NOTE_CATEGORIES = {
  */
 export function isValidChangenoteContent(content: string): boolean {
   const ast = fromMarkdown(content);
+  const lines = content.split("\n");
 
-  if (
-    ast.children.length !== 1 ||
-    ast.children[0].type !== "list" ||
-    ast.children[0].ordered === true
-  ) {
-    return false;
+  function listHasHyphenBullets(node: List | ListItem): boolean {
+    if (node.type === "list") {
+      return node.children.every(listHasHyphenBullets);
+    }
+
+    const line = lines[node.position!.start.line - 1].trim();
+    return (
+      line.startsWith("-") &&
+      node.children.every(
+        (child) => child.type !== "list" || listHasHyphenBullets(child),
+      )
+    );
   }
 
-  const lines = content.split("\n");
-  return ast.children[0].children.every((listItem) => {
-    return lines[listItem.position!.start.line - 1].startsWith("-");
-  });
+  return (
+    ast.children.length === 1 &&
+    ast.children[0].type === "list" &&
+    ast.children[0].ordered === false &&
+    listHasHyphenBullets(ast.children[0])
+  );
 }
 
 /**

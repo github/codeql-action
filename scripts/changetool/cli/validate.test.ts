@@ -74,6 +74,7 @@ await describe("isValidChangenoteContent", async () => {
       "+ Fixed a bug\n+ Added feature",
       "- Fixed a bug\n* Added feature",
       "- Fixed a bug\n+ Added feature",
+      "- Fixed a bug\n  * Added feature\n    + Updated docs",
       "\n\n\n* Fixed a bug",
       "\n\n\n+ Fixed a bug",
       "---\n* Fixed a bug\n* Added feature",

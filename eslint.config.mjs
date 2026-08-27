@@ -26,7 +26,6 @@ export default [
       "ava.config.mjs",
       "ava.setup.mjs",
       "eslint.config.mjs",
-      "scripts/changetool/build/**/*",
       ".github/**/*",
     ],
   },

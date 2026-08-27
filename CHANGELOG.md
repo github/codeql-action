@@ -6,6 +6,10 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - The CodeQL Action now supports CodeQL releases that are compatible with Linux Arm64 and download the native `linux-arm64` CodeQL bundle when available. [#4072](https://github.com/github/codeql-action/pull/4072)
 
+## 4.37.9 - 26 Aug 2026
+
+- Update default CodeQL bundle version to [2.26.4](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.26.4). [#4106](https://github.com/github/codeql-action/pull/4106)
+
 ## 4.37.8 - 21 Aug 2026
 
 No user facing changes.

@@ -37,9 +37,15 @@ function usage(): number {
 }
 
 function validate(paths: string[]): number {
+  let valid = true;
   if (paths.length === 0) {
     console.error("error: no paths provided (see 'help' command for usage)");
     return 1;
   }
-  return paths.every((path) => isValidChangenoteFile(path)) ? 0 : 1;
+  for (const path of paths) {
+    if (!isValidChangenoteFile(path)) {
+      valid = false;
+    }
+  }
+  return valid ? 0 : 1;
 }

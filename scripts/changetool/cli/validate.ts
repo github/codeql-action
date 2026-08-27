@@ -64,7 +64,8 @@ export function hasValidChangenoteCategory(
 ): boolean {
   const category = frontmatter["category"];
   return (
-    typeof category === "string" && category in VALID_CHANGE_NOTE_CATEGORIES
+    typeof category === "string" &&
+    Object.hasOwn(VALID_CHANGE_NOTE_CATEGORIES, category)
   );
 }
 

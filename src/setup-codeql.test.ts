@@ -234,6 +234,7 @@ test.serial(
       codeqlFolder: "codeql",
       statusReport: {
         downloadDurationMs: 200,
+        totalDurationMs: 300,
       },
       toolsVersion: LINKED_CLI_VERSION.cliVersion,
     });
@@ -286,6 +287,7 @@ test.serial(
       codeqlFolder: "codeql",
       statusReport: {
         downloadDurationMs: 200,
+        totalDurationMs: 300,
       },
       toolsVersion: expectedVersion,
     });

@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.37.8",
+  "version": "4.37.10",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -31,7 +31,7 @@
     "@actions/io": "^2.0.0",
     "@actions/tool-cache": "^3.0.1",
     "@octokit/core": "^7.0.7",
-    "@octokit/plugin-paginate-rest": "^14.0.0",
+    "@octokit/plugin-paginate-rest": "^15.0.0",
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
     "@octokit/plugin-retry": "^8.1.1",
     "archiver": "^8.0.0",
@@ -39,19 +39,19 @@
     "follow-redirects": "^1.16.0",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
-    "js-yaml": "^5.2.3",
+    "js-yaml": "^5.3.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
     "semver": "^7.8.5",
-    "uuid": "^14.0.1",
+    "uuid": "^14.0.2",
     "undici": "^6.28.0"
   },
   "devDependencies": {
     "@ava/typescript": "6.0.0",
     "@eslint/compat": "^2.1.0",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
-    "@octokit/types": "^16.0.0",
+    "@octokit/types": "^17.0.0",
     "@types/archiver": "^8.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",
@@ -61,7 +61,7 @@
     "@types/semver": "^7.8.0",
     "@types/sinon": "^22.0.0",
     "ava": "^6.4.1",
-    "esbuild": "^0.28.1",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-github": "^6.1.2",
@@ -69,11 +69,11 @@
     "eslint-plugin-jsdoc": "^62.9.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^13.0.6",
-    "globals": "^17.9.0",
+    "globals": "^17.11.0",
     "nock": "^14.0.17",
     "sinon": "^22.1.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.66.0"
+    "typescript-eslint": "^8.67.0"
   },
   "overrides": {
     "@actions/tool-cache": {

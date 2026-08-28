@@ -162,6 +162,8 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Routes (some) API requests through the registry proxy. */
   ProxyApiRequests = "proxy_api_requests",
+  /** Adds support for an analysis kind meta variable in remote addresses. */
+  RemoteAddressAnalysisMetaVar = "remote_address_analysis_meta_var",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
@@ -433,6 +435,11 @@ export const featureConfig = {
   [Feature.ProxyApiRequests]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_PROXY_API_REQUESTS",
+    minimumVersion: undefined,
+  },
+  [Feature.RemoteAddressAnalysisMetaVar]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_REMOTE_ADDRESS_ANALYSIS_META_VAR",
     minimumVersion: undefined,
   },
   [Feature.SkipFileCoverageOnPrs]: {

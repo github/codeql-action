@@ -76,7 +76,6 @@ jobs:
         run: go build main.go
       - uses: ./../action/analyze
         with:
-          skip-queries: true
           upload-database: false
       - name: Assert databases exist
         run: |

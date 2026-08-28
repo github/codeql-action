@@ -4,6 +4,7 @@ import * as yaml from "js-yaml";
 import * as jsonschema from "jsonschema";
 import * as semver from "semver";
 
+import { AnalysisKind } from "../analyses";
 import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
@@ -75,6 +76,68 @@ export interface UserConfig {
    * not intended to be supplied directly by users.
    */
   "default-setup"?: DefaultSetupConfig;
+}
+
+/** Represents a `UserConfig` with CodeQL Action extensions. */
+export type UserConfigWithActionExtensions = {
+  /**
+   * We add a key for each analysis kind that may contain options
+   * specific to that kind of analysis.
+   */
+  [T in keyof typeof AnalysisKind as (typeof AnalysisKind)[T]]?: UserConfig;
+} & UserConfig;
+
+/**
+ * Determines whether `config` contains an `analysisKind`-specific section.
+ *
+ * @param analysisKind The analysis section to check for.
+ * @param config The base `UserConfig` value.
+ */
+export function hasAnalysisKindKey(
+  analysisKind: AnalysisKind,
+  config: UserConfig,
+): config is UserConfigWithActionExtensions {
+  return analysisKind in config && typeof config[analysisKind] === "object";
+}
+
+/**
+ * Clones `config` and removes any `AnalysisKind`-specific sections.
+ */
+export function removeAnalysisKindConfigs(config: UserConfig): UserConfig {
+  // Clone the configuration and remove any `AnalysisKind`-specific sections.
+  const configWithoutScopes = { ...config };
+  for (const kind of Object.values(AnalysisKind)) {
+    delete configWithoutScopes[kind];
+  }
+  return configWithoutScopes;
+}
+
+/**
+ * Applies an `analysisKind`-specific configuration, if any, to the resulting configuration
+ * and removes all `AnalysisKind`-specific configuration sections.
+ *
+ * @param analysisKind The `AnalysisKind` to apply specific configuration options for.
+ * @param config The loaded configuration, possibly including `analysisKind`-specific settings.
+ */
+export function applyAnalysisKindConfig(
+  analysisKind: AnalysisKind,
+  config: UserConfig,
+): UserConfig {
+  // Clone the configuration and remove any `AnalysisKind`-specific sections.
+  const configWithoutScopes = removeAnalysisKindConfigs(config);
+
+  // If there is no `analysisKind`-specific section, return the input configuration
+  // without any `AnalysisKind`-specific sections.
+  if (!hasAnalysisKindKey(analysisKind, config)) {
+    return configWithoutScopes;
+  }
+
+  // Otherwise, extract the `analysisKind`-specific configuration from the input `config`.
+  const analysisKindSpecificConfig = config[analysisKind];
+
+  // Return the base configuration (without any `AnalysisKind`-specific sections) and
+  // override the top-level properties with the `analysisKind`-specific settings.
+  return { ...configWithoutScopes, ...analysisKindSpecificConfig };
 }
 
 /** A subset of the `UserConfig` schema that is used by Default Setup. */

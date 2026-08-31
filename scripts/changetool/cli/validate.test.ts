@@ -12,21 +12,27 @@ import {
   VALID_CHANGE_NOTE_CATEGORIES,
 } from "./validate.ts";
 
+async function withTmpDir<T>(body: (tmpDir: string) => Promise<T>): Promise<T> {
+  const tmpDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "changetool-validate-test-"),
+  );
+  try {
+    return await body(tmpDir);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 async function withTmpFile<T>(
   baseFileName: string,
   contents: string,
   body: (filePath: string) => Promise<T>,
 ): Promise<T> {
-  const tmpDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "changetool-validate-test-"),
-  );
-  try {
+  return await withTmpDir(async (tmpDir) => {
     const filePath = path.join(tmpDir, baseFileName);
     fs.writeFileSync(filePath, contents);
     return await body(filePath);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
+  });
 }
 
 await describe("isValidChangenoteContent", async () => {

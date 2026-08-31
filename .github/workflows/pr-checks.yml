@@ -114,6 +114,10 @@ jobs:
         working-directory: pr-checks
         run: npx tsx --test
 
+      - name: Run `pr-checks/changenotes.mts` to ensure that all unreleased change notes are valid
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
+        run: npx tsx pr-checks/changenotes.mts validate
+
       - name: Verify all Actions use the same Node version
         id: head-version
         run: |

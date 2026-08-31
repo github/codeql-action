@@ -84,7 +84,7 @@ export function hasValidChangenoteCategory(
  * @param filename The name of the change-note file to validate.
  * @returns True if the file is a valid change-note, false otherwise.
  */
-export function isValidChangenoteFile(filename: string): boolean {
+function isValidChangenoteFile(filename: string): boolean {
   let isValid: boolean = true;
 
   let fileData: string | undefined;
@@ -118,4 +118,29 @@ export function isValidChangenoteFile(filename: string): boolean {
   }
 
   return isValid;
+}
+
+/**
+ * Validates that the given path is a valid change-note file or directory of change-note files.
+ * @param filepath The path to the change-note file or directory to validate.
+ * @returns True if the path is valid, false otherwise.
+ */
+export function isValidChangenoteFileOrDir(filepath: string): boolean {
+  try {
+    const stats = fs.statSync(filepath);
+    if (stats.isFile()) {
+      return isValidChangenoteFile(filepath);
+    }
+    if (stats.isDirectory()) {
+      return fs
+        .readdirSync(filepath)
+        .filter((f) => f !== ".gitkeep")
+        .every((f) => isValidChangenoteFile(path.join(filepath, f)));
+    }
+    console.error(`${filepath}: not a file or directory`);
+    return false;
+  } catch (error) {
+    console.error(`${filepath}: failed to read file or directory`, error);
+    return false;
+  }
 }

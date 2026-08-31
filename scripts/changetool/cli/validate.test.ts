@@ -6,7 +6,7 @@ import { describe, it } from "node:test";
 
 import {
   isValidChangenoteContent,
-  isValidChangenoteFile,
+  isValidChangenoteFileOrDir,
   isValidChangenoteFilename,
   hasValidChangenoteCategory,
   VALID_CHANGE_NOTE_CATEGORIES,
@@ -163,15 +163,47 @@ await describe("hasValidChangenoteCategory", async () => {
   });
 });
 
-await describe("isValidChangenoteFile", async () => {
+await describe("isValidChangenoteFileOrDir", async () => {
   await it("accepts a valid change-note file", async () => {
     await withTmpFile(
       "2026-01-01-fix-bug.md",
       "---\ncategory: fix\n---\n- Fixed a bug\n",
       async (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), true);
+        assert.equal(isValidChangenoteFileOrDir(filePath), true);
       },
     );
+  });
+
+  await it("accepts a directory of valid change-note files", async () => {
+    await withTmpDir(async (tmpDir) => {
+      fs.writeFileSync(
+        path.join(tmpDir, "2026-01-01-fix-bug.md"),
+        "---\ncategory: fix\n---\n- Fixed a bug\n",
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, "2026-01-02-add-feature.md"),
+        "---\ncategory: feature\n---\n- Added a feature\n",
+      );
+      assert.equal(isValidChangenoteFileOrDir(tmpDir), true);
+    });
+  });
+
+  await it("accepts an empty directory", async () => {
+    await withTmpDir(async (tmpDir) => {
+      assert.equal(isValidChangenoteFileOrDir(tmpDir), true);
+    });
+  });
+
+  await it("accepts a directory of .gitkeep only", async () => {
+    await withTmpFile(".gitkeep", "", async (filePath) => {
+      const dirPath = path.dirname(filePath);
+      assert.equal(isValidChangenoteFileOrDir(dirPath), true);
+    });
+  });
+
+  await it("rejects a non-existent path", async () => {
+    assert.equal(isValidChangenoteFileOrDir("non-existent-file.md"), false);
+    assert.equal(isValidChangenoteFileOrDir("this-dir-does-not-exist"), false);
   });
 
   await it("rejects invalid filename", async () => {
@@ -179,7 +211,7 @@ await describe("isValidChangenoteFile", async () => {
       "fix-bug.md",
       "---\ncategory: fix\n---\n- Fixed a bug\n",
       async (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
+        assert.equal(isValidChangenoteFileOrDir(filePath), false);
       },
     );
   });
@@ -189,7 +221,7 @@ await describe("isValidChangenoteFile", async () => {
       "2026-01-01-fix-bug.md",
       "- Fixed a bug\n",
       async (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
+        assert.equal(isValidChangenoteFileOrDir(filePath), false);
       },
     );
   });
@@ -199,8 +231,22 @@ await describe("isValidChangenoteFile", async () => {
       "2026-01-01-fix-bug.md",
       "---\ncategory: fix\n---\n* Fixed a bug\n",
       async (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
+        assert.equal(isValidChangenoteFileOrDir(filePath), false);
       },
     );
+  });
+
+  await it("rejects directory with one invalid change-note file", async () => {
+    await withTmpDir(async (tmpDir) => {
+      fs.writeFileSync(
+        path.join(tmpDir, "2026-01-01-fix-bug.md"),
+        "---\ncategory: fix\n---\n- Fixed a bug\n",
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, "2026-01-02-wrong-category.md"),
+        "---\ncategory: foobar\n---\n- Added a feature\n",
+      );
+      assert.equal(isValidChangenoteFileOrDir(tmpDir), false);
+    });
   });
 });

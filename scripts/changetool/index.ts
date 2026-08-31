@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { isValidChangenoteFile } from "./cli/validate.ts";
+import { isValidChangenoteFileOrDir } from "./cli/validate.ts";
 
 const entryPoint = process.argv[1];
 if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
@@ -43,7 +43,7 @@ function validate(paths: string[]): number {
     return 1;
   }
   for (const path of paths) {
-    if (!isValidChangenoteFile(path)) {
+    if (!isValidChangenoteFileOrDir(path)) {
       valid = false;
     }
   }

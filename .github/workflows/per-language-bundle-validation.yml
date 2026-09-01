@@ -73,7 +73,9 @@ jobs:
             os: ubuntu-latest
           - language: swift
             platform: osx64
-            os: macos-latest
+            # Swift autobuild is too slow to finish on a standard macOS runner, which is why the
+            # generated Swift checks use a larger one as well.
+            os: macos-latest-xlarge
             build-mode: autobuild
     permissions:
       contents: read

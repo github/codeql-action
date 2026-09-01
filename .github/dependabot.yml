@@ -27,10 +27,11 @@ updates:
           - "patch"
   - package-ecosystem: github-actions
     directories:
-      - "/.github/workflows"
-      - "/.github/actions"
+      - /.github/workflows
+      - /.github/actions
+      - /
     schedule:
-      interval: weekly
+      interval: daily
     cooldown:
       default-days: 7
       exclude:

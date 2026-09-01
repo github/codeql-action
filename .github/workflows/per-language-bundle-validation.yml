@@ -12,7 +12,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
   # The pre-release whose per-language bundles we are validating.
-  BUNDLE_TAG: codeql-bundle-20260826
+  BUNDLE_TAG: codeql-bundle-20260901
 
 on:
   push:

@@ -135,8 +135,10 @@ export function isValidChangenoteFileOrDir(filepath: string): boolean {
       return fs
         .readdirSync(filepath)
         .filter((f) => f !== ".gitkeep")
-        .map((f) => isValidChangenoteFile(path.join(filepath, f)))
-        .every(Boolean);
+        .reduce(
+          (r, f) => r && isValidChangenoteContent(path.join(filepath, f)),
+          true,
+        );
     }
     console.error(`${filepath}: not a file or directory`);
     return false;

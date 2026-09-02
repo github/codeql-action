@@ -27,6 +27,7 @@ import {
   asHTTPError,
   ConfigurationError,
   getRequiredEnvParam,
+  GITHUB_DOTCOM_API_URL,
   GITHUB_DOTCOM_URL,
   GitHubVariant,
   GitHubVersion,
@@ -179,6 +180,38 @@ export function getApiClientWithExternalAuth(
   proxy?: ProxyAgent,
 ) {
   return createApiClientWithDetails(apiDetails, { allowExternal: true, proxy });
+}
+
+/**
+ * Gets an unauthenticated API client scoped to GitHub.com, for use when working with resources
+ * that only ever exist on GitHub.com -- such as the canonical CodeQL Action repository's release
+ * history -- regardless of which GitHub instance this Action itself is running on.
+ *
+ * This must be used instead of `getApiClient`/`getApiClientWithExternalAuth` whenever the current
+ * GitHub instance is not GitHub.com (for example GitHub Enterprise Server or GHEC with data
+ * residency), since in that case the current instance's authentication token cannot authenticate
+ * to GitHub.com. Sending it there anyway would both fail and needlessly expose that token to a
+ * different host. Reading public data, such as the release history of a public repository, does
+ * not require authentication.
+ */
+export function getUnauthenticatedApiClientForDotcom(
+  proxy?: ProxyAgent,
+): ApiClient {
+  const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
+  return new retryingOctokit({
+    baseUrl: GITHUB_DOTCOM_API_URL,
+    userAgent: `CodeQL-Action/${getActionVersion()}`,
+    log: {
+      debug: core.debug,
+      info: core.info,
+      warn: core.warning,
+      error: core.error,
+    },
+    request: makeProxyRequestOptions(proxy),
+    retry: {
+      doNotRetry: DO_NOT_RETRY_STATUSES,
+    },
+  });
 }
 
 /**

@@ -51,6 +51,12 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
   apiURL: "https://api.github.com",
 };
 
+export const SAMPLE_GHES_API_DETAILS = {
+  auth: "token",
+  url: "https://ghes.example.com",
+  apiURL: "https://ghes.example.com/api/v3",
+};
+
 export const LINKED_CLI_VERSION = {
   cliVersion: defaults.cliVersion,
   tagName: defaults.bundleVersion,

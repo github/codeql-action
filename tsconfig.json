@@ -37,5 +37,5 @@
       "@octokit/core/dist-types/types": ["./node_modules/@octokit/core/dist-types/types.d.ts"]
     },
   },
-  "exclude": ["node_modules", "pr-checks"]
+  "exclude": ["node_modules", "pr-checks", "scripts/changetool"]
 }

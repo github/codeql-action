@@ -17,7 +17,8 @@
   },
   "license": "MIT",
   "workspaces": [
-    "pr-checks"
+    "pr-checks",
+    "scripts/changetool"
   ],
   "dependencies": {
     "@actions/artifact": "^5.0.3",
@@ -31,7 +32,7 @@
     "@actions/io": "^2.0.0",
     "@actions/tool-cache": "^3.0.1",
     "@octokit/core": "^7.0.7",
-    "@octokit/plugin-paginate-rest": "^14.0.0",
+    "@octokit/plugin-paginate-rest": "^15.0.0",
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
     "@octokit/plugin-retry": "^8.1.1",
     "archiver": "^8.0.0",
@@ -39,19 +40,19 @@
     "follow-redirects": "^1.16.0",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
-    "js-yaml": "^5.2.3",
+    "js-yaml": "^5.3.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
     "semver": "^7.8.5",
-    "uuid": "^14.0.1",
+    "uuid": "^14.0.2",
     "undici": "^6.28.0"
   },
   "devDependencies": {
     "@ava/typescript": "6.0.0",
     "@eslint/compat": "^2.1.0",
     "@microsoft/eslint-formatter-sarif": "^3.1.0",
-    "@octokit/types": "^16.0.0",
+    "@octokit/types": "^17.0.0",
     "@types/archiver": "^8.0.0",
     "@types/follow-redirects": "^1.14.4",
     "@types/js-yaml": "^4.0.9",

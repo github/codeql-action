@@ -128,7 +128,6 @@ test("CliError constructor with empty stderr", (t) => {
 
 for (const [platform, arch] of [
   ["weird_plat", "x64"],
-  ["linux", "arm64"],
   ["win32", "arm64"],
 ]) {
   test.serial(
@@ -157,20 +156,34 @@ for (const [platform, arch] of [
   );
 }
 
-test("wrapCliConfigurationError - supported platform", (t) => {
-  const commandError = new CommandInvocationError(
-    "codeql",
-    ["version"],
-    1,
-    "Some error",
+for (const [platform, arch] of [
+  ["linux", "x64"],
+  ["linux", "arm64"],
+  ["win32", "x64"],
+  ["darwin", "x64"],
+  ["darwin", "arm64"],
+]) {
+  test.serial(
+    `wrapCliConfigurationError - ${platform}/${arch} supported`,
+    (t) => {
+      sinon.stub(process, "platform").value(platform);
+      sinon.stub(process, "arch").value(arch);
+      const commandError = new CommandInvocationError(
+        "codeql",
+        ["version"],
+        1,
+        "Some error",
+      );
+      const cliError = new CliError(commandError);
+
+      const wrappedError = wrapCliConfigurationError(cliError);
+
+      // Should return the original error since the platform is supported, rather
+      // than replacing it with the unsupported-platform ConfigurationError.
+      t.is(wrappedError, cliError);
+    },
   );
-  const cliError = new CliError(commandError);
-
-  const wrappedError = wrapCliConfigurationError(cliError);
-
-  // Should return the original error since platform is supported
-  t.is(wrappedError, cliError);
-});
+}
 
 test("wrapCliConfigurationError - autobuild error", (t) => {
   const commandError = new CommandInvocationError(

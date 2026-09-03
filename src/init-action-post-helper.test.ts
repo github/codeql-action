@@ -15,6 +15,7 @@ import { getRunnerLogger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
+import { JobStatus } from "./status-report";
 import {
   createFeatures,
   createTestConfig,
@@ -58,6 +59,7 @@ test.serial("init-post action with debug mode off", async (t) => {
       createTestConfig({ debugMode: false }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
+      "success",
       getRunnerLogger(true),
     );
 
@@ -80,6 +82,7 @@ test.serial("init-post action with debug mode on", async (t) => {
       createTestConfig({ debugMode: true }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
+      "success",
       getRunnerLogger(true),
     );
 
@@ -375,6 +378,7 @@ test.serial(
         }),
         parseRepositoryNwo("github/codeql-action"),
         createFeatures([Feature.OverlayAnalysisStatusSave]),
+        "success",
         getRunnerLogger(true),
       );
 
@@ -443,6 +447,7 @@ test.serial(
         }),
         parseRepositoryNwo("github/codeql-action"),
         createFeatures([]),
+        "success",
         getRunnerLogger(true),
       );
 
@@ -480,6 +485,7 @@ test.serial("does not save overlay status when build successful", async (t) => {
       }),
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.OverlayAnalysisStatusSave]),
+      "success",
       getRunnerLogger(true),
     );
 
@@ -517,6 +523,7 @@ test.serial(
         }),
         parseRepositoryNwo("github/codeql-action"),
         createFeatures([]),
+        "success",
         getRunnerLogger(true),
       );
 
@@ -525,6 +532,94 @@ test.serial(
         "saveOverlayStatus should not be called when overlay is not enabled",
       );
     });
+  },
+);
+
+/**
+ * Runs `uploadFailureInfo` for an overlay-base job that did not complete successfully, for a job
+ * that the Actions runtime environment reports as cancelled.
+ */
+async function testCancelledOverlayJob({
+  jobStatus = "cancelled",
+  codeQlReportedError = false,
+}: {
+  jobStatus?: string;
+  codeQlReportedError?: boolean;
+} = {}) {
+  return await util.withTmpDir(async (tmpDir) => {
+    setupActionsVars(tmpDir, tmpDir);
+    delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
+    if (codeQlReportedError) {
+      process.env[EnvVar.JOB_STATUS] = JobStatus.FailureStatus;
+    } else {
+      delete process.env[EnvVar.JOB_STATUS];
+    }
+
+    sinon.stub(util, "checkDiskUsage").resolves({
+      numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
+      numTotalBytes: 200 * NUM_BYTES_PER_GIB,
+    });
+
+    const saveOverlayStatusStub = sinon
+      .stub(overlayStatus, "saveOverlayStatus")
+      .resolves(true);
+
+    await initActionPostHelper.uploadFailureInfo(
+      sinon.spy(),
+      sinon.spy(),
+      codeql.createStubCodeQL({}),
+      createTestConfig({
+        debugMode: false,
+        languages: ["javascript"],
+        overlayDatabaseMode: OverlayDatabaseMode.OverlayBase,
+      }),
+      parseRepositoryNwo("github/codeql-action"),
+      createFeatures([Feature.OverlayAnalysisStatusSave]),
+      jobStatus,
+      getRunnerLogger(true),
+    );
+
+    return { saveOverlayStatusStub };
+  });
+}
+
+test.serial(
+  "does not save overlay status when the job was cancelled",
+  async (t) => {
+    const { saveOverlayStatusStub } = await testCancelledOverlayJob();
+
+    t.true(
+      saveOverlayStatusStub.notCalled,
+      "a cancellation tells us nothing about whether the analysis would have succeeded",
+    );
+  },
+);
+
+test.serial(
+  "saves overlay status when the job failed rather than being cancelled",
+  async (t) => {
+    const { saveOverlayStatusStub } = await testCancelledOverlayJob({
+      jobStatus: "failure",
+    });
+
+    t.true(
+      saveOverlayStatusStub.calledOnce,
+      "only cancellations are treated as unrelated to the analysis",
+    );
+  },
+);
+
+test.serial(
+  "saves overlay status when a CodeQL Action reported an error before the run was cancelled",
+  async (t) => {
+    const { saveOverlayStatusStub } = await testCancelledOverlayJob({
+      codeQlReportedError: true,
+    });
+
+    t.true(
+      saveOverlayStatusStub.calledOnce,
+      "the analysis genuinely failed, even though the run was later cancelled",
+    );
   },
 );
 

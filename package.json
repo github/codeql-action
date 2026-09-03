@@ -40,7 +40,7 @@
     "follow-redirects": "^1.16.0",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
-    "js-yaml": "^5.3.0",
+    "js-yaml": "^5.4.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
     "node-forge": "^1.4.0",
@@ -74,7 +74,7 @@
     "nock": "^14.0.17",
     "sinon": "^22.1.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.67.0"
+    "typescript-eslint": "^8.68.0"
   },
   "overrides": {
     "@actions/tool-cache": {

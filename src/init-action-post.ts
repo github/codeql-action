@@ -8,6 +8,7 @@ import * as core from "@actions/core";
 
 import {
   restoreInputs,
+  getOptionalInput,
   getTemporaryDirectory,
   printDebugLogs,
 } from "./actions-util";
@@ -55,6 +56,11 @@ async function run(startedAt: Date) {
     | undefined;
   let dependencyCachingUsage: DependencyCachingUsageReport | undefined;
   try {
+    // Read the job status before restoring inputs, since it is provided by the Actions runtime
+    // environment for this step and would otherwise be overwritten by the value that the `init`
+    // Action saw, which is always a success.
+    const jobStatus = getOptionalInput("job-status");
+
     // Restore inputs from `init` Action.
     restoreInputs();
 
@@ -84,6 +90,7 @@ async function run(startedAt: Date) {
         config,
         repositoryNwo,
         features,
+        jobStatus,
         logger,
       );
 

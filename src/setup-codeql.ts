@@ -36,6 +36,7 @@ import {
   deleteToolcacheBundles,
   downloadAndExtract,
   getToolcacheDirectory,
+  isToolcacheOnWorkspaceFilesystem,
   ToolcacheCleanupResult,
   ToolsDownloadStatusReport,
   writeToolcacheMarkerFile,
@@ -900,6 +901,7 @@ async function tryDeleteToolcacheBundles(
 
   if (
     !isGitHubHostedRunner() ||
+    !isToolcacheOnWorkspaceFilesystem(logger) ||
     !(await features.getValue(Feature.CleanupToolcacheBundles))
   ) {
     return;

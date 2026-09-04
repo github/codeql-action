@@ -18,7 +18,7 @@ import {
   sanitizeArtifactName,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
-import { EnvVar } from "./environment";
+import { EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
@@ -317,6 +317,7 @@ export async function tryUploadSarifIfRunFailed(
  * @param repositoryNwo The name and owner of the repository.
  * @param features Information about enabled features.
  * @param jobStatus The status of the job, as reported by the Actions runtime environment.
+ * @param env The environment to read variables from.
  * @param logger The logger to use.
  * @returns The results of uploading the SARIF file for the failure.
  */
@@ -333,9 +334,10 @@ export async function uploadFailureInfo(
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   jobStatus: string | undefined,
+  env: ReadOnlyEnv,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
-  await recordOverlayStatus(codeql, config, features, jobStatus, logger);
+  await recordOverlayStatus(codeql, config, features, jobStatus, env, logger);
 
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
@@ -421,8 +423,8 @@ export async function uploadFailureInfo(
  * Note that the converse does not hold: an Action that is terminated abruptly, or that fails before
  * it can gather telemetry, does not get to report anything.
  */
-function didCodeQlReportError(): boolean {
-  const jobStatus = process.env[EnvVar.JOB_STATUS];
+function didCodeQlReportError(env: ReadOnlyEnv): boolean {
+  const jobStatus = env.getOptional(EnvVar.JOB_STATUS);
   return (
     jobStatus === JobStatus.FailureStatus ||
     jobStatus === JobStatus.ConfigErrorStatus
@@ -439,11 +441,12 @@ async function recordOverlayStatus(
   config: Config,
   features: FeatureEnablement,
   jobStatus: string | undefined,
+  env: ReadOnlyEnv,
   logger: Logger,
 ) {
   if (
     config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
-    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true" ||
+    env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true" ||
     !(await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
     return;
@@ -454,7 +457,7 @@ async function recordOverlayStatus(
   // of our own Actions reported an error before the run was cancelled.
   if (
     jobStatus?.trim().toLowerCase() === "cancelled" &&
-    !didCodeQlReportError()
+    !didCodeQlReportError(env)
   ) {
     logger.info(
       "Not recording an improved incremental analysis failure for this job because the workflow " +

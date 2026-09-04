@@ -255,11 +255,17 @@ export async function deleteToolcacheBundles(
       );
       return { deletedVersions: [], failed: true };
     }
-  } catch {
-    logger.debug(
-      `There are no CodeQL tools at ${toolDirectory} to delete from the toolcache.`,
+  } catch (e: any) {
+    if (e?.code === "ENOENT") {
+      logger.debug(
+        `There are no CodeQL tools at ${toolDirectory} to delete from the toolcache.`,
+      );
+      return { deletedVersions: [], failed: false };
+    }
+    logger.info(
+      `Failed to inspect the CodeQL tools at ${toolDirectory}: ${getErrorMessage(e)}`,
     );
-    return { deletedVersions: [], failed: false };
+    return { deletedVersions: [], failed: true };
   }
 
   try {

@@ -823,7 +823,7 @@ export const downloadCodeQL = async function (
   const extractedBundlePath =
     toolcacheInfo?.path ?? getTempExtractionDir(tempDir);
 
-  await tryDeleteToolcacheBundles(toolcacheInfo?.version, features, logger);
+  await tryDeleteToolcacheBundles(features, logger);
 
   const statusReport = await downloadAndExtract(
     codeqlURL,
@@ -881,13 +881,10 @@ function getToolcacheDestinationInfo(
  * Reclaims disk space by deleting the CodeQL tools from the toolcache, if enabled.
  *
  * On GitHub-hosted runners the toolcache shares a filesystem with the workspace, so tools left in
- * the toolcache take up space that the analysis could use instead.
- *
- * @param destinationVersion The toolcache version number that the tools will be stored under, or
- *                           `undefined` if they will not be stored in the toolcache.
+ * the toolcache take up space that the analysis could use instead. This holds wherever we extract
+ * the tools we are obtaining, since the toolcache is on that filesystem either way.
  */
 async function tryDeleteToolcacheBundles(
-  destinationVersion: string | undefined,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<void> {
@@ -901,10 +898,7 @@ async function tryDeleteToolcacheBundles(
     return;
   }
 
-  // If we are not going to add the tools to the toolcache, we are extracting them somewhere else
-  // and emptying the toolcache would not buy us the space we need.
   if (
-    destinationVersion === undefined ||
     !isGitHubHostedRunner() ||
     !(await features.getValue(Feature.CleanupToolcacheBundles))
   ) {

@@ -974,6 +974,7 @@ function createToolcacheEntry(
 async function runDownloadCodeQL(
   toolcacheRoot: string,
   features: Feature[],
+  bundleVersion: string | undefined = CLEANUP_BUNDLE_VERSION,
 ): Promise<toolsDownload.ToolcacheCleanupResult | undefined> {
   sinon
     .stub(toolsDownload, "downloadAndExtract")
@@ -988,7 +989,7 @@ async function runDownloadCodeQL(
   await setupCodeql.downloadCodeQL(
     "https://example.com/codeql-bundle.tar.gz",
     "gzip",
-    CLEANUP_BUNDLE_VERSION,
+    bundleVersion,
     CLEANUP_CLI_VERSION,
     SAMPLE_DOTCOM_API_DETAILS,
     undefined, // tarVersion
@@ -1305,6 +1306,67 @@ test.serial(
         process.env[EnvVar.HAS_OBTAINED_CODEQL_TOOLS],
         "true",
         "A later step must be able to tell that the toolcache is in use.",
+      );
+    });
+  },
+);
+
+test.serial(
+  "downloadCodeQL cleans up the toolcache even when the download will not be cached",
+  async (t) => {
+    // A `tools` URL we can't derive a bundle version from is extracted to a temporary directory
+    // rather than the toolcache, but the toolcache is on the same filesystem, so emptying it still
+    // frees up space for the analysis.
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+      const staleDirectory = createToolcacheEntry(
+        tmpDir,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+
+      const cleanupDiagnostic = await runDownloadCodeQL(
+        tmpDir,
+        [Feature.CleanupToolcacheBundles],
+        undefined, // bundleVersion
+      );
+
+      t.false(fs.existsSync(staleDirectory));
+      t.deepEqual(cleanupDiagnostic, {
+        deletedVersions: [CLEANUP_STALE_VERSION],
+        failed: false,
+      });
+    });
+  },
+);
+
+test.serial(
+  "downloadCodeQL reports a failure when the toolcache cannot be inspected",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+      createToolcacheEntry(tmpDir, "CodeQL", CLEANUP_STALE_VERSION);
+
+      const lstatStub = sinon.stub(fs.promises, "lstat").rejects(
+        Object.assign(new Error("permission denied"), {
+          code: "EACCES",
+        }),
+      );
+
+      const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, [
+        Feature.CleanupToolcacheBundles,
+      ]);
+
+      lstatStub.restore();
+
+      t.deepEqual(
+        cleanupDiagnostic,
+        { deletedVersions: [], failed: true },
+        "An error other than the toolcache being absent must not be reported as success.",
       );
     });
   },

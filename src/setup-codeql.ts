@@ -2,6 +2,7 @@ import * as fs from "fs";
 import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
 
+import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
@@ -10,6 +11,7 @@ import { v4 as uuidV4 } from "uuid";
 import {
   isAnalyzingPullRequest,
   isDynamicWorkflow,
+  isGitHubHostedRunner,
   isRunningLocalAction,
 } from "./actions-util";
 import * as api from "./api-client";
@@ -19,6 +21,7 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
+import { EnvVar } from "./environment";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
@@ -30,8 +33,11 @@ import { Logger } from "./logging";
 import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
 import * as tar from "./tar";
 import {
+  deleteToolcacheBundles,
   downloadAndExtract,
   getToolcacheDirectory,
+  isToolcacheOnWorkspaceFilesystem,
+  ToolcacheCleanupResult,
   ToolsDownloadStatusReport,
   writeToolcacheMarkerFile,
 } from "./tools-download";
@@ -784,6 +790,7 @@ export const downloadCodeQL = async function (
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
+  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
@@ -816,6 +823,8 @@ export const downloadCodeQL = async function (
 
   const extractedBundlePath =
     toolcacheInfo?.path ?? getTempExtractionDir(tempDir);
+
+  await tryDeleteToolcacheBundles(features, logger);
 
   const statusReport = await downloadAndExtract(
     codeqlURL,
@@ -867,6 +876,55 @@ function getToolcacheDestinationInfo(
   }
 
   return undefined;
+}
+
+/**
+ * Reclaims disk space by deleting the CodeQL tools from the toolcache, if enabled.
+ *
+ * On GitHub-hosted runners the toolcache shares a filesystem with the workspace, so tools left in
+ * the toolcache take up space that the analysis could use instead. This holds wherever we extract
+ * the tools we are obtaining, since the toolcache is on that filesystem either way.
+ */
+async function tryDeleteToolcacheBundles(
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<void> {
+  // A step that has already obtained the CodeQL tools may hand out a path into the toolcache that a
+  // later step runs, so only the first step to obtain them can know that nothing else relies on it.
+  if (util.getOptionalEnvVar(EnvVar.HAS_OBTAINED_CODEQL_TOOLS) !== undefined) {
+    logger.debug(
+      "Not deleting the CodeQL tools from the toolcache since a previous step in this job has " +
+        "already obtained them.",
+    );
+    return;
+  }
+
+  if (
+    !isGitHubHostedRunner() ||
+    !isToolcacheOnWorkspaceFilesystem(logger) ||
+    !(await features.getValue(Feature.CleanupToolcacheBundles))
+  ) {
+    return;
+  }
+
+  let result: ToolcacheCleanupResult = { deletedVersions: [], failed: true };
+
+  try {
+    result = await deleteToolcacheBundles(logger);
+  } catch (e) {
+    logger.info(
+      `Unable to reclaim disk space from the toolcache: ${util.getErrorMessage(e)}`,
+    );
+  }
+
+  addNoLanguageDiagnostic(
+    undefined,
+    makeTelemetryDiagnostic(
+      "codeql-action/toolcache-bundle-cleanup",
+      "Toolcache CodeQL bundle cleanup",
+      { ...result },
+    ),
+  );
 }
 
 export function getCodeQLURLVersion(url: string): string {
@@ -978,6 +1036,7 @@ export async function setupCodeQLBundle(
         apiDetails,
         zstdAvailability.version,
         tempDir,
+        features,
         logger,
       );
       toolsVersion = result.toolsVersion;
@@ -989,6 +1048,11 @@ export async function setupCodeQLBundle(
     default:
       util.assertNever(source);
   }
+
+  // Record that this job now has a copy of the CodeQL tools, so that a later step doesn't delete
+  // the toolcache out from under the path we are about to return.
+  core.exportVariable(EnvVar.HAS_OBTAINED_CODEQL_TOOLS, "true");
+
   return {
     codeqlFolder,
     toolsDownloadStatusReport,

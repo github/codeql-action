@@ -197,14 +197,93 @@ async function downloadAndExtractZstdWithStreaming(
   await tar.extractTarZst(response, dest, tarVersion, logger);
 }
 
-/** Gets the path to the toolcache directory for the specified version of the CodeQL tools. */
-export function getToolcacheDirectory(version: string): string {
+/** Gets the path to the toolcache directory that holds all versions of the CodeQL tools. */
+function getToolcacheToolDirectory(): string {
   return path.join(
     getRequiredEnvParam("RUNNER_TOOL_CACHE"),
     TOOLCACHE_TOOL_NAME,
-    semver.clean(version) || version,
+  );
+}
+
+/** Gets the name of the toolcache directory that holds the given version of the CodeQL tools. */
+function getToolcacheVersionDirectoryName(version: string): string {
+  return semver.clean(version) || version;
+}
+
+/** Gets the path to the toolcache directory for the specified version of the CodeQL tools. */
+export function getToolcacheDirectory(version: string): string {
+  return path.join(
+    getToolcacheToolDirectory(),
+    getToolcacheVersionDirectoryName(version),
     os.arch() || "",
   );
+}
+
+/** The outcome of trying to reclaim disk space by deleting the CodeQL tools from the toolcache. */
+export interface ToolcacheCleanupResult {
+  /** The versions of the CodeQL tools that were deleted. */
+  deletedVersions: string[];
+  /**
+   * Whether we hit an error while trying to delete the tools. Distinguishes a toolcache that had
+   * nothing to reclaim from one we failed to clean up.
+   */
+  failed: boolean;
+}
+
+/**
+ * Deletes the CodeQL tools from the toolcache.
+ *
+ * Only safe to call when we are about to download the tools, since that means we did not resolve
+ * them from the toolcache and so nothing in there is in use by this job.
+ *
+ * This only ever touches the CodeQL directory of the toolcache, and is best-effort: any failure is
+ * logged rather than propagated, since the caller can proceed without the disk space.
+ *
+ * @returns the versions that were deleted, and whether we hit an error while trying.
+ */
+export async function deleteToolcacheBundles(
+  logger: Logger,
+): Promise<ToolcacheCleanupResult> {
+  const toolDirectory = getToolcacheToolDirectory();
+
+  try {
+    // Refuse to follow a symlinked CodeQL directory, so that we can only ever delete paths that are
+    // really inside the toolcache.
+    if ((await fs.promises.lstat(toolDirectory)).isSymbolicLink()) {
+      logger.info(
+        `Not deleting the CodeQL tools from the toolcache since ${toolDirectory} is a symlink.`,
+      );
+      return { deletedVersions: [], failed: true };
+    }
+  } catch {
+    logger.debug(
+      `There are no CodeQL tools at ${toolDirectory} to delete from the toolcache.`,
+    );
+    return { deletedVersions: [], failed: false };
+  }
+
+  try {
+    const versions = (
+      await fs.promises.readdir(toolDirectory, { withFileTypes: true })
+    )
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+
+    await fs.promises.rm(toolDirectory, { force: true, recursive: true });
+
+    logger.info(
+      `Deleted the CodeQL tools at ${toolDirectory} from the toolcache to free up disk space. ` +
+        `Versions deleted: ${versions.join(", ") || "none"}.`,
+    );
+
+    return { deletedVersions: versions, failed: false };
+  } catch (e) {
+    logger.info(
+      `Failed to delete the CodeQL tools at ${toolDirectory} from the toolcache: ${getErrorMessage(e)}`,
+    );
+    return { deletedVersions: [], failed: true };
+  }
 }
 
 export function writeToolcacheMarkerFile(

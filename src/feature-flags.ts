@@ -74,6 +74,11 @@ export enum Feature {
   AllowMergeConfigFiles = "allow_merge_config_files",
   /** Controls whether we allow multiple values for the `analysis-kinds` input. */
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
+  /**
+   * Controls whether we delete CodeQL bundles that we are not going to use from the toolcache
+   * before downloading a different bundle, in order to reclaim disk space.
+   */
+  CleanupToolcacheBundles = "cleanup_toolcache_bundles",
   CleanupTrapCaches = "cleanup_trap_caches",
   /** Whether to allow the `config-file` input to be specified via a repository property. */
   ConfigFileRepositoryProperty = "config_file_repository_property",
@@ -209,6 +214,11 @@ export const featureConfig = {
   [Feature.AllowMultipleAnalysisKinds]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
+    minimumVersion: undefined,
+  },
+  [Feature.CleanupToolcacheBundles]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CLEANUP_TOOLCACHE_BUNDLES",
     minimumVersion: undefined,
   },
   [Feature.CleanupTrapCaches]: {

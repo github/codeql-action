@@ -8,6 +8,7 @@ import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
+import { ActionState } from "./action-common";
 import {
   isAnalyzingPullRequest,
   isDynamicWorkflow,
@@ -21,7 +22,7 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv } from "./environment";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
@@ -37,7 +38,6 @@ import {
   downloadAndExtract,
   getToolcacheDirectory,
   isToolcacheOnWorkspaceFilesystem,
-  ToolcacheCleanupResult,
   ToolsDownloadStatusReport,
   writeToolcacheMarkerFile,
 } from "./tools-download";
@@ -824,7 +824,7 @@ export const downloadCodeQL = async function (
   const extractedBundlePath =
     toolcacheInfo?.path ?? getTempExtractionDir(tempDir);
 
-  await tryDeleteToolcacheBundles(features, logger);
+  await tryDeleteToolcacheBundles({ env: getEnv(), features, logger });
 
   const statusReport = await downloadAndExtract(
     codeqlURL,
@@ -885,16 +885,17 @@ function getToolcacheDestinationInfo(
  * the toolcache take up space that the analysis could use instead. This holds wherever we extract
  * the tools we are obtaining, since the toolcache is on that filesystem either way.
  */
-async function tryDeleteToolcacheBundles(
-  features: FeatureEnablement,
-  logger: Logger,
-): Promise<void> {
-  // A step that has already obtained the CodeQL tools may hand out a path into the toolcache that a
-  // later step runs, so only the first step to obtain them can know that nothing else relies on it.
-  if (util.getOptionalEnvVar(EnvVar.HAS_OBTAINED_CODEQL_TOOLS) !== undefined) {
+async function tryDeleteToolcacheBundles({
+  env,
+  features,
+  logger,
+}: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>): Promise<void> {
+  // A step that has already set up CodeQL may hand out a path into the toolcache that a later step
+  // runs, so only the first step to set it up can know that nothing else relies on the toolcache.
+  if (env.getOptional(EnvVar.HAS_SET_UP_CODEQL) !== undefined) {
     logger.debug(
       "Not deleting the CodeQL tools from the toolcache since a previous step in this job has " +
-        "already obtained them.",
+        "already set up CodeQL.",
     );
     return;
   }
@@ -907,15 +908,7 @@ async function tryDeleteToolcacheBundles(
     return;
   }
 
-  let result: ToolcacheCleanupResult = { deletedVersions: [], failed: true };
-
-  try {
-    result = await deleteToolcacheBundles(logger);
-  } catch (e) {
-    logger.info(
-      `Unable to reclaim disk space from the toolcache: ${util.getErrorMessage(e)}`,
-    );
-  }
+  const result = await deleteToolcacheBundles(logger);
 
   addNoLanguageDiagnostic(
     undefined,
@@ -1051,7 +1044,7 @@ export async function setupCodeQLBundle(
 
   // Record that this job now has a copy of the CodeQL tools, so that a later step doesn't delete
   // the toolcache out from under the path we are about to return.
-  core.exportVariable(EnvVar.HAS_OBTAINED_CODEQL_TOOLS, "true");
+  core.exportVariable(EnvVar.HAS_SET_UP_CODEQL, "true");
 
   return {
     codeqlFolder,

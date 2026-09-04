@@ -1199,24 +1199,19 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL continues when cleaning up the toolcache throws",
+  "deleteToolcacheBundles reports a failure when the toolcache location is unknown",
   async (t) => {
-    await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
-      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+    delete process.env[ActionsEnvVars.RUNNER_TOOL_CACHE];
 
-      createToolcacheEntry(tmpDir, "CodeQL", CLEANUP_CLI_VERSION);
+    const result = await toolsDownload.deleteToolcacheBundles(
+      getRunnerLogger(true),
+    );
 
-      sinon
-        .stub(toolsDownload, "deleteToolcacheBundles")
-        .rejects(new Error("RUNNER_TOOL_CACHE is not set"));
-
-      const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, [
-        Feature.CleanupToolcacheBundles,
-      ]);
-
-      t.deepEqual(cleanupDiagnostic, { deletedVersions: [], failed: true });
-    });
+    t.deepEqual(
+      result,
+      { deletedVersions: [], failed: true },
+      "Should report a failure rather than throwing, so the download can continue.",
+    );
   },
 );
 
@@ -1255,7 +1250,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL does not clean up the toolcache once a step has already obtained the tools",
+  "downloadCodeQL does not clean up the toolcache once a step has already set up CodeQL",
   async (t) => {
     // `.github/workflows/codeql.yml` sets up CodeQL twice and then runs both returned paths. If the
     // second setup downloads, it must not delete the bundle the first one handed out.
@@ -1265,7 +1260,7 @@ test.serial(
         features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "github-hosted",
         setUp: () => {
-          process.env[EnvVar.HAS_OBTAINED_CODEQL_TOOLS] = "true";
+          process.env[EnvVar.HAS_SET_UP_CODEQL] = "true";
         },
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -1278,11 +1273,11 @@ test.serial(
 );
 
 test.serial(
-  "setupCodeQLBundle records that this job has obtained the CodeQL tools",
+  "setupCodeQLBundle records that this job has set up CodeQL",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      delete process.env[EnvVar.HAS_OBTAINED_CODEQL_TOOLS];
+      delete process.env[EnvVar.HAS_SET_UP_CODEQL];
 
       sinon.stub(setupCodeql, "downloadCodeQL").resolves({
         codeqlFolder: "codeql",
@@ -1303,7 +1298,7 @@ test.serial(
       );
 
       t.is(
-        process.env[EnvVar.HAS_OBTAINED_CODEQL_TOOLS],
+        process.env[EnvVar.HAS_SET_UP_CODEQL],
         "true",
         "A later step must be able to tell that the toolcache is in use.",
       );
@@ -1402,7 +1397,7 @@ test.serial(
 );
 
 test.serial(
-  "isToolcacheOnWorkspaceFilesystem compares the toolcache against the workspace",
+  "isToolcacheOnWorkspaceFilesystem assumes a different filesystem when it cannot tell",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       const logger = getRunnerLogger(true);
@@ -1416,6 +1411,41 @@ test.serial(
         "does-not-exist",
       );
       t.false(toolsDownload.isToolcacheOnWorkspaceFilesystem(logger));
+    });
+  },
+);
+
+test.serial(
+  "downloadCodeQL does not delete through a symlinked version directory",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const toolcacheRoot = path.join(tmpDir, "toolcache");
+      setupActionsVars(tmpDir, toolcacheRoot);
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+      createToolcacheEntry(toolcacheRoot, "CodeQL", CLEANUP_STALE_VERSION);
+
+      // Somewhere outside the toolcache that a version directory points at.
+      const outsideDirectory = path.join(tmpDir, "outside");
+      fs.mkdirSync(outsideDirectory, { recursive: true });
+      fs.writeFileSync(path.join(outsideDirectory, "contents"), "x");
+      fs.symlinkSync(
+        outsideDirectory,
+        path.join(toolcacheRoot, "CodeQL", "9.9.9"),
+      );
+
+      const cleanupDiagnostic = await runDownloadCodeQL(toolcacheRoot, [
+        Feature.CleanupToolcacheBundles,
+      ]);
+
+      t.true(
+        fs.existsSync(path.join(outsideDirectory, "contents")),
+        "Should not delete anything through a symlinked version directory.",
+      );
+      t.deepEqual(cleanupDiagnostic, {
+        deletedVersions: [CLEANUP_STALE_VERSION],
+        failed: false,
+      });
     });
   },
 );

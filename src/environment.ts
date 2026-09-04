@@ -64,10 +64,10 @@ export enum EnvVar {
   HAS_WARNED_ABOUT_DISK_SPACE = "CODEQL_ACTION_HAS_WARNED_ABOUT_DISK_SPACE",
 
   /**
-   * Whether a step in this job has already obtained the CodeQL tools. Steps that run afterwards may
-   * be holding a path into the toolcache, so we must not delete anything from it.
+   * Whether a step in this job has already set up CodeQL. Steps that run afterwards may be holding
+   * a path into the toolcache, so we must not delete anything from it.
    */
-  HAS_OBTAINED_CODEQL_TOOLS = "CODEQL_ACTION_HAS_OBTAINED_CODEQL_TOOLS",
+  HAS_SET_UP_CODEQL = "CODEQL_ACTION_HAS_SET_UP_CODEQL",
 
   /** Whether the `setup-codeql` action has been run. */
   SETUP_CODEQL_ACTION_HAS_RUN = "CODEQL_ACTION_SETUP_CODEQL_HAS_RUN",

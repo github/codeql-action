@@ -5,6 +5,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 ## [UNRELEASED]
 
 - The CodeQL Action now supports CodeQL releases that are compatible with Linux Arm64 and download the native `linux-arm64` CodeQL bundle when available. [#4072](https://github.com/github/codeql-action/pull/4072)
+- On GitHub-hosted runners, the CodeQL Action now deletes unused CodeQL bundles from the toolcache before downloading a different bundle, which frees up disk space for the analysis. We expect to roll this change out to everyone in September. [#4124](https://github.com/github/codeql-action/pull/4124)
 
 ## 4.37.9 - 26 Aug 2026
 

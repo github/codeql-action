@@ -1371,3 +1371,51 @@ test.serial(
     });
   },
 );
+
+test.serial(
+  "downloadCodeQL does not clean up a toolcache on a different filesystem to the workspace",
+  async (t) => {
+    // Some runner images keep the toolcache on a different volume to the workspace, in which case
+    // deleting the tools frees up disk space that the analysis cannot use.
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+
+      const staleDirectory = createToolcacheEntry(
+        tmpDir,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+
+      sinon
+        .stub(toolsDownload, "isToolcacheOnWorkspaceFilesystem")
+        .returns(false);
+
+      const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, [
+        Feature.CleanupToolcacheBundles,
+      ]);
+
+      t.true(fs.existsSync(staleDirectory));
+      t.is(cleanupDiagnostic, undefined);
+    });
+  },
+);
+
+test.serial(
+  "isToolcacheOnWorkspaceFilesystem compares the toolcache against the workspace",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const logger = getRunnerLogger(true);
+
+      setupActionsVars(tmpDir, tmpDir);
+      t.true(toolsDownload.isToolcacheOnWorkspaceFilesystem(logger));
+
+      // If we can't tell, we assume the toolcache is not somewhere we can reclaim space from.
+      process.env[ActionsEnvVars.RUNNER_TOOL_CACHE] = path.join(
+        tmpDir,
+        "does-not-exist",
+      );
+      t.false(toolsDownload.isToolcacheOnWorkspaceFilesystem(logger));
+    });
+  },
+);

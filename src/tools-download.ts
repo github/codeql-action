@@ -219,6 +219,27 @@ export function getToolcacheDirectory(version: string): string {
   );
 }
 
+/**
+ * Whether the toolcache is on the same filesystem as the workspace, and so whether deleting the
+ * tools frees up disk space that the analysis can use.
+ *
+ * These are separate volumes on some runner images. Windows runners, for example, keep the
+ * toolcache on `C:` while the workspace is on `D:`.
+ */
+export function isToolcacheOnWorkspaceFilesystem(logger: Logger): boolean {
+  try {
+    return (
+      fs.statSync(getRequiredEnvParam("RUNNER_TOOL_CACHE")).dev ===
+      fs.statSync(getRequiredEnvParam("GITHUB_WORKSPACE")).dev
+    );
+  } catch (e) {
+    logger.debug(
+      `Could not determine whether the toolcache is on the same filesystem as the workspace: ${getErrorMessage(e)}`,
+    );
+    return false;
+  }
+}
+
 /** The outcome of trying to reclaim disk space by deleting the CodeQL tools from the toolcache. */
 export interface ToolcacheCleanupResult {
   /** The versions of the CodeQL tools that were deleted. */

@@ -432,6 +432,22 @@ function didCodeQlReportError(env: ReadOnlyEnv): boolean {
 }
 
 /**
+ * Whether the job status tells us anything about whether the analysis itself would have succeeded.
+ *
+ * We check for the statuses we know to be meaningful rather than excluding the ones that are not,
+ * so that a status we do not recognise is treated as inconclusive.
+ */
+function isConclusiveJobStatus(jobStatus: string | undefined): boolean {
+  switch (jobStatus?.trim().toLowerCase()) {
+    case "failure":
+    case "success":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * If overlay base database creation was attempted but the analysis did not complete
  * successfully, save the failure status to the Actions cache so that subsequent runs
  * can skip overlay analysis until something changes (e.g. a new CodeQL version).
@@ -452,16 +468,14 @@ async function recordOverlayStatus(
     return;
   }
 
-  // A cancelled run tells us nothing about whether the analysis would have succeeded, so recording
-  // a failure would disable overlay analysis needlessly. Note that we still record a failure if one
-  // of our own Actions reported an error before the run was cancelled.
-  if (
-    jobStatus?.trim().toLowerCase() === "cancelled" &&
-    !didCodeQlReportError(env)
-  ) {
+  // Only record a failure when the job outcome tells us something about the analysis. A cancelled
+  // job, or a status we do not recognise, says nothing about whether the analysis would have
+  // succeeded, so recording a failure would disable overlay analysis needlessly. We still record
+  // one if a CodeQL Action reported an error before the job ended.
+  if (!isConclusiveJobStatus(jobStatus) && !didCodeQlReportError(env)) {
     logger.info(
-      "Not recording an improved incremental analysis failure for this job because the workflow " +
-        "run was cancelled.",
+      "Not recording an improved incremental analysis failure for this job because the job " +
+        `status (${jobStatus ?? "unset"}) does not tell us whether the analysis itself failed.`,
     );
     return;
   }

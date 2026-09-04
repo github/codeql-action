@@ -548,16 +548,16 @@ test.serial(
 );
 
 /**
- * Runs `uploadFailureInfo` for an overlay-base job that did not complete successfully, for a job
- * that the Actions runtime environment reports as cancelled.
+ * Runs `uploadFailureInfo` for an overlay-base job that did not complete successfully, with the
+ * given job status from the Actions runtime environment.
  */
-async function testCancelledOverlayJob({
-  jobStatus = "cancelled",
+async function runOverlayPostStep({
+  jobStatus,
   codeQlReportedError = false,
 }: {
-  jobStatus?: string;
+  jobStatus: string | undefined;
   codeQlReportedError?: boolean;
-} = {}) {
+}) {
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
@@ -599,7 +599,9 @@ async function testCancelledOverlayJob({
 test.serial(
   "does not save overlay status when the job was cancelled",
   async (t) => {
-    const { saveOverlayStatusStub } = await testCancelledOverlayJob();
+    const { saveOverlayStatusStub } = await runOverlayPostStep({
+      jobStatus: "cancelled",
+    });
 
     t.true(
       saveOverlayStatusStub.notCalled,
@@ -609,23 +611,63 @@ test.serial(
 );
 
 test.serial(
-  "saves overlay status when the job failed rather than being cancelled",
+  "does not save overlay status when the job status is not recognised",
   async (t) => {
-    const { saveOverlayStatusStub } = await testCancelledOverlayJob({
-      jobStatus: "failure",
+    const { saveOverlayStatusStub } = await runOverlayPostStep({
+      jobStatus: "some-new-status",
     });
 
     t.true(
-      saveOverlayStatusStub.calledOnce,
-      "only cancellations are treated as unrelated to the analysis",
+      saveOverlayStatusStub.notCalled,
+      "a status we do not recognise tells us nothing about whether the analysis would have succeeded",
     );
   },
 );
 
 test.serial(
+  "does not save overlay status when the job status is unavailable",
+  async (t) => {
+    const { saveOverlayStatusStub } = await runOverlayPostStep({
+      jobStatus: undefined,
+    });
+
+    t.true(
+      saveOverlayStatusStub.notCalled,
+      "without a job status we cannot tell whether the analysis would have succeeded",
+    );
+  },
+);
+
+test.serial(
+  "saves overlay status when the job failed rather than being cancelled",
+  async (t) => {
+    const { saveOverlayStatusStub } = await runOverlayPostStep({
+      jobStatus: "failure",
+    });
+
+    t.true(
+      saveOverlayStatusStub.calledOnce,
+      "a failed job indicates that the analysis itself failed",
+    );
+  },
+);
+
+test.serial("saves overlay status when the job succeeded", async (t) => {
+  const { saveOverlayStatusStub } = await runOverlayPostStep({
+    jobStatus: "success",
+  });
+
+  t.true(
+    saveOverlayStatusStub.calledOnce,
+    "the analysis did not complete successfully even though the job as a whole succeeded",
+  );
+});
+
+test.serial(
   "saves overlay status when a CodeQL Action reported an error before the run was cancelled",
   async (t) => {
-    const { saveOverlayStatusStub } = await testCancelledOverlayJob({
+    const { saveOverlayStatusStub } = await runOverlayPostStep({
+      jobStatus: "cancelled",
       codeQlReportedError: true,
     });
 

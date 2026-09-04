@@ -31,4 +31,5 @@ steps:
           echo "Did not find a database for $lang"
           exit 1
         fi
+        echo "Found database for $lang"
       done

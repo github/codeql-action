@@ -252,7 +252,7 @@ export interface ToolcacheCleanupResult {
 }
 
 /**
- * Deletes the CodeQL tools from the toolcache.
+ * Deletes every version of the CodeQL tools from the toolcache.
  *
  * Only safe to call when we are about to download the tools, since that means we did not resolve
  * them from the toolcache and so nothing in there is in use by this job.
@@ -265,49 +265,80 @@ export interface ToolcacheCleanupResult {
 export async function deleteToolcacheBundles(
   logger: Logger,
 ): Promise<ToolcacheCleanupResult> {
-  const toolDirectory = getToolcacheToolDirectory();
+  let toolDirectory: string;
+
+  try {
+    toolDirectory = getToolcacheToolDirectory();
+  } catch (e) {
+    logger.info(
+      `Unable to reclaim disk space from the toolcache: ${getErrorMessage(e)}`,
+    );
+    return { deletedVersions: [], failed: true };
+  }
 
   try {
     // Refuse to follow a symlinked CodeQL directory, so that we can only ever delete paths that are
     // really inside the toolcache.
     if ((await fs.promises.lstat(toolDirectory)).isSymbolicLink()) {
       logger.info(
-        `Not deleting the CodeQL tools from the toolcache since ${toolDirectory} is a symlink.`,
+        `Not deleting the CodeQL tools from the toolcache since '${toolDirectory}' is a symlink.`,
       );
       return { deletedVersions: [], failed: true };
     }
   } catch (e: any) {
     if (e?.code === "ENOENT") {
       logger.debug(
-        `There are no CodeQL tools at ${toolDirectory} to delete from the toolcache.`,
+        `There are no CodeQL tools at '${toolDirectory}' to delete from the toolcache.`,
       );
       return { deletedVersions: [], failed: false };
     }
     logger.info(
-      `Failed to inspect the CodeQL tools at ${toolDirectory}: ${getErrorMessage(e)}`,
+      `Failed to inspect the CodeQL tools at '${toolDirectory}': ${getErrorMessage(e)}`,
     );
     return { deletedVersions: [], failed: true };
   }
 
   try {
-    const versions = (
-      await fs.promises.readdir(toolDirectory, { withFileTypes: true })
-    )
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name)
-      .sort();
+    const entries = await fs.promises.readdir(toolDirectory, {
+      withFileTypes: true,
+    });
 
-    await fs.promises.rm(toolDirectory, { force: true, recursive: true });
+    const deletedVersions: string[] = [];
+    let failed = false;
 
-    logger.info(
-      `Deleted the CodeQL tools at ${toolDirectory} from the toolcache to free up disk space. ` +
-        `Versions deleted: ${versions.join(", ") || "none"}.`,
-    );
+    for (const entry of entries) {
+      const versionDirectory = path.join(toolDirectory, entry.name);
 
-    return { deletedVersions: versions, failed: false };
+      // `isDirectory` is false for a symlink, so we never delete a version directory that is
+      // really somewhere else.
+      if (!entry.isDirectory()) {
+        logger.debug(
+          `Not deleting '${versionDirectory}' from the toolcache since it is not a directory.`,
+        );
+        continue;
+      }
+
+      try {
+        await fs.promises.rm(versionDirectory, {
+          force: true,
+          recursive: true,
+        });
+        deletedVersions.push(entry.name);
+        logger.info(
+          `Deleted the CodeQL tools at '${versionDirectory}' from the toolcache to free up disk space.`,
+        );
+      } catch (e) {
+        failed = true;
+        logger.info(
+          `Failed to delete the CodeQL tools at '${versionDirectory}' from the toolcache: ${getErrorMessage(e)}`,
+        );
+      }
+    }
+
+    return { deletedVersions: deletedVersions.sort(), failed };
   } catch (e) {
     logger.info(
-      `Failed to delete the CodeQL tools at ${toolDirectory} from the toolcache: ${getErrorMessage(e)}`,
+      `Failed to read the CodeQL tools at '${toolDirectory}' from the toolcache: ${getErrorMessage(e)}`,
     );
     return { deletedVersions: [], failed: true };
   }

@@ -21,7 +21,7 @@ import {
   DependencyCachingUsageReport,
   getDependencyCacheUsage,
 } from "./dependency-caching";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv } from "./environment";
 import { initFeatures } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -91,6 +91,7 @@ async function run(startedAt: Date) {
         repositoryNwo,
         features,
         jobStatus,
+        getEnv(),
         logger,
       );
 

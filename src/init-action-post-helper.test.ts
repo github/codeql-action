@@ -20,6 +20,7 @@ import {
   createFeatures,
   createTestConfig,
   DEFAULT_ACTIONS_VARS,
+  getTestEnv,
   makeMacro,
   makeVersionInfo,
   RecordingLogger,
@@ -60,6 +61,7 @@ test.serial("init-post action with debug mode off", async (t) => {
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       "success",
+      getTestEnv(),
       getRunnerLogger(true),
     );
 
@@ -83,6 +85,7 @@ test.serial("init-post action with debug mode on", async (t) => {
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([]),
       "success",
+      getTestEnv(),
       getRunnerLogger(true),
     );
 
@@ -379,6 +382,7 @@ test.serial(
         parseRepositoryNwo("github/codeql-action"),
         createFeatures([Feature.OverlayAnalysisStatusSave]),
         "success",
+        getTestEnv(),
         getRunnerLogger(true),
       );
 
@@ -448,6 +452,7 @@ test.serial(
         parseRepositoryNwo("github/codeql-action"),
         createFeatures([]),
         "success",
+        getTestEnv(),
         getRunnerLogger(true),
       );
 
@@ -462,8 +467,13 @@ test.serial(
 test.serial("does not save overlay status when build successful", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
-    // Mark analyze as having completed successfully.
+    // Mark analyze as having completed successfully. `tryUploadSarifIfRunFailed` reads this from
+    // the process environment, while `recordOverlayStatus` reads it from the environment it is
+    // given.
     process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] = "true";
+    const env = getTestEnv({
+      [EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY]: "true",
+    });
 
     sinon.stub(util, "checkDiskUsage").resolves({
       numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
@@ -486,6 +496,7 @@ test.serial("does not save overlay status when build successful", async (t) => {
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.OverlayAnalysisStatusSave]),
       "success",
+      env,
       getRunnerLogger(true),
     );
 
@@ -524,6 +535,7 @@ test.serial(
         parseRepositoryNwo("github/codeql-action"),
         createFeatures([]),
         "success",
+        getTestEnv(),
         getRunnerLogger(true),
       );
 
@@ -549,11 +561,11 @@ async function testCancelledOverlayJob({
   return await util.withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
     delete process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY];
-    if (codeQlReportedError) {
-      process.env[EnvVar.JOB_STATUS] = JobStatus.FailureStatus;
-    } else {
-      delete process.env[EnvVar.JOB_STATUS];
-    }
+    const env = getTestEnv(
+      codeQlReportedError
+        ? { [EnvVar.JOB_STATUS]: JobStatus.FailureStatus }
+        : {},
+    );
 
     sinon.stub(util, "checkDiskUsage").resolves({
       numAvailableBytes: 100 * NUM_BYTES_PER_GIB,
@@ -576,6 +588,7 @@ async function testCancelledOverlayJob({
       parseRepositoryNwo("github/codeql-action"),
       createFeatures([Feature.OverlayAnalysisStatusSave]),
       jobStatus,
+      env,
       getRunnerLogger(true),
     );
 

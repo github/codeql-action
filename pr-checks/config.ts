@@ -22,7 +22,13 @@ export const CHANGELOG_FILE = path.join(REPO_ROOT, "CHANGELOG.md");
 export const BUNDLE_METADATA_FILE = path.join(REPO_ROOT, "meta.json");
 
 /** The `src` directory. */
-const SOURCE_ROOT = path.join(REPO_ROOT, "src");
+export const SOURCE_ROOT = path.join(REPO_ROOT, "src");
+
+/** The `src` directory. */
+export const LIB_ROOT = path.join(REPO_ROOT, "lib");
+
+/** The path to `defaults.json`. */
+export const DEFAULTS_FILE = path.join(SOURCE_ROOT, "defaults.json");
 
 /** The path to the built-in languages file. */
 export const BUILTIN_LANGUAGES_FILE = path.join(

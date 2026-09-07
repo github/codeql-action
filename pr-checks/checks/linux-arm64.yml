@@ -9,22 +9,27 @@ operatingSystems:
 versions:
   - nightly-latest
 installGo: true
+installDotNet: true
+# The set of languages CodeQL supports on this platform, excluding Swift (macOS only).
+env:
+  LANGUAGES: cpp,csharp,go,java,javascript,python,ruby
 steps:
   - uses: ./../action/init
     with:
-      languages: javascript,python,go
+      languages: ${{ env.LANGUAGES }}
       tools: ${{ steps.prepare-test.outputs.tools-url }}
-  - name: Build Go code
-    run: go build main.go
+  - name: Build code
+    run: ./build.sh
   - uses: ./../action/analyze
     with:
       upload-database: false
   - name: Assert databases exist
     run: |
       cd "$RUNNER_TEMP/codeql_databases"
-      for lang in javascript python go; do
+      for lang in ${LANGUAGES//,/ }; do
         if [[ ! -d "$lang" ]]; then
           echo "Did not find a database for $lang"
           exit 1
         fi
+        echo "Found database for $lang"
       done

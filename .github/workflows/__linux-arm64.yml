@@ -20,6 +20,11 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
       go-version:
         type: string
         description: The version of Go to install
@@ -27,6 +32,11 @@ on:
         default: '>=1.21.0'
   workflow_call:
     inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
       go-version:
         type: string
         description: The version of Go to install
@@ -37,7 +47,7 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: linux-arm64-${{github.ref}}-${{inputs.go-version}}
+  group: linux-arm64-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
   linux-arm64:
     strategy:
@@ -56,6 +66,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
       - name: Install Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -70,21 +84,23 @@ jobs:
           setup-kotlin: 'true'
       - uses: ./../action/init
         with:
-          languages: javascript,python,go
+          languages: ${{ env.LANGUAGES }}
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - name: Build Go code
-        run: go build main.go
+      - name: Build code
+        run: ./build.sh
       - uses: ./../action/analyze
         with:
           upload-database: false
       - name: Assert databases exist
         run: |
           cd "$RUNNER_TEMP/codeql_databases"
-          for lang in javascript python go; do
+          for lang in ${LANGUAGES//,/ }; do
             if [[ ! -d "$lang" ]]; then
               echo "Did not find a database for $lang"
               exit 1
             fi
+            echo "Found database for $lang"
           done
     env:
+      LANGUAGES: cpp,csharp,go,java,javascript,python,ruby
       CODEQL_ACTION_TEST_MODE: true

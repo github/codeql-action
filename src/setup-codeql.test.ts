@@ -120,24 +120,42 @@ test.serial(
 const LINKED_BUNDLE_TEST_CASES = [
   {
     platform: "linux",
+    arch: "x64",
     tarSupportsZstd: true,
     expectedBundleName: "codeql-bundle-linux64.tar.zst",
     expectedCompressionMethod: "zstd",
   },
   {
+    platform: "linux",
+    arch: "arm64",
+    tarSupportsZstd: true,
+    expectedBundleName: "codeql-bundle-linux-arm64.tar.zst",
+    expectedCompressionMethod: "zstd",
+  },
+  {
     platform: "darwin",
+    arch: "arm64",
+    tarSupportsZstd: true,
+    expectedBundleName: "codeql-bundle-osx64.tar.zst",
+    expectedCompressionMethod: "zstd",
+  },
+  {
+    platform: "darwin",
+    arch: "x64",
     tarSupportsZstd: true,
     expectedBundleName: "codeql-bundle-osx64.tar.zst",
     expectedCompressionMethod: "zstd",
   },
   {
     platform: "win32",
+    arch: "x64",
     tarSupportsZstd: true,
     expectedBundleName: "codeql-bundle-win64.tar.gz",
     expectedCompressionMethod: "gzip",
   },
   {
     platform: "linux",
+    arch: "x64",
     tarSupportsZstd: false,
     expectedBundleName: "codeql-bundle-linux64.tar.gz",
     expectedCompressionMethod: "gzip",
@@ -146,15 +164,17 @@ const LINKED_BUNDLE_TEST_CASES = [
 
 for (const {
   platform,
+  arch,
   tarSupportsZstd,
   expectedBundleName,
   expectedCompressionMethod,
 } of LINKED_BUNDLE_TEST_CASES) {
   test.serial(
-    `getCodeQLSource selects ${expectedBundleName} for linked tools`,
+    `getCodeQLSource selects ${expectedBundleName} for linked tools on ${platform}/${arch}`,
     async (t) => {
       const features = createFeatures([]);
       sinon.stub(process, "platform").value(platform);
+      sinon.stub(process, "arch").value(arch);
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);

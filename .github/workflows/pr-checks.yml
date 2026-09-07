@@ -67,7 +67,12 @@ jobs:
 
       - name: Upload sarif
         uses: ./upload-sarif
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 24
+        # The merge queue deletes its `gh-readonly-queue` ref as soon as the queue entry resolves,
+        # so uploading against it races with that deletion. Both the `merge_group` run and the
+        # paired `push` run that the queue branch creates use that ref, so gate on the ref itself
+        # rather than the event. The same results are uploaded by the `pull_request` run and again
+        # by the `push` run on `main`.
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 24 && !startsWith(github.ref, 'refs/heads/gh-readonly-queue/')
         with:
           sarif_file: eslint.sarif
           category: eslint

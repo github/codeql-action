@@ -18,7 +18,7 @@ import {
   sanitizeArtifactName,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
-import { EnvVar } from "./environment";
+import { EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
@@ -316,6 +316,8 @@ export async function tryUploadSarifIfRunFailed(
  * @param config The CodeQL Action configuration.
  * @param repositoryNwo The name and owner of the repository.
  * @param features Information about enabled features.
+ * @param jobStatus The status of the job, as reported by the Actions runtime environment.
+ * @param env The environment to read variables from.
  * @param logger The logger to use.
  * @returns The results of uploading the SARIF file for the failure.
  */
@@ -331,9 +333,11 @@ export async function uploadFailureInfo(
   config: Config,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
+  jobStatus: string | undefined,
+  env: ReadOnlyEnv,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
-  await recordOverlayStatus(codeql, config, features, logger);
+  await recordOverlayStatus(codeql, config, features, jobStatus, env, logger);
 
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
@@ -413,6 +417,37 @@ export async function uploadFailureInfo(
 }
 
 /**
+ * Whether one of the CodeQL Actions reported an error for this job, which means the analysis
+ * genuinely failed.
+ *
+ * Note that the converse does not hold: an Action that is terminated abruptly, or that fails before
+ * it can gather telemetry, does not get to report anything.
+ */
+function didCodeQlReportError(env: ReadOnlyEnv): boolean {
+  const jobStatus = env.getOptional(EnvVar.JOB_STATUS);
+  return (
+    jobStatus === JobStatus.FailureStatus ||
+    jobStatus === JobStatus.ConfigErrorStatus
+  );
+}
+
+/**
+ * Whether the job status tells us anything about whether the analysis itself would have succeeded.
+ *
+ * We check for the statuses we know to be meaningful rather than excluding the ones that are not,
+ * so that a status we do not recognise is treated as inconclusive.
+ */
+function isConclusiveJobStatus(jobStatus: string | undefined): boolean {
+  switch (jobStatus?.trim().toLowerCase()) {
+    case "failure":
+    case "success":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * If overlay base database creation was attempted but the analysis did not complete
  * successfully, save the failure status to the Actions cache so that subsequent runs
  * can skip overlay analysis until something changes (e.g. a new CodeQL version).
@@ -421,13 +456,27 @@ async function recordOverlayStatus(
   codeql: CodeQL,
   config: Config,
   features: FeatureEnablement,
+  jobStatus: string | undefined,
+  env: ReadOnlyEnv,
   logger: Logger,
 ) {
   if (
     config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
-    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true" ||
+    env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true" ||
     !(await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
+    return;
+  }
+
+  // Only record a failure when the job outcome tells us something about the analysis. A cancelled
+  // job, or a status we do not recognise, says nothing about whether the analysis would have
+  // succeeded, so recording a failure would disable overlay analysis needlessly. We still record
+  // one if a CodeQL Action reported an error before the job ended.
+  if (!isConclusiveJobStatus(jobStatus) && !didCodeQlReportError(env)) {
+    logger.info(
+      "Not recording an improved incremental analysis failure for this job because the job " +
+        `status (${jobStatus ?? "unset"}) does not tell us whether the analysis itself failed.`,
+    );
     return;
   }
 

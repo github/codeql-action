@@ -90,9 +90,8 @@ import {
   Result,
   Success,
   Failure,
-  isHostedRunner,
+  looksLikeHostedRunner,
 } from "./util";
-
 export { type Config } from "./config/action-config";
 
 /**
@@ -938,7 +937,7 @@ export async function isTrapCachingEnabled(
   if (trapCaching !== undefined) return trapCaching === "true";
 
   // On self-hosted runners which may have slow network access, disable TRAP caching by default.
-  if (!isHostedRunner()) return false;
+  if (!looksLikeHostedRunner()) return false;
 
   // If overlay analysis is enabled, then disable TRAP caching since overlay analysis supersedes it.
   // This change is gated behind a feature flag.

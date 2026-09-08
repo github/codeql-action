@@ -842,9 +842,13 @@ export async function checkForTimeout() {
  * directory with the name hostedtoolcache which is present on
  * GitHub-hosted runners.
  *
- * @returns true iff the runner is hosted by GitHub
+ * Since this is a heuristic over how the runner happens to be named and laid out, it also matches
+ * self-hosted runners that are configured to resemble hosted ones. Prefer
+ * `isGitHubHostedRunner` when you need the answer the Actions service reports.
+ *
+ * @returns true iff the runner looks like it is hosted by GitHub
  */
-export function isHostedRunner() {
+export function looksLikeHostedRunner() {
   return (
     // Name of the runner on hosted Windows runners
     process.env["RUNNER_NAME"]?.includes("Hosted Agent") ||

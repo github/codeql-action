@@ -908,7 +908,7 @@ async function tryDeleteToolcacheBundles({
     return;
   }
 
-  const result = await deleteToolcacheBundles(logger);
+  const result = await deleteToolcacheBundles({ env, logger });
 
   addNoLanguageDiagnostic(
     undefined,

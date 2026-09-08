@@ -10,6 +10,8 @@ import * as toolcache from "@actions/tool-cache";
 import { https } from "follow-redirects";
 import * as semver from "semver";
 
+import { ActionState } from "./action-common";
+import { ActionsEnvVars, getEnv, ReadOnlyEnv } from "./environment";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
 import { cleanUpPath, getErrorMessage, getRequiredEnvParam } from "./util";
@@ -198,9 +200,9 @@ async function downloadAndExtractZstdWithStreaming(
 }
 
 /** Gets the path to the toolcache directory that holds all versions of the CodeQL tools. */
-function getToolcacheToolDirectory(): string {
+function getToolcacheToolDirectory(env: ReadOnlyEnv): string {
   return path.join(
-    getRequiredEnvParam("RUNNER_TOOL_CACHE"),
+    env.getRequired(ActionsEnvVars.RUNNER_TOOL_CACHE),
     TOOLCACHE_TOOL_NAME,
   );
 }
@@ -213,7 +215,7 @@ function getToolcacheVersionDirectoryName(version: string): string {
 /** Gets the path to the toolcache directory for the specified version of the CodeQL tools. */
 export function getToolcacheDirectory(version: string): string {
   return path.join(
-    getToolcacheToolDirectory(),
+    getToolcacheToolDirectory(getEnv()),
     getToolcacheVersionDirectoryName(version),
     os.arch() || "",
   );
@@ -257,21 +259,22 @@ export interface ToolcacheCleanupResult {
  * Only safe to call when we are about to download the tools, since that means we did not resolve
  * them from the toolcache and so nothing in there is in use by this job.
  *
- * This only ever touches the CodeQL directory of the toolcache, and is best-effort: any failure is
- * logged rather than propagated, since the caller can proceed without the disk space.
+ * This only ever touches the CodeQL directory of the toolcache. Cleanup errors are logged and
+ * returned as `failed: true` rather than thrown.
  *
  * @returns the versions that were deleted, and whether we hit an error while trying.
  */
-export async function deleteToolcacheBundles(
-  logger: Logger,
-): Promise<ToolcacheCleanupResult> {
+export async function deleteToolcacheBundles({
+  env,
+  logger,
+}: ActionState<["Logger", "ReadOnlyEnv"]>): Promise<ToolcacheCleanupResult> {
   let toolDirectory: string;
 
   try {
-    toolDirectory = getToolcacheToolDirectory();
+    toolDirectory = getToolcacheToolDirectory(env);
   } catch (e) {
     logger.info(
-      `Unable to reclaim disk space from the toolcache: ${getErrorMessage(e)}`,
+      `Unable to determine toolcache directory: ${getErrorMessage(e)}`,
     );
     return { deletedVersions: [], failed: true };
   }
@@ -307,16 +310,16 @@ export async function deleteToolcacheBundles(
     let failed = false;
 
     for (const entry of entries) {
-      const versionDirectory = path.join(toolDirectory, entry.name);
-
       // `isDirectory` is false for a symlink, so we never delete a version directory that is
       // really somewhere else.
       if (!entry.isDirectory()) {
         logger.debug(
-          `Not deleting '${versionDirectory}' from the toolcache since it is not a directory.`,
+          `Not deleting '${entry.name}' from the CodeQL toolcache since it is not a directory.`,
         );
         continue;
       }
+
+      const versionDirectory = path.join(toolDirectory, entry.name);
 
       try {
         await fs.promises.rm(versionDirectory, {
@@ -338,7 +341,7 @@ export async function deleteToolcacheBundles(
     return { deletedVersions: deletedVersions.sort(), failed };
   } catch (e) {
     logger.info(
-      `Failed to read the CodeQL tools at '${toolDirectory}' from the toolcache: ${getErrorMessage(e)}`,
+      `Failed to clean up the CodeQL toolcache at '${toolDirectory}': ${getErrorMessage(e)}`,
     );
     return { deletedVersions: [], failed: true };
   }

@@ -10,7 +10,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import * as diagnostics from "./diagnostics";
-import { ActionsEnvVars, EnvVar } from "./environment";
+import { ActionsEnvVars, EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
@@ -966,16 +966,18 @@ function createToolcacheEntry(
 }
 
 /**
- * Stubs out the download and the diagnostic sink, then downloads the CodeQL tools into a toolcache
- * rooted at `toolcacheRoot`.
+ * Stubs out the download and the diagnostic sink, then downloads the CodeQL tools.
  *
- * @returns the attributes of the toolcache cleanup diagnostic, or `undefined` if we didn't emit one.
+ * @returns the extraction directory and the toolcache cleanup diagnostic, if emitted.
  */
 async function runDownloadCodeQL(
   toolcacheRoot: string,
   features: Feature[],
-  bundleVersion: string | undefined = CLEANUP_BUNDLE_VERSION,
-): Promise<toolsDownload.ToolcacheCleanupResult | undefined> {
+  bundleVersion: string | undefined,
+): Promise<{
+  codeqlFolder: string;
+  cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
+}> {
   sinon
     .stub(toolsDownload, "downloadAndExtract")
     .callsFake(async (_url, _compressionMethod, dest) => {
@@ -986,7 +988,7 @@ async function runDownloadCodeQL(
     });
   const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
 
-  await setupCodeql.downloadCodeQL(
+  const { codeqlFolder } = await setupCodeql.downloadCodeQL(
     "https://example.com/codeql-bundle.tar.gz",
     "gzip",
     bundleVersion,
@@ -1003,9 +1005,12 @@ async function runDownloadCodeQL(
     .map((call) => call.args[1])
     .find((d) => d.source?.id === "codeql-action/toolcache-bundle-cleanup");
 
-  return diagnostic?.attributes as
-    | toolsDownload.ToolcacheCleanupResult
-    | undefined;
+  return {
+    codeqlFolder,
+    cleanupDiagnostic: diagnostic?.attributes as
+      | toolsDownload.ToolcacheCleanupResult
+      | undefined,
+  };
 }
 
 /**
@@ -1051,7 +1056,11 @@ async function testToolcacheCleanup(
     );
     const otherToolDirectory = createToolcacheEntry(tmpDir, "Node", "20.0.0");
 
-    const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, features);
+    const { cleanupDiagnostic } = await runDownloadCodeQL(
+      tmpDir,
+      features,
+      CLEANUP_BUNDLE_VERSION,
+    );
 
     t.true(
       fs.existsSync(otherToolDirectory),
@@ -1153,9 +1162,11 @@ test.serial(
       // A toolcache with other tools in it, but no CodeQL.
       const otherToolDirectory = createToolcacheEntry(tmpDir, "Node", "20.0.0");
 
-      const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, [
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const { cleanupDiagnostic } = await runDownloadCodeQL(
+        tmpDir,
+        [Feature.CleanupToolcacheBundles],
+        CLEANUP_BUNDLE_VERSION,
+      );
 
       t.true(fs.existsSync(otherToolDirectory));
       t.deepEqual(cleanupDiagnostic, { deletedVersions: [], failed: false });
@@ -1181,9 +1192,11 @@ test.serial(
         .stub(fs.promises, "rm")
         .rejects(new Error("EACCES: permission denied"));
 
-      const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, [
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const { cleanupDiagnostic } = await runDownloadCodeQL(
+        tmpDir,
+        [Feature.CleanupToolcacheBundles],
+        CLEANUP_BUNDLE_VERSION,
+      );
 
       // Restore before `withTmpDir` cleans up after itself.
       rmStub.restore();
@@ -1201,17 +1214,94 @@ test.serial(
 test.serial(
   "deleteToolcacheBundles reports a failure when the toolcache location is unknown",
   async (t) => {
-    delete process.env[ActionsEnvVars.RUNNER_TOOL_CACHE];
+    const messages: LoggedMessage[] = [];
 
-    const result = await toolsDownload.deleteToolcacheBundles(
-      getRunnerLogger(true),
-    );
+    const result = await toolsDownload.deleteToolcacheBundles({
+      env: new ReadOnlyEnv({}),
+      logger: getRecordingLogger(messages),
+    });
 
     t.deepEqual(
       result,
       { deletedVersions: [], failed: true },
       "Should report a failure rather than throwing, so the download can continue.",
     );
+    checkExpectedLogMessages(t, messages, [
+      "Unable to determine toolcache directory: RUNNER_TOOL_CACHE environment variable must be set",
+    ]);
+  },
+);
+
+test.serial(
+  "deleteToolcacheBundles uses the supplied environment rather than process.env",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const ambientRoot = path.join(tmpDir, "ambient");
+      const injectedRoot = path.join(tmpDir, "injected");
+      setupActionsVars(tmpDir, ambientRoot);
+
+      const ambientVersion = createToolcacheEntry(
+        ambientRoot,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+      const injectedVersion = createToolcacheEntry(
+        injectedRoot,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+      const fileEntry = path.join(injectedRoot, "CodeQL", "not-a-directory");
+      fs.writeFileSync(fileEntry, "keep");
+
+      const result = await toolsDownload.deleteToolcacheBundles({
+        env: new ReadOnlyEnv({
+          [ActionsEnvVars.RUNNER_TOOL_CACHE]: injectedRoot,
+        }),
+        logger: getRunnerLogger(true),
+      });
+
+      t.deepEqual(result, {
+        deletedVersions: [CLEANUP_STALE_VERSION],
+        failed: false,
+      });
+      t.false(fs.existsSync(injectedVersion));
+      t.true(fs.existsSync(ambientVersion));
+      t.is(fs.readFileSync(fileEntry, "utf8"), "keep");
+    });
+  },
+);
+
+test.serial(
+  "deleteToolcacheBundles reports a failure when the toolcache directory cannot be read",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      const versionDirectory = createToolcacheEntry(
+        tmpDir,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+      const messages: LoggedMessage[] = [];
+      const readdir = sinon
+        .stub(fs.promises, "readdir")
+        .rejects(new Error("permission denied"));
+
+      try {
+        const result = await toolsDownload.deleteToolcacheBundles({
+          env: new ReadOnlyEnv({
+            [ActionsEnvVars.RUNNER_TOOL_CACHE]: tmpDir,
+          }),
+          logger: getRecordingLogger(messages),
+        });
+
+        t.deepEqual(result, { deletedVersions: [], failed: true });
+        t.true(fs.existsSync(versionDirectory));
+        checkExpectedLogMessages(t, messages, [
+          `Failed to clean up the CodeQL toolcache at '${path.join(tmpDir, "CodeQL")}': permission denied`,
+        ]);
+      } finally {
+        readdir.restore();
+      }
+    });
   },
 );
 
@@ -1234,9 +1324,11 @@ test.serial(
         path.join(toolcacheRoot, "CodeQL"),
       );
 
-      const cleanupDiagnostic = await runDownloadCodeQL(toolcacheRoot, [
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const { cleanupDiagnostic } = await runDownloadCodeQL(
+        toolcacheRoot,
+        [Feature.CleanupToolcacheBundles],
+        CLEANUP_BUNDLE_VERSION,
+      );
 
       t.true(
         fs.existsSync(
@@ -1322,12 +1414,16 @@ test.serial(
         CLEANUP_STALE_VERSION,
       );
 
-      const cleanupDiagnostic = await runDownloadCodeQL(
+      const { codeqlFolder, cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
         [Feature.CleanupToolcacheBundles],
         undefined, // bundleVersion
       );
 
+      t.is(path.dirname(codeqlFolder), tmpDir);
+      t.not(codeqlFolder, path.join(tmpDir, "CodeQL"));
+      t.true(fs.existsSync(codeqlFolder));
+      t.false(fs.existsSync(`${codeqlFolder}.complete`));
       t.false(fs.existsSync(staleDirectory));
       t.deepEqual(cleanupDiagnostic, {
         deletedVersions: [CLEANUP_STALE_VERSION],
@@ -1352,9 +1448,11 @@ test.serial(
         }),
       );
 
-      const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, [
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const { cleanupDiagnostic } = await runDownloadCodeQL(
+        tmpDir,
+        [Feature.CleanupToolcacheBundles],
+        CLEANUP_BUNDLE_VERSION,
+      );
 
       lstatStub.restore();
 
@@ -1386,9 +1484,11 @@ test.serial(
         .stub(toolsDownload, "isToolcacheOnWorkspaceFilesystem")
         .returns(false);
 
-      const cleanupDiagnostic = await runDownloadCodeQL(tmpDir, [
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const { cleanupDiagnostic } = await runDownloadCodeQL(
+        tmpDir,
+        [Feature.CleanupToolcacheBundles],
+        CLEANUP_BUNDLE_VERSION,
+      );
 
       t.true(fs.existsSync(staleDirectory));
       t.is(cleanupDiagnostic, undefined);
@@ -1434,13 +1534,20 @@ test.serial(
         path.join(toolcacheRoot, "CodeQL", "9.9.9"),
       );
 
-      const cleanupDiagnostic = await runDownloadCodeQL(toolcacheRoot, [
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const { cleanupDiagnostic } = await runDownloadCodeQL(
+        toolcacheRoot,
+        [Feature.CleanupToolcacheBundles],
+        CLEANUP_BUNDLE_VERSION,
+      );
 
       t.true(
         fs.existsSync(path.join(outsideDirectory, "contents")),
         "Should not delete anything through a symlinked version directory.",
+      );
+      t.true(
+        fs
+          .lstatSync(path.join(toolcacheRoot, "CodeQL", "9.9.9"))
+          .isSymbolicLink(),
       );
       t.deepEqual(cleanupDiagnostic, {
         deletedVersions: [CLEANUP_STALE_VERSION],

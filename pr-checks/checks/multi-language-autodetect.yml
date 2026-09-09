@@ -15,6 +15,7 @@ operatingSystems:
       - stable-v2.21.4
       - stable-v2.22.4
 env:
+  CODEQL_ACTION_CLEANUP_TOOLCACHE_BUNDLES: true
   CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
 installGo: true
 installDotNet: true

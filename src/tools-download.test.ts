@@ -15,7 +15,7 @@ import { withTmpDir } from "./util";
 setupTests(test);
 
 test.serial(
-  "downloadAndExtract reports the duration when downloading before extracting",
+  "downloadAndExtract reports the durations when downloading before extracting",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       const archivePath = path.join(tmpDir, "codeql-bundle.tar.gz");
@@ -34,6 +34,8 @@ test.serial(
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
+      t.assert(Number.isInteger(statusReport.extractionDurationMs));
+      t.assert(Number.isInteger(statusReport.totalDurationMs));
     });
   },
 );
@@ -67,6 +69,7 @@ test.serial(
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
+      t.assert(Number.isInteger(statusReport.totalDurationMs));
       t.true(request.isDone());
       t.false(extractTarZst.called);
       t.true(downloadTool.calledOnce);
@@ -76,7 +79,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadAndExtract omits the download duration when streaming extraction",
+  "downloadAndExtract reports only the total duration when streaming extraction",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
@@ -106,7 +109,9 @@ test.serial(
         getRunnerLogger(true),
       );
 
-      t.deepEqual(statusReport, {});
+      t.assert(Number.isInteger(statusReport.totalDurationMs));
+      t.is(statusReport.downloadDurationMs, undefined);
+      t.is(statusReport.extractionDurationMs, undefined);
       t.false(downloadTool.called);
       t.true(extractTarZst.calledOnce);
       t.true(request.isDone());

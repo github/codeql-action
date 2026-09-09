@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: PR Check - Swift analysis using a custom build command
+name: PR Check - Linux Arm64
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -47,20 +47,16 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: swift-custom-build-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
+  group: linux-arm64-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
-  swift-custom-build:
+  linux-arm64:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest-xlarge
-            version: linked
-          - os: macos-latest-xlarge
-            version: default
-          - os: macos-latest-xlarge
+          - os: ubuntu-24.04-arm
             version: nightly-latest
-    name: Swift analysis using a custom build command
+    name: Linux Arm64
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
@@ -87,25 +83,24 @@ jobs:
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
       - uses: ./../action/init
-        id: init
         with:
-          languages: swift
+          languages: ${{ env.LANGUAGES }}
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - name: Check working directory
-        run: pwd
       - name: Build code
         run: ./build.sh
       - uses: ./../action/analyze
-        id: analysis
         with:
           upload-database: false
-      - name: Check database
+      - name: Assert databases exist
         run: |
-          SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
-          if [[ ! -d "$SWIFT_DB" ]]; then
-            echo "Did not create a database for Swift."
-            exit 1
-          fi
+          cd "$RUNNER_TEMP/codeql_databases"
+          for lang in ${LANGUAGES//,/ }; do
+            if [[ ! -d "$lang" ]]; then
+              echo "Did not find a database for $lang"
+              exit 1
+            fi
+            echo "Found database for $lang"
+          done
     env:
-      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      LANGUAGES: cpp,csharp,go,java,javascript,python,ruby
       CODEQL_ACTION_TEST_MODE: true

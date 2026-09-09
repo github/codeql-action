@@ -507,6 +507,14 @@ export async function getCodeQLSource(
     toolsInput !== undefined &&
     CODEQL_NIGHTLY_TOOLS_INPUTS.includes(toolsInput);
 
+  /**
+   * The combined bundle from the nightly release we are using, if any.
+   *
+   * Only set when we chose the nightly ourselves, so that we can fall back to it if the nightly
+   * turns out not to have a bundle for the language we asked for.
+   */
+  let nightlyCombinedBundleURL: string | undefined;
+
   if (forceNightly || nightlyRequestedByToolsInput) {
     if (forceNightly) {
       logger.info(
@@ -536,7 +544,15 @@ export async function getCodeQLSource(
         `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
       );
     }
-    toolsInput = await getNightlyToolsUrl(logger);
+    const nightly = await getNightlyToolsUrl(
+      rawLanguages,
+      variant,
+      nightlyRequestedByToolsInput,
+      features,
+      logger,
+    );
+    toolsInput = nightly.url;
+    nightlyCombinedBundleURL = nightly.combinedBundleURL;
   }
 
   /**
@@ -809,14 +825,20 @@ export async function getCodeQLSource(
     }
     compressionMethod = method;
 
-    // The bundle was requested explicitly rather than chosen by us, but we still need to know
-    // whether it contains a single language so that we do not add it to the toolcache.
+    // We chose this bundle ourselves if it is a nightly, and otherwise it was requested explicitly.
+    // Either way we need to know whether it contains a single language, so that we do not add it to
+    // the toolcache.
     const language = tryGetBundleLanguageFromUrl(url);
     if (language !== undefined) {
       logger.info(
         `${url} appears to be a CodeQL bundle that contains only ${language}.`,
       );
-      perLanguageBundle = { language };
+      // We only have somewhere to fall back to if we chose this bundle; when it was requested
+      // explicitly we should honor the request rather than substituting a different bundle.
+      perLanguageBundle = {
+        language,
+        combinedBundleURL: nightlyCombinedBundleURL,
+      };
     }
   }
 
@@ -1232,7 +1254,17 @@ function getTempExtractionDir(tempDir: string) {
 /**
  * Get the URL of the latest nightly CodeQL bundle.
  */
-async function getNightlyToolsUrl(logger: Logger) {
+/**
+ * Get the URL of the latest nightly CodeQL bundle, and of the combined bundle from the same
+ * nightly release to fall back to if that bundle does not exist.
+ */
+async function getNightlyToolsUrl(
+  rawLanguages: string[] | undefined,
+  variant: util.GitHubVariant,
+  requestedExplicitly: boolean,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<{ url: string; combinedBundleURL: string }> {
   const zstdAvailability = await tar.isZstdAvailable(logger);
   // The nightly is guaranteed to have a zstd bundle
   const compressionMethod = (await useZstdBundle(
@@ -1241,6 +1273,24 @@ async function getNightlyToolsUrl(logger: Logger) {
   ))
     ? "zstd"
     : "gzip";
+
+  // We only consider a per-language bundle when a nightly was asked for explicitly. Nightlies can
+  // also be forced for analyses that did not ask for one, and those should keep getting the bundle
+  // that contains every language.
+  const language = requestedExplicitly
+    ? await getPerLanguageBundleLanguage(
+        {
+          rawLanguages,
+          cliVersion: undefined,
+          compressionMethod,
+          platform: getBundlePlatform(),
+          variant,
+          isNightly: true,
+        },
+        features,
+        logger,
+      )
+    : undefined;
 
   try {
     // Since nightlies are prereleases, we can't just download the latest release
@@ -1257,7 +1307,12 @@ async function getNightlyToolsUrl(logger: Logger) {
     if (!latestRelease) {
       throw new Error("Could not find the latest nightly release.");
     }
-    return `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${getCodeQLBundleName(compressionMethod)}`;
+    const assetUrl = (name: string) =>
+      `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${name}`;
+    return {
+      url: assetUrl(getCodeQLBundleName(compressionMethod, language)),
+      combinedBundleURL: assetUrl(getCodeQLBundleName(compressionMethod)),
+    };
   } catch (e) {
     throw new Error(
       `Failed to retrieve the latest nightly release: ${util.wrapError(e)}`,

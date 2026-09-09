@@ -1,18 +1,19 @@
-# Validates the per-language CodeQL bundles produced by a pre-release build. This is not generated
-# from `pr-checks`, since each language needs its own platform, build steps and set of expected
+# Validates the per-language CodeQL bundles in the latest nightly. This is not generated from
+# `pr-checks`, since each language needs its own platform, build steps and set of expected
 # extractors, whereas the generated checks share one set of steps across a matrix that only varies
 # the operating system and CodeQL version.
 #
-# TODO(per-language-bundles): The bundles below are from a pre-release, so this needs revisiting once
-# they ship in a release: either point `BUNDLE_TAG` at a released bundle and run this on a schedule
-# rather than on every push, or drop it if the checks that exercise the download path are enough.
+# TODO(per-language-bundles): This needs revisiting once per-language bundles ship in a release:
+# either run it on a schedule rather than on every push, or drop it if the checks that exercise the
+# download path are enough by then.
 name: Per-language bundle validation
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
-  # The pre-release whose per-language bundles we are validating.
-  BUNDLE_TAG: codeql-bundle-20260908
+  # Nightlies are the only bundles that currently contain per-language bundles, and the Action only
+  # considers one for a nightly that was asked for explicitly, as this workflow does below.
+  CODEQL_ACTION_PER_LANGUAGE_BUNDLES: true
 
 on:
   push:
@@ -37,42 +38,32 @@ jobs:
       matrix:
         include:
           - language: actions
-            platform: linux64
             os: ubuntu-latest
             # The Actions QL pack depends on the JavaScript one, which is the only dependency of its
             # kind, so the Actions bundle has to carry the JavaScript extractor as well.
             expected-extractors: actions javascript
           - language: cpp
-            platform: linux64
             os: ubuntu-latest
             build-mode: manual
             build-command: gcc -o main main.c
           - language: csharp
-            platform: linux64
             os: ubuntu-latest
             build-mode: none
           - language: go
-            platform: linux64
             os: ubuntu-latest
             build-mode: autobuild
           - language: java
-            platform: linux64
             os: ubuntu-latest
             build-mode: none
           - language: javascript
-            platform: linux64
             os: ubuntu-latest
           - language: python
-            platform: linux64
             os: ubuntu-latest
           - language: ruby
-            platform: linux64
             os: ubuntu-latest
           - language: rust
-            platform: linux64
             os: ubuntu-latest
           - language: swift
-            platform: osx64
             # Swift autobuild is too slow to finish on a standard macOS runner, which is why the
             # generated Swift checks use a larger one as well.
             os: macos-latest-xlarge
@@ -91,7 +82,7 @@ jobs:
         id: prepare-test
         uses: ./.github/actions/prepare-test
         with:
-          # Unused: we pin `tools` to a specific per-language bundle below.
+          # Unused: we ask for a nightly below.
           version: linked
           use-all-platform-bundle: 'false'
           setup-kotlin: 'false'
@@ -100,7 +91,9 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix['build-mode'] }}
-          tools: https://github.com/dsp-testing/henrymercer-codeql-cli-binaries/releases/download/${{ env.BUNDLE_TAG }}/codeql-bundle-${{ matrix.language }}-${{ matrix.platform }}.tar.zst
+          # The Action picks the per-language bundle from the latest nightly itself, so this also
+          # exercises the code that decides which bundle to download.
+          tools: nightly
       - name: Check that the bundle contains only the expected extractors
         env:
           CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
@@ -135,17 +128,16 @@ jobs:
           CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
         run: |
           # A bundle that is missing most of its extractors must never be left in the toolcache,
-          # where a later job analyzing a different language could pick it up.
+          # where a later job analyzing a different language could pick it up. The runner image
+          # ships with its own CodeQL in the toolcache, so check where this bundle was extracted to
+          # rather than whether the toolcache contains CodeQL at all.
           echo "CodeQL is at $CODEQL_PATH"
           if [[ "$CODEQL_PATH" == "$RUNNER_TOOL_CACHE"/* ]]; then
             echo "::error::The per-language bundle was added to the toolcache at $CODEQL_PATH."
             exit 1
           fi
-          # The runner image ships with its own CodeQL in the toolcache, so look for the version we
-          # downloaded rather than for CodeQL in general.
-          cached_version="$RUNNER_TOOL_CACHE/CodeQL/0.0.0-${BUNDLE_TAG#codeql-bundle-}"
-          if [ -d "$cached_version" ]; then
-            echo "::error::The per-language bundle was added to the toolcache at $cached_version."
+          if [[ "$CODEQL_PATH" != "$RUNNER_TEMP"/* ]]; then
+            echo "::error::Expected the per-language bundle to be extracted under $RUNNER_TEMP, but found it at $CODEQL_PATH."
             exit 1
           fi
       - name: Build code

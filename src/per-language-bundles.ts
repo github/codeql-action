@@ -11,9 +11,13 @@ import { GitHubVariant } from "./util";
  * First version of the CodeQL CLI whose releases include per-language bundles.
  *
  * TODO(per-language-bundles): This is a sentinel value that no release can ever satisfy, so
- * per-language bundles are disabled no matter what the feature flag says. This MUST be updated to
- * the first CLI version that actually publishes per-language bundles before the feature can be
- * rolled out.
+ * per-language bundles are disabled for releases no matter what the feature flag says. This MUST be
+ * updated to the first CLI version that actually publishes per-language bundles before the feature
+ * can be rolled out.
+ *
+ * Nightlies are exempt, since their tags record the date they were built rather than a version we
+ * could compare. A workflow that explicitly asks for a nightly can therefore use a per-language
+ * bundle while this is still a sentinel, which is how the feature is tested before rollout.
  */
 export const MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION = "99.99.99";
 
@@ -82,7 +86,11 @@ export interface PerLanguageBundleOptions {
    * download.
    */
   rawLanguages: string[] | undefined;
-  /** The CLI version of the bundle we are about to download, if known. */
+  /**
+   * The CLI version of the bundle we are about to download, if known.
+   *
+   * Not consulted for nightlies, whose version cannot be determined from their tag.
+   */
   cliVersion: string | undefined;
   /** The compression method of the bundle we are about to download. */
   compressionMethod: tar.CompressionMethod;
@@ -90,6 +98,8 @@ export interface PerLanguageBundleOptions {
   platform: string | undefined;
   /** The GitHub product we are running against. */
   variant: GitHubVariant;
+  /** Whether the bundle we are about to download is a nightly build. */
+  isNightly?: boolean;
 }
 
 /**
@@ -107,8 +117,14 @@ export async function getPerLanguageBundleLanguage(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<BuiltInLanguage | undefined> {
-  const { rawLanguages, cliVersion, compressionMethod, platform, variant } =
-    options;
+  const {
+    rawLanguages,
+    cliVersion,
+    compressionMethod,
+    platform,
+    variant,
+    isNightly,
+  } = options;
 
   const explain = (reason: string) => {
     logger.debug(`Not using a per-language CodeQL bundle since ${reason}.`);
@@ -153,15 +169,20 @@ export async function getPerLanguageBundleLanguage(
     return explain("the job is not running on a GitHub-hosted runner");
   }
 
-  if (cliVersion === undefined) {
-    return explain("the CLI version of the bundle is unknown");
-  }
+  // A nightly is built from the newest source we have, so it is always at least as new as the
+  // first release to publish per-language bundles. Its tag records the date it was built rather
+  // than a version we could compare, so there is nothing to check here.
+  if (!isNightly) {
+    if (cliVersion === undefined) {
+      return explain("the CLI version of the bundle is unknown");
+    }
 
-  if (!semver.gte(cliVersion, MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION)) {
-    return explain(
-      `CodeQL ${cliVersion} is older than ${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}, which is the ` +
-        "first version that publishes per-language bundles",
-    );
+    if (!semver.gte(cliVersion, MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION)) {
+      return explain(
+        `CodeQL ${cliVersion} is older than ${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}, which is the ` +
+          "first version that publishes per-language bundles",
+      );
+    }
   }
 
   const supportedPlatform = PER_LANGUAGE_BUNDLE_PLATFORMS[language];

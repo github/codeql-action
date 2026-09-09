@@ -1,0 +1,21 @@
+{
+  "name": "changetool",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Validates change-notes and merges them into CHANGELOG.md",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts",
+    "test": "node --test --experimental-strip-types cli/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "lite-matter": "^0.1.2",
+    "mdast-util-from-markdown": "^2.0.3"
+  }
+}

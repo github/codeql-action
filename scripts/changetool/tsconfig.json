@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "allowImportingTsExtensions": true,
+    "rootDir": ".",
+    "sourceMap": false
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -6,8 +6,8 @@
     "module": "preserve",
     "rootDir": "..",
     "sourceMap": false,
-    "noEmit": true,
+    "noEmit": true
   },
-  "include": ["./*.ts", "../src/**/*.ts"],
+  "include": ["./**/*.ts", "./**/*.mts", "../src/**/*.ts"],
   "exclude": ["node_modules"]
 }

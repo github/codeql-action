@@ -85,6 +85,14 @@ async function sendCompletedStatusReport(
     initToolsDownloadFields.tools_download_duration_ms =
       toolsDownloadStatusReport.downloadDurationMs;
   }
+  if (toolsDownloadStatusReport?.extractionDurationMs !== undefined) {
+    initToolsDownloadFields.tools_extraction_duration_ms =
+      toolsDownloadStatusReport.extractionDurationMs;
+  }
+  if (toolsDownloadStatusReport?.totalDurationMs !== undefined) {
+    initToolsDownloadFields.tools_total_duration_ms =
+      toolsDownloadStatusReport.totalDurationMs;
+  }
   if (toolsFeatureFlagsValid !== undefined) {
     initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
   }

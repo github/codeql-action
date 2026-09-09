@@ -253,8 +253,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "b6effb05e454b25005698d916606bdc6ffcbf961",
-          "v5.7.0",
+          "dd06d9cba3e5552c54d9f8ea23572deb30010f7c",
+          "v6.0.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,

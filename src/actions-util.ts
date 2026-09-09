@@ -283,6 +283,19 @@ export function isSelfHostedRunner(env: Env = getEnv()) {
   return env.getOptional(ActionsEnvVars.RUNNER_ENVIRONMENT) === "self-hosted";
 }
 
+/**
+ * Whether the job is running on a runner that GitHub hosts, and whose toolcache is therefore thrown
+ * away once the job has finished.
+ *
+ * Unlike `looksLikeHostedRunner`, this is based on what the service reports for the job rather than
+ * on how the runner's filesystem happens to be laid out, so it does not match self-hosted runners
+ * that are configured to resemble hosted ones, such as those that mount a persistent volume at
+ * `/opt/hostedtoolcache`.
+ */
+export function isGitHubHostedRunner(env: Env = getEnv()) {
+  return env.getOptional(ActionsEnvVars.RUNNER_ENVIRONMENT) === "github-hosted";
+}
+
 /** Determines whether the workflow trigger is `dynamic`. */
 export function isDynamicWorkflow(env: Env = getEnv()): boolean {
   return getWorkflowEventName(env) === "dynamic";

@@ -10,7 +10,7 @@ import {
   isValidChangenoteFilename,
   hasValidChangenoteCategory,
   VALID_CHANGE_NOTE_CATEGORIES,
-} from "./validate.ts";
+} from "./validate.mjs";
 
 async function withTmpFile<T>(
   baseFileName: string,

@@ -180,7 +180,7 @@ export default [
     },
   },
   {
-    files: ["pr-checks/**/*.ts"],
+    files: ["pr-checks/**/*.ts", "pr-checks/**/*.mts"],
 
     languageOptions: {
       parserOptions: {
@@ -207,20 +207,6 @@ export default [
           ],
         },
       ],
-    },
-  },
-  {
-    files: ["scripts/changetool/**/*.ts"],
-
-    languageOptions: {
-      parserOptions: {
-        project: "./scripts/changetool/tsconfig.json",
-      },
-    },
-
-    rules: {
-      "no-console": "off",
-      "import/extensions": "off",
     },
   },
 ];

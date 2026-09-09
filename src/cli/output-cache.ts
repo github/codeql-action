@@ -3,9 +3,10 @@ import path from "path";
 
 import { getTemporaryDirectory } from "../actions-util";
 import { Env } from "../environment";
+import * as json from "../json";
 import { Logger } from "../logging";
 
-import type { VersionInfo } from "./types";
+import { VersionInfo, versionInfoBaseSchema } from "./types";
 
 /**
  * The keys of the command cache. Each key corresponds to a command whose output we cache.
@@ -13,12 +14,19 @@ import type { VersionInfo } from "./types";
 export type CommandCacheKey = string;
 
 /**
- * The type of the command cache that is persisted to disk.
+ * The JSON schema of the command cache that is persisted to disk.
  */
-export interface OutputCache {
-  cmd: string;
-  entries: Record<CommandCacheKey, unknown>;
-}
+const outputCacheSchema = {
+  cmd: json.string,
+  entries: json.object({}),
+} as const satisfies json.Schema;
+
+/**
+ * The type that describes the command cache that is persisted to disk.
+ */
+export type OutputCache = json.FromSchema<typeof outputCacheSchema> & {
+  entries: { version: VersionInfo };
+};
 
 /**
  * The name of the temporary file that backs the on-disk cache of
@@ -43,18 +51,18 @@ export function resetCachedCodeQlVersion(): void {
  * Returns the path to the temporary file that backs the
  * on-disk cache of CLI responses between workflow steps.
  */
-function getCommandCacheFilePath(env: Env): string {
+export function getCommandCacheFilePath(env: Env): string {
   return path.join(getTemporaryDirectory(env), COMMAND_CACHE_FILENAME);
 }
 
 /**
  * Caches the CodeQL CLI version both in-memory and on disk.
- * @param env The environment variables to use.
+ * @param cacheFilePath The path to the cache file.
  * @param cmd The path to the CodeQL CLI.
  * @param version The version information to cache.
  */
 export function cacheCodeQlVersion(
-  env: Env,
+  cacheFilePath: string,
   cmd: string,
   version: VersionInfo,
 ): void {
@@ -70,22 +78,18 @@ export function cacheCodeQlVersion(
   // processes, can reuse it rather than invoking `codeql version` again. We
   // record the CLI path so that a different step using a different CodeQL bundle
   // doesn't pick up a stale version.
-  fs.writeFileSync(
-    getCommandCacheFilePath(env),
-    JSON.stringify(outputCache),
-    "utf8",
-  );
+  fs.writeFileSync(cacheFilePath, JSON.stringify(outputCache), "utf8");
 }
 
 /**
  * Returns the cached CodeQL CLI version, if any.
  * @param logger The logger to use for logging messages.
- * @param env The environment variables to use.
+ * @param cacheFilePath The path to the cache file.
  * @param cmd The path to the CodeQL CLI.
  */
 export function getCachedCodeQlVersion(
   logger: Logger,
-  env: Env,
+  cacheFilePath: string,
   cmd?: string,
 ): undefined | VersionInfo {
   if (cachedCodeQlVersion !== undefined) {
@@ -96,11 +100,9 @@ export function getCachedCodeQlVersion(
   // invokes `codeql version` instead.
   let serialized: string;
   try {
-    serialized = fs.readFileSync(getCommandCacheFilePath(env), "utf8");
+    serialized = fs.readFileSync(cacheFilePath, "utf8");
   } catch (e) {
-    logger.debug(
-      `Cannot read CLI-cache file ${getCommandCacheFilePath(env)}: ${e}`,
-    );
+    logger.debug(`Cannot read CLI-cache file ${cacheFilePath}: ${e}`);
     return undefined;
   }
   let persisted: unknown;
@@ -127,17 +129,7 @@ export function getCachedCodeQlVersion(
  * @param x The value to test
  */
 function isVersionInfo(x: unknown): x is VersionInfo {
-  const candidate = x as Partial<VersionInfo> | null;
-  return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.version === "string" &&
-    (candidate.features === undefined ||
-      (typeof candidate.features === "object" &&
-        candidate.features !== null)) &&
-    (candidate.overlayVersion === undefined ||
-      typeof candidate.overlayVersion === "number")
-  );
+  return json.isObject(x) && json.validateSchema(versionInfoBaseSchema, x);
 }
 
 /**
@@ -145,12 +137,10 @@ function isVersionInfo(x: unknown): x is VersionInfo {
  * @param x The value to test
  */
 function isOutputCache(x: unknown): x is OutputCache {
-  const candidate = x as Partial<OutputCache> | null;
   return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.cmd === "string" &&
-    candidate.entries !== undefined &&
-    isVersionInfo(candidate.entries.version)
+    json.isObject(x) &&
+    json.validateSchema(outputCacheSchema, x) &&
+    json.isObject<{ version: unknown }>(x.entries) &&
+    isVersionInfo(x.entries.version)
   );
 }

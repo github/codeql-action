@@ -15,7 +15,7 @@ import {
 async function withTmpFile<T>(
   baseFileName: string,
   contents: string,
-  body: (filePath: string) => Promise<T>,
+  body: (filePath: string) => Promise<T> | T,
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(
     path.join(os.tmpdir(), "changetool-validate-test-"),
@@ -23,14 +23,14 @@ async function withTmpFile<T>(
   try {
     const filePath = path.join(tmpDir, baseFileName);
     fs.writeFileSync(filePath, contents);
-    return await body(filePath);
+    return await Promise.resolve(body(filePath));
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
 await describe("isValidChangenoteContent", async () => {
-  await it("recognizes an unordered Markdown list", async () => {
+  await it("recognizes an unordered Markdown list", () => {
     const inputs = [
       "- One changenote entry",
       "- First item\n- Second item",
@@ -42,7 +42,7 @@ await describe("isValidChangenoteContent", async () => {
     }
   });
 
-  await it("does not recognize non-Markdown text", async () => {
+  await it("does not recognize non-Markdown text", () => {
     const inputs = [
       "This is not a list.",
       '["this", "is", "JSON"]',
@@ -57,7 +57,7 @@ await describe("isValidChangenoteContent", async () => {
     }
   });
 
-  await it("does not recognize ordered Markdown lists", async () => {
+  await it("does not recognize ordered Markdown lists", () => {
     const inputs = [
       "1. First item\n2. Second item",
       "\n\n\n1. First item\n1. Second item",
@@ -68,7 +68,7 @@ await describe("isValidChangenoteContent", async () => {
     }
   });
 
-  await it("requires all list items to use a hyphen bullet", async () => {
+  await it("requires all list items to use a hyphen bullet", () => {
     const inputs = [
       "* Fixed a bug\n* Added feature",
       "+ Fixed a bug\n+ Added feature",
@@ -85,7 +85,7 @@ await describe("isValidChangenoteContent", async () => {
     }
   });
 
-  await it("does not contain other Markdown elements", async () => {
+  await it("does not contain other Markdown elements", () => {
     const inputs = [
       "- Fixed a bug\n\nParagraph of text",
       "- Fixed a bug\n\n* Added a feature",
@@ -100,7 +100,7 @@ await describe("isValidChangenoteContent", async () => {
 });
 
 await describe("isValidChangenoteFilename", async () => {
-  await it("accepts valid filenames", async () => {
+  await it("accepts valid filenames", () => {
     const inputs = [
       "2023-01-01-fix-bug.md",
       "2023-12-31-add-feature.md",
@@ -112,7 +112,7 @@ await describe("isValidChangenoteFilename", async () => {
     }
   });
 
-  await it("rejects invalid filenames", async () => {
+  await it("rejects invalid filenames", () => {
     const inputs = [
       "missing-date-from-filename.md",
       "2021-01-01.md",
@@ -126,14 +126,14 @@ await describe("isValidChangenoteFilename", async () => {
 });
 
 await describe("hasValidChangenoteCategory", async () => {
-  await it("accepts valid categories", async () => {
+  await it("accepts valid categories", () => {
     for (const category of Object.keys(VALID_CHANGE_NOTE_CATEGORIES)) {
       const frontmatter = { category };
       assert.equal(hasValidChangenoteCategory(frontmatter), true);
     }
   });
 
-  await it("rejects invalid categories", async () => {
+  await it("rejects invalid categories", () => {
     const inputs = [
       "",
       "invalid-category",
@@ -150,7 +150,7 @@ await describe("hasValidChangenoteCategory", async () => {
     }
   });
 
-  await it("reject missing category", async () => {
+  await it("reject missing category", () => {
     assert.equal(hasValidChangenoteCategory({}), false);
     assert.equal(hasValidChangenoteCategory({ category: null }), false);
     assert.equal(hasValidChangenoteCategory({ category: undefined }), false);
@@ -162,7 +162,7 @@ await describe("isValidChangenoteFile", async () => {
     await withTmpFile(
       "2026-01-01-fix-bug.md",
       "---\ncategory: fix\n---\n- Fixed a bug\n",
-      async (filePath) => {
+      (filePath) => {
         assert.equal(isValidChangenoteFile(filePath), true);
       },
     );
@@ -172,7 +172,7 @@ await describe("isValidChangenoteFile", async () => {
     await withTmpFile(
       "fix-bug.md",
       "---\ncategory: fix\n---\n- Fixed a bug\n",
-      async (filePath) => {
+      (filePath) => {
         assert.equal(isValidChangenoteFile(filePath), false);
       },
     );
@@ -182,7 +182,7 @@ await describe("isValidChangenoteFile", async () => {
     await withTmpFile(
       "2026-01-01-fix-bug.md",
       "- Fixed a bug\n",
-      async (filePath) => {
+      (filePath) => {
         assert.equal(isValidChangenoteFile(filePath), false);
       },
     );
@@ -192,7 +192,7 @@ await describe("isValidChangenoteFile", async () => {
     await withTmpFile(
       "2026-01-01-fix-bug.md",
       "---\ncategory: fix\n---\n* Fixed a bug\n",
-      async (filePath) => {
+      (filePath) => {
         assert.equal(isValidChangenoteFile(filePath), false);
       },
     );

@@ -23,7 +23,7 @@ async function withTmpFile<T>(
   try {
     const filePath = path.join(tmpDir, baseFileName);
     fs.writeFileSync(filePath, contents);
-    return await Promise.resolve(body(filePath));
+    return await body(filePath);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

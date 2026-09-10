@@ -14,7 +14,13 @@ import { ActionState } from "./action-common";
 import { ActionsEnvVars, getEnv, ReadOnlyEnv } from "./environment";
 import { formatDuration, Logger } from "./logging";
 import * as tar from "./tar";
-import { cleanUpPath, getErrorMessage, getRequiredEnvParam } from "./util";
+import {
+  asHTTPError,
+  cleanUpPath,
+  getErrorMessage,
+  getRequiredEnvParam,
+  HTTPError,
+} from "./util";
 
 /**
  * High watermark to use when streaming the download and extraction of the CodeQL tools.
@@ -88,14 +94,20 @@ export async function downloadAndExtract(
       return { totalDurationMs };
     }
   } catch (e) {
+    // If we failed during processing, we want to clean up the destination directory
+    // before we either try again or give up.
+    await cleanUpPath(dest, "CodeQL bundle", logger);
+
+    // Retrying a 404 is pointless: the asset does not exist, so downloading it a different way
+    // will fail in the same way.
+    if (asHTTPError(e)?.status === 404) {
+      throw e;
+    }
+
     core.warning(
       `Failed to download and extract CodeQL bundle using streaming with error: ${getErrorMessage(e)}`,
     );
     core.warning(`Falling back to downloading the bundle before extracting.`);
-
-    // If we failed during processing, we want to clean up the destination directory
-    // before we try again.
-    await cleanUpPath(dest, "CodeQL bundle", logger);
   }
 
   const toolsDownloadStart = performance.now();
@@ -191,8 +203,9 @@ async function downloadAndExtractZstdWithStreaming(
   if (response.statusCode !== 200) {
     // Discard the response body so that the connection can be released.
     response.resume();
-    throw new Error(
+    throw new HTTPError(
       `Failed to download CodeQL bundle from ${codeqlURL}. HTTP status code: ${response.statusCode}.`,
+      response.statusCode ?? 0,
     );
   }
 

@@ -89,6 +89,24 @@ export async function withTmpDir<T>(
   return result;
 }
 
+// Creates a random temporary file, runs the given body, and then deletes the file.
+export async function withTmpFile<T>(
+  baseFileName: string,
+  contents: string,
+  body: (filePath: string) => Promise<T> | T,
+): Promise<T> {
+  const tmpDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "changetool-validate-test-"),
+  );
+  try {
+    const filePath = path.join(tmpDir, baseFileName);
+    fs.writeFileSync(filePath, contents);
+    return await body(filePath);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 /**
  * Gets an OS-specific amount of memory (in MB) to reserve for OS processes
  * when the user doesn't explicitly specify a memory setting.

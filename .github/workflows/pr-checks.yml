@@ -45,7 +45,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: |
@@ -77,33 +77,6 @@ jobs:
           sarif_file: eslint.sarif
           category: eslint
 
-  changetool-tests:
-    name: changetool unit tests
-    permissions:
-      contents: read
-    runs-on: ubuntu-slim
-    timeout-minutes: 10
-
-    concurrency:
-      cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-      group: pr-checks-changetool-tests-${{ github.ref }}-${{ github.event_name }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run changetool unit tests
-        run: npm --workspace changetool test
-
   # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
   # job.
   other-checks:
@@ -126,7 +99,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         id: install-deps
@@ -190,14 +163,14 @@ jobs:
           path: ${{ runner.temp }}/repo-size/
           if-no-files-found: error
 
-      - name: 'Backport: Check out base ref'
+      - name: "Backport: Check out base ref"
         id: checkout-base
         if: ${{ startsWith(github.head_ref, 'backport-') }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.base_ref }}
 
-      - name: 'Backport: Verify Node versions unchanged'
+      - name: "Backport: Verify Node versions unchanged"
         if: steps.checkout-base.outcome == 'success'
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}

@@ -1,7 +1,9 @@
+#!/usr/bin/env npx tsx
+
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { isValidChangenoteFile } from "./cli/validate.ts";
+import { isValidChangenoteFile } from "./changelog/validate.mjs";
 
 const entryPoint = process.argv[1];
 if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
@@ -32,7 +34,7 @@ function main(): number {
 }
 
 function usage(): number {
-  console.log("Usage: changetool validate <path> [<path> ...]");
+  console.log(`Usage: validate-changelog.mts validate <path> [<path> ...]`);
   return 0;
 }
 

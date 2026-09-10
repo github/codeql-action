@@ -503,8 +503,12 @@ function getSetupSteps(checkSpecification: JobSpecification): {
  * Condition used to prevent jobs from running for Dependabot PRs
  * to avoid unnecessary runs if the "Rebuild" workflow ends up
  * changing the JavaScript bundles.
+ *
+ * Also allows jobs to run if a PR was labelled with "Rebuild: Unchanged".
  */
-const dependabotCheck = "github.triggering_actor != 'dependabot[bot]'";
+const jobRunCheck = new yaml.Scalar(
+  "(github.event.action != 'labeled' && github.triggering_actor != 'dependabot[bot]') ||\ngithub.event.label.name == 'Rebuild: Unchanged'",
+);
 
 /**
  * Generates an Actions job from the `checkSpecification`.
@@ -579,7 +583,7 @@ function generateJob(
       },
     },
     name: checkSpecification.name,
-    if: dependabotCheck,
+    if: jobRunCheck,
     permissions: {
       contents: "read",
       "security-events": "read",
@@ -629,7 +633,7 @@ function generateValidationJob(
 
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
-    if: dependabotCheck,
+    if: jobRunCheck,
     needs: [checkName],
     permissions: {
       contents: "read",
@@ -772,7 +776,9 @@ function main(): void {
         push: {
           branches: ["main", "releases/v*"],
         },
-        pull_request: {},
+        pull_request: {
+          types: ["opened", "synchronize", "reopened", "labeled"],
+        },
         merge_group: {
           types: ["checks_requested"],
         },

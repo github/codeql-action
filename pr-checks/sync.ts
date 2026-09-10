@@ -500,6 +500,13 @@ function getSetupSteps(checkSpecification: JobSpecification): {
 }
 
 /**
+ * Condition used to prevent jobs from running for Dependabot PRs
+ * to avoid unnecessary runs if the "Rebuild" workflow ends up
+ * changing the JavaScript bundles.
+ */
+const dependabotCheck = "github.triggering_actor != 'dependabot[bot]'";
+
+/**
  * Generates an Actions job from the `checkSpecification`.
  *
  * @param specDocument
@@ -572,7 +579,7 @@ function generateJob(
       },
     },
     name: checkSpecification.name,
-    if: "github.triggering_actor != 'dependabot[bot]'",
+    if: dependabotCheck,
     permissions: {
       contents: "read",
       "security-events": "read",
@@ -622,7 +629,7 @@ function generateValidationJob(
 
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
-    if: "github.triggering_actor != 'dependabot[bot]'",
+    if: dependabotCheck,
     needs: [checkName],
     permissions: {
       contents: "read",

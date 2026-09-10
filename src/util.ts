@@ -95,16 +95,11 @@ export async function withTmpFile<T>(
   contents: string,
   body: (filePath: string) => Promise<T> | T,
 ): Promise<T> {
-  const tmpDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), "changetool-validate-test-"),
-  );
-  try {
+  return withTmpDir(async (tmpDir) => {
     const filePath = path.join(tmpDir, baseFileName);
     fs.writeFileSync(filePath, contents);
-    return await body(filePath);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
+    return body(filePath);
+  });
 }
 
 /**

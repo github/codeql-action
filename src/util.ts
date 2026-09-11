@@ -89,7 +89,15 @@ export async function withTmpDir<T>(
   return result;
 }
 
-// Creates a random temporary file, runs the given body, and then deletes the file.
+/**
+ * Creates a temporary file with the given contents, runs the given body, and
+ * then deletes the file. Note that, to create a temporary file, we first create
+ * a temporary directory via {@link withTmpDir} and then create the file within
+ * that directory.
+ * @param baseFileName The name to assign the temporary file.
+ * @param contents The contents to write to the temporary file.
+ * @param body The function to execute with the temporary file.
+ */
 export async function withTmpFile<T>(
   baseFileName: string,
   contents: string,

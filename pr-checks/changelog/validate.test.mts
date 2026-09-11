@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { withTmpFile } from "../../src/util.js";
+import { withTmpFile } from "../../src/util";
 
 import {
   hasValidChangenoteCategory,

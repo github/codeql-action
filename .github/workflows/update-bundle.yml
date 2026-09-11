@@ -50,7 +50,7 @@ jobs:
         run: npm ci
 
       - name: Update bundle
-        uses: ./.github/actions/update-bundle
+        run: npx tsx pr-checks/update-bundle.ts
 
       - name: Set up CodeQL CLI from new bundle
         id: setup-codeql

@@ -80,6 +80,14 @@ export async function getConfigFileInput(
   return undefined;
 }
 
+/** Replaces supported meta variables in `configFileAddress`. */
+export function replaceMetaVars(
+  configFileAddress: string,
+  analysisKind: AnalysisKind,
+): string {
+  return configFileAddress.replaceAll("$kind", analysisKind);
+}
+
 /**
  * Attempts to fetch a `UserConfig` from a remote `address`.
  *
@@ -91,9 +99,25 @@ export async function getConfigFileInput(
  */
 export async function getRemoteConfig(
   actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
+  analysisKinds: AnalysisKind[],
   configFile: string,
   apiDetails: api.GitHubApiCombinedDetails,
 ): Promise<UserConfig> {
+  const supportMetaVar = await actionState.features.getValue(
+    Feature.RemoteAddressAnalysisMetaVar,
+  );
+
+  if (supportMetaVar && analysisKinds.length === 1) {
+    configFile = replaceMetaVars(configFile, analysisKinds[0]);
+    actionState.logger.debug(
+      `Remote file address after replacing meta variables: ${configFile}`,
+    );
+  } else if (supportMetaVar) {
+    actionState.logger.warning(
+      `Ignoring '${Feature.RemoteAddressAnalysisMetaVar}' feature, because multiple analysis kinds are enabled.`,
+    );
+  }
+
   const address = await parseRemoteFileAddress(actionState, configFile);
 
   const shouldProxyRequest = await actionState.features.getValue(

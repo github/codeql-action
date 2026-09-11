@@ -38,7 +38,26 @@ Actions with special purposes and unlikely to be used directly:
 
 ### Workflow Permissions
 
-All advanced setup code scanning workflows must have the `security-events: write` permission. Workflows in private repositories must additionally have the `contents: read` permission. For more information, see "[Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs)."
+All advanced setup code scanning workflows need certain permissions. At minimum:
+
+```yaml
+permissions:
+  # required for all workflows
+  security-events: write
+
+  # required to fetch internal or private CodeQL packs
+  packages: read
+
+  # only required for workflows in private repositories
+  actions: read
+  contents: read
+```
+
+- `security-events: write` is required so the action can upload results to code scanning.
+- `packages: read` is needed when the workflow fetches internal or private CodeQL packs.
+- `actions: read` and `contents: read` are required for workflows in private repositories.
+
+For more information, see "[Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs)" and the [CodeQL starter workflow](https://github.com/actions/starter-workflows/blob/main/code-scanning/codeql.yml).
 
 ### Build Modes
 

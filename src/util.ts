@@ -84,9 +84,11 @@ export async function withTmpDir<T>(
   body: (tmpDir: string) => Promise<T>,
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
-  const result = await body(tmpDir);
-  await fs.promises.rm(tmpDir, { force: true, recursive: true });
-  return result;
+  try {
+    return await body(tmpDir);
+  } finally {
+    await fs.promises.rm(tmpDir, { force: true, recursive: true });
+  }
 }
 
 /**

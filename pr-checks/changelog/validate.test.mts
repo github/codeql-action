@@ -189,7 +189,7 @@ await describe("isValidChangenoteFile", async () => {
 });
 
 await describe("isValidAllChangenoteFiles", async () => {
-  await it("accepts a directory of valid change-note files", async () => {
+  await it("accepts list of file paths of valid change-notes", async () => {
     await withTmpDir(async (tmpDir) => {
       const fileName1 = path.join(tmpDir, "2026-01-01-fix-bug.md");
       const fileName2 = path.join(tmpDir, "2026-01-02-add-feature.md");
@@ -202,15 +202,15 @@ await describe("isValidAllChangenoteFiles", async () => {
     });
   });
 
-  await it("accepts an empty list", async () => {
+  await it("accepts the empty list", async () => {
     assert.equal(isValidAllChangenoteFiles([]), true);
   });
 
-  await it("accepts a list of .gitkeep only", async () => {
+  await it("accepts list of .gitkeep", async () => {
     assert.equal(isValidAllChangenoteFiles([".gitkeep"]), true);
   });
 
-  await it("rejects directory with an invalid change-note file", async () => {
+  await it("rejects list containing a file path to an invalid change-note", async () => {
     await withTmpDir(async (tmpDir) => {
       const fileName1 = path.join(tmpDir, "2026-01-01-fix-bug.md");
       const fileName2 = path.join(tmpDir, "2026-01-02-wrong-category.md");

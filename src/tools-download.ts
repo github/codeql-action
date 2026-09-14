@@ -200,13 +200,15 @@ async function downloadAndExtractZstdWithStreaming(
     });
   });
 
-  if (response.statusCode !== 200) {
+  const statusCode = response.statusCode ?? 0;
+  if (statusCode !== 200) {
     // Discard the response body so that the connection can be released.
     response.resume();
-    throw new HTTPError(
-      `Failed to download CodeQL bundle from ${codeqlURL}. HTTP status code: ${response.statusCode}.`,
-      response.statusCode ?? 0,
-    );
+    let message = `Failed to download CodeQL bundle from ${codeqlURL}.`;
+    if (statusCode !== 0) {
+      message += ` HTTP status code: ${statusCode}.`;
+    }
+    throw new HTTPError(message, statusCode);
   }
 
   await tar.extractTarZst(response, dest, tarVersion, logger);

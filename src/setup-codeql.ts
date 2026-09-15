@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
@@ -1148,6 +1149,7 @@ export async function downloadCodeQLBundle(
 
   await tryDeleteToolcacheBundles(action);
 
+  const startTime = performance.now();
   try {
     const result = await downloadCodeQL(
       source,
@@ -1193,6 +1195,7 @@ export async function downloadCodeQLBundle(
       ...result,
       statusReport: {
         ...result.statusReport,
+        totalDurationMs: Math.round(performance.now() - startTime),
         perLanguageBundleFallback: true,
       },
     };

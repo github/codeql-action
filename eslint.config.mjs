@@ -158,7 +158,7 @@ export default [
     },
   },
   {
-    files: ["**/*.ts", "**/*.js"],
+    files: ["**/*.ts", "**/*.js", "**/*.mts"],
 
     rules: {
       "@typescript-eslint/no-explicit-any": "off",

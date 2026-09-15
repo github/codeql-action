@@ -18,6 +18,9 @@ export const PACKAGE_JSON = path.join(REPO_ROOT, "package.json");
 /** The path of the changelog. */
 export const CHANGELOG_FILE = path.join(REPO_ROOT, "CHANGELOG.md");
 
+/** The path to the unreleased change-notes directory. */
+export const CHANGENOTES_DIR = path.join(REPO_ROOT, "unreleased-change-notes");
+
 /** The path to the esbuild metadata file. */
 export const BUNDLE_METADATA_FILE = path.join(REPO_ROOT, "meta.json");
 

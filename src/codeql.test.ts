@@ -90,7 +90,7 @@ async function installIntoToolcache({
   tmpDir: string;
 }) {
   const url = mockBundleDownloadApi({ apiDetails, isPinned, tagName });
-  await codeql.setupCodeQL(
+  return await codeql.setupCodeQL(
     cliVersion !== undefined ? undefined : url,
     apiDetails,
     tmpDir,
@@ -258,6 +258,65 @@ test.serial(
     });
   },
 );
+
+for (const { cliVersion, tagName, expectedToolcacheVersion } of [
+  {
+    cliVersion: "2.21.0",
+    tagName: "codeql-bundle-20240101",
+    expectedToolcacheVersion: "2.21.0",
+  },
+  {
+    cliVersion: "2.21.0-rc.1",
+    tagName: "codeql-bundle-20240101",
+    expectedToolcacheVersion: "0.0.0-20240101",
+  },
+  {
+    cliVersion: "2.21.0+20240101",
+    tagName: "codeql-bundle-20240101",
+    expectedToolcacheVersion: "0.0.0-20240101",
+  },
+  {
+    cliVersion: "2.21.0",
+    tagName: "custom-release",
+    expectedToolcacheVersion: undefined,
+  },
+]) {
+  test.serial(
+    `preserves CLI version ${cliVersion} when installing ${tagName}`,
+    async (t) => {
+      await util.withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+
+        const result = await installIntoToolcache({
+          cliVersion,
+          isPinned: false,
+          tagName,
+          tmpDir,
+        });
+
+        t.is(result.toolsVersion, cliVersion);
+        t.is(result.toolsSource, ToolsSource.Download);
+        t.true(
+          Number.isInteger(result.toolsDownloadStatusReport?.totalDurationMs),
+        );
+        t.deepEqual(
+          toolcache.findAllVersions("CodeQL"),
+          expectedToolcacheVersion === undefined
+            ? []
+            : [expectedToolcacheVersion],
+        );
+        if (expectedToolcacheVersion !== undefined) {
+          const cachedFolder = toolcache.find(
+            "CodeQL",
+            expectedToolcacheVersion,
+          );
+          t.truthy(cachedFolder);
+          t.true(fs.existsSync(`${cachedFolder}.complete`));
+        }
+      });
+    },
+  );
+}
 
 const EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES = [
   {

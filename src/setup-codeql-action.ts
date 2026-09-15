@@ -93,6 +93,14 @@ async function sendCompletedStatusReport(
     initToolsDownloadFields.tools_total_duration_ms =
       toolsDownloadStatusReport.totalDurationMs;
   }
+  if (toolsDownloadStatusReport?.bundleLanguage !== undefined) {
+    initToolsDownloadFields.tools_bundle_language =
+      toolsDownloadStatusReport.bundleLanguage;
+  }
+  if (toolsDownloadStatusReport?.perLanguageBundleFallback !== undefined) {
+    initToolsDownloadFields.tools_per_language_bundle_fallback =
+      toolsDownloadStatusReport.perLanguageBundleFallback;
+  }
   if (toolsFeatureFlagsValid !== undefined) {
     initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
   }

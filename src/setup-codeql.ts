@@ -215,6 +215,21 @@ export function convertToSemVer(version: string, logger: Logger): string {
   return s;
 }
 
+type CodeQLBundle = { kind: "combined"; url: string };
+
+/** A resolved download, including its bundle identity and version. */
+export interface CodeQLDownloadSource {
+  sourceType: "download";
+  bundle: CodeQLBundle;
+  compressionMethod: tar.CompressionMethod;
+  /** Bundle version of the tools, if known. */
+  bundleVersion?: string;
+  /** CLI version of the tools, if known. */
+  cliVersion?: string;
+  /** Resolved version for telemetry, independent of whether the bundle can be cached. */
+  toolsVersion: string;
+}
+
 export type CodeQLToolsSource =
   | {
       codeqlTarPath: string;
@@ -229,17 +244,7 @@ export type CodeQLToolsSource =
       /** Human-readable description of the source of the tools for telemetry purposes. */
       toolsVersion: string;
     }
-  | {
-      /** Bundle version of the tools, if known. */
-      bundleVersion?: string;
-      /** CLI version of the tools, if known. */
-      cliVersion?: string;
-      compressionMethod: tar.CompressionMethod;
-      codeqlURL: string;
-      sourceType: "download";
-      /** Human-readable description of the source of the tools for telemetry purposes. */
-      toolsVersion: string;
-    };
+  | CodeQLDownloadSource;
 
 /**
  * Look for a version of the CodeQL tools in the cache which could override the requested CLI version.
@@ -601,12 +606,10 @@ export async function getCodeQLSource(
 
   const bundleVersion =
     tagName && tryGetBundleVersionFromTagName(tagName, logger);
-  const humanReadableVersion =
+  const resolvedVersion =
     cliVersion ??
-    (bundleVersion && convertToSemVer(bundleVersion, logger)) ??
-    tagName ??
-    url ??
-    "unknown";
+    (bundleVersion ? convertToSemVer(bundleVersion, logger) : undefined);
+  const humanReadableVersion = resolvedVersion ?? tagName ?? url ?? "unknown";
 
   logger.debug(
     "Attempting to obtain CodeQL tools. " +
@@ -750,12 +753,12 @@ export async function getCodeQLSource(
     logger.info(`Using CodeQL CLI sourced from ${url} .`);
   }
   return {
-    bundleVersion: tagName && tryGetBundleVersionFromTagName(tagName, logger),
+    bundle: { kind: "combined", url },
+    bundleVersion,
     cliVersion,
-    codeqlURL: url,
     compressionMethod,
     sourceType: "download",
-    toolsVersion: cliVersion ?? humanReadableVersion,
+    toolsVersion: resolvedVersion ?? "unknown",
   };
 }
 
@@ -783,20 +786,17 @@ async function tryGetFallbackToolcacheVersion(
 // Exported using `export const` for testing purposes. Specifically, we want to
 // be able to stub this function and have other functions in this file use that stub.
 export const downloadCodeQL = async function (
-  codeqlURL: string,
-  compressionMethod: tar.CompressionMethod,
-  maybeBundleVersion: string | undefined,
-  maybeCliVersion: string | undefined,
+  source: CodeQLDownloadSource,
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<{
   codeqlFolder: string;
   statusReport: ToolsDownloadStatusReport;
-  toolsVersion: string;
 }> {
+  const { bundle, compressionMethod } = source;
+  const codeqlURL = bundle.url;
   const parsedCodeQLURL = new URL(codeqlURL);
   const searchParams = new URLSearchParams(parsedCodeQLURL.search);
   const headers: OutgoingHttpHeaders = {
@@ -815,16 +815,9 @@ export const downloadCodeQL = async function (
     );
   }
 
-  const toolcacheInfo = getToolcacheDestinationInfo(
-    maybeBundleVersion,
-    maybeCliVersion,
-    logger,
-  );
-
+  const toolcacheDestination = getToolcacheDestination(source, logger);
   const extractedBundlePath =
-    toolcacheInfo?.path ?? getTempExtractionDir(tempDir);
-
-  await tryDeleteToolcacheBundles({ env: getEnv(), features, logger });
+    toolcacheDestination ?? getTempExtractionDir(tempDir);
 
   const statusReport = await downloadAndExtract(
     codeqlURL,
@@ -836,46 +829,36 @@ export const downloadCodeQL = async function (
     logger,
   );
 
-  if (!toolcacheInfo) {
+  if (toolcacheDestination) {
+    writeToolcacheMarkerFile(toolcacheDestination, logger);
+  } else {
     logger.debug(
       "Could not cache CodeQL tools because we could not determine the bundle version from the " +
         `URL ${codeqlURL}.`,
     );
-    return {
-      codeqlFolder: extractedBundlePath,
-      statusReport,
-      toolsVersion: maybeCliVersion ?? "unknown",
-    };
   }
-
-  writeToolcacheMarkerFile(toolcacheInfo.path, logger);
 
   return {
     codeqlFolder: extractedBundlePath,
     statusReport,
-    toolsVersion: maybeCliVersion ?? toolcacheInfo.version,
   };
 };
 
-function getToolcacheDestinationInfo(
-  maybeBundleVersion: string | undefined,
-  maybeCliVersion: string | undefined,
+function getToolcacheDestination(
+  source: CodeQLDownloadSource,
   logger: Logger,
-): { path: string; version: string } | undefined {
-  if (maybeBundleVersion) {
-    const version = getCanonicalToolcacheVersion(
-      maybeCliVersion,
-      maybeBundleVersion,
-      logger,
-    );
-
-    return {
-      path: getToolcacheDirectory(version),
-      version,
-    };
+): string | undefined {
+  if (!source.bundleVersion) {
+    return undefined;
   }
 
-  return undefined;
+  return getToolcacheDirectory(
+    getCanonicalToolcacheVersion(
+      source.cliVersion,
+      source.bundleVersion,
+      logger,
+    ),
+  );
 }
 
 /**
@@ -1000,7 +983,6 @@ export async function setupCodeQLBundle(
   );
 
   let codeqlFolder: string;
-  let toolsVersion = source.toolsVersion;
   let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
   let toolsSource: ToolsSource;
   switch (source.sourceType) {
@@ -1021,18 +1003,14 @@ export async function setupCodeQLBundle(
       toolsSource = ToolsSource.Toolcache;
       break;
     case "download": {
-      const result = await downloadCodeQL(
-        source.codeqlURL,
-        source.compressionMethod,
-        source.bundleVersion,
-        source.cliVersion,
+      const result = await downloadCodeQLBundle(
+        source,
         apiDetails,
         zstdAvailability.version,
         tempDir,
         features,
         logger,
       );
-      toolsVersion = result.toolsVersion;
       codeqlFolder = result.codeqlFolder;
       toolsDownloadStatusReport = result.statusReport;
       toolsSource = ToolsSource.Download;
@@ -1050,8 +1028,23 @@ export async function setupCodeQLBundle(
     codeqlFolder,
     toolsDownloadStatusReport,
     toolsSource,
-    toolsVersion,
+    toolsVersion: source.toolsVersion,
   };
+}
+
+export async function downloadCodeQLBundle(
+  source: CodeQLDownloadSource,
+  apiDetails: api.GitHubApiDetails,
+  tarVersion: tar.TarVersion | undefined,
+  tempDir: string,
+  features: FeatureEnablement,
+  logger: Logger,
+): Promise<{
+  codeqlFolder: string;
+  statusReport: ToolsDownloadStatusReport;
+}> {
+  await tryDeleteToolcacheBundles({ env: getEnv(), features, logger });
+  return await downloadCodeQL(source, apiDetails, tarVersion, tempDir, logger);
 }
 
 async function useZstdBundle(

@@ -80,7 +80,7 @@ jobs:
       - id: init
         uses: ./../action/init
         with:
-          languages: javascript
+          languages: javascript,python
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/analyze
         with:

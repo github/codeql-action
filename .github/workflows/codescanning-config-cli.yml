@@ -75,7 +75,8 @@ jobs:
       uses: ./../action/.github/actions/check-codescanning-config
       with:
         expected-config-file-contents: "{}"
-        languages: javascript
+        # Request multiple languages so later checks can reuse the combined bundle.
+        languages: javascript,python
         tools: ${{ steps.prepare-test.outputs.tools-url }}
 
     - name: Packs from input

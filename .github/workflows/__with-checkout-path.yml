@@ -12,7 +12,12 @@ on:
     branches:
       - main
       - releases/v*
-  pull_request: {}
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
   merge_group:
     types:
       - checks_requested
@@ -57,7 +62,9 @@ jobs:
           - os: ubuntu-latest
             version: linked
     name: Use a custom `checkout_path`
-    if: github.triggering_actor != 'dependabot[bot]'
+    if: |-
+      (github.event.action != 'labeled' && github.triggering_actor != 'dependabot[bot]') ||
+      github.event.label.name == 'Rebuild: Unchanged'
     permissions:
       contents: read
       security-events: read

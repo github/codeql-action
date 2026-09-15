@@ -167,6 +167,8 @@ export enum Feature {
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Routes (some) API requests through the registry proxy. */
   ProxyApiRequests = "proxy_api_requests",
+  /** Allows sections specific to analysis kinds in configuration files. */
+  ScopedConfigurations = "scoped_configurations",
   /** Note that this currently only disables baseline file coverage information. */
   SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
   StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
@@ -443,6 +445,11 @@ export const featureConfig = {
   [Feature.ProxyApiRequests]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_PROXY_API_REQUESTS",
+    minimumVersion: undefined,
+  },
+  [Feature.ScopedConfigurations]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_SCOPED_CONFIGURATIONS",
     minimumVersion: undefined,
   },
   [Feature.SkipFileCoverageOnPrs]: {

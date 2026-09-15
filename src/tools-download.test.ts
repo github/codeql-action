@@ -14,14 +14,14 @@ import { getRunnerLogger } from "./logging";
 import * as tar from "./tar";
 import { setupTests } from "./testing-utils";
 import { downloadAndExtract } from "./tools-download";
-import { HTTPError, withTmpDir } from "./util";
+import * as util from "./util";
 
 setupTests(test);
 
 test.serial(
   "downloadAndExtract reports the durations when downloading before extracting",
   async (t) => {
-    await withTmpDir(async (tmpDir) => {
+    await util.withTmpDir(async (tmpDir) => {
       const archivePath = path.join(tmpDir, "codeql-bundle.tar.gz");
       const destination = path.join(tmpDir, "codeql");
       sinon.stub(toolcache, "downloadTool").resolves(archivePath);
@@ -47,7 +47,7 @@ test.serial(
 test.serial(
   "downloadAndExtract falls back to downloading before extracting if streaming fails",
   async (t) => {
-    await withTmpDir(async (tmpDir) => {
+    await util.withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
       const archivePath = path.join(tmpDir, "codeql-bundle.tar.zst");
       const destination = path.join(tmpDir, "codeql");
@@ -88,7 +88,7 @@ test.serial(
 test.serial(
   "downloadAndExtract rethrows a 404 rather than retrying the download",
   async (t) => {
-    await withTmpDir(async (tmpDir) => {
+    await util.withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
       const destination = path.join(tmpDir, "codeql");
       const downloadTool = sinon.stub(toolcache, "downloadTool");
@@ -108,7 +108,7 @@ test.serial(
           getRunnerLogger(true),
         ),
         {
-          instanceOf: HTTPError,
+          instanceOf: util.HTTPError,
           message:
             "Failed to download CodeQL bundle from https://example.com/codeql-bundle.tar.zst. HTTP status code: 404.",
         },
@@ -126,7 +126,7 @@ test.serial(
 test.serial(
   "downloadAndExtract falls back to downloading before extracting on a server error",
   async (t) => {
-    await withTmpDir(async (tmpDir) => {
+    await util.withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
       const archivePath = path.join(tmpDir, "codeql-bundle.tar.zst");
       const destination = path.join(tmpDir, "codeql");
@@ -162,9 +162,10 @@ test.serial(
 );
 
 test.serial(
-  "downloadAndExtract omits an unknown HTTP status from the error message",
+  "downloadAndExtract handles an unknown status as a non-HTTP error",
   async (t) => {
-    await withTmpDir(async (tmpDir) => {
+    const asHTTPError = sinon.spy(util, "asHTTPError");
+    await util.withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
       const archivePath = path.join(tmpDir, "codeql-bundle.tar.zst");
       const destination = path.join(tmpDir, "codeql");
@@ -200,13 +201,18 @@ test.serial(
       t.true(downloadTool.calledOnce);
       t.true(extract.calledOnce);
     });
+
+    t.true(asHTTPError.calledOnce);
+    t.true(asHTTPError.firstCall.args[0] instanceof Error);
+    t.false(asHTTPError.firstCall.args[0] instanceof util.HTTPError);
+    t.is(asHTTPError.firstCall.returnValue, undefined);
   },
 );
 
 test.serial(
   "downloadAndExtract reports only the total duration when streaming extraction",
   async (t) => {
-    await withTmpDir(async (tmpDir) => {
+    await util.withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
       const downloadTool = sinon.stub(toolcache, "downloadTool");
       const extractTarZst = sinon

@@ -43,12 +43,12 @@ function usage(): number {
 function validate(): number {
   try {
     if (isValidAllChangenoteFiles(fs.readdirSync(CHANGENOTES_DIR))) {
-      console.log(`All changenote files in '${CHANGENOTES_DIR}' are valid.`);
+      console.log(`All changenotes in '${CHANGENOTES_DIR}' are valid.`);
       return 0;
     }
   } catch (error) {
     console.error(
-      `Failed to read change-notes directory (${CHANGENOTES_DIR})`,
+      `Failed to read changenotes directory '${CHANGENOTES_DIR}'`,
       error,
     );
   }

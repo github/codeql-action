@@ -79,6 +79,8 @@ interface Specification extends JobSpecification {
   useAllPlatformBundle?: string;
   /** Values for the `analysis-kinds` matrix dimension. */
   analysisKinds?: string[];
+  /** Overrides the generated job matrix using GitHub Actions matrix syntax. */
+  matrix?: Record<string, unknown>;
 
   /** Container image configuration for the job. */
   container?: any;
@@ -512,9 +514,6 @@ function generateJob(
   specDocument: yaml.Document,
   checkSpecification: Specification,
 ) {
-  const matrix: Array<Record<string, any>> =
-    generateJobMatrix(checkSpecification);
-
   const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
     ? checkSpecification.useAllPlatformBundle
     : "false";
@@ -567,8 +566,8 @@ function generateJob(
   const checkJob: Record<string, any> = {
     strategy: {
       "fail-fast": false,
-      matrix: {
-        include: matrix,
+      matrix: checkSpecification.matrix ?? {
+        include: generateJobMatrix(checkSpecification),
       },
     },
     name: checkSpecification.name,

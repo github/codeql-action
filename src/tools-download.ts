@@ -54,6 +54,13 @@ export type ToolsDownloadStatusReport = {
    * spent on a streaming attempt that failed and fell back to downloading before extracting.
    */
   totalDurationMs: number;
+  /** The language of the single-language bundle that was downloaded, if any. */
+  bundleLanguage?: string;
+  /**
+   * Whether we tried to download a single-language bundle, but it did not exist and we fell back to
+   * the combined bundle.
+   */
+  perLanguageBundleFallback?: boolean;
 };
 
 export async function downloadAndExtract(

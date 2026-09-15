@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as github from "@actions/github";
 import * as toolcache from "@actions/tool-cache";
@@ -1221,10 +1222,23 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
       delete process.env[EnvVar.HAS_SET_UP_CODEQL];
 
       const downloadSpy = sinon.spy(setupCodeql, "downloadCodeQL");
-      const extractStub = stubDownloadAndExtract();
-      if (bundle === "fallback") {
-        extractStub.onFirstCall().rejects(new HTTPError("Not Found", 404));
-      }
+      let elapsedMs = 1000;
+      sinon.stub(performance, "now").callsFake(() => elapsedMs);
+      const extractStub = sinon
+        .stub(toolsDownload, "downloadAndExtract")
+        .callsFake(async (_url, _compressionMethod, dest) => {
+          if (bundle === "fallback" && extractStub.callCount === 1) {
+            elapsedMs += 700.2;
+            throw new HTTPError("Not Found", 404);
+          }
+          elapsedMs += 300.2;
+          fs.mkdirSync(dest, { recursive: true });
+          return {
+            downloadDurationMs: 200,
+            extractionDurationMs: 100,
+            totalDurationMs: 300,
+          };
+        });
       const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
       const features = createFeatures([
         Feature.PerLanguageBundles,
@@ -1253,6 +1267,12 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
           bundle === "combined" ? "combined" : "per-language",
         );
         t.is(result.codeqlFolder, extractStub.lastCall.args[2]);
+        t.is(
+          result.toolsDownloadStatusReport?.totalDurationMs,
+          bundle === "fallback" ? 1000 : 300,
+        );
+        t.is(result.toolsDownloadStatusReport?.downloadDurationMs, 200);
+        t.is(result.toolsDownloadStatusReport?.extractionDurationMs, 100);
         t.is(extractStub.callCount, bundle === "fallback" ? 2 : 1);
         t.is(downloadSpy.callCount, extractStub.callCount);
         t.is(

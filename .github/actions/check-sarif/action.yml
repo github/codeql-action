@@ -16,5 +16,23 @@ inputs:
       Comma separated list of query ids that should NOT be included in this SARIF file.
 
 runs:
-  using: node24
-  main: index.js
+  using: "composite"
+  steps:
+    - name: Run `check-sarif.ts`
+      shell: bash
+      env:
+        SARIF_FILE: ${{ inputs.sarif-file }}
+        QUERIES_RUN: ${{ inputs.queries-run }}
+        QUERIES_NOT_RUN: ${{ inputs.queries-not-run }}
+      run: |
+        if [[ -d pr-checks ]]; then
+          npx tsx ./pr-checks/check-sarif.ts \
+            --sarif-file "$SARIF_FILE" \
+            --queries-run "$QUERIES_RUN" \
+            --queries-not-run "$QUERIES_NOT_RUN"
+        else
+          npx tsx ../action/pr-checks/check-sarif.ts \
+            --sarif-file "$SARIF_FILE" \
+            --queries-run "$QUERIES_RUN" \
+            --queries-not-run "$QUERIES_NOT_RUN"
+        fi

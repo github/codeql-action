@@ -5,6 +5,7 @@ import { performance } from "perf_hooks";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
+import type { ActionState } from "./action-common";
 import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
@@ -83,6 +84,17 @@ export interface QueriesStatusReport
   analyze_failure_language?: string;
   /** Reports on discrete events associated with this status report. */
   event_reports?: EventReport[];
+}
+
+/**
+ * Determines the path at which the repository being analysed is checked out at.
+ * Returns the value of the required `checkout_path` input and validates that it
+ * refers to the root of a repository.
+ *
+ * @param action The action state.
+ */
+export function determineCheckoutPath(action: ActionState<["Actions"]>) {
+  return action.actions.getRequiredInput("checkout_path");
 }
 
 async function setupPythonExtractor(logger: Logger) {

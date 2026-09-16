@@ -1,9 +1,9 @@
 import * as semver from "semver";
 
+import { ActionState } from "./action-common";
 import { isGitHubHostedRunner } from "./actions-util";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { Feature } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
-import { Logger } from "./logging";
 import * as tar from "./tar";
 import { GitHubVariant } from "./util";
 
@@ -61,9 +61,12 @@ export interface PerLanguageBundleOptions {
 
 /** Returns the eligible bundle language, or undefined for the combined bundle. */
 export async function getPerLanguageBundleLanguage(
+  {
+    env,
+    features,
+    logger,
+  }: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
   options: PerLanguageBundleOptions,
-  features: FeatureEnablement,
-  logger: Logger,
 ): Promise<BuiltInLanguage | undefined> {
   const {
     rawLanguages,
@@ -78,6 +81,10 @@ export async function getPerLanguageBundleLanguage(
     logger.debug(`Not using a per-language CodeQL bundle since ${reason}.`);
     return undefined;
   };
+
+  if (!(await features.getValue(Feature.PerLanguageBundles))) {
+    return explain(`the ${Feature.PerLanguageBundles} feature is disabled`);
+  }
 
   if (rawLanguages?.length !== 1) {
     return explain(
@@ -103,7 +110,7 @@ export async function getPerLanguageBundleLanguage(
     return explain(`we are running against ${variant}`);
   }
 
-  if (!isGitHubHostedRunner()) {
+  if (!isGitHubHostedRunner(env)) {
     // Per-language installs stay out of the toolcache; self-hosted runners should retain
     // the reusable combined bundle instead.
     return explain("the job is not running on a GitHub-hosted runner");
@@ -132,10 +139,6 @@ export async function getPerLanguageBundleLanguage(
       `the ${language} bundle is only published for ${supportedPlatform}, but this job is ` +
         `running on ${platform ?? "an unknown platform"}`,
     );
-  }
-
-  if (!(await features.getValue(Feature.PerLanguageBundles))) {
-    return explain(`the ${Feature.PerLanguageBundles} feature is disabled`);
   }
 
   return language;

@@ -1,19 +1,21 @@
 import test from "ava";
 
-import { ActionsEnvVars } from "./environment";
+import { ActionsEnvVars, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import {
   getPerLanguageBundleLanguage,
   MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   PerLanguageBundleOptions,
   tryGetBundleLanguageFromUrl,
 } from "./per-language-bundles";
-import { createFeatures, setupTests } from "./testing-utils";
+import {
+  createFeatures,
+  getRecordingLogger,
+  getTestEnv,
+  LoggedMessage,
+} from "./testing-utils";
 import { GitHubVariant } from "./util";
-
-setupTests(test);
 
 /** Options for which we would use a per-language bundle. */
 const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
@@ -28,19 +30,21 @@ const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
 async function checkEligibility(
   overrides: Partial<PerLanguageBundleOptions>,
   enabledFeatures: Feature[] = [Feature.PerLanguageBundles],
+  env: ReadOnlyEnv = getTestEnv({
+    [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
+  }),
 ) {
   return getPerLanguageBundleLanguage(
+    {
+      env,
+      features: createFeatures(enabledFeatures),
+      logger: getRecordingLogger([], { logToConsole: false }),
+    },
     { ...ELIGIBLE_OPTIONS, ...overrides },
-    createFeatures(enabledFeatures),
-    getRunnerLogger(true),
   );
 }
 
-test.beforeEach(() => {
-  process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
-});
-
-test.serial("uses Linux bundles for non-Swift languages", async (t) => {
+test("getPerLanguageBundleLanguage selects Linux bundles for non-Swift languages", async (t) => {
   for (const language of Object.values(BuiltInLanguage)) {
     if (language === BuiltInLanguage.swift) {
       continue;
@@ -49,14 +53,14 @@ test.serial("uses Linux bundles for non-Swift languages", async (t) => {
   }
 });
 
-test.serial("normalizes an alias before selecting a bundle", async (t) => {
+test("getPerLanguageBundleLanguage normalizes aliases before selecting a bundle", async (t) => {
   t.is(
     await checkEligibility({ rawLanguages: ["java-kotlin"] }),
     BuiltInLanguage.java,
   );
 });
 
-test.serial("uses the macOS bundle for Swift", async (t) => {
+test("getPerLanguageBundleLanguage selects the macOS bundle for Swift", async (t) => {
   t.is(
     await checkEligibility({ rawLanguages: ["swift"], platform: "osx64" }),
     BuiltInLanguage.swift,
@@ -68,7 +72,7 @@ test.serial("uses the macOS bundle for Swift", async (t) => {
   );
 });
 
-test.serial("only publishes non-Swift languages for Linux", async (t) => {
+test("getPerLanguageBundleLanguage rejects unsupported platforms", async (t) => {
   t.is(await checkEligibility({ platform: "osx64" }), undefined);
   t.is(await checkEligibility({ platform: "win64" }), undefined);
   // We do not publish per-language bundles for Linux Arm64 either.
@@ -76,21 +80,21 @@ test.serial("only publishes non-Swift languages for Linux", async (t) => {
   t.is(await checkEligibility({ platform: undefined }), undefined);
 });
 
-test.serial("requires exactly one language", async (t) => {
+test("getPerLanguageBundleLanguage requires exactly one language", async (t) => {
   t.is(await checkEligibility({ rawLanguages: undefined }), undefined);
   t.is(await checkEligibility({ rawLanguages: [] }), undefined);
   t.is(await checkEligibility({ rawLanguages: ["java", "python"] }), undefined);
 });
 
-test.serial("requires a language that CodeQL knows about", async (t) => {
+test("getPerLanguageBundleLanguage requires a known language", async (t) => {
   t.is(await checkEligibility({ rawLanguages: ["cobol"] }), undefined);
 });
 
-test.serial("requires a zstd bundle", async (t) => {
+test("getPerLanguageBundleLanguage requires a zstd bundle", async (t) => {
   t.is(await checkEligibility({ compressionMethod: "gzip" }), undefined);
 });
 
-test.serial("requires GitHub.com", async (t) => {
+test("getPerLanguageBundleLanguage requires GitHub.com", async (t) => {
   // Other products resolve the combined bundle against their own instance, so asking for a
   // per-language bundle they do not mirror would move the download off that instance.
   for (const variant of [GitHubVariant.GHES, GitHubVariant.GHEC_DR]) {
@@ -98,30 +102,61 @@ test.serial("requires GitHub.com", async (t) => {
   }
 });
 
-test.serial("requires a GitHub-hosted runner", async (t) => {
+test("getPerLanguageBundleLanguage requires a GitHub-hosted runner", async (t) => {
   // A self-hosted runner may have a toolcache that persists between jobs, which is worth more than
   // a smaller download.
-  process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "self-hosted";
-  t.is(await checkEligibility({}), undefined);
+  t.is(
+    await checkEligibility(
+      {},
+      [Feature.PerLanguageBundles],
+      getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
+    ),
+    undefined,
+  );
 
   // Self-hosted runners are routinely configured to look like hosted ones, for example by mounting
   // a persistent volume at `/opt/hostedtoolcache`, so we require the service to tell us explicitly.
-  delete process.env[ActionsEnvVars.RUNNER_ENVIRONMENT];
-  process.env["RUNNER_TOOL_CACHE"] = "/opt/hostedtoolcache";
-  t.is(await checkEligibility({}), undefined);
+  t.is(
+    await checkEligibility(
+      {},
+      [Feature.PerLanguageBundles],
+      getTestEnv({ RUNNER_TOOL_CACHE: "/opt/hostedtoolcache" }),
+    ),
+    undefined,
+  );
 });
 
-test.serial("requires a new enough CLI version", async (t) => {
+test("getPerLanguageBundleLanguage requires a supported release version", async (t) => {
   t.is(await checkEligibility({ cliVersion: undefined }), undefined);
   t.is(await checkEligibility({ cliVersion: "2.27.0" }), undefined);
   t.is(await checkEligibility({ cliVersion: "2.27.1" }), BuiltInLanguage.java);
 });
 
-test.serial("requires the feature flag", async (t) => {
+test("getPerLanguageBundleLanguage requires the feature flag", async (t) => {
   t.is(await checkEligibility({}, []), undefined);
 });
 
-test.serial("nightlies skip only the release version check", async (t) => {
+test("getPerLanguageBundleLanguage explains a disabled feature before checking eligibility", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const language = await getPerLanguageBundleLanguage(
+    {
+      env: getTestEnv(),
+      features: createFeatures([]),
+      logger: getRecordingLogger(messages, { logToConsole: false }),
+    },
+    { ...ELIGIBLE_OPTIONS, rawLanguages: undefined, cliVersion: undefined },
+  );
+
+  t.is(language, undefined);
+  t.deepEqual(
+    messages.map((message) => message.message),
+    [
+      "Not using a per-language CodeQL bundle since the per_language_bundles feature is disabled.",
+    ],
+  );
+});
+
+test("getPerLanguageBundleLanguage skips only the release version check for nightlies", async (t) => {
   const nightly = { isNightly: true, cliVersion: undefined };
   t.is(await checkEligibility(nightly), BuiltInLanguage.java);
 
@@ -136,11 +171,17 @@ test.serial("nightlies skip only the release version check", async (t) => {
     t.is(await checkEligibility({ ...nightly, ...overrides }), undefined);
   }
   t.is(await checkEligibility(nightly, []), undefined);
-  process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "self-hosted";
-  t.is(await checkEligibility(nightly), undefined);
+  t.is(
+    await checkEligibility(
+      nightly,
+      [Feature.PerLanguageBundles],
+      getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
+    ),
+    undefined,
+  );
 });
 
-test.serial("recognizes a per-language bundle from its URL", (t) => {
+test("tryGetBundleLanguageFromUrl recognizes per-language bundle URLs", (t) => {
   const url = (name: string) =>
     `https://github.com/github/codeql-action/releases/download/codeql-bundle-v1.2.3/${name}`;
 
@@ -165,7 +206,7 @@ test.serial("recognizes a per-language bundle from its URL", (t) => {
   );
 });
 
-test.serial("does not mistake other bundles for per-language ones", (t) => {
+test("tryGetBundleLanguageFromUrl rejects other bundle URLs", (t) => {
   const url = (name: string) =>
     `https://github.com/github/codeql-action/releases/download/codeql-bundle-v1.2.3/${name}`;
 

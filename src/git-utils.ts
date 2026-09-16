@@ -13,6 +13,7 @@ import {
   getWorkflowEvent,
   getWorkflowEventName,
 } from "./actions-util";
+import { ActionsEnvVars, getEnv, type ReadOnlyEnv } from "./environment";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 /**
@@ -335,17 +336,26 @@ function getRefFromEnv(): string {
 }
 
 /**
+ * Gets the path at which the repository is checked out at. In order of preference, this is determined by:
+ * the `checkout_path` input, the `source-root` input, the `GITHUB_WORKSPACE` environment variable.
+ */
+export function getCheckoutPath(env: ReadOnlyEnv) {
+  return (
+    getOptionalInput("checkout_path") ||
+    getOptionalInput("source-root") ||
+    env.getRequired(ActionsEnvVars.GITHUB_WORKSPACE)
+  );
+}
+
+/**
  * Get the ref currently being analyzed.
  */
-export async function getRef(): Promise<string> {
+export async function getRef(env: ReadOnlyEnv = getEnv()): Promise<string> {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
   const refInput = getOptionalInput("ref");
   const shaInput = getOptionalInput("sha");
-  const checkoutPath =
-    getOptionalInput("checkout_path") ||
-    getOptionalInput("source-root") ||
-    getRequiredEnvParam("GITHUB_WORKSPACE");
+  const checkoutPath = getCheckoutPath(env);
 
   const hasRefInput = !!refInput;
   const hasShaInput = !!shaInput;
@@ -357,7 +367,7 @@ export async function getRef(): Promise<string> {
   }
 
   const ref = refInput || getRefFromEnv();
-  const sha = shaInput || getRequiredEnvParam("GITHUB_SHA");
+  const sha = shaInput || env.getRequired(ActionsEnvVars.GITHUB_SHA);
 
   // If the ref is a user-provided input, we have to skip logic
   // and assume that it is really where they want to upload the results.

@@ -148,8 +148,8 @@ test("getPerLanguageBundleLanguage explains a disabled feature before checking e
   );
 });
 
-test("getPerLanguageBundleLanguage skips only the release version check for nightlies", async (t) => {
-  const nightly = { isNightly: true, cliVersion: undefined };
+test("getPerLanguageBundleLanguage skips only the release version check for the latest nightly", async (t) => {
+  const nightly = { isLatestNightly: true, cliVersion: undefined };
   t.is(await checkEligibility(nightly), BuiltInLanguage.java);
 
   for (const overrides of [

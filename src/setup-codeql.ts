@@ -83,8 +83,7 @@ function getCodeQLBundleExtension(
  * Returns the name of the CodeQL bundle asset to download.
  *
  * @param compressionMethod The compression method of the bundle.
- * @param language If provided, the name of the bundle that contains only this language, rather than
- * the name of the combined bundle that contains every language.
+ * @param language Optional language for a per-language bundle. If omitted, returns a combined bundle name.
  */
 export function getCodeQLBundleName(
   compressionMethod: tar.CompressionMethod,
@@ -247,7 +246,7 @@ export interface CodeQLDownloadSource {
   compressionMethod: tar.CompressionMethod;
   /** Bundle version of the tools, if known. */
   bundleVersion?: string;
-  /** CLI version of the tools, if known. */
+  /** Requested CLI version, if known. */
   cliVersion?: string;
   /** Resolved version for telemetry, independent of whether the bundle can be cached. */
   toolsVersion: string;
@@ -476,7 +475,7 @@ export async function getCodeQLSource(
     };
   }
 
-  /** CLI version number, for example 2.12.6. */
+  /** Requested CLI version number, for example 2.12.6. */
   let cliVersion: string | undefined;
   /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
   let tagName: string | undefined;
@@ -530,7 +529,7 @@ export async function getCodeQLSource(
         `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
       );
     }
-    bundle = await getNightlyBundle(
+    bundle = await getLatestNightlyBundle(
       { env: getEnv(), features, logger },
       rawLanguages,
       variant,
@@ -758,6 +757,13 @@ export async function getCodeQLSource(
   let compressionMethod: tar.CompressionMethod;
 
   if (!url) {
+    const bundleTagName = tagName;
+    if (bundleTagName === undefined) {
+      throw new Error(
+        "Could not determine a release tag for the requested CodeQL bundle.",
+      );
+    }
+
     compressionMethod =
       cliVersion !== undefined &&
       (await useZstdBundle(cliVersion, tarSupportsZstd))
@@ -775,28 +781,29 @@ export async function getCodeQLSource(
       },
     );
 
+    // Resolve both bundle variants against the same release and repository lookup order.
     const resolveBundleURL = (language?: BuiltInLanguage) =>
       getCodeQLBundleDownloadURL(
-        tagName!,
+        bundleTagName,
         apiDetails,
         getCodeQLBundleName(compressionMethod, language),
         logger,
       );
 
+    const combinedBundleURL = await resolveBundleURL();
     if (perLanguageBundleLanguage !== undefined) {
       logger.info(
-        `Downloading the ${perLanguageBundleLanguage} CodeQL bundle, since ${perLanguageBundleLanguage} ` +
-          "is the only language being analyzed.",
+        `Selected the per-language CodeQL bundle for '${perLanguageBundleLanguage}'.`,
       );
       url = await resolveBundleURL(perLanguageBundleLanguage);
       bundle = {
         kind: "per-language",
         url,
         language: perLanguageBundleLanguage,
-        combinedBundleURL: await resolveBundleURL(),
+        combinedBundleURL,
       };
     } else {
-      url = await resolveBundleURL();
+      url = combinedBundleURL;
       bundle = { kind: "combined", url };
     }
   } else {
@@ -928,8 +935,8 @@ export const downloadCodeQL = async function (
 };
 
 /**
- * Returns the canonical toolcache directory for a resolved download, or `undefined` if its bundle
- * version is unknown.
+ * Returns the canonical toolcache directory for a combined bundle with a known version.
+ * Returns undefined for per-language bundles or unknown versions.
  */
 function getToolcacheDestination(
   source: CodeQLDownloadSource,
@@ -1122,8 +1129,8 @@ export async function setupCodeQLBundle(
 /**
  * Performs eligible toolcache cleanup once, then downloads and extracts the resolved bundle.
  *
- * If `source` refers to a bundle for a single language and that bundle turns out not to exist, this
- * falls back to downloading the combined bundle.
+ * If an automatically selected per-language bundle is missing, downloads the combined bundle
+ * from the same release instead. Explicit bundle URLs are not substituted.
  *
  * @returns The extraction directory and download timings.
  */
@@ -1160,7 +1167,7 @@ export async function downloadCodeQLBundle(
       throw e;
     }
     logger.warning(
-      `No ${bundle.language} CodeQL bundle was found at ${bundle.url}, so ` +
+      `No per-language CodeQL bundle for '${bundle.language}' was found at ${bundle.url}, so ` +
         "falling back to the bundle that contains all languages. This analysis will still " +
         "produce correct results, but will take longer to set up.",
     );
@@ -1202,8 +1209,11 @@ function getTempExtractionDir(tempDir: string) {
   return path.join(tempDir, uuidV4());
 }
 
-/** Selects a bundle from the latest nightly, with a same-release fallback when applicable. */
-async function getNightlyBundle(
+/**
+ * Selects a bundle from the latest nightly release, preferring a per-language bundle when eligible.
+ * Records the combined bundle URL from that release for use if the selected asset is missing.
+ */
+async function getLatestNightlyBundle(
   action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
   rawLanguages: string[] | undefined,
   variant: util.GitHubVariant,
@@ -1224,7 +1234,7 @@ async function getNightlyBundle(
     compressionMethod,
     platform: getBundlePlatform(),
     variant,
-    isNightly: true,
+    isLatestNightly: true,
   });
 
   try {

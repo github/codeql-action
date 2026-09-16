@@ -58,6 +58,7 @@ function stubDownloadAndExtract() {
     });
 }
 
+/** Models a hosted Linux runner with zstd and the latest nightly release. */
 function stubHostedNightly(tagName: string) {
   sinon.stub(process, "platform").value("linux");
   sinon.stub(process, "arch").value("x64");
@@ -66,15 +67,25 @@ function stubHostedNightly(tagName: string) {
     available: true,
     foundZstdBinary: true,
   });
-  const client = github.getOctokit("123", {
-    request: {
-      fetch: async () =>
+  const fetchRelease = sinon
+    .stub<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+    .rejects(new Error("Unexpected API request in nightly bundle test"));
+  fetchRelease
+    .withArgs(
+      "https://api.github.com/repos/dsp-testing/codeql-cli-nightlies/releases?per_page=1&page=1&prerelease=true",
+      sinon.match({ method: "GET" }),
+    )
+    .callsFake(
+      async () =>
         new Response(JSON.stringify([{ tag_name: tagName }]), {
           headers: { "content-type": "application/json" },
         }),
-    },
+    );
+  const client = github.getOctokit("123", {
+    request: { fetch: fetchRelease },
   });
   sinon.stub(api, "getApiClient").value(() => client);
+  return fetchRelease;
 }
 
 test.serial("parse codeql bundle url version", (t) => {
@@ -600,11 +611,11 @@ test.serial(
 
 for (const toolsInput of ["nightly", "nightly-latest"]) {
   test.serial(
-    `getCodeQLSource selects a per-language bundle for tools == ${toolsInput}`,
+    `getCodeQLSource selects the latest per-language nightly for tools == ${toolsInput}`,
     async (t) => {
       const expectedTag = "codeql-bundle-30260213";
       const baseURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}`;
-      stubHostedNightly(expectedTag);
+      const latestNightlyRequest = stubHostedNightly(expectedTag);
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
@@ -633,13 +644,14 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
           compressionMethod: "zstd",
           toolsVersion: "0.0.0-30260213",
         } satisfies setupCodeql.CodeQLDownloadSource);
+        t.true(latestNightlyRequest.calledOnce);
       });
     },
   );
 }
 
 test.serial(
-  "getCodeQLSource downloads the combined nightly bundle when not eligible",
+  "getCodeQLSource downloads a combined nightly bundle when per-language selection is ineligible",
   async (t) => {
     const expectedTag = "codeql-bundle-30260213";
     stubHostedNightly(expectedTag);
@@ -647,7 +659,9 @@ test.serial(
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
       for (const { languages, features } of [
+        // The per-language feature is disabled.
         { languages: ["java"], features: createFeatures([]) },
+        // More than one language requires a combined bundle.
         {
           languages: ["java", "python"],
           features: createFeatures([Feature.PerLanguageBundles]),
@@ -679,11 +693,11 @@ test.serial(
 
 for (const perLanguageBundles of [false, true]) {
   test.serial(
-    `getCodeQLSource uses a ${perLanguageBundles ? "per-language" : "combined"} bundle for a forced nightly`,
+    `getCodeQLSource uses the latest ${perLanguageBundles ? "per-language" : "combined"} bundle for a forced nightly`,
     async (t) => {
       const expectedTag = "codeql-bundle-30260213";
       const baseURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}`;
-      stubHostedNightly(expectedTag);
+      const latestNightlyRequest = stubHostedNightly(expectedTag);
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
@@ -704,6 +718,7 @@ for (const perLanguageBundles of [false, true]) {
         );
 
         t.is(source.sourceType, "download");
+        t.true(latestNightlyRequest.calledOnce);
         if (source.sourceType === "download") {
           const combinedURL = `${baseURL}/codeql-bundle-linux64.tar.zst`;
           t.deepEqual(
@@ -722,6 +737,105 @@ for (const perLanguageBundles of [false, true]) {
     },
   );
 }
+
+for (const date of ["20200101", "30260213"]) {
+  for (const bundle of ["combined", "per-language"] as const) {
+    test.serial(
+      `getCodeQLSource preserves an explicit ${bundle} nightly URL for ${date}`,
+      async (t) => {
+        const latestNightlyRequest = stubHostedNightly(
+          "codeql-bundle-30260213",
+        );
+        const asset =
+          bundle === "combined"
+            ? "codeql-bundle-linux64.tar.zst"
+            : "codeql-bundle-java-linux64.tar.zst";
+        const url = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-${date}/${asset}`;
+        const features = createFeatures([Feature.PerLanguageBundles]);
+        const logger = getRecordingLogger([], { logToConsole: false });
+        const error = new HTTPError("Not Found", 404);
+        const extractStub = sinon
+          .stub(toolsDownload, "downloadAndExtract")
+          .rejects(error);
+
+        await withTmpDir(async (tmpDir) => {
+          setupActionsVars(tmpDir, tmpDir);
+          const source = await setupCodeql.getCodeQLSource(
+            url,
+            SAMPLE_DEFAULT_CLI_VERSION,
+            ["java"],
+            false,
+            SAMPLE_DOTCOM_API_DETAILS,
+            GitHubVariant.DOTCOM,
+            true,
+            features,
+            logger,
+          );
+          t.deepEqual(source, {
+            sourceType: "download",
+            bundle:
+              bundle === "combined"
+                ? { kind: "combined", url }
+                : { kind: "per-language", url, language: BuiltInLanguage.java },
+            bundleVersion: date,
+            cliVersion: undefined,
+            compressionMethod: "zstd",
+            toolsVersion: `0.0.0-${date}`,
+          } satisfies setupCodeql.CodeQLDownloadSource);
+
+          await t.throwsAsync(
+            setupCodeql.setupCodeQLBundle(
+              url,
+              SAMPLE_DOTCOM_API_DETAILS,
+              tmpDir,
+              GitHubVariant.DOTCOM,
+              SAMPLE_DEFAULT_CLI_VERSION,
+              ["java"],
+              false,
+              features,
+              logger,
+            ),
+            { is: error },
+          );
+          t.true(extractStub.calledOnce);
+          t.is(extractStub.firstCall.args[0], url);
+          t.true(latestNightlyRequest.notCalled);
+        });
+      },
+    );
+  }
+}
+
+test.serial(
+  "getCodeQLSource reports a missing release tag when a toolcache entry disappears",
+  async (t) => {
+    sinon
+      .stub(toolcache, "findAllVersions")
+      .returns([MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION]);
+    sinon.stub(toolcache, "find").returns("");
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
+      await t.throwsAsync(
+        setupCodeql.getCodeQLSource(
+          "toolcache",
+          SAMPLE_DEFAULT_CLI_VERSION,
+          ["java"],
+          false,
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          true,
+          createFeatures([]),
+          getRunnerLogger(true),
+        ),
+        {
+          message:
+            "Could not determine a release tag for the requested CodeQL bundle.",
+        },
+      );
+    });
+  },
+);
 
 test.serial(
   "getCodeQLSource correctly returns latest version from toolcache when tools == toolcache",
@@ -1016,18 +1130,21 @@ const PER_LANGUAGE_CLI_VERSION = {
   ],
 };
 
-test.serial("getCodeQLBundleName names the per-language bundle", (t) => {
-  sinon.stub(process, "platform").value("linux");
-  sinon.stub(process, "arch").value("x64");
-  t.is(
-    setupCodeql.getCodeQLBundleName("zstd", BuiltInLanguage.java),
-    "codeql-bundle-java-linux64.tar.zst",
-  );
-  t.is(
-    setupCodeql.getCodeQLBundleName("zstd"),
-    "codeql-bundle-linux64.tar.zst",
-  );
-});
+test.serial(
+  "getCodeQLBundleName returns a per-language bundle name only when a language is specified",
+  (t) => {
+    sinon.stub(process, "platform").value("linux");
+    sinon.stub(process, "arch").value("x64");
+    t.is(
+      setupCodeql.getCodeQLBundleName("zstd", BuiltInLanguage.java),
+      "codeql-bundle-java-linux64.tar.zst",
+    );
+    t.is(
+      setupCodeql.getCodeQLBundleName("zstd"),
+      "codeql-bundle-linux64.tar.zst",
+    );
+  },
+);
 
 test.serial("getCodeQLBundleName names the Swift bundle for macOS", (t) => {
   sinon.stub(process, "platform").value("darwin");
@@ -1313,7 +1430,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
             bundle: { kind: "combined", url: combinedURL },
           });
           checkExpectedLogMessages(t, loggedMessages, [
-            `No javascript CodeQL bundle was found at ${perLanguageURL}`,
+            `No per-language CodeQL bundle for 'javascript' was found at ${perLanguageURL}`,
           ]);
         }
         if (bundle === "per-language") {

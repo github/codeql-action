@@ -543,7 +543,11 @@ export async function getCodeQLSource(
         `Using the latest CodeQL CLI nightly, as requested by 'tools: ${toolsInput}'.`,
       );
     }
-    bundle = await getNightlyBundle(rawLanguages, variant, features, logger);
+    bundle = await getNightlyBundle(
+      { env: getEnv(), features, logger },
+      rawLanguages,
+      variant,
+    );
     toolsInput = bundle.url;
   }
 
@@ -774,6 +778,7 @@ export async function getCodeQLSource(
         : "gzip";
 
     const perLanguageBundleLanguage = await getPerLanguageBundleLanguage(
+      { env: getEnv(), features, logger },
       {
         rawLanguages,
         cliVersion,
@@ -781,8 +786,6 @@ export async function getCodeQLSource(
         platform: getBundlePlatform(),
         variant,
       },
-      features,
-      logger,
     );
 
     const resolveBundleURL = (language?: BuiltInLanguage) =>
@@ -1220,11 +1223,11 @@ function getTempExtractionDir(tempDir: string) {
 
 /** Selects a bundle from the latest nightly, with a same-release fallback when applicable. */
 async function getNightlyBundle(
+  action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
   rawLanguages: string[] | undefined,
   variant: util.GitHubVariant,
-  features: FeatureEnablement,
-  logger: Logger,
 ): Promise<CodeQLBundle> {
+  const { logger } = action;
   const zstdAvailability = await tar.isZstdAvailable(logger);
   // The nightly is guaranteed to have a zstd bundle
   const compressionMethod = (await useZstdBundle(
@@ -1234,18 +1237,14 @@ async function getNightlyBundle(
     ? "zstd"
     : "gzip";
 
-  const language = await getPerLanguageBundleLanguage(
-    {
-      rawLanguages,
-      cliVersion: undefined,
-      compressionMethod,
-      platform: getBundlePlatform(),
-      variant,
-      isNightly: true,
-    },
-    features,
-    logger,
-  );
+  const language = await getPerLanguageBundleLanguage(action, {
+    rawLanguages,
+    cliVersion: undefined,
+    compressionMethod,
+    platform: getBundlePlatform(),
+    variant,
+    isNightly: true,
+  });
 
   try {
     // Since nightlies are prereleases, we can't just download the latest release

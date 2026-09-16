@@ -7,7 +7,7 @@ import * as github from "@actions/github";
 import * as io from "@actions/io";
 
 import type { Config } from "./config-utils";
-import { Env, EnvVar, ActionsEnvVars } from "./environment";
+import { Env, EnvVar, ActionsEnvVars, ReadOnlyEnv } from "./environment";
 import { Logger } from "./logging";
 import {
   doesDirectoryExist,
@@ -292,7 +292,7 @@ export function isSelfHostedRunner(env: Env = getEnv()) {
  * that are configured to resemble hosted ones, such as those that mount a persistent volume at
  * `/opt/hostedtoolcache`.
  */
-export function isGitHubHostedRunner(env: Env = getEnv()) {
+export function isGitHubHostedRunner(env: ReadOnlyEnv = getEnv()) {
   return env.getOptional(ActionsEnvVars.RUNNER_ENVIRONMENT) === "github-hosted";
 }
 

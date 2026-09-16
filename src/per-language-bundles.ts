@@ -2,6 +2,7 @@ import * as semver from "semver";
 
 import { ActionState } from "./action-common";
 import { isGitHubHostedRunner } from "./actions-util";
+import { BundlePlatform } from "./bundle-platform";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import * as tar from "./tar";
@@ -30,20 +31,24 @@ export function tryGetBundleLanguageFromUrl(
   return match ? parseBuiltInLanguage(match[1]) : undefined;
 }
 
-/** Published platform for each language; absent entries are ineligible. */
-const PER_LANGUAGE_BUNDLE_PLATFORMS: Readonly<
-  Partial<Record<BuiltInLanguage, string>>
+/** Languages with per-language bundles published for each platform. */
+const PER_LANGUAGE_BUNDLE_LANGUAGES: Readonly<
+  Record<BundlePlatform, ReadonlySet<BuiltInLanguage>>
 > = {
-  [BuiltInLanguage.actions]: "linux64",
-  [BuiltInLanguage.cpp]: "linux64",
-  [BuiltInLanguage.csharp]: "linux64",
-  [BuiltInLanguage.go]: "linux64",
-  [BuiltInLanguage.java]: "linux64",
-  [BuiltInLanguage.javascript]: "linux64",
-  [BuiltInLanguage.python]: "linux64",
-  [BuiltInLanguage.ruby]: "linux64",
-  [BuiltInLanguage.rust]: "linux64",
-  [BuiltInLanguage.swift]: "osx64",
+  [BundlePlatform.Linux64]: new Set([
+    BuiltInLanguage.actions,
+    BuiltInLanguage.cpp,
+    BuiltInLanguage.csharp,
+    BuiltInLanguage.go,
+    BuiltInLanguage.java,
+    BuiltInLanguage.javascript,
+    BuiltInLanguage.python,
+    BuiltInLanguage.ruby,
+    BuiltInLanguage.rust,
+  ]),
+  [BundlePlatform.LinuxArm64]: new Set(),
+  [BundlePlatform.Osx64]: new Set([BuiltInLanguage.swift]),
+  [BundlePlatform.Win64]: new Set(),
 };
 
 /** Inputs that determine whether we may download a per-language bundle. */
@@ -53,8 +58,8 @@ export interface PerLanguageBundleOptions {
   /** CLI version, if known. Ignored for nightly bundles. */
   cliVersion: string | undefined;
   compressionMethod: tar.CompressionMethod;
-  /** Bundle platform identifier, such as linux64. */
-  platform: string | undefined;
+  /** Platform for which the bundle is requested. */
+  platform: BundlePlatform | undefined;
   variant: GitHubVariant;
   isNightly?: boolean;
 }
@@ -130,14 +135,13 @@ export async function getPerLanguageBundleLanguage(
     }
   }
 
-  const supportedPlatform = PER_LANGUAGE_BUNDLE_PLATFORMS[language];
-  if (supportedPlatform === undefined) {
-    return explain(`no per-language bundle is published for ${language}`);
-  }
-  if (supportedPlatform !== platform) {
+  const supportedLanguages =
+    platform === undefined
+      ? undefined
+      : PER_LANGUAGE_BUNDLE_LANGUAGES[platform];
+  if (!supportedLanguages?.has(language)) {
     return explain(
-      `the ${language} bundle is only published for ${supportedPlatform}, but this job is ` +
-        `running on ${platform ?? "an unknown platform"}`,
+      `no per-language bundle is published for ${language} on ${platform ?? "an unknown platform"}`,
     );
   }
 

@@ -17,6 +17,7 @@ import { ActionsEnv, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
+import { getBundlePlatform } from "./bundle-platform";
 import { CachingKind } from "./caching-utils";
 import { resetCachedCodeQlVersion } from "./cli/output-cache";
 import type { VersionInfo } from "./cli/types";
@@ -933,21 +934,14 @@ export function mockBundleDownloadApi({
   platformSpecific?: boolean;
   tagName: string;
 }): string {
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "linux"
-        ? process.arch === "arm64"
-          ? "linux-arm64"
-          : "linux64"
-        : "osx64";
+  const platform = platformSpecific ? getBundlePlatform() : undefined;
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
 
   const bundleUrls = ["tar.gz", "tar.zst"].map((extension) => {
     const relativeUrl = apiDetails
       ? `/${repo}/releases/download/${tagName}/codeql-bundle${
-          platformSpecific ? `-${platform}` : ""
+          platform !== undefined ? `-${platform}` : ""
         }.${extension}`
       : `/download/${tagName}/codeql-bundle.${extension}`;
 

@@ -172,6 +172,7 @@ test.serial("load empty config", async (t) => {
       createTestInitConfigInputs({
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
+        sourceRoot: tempDir,
         tempDir,
         codeql,
         logger,
@@ -186,6 +187,7 @@ test.serial("load empty config", async (t) => {
         logger,
       }),
       {},
+      undefined,
     );
 
     t.deepEqual(config, expectedConfig);
@@ -216,6 +218,7 @@ test.serial("load code quality config", async (t) => {
         analysisKinds: [AnalysisKind.CodeQuality],
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
+        sourceRoot: tempDir,
         tempDir,
         codeql,
         logger,
@@ -296,6 +299,7 @@ test.serial(
             analysisKinds: [AnalysisKind.CodeQuality],
             languagesInput: languages,
             repository: { owner: "github", repo: "example" },
+            sourceRoot: tempDir,
             tempDir,
             codeql,
             repositoryProperties,
@@ -512,6 +516,7 @@ test.serial("load non-empty input", async (t) => {
     // And the config we expect it to parse to
     const expectedConfig = createTestConfig({
       languages: [BuiltInLanguage.javascript],
+      repositoryRoot: undefined,
       buildMode: BuildMode.None,
       originalUserInput: userConfig,
       computedConfig: userConfig,
@@ -532,6 +537,7 @@ test.serial("load non-empty input", async (t) => {
       state,
       createTestInitConfigInputs({
         languagesInput,
+        sourceRoot: tempDir,
         buildModeInput: "none",
         configFile: configFilePath,
         debugArtifactName: "my-artifact",
@@ -1092,11 +1098,6 @@ const checkOverlayEnablementMacro = makeMacro({
             return lang === BuiltInLanguage.java;
           });
 
-        // Mock git root detection
-        if (setup.gitRoot !== undefined) {
-          sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
-        }
-
         // Mock submodule detection
         sinon.stub(gitUtils, "hasSubmodules").returns(setup.hasSubmodules);
 
@@ -1109,6 +1110,7 @@ const checkOverlayEnablementMacro = makeMacro({
           codeql,
           features,
           setup.languages,
+          setup.gitRoot, // repositoryRoot
           tempDir, // sourceRoot
           setup.buildMode,
           undefined,

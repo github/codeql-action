@@ -968,6 +968,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
     {},
     {
       version: getActionVersion(),
+      repositoryRoot: undefined,
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
       buildMode: undefined,

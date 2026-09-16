@@ -385,6 +385,7 @@ export async function initActionState(
     enableFileCoverageInformation,
   }: InitConfigInputs,
   userConfig: UserConfig,
+  repositoryRoot: string | undefined,
 ): Promise<Config> {
   const languages = await getLanguages(
     codeql,
@@ -436,6 +437,7 @@ export async function initActionState(
 
   return {
     version: getActionVersion(),
+    repositoryRoot,
     analysisKinds,
     languages,
     buildMode,
@@ -718,6 +720,7 @@ export async function checkOverlayEnablement(
   codeql: CodeQL,
   features: FeatureEnablement,
   languages: Language[],
+  repositoryRoot: string | undefined,
   sourceRoot: string,
   buildMode: BuildMode | undefined,
   ramInput: string | undefined,
@@ -747,6 +750,7 @@ export async function checkOverlayEnablement(
       true,
       codeql,
       languages,
+      repositoryRoot,
       sourceRoot,
       buildMode,
       gitVersion,
@@ -836,6 +840,7 @@ export async function checkOverlayEnablement(
     false,
     codeql,
     languages,
+    repositoryRoot,
     sourceRoot,
     buildMode,
     gitVersion,
@@ -855,6 +860,7 @@ async function validateOverlayDatabaseMode(
   overlayModeSetExplicitly: boolean,
   codeql: CodeQL,
   languages: Language[],
+  repositoryRoot: string | undefined,
   sourceRoot: string,
   buildMode: BuildMode | undefined,
   gitVersion: GitVersionInfo | undefined,
@@ -890,8 +896,7 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.IncompatibleCodeQl);
   }
-  const gitRoot = await getGitRoot(sourceRoot);
-  if (gitRoot === undefined) {
+  if (repositoryRoot === undefined) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the source root "${sourceRoot}" is not inside a git repository. ` +
@@ -899,7 +904,7 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.NoGitRoot);
   }
-  if (hasSubmodules(gitRoot)) {
+  if (hasSubmodules(repositoryRoot)) {
     if (gitVersion === undefined) {
       logger.warning(
         `Cannot build an ${overlayDatabaseMode} database because ` +
@@ -1160,9 +1165,11 @@ export async function initConfig(
   const { logger, features } = actionState;
   const { tempDir } = inputs;
 
+  const repositoryRoot = await getGitRoot(inputs.sourceRoot);
+
   const userConfig = await determineUserConfig(actionState, tempDir, inputs);
 
-  const config = await initActionState(inputs, userConfig);
+  const config = await initActionState(inputs, userConfig, repositoryRoot);
 
   // If Code Quality analysis is the only enabled analysis kind, then we will initialise
   // the database for Code Quality. That entails disabling the default queries and only
@@ -1244,6 +1251,7 @@ export async function initConfig(
     inputs.codeql,
     inputs.features,
     config.languages,
+    repositoryRoot,
     inputs.sourceRoot,
     config.buildMode,
     inputs.ramInput,

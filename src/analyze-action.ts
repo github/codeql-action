@@ -310,7 +310,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       logger,
     );
 
-    const checkoutPath = determineCheckoutPath(action);
+    const checkoutPath = await determineCheckoutPath(action);
 
     // Setup diff informed analysis if needed (based on whether init created the file)
     const diffRangePackDir = await setupDiffInformedQueryRun(

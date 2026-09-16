@@ -17,6 +17,11 @@ export interface Config {
    */
   version: string;
   /**
+   * The path at which the repository being analysed is checked out at, if available.
+   * Persisted in the CodeQL Action configuration state, so that we can consult it in later workflow steps.
+   */
+  repositoryRoot: string | undefined;
+  /**
    * Set of analysis kinds that are enabled.
    */
   analysisKinds: AnalysisKind[];

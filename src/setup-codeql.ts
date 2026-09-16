@@ -880,9 +880,9 @@ export const downloadCodeQL = async function (
   }
 
   const toolcacheDestination = getToolcacheDestination({ logger }, source);
-  const extractedBundlePath = toolcacheDestination.isSuccess()
-    ? toolcacheDestination.value
-    : getTempExtractionDir(tempDir);
+  const extractedBundlePath = toolcacheDestination.orElse(
+    getTempExtractionDir(tempDir),
+  );
 
   const statusReport = await downloadAndExtract(
     codeqlURL,

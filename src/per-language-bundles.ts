@@ -11,26 +11,6 @@ import { GitHubVariant } from "./util";
 /** Minimum CLI version for selecting a per-language release bundle. */
 export const MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION = "2.27.1";
 
-const PER_LANGUAGE_BUNDLE_NAME =
-  /^codeql-bundle-(.+)-(?:linux64|osx64|win64)\.tar\.(?:gz|zst)$/;
-
-/** Returns the language in a per-language tools URL, or undefined for other URLs. */
-export function tryGetBundleLanguageFromUrl(
-  url: string,
-): BuiltInLanguage | undefined {
-  let assetName: string;
-  try {
-    const pathname = new URL(url).pathname;
-    // URL-encoded names must not bypass the toolcache safeguard.
-    assetName = decodeURIComponent(pathname.split("/").pop() ?? "");
-  } catch {
-    return undefined;
-  }
-
-  const match = assetName.match(PER_LANGUAGE_BUNDLE_NAME);
-  return match ? parseBuiltInLanguage(match[1]) : undefined;
-}
-
 /** Languages with per-language bundles published for each platform. */
 const PER_LANGUAGE_BUNDLE_LANGUAGES: Readonly<
   Record<BundlePlatform, ReadonlySet<BuiltInLanguage>>

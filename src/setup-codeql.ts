@@ -18,6 +18,7 @@ import {
 } from "./actions-util";
 import * as api from "./api-client";
 import { getBundlePlatform } from "./bundle-platform";
+import { CodeQLBundle, getCodeQLBundleFromUrl } from "./codeql-bundle";
 import * as defaults from "./defaults.json";
 import {
   addNoLanguageDiagnostic,
@@ -35,10 +36,7 @@ import {
 import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
-import {
-  getPerLanguageBundleLanguage,
-  tryGetBundleLanguageFromUrl,
-} from "./per-language-bundles";
+import { getPerLanguageBundleLanguage } from "./per-language-bundles";
 import * as tar from "./tar";
 import {
   deleteToolcacheBundles,
@@ -224,17 +222,6 @@ export function convertToSemVer(version: string, logger: Logger): string {
 
   return s;
 }
-
-/** Describes the contents and location of a downloadable CodeQL bundle. */
-type CodeQLBundle =
-  | { kind: "combined"; url: string }
-  | {
-      kind: "per-language";
-      url: string;
-      language: BuiltInLanguage;
-      /** Only set when the Action selected the bundle, allowing a same-version fallback. */
-      combinedBundleURL?: string;
-    };
 
 /** A resolved download, including its bundle identity and version. */
 export interface CodeQLDownloadSource {
@@ -816,14 +803,7 @@ export async function getCodeQLSource(
     }
     compressionMethod = method;
 
-    if (bundle === undefined) {
-      // Explicit per-language URLs must also stay out of the toolcache, but have no fallback.
-      const language = tryGetBundleLanguageFromUrl(url);
-      bundle =
-        language === undefined
-          ? { kind: "combined", url }
-          : { kind: "per-language", url, language };
-    }
+    bundle ??= getCodeQLBundleFromUrl(url);
     if (bundle.kind === "per-language") {
       logger.info(
         `${url} appears to be a CodeQL bundle that contains only ${bundle.language}.`,

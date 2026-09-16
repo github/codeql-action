@@ -14,7 +14,7 @@ export const MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION = "2.27.1";
 const PER_LANGUAGE_BUNDLE_NAME =
   /^codeql-bundle-(.+)-(?:linux64|osx64|win64)\.tar\.(?:gz|zst)$/;
 
-/** Identifies per-language tools URLs that must not populate the toolcache. */
+/** Returns the language in a per-language tools URL, or undefined for other URLs. */
 export function tryGetBundleLanguageFromUrl(
   url: string,
 ): BuiltInLanguage | undefined {
@@ -55,13 +55,14 @@ const PER_LANGUAGE_BUNDLE_LANGUAGES: Readonly<
 export interface PerLanguageBundleOptions {
   /** Explicit input only: autodetection needs a CLI instance. */
   rawLanguages: string[] | undefined;
-  /** CLI version, if known. Ignored for nightly bundles. */
+  /** Requested CLI version, if known. Ignored when requesting the latest nightly. */
   cliVersion: string | undefined;
   compressionMethod: tar.CompressionMethod;
   /** Platform for which the bundle is requested. */
   platform: BundlePlatform | undefined;
   variant: GitHubVariant;
-  isNightly?: boolean;
+  /** Whether the Action is selecting the latest nightly rather than a release version. */
+  isLatestNightly?: boolean;
 }
 
 /** Returns the eligible bundle language, or undefined for the combined bundle. */
@@ -79,7 +80,7 @@ export async function getPerLanguageBundleLanguage(
     compressionMethod,
     platform,
     variant,
-    isNightly,
+    isLatestNightly,
   } = options;
 
   const explain = (reason: string) => {
@@ -106,7 +107,7 @@ export async function getPerLanguageBundleLanguage(
 
   if (compressionMethod !== "zstd") {
     // Per-language bundles are only published as zstd archives.
-    return explain(`the bundle would be downloaded as ${compressionMethod}`);
+    return explain(`the bundle would be downloaded as '${compressionMethod}'`);
   }
 
   if (variant !== GitHubVariant.DOTCOM) {
@@ -121,16 +122,17 @@ export async function getPerLanguageBundleLanguage(
     return explain("the job is not running on a GitHub-hosted runner");
   }
 
-  // Nightly tags contain dates rather than comparable CLI versions.
-  if (!isNightly) {
+  // Check whether per-language bundles are published for the requested CLI version.
+  // Skip this for the latest nightly, whose tag contains a date rather than a CLI version.
+  if (!isLatestNightly) {
     if (cliVersion === undefined) {
-      return explain("the CLI version of the bundle is unknown");
+      return explain("the requested CLI version is unknown");
     }
 
     if (!semver.gte(cliVersion, MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION)) {
       return explain(
-        `CodeQL ${cliVersion} is older than ${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}, which is the ` +
-          "first version that publishes per-language bundles",
+        `the requested CodeQL version ${cliVersion} is older than ${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}, which is the ` +
+          "first version for which per-language bundles are published",
       );
     }
   }

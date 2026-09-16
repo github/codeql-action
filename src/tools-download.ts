@@ -17,6 +17,7 @@ import * as tar from "./tar";
 import {
   asHTTPError,
   cleanUpPath,
+  durationMsSince,
   getErrorMessage,
   getRequiredEnvParam,
   HTTPError,
@@ -91,7 +92,7 @@ export async function downloadAndExtract(
         logger,
       );
 
-      const totalDurationMs = Math.round(performance.now() - startTime);
+      const totalDurationMs = durationMsSince(startTime);
       logger.info(
         `Finished downloading and extracting CodeQL bundle to ${dest} (${formatDuration(
           totalDurationMs,
@@ -124,7 +125,7 @@ export async function downloadAndExtract(
     authorization,
     headers,
   );
-  const downloadDurationMs = Math.round(performance.now() - toolsDownloadStart);
+  const downloadDurationMs = durationMsSince(toolsDownloadStart);
 
   logger.info(
     `Finished downloading CodeQL bundle to ${archivedBundlePath} (${formatDuration(
@@ -144,7 +145,7 @@ export async function downloadAndExtract(
       tarVersion,
       logger,
     );
-    extractionDurationMs = Math.round(performance.now() - extractionStart);
+    extractionDurationMs = durationMsSince(extractionStart);
     logger.info(
       `Finished extracting CodeQL bundle to ${dest} (${formatDuration(
         extractionDurationMs,
@@ -157,7 +158,7 @@ export async function downloadAndExtract(
   return {
     downloadDurationMs,
     extractionDurationMs,
-    totalDurationMs: Math.round(performance.now() - startTime),
+    totalDurationMs: durationMsSince(startTime),
   };
 }
 

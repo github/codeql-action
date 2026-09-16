@@ -212,7 +212,11 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
-async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
+async function run({
+  startedAt,
+  logger,
+  actions,
+}: ActionState<["Base", "Logger", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
@@ -307,8 +311,13 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       logger,
     );
 
+    const checkoutPath = actions.getRequiredInput("checkout_path");
+
     // Setup diff informed analysis if needed (based on whether init created the file)
-    const diffRangePackDir = await setupDiffInformedQueryRun(logger);
+    const diffRangePackDir = await setupDiffInformedQueryRun(
+      logger,
+      checkoutPath,
+    );
 
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
@@ -354,7 +363,6 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       actionsUtil.getOptionalInput("upload"),
     );
     if (runStats) {
-      const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
       uploadResults = await postProcessAndUploadSarif(

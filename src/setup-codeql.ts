@@ -164,7 +164,7 @@ function tryGetBundleVersionFromTagName(
   tagName: string,
   logger: Logger,
 ): string | undefined {
-  const match = tagName.match(/^codeql-bundle-(.*)$/);
+  const match = tagName.match(/^codeql-bundle-(.+)$/);
   if (match === null || match.length < 2) {
     logger.debug(`Could not determine bundle version from tag ${tagName}.`);
     return undefined;
@@ -215,12 +215,16 @@ export function convertToSemVer(version: string, logger: Logger): string {
   return s;
 }
 
+/** Describes the contents and location of a downloadable CodeQL bundle. */
 type CodeQLBundle = { kind: "combined"; url: string };
 
 /** A resolved download, including its bundle identity and version. */
 export interface CodeQLDownloadSource {
+  /** Distinguishes downloads from local archives and cached installations. */
   sourceType: "download";
+  /** The bundle to download. */
   bundle: CodeQLBundle;
+  /** The compression format of the bundle archive. */
   compressionMethod: tar.CompressionMethod;
   /** Bundle version of the tools, if known. */
   bundleVersion?: string;
@@ -588,7 +592,7 @@ export async function getCodeQLSource(
     if (tagName) {
       const bundleVersion = tryGetBundleVersionFromTagName(tagName, logger);
       // If the bundle version is a semantic version, it is a CLI version number.
-      if (bundleVersion && semver.valid(bundleVersion)) {
+      if (bundleVersion !== undefined && semver.valid(bundleVersion)) {
         cliVersion = convertToSemVer(bundleVersion, logger);
       }
     }
@@ -605,10 +609,14 @@ export async function getCodeQLSource(
   }
 
   const bundleVersion =
-    tagName && tryGetBundleVersionFromTagName(tagName, logger);
+    tagName !== undefined
+      ? tryGetBundleVersionFromTagName(tagName, logger)
+      : undefined;
   const resolvedVersion =
     cliVersion ??
-    (bundleVersion ? convertToSemVer(bundleVersion, logger) : undefined);
+    (bundleVersion !== undefined
+      ? convertToSemVer(bundleVersion, logger)
+      : undefined);
   const humanReadableVersion = resolvedVersion ?? tagName ?? url ?? "unknown";
 
   logger.debug(
@@ -772,7 +780,7 @@ async function tryGetFallbackToolcacheVersion(
   logger: Logger,
 ): Promise<string | undefined> {
   const bundleVersion = tryGetBundleVersionFromTagName(tagName, logger);
-  if (!bundleVersion) {
+  if (bundleVersion === undefined) {
     return undefined;
   }
   const fallbackVersion = convertToSemVer(bundleVersion, logger);
@@ -844,6 +852,10 @@ export const downloadCodeQL = async function (
   };
 };
 
+/**
+ * Returns the canonical toolcache directory for a resolved download, or `undefined` if its bundle
+ * version is unknown.
+ */
 function getToolcacheDestination(
   source: CodeQLDownloadSource,
   logger: Logger,
@@ -1004,12 +1016,11 @@ export async function setupCodeQLBundle(
       break;
     case "download": {
       const result = await downloadCodeQLBundle(
+        { env: getEnv(), features, logger },
         source,
         apiDetails,
         zstdAvailability.version,
         tempDir,
-        features,
-        logger,
       );
       codeqlFolder = result.codeqlFolder;
       toolsDownloadStatusReport = result.statusReport;
@@ -1032,19 +1043,29 @@ export async function setupCodeQLBundle(
   };
 }
 
+/**
+ * Performs eligible toolcache cleanup once, then downloads and extracts the resolved bundle.
+ *
+ * @returns The extraction directory and download timings.
+ */
 export async function downloadCodeQLBundle(
+  action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
   source: CodeQLDownloadSource,
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
-  features: FeatureEnablement,
-  logger: Logger,
 ): Promise<{
   codeqlFolder: string;
   statusReport: ToolsDownloadStatusReport;
 }> {
-  await tryDeleteToolcacheBundles({ env: getEnv(), features, logger });
-  return await downloadCodeQL(source, apiDetails, tarVersion, tempDir, logger);
+  await tryDeleteToolcacheBundles(action);
+  return await downloadCodeQL(
+    source,
+    apiDetails,
+    tarVersion,
+    tempDir,
+    action.logger,
+  );
 }
 
 async function useZstdBundle(

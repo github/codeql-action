@@ -20,7 +20,7 @@ import {
   checkExpectedLogMessages,
   createFeatures,
   createTestConfig,
-  getRecordingLogger,
+  initAllState,
   LoggedMessage,
   setupActionsVars,
   setupTests,
@@ -99,12 +99,12 @@ test.serial(
 
       const loggedMessages: LoggedMessage[] = [];
       await cleanupAndUploadDatabases(
+        initAllState(),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
       checkExpectedLogMessages(t, loggedMessages, [
         "Database upload disabled in workflow. Skipping upload.",
@@ -128,6 +128,7 @@ test.serial(
 
       const loggedMessages: LoggedMessage[] = [];
       await cleanupAndUploadDatabases(
+        initAllState(),
         testRepoName,
         getCodeQL(),
         {
@@ -135,8 +136,7 @@ test.serial(
           analysisKinds: [AnalysisKind.CodeQuality],
         },
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
       checkExpectedLogMessages(t, loggedMessages, [
         "Not uploading database because 'analysis-kinds: code-scanning' is not enabled.",
@@ -159,12 +159,12 @@ test.serial("Abort database upload if running against GHES", async (t) => {
 
     const loggedMessages: LoggedMessage[] = [];
     await cleanupAndUploadDatabases(
+      initAllState(),
       testRepoName,
       getCodeQL(),
       config,
       testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
+      "",
     );
     checkExpectedLogMessages(t, loggedMessages, [
       "Not running against github.com or GHEC-DR. Skipping upload.",
@@ -185,12 +185,12 @@ test.serial(
 
       const loggedMessages: LoggedMessage[] = [];
       await cleanupAndUploadDatabases(
+        initAllState(),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
       checkExpectedLogMessages(t, loggedMessages, [
         "Not analyzing default branch. Skipping upload.",
@@ -214,12 +214,12 @@ test.serial(
 
       const loggedMessages: LoggedMessage[] = [];
       await cleanupAndUploadDatabases(
+        initAllState(),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
 
       checkExpectedLogMessages(t, loggedMessages, [
@@ -253,12 +253,12 @@ test.serial(
 
       const loggedMessages: LoggedMessage[] = [];
       await cleanupAndUploadDatabases(
+        initAllState(),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
 
       checkExpectedLogMessages(t, loggedMessages, [
@@ -290,12 +290,12 @@ test.serial("Successfully uploading a database to github.com", async (t) => {
 
     const loggedMessages: LoggedMessage[] = [];
     await cleanupAndUploadDatabases(
+      initAllState(),
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
+      "",
     );
     checkExpectedLogMessages(t, loggedMessages, [
       "Successfully uploaded database for javascript",
@@ -316,6 +316,7 @@ test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
 
     const loggedMessages: LoggedMessage[] = [];
     await cleanupAndUploadDatabases(
+      initAllState(),
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
@@ -324,8 +325,7 @@ test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
         url: "https://tenant.ghe.com",
         apiURL: undefined,
       },
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
+      "",
     );
     checkExpectedLogMessages(t, loggedMessages, [
       "Successfully uploaded database for javascript",
@@ -375,14 +375,15 @@ test.serial(
       const config = getTestConfig(tmpDir);
       config.overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
 
-      const loggedMessages: LoggedMessage[] = [];
       const results = await cleanupAndUploadDatabases(
+        initAllState({
+          features: createFeatures([Feature.UploadOverlayDbToApi]),
+        }),
         testRepoName,
         codeql,
         config,
         testApiDetails,
-        createFeatures([Feature.UploadOverlayDbToApi]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
 
       // The database should be cleaned up at the `overlay` level for the upload
@@ -422,12 +423,14 @@ test.serial(
       });
 
       const results = await cleanupAndUploadDatabases(
+        initAllState({
+          features: createFeatures([Feature.UploadOverlayDbToApi]),
+        }),
         testRepoName,
         codeql,
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([Feature.UploadOverlayDbToApi]),
-        getRecordingLogger([]),
+        "",
       );
 
       // A regular upload is cleaned only once, at the `clear` level.
@@ -465,12 +468,14 @@ test.serial("Does not measure clear cleanup size in debug mode", async (t) => {
     config.debugMode = true;
 
     const results = await cleanupAndUploadDatabases(
+      initAllState({
+        features: createFeatures([Feature.UploadOverlayDbToApi]),
+      }),
       testRepoName,
       codeql,
       config,
       testApiDetails,
-      createFeatures([Feature.UploadOverlayDbToApi]),
-      getRecordingLogger([]),
+      "",
     );
 
     // In debug mode we clean up at the `overlay` level for the upload but skip
@@ -510,12 +515,14 @@ test.serial(
       config.overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
 
       const results = await cleanupAndUploadDatabases(
+        initAllState({
+          features: createFeatures([Feature.UploadOverlayDbToApi]),
+        }),
         testRepoName,
         codeql,
         config,
         testApiDetails,
-        createFeatures([Feature.UploadOverlayDbToApi]),
-        getRecordingLogger([]),
+        "",
       );
 
       // When the `clear` cleanup fails, no size is measured, so we should not

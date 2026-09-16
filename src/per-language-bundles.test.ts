@@ -1,5 +1,6 @@
 import test from "ava";
 
+import { BundlePlatform } from "./bundle-platform";
 import { ActionsEnvVars, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
@@ -23,7 +24,7 @@ const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
   // Any version at least as new as the minimum will do.
   cliVersion: MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   compressionMethod: "zstd",
-  platform: "linux64",
+  platform: BundlePlatform.Linux64,
   variant: GitHubVariant.DOTCOM,
 };
 
@@ -44,14 +45,21 @@ async function checkEligibility(
   );
 }
 
-test("getPerLanguageBundleLanguage selects Linux bundles for non-Swift languages", async (t) => {
-  for (const language of Object.values(BuiltInLanguage)) {
-    if (language === BuiltInLanguage.swift) {
-      continue;
+for (const platform of Object.values(BundlePlatform)) {
+  test(`getPerLanguageBundleLanguage selects only supported languages on ${platform}`, async (t) => {
+    for (const language of Object.values(BuiltInLanguage)) {
+      const supported =
+        language === BuiltInLanguage.swift
+          ? platform === BundlePlatform.Osx64
+          : platform === BundlePlatform.Linux64;
+      t.is(
+        await checkEligibility({ rawLanguages: [language], platform }),
+        supported ? language : undefined,
+        language,
+      );
     }
-    t.is(await checkEligibility({ rawLanguages: [language] }), language);
-  }
-});
+  });
+}
 
 test("getPerLanguageBundleLanguage normalizes aliases before selecting a bundle", async (t) => {
   t.is(
@@ -60,23 +68,7 @@ test("getPerLanguageBundleLanguage normalizes aliases before selecting a bundle"
   );
 });
 
-test("getPerLanguageBundleLanguage selects the macOS bundle for Swift", async (t) => {
-  t.is(
-    await checkEligibility({ rawLanguages: ["swift"], platform: "osx64" }),
-    BuiltInLanguage.swift,
-  );
-  // Swift is only published for macOS.
-  t.is(
-    await checkEligibility({ rawLanguages: ["swift"], platform: "linux64" }),
-    undefined,
-  );
-});
-
-test("getPerLanguageBundleLanguage rejects unsupported platforms", async (t) => {
-  t.is(await checkEligibility({ platform: "osx64" }), undefined);
-  t.is(await checkEligibility({ platform: "win64" }), undefined);
-  // We do not publish per-language bundles for Linux Arm64 either.
-  t.is(await checkEligibility({ platform: "linux-arm64" }), undefined);
+test("getPerLanguageBundleLanguage rejects unknown platforms", async (t) => {
   t.is(await checkEligibility({ platform: undefined }), undefined);
 });
 
@@ -164,7 +156,7 @@ test("getPerLanguageBundleLanguage skips only the release version check for nigh
     { rawLanguages: undefined },
     { rawLanguages: ["java", "python"] },
     { compressionMethod: "gzip" as const },
-    { platform: "osx64" },
+    { platform: BundlePlatform.Osx64 },
     { variant: GitHubVariant.GHES },
     { variant: GitHubVariant.GHEC_DR },
   ]) {

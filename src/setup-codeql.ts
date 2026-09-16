@@ -17,6 +17,7 @@ import {
   isRunningLocalAction,
 } from "./actions-util";
 import * as api from "./api-client";
+import { getBundlePlatform } from "./bundle-platform";
 import * as defaults from "./defaults.json";
 import {
   addNoLanguageDiagnostic,
@@ -75,20 +76,6 @@ function getCodeQLBundleExtension(
       return ".tar.zst";
     default:
       util.assertNever(compressionMethod);
-  }
-}
-
-/** Returns the platform component of the CodeQL bundle name for the current platform. */
-export function getBundlePlatform(): string | undefined {
-  switch (process.platform) {
-    case "win32":
-      return "win64";
-    case "linux":
-      return process.arch === "arm64" ? "linux-arm64" : "linux64";
-    case "darwin":
-      return "osx64";
-    default:
-      return undefined;
   }
 }
 

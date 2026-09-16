@@ -1170,7 +1170,7 @@ export async function downloadCodeQLBundle(
       ...result,
       statusReport: {
         ...result.statusReport,
-        totalDurationMs: Math.round(performance.now() - startTime),
+        totalDurationMs: util.durationMsSince(startTime),
         perLanguageBundleFallback: true,
       },
     };

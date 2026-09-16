@@ -50,6 +50,7 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  const env = getEnv();
   let config: Config | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
@@ -91,7 +92,7 @@ async function run(startedAt: Date) {
         repositoryNwo,
         features,
         jobStatus,
-        getEnv(),
+        env,
         logger,
       );
 
@@ -100,7 +101,7 @@ async function run(startedAt: Date) {
       // do this under these circumstances to avoid slowing down analyses for PRs
       // and where caching may not be enabled.
       if (
-        (await gitUtils.isAnalyzingDefaultBranch()) &&
+        (await gitUtils.isAnalyzingDefaultBranch(env, config.repositoryRoot)) &&
         config.dependencyCachingEnabled !== CachingKind.None
       ) {
         dependencyCachingUsage = await getDependencyCacheUsage(logger);

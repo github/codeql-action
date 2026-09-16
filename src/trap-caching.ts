@@ -14,6 +14,7 @@ import { Language } from "./languages";
 import { Logger } from "./logging";
 import {
   asHTTPError,
+  getEnv,
   getErrorMessage,
   tryGetFolderBytes,
   waitForResultWithTimeLimit,
@@ -43,6 +44,7 @@ const MAX_CACHE_OPERATION_MS = 120_000; // Two minutes
  * @param codeql The CodeQL instance to use.
  * @param languages The languages being analyzed.
  * @param logger A logger to record some informational messages to.
+ * @param repositoryRoot The path at which the repository is checked out at.
  * @returns A partial map from languages to TRAP cache paths on disk, with
  * languages for which we shouldn't use TRAP caching omitted.
  */
@@ -50,6 +52,7 @@ export async function downloadTrapCaches(
   codeql: CodeQL,
   languages: Language[],
   logger: Logger,
+  repositoryRoot: string | undefined,
 ): Promise<{ [language: string]: string }> {
   const result: { [language: string]: string } = {};
   const languagesSupportingCaching = await getLanguagesSupportingCaching(
@@ -72,7 +75,7 @@ export async function downloadTrapCaches(
     result[language] = cacheDir;
   }
 
-  if (await gitUtils.isAnalyzingDefaultBranch()) {
+  if (await gitUtils.isAnalyzingDefaultBranch(getEnv(), repositoryRoot)) {
     logger.info(
       "Analyzing default branch. Skipping downloading of TRAP caches.",
     );
@@ -132,7 +135,12 @@ export async function uploadTrapCaches(
   config: Config,
   logger: Logger,
 ): Promise<boolean> {
-  if (!(await gitUtils.isAnalyzingDefaultBranch())) return false; // Only upload caches from the default branch
+  // Only upload caches from the default branch
+  if (
+    !(await gitUtils.isAnalyzingDefaultBranch(getEnv(), config.repositoryRoot))
+  ) {
+    return false;
+  }
 
   for (const language of config.languages) {
     const cacheDir = config.trapCaches[language];
@@ -180,6 +188,8 @@ export async function cleanupTrapCaches(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<TrapCacheCleanupStatusReport> {
+  const env = getEnv();
+
   if (!(await features.getValue(Feature.CleanupTrapCaches))) {
     return {
       trap_cache_cleanup_skipped_because: "feature disabled",
@@ -189,7 +199,7 @@ export async function cleanupTrapCaches(
     "TRAP cache cleanup is deprecated and will be removed in May 2026. " +
       "We recommend instead disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action.",
   );
-  if (!(await gitUtils.isAnalyzingDefaultBranch())) {
+  if (!(await gitUtils.isAnalyzingDefaultBranch(env, config.repositoryRoot))) {
     return {
       trap_cache_cleanup_skipped_because: "not analyzing default branch",
     };
@@ -200,7 +210,7 @@ export async function cleanupTrapCaches(
 
     const allCaches = await apiClient.listActionsCaches(
       CODEQL_TRAP_CACHE_PREFIX,
-      await gitUtils.getRef(),
+      await gitUtils.getRef(env, config.repositoryRoot),
     );
 
     for (const language of config.languages) {

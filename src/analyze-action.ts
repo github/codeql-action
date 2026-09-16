@@ -396,7 +396,12 @@ async function run({
     // Possibly upload the overlay-base database to actions cache.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` level.
-    await cleanupAndUploadOverlayBaseDatabaseToCache(codeql, config, logger);
+    await cleanupAndUploadOverlayBaseDatabaseToCache(
+      codeql,
+      config,
+      logger,
+      checkoutPath,
+    );
 
     // Possibly upload the database bundles for remote queries.
     // Note: Take care with the ordering of this call since databases may be cleaned up

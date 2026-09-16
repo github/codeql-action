@@ -34,7 +34,7 @@ function main(): number {
 }
 
 function usage(): number {
-  console.log(`Usage: validate-changelog.mts validate <path> [<path> ...]`);
+  console.log(`Usage: changenotes.mts validate <path> [<path> ...]`);
   return 0;
 }
 

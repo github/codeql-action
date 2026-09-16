@@ -46,7 +46,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";
 import {
@@ -467,12 +467,18 @@ async function downloadCacheWithTime(
   codeQL: CodeQL,
   languages: Language[],
   logger: Logger,
+  repositoryRoot: string | undefined,
 ): Promise<{
   trapCaches: { [language: string]: string };
   trapCacheDownloadTime: number;
 }> {
   const start = performance.now();
-  const trapCaches = await downloadTrapCaches(codeQL, languages, logger);
+  const trapCaches = await downloadTrapCaches(
+    codeQL,
+    languages,
+    logger,
+    repositoryRoot,
+  );
   const trapCacheDownloadTime = performance.now() - start;
   return { trapCaches, trapCacheDownloadTime };
 }
@@ -824,7 +830,7 @@ export async function checkOverlayEnablement(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
         "with caching because we are analyzing a pull request.",
     );
-  } else if (await isAnalyzingDefaultBranch()) {
+  } else if (await isAnalyzingDefaultBranch(getEnv(), repositoryRoot)) {
     overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
     logger.info(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
@@ -1305,6 +1311,7 @@ export async function initConfig(
       inputs.codeql,
       config.languages,
       logger,
+      repositoryRoot,
     );
     config.trapCaches = trapCaches;
     config.trapCacheDownloadTime = trapCacheDownloadTime;

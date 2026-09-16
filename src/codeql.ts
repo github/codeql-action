@@ -1212,7 +1212,7 @@ export async function getTrapCachingExtractorConfigArgsForLang(
 ): Promise<string[]> {
   const cacheDir = config.trapCaches[language];
   if (cacheDir === undefined) return [];
-  const write = await isAnalyzingDefaultBranch();
+  const write = await isAnalyzingDefaultBranch(getEnv(), config.repositoryRoot);
   return [
     `-O=${language}.trap.cache.dir=${cacheDir}`,
     `-O=${language}.trap.cache.bound=${TRAP_CACHE_SIZE_MB}`,

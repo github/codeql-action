@@ -307,6 +307,13 @@ export class Env<
     this.changed = true;
   }
 
+  /** Sets all environment variables given by `vars`. */
+  public setAll(vars: Record<string, T>): void {
+    for (const [key, val] of Object.entries(vars)) {
+      this.set(key, val);
+    }
+  }
+
   /** Gets a value indicating whether `set` was called at least once. */
   public hasChanged(): boolean {
     return this.changed;

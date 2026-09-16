@@ -7,31 +7,36 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
+import { ActionsEnvVars, EnvVar } from "./environment";
 import * as gitUtils from "./git-utils";
-import { setupActionsVars, setupTests } from "./testing-utils";
+import { getTestEnv, setupActionsVars, setupTests } from "./testing-utils";
 import { withTmpDir } from "./util";
 
 setupTests(test);
 
-test.serial("getRef() throws on the empty string", async (t) => {
-  process.env["GITHUB_REF"] = "";
-  await t.throwsAsync(gitUtils.getRef);
+test("getRef() throws on the empty string", async (t) => {
+  const env = getTestEnv({ [ActionsEnvVars.GITHUB_REF]: "" });
+  await t.throwsAsync(() => gitUtils.getRef(env, ""));
 });
 
 test.serial(
   "getRef() returns merge PR ref if GITHUB_SHA still checked out",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
       const expectedRef = "refs/pull/1/merge";
       const currentSha = "a".repeat(40);
-      process.env["GITHUB_REF"] = expectedRef;
-      process.env["GITHUB_SHA"] = currentSha;
+
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+      env.setAll({
+        [ActionsEnvVars.GITHUB_REF]: expectedRef,
+        [ActionsEnvVars.GITHUB_SHA]: currentSha,
+      });
 
       const callback = sinon.stub(gitUtils, "getCommitOid");
-      callback.withArgs("HEAD").resolves(currentSha);
+      callback.withArgs(sinon.match.any, "HEAD").resolves(currentSha);
 
-      const actualRef = await gitUtils.getRef();
+      const actualRef = await gitUtils.getRef(env, tmpDir);
       t.deepEqual(actualRef, expectedRef);
     });
   },
@@ -41,17 +46,22 @@ test.serial(
   "getRef() returns merge PR ref if GITHUB_REF still checked out but sha has changed (actions checkout@v1)",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
       const expectedRef = "refs/pull/1/merge";
-      process.env["GITHUB_REF"] = expectedRef;
-      process.env["GITHUB_SHA"] = "b".repeat(40);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+      env.setAll({
+        [ActionsEnvVars.GITHUB_REF]: expectedRef,
+        [ActionsEnvVars.GITHUB_SHA]: "b".repeat(40),
+      });
       const sha = "a".repeat(40);
 
       const callback = sinon.stub(gitUtils, "getCommitOid");
-      callback.withArgs("refs/remotes/pull/1/merge").resolves(sha);
-      callback.withArgs("HEAD").resolves(sha);
+      callback
+        .withArgs(sinon.match.any, "refs/remotes/pull/1/merge")
+        .resolves(sha);
+      callback.withArgs(sinon.match.any, "HEAD").resolves(sha);
 
-      const actualRef = await gitUtils.getRef();
+      const actualRef = await gitUtils.getRef(env, tmpDir);
       t.deepEqual(actualRef, expectedRef);
     });
   },
@@ -61,15 +71,22 @@ test.serial(
   "getRef() returns head PR ref if GITHUB_REF no longer checked out",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
-      process.env["GITHUB_REF"] = "refs/pull/1/merge";
-      process.env["GITHUB_SHA"] = "a".repeat(40);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+      env.setAll({
+        [ActionsEnvVars.GITHUB_REF]: "refs/pull/1/merge",
+        [ActionsEnvVars.GITHUB_SHA]: "a".repeat(40),
+      });
 
       const callback = sinon.stub(gitUtils, "getCommitOid");
-      callback.withArgs(tmpDir, "refs/pull/1/merge").resolves("a".repeat(40));
-      callback.withArgs(tmpDir, "HEAD").resolves("b".repeat(40));
+      callback
+        .withArgs(sinon.match.any, tmpDir, "refs/pull/1/merge")
+        .resolves("a".repeat(40));
+      callback
+        .withArgs(sinon.match.any, tmpDir, "HEAD")
+        .resolves("b".repeat(40));
 
-      const actualRef = await gitUtils.getRef();
+      const actualRef = await gitUtils.getRef(env, tmpDir);
       t.deepEqual(actualRef, "refs/pull/1/head");
     });
   },
@@ -79,7 +96,6 @@ test.serial(
   "getRef() returns ref provided as an input and ignores current HEAD",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
       const getAdditionalInputStub = sinon.stub(
         actionsUtil,
         "getOptionalInput",
@@ -88,14 +104,20 @@ test.serial(
       getAdditionalInputStub.withArgs("sha").resolves("b".repeat(40));
 
       // These values are be ignored
-      process.env["GITHUB_REF"] = "refs/pull/1/merge";
-      process.env["GITHUB_SHA"] = "a".repeat(40);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+      env.setAll({
+        [ActionsEnvVars.GITHUB_REF]: "refs/pull/1/merge",
+        [ActionsEnvVars.GITHUB_SHA]: "a".repeat(40),
+      });
 
       const callback = sinon.stub(gitUtils, "getCommitOid");
-      callback.withArgs("refs/pull/1/merge").resolves("b".repeat(40));
-      callback.withArgs("HEAD").resolves("b".repeat(40));
+      callback
+        .withArgs(sinon.match.any, "refs/pull/1/merge")
+        .resolves("b".repeat(40));
+      callback.withArgs(sinon.match.any, "HEAD").resolves("b".repeat(40));
 
-      const actualRef = await gitUtils.getRef();
+      const actualRef = await gitUtils.getRef(env, tmpDir);
       t.deepEqual(actualRef, "refs/pull/2/merge");
     });
   },
@@ -105,14 +127,17 @@ test.serial(
   "getRef() returns CODE_SCANNING_REF as a fallback for GITHUB_REF",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
       const expectedRef = "refs/pull/1/HEAD";
       const currentSha = "a".repeat(40);
-      process.env["CODE_SCANNING_REF"] = expectedRef;
-      process.env["GITHUB_REF"] = "";
-      process.env["GITHUB_SHA"] = currentSha;
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+      env.setAll({
+        [EnvVar.CODE_SCANNING_REF]: expectedRef,
+        [ActionsEnvVars.GITHUB_REF]: "",
+        [ActionsEnvVars.GITHUB_SHA]: currentSha,
+      });
 
-      const actualRef = await gitUtils.getRef();
+      const actualRef = await gitUtils.getRef(env, tmpDir);
       t.deepEqual(actualRef, expectedRef);
     });
   },
@@ -122,14 +147,17 @@ test.serial(
   "getRef() returns GITHUB_REF over CODE_SCANNING_REF if both are provided",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
       const expectedRef = "refs/pull/1/merge";
       const currentSha = "a".repeat(40);
-      process.env["CODE_SCANNING_REF"] = "refs/pull/1/HEAD";
-      process.env["GITHUB_REF"] = expectedRef;
-      process.env["GITHUB_SHA"] = currentSha;
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+      env.setAll({
+        [EnvVar.CODE_SCANNING_REF]: "refs/pull/1/HEAD",
+        [ActionsEnvVars.GITHUB_REF]: expectedRef,
+        [ActionsEnvVars.GITHUB_SHA]: currentSha,
+      });
 
-      const actualRef = await gitUtils.getRef();
+      const actualRef = await gitUtils.getRef(env, tmpDir);
       t.deepEqual(actualRef, expectedRef);
     });
   },
@@ -139,7 +167,9 @@ test.serial(
   "getRef() throws an error if only `ref` is provided as an input",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+
       const getAdditionalInputStub = sinon.stub(
         actionsUtil,
         "getOptionalInput",
@@ -148,7 +178,7 @@ test.serial(
 
       await t.throwsAsync(
         async () => {
-          await gitUtils.getRef();
+          await gitUtils.getRef(env, tmpDir);
         },
         {
           instanceOf: Error,
@@ -164,8 +194,12 @@ test.serial(
   "getRef() throws an error if only `sha` is provided as an input",
   async (t) => {
     await withTmpDir(async (tmpDir: string) => {
-      setupActionsVars(tmpDir, tmpDir);
-      process.env["GITHUB_WORKSPACE"] = "/tmp";
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
+      env.setAll({
+        [ActionsEnvVars.GITHUB_WORKSPACE]: "/tmp",
+      });
+
       const getAdditionalInputStub = sinon.stub(
         actionsUtil,
         "getOptionalInput",
@@ -174,7 +208,7 @@ test.serial(
 
       await t.throwsAsync(
         async () => {
-          await gitUtils.getRef();
+          await gitUtils.getRef(env, tmpDir);
         },
         {
           instanceOf: Error,
@@ -187,13 +221,16 @@ test.serial(
 );
 
 test.serial("isAnalyzingDefaultBranch()", async (t) => {
-  process.env["GITHUB_EVENT_NAME"] = "push";
-  process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "true";
-  t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
-  process.env["CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH"] = "false";
+  const env = getTestEnv({
+    [ActionsEnvVars.GITHUB_EVENT_NAME]: "push",
+    CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH: "true",
+  });
+  t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(env, ""), true);
+
+  env.set("CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH", "false");
 
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     const envFile = path.join(tmpDir, "event.json");
     fs.writeFileSync(
       envFile,
@@ -203,17 +240,17 @@ test.serial("isAnalyzingDefaultBranch()", async (t) => {
         },
       }),
     );
-    process.env["GITHUB_EVENT_PATH"] = envFile;
+    env.set(ActionsEnvVars.GITHUB_EVENT_PATH, envFile);
 
-    process.env["GITHUB_REF"] = "main";
-    process.env["GITHUB_SHA"] = "1234";
-    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
+    env.set(ActionsEnvVars.GITHUB_REF, "main");
+    env.set(ActionsEnvVars.GITHUB_SHA, "1234");
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(env, tmpDir), true);
 
-    process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
+    env.set(ActionsEnvVars.GITHUB_REF, "refs/heads/main");
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(env, tmpDir), true);
 
-    process.env["GITHUB_REF"] = "feature";
-    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), false);
+    env.set(ActionsEnvVars.GITHUB_REF, "feature");
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(env, tmpDir), false);
 
     fs.writeFileSync(
       envFile,
@@ -221,9 +258,9 @@ test.serial("isAnalyzingDefaultBranch()", async (t) => {
         schedule: "0 0 * * *",
       }),
     );
-    process.env["GITHUB_EVENT_NAME"] = "schedule";
-    process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), true);
+    env.set(ActionsEnvVars.GITHUB_EVENT_NAME, "schedule");
+    env.set(ActionsEnvVars.GITHUB_REF, "refs/heads/main");
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(env, tmpDir), true);
 
     const getAdditionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     getAdditionalInputStub
@@ -232,9 +269,9 @@ test.serial("isAnalyzingDefaultBranch()", async (t) => {
     getAdditionalInputStub
       .withArgs("sha")
       .resolves("0000000000000000000000000000000000000000");
-    process.env["GITHUB_EVENT_NAME"] = "schedule";
-    process.env["GITHUB_REF"] = "refs/heads/main";
-    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(), false);
+    env.set(ActionsEnvVars.GITHUB_EVENT_NAME, "schedule");
+    env.set(ActionsEnvVars.GITHUB_REF, "refs/heads/main");
+    t.deepEqual(await gitUtils.isAnalyzingDefaultBranch(env, tmpDir), false);
   });
 });
 

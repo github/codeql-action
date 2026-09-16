@@ -15,6 +15,7 @@ import {
   CleanupLevel,
   getBaseDatabaseOidsFilePath,
   getCodeQLDatabasePath,
+  getEnv,
   getErrorMessage,
   isInTestMode,
   tryGetFolderBytes,
@@ -377,7 +378,7 @@ export async function getCacheSaveKey(
       `Failed to get workflow run ID or attempt ID. Reason: ${getErrorMessage(e)}`,
     );
   }
-  const sha = await getCommitOid(checkoutPath);
+  const sha = await getCommitOid(getEnv(), checkoutPath);
   const restoreKeyPrefix = await getCacheRestoreKeyPrefix(
     config,
     codeQlVersion,

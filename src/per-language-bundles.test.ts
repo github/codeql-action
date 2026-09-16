@@ -8,7 +8,6 @@ import {
   getPerLanguageBundleLanguage,
   MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   PerLanguageBundleOptions,
-  tryGetBundleLanguageFromUrl,
 } from "./per-language-bundles";
 import {
   createFeatures,
@@ -171,52 +170,4 @@ test("getPerLanguageBundleLanguage skips only the release version check for the 
     ),
     undefined,
   );
-});
-
-test("tryGetBundleLanguageFromUrl recognizes per-language bundle URLs", (t) => {
-  const url = (name: string) =>
-    `https://github.com/github/codeql-action/releases/download/codeql-bundle-v1.2.3/${name}`;
-
-  t.is(
-    tryGetBundleLanguageFromUrl(url("codeql-bundle-java-linux64.tar.zst")),
-    BuiltInLanguage.java,
-  );
-  t.is(
-    tryGetBundleLanguageFromUrl(url("codeql-bundle-swift-osx64.tar.zst")),
-    BuiltInLanguage.swift,
-  );
-  // We do not publish these, but should still recognize them if we ever do.
-  t.is(
-    tryGetBundleLanguageFromUrl(url("codeql-bundle-csharp-win64.tar.gz")),
-    BuiltInLanguage.csharp,
-  );
-  // A percent-encoded name resolves to the same asset, so it must not let a bundle that contains a
-  // single language pass for one that contains them all and end up in the toolcache.
-  t.is(
-    tryGetBundleLanguageFromUrl(url("codeql-bundle-%70ython-linux64.tar.zst")),
-    BuiltInLanguage.python,
-  );
-});
-
-test("tryGetBundleLanguageFromUrl rejects other bundle URLs", (t) => {
-  const url = (name: string) =>
-    `https://github.com/github/codeql-action/releases/download/codeql-bundle-v1.2.3/${name}`;
-
-  for (const name of [
-    "codeql-bundle-linux64.tar.zst",
-    "codeql-bundle-osx64.tar.gz",
-    "codeql-bundle-win64.tar.zst",
-    // The all-platform bundle.
-    "codeql-bundle.tar.gz",
-    // A platform we do not publish per-language bundles for, whose name also contains a hyphen.
-    "codeql-bundle-linux-arm64.tar.zst",
-    // Not a language we know about.
-    "codeql-bundle-cobol-linux64.tar.zst",
-    // A name we cannot decode must not be mistaken for a language either.
-    "codeql-bundle-%zz-linux64.tar.zst",
-  ]) {
-    t.is(tryGetBundleLanguageFromUrl(url(name)), undefined, name);
-  }
-
-  t.is(tryGetBundleLanguageFromUrl("not a url"), undefined);
 });

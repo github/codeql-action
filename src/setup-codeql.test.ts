@@ -1275,6 +1275,10 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
         );
         t.is(result.toolsDownloadStatusReport?.downloadDurationMs, 200);
         t.is(result.toolsDownloadStatusReport?.extractionDurationMs, 100);
+        t.is(
+          (await downloadSpy.lastCall.returnValue).statusReport.bundleLanguage,
+          bundle === "per-language" ? BuiltInLanguage.javascript : undefined,
+        );
         t.is(extractStub.callCount, bundle === "fallback" ? 2 : 1);
         t.is(downloadSpy.callCount, extractStub.callCount);
         t.is(

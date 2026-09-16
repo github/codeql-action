@@ -920,7 +920,10 @@ export const downloadCodeQL = async function (
 
   return {
     codeqlFolder: extractedBundlePath,
-    statusReport,
+    statusReport:
+      bundle.kind === "per-language"
+        ? { ...statusReport, bundleLanguage: bundle.language }
+        : statusReport,
   };
 };
 
@@ -1141,22 +1144,13 @@ export async function downloadCodeQLBundle(
 
   const startTime = performance.now();
   try {
-    const result = await downloadCodeQL(
+    return await downloadCodeQL(
       source,
       apiDetails,
       tarVersion,
       tempDir,
       logger,
     );
-    return bundle.kind === "combined"
-      ? result
-      : {
-          ...result,
-          statusReport: {
-            ...result.statusReport,
-            bundleLanguage: bundle.language,
-          },
-        };
   } catch (e) {
     if (
       bundle.kind !== "per-language" ||

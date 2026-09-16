@@ -50,8 +50,8 @@ export type ToolsDownloadStatusReport = {
    */
   extractionDurationMs?: number;
   /**
-   * Total time taken to make the bundle available on disk, in milliseconds. This includes any time
-   * spent on a streaming attempt that failed and fell back to downloading before extracting.
+   * Total time taken to make the bundle available on disk, including failed download attempts
+   * before a fallback, in milliseconds.
    */
   totalDurationMs: number;
   /** The language of the single-language bundle that was downloaded, if any. */

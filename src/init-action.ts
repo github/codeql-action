@@ -63,9 +63,9 @@ import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   InitStatusReport,
-  InitToolsDownloadFields,
   InitWithConfigStatusReport,
   createInitWithConfigStatusReport,
+  createInitToolsDownloadFields,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
@@ -168,31 +168,10 @@ async function sendCompletedStatusReport(
     initStatusReport.computed_inputs.tools = toolsInput;
   }
 
-  const initToolsDownloadFields: InitToolsDownloadFields = {};
-
-  if (toolsDownloadStatusReport?.downloadDurationMs !== undefined) {
-    initToolsDownloadFields.tools_download_duration_ms =
-      toolsDownloadStatusReport.downloadDurationMs;
-  }
-  if (toolsDownloadStatusReport?.extractionDurationMs !== undefined) {
-    initToolsDownloadFields.tools_extraction_duration_ms =
-      toolsDownloadStatusReport.extractionDurationMs;
-  }
-  if (toolsDownloadStatusReport?.totalDurationMs !== undefined) {
-    initToolsDownloadFields.tools_total_duration_ms =
-      toolsDownloadStatusReport.totalDurationMs;
-  }
-  if (toolsDownloadStatusReport?.bundleLanguage !== undefined) {
-    initToolsDownloadFields.tools_bundle_language =
-      toolsDownloadStatusReport.bundleLanguage;
-  }
-  if (toolsDownloadStatusReport?.perLanguageBundleFallback !== undefined) {
-    initToolsDownloadFields.tools_per_language_bundle_fallback =
-      toolsDownloadStatusReport.perLanguageBundleFallback;
-  }
-  if (toolsFeatureFlagsValid !== undefined) {
-    initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
-  }
+  const initToolsDownloadFields = createInitToolsDownloadFields(
+    toolsDownloadStatusReport,
+    toolsFeatureFlagsValid,
+  );
 
   if (config !== undefined) {
     // Append fields that are dependent on `config`

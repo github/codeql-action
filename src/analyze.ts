@@ -93,9 +93,11 @@ export interface QueriesStatusReport
  * refers to the root of a repository.
  *
  * @param action The action state.
+ * @param config The CodeQL Action configuration state.
  */
 export async function determineCheckoutPath(
   action: ActionState<["Logger", "Actions"]>,
+  config: configUtils.Config,
 ) {
   const checkoutPathInput = action.actions.getRequiredInput("checkout_path");
 
@@ -116,6 +118,19 @@ export async function determineCheckoutPath(
       [
         `The directory at '${checkoutPathInput}' is not the root of the repository ('${repositoryRoot}').`,
         "Set the 'checkout_path' input for the 'codeql-action/analyze' step to the root path of the checkout.",
+      ].join(" "),
+    );
+  } else if (
+    config.repositoryRoot !== undefined &&
+    repositoryRoot !== config.repositoryRoot
+  ) {
+    // The repository root that was persisted by the `init` step doesn't match the one we have found here.
+    action.logger.warning(
+      [
+        `The repository path at '${repositoryRoot}' does not match that found by the 'codeql-action/init' step: '${config.repositoryRoot}'.`,
+        "Ensure that the 'checkout_path' input for the 'codeql-action/analyze' step is set to the path of the same repository that",
+        "the 'codeql-action/init' step determined. This is either the GitHub Actions workspace or the repository root corresponding to",
+        "the 'source-root' input if that was provided.",
       ].join(" "),
     );
   }

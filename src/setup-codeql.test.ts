@@ -25,6 +25,7 @@ import {
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
   checkExpectedLogMessages,
+  checkUnexpectedLogMessages,
   createFeatures,
   createTestConfig,
   getRecordingLogger,
@@ -331,6 +332,10 @@ test.serial(
         downloadDurationMs: 200,
         totalDurationMs: 300,
       });
+      checkUnexpectedLogMessages(t, loggedMessages, [
+        "Not caching the CodeQL tools",
+        "Could not cache CodeQL tools",
+      ]);
 
       // Ensure message logging CodeQL CLI version was present in user logs.
       const expected_message: string = `Using CodeQL CLI version ${LINKED_CLI_VERSION.cliVersion}`;
@@ -563,6 +568,9 @@ for (const bundlePath of [
         t.deepEqual(toolcache.findAllVersions("CodeQL"), []);
         checkExpectedLogMessages(t, messages, [
           `Using CodeQL CLI sourced from ${url}`,
+          bundlePath === "codeql-bundle-ruby-linux64.tar.zst"
+            ? "Not caching the CodeQL tools because they came from a bundle that contains only a single language."
+            : `Could not cache CodeQL tools because we could not determine the bundle version from the URL ${url}.`,
         ]);
       });
     },
@@ -1473,6 +1481,7 @@ for (const asset of [
     `setupCodeQLBundle keeps explicitly requested ${asset} out of the toolcache`,
     async (t) => {
       const extractStub = stubDownloadAndExtract();
+      const messages: LoggedMessage[] = [];
       const url = `https://github.com/github/codeql-action/releases/download/codeql-bundle-v9.9.9/${asset}`;
       process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "self-hosted";
 
@@ -1487,7 +1496,7 @@ for (const asset of [
           undefined, // rawLanguages
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([]),
-          getRunnerLogger(true),
+          getRecordingLogger(messages),
         );
 
         t.true(extractStub.calledOnce);
@@ -1500,6 +1509,12 @@ for (const asset of [
         t.is(path.dirname(result.codeqlFolder), tmpDir);
         t.deepEqual(toolcache.findAllVersions("CodeQL"), []);
         t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+        checkExpectedLogMessages(t, messages, [
+          "Not caching the CodeQL tools because they came from a bundle that contains only a single language.",
+        ]);
+        checkUnexpectedLogMessages(t, messages, [
+          "Could not cache CodeQL tools because we could not determine the bundle version",
+        ]);
       });
     },
   );

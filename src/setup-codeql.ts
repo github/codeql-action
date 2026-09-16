@@ -879,9 +879,10 @@ export const downloadCodeQL = async function (
     );
   }
 
-  const toolcacheDestination = getToolcacheDestination(source, logger);
-  const extractedBundlePath =
-    toolcacheDestination ?? getTempExtractionDir(tempDir);
+  const toolcacheDestination = getToolcacheDestination({ logger }, source);
+  const extractedBundlePath = toolcacheDestination.isSuccess()
+    ? toolcacheDestination.value
+    : getTempExtractionDir(tempDir);
 
   const statusReport = await downloadAndExtract(
     codeqlURL,
@@ -893,16 +894,10 @@ export const downloadCodeQL = async function (
     logger,
   );
 
-  if (toolcacheDestination) {
-    writeToolcacheMarkerFile(toolcacheDestination, logger);
+  if (toolcacheDestination.isSuccess()) {
+    writeToolcacheMarkerFile(toolcacheDestination.value, logger);
   } else {
-    logger.debug(
-      bundle.kind === "per-language"
-        ? "Not caching the CodeQL tools because they came from a bundle that contains only a " +
-            "single language."
-        : "Could not cache CodeQL tools because we could not determine the bundle version from the " +
-            `URL ${codeqlURL}.`,
-    );
+    logger.debug(toolcacheDestination.value);
   }
 
   return {
@@ -915,23 +910,32 @@ export const downloadCodeQL = async function (
 };
 
 /**
- * Returns the canonical toolcache directory for a combined bundle with a known version.
- * Returns undefined for per-language bundles or unknown versions.
+ * Returns the canonical toolcache directory, or the reason the bundle cannot be cached.
  */
 function getToolcacheDestination(
+  { logger }: ActionState<["Logger"]>,
   source: CodeQLDownloadSource,
-  logger: Logger,
-): string | undefined {
-  // Per-language bundles must not be stored in the toolcache.
-  if (source.bundle.kind !== "combined" || !source.bundleVersion) {
-    return undefined;
+): util.Result<string, string> {
+  if (source.bundle.kind !== "combined") {
+    return new util.Failure(
+      "Not caching the CodeQL tools because they came from a bundle that contains only a " +
+        "single language.",
+    );
+  }
+  if (!source.bundleVersion) {
+    return new util.Failure(
+      "Could not cache CodeQL tools because we could not determine the bundle version from the " +
+        `URL ${source.bundle.url}.`,
+    );
   }
 
-  return getToolcacheDirectory(
-    getCanonicalToolcacheVersion(
-      source.cliVersion,
-      source.bundleVersion,
-      logger,
+  return new util.Success(
+    getToolcacheDirectory(
+      getCanonicalToolcacheVersion(
+        source.cliVersion,
+        source.bundleVersion,
+        logger,
+      ),
     ),
   );
 }

@@ -13,7 +13,7 @@ import {
   getWorkflowEvent,
   getWorkflowEventName,
 } from "./actions-util";
-import { ActionsEnvVars, getEnv, type ReadOnlyEnv } from "./environment";
+import { ActionsEnvVars, EnvVar, type ReadOnlyEnv } from "./environment";
 import { ConfigurationError, getRequiredEnvParam } from "./util";
 
 /**
@@ -102,6 +102,7 @@ export const runGitCommand = async function (
  * Gets the SHA of the commit that is currently checked out.
  */
 export const getCommitOid = async function (
+  env: ReadOnlyEnv,
   checkoutPath: string,
   ref = "HEAD",
 ): Promise<string> {
@@ -120,7 +121,9 @@ export const getCommitOid = async function (
     );
     return stdout.trim();
   } catch {
-    return getOptionalInput("sha") || getRequiredEnvParam("GITHUB_SHA");
+    return (
+      getOptionalInput("sha") || env.getRequired(ActionsEnvVars.GITHUB_SHA)
+    );
   }
 };
 
@@ -315,18 +318,18 @@ export const getFileOidsUnderPath = async function (
   return fileOidMap;
 };
 
-function getRefFromEnv(): string {
+function getRefFromEnv(env: ReadOnlyEnv): string {
   // To workaround a limitation of Actions dynamic workflows not setting
   // the GITHUB_REF in some cases, we accept also the ref within the
   // CODE_SCANNING_REF variable. When possible, however, we prefer to use
   // the GITHUB_REF as that is a protected variable and cannot be overwritten.
   let refEnv: string;
   try {
-    refEnv = getRequiredEnvParam("GITHUB_REF");
+    refEnv = env.getRequired(ActionsEnvVars.GITHUB_REF);
   } catch (e) {
     // If the GITHUB_REF is not set, we try to rescue by getting the
     // CODE_SCANNING_REF.
-    const maybeRef = process.env["CODE_SCANNING_REF"];
+    const maybeRef = env.getOptional(EnvVar.CODE_SCANNING_REF);
     if (maybeRef === undefined || maybeRef.length === 0) {
       throw e;
     }
@@ -336,26 +339,18 @@ function getRefFromEnv(): string {
 }
 
 /**
- * Gets the path at which the repository is checked out at. In order of preference, this is determined by:
- * the `checkout_path` input, the `source-root` input, the `GITHUB_WORKSPACE` environment variable.
- */
-export function getCheckoutPath(env: ReadOnlyEnv) {
-  return (
-    getOptionalInput("checkout_path") ||
-    getOptionalInput("source-root") ||
-    env.getRequired(ActionsEnvVars.GITHUB_WORKSPACE)
-  );
-}
-
-/**
  * Get the ref currently being analyzed.
  */
-export async function getRef(env: ReadOnlyEnv = getEnv()): Promise<string> {
+export async function getRef(
+  env: ReadOnlyEnv,
+  checkoutPath: string | undefined,
+): Promise<string> {
   // Will be in the form "refs/heads/master" on a push event
   // or in the form "refs/pull/N/merge" on a pull_request event
   const refInput = getOptionalInput("ref");
   const shaInput = getOptionalInput("sha");
-  const checkoutPath = getCheckoutPath(env);
+  checkoutPath =
+    checkoutPath ?? env.getRequired(ActionsEnvVars.GITHUB_WORKSPACE);
 
   const hasRefInput = !!refInput;
   const hasShaInput = !!shaInput;
@@ -366,7 +361,7 @@ export async function getRef(env: ReadOnlyEnv = getEnv()): Promise<string> {
     );
   }
 
-  const ref = refInput || getRefFromEnv();
+  const ref = refInput || getRefFromEnv(env);
   const sha = shaInput || env.getRequired(ActionsEnvVars.GITHUB_SHA);
 
   // If the ref is a user-provided input, we have to skip logic
@@ -384,7 +379,7 @@ export async function getRef(env: ReadOnlyEnv = getEnv()): Promise<string> {
     return ref;
   }
 
-  const head = await getCommitOid(checkoutPath, "HEAD");
+  const head = await getCommitOid(env, checkoutPath, "HEAD");
 
   // in actions/checkout@v2+ we can check if git rev-parse HEAD == GITHUB_SHA
   // in actions/checkout@v1 this may not be true as it checks out the repository
@@ -394,6 +389,7 @@ export async function getRef(env: ReadOnlyEnv = getEnv()): Promise<string> {
   const hasChangedRef =
     sha !== head &&
     (await getCommitOid(
+      env,
       checkoutPath,
       ref.replace(/^refs\/pull\//, "refs/remotes/pull/"),
     )) !== head;
@@ -420,20 +416,23 @@ function removeRefsHeadsPrefix(ref: string): string {
  * environment variable can be set in cases where repository information might not be available, for
  * example dynamic workflows.
  */
-export async function isAnalyzingDefaultBranch(): Promise<boolean> {
-  if (process.env.CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH === "true") {
+export async function isAnalyzingDefaultBranch(
+  env: ReadOnlyEnv,
+  checkoutPath: string | undefined,
+): Promise<boolean> {
+  if (env.getOptional("CODE_SCANNING_IS_ANALYZING_DEFAULT_BRANCH") === "true") {
     return true;
   }
 
   // Get the current ref and trim and refs/heads/ prefix
-  let currentRef = await getRef();
+  let currentRef = await getRef(env, checkoutPath);
   currentRef = removeRefsHeadsPrefix(currentRef);
 
-  const event = getWorkflowEvent();
+  const event = getWorkflowEvent(env);
   let defaultBranch = event?.repository?.default_branch;
 
-  if (getWorkflowEventName() === "schedule") {
-    defaultBranch = removeRefsHeadsPrefix(getRefFromEnv());
+  if (getWorkflowEventName(env) === "schedule") {
+    defaultBranch = removeRefsHeadsPrefix(getRefFromEnv(env));
   }
 
   return currentRef === defaultBranch;

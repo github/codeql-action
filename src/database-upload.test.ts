@@ -20,8 +20,9 @@ import {
   checkExpectedLogMessages,
   createFeatures,
   createTestConfig,
+  getTestEnv,
   initAllState,
-  LoggedMessage,
+  RecordingLogger,
   setupActionsVars,
   setupTests,
 } from "./testing-utils";
@@ -90,23 +91,24 @@ test.serial(
   "Abort database upload if 'upload-database' input set to false",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
         .returns("false");
       sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
-        initAllState(),
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
         "",
       );
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Database upload disabled in workflow. Skipping upload.",
       ]);
     });
@@ -117,7 +119,8 @@ test.serial(
   "Abort database upload if 'analysis-kinds: code-scanning' is not enabled",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -126,9 +129,9 @@ test.serial(
 
       await mockHttpRequests(201);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
-        initAllState(),
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         {
@@ -138,7 +141,7 @@ test.serial(
         testApiDetails,
         "",
       );
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Not uploading database because 'analysis-kinds: code-scanning' is not enabled.",
       ]);
     });
@@ -147,7 +150,8 @@ test.serial(
 
 test.serial("Abort database upload if running against GHES", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -157,16 +161,16 @@ test.serial("Abort database upload if running against GHES", async (t) => {
     const config = getTestConfig(tmpDir);
     config.gitHubVersion = { type: GitHubVariant.GHES, version: "3.0" };
 
-    const loggedMessages: LoggedMessage[] = [];
+    const logger = new RecordingLogger();
     await cleanupAndUploadDatabases(
-      initAllState(),
+      initAllState({ env, logger }),
       testRepoName,
       getCodeQL(),
       config,
       testApiDetails,
       "",
     );
-    checkExpectedLogMessages(t, loggedMessages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Not running against github.com or GHEC-DR. Skipping upload.",
     ]);
   });
@@ -176,23 +180,24 @@ test.serial(
   "Abort database upload if not analyzing default branch",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
         .returns("true");
       sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
-        initAllState(),
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
         "",
       );
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Not analyzing default branch. Skipping upload.",
       ]);
     });
@@ -203,7 +208,8 @@ test.serial(
   "Don't crash if uploading a database fails with a non-retryable error",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -212,9 +218,9 @@ test.serial(
 
       const databaseUploadSpy = await mockHttpRequests(422);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
-        initAllState(),
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
@@ -222,7 +228,7 @@ test.serial(
         "",
       );
 
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Failed to upload database for javascript: some error message",
       ]);
 
@@ -236,7 +242,8 @@ test.serial(
   "Don't crash if uploading a database fails with a retryable error",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -251,9 +258,9 @@ test.serial(
         .stub(global, "setTimeout")
         .callsFake((fn: () => void) => originalSetTimeout(fn, 0));
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
-        initAllState(),
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
@@ -261,7 +268,7 @@ test.serial(
         "",
       );
 
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Failed to upload database for javascript: some error message",
       ]);
 
@@ -279,7 +286,8 @@ test.serial(
 
 test.serial("Successfully uploading a database to github.com", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -288,16 +296,16 @@ test.serial("Successfully uploading a database to github.com", async (t) => {
 
     await mockHttpRequests(201);
 
-    const loggedMessages: LoggedMessage[] = [];
+    const logger = new RecordingLogger();
     await cleanupAndUploadDatabases(
-      initAllState(),
+      initAllState({ env, logger }),
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
       "",
     );
-    checkExpectedLogMessages(t, loggedMessages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Successfully uploaded database for javascript",
     ]);
   });
@@ -305,7 +313,8 @@ test.serial("Successfully uploading a database to github.com", async (t) => {
 
 test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -314,9 +323,9 @@ test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
 
     const databaseUploadSpy = await mockHttpRequests(201);
 
-    const loggedMessages: LoggedMessage[] = [];
+    const logger = new RecordingLogger();
     await cleanupAndUploadDatabases(
-      initAllState(),
+      initAllState({ env, logger }),
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
@@ -327,7 +336,7 @@ test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
       },
       "",
     );
-    checkExpectedLogMessages(t, loggedMessages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Successfully uploaded database for javascript",
     ]);
     t.assert(
@@ -343,7 +352,8 @@ test.serial(
   "Records overlay and clear cleanup sizes when uploading an overlay-base database",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -377,6 +387,7 @@ test.serial(
 
       const results = await cleanupAndUploadDatabases(
         initAllState({
+          env,
           features: createFeatures([Feature.UploadOverlayDbToApi]),
         }),
         testRepoName,
@@ -403,7 +414,8 @@ test.serial(
   "Does not measure clear cleanup size for a regular (non-overlay-base) upload",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -424,6 +436,7 @@ test.serial(
 
       const results = await cleanupAndUploadDatabases(
         initAllState({
+          env,
           features: createFeatures([Feature.UploadOverlayDbToApi]),
         }),
         testRepoName,
@@ -444,7 +457,8 @@ test.serial(
 
 test.serial("Does not measure clear cleanup size in debug mode", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -469,6 +483,7 @@ test.serial("Does not measure clear cleanup size in debug mode", async (t) => {
 
     const results = await cleanupAndUploadDatabases(
       initAllState({
+        env,
         features: createFeatures([Feature.UploadOverlayDbToApi]),
       }),
       testRepoName,
@@ -491,7 +506,8 @@ test.serial(
   "Does not record a clear cleanup duration when the clear cleanup fails",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -516,6 +532,7 @@ test.serial(
 
       const results = await cleanupAndUploadDatabases(
         initAllState({
+          env,
           features: createFeatures([Feature.UploadOverlayDbToApi]),
         }),
         testRepoName,

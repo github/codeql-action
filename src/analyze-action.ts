@@ -406,7 +406,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
     databaseUploadResults = await cleanupAndUploadDatabases(
-      { logger, features },
+      { ...action, features },
       repositoryNwo,
       codeql,
       config,

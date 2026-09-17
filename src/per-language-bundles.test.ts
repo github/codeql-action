@@ -1,7 +1,7 @@
 import test from "ava";
 
 import { BundlePlatform } from "./bundle-platform";
-import { ActionsEnvVars, Env } from "./environment";
+import { ActionsEnvVars } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import {
@@ -30,16 +30,16 @@ const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
 
 async function checkEligibility(
   overrides: Partial<PerLanguageBundleOptions>,
-  enabledFeatures: Feature[] = [Feature.PerLanguageBundles],
-  env: Env = getTestEnv({
-    [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
-  }),
+  stateOverrides: Partial<ReturnType<typeof initAllState>> = {},
 ) {
   return getPerLanguageBundleLanguage(
     initAllState({
-      env,
-      features: createFeatures(enabledFeatures),
+      env: getTestEnv({
+        [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
+      }),
+      features: createFeatures([Feature.PerLanguageBundles]),
       logger: getRecordingLogger([], { logToConsole: false }),
+      ...stateOverrides,
     }),
     { ...ELIGIBLE_OPTIONS, ...overrides },
   );
@@ -100,8 +100,9 @@ test("getPerLanguageBundleLanguage requires a GitHub-hosted runner", async (t) =
   t.is(
     await checkEligibility(
       {},
-      [Feature.PerLanguageBundles],
-      getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
+      {
+        env: getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
+      },
     ),
     undefined,
   );
@@ -111,8 +112,9 @@ test("getPerLanguageBundleLanguage requires a GitHub-hosted runner", async (t) =
   t.is(
     await checkEligibility(
       {},
-      [Feature.PerLanguageBundles],
-      getTestEnv({ RUNNER_TOOL_CACHE: "/opt/hostedtoolcache" }),
+      {
+        env: getTestEnv({ RUNNER_TOOL_CACHE: "/opt/hostedtoolcache" }),
+      },
     ),
     undefined,
   );
@@ -125,7 +127,7 @@ test("getPerLanguageBundleLanguage requires a supported release version", async 
 });
 
 test("getPerLanguageBundleLanguage requires the feature flag", async (t) => {
-  t.is(await checkEligibility({}, []), undefined);
+  t.is(await checkEligibility({}, { features: createFeatures([]) }), undefined);
 });
 
 test("getPerLanguageBundleLanguage explains a disabled feature before checking eligibility", async (t) => {
@@ -162,13 +164,14 @@ test("getPerLanguageBundleLanguage skips only the release version check for the 
   ]) {
     t.is(await checkEligibility({ ...nightly, ...overrides }), undefined);
   }
-  t.is(await checkEligibility(nightly, []), undefined);
   t.is(
-    await checkEligibility(
-      nightly,
-      [Feature.PerLanguageBundles],
-      getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
-    ),
+    await checkEligibility(nightly, { features: createFeatures([]) }),
+    undefined,
+  );
+  t.is(
+    await checkEligibility(nightly, {
+      env: getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
+    }),
     undefined,
   );
 });

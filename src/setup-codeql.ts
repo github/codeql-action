@@ -768,7 +768,7 @@ export async function getCodeQLSource(
       },
     );
 
-    // Resolve both bundle variants against the same release and repository lookup order.
+    // Resolves the combined or per-language bundle URL for the requested release.
     const resolveBundleURL = (language?: BuiltInLanguage) =>
       getCodeQLBundleDownloadURL(
         bundleTagName,

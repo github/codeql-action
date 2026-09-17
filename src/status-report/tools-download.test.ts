@@ -24,7 +24,10 @@ test("createInitToolsDownloadFields reports only the total for a streaming downl
 test("createInitToolsDownloadFields preserves per-language metadata", (t) => {
   t.deepEqual(
     createInitToolsDownloadFields(
-      { totalDurationMs: 300, bundleLanguage: BuiltInLanguage.java },
+      {
+        totalDurationMs: 300,
+        perLanguage: { tools_bundle_language: BuiltInLanguage.java },
+      },
       true,
     ),
     {
@@ -42,7 +45,7 @@ test("createInitToolsDownloadFields preserves fallback and per-attempt timings",
         downloadDurationMs: 200,
         extractionDurationMs: 100,
         totalDurationMs: 1000,
-        perLanguageBundleFallback: true,
+        perLanguage: { tools_per_language_bundle_fallback: true },
       },
       undefined,
     ),
@@ -62,7 +65,7 @@ test("createInitToolsDownloadFields preserves zero durations and false flags", (
         downloadDurationMs: 0,
         extractionDurationMs: 0,
         totalDurationMs: 0,
-        perLanguageBundleFallback: false,
+        perLanguage: { tools_per_language_bundle_fallback: false },
       },
       false,
     ),

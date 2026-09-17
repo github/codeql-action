@@ -13,6 +13,7 @@ import * as semver from "semver";
 import { ActionState } from "./action-common";
 import { ActionsEnvVars, getEnv, ReadOnlyEnv } from "./environment";
 import { formatDuration, Logger } from "./logging";
+import type { PerLanguageToolsStatusReport } from "./status-report/tools-download";
 import * as tar from "./tar";
 import {
   asHTTPError,
@@ -55,13 +56,7 @@ export type ToolsDownloadStatusReport = {
    * before a fallback, in milliseconds.
    */
   totalDurationMs: number;
-  /** The language of the single-language bundle that was downloaded, if any. */
-  bundleLanguage?: string;
-  /**
-   * Whether we tried to download a single-language bundle, but it did not exist and we fell back to
-   * the combined bundle.
-   */
-  perLanguageBundleFallback?: boolean;
+  perLanguage?: PerLanguageToolsStatusReport;
 };
 
 export async function downloadAndExtract(

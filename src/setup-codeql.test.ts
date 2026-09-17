@@ -26,6 +26,7 @@ import {
   createTestConfig,
   getRecordingLogger,
   getTestEnv,
+  initAllState,
   makeMacro,
   mockBundleDownloadApi,
   setupActionsVars,
@@ -1107,11 +1108,10 @@ async function runDownloadCodeQL(
   const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
 
   const { codeqlFolder } = await setupCodeql.downloadCodeQLBundle(
-    {
+    initAllState({
       env,
       features: createFeatures(features),
-      logger: getRunnerLogger(true),
-    },
+    }),
     {
       bundle: {
         kind: "combined",

@@ -22,11 +22,11 @@ import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   InitStatusReport,
-  createInitToolsDownloadFields,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
+import { createInitToolsDownloadFields } from "./status-report/tools-download";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import {
   checkDiskUsage,

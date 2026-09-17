@@ -65,11 +65,11 @@ import {
   InitStatusReport,
   InitWithConfigStatusReport,
   createInitWithConfigStatusReport,
-  createInitToolsDownloadFields,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
+import { createInitToolsDownloadFields } from "./status-report/tools-download";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature } from "./tools-features";
 import { getCombinedTracerConfig } from "./tracer-config";

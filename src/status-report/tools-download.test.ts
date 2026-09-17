@@ -1,7 +1,8 @@
 import test from "ava";
 
-import { BuiltInLanguage } from "./languages";
-import { createInitToolsDownloadFields } from "./status-report";
+import { BuiltInLanguage } from "../languages";
+
+import { createInitToolsDownloadFields } from "./tools-download";
 
 test("createInitToolsDownloadFields omits absent download data", (t) => {
   t.deepEqual(createInitToolsDownloadFields(undefined, undefined), {});

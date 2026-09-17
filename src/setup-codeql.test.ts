@@ -557,7 +557,7 @@ for (const bundlePath of [
         t.is(result.toolsVersion, "unknown");
         t.is(result.toolsSource, setupCodeql.ToolsSource.Download);
         t.is(
-          result.toolsDownloadStatusReport?.bundleLanguage,
+          result.toolsDownloadStatusReport?.perLanguage?.tools_bundle_language,
           bundlePath === "codeql-bundle-ruby-linux64.tar.zst"
             ? BuiltInLanguage.ruby
             : undefined,
@@ -1309,11 +1309,12 @@ for (const fallback of [false, true]) {
         t.is(extractStub.lastCall.args[3], "token token");
         t.is(result.toolsVersion, MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION);
         t.is(
-          result.toolsDownloadStatusReport?.bundleLanguage,
+          result.toolsDownloadStatusReport?.perLanguage?.tools_bundle_language,
           fallback ? undefined : BuiltInLanguage.java,
         );
         t.is(
-          result.toolsDownloadStatusReport?.perLanguageBundleFallback,
+          result.toolsDownloadStatusReport?.perLanguage
+            ?.tools_per_language_bundle_fallback,
           fallback ? true : undefined,
         );
         if (fallback) {
@@ -1401,7 +1402,8 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
         t.is(result.toolsDownloadStatusReport?.downloadDurationMs, 200);
         t.is(result.toolsDownloadStatusReport?.extractionDurationMs, 100);
         t.is(
-          (await downloadSpy.lastCall.returnValue).statusReport.bundleLanguage,
+          (await downloadSpy.lastCall.returnValue).statusReport.perLanguage
+            ?.tools_bundle_language,
           bundle === "per-language" ? BuiltInLanguage.javascript : undefined,
         );
         t.is(extractStub.callCount, bundle === "fallback" ? 2 : 1);
@@ -1415,11 +1417,12 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
           bundle === "per-language" ? perLanguageURL : combinedURL,
         );
         t.is(
-          result.toolsDownloadStatusReport?.bundleLanguage,
+          result.toolsDownloadStatusReport?.perLanguage?.tools_bundle_language,
           bundle === "per-language" ? BuiltInLanguage.javascript : undefined,
         );
         t.is(
-          result.toolsDownloadStatusReport?.perLanguageBundleFallback,
+          result.toolsDownloadStatusReport?.perLanguage
+            ?.tools_per_language_bundle_fallback,
           bundle === "fallback" ? true : undefined,
         );
         t.is(
@@ -1503,7 +1506,7 @@ for (const asset of [
         t.is(extractStub.firstCall.args[0], url);
         t.is(result.toolsVersion, "9.9.9");
         t.is(
-          result.toolsDownloadStatusReport?.bundleLanguage,
+          result.toolsDownloadStatusReport?.perLanguage?.tools_bundle_language,
           BuiltInLanguage.ruby,
         );
         t.is(path.dirname(result.codeqlFolder), tmpDir);

@@ -904,7 +904,10 @@ export const downloadCodeQL = async function (
     codeqlFolder: extractedBundlePath,
     statusReport:
       bundle.kind === "per-language"
-        ? { ...statusReport, bundleLanguage: bundle.language }
+        ? {
+            ...statusReport,
+            perLanguage: { tools_bundle_language: bundle.language },
+          }
         : statusReport,
   };
 };
@@ -1171,7 +1174,7 @@ export async function downloadCodeQLBundle(
       statusReport: {
         ...result.statusReport,
         totalDurationMs: util.durationMsSince(startTime),
-        perLanguageBundleFallback: true,
+        perLanguage: { tools_per_language_bundle_fallback: true },
       },
     };
   }

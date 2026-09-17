@@ -1,7 +1,7 @@
 import test from "ava";
 
 import { BundlePlatform } from "./bundle-platform";
-import { ActionsEnvVars, ReadOnlyEnv } from "./environment";
+import { ActionsEnvVars, Env } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import {
@@ -13,6 +13,7 @@ import {
   createFeatures,
   getRecordingLogger,
   getTestEnv,
+  initAllState,
   LoggedMessage,
 } from "./testing-utils";
 import { GitHubVariant } from "./util";
@@ -30,16 +31,16 @@ const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
 async function checkEligibility(
   overrides: Partial<PerLanguageBundleOptions>,
   enabledFeatures: Feature[] = [Feature.PerLanguageBundles],
-  env: ReadOnlyEnv = getTestEnv({
+  env: Env = getTestEnv({
     [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
   }),
 ) {
   return getPerLanguageBundleLanguage(
-    {
+    initAllState({
       env,
       features: createFeatures(enabledFeatures),
       logger: getRecordingLogger([], { logToConsole: false }),
-    },
+    }),
     { ...ELIGIBLE_OPTIONS, ...overrides },
   );
 }
@@ -130,11 +131,11 @@ test("getPerLanguageBundleLanguage requires the feature flag", async (t) => {
 test("getPerLanguageBundleLanguage explains a disabled feature before checking eligibility", async (t) => {
   const messages: LoggedMessage[] = [];
   const language = await getPerLanguageBundleLanguage(
-    {
+    initAllState({
       env: getTestEnv(),
       features: createFeatures([]),
       logger: getRecordingLogger(messages, { logToConsole: false }),
-    },
+    }),
     { ...ELIGIBLE_OPTIONS, rawLanguages: undefined, cliVersion: undefined },
   );
 

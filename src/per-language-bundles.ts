@@ -117,11 +117,10 @@ export async function getPerLanguageBundleLanguage(
     }
   }
 
-  const supportedLanguages =
-    platform === undefined
-      ? undefined
-      : PER_LANGUAGE_BUNDLE_LANGUAGES[platform];
-  if (!supportedLanguages?.has(language)) {
+  if (
+    platform === undefined ||
+    !PER_LANGUAGE_BUNDLE_LANGUAGES[platform].has(language)
+  ) {
     return explain(
       `no per-language bundle is published for ${language} on ${platform ?? "an unknown platform"}`,
     );

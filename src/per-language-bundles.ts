@@ -103,7 +103,7 @@ export async function getPerLanguageBundleLanguage(
   }
 
   // Check whether per-language bundles are published for the requested CLI version.
-  // Skip this for the latest nightly, whose tag contains a date rather than a CLI version.
+  // Latest-nightly selection skips this release-version check, but not the other eligibility checks.
   if (!isLatestNightly) {
     if (cliVersion === undefined) {
       return explain("the requested CLI version is unknown");

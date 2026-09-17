@@ -1,5 +1,6 @@
 import test, { ExecutionContext } from "ava";
 
+import { AnalysisKind } from "../analyses";
 import { RepositoryProperties } from "../feature-flags/properties";
 import { BuiltInLanguage, Language } from "../languages";
 import { getRunnerLogger } from "../logging";
@@ -13,6 +14,117 @@ import {
 import { ConfigurationError, prettyPrintPack } from "../util";
 
 import * as dbConfig from "./db-config";
+
+function makeUserConfigWithActionExtensions(options?: {
+  analysisConfig?: dbConfig.UserConfig;
+  analysisKinds?: AnalysisKind[];
+  baseConfig?: dbConfig.UserConfig;
+}) {
+  const testConfig = { ...options?.baseConfig };
+
+  const allAnalysisKinds = Object.values(AnalysisKind);
+  const analysisKinds = options?.analysisKinds ?? allAnalysisKinds;
+  for (const analysisKind of analysisKinds) {
+    testConfig[analysisKind] = { ...options?.analysisConfig };
+  }
+
+  return testConfig as dbConfig.UserConfigWithActionExtensions;
+}
+
+test("hasAnalysisKindKey - finds `AnalysisKind` sections", async (t) => {
+  const testConfig = makeUserConfigWithActionExtensions();
+
+  for (const analysisKind of Object.values(AnalysisKind)) {
+    // Check that it finds the `analysisKind`-specific section among multiple.
+    t.true(dbConfig.hasAnalysisKindKey(analysisKind, testConfig));
+    // And for just the `analysisKind`-specific section.
+    t.true(dbConfig.hasAnalysisKindKey(analysisKind, { [analysisKind]: {} }));
+  }
+});
+
+test("hasAnalysisKindKey - returns false if there is no relevant section", async (t) => {
+  const testConfig = makeUserConfigWithActionExtensions();
+
+  for (const analysisKind of Object.values(AnalysisKind)) {
+    // Clone the `testConfig` and remove the `analysisKind`-specific key.
+    const testConfigClone = { ...testConfig };
+    delete testConfigClone[analysisKind];
+
+    // Check that it doesn't find an `analysisKind`-specific section.
+    t.false(dbConfig.hasAnalysisKindKey(analysisKind, testConfigClone));
+  }
+});
+
+test("applyAnalysisKindConfig - applies analysis-specific settings", async (t) => {
+  for (const analysisKind of Object.values(AnalysisKind)) {
+    const testConfig = makeUserConfigWithActionExtensions({
+      analysisKinds: [analysisKind],
+      analysisConfig: {
+        "paths-ignore": [],
+      },
+      baseConfig: {
+        "paths-ignore": ["a", "b", "c"],
+        "threat-models": ["local"],
+      },
+    });
+    const clonedTestConfig = { ...testConfig };
+
+    const result = dbConfig.applyAnalysisKindConfig(analysisKind, testConfig);
+
+    // The `analysisKind`-specific section should have been removed.
+    // `threat-models` should be unchanged from the `baseConfig`.
+    // `paths-ignore` should have been overwritten with the `analysisKind`-specific config.
+    t.deepEqual(result, {
+      "threat-models": ["local"],
+      "paths-ignore": [],
+    });
+
+    // The input `testConfig` should not have changed.
+    t.deepEqual(testConfig, clonedTestConfig);
+  }
+});
+
+test("applyAnalysisKindConfig - removes all `AnalysisKind`-specific keys", async (t) => {
+  for (const analysisKind of Object.values(AnalysisKind)) {
+    const testConfig = makeUserConfigWithActionExtensions({
+      analysisConfig: {
+        "paths-ignore": ["a", "b", "c"],
+      },
+      baseConfig: {},
+    });
+
+    const result = dbConfig.applyAnalysisKindConfig(analysisKind, testConfig);
+
+    // All `AnalysisKind`-specific sections should have been removed.
+    // `paths-ignore` should have been overwritten with the analysis-specific config.
+    t.deepEqual(result, {
+      "paths-ignore": ["a", "b", "c"],
+    });
+  }
+});
+
+test("applyAnalysisKindConfig - returns the `baseConfig` if there is no `analysisKind`-specific key", async (t) => {
+  const baseConfig = {
+    "disable-default-queries": true,
+    "paths-ignore": ["a", "b", "c"],
+    queries: [{ name: "foo", uses: "something" }],
+    packs: { test: ["bar"] },
+    "default-setup": { org: { "model-packs": ["pack"] } },
+  } satisfies dbConfig.UserConfig;
+
+  const testConfig = makeUserConfigWithActionExtensions({
+    analysisKinds: [],
+    baseConfig,
+  });
+
+  const result = dbConfig.applyAnalysisKindConfig(
+    AnalysisKind.CodeScanning,
+    testConfig,
+  );
+
+  // The result should be the same as the `baseConfig`.
+  t.deepEqual(result, baseConfig);
+});
 
 /**
  * Test macro for ensuring the packs block is valid

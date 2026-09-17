@@ -10,7 +10,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import * as diagnostics from "./diagnostics";
-import { ActionsEnvVars, EnvVar, getEnv, ReadOnlyEnv } from "./environment";
+import { ActionsEnvVars, Env, EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
@@ -1096,7 +1096,9 @@ async function runDownloadCodeQL(
   toolcacheRoot: string,
   features: Feature[],
   bundleVersion: string | undefined,
-  env: ReadOnlyEnv = getEnv(),
+  env = getTestEnv({
+    [ActionsEnvVars.RUNNER_TOOL_CACHE]: toolcacheRoot,
+  }),
 ): Promise<{
   codeqlFolder: string;
   cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
@@ -1152,7 +1154,7 @@ async function testToolcacheCleanup(
   }: {
     features: Feature[];
     runnerEnvironment: string | undefined;
-    setUp?: () => void;
+    setUp?: (env: Env) => void;
   },
   check: (context: {
     cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
@@ -1167,7 +1169,10 @@ async function testToolcacheCleanup(
     } else {
       process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = runnerEnvironment;
     }
-    setUp?.();
+    const env = getTestEnv({
+      [ActionsEnvVars.RUNNER_TOOL_CACHE]: tmpDir,
+    });
+    setUp?.(env);
 
     // The extraction of the bundle would normally create this directory.
     const destinationDirectory = createToolcacheEntry(
@@ -1186,6 +1191,7 @@ async function testToolcacheCleanup(
       tmpDir,
       features,
       CLEANUP_BUNDLE_VERSION,
+      env,
     );
 
     t.true(
@@ -1477,8 +1483,8 @@ test.serial(
       {
         features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "github-hosted",
-        setUp: () => {
-          process.env[EnvVar.HAS_SET_UP_CODEQL] = "true";
+        setUp: (env) => {
+          env.set(EnvVar.HAS_SET_UP_CODEQL, "true");
         },
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {

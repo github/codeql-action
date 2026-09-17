@@ -1,6 +1,5 @@
 import test from "ava";
 
-import { BundlePlatform } from "./bundle-platform";
 import { ActionsEnvVars } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
@@ -9,6 +8,7 @@ import {
   MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   PerLanguageBundleOptions,
 } from "./per-language-bundles";
+import { BundlePlatform } from "./platform";
 import {
   createFeatures,
   getRecordingLogger,

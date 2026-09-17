@@ -17,7 +17,6 @@ import { ActionsEnv, getActionVersion } from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
-import { getBundlePlatform } from "./bundle-platform";
 import { CachingKind } from "./caching-utils";
 import { resetCachedCodeQlVersion } from "./cli/output-cache";
 import type { VersionInfo } from "./cli/types";
@@ -33,6 +32,7 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,

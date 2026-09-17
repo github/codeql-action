@@ -1,6 +1,6 @@
 import test from "ava";
 
-import { BundlePlatform, getBundlePlatform } from "./bundle-platform";
+import { BundlePlatform, getBundlePlatform } from "./platform";
 
 for (const [platform, arch, expected] of [
   ["linux", "x64", BundlePlatform.Linux64],

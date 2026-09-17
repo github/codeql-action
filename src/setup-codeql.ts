@@ -17,7 +17,6 @@ import {
   isRunningLocalAction,
 } from "./actions-util";
 import * as api from "./api-client";
-import { getBundlePlatform } from "./bundle-platform";
 import { CodeQLBundle, getCodeQLBundleFromUrl } from "./codeql-bundle";
 import * as defaults from "./defaults.json";
 import {
@@ -37,6 +36,7 @@ import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
 import { getPerLanguageBundleLanguage } from "./per-language-bundles";
+import { getBundlePlatform } from "./platform";
 import * as tar from "./tar";
 import {
   deleteToolcacheBundles,

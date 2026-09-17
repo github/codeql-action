@@ -2,9 +2,9 @@ import * as semver from "semver";
 
 import { ActionState } from "./action-common";
 import { isGitHubHostedRunner } from "./actions-util";
-import { BundlePlatform } from "./bundle-platform";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
+import { BundlePlatform } from "./platform";
 import * as tar from "./tar";
 import { GitHubVariant } from "./util";
 

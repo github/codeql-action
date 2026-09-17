@@ -10,7 +10,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import * as diagnostics from "./diagnostics";
-import { ActionsEnvVars, EnvVar, ReadOnlyEnv } from "./environment";
+import { ActionsEnvVars, Env, EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import { getRunnerLogger } from "./logging";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
@@ -25,6 +25,8 @@ import {
   createFeatures,
   createTestConfig,
   getRecordingLogger,
+  getTestEnv,
+  initAllState,
   makeMacro,
   mockBundleDownloadApi,
   setupActionsVars,
@@ -34,6 +36,7 @@ import * as toolsDownload from "./tools-download";
 import {
   getErrorMessage,
   GitHubVariant,
+  HTTPError,
   initializeEnvironment,
   withTmpDir,
 } from "./util";
@@ -43,6 +46,15 @@ setupTests(test);
 test.beforeEach(() => {
   initializeEnvironment("1.2.3");
 });
+
+function stubDownloadAndExtract() {
+  return sinon
+    .stub(toolsDownload, "downloadAndExtract")
+    .callsFake(async (_url, _compressionMethod, dest) => {
+      fs.mkdirSync(dest, { recursive: true });
+      return { downloadDurationMs: 200, totalDurationMs: 300 };
+    });
+}
 
 test.serial("parse codeql bundle url version", (t) => {
   t.deepEqual(
@@ -102,9 +114,9 @@ test.serial(
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
       const tagName = "codeql-bundle-v1.2.3";
-      mockBundleDownloadApi({ tagName });
+      const url = mockBundleDownloadApi({ tagName });
       const source = await setupCodeql.getCodeQLSource(
-        `https://github.com/github/codeql-action/releases/download/${tagName}/codeql-bundle-linux64.tar.gz`,
+        url,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
         false, // useOverlayAwareDefaultCliVersion
@@ -115,8 +127,14 @@ test.serial(
         getRunnerLogger(true),
       );
 
-      t.is(source.sourceType, "download");
-      t.is(source["cliVersion"], "1.2.3");
+      t.deepEqual(source, {
+        bundle: { kind: "combined", url },
+        bundleVersion: "v1.2.3",
+        cliVersion: "1.2.3",
+        compressionMethod: "gzip",
+        sourceType: "download",
+        toolsVersion: "1.2.3",
+      } satisfies setupCodeql.CodeQLDownloadSource);
     });
   },
 );
@@ -198,7 +216,8 @@ for (const {
         t.is(source.sourceType, "download");
         if (source.sourceType === "download") {
           t.is(source.compressionMethod, expectedCompressionMethod);
-          t.true(source.codeqlURL.endsWith(`/${expectedBundleName}`));
+          t.is(source.bundle.kind, "combined");
+          t.true(source.bundle.url.endsWith(`/${expectedBundleName}`));
         }
       });
     },
@@ -252,23 +271,14 @@ test.serial(
     const logger = getRecordingLogger(loggedMessages);
     const features = createFeatures([]);
 
-    // Stub the downloadCodeQL function to prevent downloading artefacts
-    // during testing from being called.
-    sinon.stub(setupCodeql, "downloadCodeQL").resolves({
-      codeqlFolder: "codeql",
-      statusReport: {
-        downloadDurationMs: 200,
-        totalDurationMs: 300,
-      },
-      toolsVersion: LINKED_CLI_VERSION.cliVersion,
-    });
+    const extractStub = stubDownloadAndExtract();
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
       const result = await setupCodeql.setupCodeQLBundle(
         "linked",
         SAMPLE_DOTCOM_API_DETAILS,
-        "tmp/codeql_action_test/",
+        tmpDir,
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
@@ -280,6 +290,15 @@ test.serial(
       // Basic sanity check that the version we got back is indeed
       // the linked (default) CLI version.
       t.is(result.toolsVersion, LINKED_CLI_VERSION.cliVersion);
+      t.true(extractStub.calledOnce);
+      t.is(
+        result.codeqlFolder,
+        toolcache.find("CodeQL", LINKED_CLI_VERSION.cliVersion),
+      );
+      t.deepEqual(result.toolsDownloadStatusReport, {
+        downloadDurationMs: 200,
+        totalDurationMs: 300,
+      });
 
       // Ensure message logging CodeQL CLI version was present in user logs.
       const expected_message: string = `Using CodeQL CLI version ${LINKED_CLI_VERSION.cliVersion}`;
@@ -305,23 +324,14 @@ test.serial(
       "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.16.0/codeql-bundle-linux64.tar.gz";
     const expectedVersion = "2.16.0";
 
-    // Stub the downloadCodeQL function to prevent downloading artefacts
-    // during testing from being called.
-    sinon.stub(setupCodeql, "downloadCodeQL").resolves({
-      codeqlFolder: "codeql",
-      statusReport: {
-        downloadDurationMs: 200,
-        totalDurationMs: 300,
-      },
-      toolsVersion: expectedVersion,
-    });
+    const extractStub = stubDownloadAndExtract();
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
       const result = await setupCodeql.setupCodeQLBundle(
         bundleUrl,
         SAMPLE_DOTCOM_API_DETAILS,
-        "tmp/codeql_action_test/",
+        tmpDir,
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
@@ -333,6 +343,13 @@ test.serial(
       // Basic sanity check that the version we got back is indeed the version that the
       // bundle contains..
       t.is(result.toolsVersion, expectedVersion);
+      t.true(extractStub.calledOnce);
+      t.is(extractStub.firstCall.args[0], bundleUrl);
+      t.is(result.codeqlFolder, toolcache.find("CodeQL", expectedVersion));
+      t.deepEqual(result.toolsDownloadStatusReport, {
+        downloadDurationMs: 200,
+        totalDurationMs: 300,
+      });
 
       // Ensure message logging CodeQL CLI version was present in user logs.
       const expected_message: string = `Using CodeQL CLI version 2.16.0 sourced from ${bundleUrl} .`;
@@ -348,11 +365,12 @@ test.serial(
 );
 
 test.serial(
-  "getCodeQLSource correctly returns nightly CLI version when tools == nightly",
+  "getCodeQLSource and setupCodeQLBundle preserve the nightly version when tools == nightly",
   async (t) => {
     const loggedMessages: LoggedMessage[] = [];
     const logger = getRecordingLogger(loggedMessages);
     const features = createFeatures([]);
+    const extractStub = stubDownloadAndExtract();
 
     const expectedDate = "30260213";
     const expectedTag = `codeql-bundle-${expectedDate}`;
@@ -390,13 +408,33 @@ test.serial(
       const expectedVersion = `0.0.0-${expectedDate}`;
       const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/${setupCodeql.getCodeQLBundleName("zstd")}`;
       t.deepEqual(source, {
+        bundle: { kind: "combined", url: expectedURL },
         bundleVersion: expectedDate,
         cliVersion: undefined,
-        codeqlURL: expectedURL,
         compressionMethod: "zstd",
         sourceType: "download",
         toolsVersion: expectedVersion,
       } satisfies setupCodeql.CodeQLToolsSource);
+
+      const result = await setupCodeql.setupCodeQLBundle(
+        "nightly",
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+        GitHubVariant.DOTCOM,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        ["javascript"],
+        false, // useOverlayAwareDefaultCliVersion
+        features,
+        logger,
+      );
+
+      t.true(extractStub.calledOnce);
+      t.is(extractStub.firstCall.args[0], expectedURL);
+      t.is(result.toolsVersion, source.toolsVersion);
+      t.is(result.toolsSource, setupCodeql.ToolsSource.Download);
+      t.is(result.codeqlFolder, toolcache.find("CodeQL", expectedVersion));
+      t.true(fs.existsSync(`${result.codeqlFolder}.complete`));
+      t.deepEqual(toolcache.findAllVersions("CodeQL"), [expectedVersion]);
 
       // Afterwards, ensure that we see the expected messages in the log.
       checkExpectedLogMessages(t, loggedMessages, [
@@ -453,9 +491,9 @@ test.serial(
       const expectedVersion = `0.0.0-${expectedDate}`;
       const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/${setupCodeql.getCodeQLBundleName("zstd")}`;
       t.deepEqual(source, {
+        bundle: { kind: "combined", url: expectedURL },
         bundleVersion: expectedDate,
         cliVersion: undefined,
-        codeqlURL: expectedURL,
         compressionMethod: "zstd",
         sourceType: "download",
         toolsVersion: expectedVersion,
@@ -468,6 +506,91 @@ test.serial(
         `Attempting to obtain CodeQL tools. CLI version: unknown, bundle tag name: ${expectedTag}`,
         `Using CodeQL CLI sourced from ${expectedURL}`,
       ]);
+    });
+  },
+);
+
+for (const bundlePath of [
+  "codeql-bundle.tar.gz",
+  "codeql-bundle.tar.zst",
+  "codeql-bundle-/codeql-bundle.tar.gz",
+]) {
+  test.serial(
+    `setupCodeQLBundle reports an unknown version for ${bundlePath}`,
+    async (t) => {
+      const extractStub = stubDownloadAndExtract();
+      const downloadSpy = sinon.spy(setupCodeql, "downloadCodeQL");
+      const url = `https://example.com/${bundlePath}`;
+      const messages: LoggedMessage[] = [];
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const result = await setupCodeql.setupCodeQLBundle(
+          url,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+          GitHubVariant.DOTCOM,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          createFeatures([]),
+          getRecordingLogger(messages),
+        );
+
+        t.true(extractStub.calledOnce);
+        t.is(extractStub.firstCall.args[0], url);
+        t.is(downloadSpy.firstCall.args[0].bundleVersion, undefined);
+        t.is(downloadSpy.firstCall.args[0].toolsVersion, "unknown");
+        t.is(result.toolsVersion, "unknown");
+        t.is(result.toolsSource, setupCodeql.ToolsSource.Download);
+        t.is(path.dirname(result.codeqlFolder), tmpDir);
+        t.true(fs.existsSync(result.codeqlFolder));
+        t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+        t.deepEqual(toolcache.findAllVersions("CodeQL"), []);
+        checkExpectedLogMessages(t, messages, [
+          `Using CodeQL CLI sourced from ${url}`,
+        ]);
+      });
+    },
+  );
+}
+
+test.serial(
+  "setupCodeQLBundle preserves local installation without cleaning the toolcache",
+  async (t) => {
+    const cleanupSpy = sinon.spy(toolsDownload, "deleteToolcacheBundles");
+    const downloadSpy = sinon.spy(setupCodeql, "downloadCodeQL");
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+      const cachedDirectory = createToolcacheEntry(
+        tmpDir,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+      const result = await setupCodeql.setupCodeQLBundle(
+        path.join(__dirname, "../src/testdata/codeql-bundle.tar.gz"),
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+        GitHubVariant.DOTCOM,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        undefined, // rawLanguages
+        false, // useOverlayAwareDefaultCliVersion
+        createFeatures([Feature.CleanupToolcacheBundles]),
+        getRunnerLogger(true),
+      );
+
+      t.is(result.toolsVersion, "local");
+      t.is(result.toolsSource, setupCodeql.ToolsSource.Local);
+      t.is(result.toolsDownloadStatusReport, undefined);
+      t.is(path.dirname(result.codeqlFolder), tmpDir);
+      t.true(fs.existsSync(result.codeqlFolder));
+      t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+      t.true(fs.existsSync(cachedDirectory));
+      t.true(cleanupSpy.notCalled);
+      t.true(downloadSpy.notCalled);
+      t.is(process.env[EnvVar.HAS_SET_UP_CODEQL], "true");
     });
   },
 );
@@ -974,30 +1097,35 @@ async function runDownloadCodeQL(
   toolcacheRoot: string,
   features: Feature[],
   bundleVersion: string | undefined,
+  env = getTestEnv({
+    [ActionsEnvVars.RUNNER_TOOL_CACHE]: toolcacheRoot,
+  }),
 ): Promise<{
   codeqlFolder: string;
   cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
 }> {
-  sinon
-    .stub(toolsDownload, "downloadAndExtract")
-    .callsFake(async (_url, _compressionMethod, dest) => {
-      // The real implementation creates the destination directory, which matters here because the
-      // cleanup deletes it first and `writeToolcacheMarkerFile` writes into its parent afterwards.
-      fs.mkdirSync(dest, { recursive: true });
-      return { totalDurationMs: 1 };
-    });
+  stubDownloadAndExtract();
   const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
 
-  const { codeqlFolder } = await setupCodeql.downloadCodeQL(
-    "https://example.com/codeql-bundle.tar.gz",
-    "gzip",
-    bundleVersion,
-    CLEANUP_CLI_VERSION,
+  const { codeqlFolder } = await setupCodeql.downloadCodeQLBundle(
+    initAllState({
+      env,
+      features: createFeatures(features),
+    }),
+    {
+      bundle: {
+        kind: "combined",
+        url: "https://example.com/codeql-bundle.tar.gz",
+      },
+      compressionMethod: "gzip",
+      bundleVersion,
+      cliVersion: CLEANUP_CLI_VERSION,
+      sourceType: "download",
+      toolsVersion: CLEANUP_CLI_VERSION,
+    },
     SAMPLE_DOTCOM_API_DETAILS,
     undefined, // tarVersion
     toolcacheRoot, // tempDir
-    createFeatures(features),
-    getRunnerLogger(true),
   );
 
   const diagnostic = addDiagnostic
@@ -1026,7 +1154,7 @@ async function testToolcacheCleanup(
   }: {
     features: Feature[];
     runnerEnvironment: string | undefined;
-    setUp?: () => void;
+    setUp?: (env: Env) => void;
   },
   check: (context: {
     cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
@@ -1041,7 +1169,10 @@ async function testToolcacheCleanup(
     } else {
       process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = runnerEnvironment;
     }
-    setUp?.();
+    const env = getTestEnv({
+      [ActionsEnvVars.RUNNER_TOOL_CACHE]: tmpDir,
+    });
+    setUp?.(env);
 
     // The extraction of the bundle would normally create this directory.
     const destinationDirectory = createToolcacheEntry(
@@ -1060,6 +1191,7 @@ async function testToolcacheCleanup(
       tmpDir,
       features,
       CLEANUP_BUNDLE_VERSION,
+      env,
     );
 
     t.true(
@@ -1072,7 +1204,7 @@ async function testToolcacheCleanup(
 }
 
 test.serial(
-  "downloadCodeQL does not clean up the toolcache when the feature flag is disabled",
+  "downloadCodeQLBundle does not clean up the toolcache when the feature flag is disabled",
   async (t) => {
     await testToolcacheCleanup(
       t,
@@ -1087,7 +1219,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL does not clean up the toolcache when the runner is not GitHub-hosted",
+  "downloadCodeQLBundle does not clean up the toolcache when the runner is not GitHub-hosted",
   async (t) => {
     await testToolcacheCleanup(
       t,
@@ -1105,7 +1237,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL does not clean up the toolcache when the runner environment is unknown",
+  "downloadCodeQLBundle does not clean up the toolcache when the runner environment is unknown",
   async (t) => {
     // A runner that doesn't report its environment must be treated as not GitHub-hosted, since its
     // toolcache may well outlive the job.
@@ -1125,7 +1257,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL deletes other CodeQL bundles from the toolcache when enabled on a GitHub-hosted runner",
+  "downloadCodeQLBundle deletes other CodeQL bundles from the toolcache when enabled on a GitHub-hosted runner",
   async (t) => {
     await testToolcacheCleanup(
       t,
@@ -1153,7 +1285,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL reports no deleted versions when the toolcache has no CodeQL bundles",
+  "downloadCodeQLBundle reports no deleted versions when the toolcache has no CodeQL bundles",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1175,7 +1307,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL continues when deleting a CodeQL bundle from the toolcache fails",
+  "downloadCodeQLBundle continues when deleting a CodeQL bundle from the toolcache fails",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1306,7 +1438,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL does not follow a symlinked CodeQL toolcache directory",
+  "downloadCodeQLBundle does not follow a symlinked CodeQL toolcache directory",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       const toolcacheRoot = path.join(tmpDir, "toolcache");
@@ -1342,7 +1474,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL does not clean up the toolcache once a step has already set up CodeQL",
+  "downloadCodeQLBundle does not clean up the toolcache once a step has already set up CodeQL",
   async (t) => {
     // `.github/workflows/codeql.yml` sets up CodeQL twice and then runs both returned paths. If the
     // second setup downloads, it must not delete the bundle the first one handed out.
@@ -1351,8 +1483,8 @@ test.serial(
       {
         features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "github-hosted",
-        setUp: () => {
-          process.env[EnvVar.HAS_SET_UP_CODEQL] = "true";
+        setUp: (env) => {
+          env.set(EnvVar.HAS_SET_UP_CODEQL, "true");
         },
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -1365,17 +1497,40 @@ test.serial(
 );
 
 test.serial(
+  "downloadCodeQLBundle checks the supplied environment before cleaning the toolcache",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+      delete process.env[EnvVar.HAS_SET_UP_CODEQL];
+
+      const staleDirectory = createToolcacheEntry(
+        tmpDir,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+      const { codeqlFolder, cleanupDiagnostic } = await runDownloadCodeQL(
+        tmpDir,
+        [Feature.CleanupToolcacheBundles],
+        CLEANUP_BUNDLE_VERSION,
+        getTestEnv({ [EnvVar.HAS_SET_UP_CODEQL]: "true" }),
+      );
+
+      t.true(fs.existsSync(staleDirectory));
+      t.true(fs.existsSync(`${codeqlFolder}.complete`));
+      t.is(cleanupDiagnostic, undefined);
+    });
+  },
+);
+
+test.serial(
   "setupCodeQLBundle records that this job has set up CodeQL",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
       delete process.env[EnvVar.HAS_SET_UP_CODEQL];
 
-      sinon.stub(setupCodeql, "downloadCodeQL").resolves({
-        codeqlFolder: "codeql",
-        statusReport: { totalDurationMs: 1 },
-        toolsVersion: LINKED_CLI_VERSION.cliVersion,
-      });
+      stubDownloadAndExtract();
 
       await setupCodeql.setupCodeQLBundle(
         "linked",
@@ -1399,7 +1554,50 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL cleans up the toolcache even when the download will not be cached",
+  "setupCodeQLBundle cleans up once and propagates a failed combined download",
+  async (t) => {
+    const error = new HTTPError("Not Found", 404);
+    const extractStub = stubDownloadAndExtract().rejects(error);
+    const cleanupSpy = sinon.spy(toolsDownload, "deleteToolcacheBundles");
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+      delete process.env[EnvVar.HAS_SET_UP_CODEQL];
+      const staleDirectory = createToolcacheEntry(
+        tmpDir,
+        "CodeQL",
+        CLEANUP_STALE_VERSION,
+      );
+
+      await t.throwsAsync(
+        setupCodeql.setupCodeQLBundle(
+          "linked",
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+          GitHubVariant.DOTCOM,
+          SAMPLE_DEFAULT_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          createFeatures([Feature.CleanupToolcacheBundles]),
+          getRunnerLogger(true),
+        ),
+        { is: error },
+      );
+
+      t.true(cleanupSpy.calledOnce);
+      t.true(cleanupSpy.calledBefore(extractStub));
+      t.true(extractStub.calledOnce);
+      t.false(fs.existsSync(staleDirectory));
+      t.false(fs.existsSync(`${extractStub.firstCall.args[2]}.complete`));
+      t.deepEqual(toolcache.findAllVersions("CodeQL"), []);
+      t.is(process.env[EnvVar.HAS_SET_UP_CODEQL], undefined);
+    });
+  },
+);
+
+test.serial(
+  "downloadCodeQLBundle cleans up the toolcache even when the download will not be cached",
   async (t) => {
     // A `tools` URL we can't derive a bundle version from is extracted to a temporary directory
     // rather than the toolcache, but the toolcache is on the same filesystem, so emptying it still
@@ -1434,7 +1632,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL reports a failure when the toolcache cannot be inspected",
+  "downloadCodeQLBundle reports a failure when the toolcache cannot be inspected",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1466,7 +1664,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL does not clean up a toolcache on a different filesystem to the workspace",
+  "downloadCodeQLBundle does not clean up a toolcache on a different filesystem to the workspace",
   async (t) => {
     // Some runner images keep the toolcache on a different volume to the workspace, in which case
     // deleting the tools frees up disk space that the analysis cannot use.
@@ -1516,7 +1714,7 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQL does not delete through a symlinked version directory",
+  "downloadCodeQLBundle does not delete through a symlinked version directory",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       const toolcacheRoot = path.join(tmpDir, "toolcache");

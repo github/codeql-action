@@ -6,14 +6,16 @@ import { CHANGELOG_FILE, DryRunOption } from "./config";
 export const UNRELEASED_PLACEHOLDER = "[UNRELEASED]";
 
 /** The default contents for a section in the changelog. */
-export const NO_CHANGES_STR = "No user facing changes.\n\n";
+export const NO_CHANGES_STR = "No user facing changes.";
 
 /** Placeholder changelog content for a new release. */
 export const EMPTY_CHANGELOG = `# CodeQL Action Changelog
 
 ## ${UNRELEASED_PLACEHOLDER}
 
-${NO_CHANGES_STR}`;
+${NO_CHANGES_STR}
+
+`;
 
 /**
  * Represents sections in a changelog.
@@ -204,7 +206,7 @@ export function processChangelogForBackports(
 
     // Add an entry if we didn't keep any.
     if (!foundContent) {
-      section.bodyLines.push(NO_CHANGES_STR.trim());
+      section.bodyLines.push(NO_CHANGES_STR);
     }
   }
 

@@ -26,20 +26,26 @@ import { CHANGELOG_FILE } from "./config";
 const testDate = new Date(2026, 7, 14);
 
 describe("getHeader", async () => {
+  function Section(headerLine: string): ChangelogSection {
+    return {
+      headerLine,
+      bodyLines: [],
+    };
+  }
   await it("returns non-headers unchanged", () => {
-    assert.equal("foo", getHeader("foo"));
-    assert.equal("- bar", getHeader("- bar"));
+    assert.equal("foo", getHeader(Section("foo")));
+    assert.equal("- bar", getHeader(Section("- bar")));
   });
   await it("strips octothorpes", async () => {
-    assert.equal("foo", getHeader("# foo"));
-    assert.equal("foo", getHeader("## foo"));
-    assert.equal("foo", getHeader("### foo"));
-    assert.equal("foo", getHeader("#### foo"));
-    assert.equal("foo", getHeader("##### foo"));
-    assert.equal("foo", getHeader("###### foo"));
+    assert.equal("foo", getHeader(Section("# foo")));
+    assert.equal("foo", getHeader(Section("## foo")));
+    assert.equal("foo", getHeader(Section("### foo")));
+    assert.equal("foo", getHeader(Section("#### foo")));
+    assert.equal("foo", getHeader(Section("##### foo")));
+    assert.equal("foo", getHeader(Section("###### foo")));
   });
   await it("strips whitespace", async () => {
-    assert.equal("foo", getHeader("# foo  "));
+    assert.equal("foo", getHeader(Section("# foo  ")));
   });
 });
 

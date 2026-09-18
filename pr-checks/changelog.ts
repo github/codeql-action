@@ -33,9 +33,11 @@ export interface Changelog {
   sections: ChangelogSection[];
 }
 
-/** Returns the text of a CHANGELOG.md header (without the '## ' prefix). */
-export function getHeader(headerLine: string): string {
-  return headerLine.replace(/^#+\s+/, "").trimEnd();
+/**
+ * Returns the text of the header (without the '## ' prefix) of the given section.
+ * */
+export function getHeader(section: ChangelogSection): string {
+  return section.headerLine.replace(/^#+\s+/, "").trimEnd();
 }
 
 /** Returns `date` formatted as `DD Mon YYYY`. */
@@ -147,7 +149,7 @@ export function addBodyLinesToUnreleasedSection(
   lines: string[],
 ) {
   const unreleasedSection = changelog.sections[0];
-  if (getHeader(unreleasedSection.headerLine) !== UNRELEASED_PLACEHOLDER) {
+  if (getHeader(unreleasedSection) !== UNRELEASED_PLACEHOLDER) {
     throw Error("'[UNRELEASED]' is not the first section of 'CHANGELOG.md'");
   }
 

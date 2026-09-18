@@ -12,9 +12,10 @@ import {
   addBodyLinesToUnreleasedSection,
   parseChangelog,
   renderChangelog,
+  withChangelog,
 } from "./changelog";
 import { isValidAllChangenoteFiles } from "./changelog/validate.mjs";
-import { CHANGELOG_FILE, CHANGENOTES_DIR } from "./config";
+import { CHANGENOTES_DIR } from "./config";
 
 const entryPoint = process.argv[1];
 if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
@@ -70,10 +71,11 @@ function flush(): number {
       return content.trim();
     });
 
-    const changelogContents = fs.readFileSync(CHANGELOG_FILE).toString();
-    const changelog = parseChangelog(changelogContents);
-    addBodyLinesToUnreleasedSection(changelog, changenotes);
-    fs.writeFileSync(CHANGELOG_FILE, renderChangelog(changelog));
+    withChangelog((contents) => {
+      const changelog = parseChangelog(contents);
+      addBodyLinesToUnreleasedSection(changelog, changenotes);
+      return renderChangelog(changelog);
+    }, {});
 
     // Delete changenotes only after successful processing.
     for (const p of changenotePaths) {

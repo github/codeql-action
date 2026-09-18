@@ -10,6 +10,7 @@ import { describe, it } from "node:test";
 
 import {
   EMPTY_CHANGELOG,
+  getHeader,
   getReleaseDateString,
   parseChangelog,
   processChangelogForBackports,
@@ -19,6 +20,24 @@ import {
 import { CHANGELOG_FILE } from "./config";
 
 const testDate = new Date(2026, 7, 14);
+
+describe("getHeader", async () => {
+  await it("returns non-headers unchanged", () => {
+    assert.equal("foo", getHeader("foo"));
+    assert.equal("- bar", getHeader("- bar"));
+  });
+  await it("strips octothorpes", async () => {
+    assert.equal("foo", getHeader("# foo"));
+    assert.equal("foo", getHeader("## foo"));
+    assert.equal("foo", getHeader("### foo"));
+    assert.equal("foo", getHeader("#### foo"));
+    assert.equal("foo", getHeader("##### foo"));
+    assert.equal("foo", getHeader("###### foo"));
+  });
+  await it("strips whitespace", async () => {
+    assert.equal("foo", getHeader("# foo  "));
+  });
+});
 
 describe("getReleaseDateString", async () => {
   await it("formats dates as expected", async () => {

@@ -33,6 +33,11 @@ export interface Changelog {
   sections: ChangelogSection[];
 }
 
+/** Returns the text of a CHANGELOG.md header (without the '## ' prefix). */
+export function getHeader(headerLine: string): string {
+  return headerLine.replace(/^#+\s+/, "").trimEnd();
+}
+
 /** Returns `date` formatted as `DD Mon YYYY`. */
 export function getReleaseDateString(today: Date = new Date()): string {
   return today.toLocaleDateString("en-GB", {

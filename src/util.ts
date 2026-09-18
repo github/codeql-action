@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as os from "os";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
@@ -84,9 +85,32 @@ export async function withTmpDir<T>(
   body: (tmpDir: string) => Promise<T>,
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
-  const result = await body(tmpDir);
-  await fs.promises.rm(tmpDir, { force: true, recursive: true });
-  return result;
+  try {
+    return await body(tmpDir);
+  } finally {
+    await fs.promises.rm(tmpDir, { force: true, recursive: true });
+  }
+}
+
+/**
+ * Creates a temporary file with the given contents, runs the given body, and
+ * then deletes the file. Note that, to create a temporary file, we first create
+ * a temporary directory via {@link withTmpDir} and then create the file within
+ * that directory.
+ * @param baseFileName The name to assign the temporary file.
+ * @param contents The contents to write to the temporary file.
+ * @param body The function to execute with the temporary file.
+ */
+export async function withTmpFile<T>(
+  baseFileName: string,
+  contents: string,
+  body: (filePath: string) => Promise<T> | T,
+): Promise<T> {
+  return withTmpDir(async (tmpDir) => {
+    const filePath = path.join(tmpDir, baseFileName);
+    fs.writeFileSync(filePath, contents);
+    return body(filePath);
+  });
 }
 
 /**
@@ -656,6 +680,11 @@ export async function bundleDb(
     additionalFiles,
   );
   return databaseBundlePath;
+}
+
+/** Returns the elapsed milliseconds, rounded, since a `performance.now()` timestamp. */
+export function durationMsSince(startTime: number): number {
+  return Math.round(performance.now() - startTime);
 }
 
 /**

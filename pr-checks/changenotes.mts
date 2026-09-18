@@ -1,7 +1,11 @@
+#!/usr/bin/env npx tsx
+
+import * as fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { isValidChangenoteFile } from "./cli/validate.ts";
+import { isValidAllChangenoteFiles } from "./changelog/validate.mjs";
+import { CHANGENOTES_DIR } from "./config";
 
 const entryPoint = process.argv[1];
 if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
@@ -18,13 +22,13 @@ function main(): number {
     allowPositionals: true,
     strict: true,
   });
-  const [command, ...paths] = positionals;
+  const [command] = positionals;
   switch (command) {
     case undefined:
     case "help":
       return usage();
     case "validate":
-      return validate(paths);
+      return validate();
     default:
       console.error(`Unknown command: ${command}`);
       return 1;
@@ -32,20 +36,21 @@ function main(): number {
 }
 
 function usage(): number {
-  console.log("Usage: changetool validate <path> [<path> ...]");
+  console.log(`Usage: changenotes.mts validate`);
   return 0;
 }
 
-function validate(paths: string[]): number {
-  let valid = true;
-  if (paths.length === 0) {
-    console.error("error: no paths provided (see 'help' command for usage)");
-    return 1;
-  }
-  for (const path of paths) {
-    if (!isValidChangenoteFile(path)) {
-      valid = false;
+function validate(): number {
+  try {
+    if (isValidAllChangenoteFiles(fs.readdirSync(CHANGENOTES_DIR))) {
+      console.log(`All changenotes in '${CHANGENOTES_DIR}' are valid.`);
+      return 0;
     }
+  } catch (error) {
+    console.error(
+      `Failed to read changenotes directory '${CHANGENOTES_DIR}'`,
+      error,
+    );
   }
-  return valid ? 0 : 1;
+  return 1;
 }

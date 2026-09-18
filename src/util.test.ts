@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import path from "path";
+import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import test from "ava";
@@ -507,6 +508,26 @@ test("joinAtMost - truncates list if array is > than limit", (t) => {
   t.assert(result.includes("test5"));
   t.false(result.includes("test6"));
 });
+
+test.serial(
+  "durationMsSince rounds elapsed milliseconds rather than the timestamps",
+  (t) => {
+    const startTime = 1000.25;
+    const now = sinon.stub(performance, "now");
+    for (const [endTime, expected] of [
+      [1000.25, 0],
+      [1000.74, 0],
+      [1000.75, 1],
+      [1001.74, 1],
+      [1001.75, 2],
+      [2000.74, 1000],
+      [2000.75, 1001],
+    ]) {
+      now.returns(endTime);
+      t.is(util.durationMsSince(startTime), expected);
+    }
+  },
+);
 
 test("Success creates a success result", (t) => {
   const result = new util.Success("test value");

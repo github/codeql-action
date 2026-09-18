@@ -13,8 +13,16 @@ import * as semver from "semver";
 import { ActionState } from "./action-common";
 import { ActionsEnvVars, getEnv, ReadOnlyEnv } from "./environment";
 import { formatDuration, Logger } from "./logging";
+import type { PerLanguageToolsStatusReport } from "./status-report/tools-download";
 import * as tar from "./tar";
-import { cleanUpPath, getErrorMessage, getRequiredEnvParam } from "./util";
+import {
+  asHTTPError,
+  cleanUpPath,
+  durationMsSince,
+  getErrorMessage,
+  getRequiredEnvParam,
+  HTTPError,
+} from "./util";
 
 /**
  * High watermark to use when streaming the download and extraction of the CodeQL tools.
@@ -44,10 +52,11 @@ export type ToolsDownloadStatusReport = {
    */
   extractionDurationMs?: number;
   /**
-   * Total time taken to make the bundle available on disk, in milliseconds. This includes any time
-   * spent on a streaming attempt that failed and fell back to downloading before extracting.
+   * Total time taken to make the bundle available on disk, including failed download attempts
+   * before a fallback, in milliseconds.
    */
   totalDurationMs: number;
+  perLanguage?: PerLanguageToolsStatusReport;
 };
 
 export async function downloadAndExtract(
@@ -78,7 +87,7 @@ export async function downloadAndExtract(
         logger,
       );
 
-      const totalDurationMs = Math.round(performance.now() - startTime);
+      const totalDurationMs = durationMsSince(startTime);
       logger.info(
         `Finished downloading and extracting CodeQL bundle to ${dest} (${formatDuration(
           totalDurationMs,
@@ -88,14 +97,20 @@ export async function downloadAndExtract(
       return { totalDurationMs };
     }
   } catch (e) {
+    // If we failed during processing, we want to clean up the destination directory
+    // before we either try again or give up.
+    await cleanUpPath(dest, "CodeQL bundle", logger);
+
+    // Retrying a 404 is pointless: the asset does not exist, so downloading it a different way
+    // will fail in the same way.
+    if (asHTTPError(e)?.status === 404) {
+      throw e;
+    }
+
     core.warning(
       `Failed to download and extract CodeQL bundle using streaming with error: ${getErrorMessage(e)}`,
     );
     core.warning(`Falling back to downloading the bundle before extracting.`);
-
-    // If we failed during processing, we want to clean up the destination directory
-    // before we try again.
-    await cleanUpPath(dest, "CodeQL bundle", logger);
   }
 
   const toolsDownloadStart = performance.now();
@@ -105,7 +120,7 @@ export async function downloadAndExtract(
     authorization,
     headers,
   );
-  const downloadDurationMs = Math.round(performance.now() - toolsDownloadStart);
+  const downloadDurationMs = durationMsSince(toolsDownloadStart);
 
   logger.info(
     `Finished downloading CodeQL bundle to ${archivedBundlePath} (${formatDuration(
@@ -125,7 +140,7 @@ export async function downloadAndExtract(
       tarVersion,
       logger,
     );
-    extractionDurationMs = Math.round(performance.now() - extractionStart);
+    extractionDurationMs = durationMsSince(extractionStart);
     logger.info(
       `Finished extracting CodeQL bundle to ${dest} (${formatDuration(
         extractionDurationMs,
@@ -138,7 +153,7 @@ export async function downloadAndExtract(
   return {
     downloadDurationMs,
     extractionDurationMs,
-    totalDurationMs: Math.round(performance.now() - startTime),
+    totalDurationMs: durationMsSince(startTime),
   };
 }
 
@@ -191,9 +206,14 @@ async function downloadAndExtractZstdWithStreaming(
   if (response.statusCode !== 200) {
     // Discard the response body so that the connection can be released.
     response.resume();
-    throw new Error(
-      `Failed to download CodeQL bundle from ${codeqlURL}. HTTP status code: ${response.statusCode}.`,
-    );
+    const baseMessage = `Failed to download CodeQL bundle from ${codeqlURL}.`;
+    if (response.statusCode !== undefined) {
+      throw new HTTPError(
+        `${baseMessage} HTTP status code: ${response.statusCode}.`,
+        response.statusCode,
+      );
+    }
+    throw new Error(baseMessage);
   }
 
   await tar.extractTarZst(response, dest, tarVersion, logger);

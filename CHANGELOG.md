@@ -2,7 +2,7 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## [UNRELEASED]
+## 4.38.1 - 18 Sept 2026
 
 No user facing changes.
 

@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as os from "os";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
@@ -679,6 +680,11 @@ export async function bundleDb(
     additionalFiles,
   );
   return databaseBundlePath;
+}
+
+/** Returns the elapsed milliseconds, rounded, since a `performance.now()` timestamp. */
+export function durationMsSince(startTime: number): number {
+  return Math.round(performance.now() - startTime);
 }
 
 /**

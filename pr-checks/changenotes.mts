@@ -38,8 +38,8 @@ function main(): ExitCode {
     case undefined:
     case "help":
       return usage();
-    case "flush":
-      return flush();
+    case "assemble":
+      return assemble();
     case "validate":
       return validate();
     default:
@@ -50,14 +50,14 @@ function main(): ExitCode {
 
 function usage(): ExitCode {
   const message =
-    "Usage: changenotes.mts flush\n" +
+    "Usage: changenotes.mts assemble\n" +
     "       changenotes.mts validate\n" +
     "       changenotes.mts help";
   console.log(message);
   return ExitCode.Success;
 }
 
-function flush(): ExitCode {
+function assemble(): ExitCode {
   try {
     // Get the file paths to our changenotes; these will be useful later.
     const changenotePaths = fs
@@ -85,7 +85,7 @@ function flush(): ExitCode {
 
     return ExitCode.Success;
   } catch (e) {
-    console.error("Failed to flush changenotes to 'CHANGELOG.md'", e);
+    console.error("Failed to assemble changenotes to 'CHANGELOG.md'", e);
   }
 
   return ExitCode.Failure;

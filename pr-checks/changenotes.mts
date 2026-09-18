@@ -1,7 +1,6 @@
 #!/usr/bin/env npx tsx
 
 import * as fs from "node:fs";
-import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import path from "path";
@@ -17,6 +16,39 @@ import {
 } from "./changelog";
 import { isValidAllChangenoteFiles } from "./changelog/validate.mjs";
 import { CHANGENOTES_DIR } from "./config";
+
+/**
+ * Describes a changenote file, including its file path, frontmatter, and content.
+ */
+interface ChangenoteFile {
+  name: string;
+  data: Record<string, any>;
+  content: string;
+}
+
+/**
+ * Returns the absolute file paths of all files in
+ * {@link CHANGENOTES_DIR} (except ".gitkeep").
+ * */
+function listUnreleasedChangenoteDir(): string[] {
+  return fs
+    .readdirSync(CHANGENOTES_DIR)
+    .filter((name) => name !== ".gitkeep")
+    .map((name) => path.join(CHANGENOTES_DIR, name));
+}
+
+/**
+ * Scans the {@link CHANGENOTES_DIR} directory for changenote files
+ * and returns a parsed listing of those changenote files.
+ */
+function getChangenotes(): ChangenoteFile[] {
+  return listUnreleasedChangenoteDir().map((name) => {
+    return {
+      name,
+      ...matter(fs.readFileSync(name, "utf-8")),
+    };
+  });
+}
 
 const entryPoint = process.argv[1];
 if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
@@ -59,22 +91,13 @@ function usage(): ExitCode {
 
 function assemble(): ExitCode {
   try {
-    // Get the file paths to our changenotes; these will be useful later.
-    const changenotePaths = fs
-      .readdirSync(CHANGENOTES_DIR)
-      .filter((name) => name !== ".gitkeep")
-      .map((name) => path.join(CHANGENOTES_DIR, name));
-
-    // From the file paths, we read the files to obtain the actual notes themselves.
-    const changenotes = changenotePaths.map((filePath) => {
-      const fileBody = readFileSync(filePath).toString();
-      const { content } = matter(fileBody);
-      return content.trim();
-    });
+    const changenotes = getChangenotes();
+    const changenoteBodies = changenotes.map((c) => c.content);
+    const changenotePaths = changenotes.map((c) => c.name);
 
     withChangelog((contents) => {
       const changelog = parseChangelog(contents);
-      addBodyLinesToUnreleasedSection(changelog, changenotes);
+      addBodyLinesToUnreleasedSection(changelog, changenoteBodies);
       return renderChangelog(changelog);
     }, {});
 

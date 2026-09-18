@@ -161,8 +161,9 @@ export function addBodyLinesToUnreleasedSection(
     return;
   }
 
-  // Insert `lines` after the first blank line.
-  unreleasedSection.bodyLines.splice(1, 0, ...lines);
+  unreleasedSection.bodyLines.pop(); // Remove the last empty line.
+  unreleasedSection.bodyLines.push(...lines);
+  unreleasedSection.bodyLines.push("");
 }
 
 /**

@@ -13,10 +13,12 @@ import * as semver from "semver";
 import { ActionState } from "./action-common";
 import { ActionsEnvVars, getEnv, ReadOnlyEnv } from "./environment";
 import { formatDuration, Logger } from "./logging";
+import type { PerLanguageToolsStatusReport } from "./status-report/tools-download";
 import * as tar from "./tar";
 import {
   asHTTPError,
   cleanUpPath,
+  durationMsSince,
   getErrorMessage,
   getRequiredEnvParam,
   HTTPError,
@@ -50,10 +52,11 @@ export type ToolsDownloadStatusReport = {
    */
   extractionDurationMs?: number;
   /**
-   * Total time taken to make the bundle available on disk, in milliseconds. This includes any time
-   * spent on a streaming attempt that failed and fell back to downloading before extracting.
+   * Total time taken to make the bundle available on disk, including failed download attempts
+   * before a fallback, in milliseconds.
    */
   totalDurationMs: number;
+  perLanguage?: PerLanguageToolsStatusReport;
 };
 
 export async function downloadAndExtract(
@@ -84,7 +87,7 @@ export async function downloadAndExtract(
         logger,
       );
 
-      const totalDurationMs = Math.round(performance.now() - startTime);
+      const totalDurationMs = durationMsSince(startTime);
       logger.info(
         `Finished downloading and extracting CodeQL bundle to ${dest} (${formatDuration(
           totalDurationMs,
@@ -117,7 +120,7 @@ export async function downloadAndExtract(
     authorization,
     headers,
   );
-  const downloadDurationMs = Math.round(performance.now() - toolsDownloadStart);
+  const downloadDurationMs = durationMsSince(toolsDownloadStart);
 
   logger.info(
     `Finished downloading CodeQL bundle to ${archivedBundlePath} (${formatDuration(
@@ -137,7 +140,7 @@ export async function downloadAndExtract(
       tarVersion,
       logger,
     );
-    extractionDurationMs = Math.round(performance.now() - extractionStart);
+    extractionDurationMs = durationMsSince(extractionStart);
     logger.info(
       `Finished extracting CodeQL bundle to ${dest} (${formatDuration(
         extractionDurationMs,
@@ -150,7 +153,7 @@ export async function downloadAndExtract(
   return {
     downloadDurationMs,
     extractionDurationMs,
-    totalDurationMs: Math.round(performance.now() - startTime),
+    totalDurationMs: durationMsSince(startTime),
   };
 }
 

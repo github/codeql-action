@@ -133,6 +133,59 @@ export function parseChangelog(content: string): Changelog {
 }
 
 /**
+ * Inserts the changenotes `notes` under the `[UNRELEASED]` section of `changelog`.
+ * If the section contains the stock message {@link NO_CHANGES_STR}, then
+ * `notes` will be inserted in place and the stock message will be deleted.
+ *
+ * This function will throw an exception if `[UNRELEASED]` does not exist.
+ *
+ * @param changelog The CHANGELOG object to modify.
+ * @param lines The changenotes to insert.
+ */
+export function addBodyLinesToUnreleasedSection(
+  changelog: Changelog,
+  lines: string[],
+) {
+  // Find the '[UNRELEASED]' section.
+  let unreleasedSection: ChangelogSection | undefined;
+  for (const section of changelog.sections) {
+    if (getHeader(section.headerLine) === UNRELEASED_PLACEHOLDER) {
+      unreleasedSection = section;
+      break;
+    }
+  }
+
+  // Ensure that the '[UNRELEASED]' section exists first.
+  if (unreleasedSection === undefined) {
+    throw Error(
+      "Cannot put changenotes into CHANGELOG.md's '[UNRELEASED]' section because it does not exist",
+    );
+  }
+
+  let insertAtIndex = 0;
+  let deleteCount = 0;
+
+  // If the section contains an empty line, preserve it -- insert afterward.
+  if (
+    unreleasedSection.bodyLines.length > 0 &&
+    unreleasedSection.bodyLines[0] === ""
+  ) {
+    insertAtIndex++;
+  }
+
+  // If the section contains the stock message 'No user facing changes.'
+  if (
+    lines.length > 0 &&
+    unreleasedSection.bodyLines.length > insertAtIndex &&
+    unreleasedSection.bodyLines[insertAtIndex].trim() === NO_CHANGES_STR
+  ) {
+    deleteCount++; // Delete the line by incrementing the delete marker.
+  }
+
+  unreleasedSection.bodyLines.splice(insertAtIndex, deleteCount, ...lines);
+}
+
+/**
  * Combines an array of lines into a single string by adding line breaks.
  */
 export function unlines(lines: string[]): string {

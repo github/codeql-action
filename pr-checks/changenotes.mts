@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import path from "path";
 
+import { ExitCode } from "@actions/core";
 import { matter } from "lite-matter";
 
 import {
@@ -23,11 +24,11 @@ if (entryPoint && import.meta.url === pathToFileURL(entryPoint).href) {
     process.exit(main());
   } catch (error) {
     console.error(error);
-    process.exit(1);
+    process.exit(ExitCode.Failure);
   }
 }
 
-function main(): number {
+function main(): ExitCode {
   const { positionals } = parseArgs({
     allowPositionals: true,
     strict: true,
@@ -43,20 +44,20 @@ function main(): number {
       return validate();
     default:
       console.error(`Unknown command: ${command}`);
-      return 1;
+      return ExitCode.Failure;
   }
 }
 
-function usage(): number {
+function usage(): ExitCode {
   const message =
     "Usage: changenotes.mts flush\n" +
     "       changenotes.mts validate\n" +
     "       changenotes.mts help";
   console.log(message);
-  return 0;
+  return ExitCode.Success;
 }
 
-function flush(): number {
+function flush(): ExitCode {
   try {
     // Get the file paths to our changenotes; these will be useful later.
     const changenotePaths = fs
@@ -82,19 +83,19 @@ function flush(): number {
       fs.unlinkSync(p);
     }
 
-    return 0;
+    return ExitCode.Success;
   } catch (e) {
     console.error("Failed to flush changenotes to 'CHANGELOG.md'", e);
   }
 
-  return 1;
+  return ExitCode.Failure;
 }
 
-function validate(): number {
+function validate(): ExitCode {
   try {
     if (isValidAllChangenoteFiles(fs.readdirSync(CHANGENOTES_DIR))) {
       console.log(`All changenotes in '${CHANGENOTES_DIR}' are valid.`);
-      return 0;
+      return ExitCode.Success;
     }
   } catch (error) {
     console.error(
@@ -102,5 +103,5 @@ function validate(): number {
       error,
     );
   }
-  return 1;
+  return ExitCode.Failure;
 }

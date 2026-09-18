@@ -148,32 +148,21 @@ export function addBodyLinesToUnreleasedSection(
   changelog: Changelog,
   lines: string[],
 ) {
+  // Do nothing if there is nothing to insert.
+  if (lines.length === 0) return;
+
   const unreleasedSection = changelog.sections[0];
   if (getHeader(unreleasedSection) !== UNRELEASED_PLACEHOLDER) {
     throw Error("'[UNRELEASED]' is not the first section of 'CHANGELOG.md'");
   }
 
-  let insertAtIndex = 0;
-  let deleteCount = 0;
-
-  // If the section contains an empty line, preserve it -- insert afterward.
-  if (
-    unreleasedSection.bodyLines.length > 0 &&
-    unreleasedSection.bodyLines[0] === ""
-  ) {
-    insertAtIndex++;
+  if (unreleasedSection.bodyLines.includes(NO_CHANGES_STR)) {
+    unreleasedSection.bodyLines = ["", ...lines, ""];
+    return;
   }
 
-  // If the section contains the stock message 'No user facing changes.'
-  if (
-    lines.length > 0 &&
-    unreleasedSection.bodyLines.length > insertAtIndex &&
-    unreleasedSection.bodyLines[insertAtIndex].trim() === NO_CHANGES_STR
-  ) {
-    deleteCount++; // Delete the line by incrementing the delete marker.
-  }
-
-  unreleasedSection.bodyLines.splice(insertAtIndex, deleteCount, ...lines);
+  // Insert `lines` after the first blank line.
+  unreleasedSection.bodyLines.splice(1, 0, ...lines);
 }
 
 /**

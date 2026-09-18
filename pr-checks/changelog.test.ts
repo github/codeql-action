@@ -108,25 +108,20 @@ describe("addBodyLinesToUnreleasedSection", async () => {
     };
   }
 
-  await it("throws error if '[UNRELEASED]' section does not exist", async () => {
-    const emptyChangelog = newChangelogWithSections([]);
-    assert.throws(() => addBodyLinesToUnreleasedSection(emptyChangelog, []));
-
-    const releasedChangelog = newChangelogWithSections([
+  await it("throws error if '[UNRELEASED]' section is not first", async () => {
+    const invalidChangelog = newChangelogWithSections([
       {
         headerLine: "## Release 1.0.0",
         bodyLines: [],
       },
       {
-        headerLine: "## Release 2.0.0",
-        bodyLines: [],
-      },
-      {
-        headerLine: "## Release 3.0.0",
+        headerLine: `## ${UNRELEASED_PLACEHOLDER}`,
         bodyLines: [],
       },
     ]);
-    assert.throws(() => addBodyLinesToUnreleasedSection(releasedChangelog, []));
+    assert.throws(() =>
+      addBodyLinesToUnreleasedSection(invalidChangelog, ["foo"]),
+    );
   });
 
   await it("overwrites 'No user facing changes.'", async () => {

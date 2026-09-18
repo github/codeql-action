@@ -79,6 +79,8 @@ interface Specification extends JobSpecification {
   useAllPlatformBundle?: string;
   /** Values for the `analysis-kinds` matrix dimension. */
   analysisKinds?: string[];
+  /** Overrides the generated job matrix using GitHub Actions matrix syntax. */
+  matrix?: Record<string, unknown>;
 
   /** Container image configuration for the job. */
   container?: any;
@@ -253,8 +255,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "dd06d9cba3e5552c54d9f8ea23572deb30010f7c",
-          "v6.0.0",
+          "de7274f081f381c8f8158605e0321c36c376e2e6",
+          "v6.0.1",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -512,9 +514,6 @@ function generateJob(
   specDocument: yaml.Document,
   checkSpecification: Specification,
 ) {
-  const matrix: Array<Record<string, any>> =
-    generateJobMatrix(checkSpecification);
-
   const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
     ? checkSpecification.useAllPlatformBundle
     : "false";
@@ -567,8 +566,8 @@ function generateJob(
   const checkJob: Record<string, any> = {
     strategy: {
       "fail-fast": false,
-      matrix: {
-        include: matrix,
+      matrix: checkSpecification.matrix ?? {
+        include: generateJobMatrix(checkSpecification),
       },
     },
     name: checkSpecification.name,

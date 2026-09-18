@@ -119,3 +119,14 @@ export function isValidChangenoteFile(filename: string): boolean {
 
   return isValid;
 }
+
+/**
+ * Validates the change-note files of the given list of file paths, ignoring ".gitkeep".
+ * @param filepaths A list of filepaths to validate
+ * @returns True if all the paths are valid, false otherwise.
+ */
+export function isValidAllChangenoteFiles(filepaths: string[]): boolean {
+  return filepaths
+    .filter((f) => f !== ".gitkeep")
+    .reduce((r, filePath) => r && isValidChangenoteFile(filePath), true);
+}

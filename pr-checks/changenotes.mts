@@ -14,7 +14,7 @@ import {
   renderChangelog,
   withChangelog,
 } from "./changelog";
-import { isValidAllChangenoteFiles } from "./changelog/validate.mjs";
+import { isValidChangenoteFile } from "./changelog/validate.mjs";
 import { CHANGENOTES_DIR } from "./config";
 
 /**
@@ -116,7 +116,11 @@ function assemble(): ExitCode {
 
 function validate(): ExitCode {
   try {
-    if (isValidAllChangenoteFiles(fs.readdirSync(CHANGENOTES_DIR))) {
+    const allChangenotesValid = getChangenotes().reduce(
+      (r, c) => r && isValidChangenoteFile(c.name),
+      true,
+    );
+    if (allChangenotesValid) {
       console.log(`All changenotes in '${CHANGENOTES_DIR}' are valid.`);
       return ExitCode.Success;
     }

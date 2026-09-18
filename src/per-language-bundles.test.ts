@@ -1,0 +1,177 @@
+import test from "ava";
+
+import { ActionsEnvVars } from "./environment";
+import { Feature } from "./feature-flags";
+import { BuiltInLanguage } from "./languages";
+import {
+  getPerLanguageBundleLanguage,
+  MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
+  PerLanguageBundleOptions,
+} from "./per-language-bundles";
+import { BundlePlatform } from "./platform";
+import {
+  createFeatures,
+  getRecordingLogger,
+  getTestEnv,
+  initAllState,
+  LoggedMessage,
+} from "./testing-utils";
+import { GitHubVariant } from "./util";
+
+/** Options for which we would use a per-language bundle. */
+const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
+  rawLanguages: ["java"],
+  // Any version at least as new as the minimum will do.
+  cliVersion: MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
+  compressionMethod: "zstd",
+  platform: BundlePlatform.Linux64,
+  variant: GitHubVariant.DOTCOM,
+};
+
+async function checkEligibility(
+  overrides: Partial<PerLanguageBundleOptions>,
+  stateOverrides: Partial<ReturnType<typeof initAllState>> = {},
+) {
+  return getPerLanguageBundleLanguage(
+    initAllState({
+      env: getTestEnv({
+        [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
+      }),
+      features: createFeatures([Feature.PerLanguageBundles]),
+      logger: getRecordingLogger([], { logToConsole: false }),
+      ...stateOverrides,
+    }),
+    { ...ELIGIBLE_OPTIONS, ...overrides },
+  );
+}
+
+for (const platform of Object.values(BundlePlatform)) {
+  test(`getPerLanguageBundleLanguage selects only supported languages on ${platform}`, async (t) => {
+    for (const language of Object.values(BuiltInLanguage)) {
+      const supported =
+        language === BuiltInLanguage.swift
+          ? platform === BundlePlatform.Osx64
+          : platform === BundlePlatform.Linux64;
+      t.is(
+        await checkEligibility({ rawLanguages: [language], platform }),
+        supported ? language : undefined,
+        language,
+      );
+    }
+  });
+}
+
+test("getPerLanguageBundleLanguage normalizes aliases before selecting a bundle", async (t) => {
+  t.is(
+    await checkEligibility({ rawLanguages: ["java-kotlin"] }),
+    BuiltInLanguage.java,
+  );
+});
+
+test("getPerLanguageBundleLanguage rejects unknown platforms", async (t) => {
+  t.is(await checkEligibility({ platform: undefined }), undefined);
+});
+
+test("getPerLanguageBundleLanguage requires exactly one language", async (t) => {
+  t.is(await checkEligibility({ rawLanguages: undefined }), undefined);
+  t.is(await checkEligibility({ rawLanguages: [] }), undefined);
+  t.is(await checkEligibility({ rawLanguages: ["java", "python"] }), undefined);
+});
+
+test("getPerLanguageBundleLanguage requires a known language", async (t) => {
+  t.is(await checkEligibility({ rawLanguages: ["cobol"] }), undefined);
+});
+
+test("getPerLanguageBundleLanguage requires a zstd bundle", async (t) => {
+  t.is(await checkEligibility({ compressionMethod: "gzip" }), undefined);
+});
+
+test("getPerLanguageBundleLanguage requires GitHub.com", async (t) => {
+  // Other products resolve the combined bundle against their own instance, so asking for a
+  // per-language bundle they do not mirror would move the download off that instance.
+  for (const variant of [GitHubVariant.GHES, GitHubVariant.GHEC_DR]) {
+    t.is(await checkEligibility({ variant }), undefined);
+  }
+});
+
+test("getPerLanguageBundleLanguage requires a GitHub-hosted runner", async (t) => {
+  // A self-hosted runner may have a toolcache that persists between jobs, which is worth more than
+  // a smaller download.
+  t.is(
+    await checkEligibility(
+      {},
+      {
+        env: getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
+      },
+    ),
+    undefined,
+  );
+
+  // Self-hosted runners are routinely configured to look like hosted ones, for example by mounting
+  // a persistent volume at `/opt/hostedtoolcache`, so we require the service to tell us explicitly.
+  t.is(
+    await checkEligibility(
+      {},
+      {
+        env: getTestEnv({ RUNNER_TOOL_CACHE: "/opt/hostedtoolcache" }),
+      },
+    ),
+    undefined,
+  );
+});
+
+test("getPerLanguageBundleLanguage requires a supported release version", async (t) => {
+  t.is(await checkEligibility({ cliVersion: undefined }), undefined);
+  t.is(await checkEligibility({ cliVersion: "2.27.0" }), undefined);
+  t.is(await checkEligibility({ cliVersion: "2.27.1" }), BuiltInLanguage.java);
+});
+
+test("getPerLanguageBundleLanguage requires the feature flag", async (t) => {
+  t.is(await checkEligibility({}, { features: createFeatures([]) }), undefined);
+});
+
+test("getPerLanguageBundleLanguage explains a disabled feature before checking eligibility", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const language = await getPerLanguageBundleLanguage(
+    initAllState({
+      env: getTestEnv(),
+      features: createFeatures([]),
+      logger: getRecordingLogger(messages, { logToConsole: false }),
+    }),
+    { ...ELIGIBLE_OPTIONS, rawLanguages: undefined, cliVersion: undefined },
+  );
+
+  t.is(language, undefined);
+  t.deepEqual(
+    messages.map((message) => message.message),
+    [
+      "Not using a per-language CodeQL bundle since the per_language_bundles feature is disabled.",
+    ],
+  );
+});
+
+test("getPerLanguageBundleLanguage skips only the release version check for the latest nightly", async (t) => {
+  const nightly = { isLatestNightly: true, cliVersion: undefined };
+  t.is(await checkEligibility(nightly), BuiltInLanguage.java);
+
+  for (const overrides of [
+    { rawLanguages: undefined },
+    { rawLanguages: ["java", "python"] },
+    { compressionMethod: "gzip" as const },
+    { platform: BundlePlatform.Osx64 },
+    { variant: GitHubVariant.GHES },
+    { variant: GitHubVariant.GHEC_DR },
+  ]) {
+    t.is(await checkEligibility({ ...nightly, ...overrides }), undefined);
+  }
+  t.is(
+    await checkEligibility(nightly, { features: createFeatures([]) }),
+    undefined,
+  );
+  t.is(
+    await checkEligibility(nightly, {
+      env: getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
+    }),
+    undefined,
+  );
+});

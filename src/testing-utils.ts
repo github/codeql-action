@@ -32,6 +32,7 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
@@ -933,21 +934,14 @@ export function mockBundleDownloadApi({
   platformSpecific?: boolean;
   tagName: string;
 }): string {
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "linux"
-        ? process.arch === "arm64"
-          ? "linux-arm64"
-          : "linux64"
-        : "osx64";
+  const platform = platformSpecific ? getBundlePlatform() : undefined;
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
 
   const bundleUrls = ["tar.gz", "tar.zst"].map((extension) => {
     const relativeUrl = apiDetails
       ? `/${repo}/releases/download/${tagName}/codeql-bundle${
-          platformSpecific ? `-${platform}` : ""
+          platform !== undefined ? `-${platform}` : ""
         }.${extension}`
       : `/download/${tagName}/codeql-bundle.${extension}`;
 

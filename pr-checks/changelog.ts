@@ -146,20 +146,9 @@ export function addBodyLinesToUnreleasedSection(
   changelog: Changelog,
   lines: string[],
 ) {
-  // Find the '[UNRELEASED]' section.
-  let unreleasedSection: ChangelogSection | undefined;
-  for (const section of changelog.sections) {
-    if (getHeader(section.headerLine) === UNRELEASED_PLACEHOLDER) {
-      unreleasedSection = section;
-      break;
-    }
-  }
-
-  // Ensure that the '[UNRELEASED]' section exists first.
-  if (unreleasedSection === undefined) {
-    throw Error(
-      "Cannot put changenotes into CHANGELOG.md's '[UNRELEASED]' section because it does not exist",
-    );
+  const unreleasedSection = changelog.sections[0];
+  if (getHeader(unreleasedSection.headerLine) !== UNRELEASED_PLACEHOLDER) {
+    throw Error("'[UNRELEASED]' is not the first section of 'CHANGELOG.md'");
   }
 
   let insertAtIndex = 0;

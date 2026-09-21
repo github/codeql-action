@@ -21,7 +21,7 @@ import { CHANGENOTES_DIR } from "./config";
  * Describes a changenote file, including its file path, frontmatter, and content.
  */
 interface ChangenoteFile {
-  name: string;
+  absolutePath: string;
   data: Record<string, any>;
   content: string;
 }
@@ -42,10 +42,10 @@ function listUnreleasedChangenoteDir(): string[] {
  * and returns a parsed listing of those changenote files.
  */
 function getChangenotes(): ChangenoteFile[] {
-  return listUnreleasedChangenoteDir().map((name) => {
+  return listUnreleasedChangenoteDir().map((absolutePath) => {
     return {
-      name,
-      ...matter(fs.readFileSync(name, "utf-8")),
+      absolutePath,
+      ...matter(fs.readFileSync(absolutePath, "utf-8")),
     };
   });
 }
@@ -93,7 +93,7 @@ function assemble(): ExitCode {
   try {
     const changenotes = getChangenotes();
     const changenoteBodies = changenotes.map((c) => c.content);
-    const changenotePaths = changenotes.map((c) => c.name);
+    const changenotePaths = changenotes.map((c) => c.absolutePath);
 
     withChangelog((contents) => {
       const changelog = parseChangelog(contents);

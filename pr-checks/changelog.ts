@@ -153,7 +153,9 @@ export function addBodyLinesToUnreleasedSection(
 
   const unreleasedSection = changelog.sections[0];
   if (getHeader(unreleasedSection) !== UNRELEASED_PLACEHOLDER) {
-    throw Error(`'${UNRELEASED_PLACEHOLDER}' is not the first section of 'CHANGELOG.md'`);
+    throw Error(
+      `'${UNRELEASED_PLACEHOLDER}' is not the first section of 'CHANGELOG.md'`,
+    );
   }
 
   if (unreleasedSection.bodyLines.includes(NO_CHANGES_STR)) {

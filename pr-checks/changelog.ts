@@ -135,9 +135,9 @@ export function parseChangelog(content: string): Changelog {
 }
 
 /**
- * Inserts the changenotes `notes` under the `[UNRELEASED]` section of `changelog`.
+ * Inserts the changenotes `lines` in the `[UNRELEASED]` section of `changelog`.
  * If the section contains the stock message {@link NO_CHANGES_STR}, then
- * `notes` will be inserted in place and the stock message will be deleted.
+ * `lines` will be inserted in place and the stock message will be deleted.
  *
  * This function will throw an exception if `[UNRELEASED]` does not exist.
  *

@@ -139,7 +139,7 @@ export function parseChangelog(content: string): Changelog {
  * If the section contains the stock message {@link NO_CHANGES_STR}, then
  * `lines` will be inserted in place and the stock message will be deleted.
  *
- * This function will throw an exception if `[UNRELEASED]` does not exist.
+ * @throws Error -- if the [UNRELEASED] section does not exist.
  *
  * @param changelog The CHANGELOG object to modify.
  * @param lines The changenotes to insert.

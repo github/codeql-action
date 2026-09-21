@@ -163,7 +163,9 @@ export function addBodyLinesToUnreleasedSection(
     return;
   }
 
-  unreleasedSection.bodyLines.pop(); // Remove the last empty line.
+  // The last body line should be a blank line (for spacing).
+  // Remove it so that we can add `lines` and then add the blank line back.
+  unreleasedSection.bodyLines.pop();
   unreleasedSection.bodyLines.push(...lines);
   unreleasedSection.bodyLines.push("");
 }

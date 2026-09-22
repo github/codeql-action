@@ -1,9 +1,9 @@
 import * as fs from "fs";
 
 import { Logger } from "../logging";
+import { getErrorMessage } from "../util";
 
 import * as sarif from "sarif";
-import { getErrorMessage } from "../util";
 
 export type * from "sarif";
 

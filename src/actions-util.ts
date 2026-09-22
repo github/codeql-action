@@ -416,9 +416,9 @@ export const persistInputs = function (env: Env = getEnv()) {
 export const restoreInputs = function () {
   try {
     const persistedInputsValue = core.getState(persistedInputsKey);
-    const persistedInputs = JSON.parse(persistedInputsValue);
+    if (persistedInputsValue) {
+      const persistedInputs = JSON.parse(persistedInputsValue);
 
-    if (persistedInputs) {
       for (const [name, value] of persistedInputs) {
         process.env[name] = value;
       }

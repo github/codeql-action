@@ -682,7 +682,7 @@ export async function bundleDb(
   return databaseBundlePath;
 }
 
-/** Returns the elapsed milliseconds, rounded, since a `performance.now()` timestamp. */
+/** Returns the elapsed milliseconds, rounded, since `startTime` was recorded with `performance.now()`. */
 export function durationMsSince(startTime: number): number {
   return Math.round(performance.now() - startTime);
 }

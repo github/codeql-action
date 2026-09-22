@@ -102,8 +102,8 @@ export async function getPerLanguageBundleLanguage(
     return explain("the job is not running on a GitHub-hosted runner");
   }
 
-  // Nightly releases are identified by dates rather than versions. If 
-  // `isLatestNightly` is `true`, the latest nightly is requested with 
+  // Nightly releases are identified by dates rather than versions. If
+  // `isLatestNightly` is `true`, the latest nightly is requested with
   // `tools: nightly` and we don't yet have the corresponding tag at this point.
   // Therefore, we skip the version check and don't have an equivalent.
   // We can safely assume that the latest nightly will have per-language bundles.

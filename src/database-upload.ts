@@ -1,5 +1,6 @@
 import * as fs from "fs";
 
+import { ActionState } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import {
@@ -9,7 +10,7 @@ import {
 } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { Feature, FeatureEnablement } from "./feature-flags";
+import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
@@ -45,13 +46,15 @@ export interface DatabaseUploadResult {
 }
 
 export async function cleanupAndUploadDatabases(
+  action: ActionState<["Logger", "FeatureFlags"]>,
   repositoryNwo: RepositoryNwo,
   codeql: CodeQL,
   config: Config,
   apiDetails: GitHubApiDetails,
-  features: FeatureEnablement,
-  logger: Logger,
+  checkoutPath: string,
 ): Promise<DatabaseUploadResult[]> {
+  const logger = action.logger;
+
   if (actionsUtil.getRequiredInput("upload-database") !== "true") {
     logger.debug("Database upload disabled in workflow. Skipping upload.");
     return [];
@@ -87,7 +90,7 @@ export async function cleanupAndUploadDatabases(
   // If config.overlayDatabaseMode is OverlayBase, then we have overlay base databases for all languages.
   const shouldUploadOverlayBase =
     config.overlayDatabaseMode === OverlayDatabaseMode.OverlayBase &&
-    (await features.getValue(Feature.UploadOverlayDbToApi, codeql));
+    (await action.features.getValue(Feature.UploadOverlayDbToApi, codeql));
   const cleanupLevel = shouldUploadOverlayBase
     ? CleanupLevel.Overlay
     : CleanupLevel.Clear;
@@ -110,9 +113,7 @@ export async function cleanupAndUploadDatabases(
         includeDiagnostics: false,
       });
       bundledDbSize = fs.statSync(bundledDb).size;
-      const commitOid = await gitUtils.getCommitOid(
-        actionsUtil.getRequiredInput("checkout_path"),
-      );
+      const commitOid = await gitUtils.getCommitOid(checkoutPath);
       // Upload with manual retry logic. We disable Octokit's built-in retries
       // because the request body is a ReadStream, which can only be consumed
       // once.

@@ -245,7 +245,7 @@ export const getGitRoot = async function (
       ["rev-parse", "--show-toplevel"],
       `Cannot find Git repository root from the source root ${sourceRoot}.`,
     );
-    return stdout.trim();
+    return path.normalize(stdout.trim());
   } catch {
     // Errors are already logged by runGitCommand()
     return undefined;

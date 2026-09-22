@@ -38,7 +38,7 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { EnvVar } from "./environment";
+import { ActionsEnvVars, EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
 import { loadRepositoryProperties } from "./feature-flags/properties";
 import {
@@ -81,7 +81,6 @@ import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getCodeQLMemoryLimit,
-  getRequiredEnvParam,
   getThreadsFlagValue,
   initializeEnvironment,
   ConfigurationError,
@@ -225,8 +224,8 @@ async function run(
     apiDetails = {
       auth: getRequiredInput("token"),
       externalRepoAuth: getOptionalInput("external-repository-token"),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+      url: actionState.env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
+      apiURL: actionState.env.getRequired(ActionsEnvVars.GITHUB_API_URL),
     };
 
     const gitHubVersion = await getGitHubVersion();
@@ -255,7 +254,7 @@ async function run(
     // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
     // source-root is absolute, it is used as given.
     sourceRoot = path.resolve(
-      getRequiredEnvParam("GITHUB_WORKSPACE"),
+      actionState.env.getRequired(ActionsEnvVars.GITHUB_WORKSPACE),
       getOptionalInput("source-root") || "",
     );
 
@@ -383,7 +382,9 @@ async function run(
       repository: repositoryNwo,
       tempDir: getTemporaryDirectory(),
       codeql,
-      workspacePath: getRequiredEnvParam("GITHUB_WORKSPACE"),
+      workspacePath: actionState.env.getRequired(
+        ActionsEnvVars.GITHUB_WORKSPACE,
+      ),
       sourceRoot,
       githubVersion: gitHubVersion,
       apiDetails,

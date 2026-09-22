@@ -38,7 +38,6 @@ async function checkEligibility(
         [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
       }),
       features: createFeatures([Feature.PerLanguageBundles]),
-      logger: getRecordingLogger([], { logToConsole: false }),
       ...stateOverrides,
     }),
     { ...ELIGIBLE_OPTIONS, ...overrides },
@@ -134,7 +133,6 @@ test("getPerLanguageBundleLanguage explains a disabled feature before checking e
   const messages: LoggedMessage[] = [];
   const language = await getPerLanguageBundleLanguage(
     initAllState({
-      env: getTestEnv(),
       features: createFeatures([]),
       logger: getRecordingLogger(messages, { logToConsole: false }),
     }),

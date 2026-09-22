@@ -3,6 +3,7 @@ import * as fs from "fs";
 import { Logger } from "../logging";
 
 import * as sarif from "sarif";
+import { getErrorMessage } from "../util";
 
 export type * from "sarif";
 
@@ -48,7 +49,13 @@ export function getToolNames(sarifFile: Partial<sarif.Log>): string[] {
  * @returns The resulting JSON value, cast to a SARIF `Log`.
  */
 export function readSarifFile(sarifFilePath: string): Partial<sarif.Log> {
-  return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as sarif.Log;
+  try {
+    return JSON.parse(fs.readFileSync(sarifFilePath, "utf8")) as sarif.Log;
+  } catch (err) {
+    throw new Error(
+      `Parsing SARIF file at '${sarifFilePath}' failed: ${getErrorMessage(err)}`,
+    );
+  }
 }
 
 // Takes a list of paths to sarif files and combines them together,

@@ -102,8 +102,9 @@ export async function getPerLanguageBundleLanguage(
     return explain("the job is not running on a GitHub-hosted runner");
   }
 
-  // Check whether per-language bundles are published for the requested CLI version.
-  // Latest-nightly selection skips this release-version check, but not the other eligibility checks.
+  // If the user requested the latest nightly, skip the version check, as nightlies have shipped
+  // per-language bundles since https://github.com/dsp-testing/codeql-cli-nightlies/releases/tag/codeql-bundle-20260909.
+  // Otherwise, check the requested CLI version to determine whether per-language bundles are published.
   if (!isLatestNightly) {
     if (cliVersion === undefined) {
       return explain("the requested CLI version is unknown");

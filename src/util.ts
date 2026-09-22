@@ -1043,7 +1043,11 @@ export enum BuildMode {
 }
 
 export function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj)) as T;
+  try {
+    return JSON.parse(JSON.stringify(obj)) as T;
+  } catch (err) {
+    throw new Error(`Cloning object failed: ${getErrorMessage(err)}`);
+  }
 }
 
 export async function cleanUpPath(file: string, name: string, logger: Logger) {

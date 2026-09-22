@@ -894,7 +894,13 @@ export function parseMatrixInput(
   if (matrixInput === undefined || matrixInput === "null") {
     return undefined;
   }
-  return JSON.parse(matrixInput) as { [key: string]: string };
+  try {
+    return JSON.parse(matrixInput) as { [key: string]: string };
+  } catch (err) {
+    throw new Error(
+      `Failed to parse matrix input '${matrixInput}': ${getErrorMessage(err)}`,
+    );
+  }
 }
 
 export function wrapError(error: unknown): Error {

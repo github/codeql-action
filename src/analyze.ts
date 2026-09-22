@@ -102,21 +102,22 @@ export async function determineCheckoutPath(
   const checkoutPathInput = action.actions.getRequiredInput("checkout_path");
 
   // Try to obtain the root path of the repository and validate that it matches the input.
-  const repositoryRoot = await getGitRoot(checkoutPathInput);
+  const absCheckoutPathInput = path.resolve(checkoutPathInput);
+  const repositoryRoot = await getGitRoot(absCheckoutPathInput);
 
   if (repositoryRoot === undefined) {
     action.logger.warning(
       [
-        `The directory at '${checkoutPathInput}' is not in the work tree of a git repository.`,
+        `The directory at '${absCheckoutPathInput}' is not in the work tree of a git repository.`,
         "If the repository being analyzed is checked out elsewhere,",
         "you must explicitly set the 'checkout_path' input for the 'codeql-action/analyze' step to",
         "the checkout path.",
       ].join(" "),
     );
-  } else if (repositoryRoot !== path.resolve(checkoutPathInput)) {
+  } else if (repositoryRoot !== absCheckoutPathInput) {
     action.logger.warning(
       [
-        `The directory at '${checkoutPathInput}' is not the root of the repository ('${repositoryRoot}').`,
+        `The directory at '${absCheckoutPathInput}' is not the root of the repository ('${repositoryRoot}').`,
         "Set the 'checkout_path' input for the 'codeql-action/analyze' step to the root path of the checkout.",
       ].join(" "),
     );
@@ -135,7 +136,7 @@ export async function determineCheckoutPath(
     );
   }
 
-  return checkoutPathInput;
+  return absCheckoutPathInput;
 }
 
 async function setupPythonExtractor(logger: Logger) {

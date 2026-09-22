@@ -33,13 +33,13 @@ setupTests(test);
 test.serial(
   "determineCheckoutPath - logs when checkout_path is not in a work tree",
   async (t) => {
-    const expectedPath = "/checkout/path";
+    const expectedPath = path.resolve("/checkout/path");
     const target = callee(determineCheckoutPath)
       .withActions((actions) => {
         sinon
           .stub(actions, "getRequiredInput")
           .withArgs("checkout_path")
-          .returns("/checkout/path");
+          .returns(expectedPath);
       })
       .withArgs(createTestConfig({}));
     sinon.stub(gitUtils, "getGitRoot").resolves(undefined);
@@ -53,13 +53,13 @@ test.serial(
 test.serial(
   "determineCheckoutPath - logs when checkout_path is not a repo root",
   async (t) => {
-    const expectedPath = "/checkout/path";
+    const expectedPath = path.resolve("/checkout/path");
     const target = callee(determineCheckoutPath)
       .withActions((actions) => {
         sinon
           .stub(actions, "getRequiredInput")
           .withArgs("checkout_path")
-          .returns("/checkout/path");
+          .returns(expectedPath);
       })
       .withArgs(createTestConfig({}));
     sinon.stub(gitUtils, "getGitRoot").resolves("/checkout");
@@ -73,16 +73,16 @@ test.serial(
 test.serial(
   "determineCheckoutPath - logs when checkout_path is not the same as repo root in config",
   async (t) => {
-    const expectedPath = "/checkout/path";
+    const expectedPath = path.resolve("/checkout/path");
     const target = callee(determineCheckoutPath)
       .withActions((actions) => {
         sinon
           .stub(actions, "getRequiredInput")
           .withArgs("checkout_path")
-          .returns("/checkout/path");
+          .returns(expectedPath);
       })
       .withArgs(createTestConfig({ repositoryRoot: "/some/other/path" }));
-    sinon.stub(gitUtils, "getGitRoot").resolves("/checkout/path");
+    sinon.stub(gitUtils, "getGitRoot").resolves(expectedPath);
 
     await target
       .logs(t, "does not match that found by the 'codeql-action/init' step")
@@ -93,16 +93,16 @@ test.serial(
 test.serial(
   "determineCheckoutPath - doesn't log any of the messages when all is as expected",
   async (t) => {
-    const expectedPath = "/checkout/path";
+    const expectedPath = path.resolve("/checkout/path");
     const target = callee(determineCheckoutPath)
       .withActions((actions) => {
         sinon
           .stub(actions, "getRequiredInput")
           .withArgs("checkout_path")
-          .returns("/checkout/path");
+          .returns(expectedPath);
       })
-      .withArgs(createTestConfig({ repositoryRoot: "/checkout/path" }));
-    sinon.stub(gitUtils, "getGitRoot").resolves("/checkout/path");
+      .withArgs(createTestConfig({ repositoryRoot: expectedPath }));
+    sinon.stub(gitUtils, "getGitRoot").resolves(expectedPath);
 
     await target
       .notLogs(

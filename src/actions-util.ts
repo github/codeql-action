@@ -14,6 +14,7 @@ import {
   getCodeQLDatabasePath,
   ConfigurationError,
   getEnv,
+  getErrorMessage,
 } from "./util";
 
 /**
@@ -413,11 +414,17 @@ export const persistInputs = function (env: Env = getEnv()) {
  * Restores all inputs to the action from the persisted state.
  */
 export const restoreInputs = function () {
-  const persistedInputs = core.getState(persistedInputsKey);
-  if (persistedInputs) {
-    for (const [name, value] of JSON.parse(persistedInputs)) {
-      process.env[name] = value;
+  try {
+    const persistedInputsValue = core.getState(persistedInputsKey);
+    const persistedInputs = JSON.parse(persistedInputsValue);
+
+    if (persistedInputs) {
+      for (const [name, value] of persistedInputs) {
+        process.env[name] = value;
+      }
     }
+  } catch (err) {
+    throw new Error(`Unable to restore inputs: ${getErrorMessage(err)}`);
   }
 };
 

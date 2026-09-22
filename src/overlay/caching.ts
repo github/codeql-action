@@ -3,11 +3,7 @@ import * as fs from "fs";
 import * as actionsCache from "@actions/cache";
 import * as semver from "semver";
 
-import {
-  getRequiredInput,
-  getWorkflowRunAttempt,
-  getWorkflowRunID,
-} from "../actions-util";
+import { getWorkflowRunAttempt, getWorkflowRunID } from "../actions-util";
 import { getAutomationID, listActionsCaches } from "../api-client";
 import { createCacheKeyHash } from "../caching-utils";
 import { type CodeQL } from "../codeql";
@@ -107,12 +103,13 @@ async function checkOverlayBaseDatabase(
  * Uploads the overlay-base database to the GitHub Actions cache. If conditions
  * for uploading are not met, the function does nothing and returns false.
  *
- * This function uses the `checkout_path` input to determine the repository path
+ * This function uses the `checkoutPath` to determine the repository path
  * and works only when called from `analyze` or `upload-sarif`.
  *
  * @param codeql The CodeQL instance
  * @param config The configuration object
  * @param logger The logger instance
+ * @param checkoutPath The path at which the repository is checked out at.
  * @returns A promise that resolves to true if the upload was performed and
  * successfully completed, or false otherwise
  */
@@ -120,6 +117,7 @@ export async function cleanupAndUploadOverlayBaseDatabaseToCache(
   codeql: CodeQL,
   config: Config,
   logger: Logger,
+  checkoutPath: string,
 ): Promise<boolean> {
   const overlayDatabaseMode = config.overlayDatabaseMode;
   if (overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase) {
@@ -180,7 +178,6 @@ export async function cleanupAndUploadOverlayBaseDatabaseToCache(
   }
 
   const codeQlVersion = (await codeql.getVersion()).version;
-  const checkoutPath = getRequiredInput("checkout_path");
   const cacheSaveKey = await getCacheSaveKey(
     config,
     codeQlVersion,

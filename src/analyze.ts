@@ -5,7 +5,7 @@ import { performance } from "perf_hooks";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
-import { getTemporaryDirectory, getRequiredInput } from "./actions-util";
+import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -233,6 +233,7 @@ async function finalizeDatabaseCreation(
  */
 export async function setupDiffInformedQueryRun(
   logger: Logger,
+  checkoutPath: string,
 ): Promise<string | undefined> {
   return await withGroupAsync(
     "Generating diff range extension pack",
@@ -245,7 +246,6 @@ export async function setupDiffInformedQueryRun(
         return undefined;
       }
 
-      const checkoutPath = getRequiredInput("checkout_path");
       const packDir = writeDiffRangeDataExtensionPack(
         logger,
         diffRanges,

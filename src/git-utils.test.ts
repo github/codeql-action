@@ -29,10 +29,12 @@ test.serial(
       process.env["GITHUB_SHA"] = currentSha;
 
       const callback = sinon.stub(gitUtils, "getCommitOid");
-      callback.withArgs("HEAD").resolves(currentSha);
+      callback.withArgs(sinon.match.string, "HEAD").resolves(currentSha);
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, expectedRef);
+
+      t.true(callback.calledOnceWith(tmpDir, "HEAD"));
     });
   },
 );
@@ -48,11 +50,15 @@ test.serial(
       const sha = "a".repeat(40);
 
       const callback = sinon.stub(gitUtils, "getCommitOid");
-      callback.withArgs("refs/remotes/pull/1/merge").resolves(sha);
-      callback.withArgs("HEAD").resolves(sha);
+      callback
+        .withArgs(sinon.match.string, "refs/remotes/pull/1/merge")
+        .resolves(sha);
+      callback.withArgs(sinon.match.any, "HEAD").resolves(sha);
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, expectedRef);
+
+      t.true(callback.calledWith(tmpDir, "refs/remotes/pull/1/merge"));
     });
   },
 );
@@ -71,6 +77,9 @@ test.serial(
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, "refs/pull/1/head");
+
+      t.true(callback.calledOnceWith(tmpDir, "refs/pull/1/merge"));
+      t.true(callback.calledOnceWith(tmpDir, "HEAD"));
     });
   },
 );
@@ -92,11 +101,14 @@ test.serial(
       process.env["GITHUB_SHA"] = "a".repeat(40);
 
       const callback = sinon.stub(gitUtils, "getCommitOid");
-      callback.withArgs("refs/pull/1/merge").resolves("b".repeat(40));
-      callback.withArgs("HEAD").resolves("b".repeat(40));
+      callback.withArgs(tmpDir, "refs/pull/1/merge").resolves("b".repeat(40));
+      callback.withArgs(sinon.match.any, "HEAD").resolves("b".repeat(40));
 
       const actualRef = await gitUtils.getRef();
       t.deepEqual(actualRef, "refs/pull/2/merge");
+
+      t.true(callback.calledOnceWith(tmpDir, "refs/pull/1/merge"));
+      t.true(callback.calledOnceWith(tmpDir, "HEAD"));
     });
   },
 );

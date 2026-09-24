@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 4.38.2 - 24 Sept 2026
+
+- Update default CodeQL bundle version to [2.27.1](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.27.1). [#4160](https://github.com/github/codeql-action/pull/4160)
+
 ## 4.38.1 - 18 Sept 2026
 
 - The CodeQL Action now has experimental support for CodeQL releases for which per-language bundles are available. Per-language bundles support analysis for a single language and are therefore smaller than the combined bundles that allow analysis for all supported languages. As a result, per-language bundles take up less space on disk and are faster to download. We expect to roll this change out to everyone in the coming weeks. [#4146](https://github.com/github/codeql-action/pull/4146)

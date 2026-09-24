@@ -937,6 +937,7 @@ async function getCodeQLForCmd(
           "--format=json",
           `--language=${language}`,
           "--extractor-include-aliases",
+          "-J-XX:-UsePerfData",
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {

@@ -6,14 +6,16 @@ import { CHANGELOG_FILE, DryRunOption } from "./config";
 export const UNRELEASED_PLACEHOLDER = "[UNRELEASED]";
 
 /** The default contents for a section in the changelog. */
-export const NO_CHANGES_STR = "No user facing changes.\n\n";
+export const NO_CHANGES_STR = "No user facing changes.";
 
 /** Placeholder changelog content for a new release. */
 export const EMPTY_CHANGELOG = `# CodeQL Action Changelog
 
 ## ${UNRELEASED_PLACEHOLDER}
 
-${NO_CHANGES_STR}`;
+${NO_CHANGES_STR}
+
+`;
 
 /**
  * Represents sections in a changelog.
@@ -29,6 +31,13 @@ export interface ChangelogSection {
 export interface Changelog {
   preamble: string[];
   sections: ChangelogSection[];
+}
+
+/**
+ * Returns the text of the header (without the '## ' prefix) of the given section.
+ * */
+export function getHeader(section: ChangelogSection): string {
+  return section.headerLine.replace(/^#+\s+/, "").trimEnd();
 }
 
 /** Returns `date` formatted as `DD Mon YYYY`. */
@@ -126,6 +135,42 @@ export function parseChangelog(content: string): Changelog {
 }
 
 /**
+ * Inserts the changenotes `lines` in the `[UNRELEASED]` section of `changelog`.
+ * If the section contains the stock message {@link NO_CHANGES_STR}, then
+ * `lines` will be inserted in place and the stock message will be deleted.
+ *
+ * @throws Error -- if the [UNRELEASED] section does not exist.
+ *
+ * @param changelog The CHANGELOG object to modify.
+ * @param lines The changenotes to insert.
+ */
+export function addBodyLinesToUnreleasedSection(
+  changelog: Changelog,
+  lines: string[],
+) {
+  // Do nothing if there is nothing to insert.
+  if (lines.length === 0) return;
+
+  const unreleasedSection = changelog.sections[0];
+  if (getHeader(unreleasedSection) !== UNRELEASED_PLACEHOLDER) {
+    throw Error(
+      `'${UNRELEASED_PLACEHOLDER}' is not the first section of 'CHANGELOG.md'`,
+    );
+  }
+
+  if (unreleasedSection.bodyLines.includes(NO_CHANGES_STR)) {
+    unreleasedSection.bodyLines = ["", ...lines, ""];
+    return;
+  }
+
+  // The last body line should be a blank line (for spacing).
+  // Remove it so that we can add `lines` and then add the blank line back.
+  unreleasedSection.bodyLines.pop();
+  unreleasedSection.bodyLines.push(...lines);
+  unreleasedSection.bodyLines.push("");
+}
+
+/**
  * Combines an array of lines into a single string by adding line breaks.
  */
 export function unlines(lines: string[]): string {
@@ -204,7 +249,7 @@ export function processChangelogForBackports(
 
     // Add an entry if we didn't keep any.
     if (!foundContent) {
-      section.bodyLines.push(NO_CHANGES_STR.trim());
+      section.bodyLines.push(NO_CHANGES_STR);
     }
   }
 

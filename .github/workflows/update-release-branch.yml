@@ -16,9 +16,8 @@ defaults:
     shell: bash
 
 jobs:
-
   prepare:
-    name: "Prepare release"
+    name: "Prepare"
     permissions:
       contents: read
 

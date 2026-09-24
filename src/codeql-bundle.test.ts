@@ -1,7 +1,26 @@
 import test from "ava";
 
-import { getCodeQLBundleFromUrl } from "./codeql-bundle";
+import { getCodeQLBundleFromUrl, getCodeQLBundleName } from "./codeql-bundle";
 import { BuiltInLanguage } from "./languages";
+import { BundlePlatform } from "./platform";
+
+test("getCodeQLBundleName returns a per-language bundle name only when a language is specified", (t) => {
+  t.is(
+    getCodeQLBundleName("zstd", BundlePlatform.Linux64, BuiltInLanguage.java),
+    "codeql-bundle-java-linux64.tar.zst",
+  );
+  t.is(
+    getCodeQLBundleName("zstd", BundlePlatform.Linux64),
+    "codeql-bundle-linux64.tar.zst",
+  );
+});
+
+test("getCodeQLBundleName names the Swift bundle for macOS", (t) => {
+  t.is(
+    getCodeQLBundleName("zstd", BundlePlatform.Osx64, BuiltInLanguage.swift),
+    "codeql-bundle-swift-osx64.tar.zst",
+  );
+});
 
 for (const [assetName, language] of [
   ["codeql-bundle-java-linux64.tar.zst", BuiltInLanguage.java],

@@ -131,3 +131,16 @@ export async function getPerLanguageBundleLanguage(
 
   return language;
 }
+
+/** Explains why an eligible per-language bundle is being replaced by a combined bundle. */
+export function logPerLanguageBundleFallback(
+  { logger }: ActionState<["Logger"]>,
+  language: BuiltInLanguage,
+  location: string,
+): void {
+  logger.warning(
+    `No per-language CodeQL bundle for '${language}' was found at ${location}, so ` +
+      "falling back to the bundle that contains all languages. This analysis will still " +
+      "produce correct results, but will take longer to set up.",
+  );
+}

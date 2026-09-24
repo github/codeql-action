@@ -17,7 +17,12 @@ import {
   isRunningLocalAction,
 } from "./actions-util";
 import * as api from "./api-client";
-import { CodeQLBundle, getCodeQLBundleFromUrl } from "./codeql-bundle";
+import {
+  CodeQLBundle,
+  CodeQLDownloadSource,
+  getCodeQLBundleFromUrl,
+  getCodeQLBundleName,
+} from "./codeql-bundle";
 import * as defaults from "./defaults.json";
 import {
   addNoLanguageDiagnostic,
@@ -35,7 +40,10 @@ import {
 import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
-import { getPerLanguageBundleLanguage } from "./per-language-bundles";
+import {
+  getPerLanguageBundleLanguage,
+  logPerLanguageBundleFallback,
+} from "./per-language-bundles";
 import { getBundlePlatform } from "./platform";
 import * as tar from "./tar";
 import {
@@ -48,6 +56,8 @@ import {
 } from "./tools-download";
 import * as util from "./util";
 import { isGoodVersion } from "./util";
+
+export type { CodeQLDownloadSource } from "./codeql-bundle";
 
 export enum ToolsSource {
   Unknown = "UNKNOWN",
@@ -63,41 +73,6 @@ const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
 const CODEQL_TOOLCACHE_INPUT = "toolcache";
-
-function getCodeQLBundleExtension(
-  compressionMethod: tar.CompressionMethod,
-): string {
-  switch (compressionMethod) {
-    case "gzip":
-      return ".tar.gz";
-    case "zstd":
-      return ".tar.zst";
-    default:
-      util.assertNever(compressionMethod);
-  }
-}
-
-/**
- * Returns the name of the CodeQL bundle asset to download.
- *
- * @param compressionMethod The compression method of the bundle.
- * @param language Optional language for a per-language bundle. If omitted, returns a combined bundle name.
- */
-export function getCodeQLBundleName(
-  compressionMethod: tar.CompressionMethod,
-  language?: BuiltInLanguage,
-): string {
-  const extension = getCodeQLBundleExtension(compressionMethod);
-  const platform = getBundlePlatform();
-
-  if (platform === undefined) {
-    return `codeql-bundle${extension}`;
-  }
-  if (language !== undefined) {
-    return `codeql-bundle-${language}-${platform}${extension}`;
-  }
-  return `codeql-bundle-${platform}${extension}`;
-}
 
 export function getCodeQLActionRepository(logger: Logger): string {
   if (isRunningLocalAction()) {
@@ -221,22 +196,6 @@ export function convertToSemVer(version: string, logger: Logger): string {
   }
 
   return s;
-}
-
-/** A resolved download, including its bundle identity and version. */
-export interface CodeQLDownloadSource {
-  /** Distinguishes downloads from local archives and cached installations. */
-  sourceType: "download";
-  /** The bundle to download. */
-  bundle: CodeQLBundle;
-  /** The compression format of the bundle archive. */
-  compressionMethod: tar.CompressionMethod;
-  /** Bundle version of the tools, if known. */
-  bundleVersion?: string;
-  /** Requested CLI version, if known. */
-  cliVersion?: string;
-  /** Resolved version for telemetry, independent of whether the bundle can be cached. */
-  toolsVersion: string;
 }
 
 export type CodeQLToolsSource =
@@ -757,13 +716,14 @@ export async function getCodeQLSource(
         ? "zstd"
         : "gzip";
 
+    const platform = getBundlePlatform();
     const perLanguageBundleLanguage = await getPerLanguageBundleLanguage(
       { env: getEnv(), features, logger },
       {
         rawLanguages,
         cliVersion,
         compressionMethod,
-        platform: getBundlePlatform(),
+        platform,
         variant,
       },
     );
@@ -773,7 +733,7 @@ export async function getCodeQLSource(
       getCodeQLBundleDownloadURL(
         bundleTagName,
         apiDetails,
-        getCodeQLBundleName(compressionMethod, language),
+        getCodeQLBundleName(compressionMethod, platform, language),
         logger,
       );
 
@@ -1153,11 +1113,7 @@ export async function downloadCodeQLBundle(
     ) {
       throw e;
     }
-    logger.warning(
-      `No per-language CodeQL bundle for '${bundle.language}' was found at ${bundle.url}, so ` +
-        "falling back to the bundle that contains all languages. This analysis will still " +
-        "produce correct results, but will take longer to set up.",
-    );
+    logPerLanguageBundleFallback(action, bundle.language, bundle.url);
 
     const result = await downloadCodeQL(
       {
@@ -1215,11 +1171,12 @@ async function getLatestNightlyBundle(
     ? "zstd"
     : "gzip";
 
+  const platform = getBundlePlatform();
   const language = await getPerLanguageBundleLanguage(action, {
     rawLanguages,
     cliVersion: undefined,
     compressionMethod,
-    platform: getBundlePlatform(),
+    platform,
     variant,
     isLatestNightly: true,
   });
@@ -1241,14 +1198,18 @@ async function getLatestNightlyBundle(
     }
     const assetUrl = (name: string) =>
       `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${name}`;
-    const url = assetUrl(getCodeQLBundleName(compressionMethod, language));
+    const url = assetUrl(
+      getCodeQLBundleName(compressionMethod, platform, language),
+    );
     return language === undefined
       ? { kind: "combined", url }
       : {
           kind: "per-language",
           url,
           language,
-          combinedBundleURL: assetUrl(getCodeQLBundleName(compressionMethod)),
+          combinedBundleURL: assetUrl(
+            getCodeQLBundleName(compressionMethod, platform),
+          ),
         };
   } catch (e) {
     throw new Error(

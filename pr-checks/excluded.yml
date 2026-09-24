@@ -17,5 +17,6 @@ is:
   - "Label PR with size"
   - "Post repo size comment"
   - "Prepare"
+  - "Release info"
   - "Upload results"
   - "Update release branch"

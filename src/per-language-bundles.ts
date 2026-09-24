@@ -102,8 +102,11 @@ export async function getPerLanguageBundleLanguage(
     return explain("the job is not running on a GitHub-hosted runner");
   }
 
-  // Check whether per-language bundles are published for the requested CLI version.
-  // Latest-nightly selection skips this release-version check, but not the other eligibility checks.
+  // Nightly releases are identified by dates rather than versions. If
+  // `isLatestNightly` is `true`, the latest nightly is requested with
+  // `tools: nightly` and we don't yet have the corresponding tag at this point.
+  // Therefore, we skip the version check and don't have an equivalent.
+  // We can safely assume that the latest nightly will have per-language bundles.
   if (!isLatestNightly) {
     if (cliVersion === undefined) {
       return explain("the requested CLI version is unknown");

@@ -112,7 +112,7 @@ ${NO_CHANGES_STR}`;
 describe("updateChangelog", async () => {
   await it("removes `NO_CHANGES_STR` if present in [UNRELEASED] section", async () => {
     const result = updateChangelog(EMPTY_CHANGELOG, "");
-    assert.ok(!result.includes(NO_CHANGES_STR.trim()));
+    assert.ok(!result.includes(NO_CHANGES_STR));
   });
 
   await it("doesn't remove `NO_CHANGES_STR` if present in versioned section", async () => {
@@ -120,7 +120,7 @@ describe("updateChangelog", async () => {
       EMPTY_CHANGELOG.replace(UNRELEASED_PLACEHOLDER, "1.2.3"),
       "",
     );
-    assert.ok(result.includes(NO_CHANGES_STR.trim()));
+    assert.ok(result.includes(NO_CHANGES_STR));
   });
 
   await it("throws if there are no sections", async () => {

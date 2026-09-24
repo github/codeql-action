@@ -69,25 +69,29 @@ function stubHostedNightly(tagName: string) {
     available: true,
     foundZstdBinary: true,
   });
-  const fetchRelease = sinon
-    .stub<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
-    .rejects(new Error("Unexpected API request in nightly bundle test"));
-  fetchRelease
-    .withArgs(
-      "https://api.github.com/repos/dsp-testing/codeql-cli-nightlies/releases?per_page=1&page=1&prerelease=true",
-      sinon.match({ method: "GET" }),
-    )
-    .callsFake(
-      async () =>
-        new Response(JSON.stringify([{ tag_name: tagName }]), {
-          headers: { "content-type": "application/json" },
-        }),
-    );
   const client = github.getOctokit("123", {
-    request: { fetch: fetchRelease },
+    request: {
+      fetch: async () => {
+        throw new Error("Unexpected API request in nightly bundle test");
+      },
+    },
   });
+  const listReleases = sinon
+    .stub(client.rest.repos, "listReleases")
+    .rejects(new Error("Unexpected release request in nightly bundle test"));
+  listReleases
+    .withArgs({
+      owner: "dsp-testing",
+      repo: "codeql-cli-nightlies",
+      per_page: 1,
+      page: 1,
+      prerelease: true,
+    })
+    .resolves({
+      data: [{ tag_name: tagName }],
+    } as Awaited<ReturnType<typeof client.rest.repos.listReleases>>);
   sinon.stub(api, "getApiClient").value(() => client);
-  return fetchRelease;
+  return listReleases;
 }
 
 test.serial("parse codeql bundle url version", (t) => {

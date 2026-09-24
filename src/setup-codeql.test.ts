@@ -1422,7 +1422,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
             bundle: { kind: "combined", url: combinedURL },
           });
           checkExpectedLogMessages(t, loggedMessages, [
-            `No per-language CodeQL bundle for 'javascript' was found at ${perLanguageURL}`,
+            `Expected a per-language CodeQL bundle for 'javascript' at ${perLanguageURL}`,
           ]);
         }
         if (bundle === "per-language") {

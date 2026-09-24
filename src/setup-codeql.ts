@@ -42,7 +42,7 @@ import { Logger } from "./logging";
 import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
 import {
   getPerLanguageBundleLanguage,
-  logPerLanguageBundleFallback,
+  logMissingPerLanguageBundle,
 } from "./per-language-bundles";
 import { getBundlePlatform } from "./platform";
 import * as tar from "./tar";
@@ -1113,7 +1113,7 @@ export async function downloadCodeQLBundle(
     ) {
       throw e;
     }
-    logPerLanguageBundleFallback(action, bundle.language, bundle.url);
+    logMissingPerLanguageBundle(action, bundle.language, bundle.url);
 
     const result = await downloadCodeQL(
       {

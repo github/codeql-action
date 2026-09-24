@@ -21,9 +21,14 @@ import {
   CodeQLBundle,
   CodeQLDownloadSource,
   getCodeQLBundleFromUrl,
-  getCodeQLBundleName,
 } from "./codeql-bundle";
-import { getPublicRelease, selectBundle } from "./codeql-release";
+import {
+  BundleSelection,
+  BundleSelectionOptions,
+  getPublicRelease,
+  getRelease,
+  selectBundle,
+} from "./codeql-release";
 import * as defaults from "./defaults.json";
 import {
   addNoLanguageDiagnostic,
@@ -32,19 +37,14 @@ import {
 } from "./diagnostics";
 import { EnvVar, getEnv } from "./environment";
 import {
-  CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
   CodeQLVersionInfo,
   Feature,
   FeatureEnablement,
 } from "./feature-flags";
-import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import { getCodeQlVersionsForOverlayBaseDatabases } from "./overlay/caching";
-import {
-  getPerLanguageBundleLanguage,
-  logMissingPerLanguageBundle,
-} from "./per-language-bundles";
+import { logMissingPerLanguageBundle } from "./per-language-bundles";
 import { getBundlePlatform } from "./platform";
 import * as tar from "./tar";
 import {
@@ -89,12 +89,19 @@ export function getCodeQLActionRepository(logger: Logger): string {
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
 }
 
-async function getCodeQLBundleDownloadURL(
+/**
+ * Selects a bundle from the first release tagged `tagName` that has a compatible bundle, trying the
+ * Action repositories on this GitHub instance before the canonical Action on GitHub.com. If we
+ * can't look up a release, or it has no compatible bundle, we move on to the next repository. We
+ * assume that the public release on GitHub.com has every bundle.
+ */
+async function selectDefaultBundle(
+  action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
   tagName: string,
   apiDetails: api.GitHubApiDetails,
-  codeQLBundleName: string,
-  logger: Logger,
-): Promise<string> {
+  options: BundleSelectionOptions,
+): Promise<BundleSelection> {
+  const { logger } = action;
   const codeQLActionRepository = getCodeQLActionRepository(logger);
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
@@ -111,37 +118,38 @@ async function getCodeQLBundleDownloadURL(
       return !self.slice(0, index).some((other) => deepEqual(source, other));
     },
   );
-  for (const downloadSource of uniqueDownloadSources) {
-    const [apiURL, repository] = downloadSource;
+  for (const [serverURL, repository] of uniqueDownloadSources) {
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
     if (
-      apiURL === util.GITHUB_DOTCOM_URL &&
+      serverURL === util.GITHUB_DOTCOM_URL &&
       repository === CODEQL_DEFAULT_ACTION_REPOSITORY
     ) {
       break;
     }
-    const [repositoryOwner, repositoryName] = repository.split("/");
+    const [owner, repo] = repository.split("/");
     try {
-      const release = await api.getApiClient().rest.repos.getReleaseByTag({
-        owner: repositoryOwner,
-        repo: repositoryName,
-        tag: tagName,
-      });
-      for (const asset of release.data.assets) {
-        if (asset.name === codeQLBundleName) {
-          logger.info(
-            `Found CodeQL bundle ${codeQLBundleName} in ${repository} on ${apiURL} with URL ${asset.url}.`,
-          );
-          return asset.url;
-        }
-      }
+      const release = await getRelease(
+        { apiClient: api.getApiClient() },
+        { serverURL, owner, repo, tagName },
+      );
+      return await selectBundle(action, release, options);
     } catch (e) {
       logger.info(
-        `Looked for CodeQL bundle ${codeQLBundleName} in ${repository} on ${apiURL} but got error ${e}.`,
+        `Looked for CodeQL bundles in release ${tagName} of ${repository} on ${serverURL} but got error ${e}.`,
       );
     }
   }
-  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${codeQLBundleName}`;
+  const [owner, repo] = CODEQL_DEFAULT_ACTION_REPOSITORY.split("/");
+  return selectBundle(
+    action,
+    getPublicRelease({
+      serverURL: util.GITHUB_DOTCOM_URL,
+      owner,
+      repo,
+      tagName,
+    }),
+    options,
+  );
 }
 
 function tryGetBundleVersionFromTagName(
@@ -719,58 +727,28 @@ export async function getCodeQLSource(
   }
 
   let compressionMethod: tar.CompressionMethod;
+  let perLanguageBundleFallback: true | undefined;
 
   if (!url) {
-    const bundleTagName = tagName;
-    if (bundleTagName === undefined) {
+    if (tagName === undefined) {
       throw new Error(
         "Could not determine a release tag for the requested CodeQL bundle.",
       );
     }
-
-    compressionMethod =
-      cliVersion !== undefined &&
-      (await useZstdBundle(cliVersion, tarSupportsZstd))
-        ? "zstd"
-        : "gzip";
-
-    const platform = getBundlePlatform();
-    const perLanguageBundleLanguage = await getPerLanguageBundleLanguage(
-      { env: getEnv(), features, logger },
-      {
-        rawLanguages,
-        cliVersion,
-        compressionMethod,
-        platform,
-        variant,
-      },
-    );
-
-    // Resolves the combined or per-language bundle URL for the requested release.
-    const resolveBundleURL = (language?: BuiltInLanguage) =>
-      getCodeQLBundleDownloadURL(
-        bundleTagName,
+    ({ bundle, compressionMethod, perLanguageBundleFallback } =
+      await selectDefaultBundle(
+        { env: getEnv(), features, logger },
+        tagName,
         apiDetails,
-        getCodeQLBundleName(compressionMethod, platform, language),
-        logger,
-      );
-
-    const combinedBundleURL = await resolveBundleURL();
-    if (perLanguageBundleLanguage !== undefined) {
-      logger.info(
-        `Selected the per-language CodeQL bundle for '${perLanguageBundleLanguage}'.`,
-      );
-      url = await resolveBundleURL(perLanguageBundleLanguage);
-      bundle = {
-        kind: "per-language",
-        url,
-        language: perLanguageBundleLanguage,
-        combinedBundleURL,
-      };
-    } else {
-      url = combinedBundleURL;
-      bundle = { kind: "combined", url };
-    }
+        {
+          rawLanguages,
+          cliVersion,
+          platform: getBundlePlatform(),
+          variant,
+          tarSupportsZstd,
+        },
+      ));
+    url = bundle.url;
   } else {
     const method = tar.inferCompressionMethod(url);
     if (method === undefined) {
@@ -801,6 +779,7 @@ export async function getCodeQLSource(
     bundleVersion,
     cliVersion,
     compressionMethod,
+    ...(perLanguageBundleFallback ? { perLanguageBundleFallback } : {}),
     sourceType: "download",
     toolsVersion: resolvedVersion ?? "unknown",
   };
@@ -1159,18 +1138,6 @@ export async function downloadCodeQLBundle(
       },
     };
   }
-}
-
-async function useZstdBundle(
-  cliVersion: string,
-  tarSupportsZstd: boolean,
-): Promise<boolean> {
-  return (
-    // In testing, gzip performs better than zstd on Windows.
-    process.platform !== "win32" &&
-    tarSupportsZstd &&
-    semver.gte(cliVersion, CODEQL_VERSION_ZSTD_BUNDLE)
-  );
 }
 
 function getTempExtractionDir(tempDir: string) {

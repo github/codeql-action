@@ -1272,9 +1272,14 @@ for (const status of [200, 404]) {
   );
 }
 
-for (const fallback of [false, true]) {
+for (const scenario of ["per-language", "fallback", "missing"] as const) {
+  const suffix = {
+    "per-language": "",
+    fallback: " with fallback",
+    missing: " when the release lacks the per-language bundle",
+  }[scenario];
   test.serial(
-    `setupCodeQLBundle retains the selected release identity for an opaque asset URL${fallback ? " with fallback" : ""}`,
+    `setupCodeQLBundle retains the selected release identity for an opaque asset URL${suffix}`,
     async (t) => {
       sinon.stub(process, "platform").value("linux");
       sinon.stub(process, "arch").value("x64");
@@ -1288,22 +1293,22 @@ for (const fallback of [false, true]) {
       const assetURL =
         "https://api.github.com/repos/codeql-testing/action-fork/releases/assets/123";
       const combinedURL = `${assetURL}4`;
+      const assets = [
+        { name: "codeql-bundle-linux64.tar.zst", url: combinedURL },
+      ];
+      if (scenario !== "missing") {
+        assets.push({
+          name: "codeql-bundle-java-linux64.tar.zst",
+          url: assetURL,
+        });
+      }
       const fetchRelease = sinon
         .stub<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
         .callsFake(
           async () =>
-            new Response(
-              JSON.stringify({
-                assets: [
-                  { name: "codeql-bundle-java-linux64.tar.zst", url: assetURL },
-                  {
-                    name: "codeql-bundle-linux64.tar.zst",
-                    url: combinedURL,
-                  },
-                ],
-              }),
-              { headers: { "content-type": "application/json" } },
-            ),
+            new Response(JSON.stringify({ assets }), {
+              headers: { "content-type": "application/json" },
+            }),
         );
       const client = github.getOctokit("123", {
         request: { fetch: fetchRelease },
@@ -1311,7 +1316,7 @@ for (const fallback of [false, true]) {
       sinon.stub(api, "getApiClient").value(() => client);
       const authorizationSpy = sinon.spy(api, "getAuthorizationHeaderFor");
       const extractStub = stubDownloadAndExtract();
-      if (fallback) {
+      if (scenario === "fallback") {
         extractStub.onFirstCall().rejects(new HTTPError("Not Found", 404));
       }
 
@@ -1331,41 +1336,46 @@ for (const fallback of [false, true]) {
           getRunnerLogger(true),
         );
 
-        t.true(fetchRelease.calledTwice);
+        const usesPerLanguageBundle = scenario === "per-language";
+        t.true(fetchRelease.calledOnce);
         t.is(
           fetchRelease.firstCall.args[0],
           `https://api.github.com/repos/codeql-testing/action-fork/releases/tags/${tag}`,
         );
-        t.is(extractStub.callCount, fallback ? 2 : 1);
-        t.is(extractStub.firstCall.args[0], assetURL);
-        t.is(extractStub.lastCall.args[0], fallback ? combinedURL : assetURL);
-        t.is(authorizationSpy.callCount, extractStub.callCount);
-        t.is(authorizationSpy.firstCall.args[2], assetURL);
+        t.is(extractStub.callCount, scenario === "fallback" ? 2 : 1);
         t.is(
-          authorizationSpy.lastCall.args[2],
-          fallback ? combinedURL : assetURL,
+          extractStub.firstCall.args[0],
+          scenario === "missing" ? combinedURL : assetURL,
+        );
+        t.is(
+          extractStub.lastCall.args[0],
+          usesPerLanguageBundle ? assetURL : combinedURL,
+        );
+        t.deepEqual(
+          authorizationSpy.getCalls().map((call) => call.args[2]),
+          extractStub.getCalls().map((call) => call.args[0]),
         );
         t.is(extractStub.lastCall.args[3], "token token");
         t.is(result.toolsVersion, MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION);
         t.is(
           result.toolsDownloadStatusReport?.perLanguage?.tools_bundle_language,
-          fallback ? undefined : BuiltInLanguage.java,
+          usesPerLanguageBundle ? BuiltInLanguage.java : undefined,
         );
         t.is(
           result.toolsDownloadStatusReport?.perLanguage
             ?.tools_per_language_bundle_fallback,
-          fallback ? true : undefined,
+          usesPerLanguageBundle ? undefined : true,
         );
-        if (fallback) {
+        if (usesPerLanguageBundle) {
+          t.is(path.dirname(result.codeqlFolder), tmpDir);
+          t.deepEqual(toolcache.findAllVersions("CodeQL"), []);
+          t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+        } else {
           t.is(
             result.codeqlFolder,
             toolcache.find("CodeQL", MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION),
           );
           t.true(fs.existsSync(`${result.codeqlFolder}.complete`));
-        } else {
-          t.is(path.dirname(result.codeqlFolder), tmpDir);
-          t.deepEqual(toolcache.findAllVersions("CodeQL"), []);
-          t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
         }
       });
     },

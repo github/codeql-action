@@ -8,7 +8,8 @@ import * as yaml from "js-yaml";
 import { isDynamicWorkflow } from "./actions-util";
 import * as api from "./api-client";
 import { CodeQL } from "./codeql";
-import { EnvVar } from "./environment";
+import type { Config } from "./config-utils";
+import { ActionsEnvVars, EnvVar, getEnv, ReadOnlyEnv } from "./environment";
 import { Logger } from "./logging";
 import {
   getRequiredEnvParam,
@@ -441,27 +442,45 @@ export function getUploadInputOrThrow(
 }
 
 /**
- * Makes a best effort attempt to retrieve the checkout_path input for the
- * particular job, given a set of matrix variables.
+ * Makes a best effort attempt to determine the root path of the repository that the analysis
+ * relates to. We need that to make paths in SARIF files relative.
+ *
+ * - If available, we take the `repositoryRoot` from the `config`.
+ * - If it isn't, we fall back to trying to extract a `checkout_path` input from the `workflow`.
+ * - Finally, we fall back to the value of `GITHUB_WORKSPACE`.
  *
  * Typically you'll want to wrap this function in a try/catch block and handle the error.
  *
- * @returns the checkout_path input
- * @throws an error if the checkout_path input could not be determined
+ * @param workflow The workflow specification of the currently running workflow.
+ * @param jobName The name of the job that is currently running.
+ * @param matrixVars The matrix variables, if any.
+ * @param config The CodeQL Action configuration state.
+ * @param env The environment variables.
+ *
+ * @returns The repository root path, or its best approximation.
+ * @throws `Error` if the repository root could not be determined.
  */
-export function getCheckoutPathInputOrThrow(
+export function getRepositoryRootOrThrow(
   workflow: Workflow,
   jobName: string,
   matrixVars: { [key: string]: string } | undefined,
+  config: Config,
+  env: ReadOnlyEnv = getEnv(),
 ): string {
   return (
+    // If the CodeQL Action already has a persisted repository root, then we can just use that.
+    config.repositoryRoot ??
+    // Otherwise, try to retrieve it from a `checkout_path` input in the workflow specification.
     getInputOrThrow(
       workflow,
       jobName,
       getAnalyzeActionName(),
       "checkout_path",
       matrixVars,
-    ) || getRequiredEnvParam("GITHUB_WORKSPACE") // if unspecified, checkout_path defaults to ${{ github.workspace }}
+    ) ??
+    // Finally, if all of the above fail, just use the value of `GITHUB_WORKSPACE` since that
+    // is what is used by default.
+    env.getRequired(ActionsEnvVars.GITHUB_WORKSPACE)
   );
 }
 

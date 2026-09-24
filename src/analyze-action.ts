@@ -10,6 +10,7 @@ import * as analyses from "./analyses";
 import {
   CodeQLAnalysisError,
   dbIsFinalized,
+  determineCheckoutPath,
   QueriesStatusReport,
   runFinalize,
   runQueries,
@@ -212,13 +213,11 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
-async function run({
-  startedAt,
-  logger,
-  actions,
-}: ActionState<["Base", "Logger", "Actions"]>) {
+async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const startedAt = action.startedAt;
+  const logger = action.logger;
 
   let uploadResults:
     | Partial<Record<analyses.AnalysisKind, UploadResult>>
@@ -311,7 +310,7 @@ async function run({
       logger,
     );
 
-    const checkoutPath = actions.getRequiredInput("checkout_path");
+    const checkoutPath = await determineCheckoutPath(action, config);
 
     // Setup diff informed analysis if needed (based on whether init created the file)
     const diffRangePackDir = await setupDiffInformedQueryRun(
@@ -407,7 +406,7 @@ async function run({
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
     databaseUploadResults = await cleanupAndUploadDatabases(
-      { logger, features },
+      { ...action, features },
       repositoryNwo,
       codeql,
       config,

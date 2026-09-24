@@ -25,6 +25,7 @@ jobs:
     uses: ./.github/workflows/prepare-release.yml
 
   update:
+    name: "Update release branch"
     timeout-minutes: 45
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
@@ -77,6 +78,7 @@ jobs:
           --conductor ${GITHUB_ACTOR}
 
   backport:
+    name: "Create backport"
     timeout-minutes: 45
     runs-on: ubuntu-latest
     environment: Automation

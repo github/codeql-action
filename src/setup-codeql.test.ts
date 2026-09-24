@@ -1214,6 +1214,64 @@ test.serial(
   },
 );
 
+for (const status of [200, 404]) {
+  test.serial(
+    `getCodeQLSource falls back to the public release when the Action's release ${status === 200 ? "lacks a compatible bundle" : "can't be found"}`,
+    async (t) => {
+      sinon.stub(process, "platform").value("linux");
+      sinon.stub(process, "arch").value("x64");
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+      const tag = PER_LANGUAGE_CLI_VERSION.enabledVersions[0].tagName;
+      const fetchRelease = sinon
+        .stub<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+        .callsFake(
+          async () =>
+            new Response(
+              JSON.stringify({
+                assets: [
+                  {
+                    name: "codeql-bundle-java-linux64.tar.zst",
+                    url: "https://api.github.com/repos/codeql-testing/action-fork/releases/assets/1",
+                  },
+                ],
+              }),
+              { status, headers: { "content-type": "application/json" } },
+            ),
+        );
+      const client = github.getOctokit("123", {
+        request: { fetch: fetchRelease },
+      });
+      sinon.stub(api, "getApiClient").value(() => client);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir, {
+          GITHUB_ACTION_REPOSITORY: "codeql-testing/action-fork",
+        });
+        const source = await setupCodeql.getCodeQLSource(
+          undefined,
+          PER_LANGUAGE_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          true, // tarSupportsZstd
+          createFeatures([]),
+          getRunnerLogger(true),
+        );
+
+        t.true(fetchRelease.calledOnce);
+        t.like(source, {
+          sourceType: "download",
+          bundle: {
+            kind: "combined",
+            url: `https://github.com/github/codeql-action/releases/download/${tag}/codeql-bundle-linux64.tar.zst`,
+          },
+        });
+      });
+    },
+  );
+}
+
 for (const fallback of [false, true]) {
   test.serial(
     `setupCodeQLBundle retains the selected release identity for an opaque asset URL${fallback ? " with fallback" : ""}`,

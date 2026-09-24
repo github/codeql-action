@@ -888,7 +888,12 @@ export const downloadCodeQL = async function (
             ...statusReport,
             perLanguage: { tools_bundle_language: bundle.language },
           }
-        : statusReport,
+        : source.perLanguageBundleFallback
+          ? {
+              ...statusReport,
+              perLanguage: { tools_per_language_bundle_fallback: true },
+            }
+          : statusReport,
   };
 };
 
@@ -1139,6 +1144,7 @@ export async function downloadCodeQLBundle(
       {
         ...source,
         bundle: { kind: "combined", url: bundle.combinedBundleURL },
+        perLanguageBundleFallback: true,
       },
       apiDetails,
       tarVersion,
@@ -1150,7 +1156,6 @@ export async function downloadCodeQLBundle(
       statusReport: {
         ...result.statusReport,
         totalDurationMs: util.durationMsSince(startTime),
-        perLanguage: { tools_per_language_bundle_fallback: true },
       },
     };
   }

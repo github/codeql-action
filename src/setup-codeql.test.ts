@@ -1420,6 +1420,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
           t.deepEqual(downloadSpy.secondCall.args[0], {
             ...source,
             bundle: { kind: "combined", url: combinedURL },
+            perLanguageBundleFallback: true,
           });
           checkExpectedLogMessages(t, loggedMessages, [
             `Expected a per-language CodeQL bundle for 'javascript' at ${perLanguageURL}`,

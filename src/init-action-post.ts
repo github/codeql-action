@@ -62,7 +62,7 @@ async function run(startedAt: Date) {
     const jobStatus = getOptionalInput("job-status");
 
     // Restore inputs from `init` Action.
-    restoreInputs();
+    restoreInputs(logger);
 
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);

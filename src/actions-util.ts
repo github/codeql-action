@@ -413,7 +413,7 @@ export const persistInputs = function (env: Env = getEnv()) {
 /**
  * Restores all inputs to the action from the persisted state.
  */
-export const restoreInputs = function () {
+export function restoreInputs(logger: Logger) {
   try {
     const persistedInputsValue = core.getState(persistedInputsKey);
     if (persistedInputsValue) {
@@ -424,9 +424,12 @@ export const restoreInputs = function () {
       }
     }
   } catch (err) {
-    throw new Error(`Unable to restore inputs: ${getErrorMessage(err)}`);
+    logger.error(`Unable to restore inputs: ${getErrorMessage(err)}`);
+    throw new Error(
+      "Failed to restore inputs from the state set by this action's main execution.",
+    );
   }
-};
+}
 
 export interface PullRequestBranches {
   base: string;

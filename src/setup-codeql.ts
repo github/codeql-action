@@ -23,6 +23,7 @@ import {
   getCodeQLBundleFromUrl,
   getCodeQLBundleName,
 } from "./codeql-bundle";
+import { getPublicRelease, selectBundle } from "./codeql-release";
 import * as defaults from "./defaults.json";
 import {
   addNoLanguageDiagnostic,
@@ -1181,24 +1182,7 @@ async function getLatestNightlyBundle(
   variant: util.GitHubVariant,
   tarSupportsZstd: boolean,
 ): Promise<CodeQLBundle> {
-  // The nightly is guaranteed to have a zstd bundle
-  const compressionMethod = (await useZstdBundle(
-    CODEQL_VERSION_ZSTD_BUNDLE,
-    tarSupportsZstd,
-  ))
-    ? "zstd"
-    : "gzip";
-
-  const platform = getBundlePlatform();
-  const language = await getPerLanguageBundleLanguage(action, {
-    rawLanguages,
-    cliVersion: undefined,
-    compressionMethod,
-    platform,
-    variant,
-    isLatestNightly: true,
-  });
-
+  let tagName: string;
   try {
     // Since nightlies are prereleases, we can't just download the latest release
     // on the repository. So instead we need to find the latest pre-release
@@ -1214,26 +1198,31 @@ async function getLatestNightlyBundle(
     if (!latestRelease) {
       throw new Error("Could not find the latest nightly release.");
     }
-    const assetUrl = (name: string) =>
-      `https://github.com/${CODEQL_NIGHTLIES_REPOSITORY_OWNER}/${CODEQL_NIGHTLIES_REPOSITORY_NAME}/releases/download/${latestRelease.tag_name}/${name}`;
-    const url = assetUrl(
-      getCodeQLBundleName(compressionMethod, platform, language),
-    );
-    return language === undefined
-      ? { kind: "combined", url }
-      : {
-          kind: "per-language",
-          url,
-          language,
-          combinedBundleURL: assetUrl(
-            getCodeQLBundleName(compressionMethod, platform),
-          ),
-        };
+    tagName = latestRelease.tag_name;
   } catch (e) {
     throw new Error(
       `Failed to retrieve the latest nightly release: ${util.wrapError(e)}`,
     );
   }
+
+  const { bundle } = await selectBundle(
+    action,
+    getPublicRelease({
+      serverURL: util.GITHUB_DOTCOM_URL,
+      owner: CODEQL_NIGHTLIES_REPOSITORY_OWNER,
+      repo: CODEQL_NIGHTLIES_REPOSITORY_NAME,
+      tagName,
+    }),
+    {
+      rawLanguages,
+      cliVersion: undefined,
+      platform: getBundlePlatform(),
+      variant,
+      tarSupportsZstd,
+      isLatestNightly: true,
+    },
+  );
+  return bundle;
 }
 
 /**

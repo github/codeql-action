@@ -77,6 +77,7 @@ export async function endTracingForCluster(
 }
 
 async function getTracerConfigForCluster(
+  logger: Logger,
   config: Config,
 ): Promise<TracerConfig> {
   const filePath = path.resolve(
@@ -89,13 +90,15 @@ async function getTracerConfigForCluster(
       env: tracingEnvVariables,
     };
   } catch (err) {
-    throw new Error(
+    logger.error(
       `Failed to parse tracing environment from '${filePath}': ${getErrorMessage(err)}`,
     );
+    throw new Error(`Failed to parse tracing environment from '${filePath}'.`);
   }
 }
 
 export async function getCombinedTracerConfig(
+  logger: Logger,
   codeql: CodeQL,
   config: Config,
 ): Promise<TracerConfig | undefined> {
@@ -103,5 +106,5 @@ export async function getCombinedTracerConfig(
     return undefined;
   }
 
-  return await getTracerConfigForCluster(config);
+  return await getTracerConfigForCluster(logger, config);
 }

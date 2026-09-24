@@ -20,7 +20,7 @@ export async function runWrapper() {
 
   try {
     // Restore inputs from `start-proxy` Action.
-    actionsUtil.restoreInputs();
+    actionsUtil.restoreInputs(logger);
 
     // Kill the running proxy
     const pid = core.getState("proxy-process-pid");

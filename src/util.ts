@@ -894,7 +894,13 @@ export function parseMatrixInput(
   if (matrixInput === undefined || matrixInput === "null") {
     return undefined;
   }
-  return JSON.parse(matrixInput) as { [key: string]: string };
+  try {
+    return JSON.parse(matrixInput) as { [key: string]: string };
+  } catch (err) {
+    throw new Error(
+      `Failed to parse matrix input '${matrixInput}': ${getErrorMessage(err)}`,
+    );
+  }
 }
 
 export function wrapError(error: unknown): Error {
@@ -1037,7 +1043,11 @@ export enum BuildMode {
 }
 
 export function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj)) as T;
+  try {
+    return JSON.parse(JSON.stringify(obj)) as T;
+  } catch (err) {
+    throw new Error(`Cloning object failed: ${getErrorMessage(err)}`);
+  }
 }
 
 export async function cleanUpPath(file: string, name: string, logger: Logger) {

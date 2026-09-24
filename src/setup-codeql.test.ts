@@ -428,7 +428,7 @@ test.serial(
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
-        false,
+        true, // tarSupportsZstd
         features,
         logger,
       );
@@ -498,7 +498,7 @@ test.serial(
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
-        false,
+        true, // tarSupportsZstd
         features,
         logger,
       );

@@ -374,6 +374,20 @@ async function resolveDefaultCliVersion(
  * Determines where the CodeQL CLI we want to use comes from. This can be from a local file,
  * the Actions toolcache, or a download.
  *
+ * We handle the `tools` input in this order:
+ *
+ * - A local path is extracted without using the toolcache.
+ * - `nightly` or `nightly-latest`, or the `force_nightly` feature flag in a dynamic workflow,
+ *   selects a bundle from the latest nightly release. We then continue with that bundle's URL.
+ * - `linked`, or its old name `latest`, selects the version shipped with the Action.
+ * - `toolcache` selects the latest version in the toolcache, falling back to the default version
+ *   outside dynamic workflows or if there isn't one.
+ * - Any other value is the URL of a bundle.
+ * - Without a `tools` input, we use the default version.
+ *
+ * Apart from a local path, we look for the resolved version in the toolcache before downloading. A
+ * cached version takes precedence even if the job could use a per-language bundle.
+ *
  * @param toolsInput The argument provided for the `tools` input, if any.
  * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
  * @param rawLanguages Raw set of languages.
@@ -556,7 +570,9 @@ export async function getCodeQLSource(
       tagName = version.tagName;
     }
   } else if (toolsInput !== undefined) {
-    // If a tools URL was provided, then use that.
+    // Any other value is a bundle URL, including one we selected from the latest nightly above.
+    // We use the version in its tag, if any, for the toolcache, so we assume that bundles with the
+    // same version are the same build, whichever repository they're in.
     tagName = tryGetTagNameFromUrl(toolsInput, logger);
     url = toolsInput;
 
@@ -763,6 +779,8 @@ export async function getCodeQLSource(
     }
     compressionMethod = method;
 
+    // Keep the bundle we selected from the latest nightly, which records the combined bundle to
+    // fall back to. Otherwise, classify the explicit URL, which gets no fallback.
     bundle ??= getCodeQLBundleFromUrl(url);
     if (bundle.kind === "per-language") {
       logger.info(

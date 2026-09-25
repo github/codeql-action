@@ -26,6 +26,7 @@ import {
   BundleSelection,
   BundleSelectionOptions,
   CodeQLRelease,
+  CodeQLReleaseReference,
   getPublicRelease,
   getRelease,
   getReleaseCliVersion,
@@ -112,6 +113,32 @@ function getDefaultBundleSources(
   return potentialDownloadSources.filter((source, index, self) => {
     return !self.slice(0, index).some((other) => deepEqual(source, other));
   });
+}
+
+/**
+ * Whether a release requested by URL contains the same build as the toolcache entry for its CLI
+ * version. The toolcache is keyed by version alone, so we only assume this for stable releases
+ * tagged `codeql-bundle-v<version>` in the repositories we download the default bundles from.
+ */
+function isCacheableRelease(
+  reference: CodeQLReleaseReference,
+  cliVersion: string | undefined,
+  apiDetails: api.GitHubApiDetails,
+  logger: Logger,
+): boolean {
+  if (
+    cliVersion === undefined ||
+    !/^\d+\.\d+\.\d+$/.test(cliVersion) ||
+    reference.tagName !== `codeql-bundle-v${cliVersion}`
+  ) {
+    return false;
+  }
+  const repository = `${reference.owner}/${reference.repo}`.toLowerCase();
+  return getDefaultBundleSources(apiDetails, logger).some(
+    ([serverURL, sourceRepository]) =>
+      new URL(serverURL).origin === new URL(reference.serverURL).origin &&
+      sourceRepository.toLowerCase() === repository,
+  );
 }
 
 /**
@@ -405,9 +432,10 @@ async function resolveDefaultCliVersion(
  *
  * - A local path is extracted without using the toolcache.
  * - A release URL selects a bundle from that release, and takes precedence over the `force_nightly`
- *   feature flag. We don't use the toolcache, since a release may contain a different build than
- *   the cached bundle for its version. Bundle URLs keep using the toolcache for the version in
- *   their tag, for compatibility.
+ *   feature flag. Only stable releases in the repositories we download the default bundles from use
+ *   the toolcache, since other releases may contain a different build than the cached bundle for
+ *   their version. Bundle URLs keep using the toolcache for the version in their tag, for
+ *   compatibility.
  * - `nightly` or `nightly-latest`, or the `force_nightly` feature flag in a dynamic workflow,
  *   selects a bundle from the latest nightly release. We then continue with that bundle's URL.
  * - `linked`, or its old name `latest`, selects the version shipped with the Action.
@@ -625,7 +653,9 @@ export async function getCodeQLSource(
       release.assetNames ?? [],
       logger,
     );
-    customReleaseURL = release.url;
+    if (!isCacheableRelease(requestedRelease, cliVersion, apiDetails, logger)) {
+      customReleaseURL = release.url;
+    }
   } else if (toolsInput !== undefined) {
     // Any other value is a bundle URL, including one we selected from the latest nightly above.
     // We use the version in its tag, if any, for the toolcache, so we assume that bundles with the
@@ -971,8 +1001,8 @@ function getToolcacheDestination(
 ): util.Result<string, string> {
   if (source.customReleaseURL !== undefined) {
     return new util.Failure(
-      `Not caching the CodeQL tools from ${source.customReleaseURL}, since we don't cache ` +
-        "releases requested by URL.",
+      `Not caching the CodeQL tools from ${source.customReleaseURL}, since we only cache stable ` +
+        "releases in the CodeQL Action repositories.",
     );
   }
   if (source.bundle.kind !== "combined") {

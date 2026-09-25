@@ -1519,15 +1519,88 @@ test.serial(
   },
 );
 
+for (const [apiDetails, variant] of [
+  [SAMPLE_DOTCOM_API_DETAILS, GitHubVariant.DOTCOM],
+  [GHES_API_DETAILS, GitHubVariant.GHES],
+] as const) {
+  test.serial(
+    `setupCodeQLBundle caches a stable release in the CodeQL Action repository on ${variant}`,
+    async (t) => {
+      const fixture = stubRequestedRelease({
+        apiDetails,
+        repository: "github/codeql-action",
+      });
+      const extract = stubDownloadAndExtract();
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const setup = () =>
+          setupCodeql.setupCodeQLBundle(
+            fixture.releaseURL,
+            apiDetails,
+            tmpDir,
+            variant,
+            PER_LANGUAGE_CLI_VERSION,
+            undefined, // rawLanguages
+            false, // useOverlayAwareDefaultCliVersion
+            createFeatures([]),
+            getRunnerLogger(true),
+          );
+
+        const downloaded = await setup();
+        t.deepEqual(fixture.requests, [
+          `${apiDetails.apiURL}/repos/github/codeql-action/releases/tags/codeql-bundle-v${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}`,
+        ]);
+        t.is(downloaded.toolsSource, setupCodeql.ToolsSource.Download);
+        t.is(extract.firstCall.args[0], fixture.assets[0].url);
+        t.is(extract.firstCall.args[3], `token ${apiDetails.auth}`);
+        t.is(
+          downloaded.codeqlFolder,
+          toolcache.find("CodeQL", MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION),
+        );
+
+        const cached = await setup();
+        t.is(cached.toolsSource, setupCodeql.ToolsSource.Toolcache);
+        t.is(cached.codeqlFolder, downloaded.codeqlFolder);
+        t.true(extract.calledOnce);
+      });
+    },
+  );
+}
+
 for (const { repository, tagName, markers } of [
+  {
+    repository: "github/codeql-action",
+    tagName: "codeql-bundle-v2.27.1-rc.1",
+    markers: [],
+  },
+  {
+    repository: "github/codeql-action",
+    tagName: "codeql-bundle-v2.27.1",
+    markers: ["2.27.1+202609241200"],
+  },
+  {
+    repository: "github/codeql-action",
+    tagName: "codeql-bundle-20260924",
+    markers: ["2.27.1+202609241200"],
+  },
+  {
+    repository: "github/codeql-action",
+    tagName: "codeql-bundle-acme-2.27.1",
+    markers: ["2.27.1"],
+  },
   {
     repository: "octo/tools",
     tagName: "codeql-bundle-feature_branch",
     markers: [],
   },
 ]) {
+  const description =
+    markers.length === 0
+      ? tagName
+      : `${tagName} with marker ${markers.join(", ")}`;
   test.serial(
-    `setupCodeQLBundle doesn't share the toolcache with ${tagName} in ${repository}`,
+    `setupCodeQLBundle doesn't share the toolcache with ${description} in ${repository}`,
     async (t) => {
       const fixture = stubRequestedRelease({ repository, tagName, markers });
       const extract = stubDownloadAndExtract();
@@ -1590,7 +1663,10 @@ for (const repository of ["github/codeql-action", "octo/tools"]) {
           `https://github.com/${repository}/releases/download/codeql-bundle-v${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}/codeql-bundle-linux64.tar.zst`,
         );
         t.is(extract.firstCall.args[3], undefined);
-        t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+        t.is(
+          fs.existsSync(`${result.codeqlFolder}.complete`),
+          repository === "github/codeql-action",
+        );
       });
     },
   );

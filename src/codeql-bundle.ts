@@ -29,6 +29,11 @@ export interface CodeQLDownloadSource {
   toolsVersion: string;
   /** The release lacks the eligible per-language bundle, so we selected the combined bundle. */
   perLanguageBundleFallback?: true;
+  /**
+   * The page of a requested release that may contain a different build than the bundle we cache for
+   * its version, so we don't cache it.
+   */
+  customReleaseURL?: string;
 }
 
 /** Returns the exact bundle asset name for a platform and optional language. */

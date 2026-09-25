@@ -38,6 +38,7 @@ import {
 } from "./testing-utils";
 import * as toolsDownload from "./tools-download";
 import {
+  ConfigurationError,
   getErrorMessage,
   GitHubVariant,
   HTTPError,
@@ -1381,6 +1382,285 @@ for (const scenario of ["per-language", "fallback", "missing"] as const) {
     },
   );
 }
+
+const GHES_API_DETAILS = {
+  auth: "enterprise-token",
+  url: "https://github.example.test",
+  apiURL: "https://github.example.test/api/v3",
+};
+
+/** Models a hosted Linux runner with zstd and a release in `repository` on the instance `apiDetails` describes. */
+function stubRequestedRelease({
+  apiDetails = SAMPLE_DOTCOM_API_DETAILS,
+  repository = "octo/tools",
+  tagName = `codeql-bundle-v${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}`,
+  assetNames = [
+    "codeql-bundle-linux64.tar.zst",
+    "codeql-bundle-java-linux64.tar.zst",
+  ],
+  markers = [] as string[],
+  status = 200,
+} = {}) {
+  sinon.stub(process, "platform").value("linux");
+  sinon.stub(process, "arch").value("x64");
+  sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+  process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
+  sinon.stub(tar, "isZstdAvailable").resolves({
+    available: true,
+    foundZstdBinary: true,
+  });
+  const apiBase = `${apiDetails.apiURL}/repos/${repository}/releases`;
+  const assets = [
+    ...assetNames,
+    ...markers.map((version) => `cli-version-${version}.txt`),
+  ].map((name, index) => ({ name, url: `${apiBase}/assets/${1000 + index}` }));
+  const requests: string[] = [];
+  const client = github.getOctokit("123", {
+    baseUrl: apiDetails.apiURL,
+    request: {
+      fetch: async (input) => {
+        const url = String(input);
+        requests.push(url);
+        if (url !== `${apiBase}/tags/${tagName}`) {
+          throw new Error(`Unexpected API request: ${url}`);
+        }
+        return new Response(JSON.stringify({ tag_name: tagName, assets }), {
+          status,
+          headers: { "content-type": "application/json" },
+        });
+      },
+    },
+  });
+  sinon.stub(api, "getApiClient").value(() => client);
+  return {
+    assets,
+    requests,
+    releaseURL: `${apiDetails.url}/${repository}/releases/tag/${tagName}`,
+  };
+}
+
+for (const scenario of ["combined", "per-language", "fallback"] as const) {
+  test.serial(
+    `setupCodeQLBundle downloads a ${scenario} bundle from a custom release without using the toolcache`,
+    async (t) => {
+      const fixture = stubRequestedRelease();
+      const extract = stubDownloadAndExtract();
+      if (scenario === "fallback") {
+        extract.onFirstCall().rejects(new HTTPError("Not Found", 404));
+      }
+      const find = sinon.spy(toolcache, "find");
+      sinon.stub(actionsUtil, "isDynamicWorkflow").returns(true);
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        createToolcacheEntry(
+          tmpDir,
+          "CodeQL",
+          MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
+        );
+        const result = await setupCodeql.setupCodeQLBundle(
+          fixture.releaseURL,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+          GitHubVariant.DOTCOM,
+          PER_LANGUAGE_CLI_VERSION,
+          scenario === "combined" ? undefined : ["java"],
+          false, // useOverlayAwareDefaultCliVersion
+          // The requested release takes precedence over forcing the nightly.
+          createFeatures([Feature.PerLanguageBundles, Feature.ForceNightly]),
+          getRunnerLogger(true),
+        );
+
+        t.is(fixture.requests.length, 1);
+        t.true(find.notCalled);
+        t.is(result.toolsSource, setupCodeql.ToolsSource.Download);
+        t.is(result.toolsVersion, MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION);
+        t.is(extract.callCount, scenario === "fallback" ? 2 : 1);
+        t.is(
+          extract.lastCall.args[0],
+          fixture.assets[scenario === "per-language" ? 1 : 0].url,
+        );
+        t.is(extract.lastCall.args[3], "token token");
+        t.is(path.dirname(result.codeqlFolder), tmpDir);
+        t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+      });
+    },
+  );
+}
+
+test.serial(
+  "setupCodeQLBundle downloads the gzip bundle from a requested release that only has gzip bundles",
+  async (t) => {
+    const fixture = stubRequestedRelease({
+      assetNames: ["codeql-bundle-linux64.tar.gz"],
+    });
+    const extract = stubDownloadAndExtract();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result = await setupCodeql.setupCodeQLBundle(
+        fixture.releaseURL,
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+        GitHubVariant.DOTCOM,
+        PER_LANGUAGE_CLI_VERSION,
+        ["java"],
+        false, // useOverlayAwareDefaultCliVersion
+        createFeatures([Feature.PerLanguageBundles]),
+        getRunnerLogger(true),
+      );
+
+      t.true(extract.calledOnce);
+      t.is(extract.firstCall.args[0], fixture.assets[0].url);
+      t.is(extract.firstCall.args[1], "gzip");
+      t.is(result.toolsSource, setupCodeql.ToolsSource.Download);
+      t.is(result.toolsDownloadStatusReport?.perLanguage, undefined);
+    });
+  },
+);
+
+for (const { repository, tagName, markers } of [
+  {
+    repository: "octo/tools",
+    tagName: "codeql-bundle-feature_branch",
+    markers: [],
+  },
+]) {
+  test.serial(
+    `setupCodeQLBundle doesn't share the toolcache with ${tagName} in ${repository}`,
+    async (t) => {
+      const fixture = stubRequestedRelease({ repository, tagName, markers });
+      const extract = stubDownloadAndExtract();
+      const find = sinon.spy(toolcache, "find");
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        createToolcacheEntry(
+          tmpDir,
+          "CodeQL",
+          MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
+        );
+        const result = await setupCodeql.setupCodeQLBundle(
+          fixture.releaseURL,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+          GitHubVariant.DOTCOM,
+          PER_LANGUAGE_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          createFeatures([]),
+          getRunnerLogger(true),
+        );
+
+        t.true(find.notCalled);
+        t.is(result.toolsSource, setupCodeql.ToolsSource.Download);
+        t.is(extract.firstCall.args[0], fixture.assets[0].url);
+        t.is(path.dirname(result.codeqlFolder), tmpDir);
+        t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+      });
+    },
+  );
+}
+
+for (const repository of ["github/codeql-action", "octo/tools"]) {
+  test.serial(
+    `setupCodeQLBundle downloads a GitHub.com release in ${repository} from GHES by URL without credentials`,
+    async (t) => {
+      const fixture = stubRequestedRelease({ repository });
+      const extract = stubDownloadAndExtract();
+
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        const result = await setupCodeql.setupCodeQLBundle(
+          fixture.releaseURL,
+          GHES_API_DETAILS,
+          tmpDir,
+          GitHubVariant.GHES,
+          PER_LANGUAGE_CLI_VERSION,
+          ["java"],
+          false, // useOverlayAwareDefaultCliVersion
+          createFeatures([Feature.PerLanguageBundles]),
+          getRunnerLogger(true),
+        );
+
+        t.deepEqual(fixture.requests, []);
+        t.true(extract.calledOnce);
+        t.is(
+          extract.firstCall.args[0],
+          `https://github.com/${repository}/releases/download/codeql-bundle-v${MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION}/codeql-bundle-linux64.tar.zst`,
+        );
+        t.is(extract.firstCall.args[3], undefined);
+        t.false(fs.existsSync(`${result.codeqlFolder}.complete`));
+      });
+    },
+  );
+}
+
+test.serial(
+  "setupCodeQLBundle doesn't substitute another release for a requested release that can't be found",
+  async (t) => {
+    const fixture = stubRequestedRelease({ status: 404 });
+    const extract = stubDownloadAndExtract();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      await t.throwsAsync(
+        setupCodeql.setupCodeQLBundle(
+          fixture.releaseURL,
+          SAMPLE_DOTCOM_API_DETAILS,
+          tmpDir,
+          GitHubVariant.DOTCOM,
+          PER_LANGUAGE_CLI_VERSION,
+          undefined, // rawLanguages
+          false, // useOverlayAwareDefaultCliVersion
+          createFeatures([]),
+          getRunnerLogger(true),
+        ),
+        {
+          instanceOf: ConfigurationError,
+          message: `Could not find the CodeQL release ${fixture.releaseURL}. Check that it exists and that the token has access to it.`,
+        },
+      );
+      t.is(fixture.requests.length, 1);
+      t.true(extract.notCalled);
+    });
+  },
+);
+
+test.serial(
+  "setupCodeQLBundle uses the CLI version marker of a requested release",
+  async (t) => {
+    const fixture = stubRequestedRelease({
+      tagName: "run-123",
+      markers: [MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION],
+    });
+    const extract = stubDownloadAndExtract();
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result = await setupCodeql.setupCodeQLBundle(
+        fixture.releaseURL,
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+        GitHubVariant.DOTCOM,
+        PER_LANGUAGE_CLI_VERSION,
+        ["java"],
+        false, // useOverlayAwareDefaultCliVersion
+        createFeatures([Feature.PerLanguageBundles]),
+        getRunnerLogger(true),
+      );
+
+      // The tag doesn't give a version, so the job can only use the per-language bundle because of
+      // the marker.
+      t.is(extract.firstCall.args[0], fixture.assets[1].url);
+      t.is(result.toolsVersion, MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION);
+      t.is(
+        result.toolsDownloadStatusReport?.perLanguage?.tools_bundle_language,
+        BuiltInLanguage.java,
+      );
+    });
+  },
+);
 
 for (const bundle of ["per-language", "combined", "fallback"] as const) {
   test.serial(

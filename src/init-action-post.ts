@@ -64,7 +64,9 @@ async function run(startedAt: Date) {
     // Restore inputs from `init` Action.
     restoreInputs(logger);
 
-    const gitHubVersion = await getGitHubVersion();
+    config = await getConfig(getTemporaryDirectory(), logger);
+
+    const gitHubVersion = config?.gitHubVersion ?? (await getGitHubVersion());
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     const repositoryNwo = getRepositoryNwo();
@@ -75,7 +77,6 @@ async function run(startedAt: Date) {
       logger,
     );
 
-    config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       logger.warning(
         "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",

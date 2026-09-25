@@ -629,76 +629,12 @@ export async function getCodeQLSource(
       `URL: ${url ?? "unspecified"}.`,
   );
 
-  let codeqlFolder: string | undefined;
-
-  if (cliVersion) {
-    // If we find the specified CLI version, we always use that.
-    codeqlFolder = toolcache.find("CodeQL", cliVersion);
-
-    // Fall back to a single `x.y.z-*` entry, since older toolcaches store bundles as
-    // `x.y.z-<bundle version>`.
-    if (!codeqlFolder) {
-      logger.debug(
-        "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
-          `exactly matching ${cliVersion}.`,
-      );
-      const allVersions = toolcache.findAllVersions("CodeQL");
-      logger.debug(
-        `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
-          allVersions,
-        )}.`,
-      );
-      const candidateVersions = allVersions.filter((version) =>
-        version.startsWith(`${cliVersion}-`),
-      );
-      if (candidateVersions.length === 1) {
-        logger.debug(
-          `Exactly one version of the CodeQL tools starting with ${cliVersion} found in the ` +
-            "toolcache, using that.",
-        );
-        codeqlFolder = toolcache.find("CodeQL", candidateVersions[0]);
-      } else if (candidateVersions.length === 0) {
-        logger.debug(
-          `Didn't find any versions of the CodeQL tools starting with ${cliVersion} ` +
-            `in the toolcache. Trying next fallback method.`,
-        );
-      } else {
-        logger.warning(
-          `Found ${candidateVersions.length} versions of the CodeQL tools starting with ` +
-            `${cliVersion} in the toolcache, but at most one was expected.`,
-        );
-        logger.debug("Trying next fallback method.");
-      }
-    }
-  }
-
-  // Fall back to matching `0.0.0-<bundleVersion>`.
-  if (!codeqlFolder && tagName) {
-    const fallbackVersion = await tryGetFallbackToolcacheVersion(
-      cliVersion,
-      tagName,
-      logger,
-    );
-    if (fallbackVersion) {
-      codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
-    } else {
-      logger.debug(
-        "Could not determine a fallback toolcache version number for CodeQL tools version " +
-          `${humanReadableVersion}.`,
-      );
-    }
-  }
-
-  if (codeqlFolder) {
-    logger.info(
-      `Found CodeQL tools version ${humanReadableVersion} in the toolcache.`,
-    );
-  } else {
-    logger.info(
-      `Did not find CodeQL tools version ${humanReadableVersion} in the toolcache.`,
-    );
-  }
-
+  const codeqlFolder = await findCodeQLInToolcache(
+    cliVersion,
+    tagName,
+    humanReadableVersion,
+    logger,
+  );
   if (codeqlFolder) {
     if (cliVersion) {
       logger.info(
@@ -788,6 +724,90 @@ export async function getCodeQLSource(
     sourceType: "download",
     toolsVersion: resolvedVersion ?? "unknown",
   };
+}
+
+/**
+ * Looks for the requested version of the CodeQL tools in the toolcache, allowing for the different
+ * version numbers that toolcaches may use for the same bundle. We try the exact CLI version, then a
+ * single `x.y.z-*` entry for that version, then `0.0.0-<bundle version>`. The `x.y.z-*` entry can
+ * be any prerelease of the CLI version.
+ */
+async function findCodeQLInToolcache(
+  cliVersion: string | undefined,
+  tagName: string | undefined,
+  humanReadableVersion: string,
+  logger: Logger,
+): Promise<string | undefined> {
+  let codeqlFolder: string | undefined;
+
+  if (cliVersion) {
+    // If we find the specified CLI version, we always use that.
+    codeqlFolder = toolcache.find("CodeQL", cliVersion);
+
+    // Fall back to a single `x.y.z-*` entry, since older toolcaches store bundles as
+    // `x.y.z-<bundle version>`.
+    if (!codeqlFolder) {
+      logger.debug(
+        "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
+          `exactly matching ${cliVersion}.`,
+      );
+      const allVersions = toolcache.findAllVersions("CodeQL");
+      logger.debug(
+        `Found the following versions of the CodeQL tools in the toolcache: ${JSON.stringify(
+          allVersions,
+        )}.`,
+      );
+      const candidateVersions = allVersions.filter((version) =>
+        version.startsWith(`${cliVersion}-`),
+      );
+      if (candidateVersions.length === 1) {
+        logger.debug(
+          `Exactly one version of the CodeQL tools starting with ${cliVersion} found in the ` +
+            "toolcache, using that.",
+        );
+        codeqlFolder = toolcache.find("CodeQL", candidateVersions[0]);
+      } else if (candidateVersions.length === 0) {
+        logger.debug(
+          `Didn't find any versions of the CodeQL tools starting with ${cliVersion} ` +
+            `in the toolcache. Trying next fallback method.`,
+        );
+      } else {
+        logger.warning(
+          `Found ${candidateVersions.length} versions of the CodeQL tools starting with ` +
+            `${cliVersion} in the toolcache, but at most one was expected.`,
+        );
+        logger.debug("Trying next fallback method.");
+      }
+    }
+  }
+
+  // Fall back to matching `0.0.0-<bundleVersion>`.
+  if (!codeqlFolder && tagName) {
+    const fallbackVersion = await tryGetFallbackToolcacheVersion(
+      cliVersion,
+      tagName,
+      logger,
+    );
+    if (fallbackVersion) {
+      codeqlFolder = toolcache.find("CodeQL", fallbackVersion);
+    } else {
+      logger.debug(
+        "Could not determine a fallback toolcache version number for CodeQL tools version " +
+          `${humanReadableVersion}.`,
+      );
+    }
+  }
+
+  if (codeqlFolder) {
+    logger.info(
+      `Found CodeQL tools version ${humanReadableVersion} in the toolcache.`,
+    );
+  } else {
+    logger.info(
+      `Did not find CodeQL tools version ${humanReadableVersion} in the toolcache.`,
+    );
+  }
+  return codeqlFolder;
 }
 
 /**

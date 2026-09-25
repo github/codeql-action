@@ -12,7 +12,7 @@ import {
   getTemporaryDirectory,
   printDebugLogs,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { type Config, getConfig } from "./config-utils";
@@ -108,7 +108,7 @@ async function run(startedAt: Date) {
       }
     }
   } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+    const error = wrapApiConfigurationError(wrapError(unwrappedError));
     core.setFailed(error.message);
 
     const statusReportBase = await createStatusReportBase(

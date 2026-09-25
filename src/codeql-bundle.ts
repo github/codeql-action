@@ -27,6 +27,8 @@ export interface CodeQLDownloadSource {
   cliVersion?: string;
   /** Resolved version for telemetry, independent of whether the bundle can be cached. */
   toolsVersion: string;
+  /** The release lacks the eligible per-language bundle, so we selected the combined bundle. */
+  perLanguageBundleFallback?: true;
 }
 
 /** Returns the exact bundle asset name for a platform and optional language. */

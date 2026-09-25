@@ -93,6 +93,27 @@ export function getCodeQLActionRepository(logger: Logger): string {
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
 }
 
+/** Returns the repositories that release the default bundles, most preferred first. */
+function getDefaultBundleSources(
+  apiDetails: api.GitHubApiDetails,
+  logger: Logger,
+): Array<[serverURL: string, repository: string]> {
+  const codeQLActionRepository = getCodeQLActionRepository(logger);
+  const potentialDownloadSources: Array<[string, string]> = [
+    // This GitHub instance, and this Action.
+    [apiDetails.url, codeQLActionRepository],
+    // This GitHub instance, and the canonical Action.
+    [apiDetails.url, CODEQL_DEFAULT_ACTION_REPOSITORY],
+    // GitHub.com, and the canonical Action.
+    [util.GITHUB_DOTCOM_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
+  ];
+  // We now filter out any duplicates.
+  // Duplicates will happen either because the GitHub instance is GitHub.com, or because the Action is not a fork.
+  return potentialDownloadSources.filter((source, index, self) => {
+    return !self.slice(0, index).some((other) => deepEqual(source, other));
+  });
+}
+
 /**
  * Selects a bundle from the first release tagged `tagName` that has a compatible bundle, trying the
  * Action repositories on this GitHub instance before the canonical Action on GitHub.com. If we
@@ -106,23 +127,10 @@ async function selectDefaultBundle(
   options: BundleSelectionOptions,
 ): Promise<BundleSelection> {
   const { logger } = action;
-  const codeQLActionRepository = getCodeQLActionRepository(logger);
-  const potentialDownloadSources = [
-    // This GitHub instance, and this Action.
-    [apiDetails.url, codeQLActionRepository],
-    // This GitHub instance, and the canonical Action.
-    [apiDetails.url, CODEQL_DEFAULT_ACTION_REPOSITORY],
-    // GitHub.com, and the canonical Action.
-    [util.GITHUB_DOTCOM_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
-  ];
-  // We now filter out any duplicates.
-  // Duplicates will happen either because the GitHub instance is GitHub.com, or because the Action is not a fork.
-  const uniqueDownloadSources = potentialDownloadSources.filter(
-    (source, index, self) => {
-      return !self.slice(0, index).some((other) => deepEqual(source, other));
-    },
-  );
-  for (const [serverURL, repository] of uniqueDownloadSources) {
+  for (const [serverURL, repository] of getDefaultBundleSources(
+    apiDetails,
+    logger,
+  )) {
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
     if (
       serverURL === util.GITHUB_DOTCOM_URL &&

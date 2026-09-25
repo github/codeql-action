@@ -6,6 +6,7 @@ import {
   getPublicRelease,
   getRelease,
   getReleaseCliVersion,
+  getRequestedRelease,
   parseCodeQLReleaseUrl,
   selectBundle,
 } from "./codeql-release";
@@ -172,6 +173,37 @@ test("getRelease propagates API errors", async (t) => {
   const fixture = releaseFixture({ status: 404 });
   t.like(await t.throwsAsync(fixture.select()), { status: 404 });
   t.deepEqual(fixture.requests, [fixture.releaseAPIURL]);
+});
+
+test("getRequestedRelease names a requested release that can't be found", async (t) => {
+  const requested = { ...REFERENCE, isCurrentInstance: true };
+  await t.throwsAsync(
+    getRequestedRelease(releaseFixture({ status: 404 }).state, requested),
+    {
+      instanceOf: ConfigurationError,
+      message: `Could not find the CodeQL release ${RELEASE_PAGE}. Check that it exists and that the token has access to it.`,
+    },
+  );
+  t.like(
+    await t.throwsAsync(
+      getRequestedRelease(releaseFixture({ status: 500 }).state, requested),
+    ),
+    { status: 500 },
+  );
+});
+
+test("getRequestedRelease refers to a release on another instance by URL", async (t) => {
+  const fixture = releaseFixture();
+  const release = await getRequestedRelease(fixture.state, {
+    ...REFERENCE,
+    isCurrentInstance: false,
+  });
+  t.is(
+    release.getAssetURL(COMBINED),
+    `https://github.com/octo/tools/releases/download/${TAG}/${COMBINED}`,
+  );
+  t.is(release.assetNames, undefined);
+  t.deepEqual(fixture.requests, []);
 });
 
 test("getPublicRelease constructs download URLs without looking up the release", async (t) => {

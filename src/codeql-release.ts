@@ -11,7 +11,12 @@ import {
 } from "./per-language-bundles";
 import { BundlePlatform } from "./platform";
 import type { CompressionMethod } from "./tar";
-import { ConfigurationError, GITHUB_DOTCOM_URL, GitHubVariant } from "./util";
+import {
+  asHTTPError,
+  ConfigurationError,
+  GITHUB_DOTCOM_URL,
+  GitHubVariant,
+} from "./util";
 
 /** Identifies a release on a GitHub instance. */
 export interface CodeQLReleaseReference {
@@ -186,6 +191,32 @@ export function getPublicRelease(
     getAssetURL: (name) =>
       `${serverURL}/${owner}/${repo}/releases/download/${encodeTag(tagName)}/${name}`,
   };
+}
+
+/** Gets a release requested by URL, looking it up if it's on the current GitHub instance. */
+export async function getRequestedRelease(
+  action: ActionState<["Api"]>,
+  requested: RequestedRelease,
+): Promise<CodeQLRelease> {
+  if (!requested.isCurrentInstance) {
+    // We can't send the token to another instance, so only public releases are usable there, and we
+    // download them by URL rather than querying that instance's API. On the current instance we use
+    // the API instead, because release download URLs don't accept tokens and so would fail for
+    // private and internal repositories. Without the release's asset list, we assume the preferred
+    // compression is available and take the CLI version from the tag.
+    return getPublicRelease(requested);
+  }
+  try {
+    return await getRelease(action, requested);
+  } catch (e) {
+    if (asHTTPError(e)?.status === 404) {
+      throw new ConfigurationError(
+        `Could not find the CodeQL release ${getReleasePageURL(requested)}. Check that it ` +
+          "exists and that the token has access to it.",
+      );
+    }
+    throw e;
+  }
 }
 
 /** Describes the job and runner that we are selecting a bundle for. */

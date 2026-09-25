@@ -191,6 +191,12 @@ export function tryGetTagNameFromUrl(
   return match[1];
 }
 
+/**
+ * Converts a bundle version to a semantic version, for example to use in the toolcache. Semantic
+ * versions are normalized with `semver.clean`, which drops a leading `v` and any build metadata.
+ * Anything else, such as a date, becomes a prerelease of `0.0.0`. Throws if the result isn't a
+ * valid semantic version.
+ */
 export function convertToSemVer(version: string, logger: Logger): string {
   if (!semver.valid(version)) {
     logger.debug(
@@ -629,7 +635,8 @@ export async function getCodeQLSource(
     // If we find the specified CLI version, we always use that.
     codeqlFolder = toolcache.find("CodeQL", cliVersion);
 
-    // Fall back to matching `x.y.z-<tagName>`.
+    // Fall back to a single `x.y.z-*` entry, since older toolcaches store bundles as
+    // `x.y.z-<bundle version>`.
     if (!codeqlFolder) {
       logger.debug(
         "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
@@ -641,8 +648,6 @@ export async function getCodeQLSource(
           allVersions,
         )}.`,
       );
-      // If there is exactly one version of the CodeQL tools in the toolcache, and that version is
-      // the form `x.y.z-<tagName>`, then use it.
       const candidateVersions = allVersions.filter((version) =>
         version.startsWith(`${cliVersion}-`),
       );
@@ -878,6 +883,9 @@ export const downloadCodeQL = async function (
 
 /**
  * Returns the canonical toolcache directory, or the reason the bundle cannot be cached.
+ *
+ * The toolcache is keyed by version, so we don't cache bundles that would give a later request for
+ * the same version the wrong tools, such as per-language bundles, which lack the other languages.
  */
 function getToolcacheDestination(
   { logger }: ActionState<["Logger"]>,
@@ -973,11 +981,11 @@ function getCanonicalToolcacheVersion(
   bundleVersion: string,
   logger: Logger,
 ): string {
-  // If the CLI version is a pre-release or contains build metadata, then cache the
-  // bundle as `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable
-  // CLI release. In principle, it should be enough to just check that the CLI version isn't a
-  // pre-release, but the version numbers of CodeQL nightlies have the format `x.y.z+<timestamp>`,
-  // and we don't want these nightlies to override stable CLI versions in the toolcache.
+  // If the CLI version is unknown, as for nightlies, which are tagged by date, or isn't a plain
+  // `x.y.z`, for example a prerelease, cache the bundle under its bundle version, such as
+  // `0.0.0-<date>` or `x.y.z-rc.1`, so that it isn't cached as a stable release. However,
+  // `convertToSemVer` drops build metadata, so a bundle URL tagged `codeql-bundle-vX.Y.Z+<build>`
+  // is still cached as `X.Y.Z`.
   if (!cliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)) {
     return convertToSemVer(bundleVersion, logger);
   }

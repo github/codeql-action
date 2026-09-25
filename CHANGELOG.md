@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- The `tools` input to the `init` and `setup-codeql` actions now accepts GitHub release URLs. The Action selects a compatible bundle from the specified release, including a per-language bundle when eligible. [#4179](https://github.com/github/codeql-action/pull/4179)
 
 ## 4.38.2 - 24 Sept 2026
 

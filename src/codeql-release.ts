@@ -1,15 +1,22 @@
 import * as semver from "semver";
 
 import { ActionState } from "./action-common";
+import type { GitHubApiDetails } from "./api-client";
 import { CodeQLBundle, getCodeQLBundleName } from "./codeql-bundle";
 import { CODEQL_VERSION_ZSTD_BUNDLE } from "./feature-flags";
+import { Logger } from "./logging";
 import {
   getPerLanguageBundleLanguage,
   logMissingPerLanguageBundle,
 } from "./per-language-bundles";
 import { BundlePlatform } from "./platform";
 import type { CompressionMethod } from "./tar";
-import { ConfigurationError, GitHubVariant } from "./util";
+import {
+  asHTTPError,
+  ConfigurationError,
+  GITHUB_DOTCOM_URL,
+  GitHubVariant,
+} from "./util";
 
 /** Identifies a release on a GitHub instance. */
 export interface CodeQLReleaseReference {
@@ -25,6 +32,111 @@ export interface CodeQLRelease {
   url: string;
   /** Returns the download URL for an asset, or `undefined` if the release doesn't have it. */
   getAssetURL(name: string): string | undefined;
+  /** Names of the release's assets, if we looked up the release. */
+  assetNames?: string[];
+}
+
+/** A release requested by URL, on this GitHub instance or on GitHub.com. */
+export interface RequestedRelease extends CodeQLReleaseReference {
+  isCurrentInstance: boolean;
+}
+
+/**
+ * Recognizes release pages, including legacy bundle links, but never asset URLs.
+ *
+ * We only accept https URLs without credentials, on this GitHub instance, whose API we can use, or
+ * on GitHub.com, whose public releases we can download without credentials. The tag is
+ * percent-decoded once, and may contain `/`.
+ */
+export function parseCodeQLReleaseUrl(
+  input: string,
+  apiDetails: GitHubApiDetails,
+): RequestedRelease | undefined {
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" || url.username || url.password) {
+    return undefined;
+  }
+
+  // GitHub instances are served from the root of their origin.
+  const isCurrentInstance = url.origin === new URL(apiDetails.url).origin;
+  if (!isCurrentInstance && url.origin !== new URL(GITHUB_DOTCOM_URL).origin) {
+    return undefined;
+  }
+  // Older links to bundle releases omit "tag/", which GitHub still supports. We only accept this
+  // form for bundle tags, since other names can clash with routes like `releases/latest`.
+  const match = url.pathname
+    .replace(/\/$/, "")
+    .match(
+      /^\/([\w.-]+)\/([\w.-]+)\/releases\/(?:tag\/(.+)|(codeql-bundle-[^/]+))$/,
+    );
+  if (match === null) {
+    return undefined;
+  }
+  let tagName: string;
+  try {
+    tagName = decodeURIComponent(match[3] ?? match[4]);
+  } catch {
+    throw new ConfigurationError(
+      "Invalid URL encoding in the CodeQL release tag.",
+    );
+  }
+  return {
+    serverURL: url.origin,
+    isCurrentInstance,
+    owner: match[1],
+    repo: match[2],
+    tagName,
+  };
+}
+
+function parseCliVersion(value: string): string | undefined {
+  const parsed = semver.parse(value);
+  if (parsed === null) {
+    return undefined;
+  }
+  // semver's normalized version omits build metadata, which distinguishes nightly builds.
+  return (
+    parsed.version + (parsed.build.length ? `+${parsed.build.join(".")}` : "")
+  );
+}
+
+/**
+ * Returns the CLI version from the release's `cli-version-<version>.txt` asset if it has one, and
+ * otherwise the version in the tag. Returns `undefined` if the release has conflicting markers.
+ */
+export function getReleaseCliVersion(
+  tagName: string,
+  assetNames: string[],
+  logger: Logger,
+): string | undefined {
+  const versions = new Set<string>();
+  for (const name of assetNames) {
+    const match = name.match(/^cli-version-(.+)\.txt$/);
+    if (match === null) {
+      continue;
+    }
+    const version = parseCliVersion(match[1]);
+    if (version !== undefined) {
+      versions.add(version);
+    } else {
+      logger.debug(`Ignoring invalid CLI version marker ${name}.`);
+    }
+  }
+  if (versions.size > 1) {
+    logger.warning(
+      `Release ${tagName} has conflicting CLI version markers. Using a combined CodeQL bundle.`,
+    );
+    return undefined;
+  }
+  if (versions.size === 1) {
+    return versions.values().next().value;
+  }
+  return parseCliVersion(tagName.replace(/^codeql-bundle-/, ""));
 }
 
 /**
@@ -62,6 +174,7 @@ export async function getRelease(
     url: getReleasePageURL(reference),
     getAssetURL: (name) =>
       release.assets.find((asset) => asset.name === name)?.url,
+    assetNames: release.assets.map((asset) => asset.name),
   };
 }
 
@@ -78,6 +191,32 @@ export function getPublicRelease(
     getAssetURL: (name) =>
       `${serverURL}/${owner}/${repo}/releases/download/${encodeTag(tagName)}/${name}`,
   };
+}
+
+/** Gets a release requested by URL, looking it up if it's on the current GitHub instance. */
+export async function getRequestedRelease(
+  action: ActionState<["Api"]>,
+  requested: RequestedRelease,
+): Promise<CodeQLRelease> {
+  if (!requested.isCurrentInstance) {
+    // We can't send the token to another instance, so only public releases are usable there, and we
+    // download them by URL rather than querying that instance's API. On the current instance we use
+    // the API instead, because release download URLs don't accept tokens and so would fail for
+    // private and internal repositories. Without the release's asset list, we assume the preferred
+    // compression is available and take the CLI version from the tag.
+    return getPublicRelease(requested);
+  }
+  try {
+    return await getRelease(action, requested);
+  } catch (e) {
+    if (asHTTPError(e)?.status === 404) {
+      throw new ConfigurationError(
+        `Could not find the CodeQL release ${getReleasePageURL(requested)}. Check that it ` +
+          "exists and that the token has access to it.",
+      );
+    }
+    throw e;
+  }
 }
 
 /** Describes the job and runner that we are selecting a bundle for. */

@@ -5,6 +5,9 @@ import {
   BundleSelectionOptions,
   getPublicRelease,
   getRelease,
+  getReleaseCliVersion,
+  getRequestedRelease,
+  parseCodeQLReleaseUrl,
   selectBundle,
 } from "./codeql-release";
 import { ActionsEnvVars } from "./environment";
@@ -17,6 +20,7 @@ import {
   getTestEnv,
   initAllState,
   LoggedMessage,
+  SAMPLE_DOTCOM_API_DETAILS,
 } from "./testing-utils";
 import { ConfigurationError, GitHubVariant } from "./util";
 
@@ -171,6 +175,37 @@ test("getRelease propagates API errors", async (t) => {
   t.deepEqual(fixture.requests, [fixture.releaseAPIURL]);
 });
 
+test("getRequestedRelease names a requested release that can't be found", async (t) => {
+  const requested = { ...REFERENCE, isCurrentInstance: true };
+  await t.throwsAsync(
+    getRequestedRelease(releaseFixture({ status: 404 }).state, requested),
+    {
+      instanceOf: ConfigurationError,
+      message: `Could not find the CodeQL release ${RELEASE_PAGE}. Check that it exists and that the token has access to it.`,
+    },
+  );
+  t.like(
+    await t.throwsAsync(
+      getRequestedRelease(releaseFixture({ status: 500 }).state, requested),
+    ),
+    { status: 500 },
+  );
+});
+
+test("getRequestedRelease refers to a release on another instance by URL", async (t) => {
+  const fixture = releaseFixture();
+  const release = await getRequestedRelease(fixture.state, {
+    ...REFERENCE,
+    isCurrentInstance: false,
+  });
+  t.is(
+    release.getAssetURL(COMBINED),
+    `https://github.com/octo/tools/releases/download/${TAG}/${COMBINED}`,
+  );
+  t.is(release.assetNames, undefined);
+  t.deepEqual(fixture.requests, []);
+});
+
 test("getPublicRelease constructs download URLs without looking up the release", async (t) => {
   const fixture = releaseFixture();
   const release = getPublicRelease({ ...REFERENCE, tagName: "nightly/v1+2" });
@@ -197,4 +232,123 @@ test("getPublicRelease constructs download URLs without looking up the release",
     },
   );
   t.deepEqual(fixture.requests, []);
+});
+
+test("parseCodeQLReleaseUrl accepts web and legacy links and decodes tags once", (t) => {
+  for (const [suffix, tagName] of [
+    [`tag/${TAG}`, TAG],
+    [TAG, TAG],
+    ["codeql-bundle-20230120", "codeql-bundle-20230120"],
+    ["codeql-bundle-v2.27.1-rc.1", "codeql-bundle-v2.27.1-rc.1"],
+    ["tag/run-123", "run-123"],
+    ["tag/build/123", "build/123"],
+    ["tag/build%2F123%2Brc%231", "build/123+rc#1"],
+    ["tag/build%252F123", "build%2F123"],
+    [`tag/${TAG}/?expanded=true#assets`, TAG],
+  ]) {
+    t.deepEqual(
+      parseCodeQLReleaseUrl(
+        `https://github.com/octo/tools/releases/${suffix}`,
+        SAMPLE_DOTCOM_API_DETAILS,
+      ),
+      { ...REFERENCE, isCurrentInstance: true, tagName },
+    );
+  }
+  t.throws(
+    () =>
+      parseCodeQLReleaseUrl(
+        "https://github.com/octo/tools/releases/tag/%zz",
+        SAMPLE_DOTCOM_API_DETAILS,
+      ),
+    { instanceOf: ConfigurationError, message: /Invalid URL encoding/ },
+  );
+});
+
+test("parseCodeQLReleaseUrl matches the current instance and GitHub.com by origin", (t) => {
+  for (const [url, origin, serverURL] of [
+    ["https://github.example.test", "https://github.com", "https://github.com"],
+    [
+      "https://github.example.test/",
+      "https://github.example.test",
+      "https://github.example.test",
+    ],
+    [
+      "https://GitHub.Example.test",
+      "https://github.example.test",
+      "https://github.example.test",
+    ],
+    [
+      "https://github.example.test:443",
+      "https://GITHUB.example.test:443",
+      "https://github.example.test",
+    ],
+  ]) {
+    t.deepEqual(
+      parseCodeQLReleaseUrl(`${origin}/octo/tools/releases/tag/${TAG}`, {
+        auth: "token",
+        url,
+        apiURL: undefined,
+      }),
+      {
+        ...REFERENCE,
+        serverURL,
+        isCurrentInstance: serverURL !== "https://github.com",
+      },
+      `${url} ${origin}`,
+    );
+  }
+});
+
+test("parseCodeQLReleaseUrl excludes archives, REST references and untrusted URLs", (t) => {
+  for (const input of [
+    "/tmp/codeql-bundle.tar.zst",
+    "nightly",
+    `https://github.com/octo/tools/releases/download/${TAG}/${JAVA}`,
+    "https://api.github.com/repos/octo/tools/releases/assets/123",
+    "https://api.github.com/repos/octo/tools/releases/123",
+    `https://api.github.com/repos/octo/tools/releases/tags/${TAG}`,
+    "https://github.com/octo/tools/releases/latest",
+    "https://github.com/octo/tools/releases/tag/",
+    "https://github.com/octo/tools/releases/run-123",
+    `https://github.com.example.test/octo/tools/releases/tag/${TAG}`,
+    `https://github.com:8443/octo/tools/releases/tag/${TAG}`,
+    `https://github.com@example.test/octo/tools/releases/tag/${TAG}`,
+    `https://user@github.com/octo/tools/releases/tag/${TAG}`,
+    `http://github.com/octo/tools/releases/tag/${TAG}`,
+  ]) {
+    t.is(
+      parseCodeQLReleaseUrl(input, SAMPLE_DOTCOM_API_DETAILS),
+      undefined,
+      input,
+    );
+  }
+});
+
+test("getRelease returns the names of the release's assets", async (t) => {
+  const assetNames = [COMBINED, "cli-version-2.27.2.txt"];
+  const fixture = releaseFixture({ assetNames });
+  const release = await getRelease(fixture.state, REFERENCE);
+  t.deepEqual(release.assetNames, assetNames);
+});
+
+test("getReleaseCliVersion prefers an unambiguous marker asset to the tag", (t) => {
+  for (const [tagName, markers, cliVersion] of [
+    [TAG, [], "2.27.1"],
+    [TAG, ["invalid"], "2.27.1"],
+    [TAG, ["2.27.2"], "2.27.2"],
+    [TAG, ["2.27.1", "2.28.0"], undefined],
+    ["codeql-bundle-20260101", [], undefined],
+    ["run-123", [], undefined],
+    ["run-123", ["2.27.2+202601011200"], "2.27.2+202601011200"],
+  ] as const) {
+    t.is(
+      getReleaseCliVersion(
+        tagName,
+        [COMBINED, ...markers.map((version) => `cli-version-${version}.txt`)],
+        getRecordingLogger([], { logToConsole: false }),
+      ),
+      cliVersion,
+      `${tagName} ${markers.join(",")}`,
+    );
+  }
 });

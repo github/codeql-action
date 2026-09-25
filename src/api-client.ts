@@ -415,7 +415,14 @@ export function getFeatureEnablementError(message: string): string {
   return `Please verify that the necessary features are enabled: ${message}`;
 }
 
-export function wrapApiConfigurationError(e: unknown) {
+/**
+ * Decides whether `e` is a known error returned by the GitHub API that we should
+ * classify as a `ConfigurationError`.
+ *
+ * @param e The error to classify.
+ * @returns Either `e` or a corresponding `ConfigurationError`.
+ */
+export function wrapApiConfigurationError<T>(e: T): T | ConfigurationError {
   const httpError = asHTTPError(e);
   if (httpError !== undefined) {
     if (

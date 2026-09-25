@@ -4,6 +4,7 @@ import { ActionState } from "./action-common";
 import type { GitHubApiDetails } from "./api-client";
 import { CodeQLBundle, getCodeQLBundleName } from "./codeql-bundle";
 import { CODEQL_VERSION_ZSTD_BUNDLE } from "./feature-flags";
+import { Logger } from "./logging";
 import {
   getPerLanguageBundleLanguage,
   logMissingPerLanguageBundle,
@@ -26,6 +27,8 @@ export interface CodeQLRelease {
   url: string;
   /** Returns the download URL for an asset, or `undefined` if the release doesn't have it. */
   getAssetURL(name: string): string | undefined;
+  /** Names of the release's assets, if we looked up the release. */
+  assetNames?: string[];
 }
 
 /** A release requested by URL, on this GitHub instance or on GitHub.com. */
@@ -86,6 +89,51 @@ export function parseCodeQLReleaseUrl(
   };
 }
 
+function parseCliVersion(value: string): string | undefined {
+  const parsed = semver.parse(value);
+  if (parsed === null) {
+    return undefined;
+  }
+  // semver's normalized version omits build metadata, which distinguishes nightly builds.
+  return (
+    parsed.version + (parsed.build.length ? `+${parsed.build.join(".")}` : "")
+  );
+}
+
+/**
+ * Returns the CLI version from the release's `cli-version-<version>.txt` asset if it has one, and
+ * otherwise the version in the tag. Returns `undefined` if the release has conflicting markers.
+ */
+export function getReleaseCliVersion(
+  tagName: string,
+  assetNames: string[],
+  logger: Logger,
+): string | undefined {
+  const versions = new Set<string>();
+  for (const name of assetNames) {
+    const match = name.match(/^cli-version-(.+)\.txt$/);
+    if (match === null) {
+      continue;
+    }
+    const version = parseCliVersion(match[1]);
+    if (version !== undefined) {
+      versions.add(version);
+    } else {
+      logger.debug(`Ignoring invalid CLI version marker ${name}.`);
+    }
+  }
+  if (versions.size > 1) {
+    logger.warning(
+      `Release ${tagName} has conflicting CLI version markers. Using a combined CodeQL bundle.`,
+    );
+    return undefined;
+  }
+  if (versions.size === 1) {
+    return versions.values().next().value;
+  }
+  return parseCliVersion(tagName.replace(/^codeql-bundle-/, ""));
+}
+
 /**
  * Encodes a tag for use in a URL path. Slashes stay as path separators, as in GitHub's release URLs
  * for tags like `build/123`.
@@ -121,6 +169,7 @@ export async function getRelease(
     url: getReleasePageURL(reference),
     getAssetURL: (name) =>
       release.assets.find((asset) => asset.name === name)?.url,
+    assetNames: release.assets.map((asset) => asset.name),
   };
 }
 

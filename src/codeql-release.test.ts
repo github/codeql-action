@@ -5,6 +5,7 @@ import {
   BundleSelectionOptions,
   getPublicRelease,
   getRelease,
+  getReleaseCliVersion,
   parseCodeQLReleaseUrl,
   selectBundle,
 } from "./codeql-release";
@@ -287,6 +288,35 @@ test("parseCodeQLReleaseUrl excludes archives, REST references and untrusted URL
       parseCodeQLReleaseUrl(input, SAMPLE_DOTCOM_API_DETAILS),
       undefined,
       input,
+    );
+  }
+});
+
+test("getRelease returns the names of the release's assets", async (t) => {
+  const assetNames = [COMBINED, "cli-version-2.27.2.txt"];
+  const fixture = releaseFixture({ assetNames });
+  const release = await getRelease(fixture.state, REFERENCE);
+  t.deepEqual(release.assetNames, assetNames);
+});
+
+test("getReleaseCliVersion prefers an unambiguous marker asset to the tag", (t) => {
+  for (const [tagName, markers, cliVersion] of [
+    [TAG, [], "2.27.1"],
+    [TAG, ["invalid"], "2.27.1"],
+    [TAG, ["2.27.2"], "2.27.2"],
+    [TAG, ["2.27.1", "2.28.0"], undefined],
+    ["codeql-bundle-20260101", [], undefined],
+    ["run-123", [], undefined],
+    ["run-123", ["2.27.2+202601011200"], "2.27.2+202601011200"],
+  ] as const) {
+    t.is(
+      getReleaseCliVersion(
+        tagName,
+        [COMBINED, ...markers.map((version) => `cli-version-${version}.txt`)],
+        getRecordingLogger([], { logToConsole: false }),
+      ),
+      cliVersion,
+      `${tagName} ${markers.join(",")}`,
     );
   }
 });

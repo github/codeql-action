@@ -1,6 +1,7 @@
 import * as semver from "semver";
 
 import { ActionState } from "./action-common";
+import type { GitHubApiDetails } from "./api-client";
 import { CodeQLBundle, getCodeQLBundleName } from "./codeql-bundle";
 import { CODEQL_VERSION_ZSTD_BUNDLE } from "./feature-flags";
 import {
@@ -9,7 +10,7 @@ import {
 } from "./per-language-bundles";
 import { BundlePlatform } from "./platform";
 import type { CompressionMethod } from "./tar";
-import { ConfigurationError, GitHubVariant } from "./util";
+import { ConfigurationError, GITHUB_DOTCOM_URL, GitHubVariant } from "./util";
 
 /** Identifies a release on a GitHub instance. */
 export interface CodeQLReleaseReference {
@@ -25,6 +26,64 @@ export interface CodeQLRelease {
   url: string;
   /** Returns the download URL for an asset, or `undefined` if the release doesn't have it. */
   getAssetURL(name: string): string | undefined;
+}
+
+/** A release requested by URL, on this GitHub instance or on GitHub.com. */
+export interface RequestedRelease extends CodeQLReleaseReference {
+  isCurrentInstance: boolean;
+}
+
+/**
+ * Recognizes release pages, including legacy bundle links, but never asset URLs.
+ *
+ * We only accept https URLs without credentials, on this GitHub instance, whose API we can use, or
+ * on GitHub.com, whose public releases we can download without credentials. The tag is
+ * percent-decoded once, and may contain `/`.
+ */
+export function parseCodeQLReleaseUrl(
+  input: string,
+  apiDetails: GitHubApiDetails,
+): RequestedRelease | undefined {
+  let url: URL;
+  try {
+    url = new URL(input);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" || url.username || url.password) {
+    return undefined;
+  }
+
+  // GitHub instances are served from the root of their origin.
+  const isCurrentInstance = url.origin === new URL(apiDetails.url).origin;
+  if (!isCurrentInstance && url.origin !== new URL(GITHUB_DOTCOM_URL).origin) {
+    return undefined;
+  }
+  // Older links to bundle releases omit "tag/", which GitHub still supports. We only accept this
+  // form for bundle tags, since other names can clash with routes like `releases/latest`.
+  const match = url.pathname
+    .replace(/\/$/, "")
+    .match(
+      /^\/([\w.-]+)\/([\w.-]+)\/releases\/(?:tag\/(.+)|(codeql-bundle-[^/]+))$/,
+    );
+  if (match === null) {
+    return undefined;
+  }
+  let tagName: string;
+  try {
+    tagName = decodeURIComponent(match[3] ?? match[4]);
+  } catch {
+    throw new ConfigurationError(
+      "Invalid URL encoding in the CodeQL release tag.",
+    );
+  }
+  return {
+    serverURL: url.origin,
+    isCurrentInstance,
+    owner: match[1],
+    repo: match[2],
+    tagName,
+  };
 }
 
 /**

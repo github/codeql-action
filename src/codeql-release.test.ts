@@ -5,6 +5,7 @@ import {
   BundleSelectionOptions,
   getPublicRelease,
   getRelease,
+  parseCodeQLReleaseUrl,
   selectBundle,
 } from "./codeql-release";
 import { ActionsEnvVars } from "./environment";
@@ -17,6 +18,7 @@ import {
   getTestEnv,
   initAllState,
   LoggedMessage,
+  SAMPLE_DOTCOM_API_DETAILS,
 } from "./testing-utils";
 import { ConfigurationError, GitHubVariant } from "./util";
 
@@ -197,4 +199,94 @@ test("getPublicRelease constructs download URLs without looking up the release",
     },
   );
   t.deepEqual(fixture.requests, []);
+});
+
+test("parseCodeQLReleaseUrl accepts web and legacy links and decodes tags once", (t) => {
+  for (const [suffix, tagName] of [
+    [`tag/${TAG}`, TAG],
+    [TAG, TAG],
+    ["codeql-bundle-20230120", "codeql-bundle-20230120"],
+    ["codeql-bundle-v2.27.1-rc.1", "codeql-bundle-v2.27.1-rc.1"],
+    ["tag/run-123", "run-123"],
+    ["tag/build/123", "build/123"],
+    ["tag/build%2F123%2Brc%231", "build/123+rc#1"],
+    ["tag/build%252F123", "build%2F123"],
+    [`tag/${TAG}/?expanded=true#assets`, TAG],
+  ]) {
+    t.deepEqual(
+      parseCodeQLReleaseUrl(
+        `https://github.com/octo/tools/releases/${suffix}`,
+        SAMPLE_DOTCOM_API_DETAILS,
+      ),
+      { ...REFERENCE, isCurrentInstance: true, tagName },
+    );
+  }
+  t.throws(
+    () =>
+      parseCodeQLReleaseUrl(
+        "https://github.com/octo/tools/releases/tag/%zz",
+        SAMPLE_DOTCOM_API_DETAILS,
+      ),
+    { instanceOf: ConfigurationError, message: /Invalid URL encoding/ },
+  );
+});
+
+test("parseCodeQLReleaseUrl matches the current instance and GitHub.com by origin", (t) => {
+  for (const [url, origin, serverURL] of [
+    ["https://github.example.test", "https://github.com", "https://github.com"],
+    [
+      "https://github.example.test/",
+      "https://github.example.test",
+      "https://github.example.test",
+    ],
+    [
+      "https://GitHub.Example.test",
+      "https://github.example.test",
+      "https://github.example.test",
+    ],
+    [
+      "https://github.example.test:443",
+      "https://GITHUB.example.test:443",
+      "https://github.example.test",
+    ],
+  ]) {
+    t.deepEqual(
+      parseCodeQLReleaseUrl(`${origin}/octo/tools/releases/tag/${TAG}`, {
+        auth: "token",
+        url,
+        apiURL: undefined,
+      }),
+      {
+        ...REFERENCE,
+        serverURL,
+        isCurrentInstance: serverURL !== "https://github.com",
+      },
+      `${url} ${origin}`,
+    );
+  }
+});
+
+test("parseCodeQLReleaseUrl excludes archives, REST references and untrusted URLs", (t) => {
+  for (const input of [
+    "/tmp/codeql-bundle.tar.zst",
+    "nightly",
+    `https://github.com/octo/tools/releases/download/${TAG}/${JAVA}`,
+    "https://api.github.com/repos/octo/tools/releases/assets/123",
+    "https://api.github.com/repos/octo/tools/releases/123",
+    `https://api.github.com/repos/octo/tools/releases/tags/${TAG}`,
+    "https://github.com/octo/tools/releases/latest",
+    "https://github.com/octo/tools/releases/tag/",
+    "https://github.com/octo/tools/releases/run-123",
+    `https://github.com.example.test/octo/tools/releases/tag/${TAG}`,
+    `https://github.com:8443/octo/tools/releases/tag/${TAG}`,
+    `https://github.com@example.test/octo/tools/releases/tag/${TAG}`,
+    `https://user@github.com/octo/tools/releases/tag/${TAG}`,
+    `http://github.com/octo/tools/releases/tag/${TAG}`,
+  ]) {
+    t.is(
+      parseCodeQLReleaseUrl(input, SAMPLE_DOTCOM_API_DETAILS),
+      undefined,
+      input,
+    );
+  }
 });

@@ -219,25 +219,31 @@ export async function getGitHubVersionFromApi(
     return { type: GitHubVariant.DOTCOM };
   }
 
-  // Doesn't strictly have to be the meta endpoint as we're only
-  // using the response headers which are available on every request.
-  //
-  // See https://docs.github.com/en/rest/meta/meta#get-github-meta-information.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const response = await apiClient.rest.meta.get();
+  try {
+    // Doesn't strictly have to be the meta endpoint as we're only
+    // using the response headers which are available on every request.
+    //
+    // See https://docs.github.com/en/rest/meta/meta#get-github-meta-information.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const response = await apiClient.rest.meta.get();
 
-  // This happens on dotcom, although we expect to have already returned in that
-  // case. This can also serve as a fallback in cases we haven't foreseen.
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
-    return { type: GitHubVariant.DOTCOM };
+    // This happens on dotcom, although we expect to have already returned in that
+    // case. This can also serve as a fallback in cases we haven't foreseen.
+    if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
+      return { type: GitHubVariant.DOTCOM };
+    }
+
+    if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
+      return { type: GitHubVariant.GHEC_DR };
+    }
+
+    const version = response.headers[
+      GITHUB_ENTERPRISE_VERSION_HEADER
+    ] as string;
+    return { type: GitHubVariant.GHES, version };
+  } catch (err) {
+    throw wrapApiConfigurationError(err);
   }
-
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
-    return { type: GitHubVariant.GHEC_DR };
-  }
-
-  const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
-  return { type: GitHubVariant.GHES, version };
 }
 
 /**

@@ -1,0 +1,94 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: PR Check - Risk Assessment analysis failure uploads SARIF artifact
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: risk-assessment-failure-${{github.ref}}
+jobs:
+  risk-assessment-failure:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+    name: Risk Assessment analysis failure uploads SARIF artifact
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Initialise CodeQL
+        uses: ./../action/init
+        id: init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: javascript
+          analysis-kinds: risk-assessment
+
+      - name: Fail
+        run: exit 1
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  artifact-present:
+    name: Check artifact
+    if: github.triggering_actor != 'dependabot[bot]'
+    needs:
+      - risk-assessment-failure
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 5
+    runs-on: ubuntu-slim
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v7
+        with:
+          pattern: sarif-artifact-*
+          path: ${{ runner.temp }}/results
+          merge-multiple: true
+      - name: List contents
+        run: |
+          ls -lr
+    env:
+      CODEQL_ACTION_TEST_MODE: true

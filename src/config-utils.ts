@@ -1425,7 +1425,12 @@ export async function getConfig(
   }
   if (config.version !== getActionVersion()) {
     throw new ConfigurationError(
-      `Loaded a configuration file for version '${config.version}', but running version '${getActionVersion()}'`,
+      [
+        `Loaded a configuration file for version '${config.version}', but running version '${getActionVersion()}'.`,
+        "All steps in a workflow that use `github/codeql-action` must use the same version to work correctly.",
+        "If you are using Dependabot to manage dependency updates, you can configure a dependency group to update all `github/codeql-action` steps at the same time.",
+        "For more information, see https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups--",
+      ].join(" "),
     );
   }
 

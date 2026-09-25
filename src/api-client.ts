@@ -249,9 +249,10 @@ export async function getGitHubVersionFromApi(
  */
 export async function getGitHubVersion(): Promise<GitHubVersion> {
   if (cachedGitHubVersion === undefined) {
+    const apiDetails = getApiDetails();
     cachedGitHubVersion = await getGitHubVersionFromApi(
-      getApiClient(),
-      getApiDetails(),
+      createApiClientWithDetails(apiDetails),
+      apiDetails,
     );
   }
   return cachedGitHubVersion;

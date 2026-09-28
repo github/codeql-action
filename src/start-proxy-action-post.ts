@@ -20,7 +20,7 @@ export async function runWrapper() {
 
   try {
     // Restore inputs from `start-proxy` Action.
-    actionsUtil.restoreInputs();
+    actionsUtil.restoreInputs(logger);
 
     // Kill the running proxy
     const pid = core.getState("proxy-process-pid");
@@ -38,12 +38,6 @@ export async function runWrapper() {
       logger.info(
         "Debug mode is on. Uploading proxy log as Actions debugging artifact...",
       );
-      if (config?.gitHubVersion.type === undefined) {
-        logger.warning(
-          `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
-        );
-        return;
-      }
       const gitHubVersion = await getGitHubVersion();
       checkGitHubVersionInRange(gitHubVersion, logger);
 

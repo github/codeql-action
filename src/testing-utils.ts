@@ -234,6 +234,8 @@ export function initAllState(
   return {
     name: ActionName.Init,
     startedAt: new Date(),
+    platform: process.platform,
+    arch: process.arch,
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),

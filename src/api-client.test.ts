@@ -204,6 +204,23 @@ test("wrapApiConfigurationError wraps enablement errors", async (t) => {
   }
 });
 
+test("wrapApiConfigurationError doesn't double-wrap errors", async (t) => {
+  // This test checks that errors don't get wrapped a second time if `wrapApiConfigurationError`
+  // is called on an error that was already wrapped by a previous call to `wrapApiConfigurationError`.
+  // Start by calling `wrapApiConfigurationError` on an unwrapped error that should be wrapped:
+  const unwrappedError = new util.HTTPError("commit not found", 404);
+  const wrappedError = api.wrapApiConfigurationError(unwrappedError);
+
+  // Sanity-check that it was wrapped, as expected.
+  t.deepEqual(
+    wrappedError,
+    new util.ConfigurationError(unwrappedError.message),
+  );
+
+  // The result of the second call should be exactly `wrappedError`:
+  t.is(api.wrapApiConfigurationError(wrappedError), wrappedError);
+});
+
 test("getRegistryProxy - returns undefined if the proxy is not configured", async (t) => {
   const target = callee(api.getRegistryProxy).withArgs();
 

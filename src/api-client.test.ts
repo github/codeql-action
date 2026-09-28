@@ -111,103 +111,115 @@ test.serial("getGitHubVersion for GHEC-DR", async (t) => {
   t.deepEqual({ type: util.GitHubVariant.GHEC_DR }, gheDotcom);
 });
 
-test.serial(
-  "wrapApiConfigurationError correctly wraps specific configuration errors",
-  (t) => {
+test("wrapApiConfigurationError doesn't wrap errors it isn't supposed to", (t) => {
+  const unwrappedErrors = [
     // We don't reclassify arbitrary errors
-    const arbitraryError = new Error("arbitrary error");
-    let res = api.wrapApiConfigurationError(arbitraryError);
-    t.is(res, arbitraryError);
+    new Error("arbitrary error"),
+    // Same goes for arbitrary strings
+    "arbitrary error",
+    // If an HTTP error doesn't contain a specific error message, we don't wrap it.
+    new util.HTTPError("arbitrary HTTP error", 456),
+  ];
 
-    // Same goes for arbitrary errors
-    const configError = new util.ConfigurationError("arbitrary error");
-    res = api.wrapApiConfigurationError(configError);
-    t.is(res, configError);
-
-    // If an HTTP error doesn't contain a specific error message, we don't
-    // wrap is an an API error.
-    const httpError = new util.HTTPError("arbitrary HTTP error", 456);
-    res = api.wrapApiConfigurationError(httpError);
-    t.is(res, httpError);
-
-    // For other HTTP errors, we wrap them as Configuration errors if they contain
-    // specific error messages.
-    const httpNotFoundError = new util.HTTPError("commit not found", 404);
-    res = api.wrapApiConfigurationError(httpNotFoundError);
-    t.deepEqual(res, new util.ConfigurationError("commit not found"));
-
-    const refNotFoundError = new util.HTTPError(
-      "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
-      404,
-    );
-    res = api.wrapApiConfigurationError(refNotFoundError);
-    t.deepEqual(
+  for (const unwrappedError of unwrappedErrors) {
+    const res = api.wrapApiConfigurationError(unwrappedError);
+    t.is(
       res,
-      new util.ConfigurationError(
-        "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
-      ),
+      unwrappedError,
+      `${util.getErrorMessage(unwrappedError)} should not be wrapped by wrapApiConfigurationError`,
     );
+  }
+});
 
-    const apiRateLimitError = new util.HTTPError(
-      "API rate limit exceeded for installation",
-      403,
-    );
-    res = api.wrapApiConfigurationError(apiRateLimitError);
-    t.deepEqual(
-      res,
-      new util.ConfigurationError("API rate limit exceeded for installation"),
-    );
+test("wrapApiConfigurationError correctly wraps specific configuration errors", (t) => {
+  // For other HTTP errors, we wrap them as Configuration errors if they contain
+  // specific error messages.
+  const httpNotFoundError = new util.HTTPError("commit not found", 404);
+  const refNotFoundError = new util.HTTPError(
+    "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
+    404,
+  );
+  const apiRateLimitError = new util.HTTPError(
+    "API rate limit exceeded for installation",
+    403,
+  );
+  const resourceNotAccessibleError = new util.HTTPError(
+    "Resource not accessible by integration",
+    403,
+  );
+  const errorsToWrap = [
+    httpNotFoundError,
+    refNotFoundError,
+    apiRateLimitError,
+    resourceNotAccessibleError,
+  ];
 
-    const tokenSuggestionMessage =
-      "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
-    const badCredentialsError = new util.HTTPError("Bad credentials", 401);
-    res = api.wrapApiConfigurationError(badCredentialsError);
+  for (const errorToWrap of errorsToWrap) {
+    const res = api.wrapApiConfigurationError(errorToWrap);
+    t.deepEqual(res, new util.ConfigurationError(errorToWrap.message));
+  }
+});
+
+test("wrapApiConfigurationError wraps token errors", async (t) => {
+  const tokenSuggestionMessage =
+    "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
+  const badCredentialsError = new util.HTTPError("Bad credentials", 401);
+  const notFoundError = new util.HTTPError("Not Found", 404);
+  const errorsToWrap = [badCredentialsError, notFoundError];
+
+  for (const errorToWrap of errorsToWrap) {
+    const res = api.wrapApiConfigurationError(errorToWrap);
     t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+  }
+});
 
-    const notFoundError = new util.HTTPError("Not Found", 404);
-    res = api.wrapApiConfigurationError(notFoundError);
-    t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+test("wrapApiConfigurationError wraps enablement errors", async (t) => {
+  // Enablement errors.
+  const enablementErrorMessages = [
+    "Code Security must be enabled for this repository to use code scanning",
+    "Advanced Security must be enabled for this repository to use code scanning",
+    "Code Scanning is not enabled for this repository. Please enable code scanning in the repository settings.",
+    "Code quality is not enabled for this repository. Please enable code quality in the repository settings.",
+  ];
+  const transforms = [
+    (msg: string) => msg,
+    (msg: string) => msg.toLowerCase(),
+    (msg: string) => msg.toLocaleUpperCase(),
+  ];
 
-    const resourceNotAccessibleError = new util.HTTPError(
-      "Resource not accessible by integration",
-      403,
-    );
-    res = api.wrapApiConfigurationError(resourceNotAccessibleError);
-    t.deepEqual(
-      res,
-      new util.ConfigurationError("Resource not accessible by integration"),
-    );
-
-    // Enablement errors.
-    const enablementErrorMessages = [
-      "Code Security must be enabled for this repository to use code scanning",
-      "Advanced Security must be enabled for this repository to use code scanning",
-      "Code Scanning is not enabled for this repository. Please enable code scanning in the repository settings.",
-      "Code quality is not enabled for this repository. Please enable code quality in the repository settings.",
-    ];
-    const transforms = [
-      (msg: string) => msg,
-      (msg: string) => msg.toLowerCase(),
-      (msg: string) => msg.toLocaleUpperCase(),
-    ];
-
-    for (const enablementErrorMessage of enablementErrorMessages) {
-      for (const transform of transforms) {
-        const enablementError = new util.HTTPError(
-          transform(enablementErrorMessage),
-          403,
-        );
-        res = api.wrapApiConfigurationError(enablementError);
-        t.deepEqual(
-          res,
-          new util.ConfigurationError(
-            api.getFeatureEnablementError(enablementError.message),
-          ),
-        );
-      }
+  for (const enablementErrorMessage of enablementErrorMessages) {
+    for (const transform of transforms) {
+      const enablementError = new util.HTTPError(
+        transform(enablementErrorMessage),
+        403,
+      );
+      const res = api.wrapApiConfigurationError(enablementError);
+      t.deepEqual(
+        res,
+        new util.ConfigurationError(
+          api.getFeatureEnablementError(enablementError.message),
+        ),
+      );
     }
-  },
-);
+  }
+});
+
+test("wrapApiConfigurationError doesn't double-wrap errors", async (t) => {
+  // This test checks that errors don't get wrapped a second time if `wrapApiConfigurationError`
+  // is called on an error that was already wrapped by a previous call to `wrapApiConfigurationError`.
+  // Start by calling `wrapApiConfigurationError` on an unwrapped error that should be wrapped:
+  const unwrappedError = new util.HTTPError("commit not found", 404);
+  const wrappedError = api.wrapApiConfigurationError(unwrappedError);
+
+  // Sanity-check that it was wrapped, as expected.
+  t.deepEqual(
+    wrappedError,
+    new util.ConfigurationError(unwrappedError.message),
+  );
+
+  // The result of the second call should be exactly `wrappedError`:
+  t.is(api.wrapApiConfigurationError(wrappedError), wrappedError);
+});
 
 test("getRegistryProxy - returns undefined if the proxy is not configured", async (t) => {
   const target = callee(api.getRegistryProxy).withArgs();

@@ -55,7 +55,7 @@ jobs:
           npm ci
 
       - name: Verify compiled JS up to date
-        run: .github/workflows/script/check-js.sh
+        run: npx tsx pr-checks/check-js.ts
 
       - name: Run unit tests
         if: always()

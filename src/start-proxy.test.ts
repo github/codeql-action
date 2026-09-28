@@ -5,6 +5,7 @@ import * as toolcache from "@actions/tool-cache";
 import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
 
+import { ActionState } from "./action-common";
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
 import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
@@ -19,6 +20,7 @@ import {
   assertNotLogged,
   checkExpectedLogMessages,
   createFeatures,
+  initAllState,
   makeMacro,
   makeTestToken,
   RecordingLogger,
@@ -722,9 +724,12 @@ function mockOfflineFeatures(tempDir: string, logger: Logger) {
   return setUpFeatureFlagTests(tempDir, logger, gitHubVersion);
 }
 
-/** The result of `getBundlePlatform` or `Linux64` if `undefined`. */
-const testPlatform: BundlePlatform =
-  getBundlePlatform() ?? BundlePlatform.Linux64;
+/** Gets the `BundlePlatform` based on the `action` state, but defaults to `Linux64` if undefined. */
+function getTestPlatform(action: ActionState<["Base"]>) {
+  return (
+    getBundlePlatform(action.platform, action.arch) ?? BundlePlatform.Linux64
+  );
+}
 
 test.serial(
   "getDownloadUrl returns fallback when `getReleaseByVersion` rejects",
@@ -734,16 +739,14 @@ test.serial(
 
     await withTmpDir(async (tempDir) => {
       const features = mockOfflineFeatures(tempDir, logger);
-      const info = await startProxyExports.getDownloadUrl(
-        getRunnerLogger(true),
-        features,
-      );
+      const state = initAllState({ logger, features });
+      const info = await startProxyExports.getDownloadUrl(state);
 
       t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
       t.is(
         info.url,
         startProxyExports.getFallbackUrl(
-          startProxyExports.getProxyPackage(testPlatform),
+          startProxyExports.getProxyPackage(getTestPlatform(state)),
         ),
       );
     });
@@ -758,19 +761,17 @@ test.serial(
 
     await withTmpDir(async (tempDir) => {
       const features = mockOfflineFeatures(tempDir, logger);
+      const state = initAllState({ logger, features });
 
       for (const assets of testAssets) {
         const stub = mockGetReleaseByTag(assets);
-        const info = await startProxyExports.getDownloadUrl(
-          getRunnerLogger(true),
-          features,
-        );
+        const info = await startProxyExports.getDownloadUrl(state);
 
         t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
         t.is(
           info.url,
           startProxyExports.getFallbackUrl(
-            startProxyExports.getProxyPackage(testPlatform),
+            startProxyExports.getProxyPackage(getTestPlatform(state)),
           ),
         );
 
@@ -782,10 +783,11 @@ test.serial(
 
 test.serial("getDownloadUrl returns matching release asset", async (t) => {
   const logger = new RecordingLogger();
+  const state = initAllState({ logger });
   const assets = [
     { name: "foo", url: "other-url" },
     {
-      name: startProxyExports.getProxyPackage(testPlatform),
+      name: startProxyExports.getProxyPackage(getTestPlatform(state)),
       url: "url-we-want",
     },
   ];
@@ -793,10 +795,7 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
 
   await withTmpDir(async (tempDir) => {
     const features = mockOfflineFeatures(tempDir, logger);
-    const info = await startProxyExports.getDownloadUrl(
-      getRunnerLogger(true),
-      features,
-    );
+    const info = await startProxyExports.getDownloadUrl({ ...state, features });
 
     t.is(info.version, defaults.cliVersion);
     t.is(info.url, "url-we-want");
@@ -930,7 +929,9 @@ test.serial(
       sinon.stub(toolcache, "find").returns(toolcachePath);
 
       const features = mockOfflineFeatures(tempDir, logger);
-      const path = await startProxyExports.getProxyBinaryPath(logger, features);
+      const path = await startProxyExports.getProxyBinaryPath(
+        initAllState({ logger, features }),
+      );
 
       t.assert(path);
       t.is(
@@ -945,10 +946,11 @@ test.serial(
   "getProxyBinaryPath - downloads proxy if not in cache",
   async (t) => {
     const logger = new RecordingLogger();
+    const state = initAllState({ logger });
     const downloadUrl = "url-we-want";
     mockGetReleaseByTag([
       {
-        name: startProxyExports.getProxyPackage(testPlatform),
+        name: startProxyExports.getProxyPackage(getTestPlatform(state)),
         url: downloadUrl,
       },
     ]);
@@ -973,10 +975,10 @@ test.serial(
       .resolves(extractedPath);
     const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
 
-    const path = await startProxyExports.getProxyBinaryPath(
-      logger,
-      createFeatures([]),
-    );
+    const path = await startProxyExports.getProxyBinaryPath({
+      ...state,
+      features: createFeatures([]),
+    });
 
     t.assert(find.calledOnce);
     t.assert(getApiDetails.calledOnce);
@@ -991,7 +993,7 @@ test.serial(
     );
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found '${startProxyExports.getProxyPackage(testPlatform)}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
+      `Found '${startProxyExports.getProxyPackage(getTestPlatform(state))}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
     ]);
   },
 );
@@ -1000,6 +1002,7 @@ test.serial(
   "getProxyBinaryPath - downloads proxy based on features if not in cache",
   async (t) => {
     const logger = new RecordingLogger();
+    const state = initAllState({ logger });
     const expectedTag = "codeql-bundle-v2.20.1";
     const expectedParams = {
       owner: "github",
@@ -1009,7 +1012,7 @@ test.serial(
     const downloadUrl = "url-we-want";
     const assets = [
       {
-        name: startProxyExports.getProxyPackage(testPlatform),
+        name: startProxyExports.getProxyPackage(getTestPlatform(state)),
         url: downloadUrl,
       },
     ];
@@ -1060,7 +1063,10 @@ test.serial(
         .resolves({
           enabledVersions: [{ cliVersion: "2.20.1", tagName: expectedTag }],
         });
-      const path = await startProxyExports.getProxyBinaryPath(logger, features);
+      const path = await startProxyExports.getProxyBinaryPath({
+        ...state,
+        features,
+      });
 
       t.assert(getDefaultCliVersion.calledOnce);
       sinon.assert.calledOnceWithMatch(
@@ -1082,7 +1088,7 @@ test.serial(
     });
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found '${startProxyExports.getProxyPackage(testPlatform)}' in release '${expectedTag}' at '${downloadUrl}'`,
+      `Found '${startProxyExports.getProxyPackage(getTestPlatform(state))}' in release '${expectedTag}' at '${downloadUrl}'`,
     ]);
   },
 );

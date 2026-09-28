@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          cache: 'npm'
+          cache: "npm"
 
       - name: Remove label
         if: github.event_name == 'pull_request'
@@ -145,3 +145,14 @@ jobs:
           echo "Pushed a commit to rebuild the Action." \
             "Please approve running the PR checks." |
             gh pr comment --body-file - --repo github/codeql-action "$PR_NUMBER"
+
+      - name: "Add 'Rebuild: Unchanged' label"
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.push.outputs.changes != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr edit --repo github/codeql-action "$PR_NUMBER" \
+            --add-label "Rebuild: Unchanged"

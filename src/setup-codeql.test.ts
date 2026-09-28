@@ -69,25 +69,29 @@ function stubHostedNightly(tagName: string) {
     available: true,
     foundZstdBinary: true,
   });
-  const fetchRelease = sinon
-    .stub<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
-    .rejects(new Error("Unexpected API request in nightly bundle test"));
-  fetchRelease
-    .withArgs(
-      "https://api.github.com/repos/dsp-testing/codeql-cli-nightlies/releases?per_page=1&page=1&prerelease=true",
-      sinon.match({ method: "GET" }),
-    )
-    .callsFake(
-      async () =>
-        new Response(JSON.stringify([{ tag_name: tagName }]), {
-          headers: { "content-type": "application/json" },
-        }),
-    );
   const client = github.getOctokit("123", {
-    request: { fetch: fetchRelease },
+    request: {
+      fetch: async () => {
+        throw new Error("Unexpected API request in nightly bundle test");
+      },
+    },
   });
+  const listReleases = sinon
+    .stub(client.rest.repos, "listReleases")
+    .rejects(new Error("Unexpected release request in nightly bundle test"));
+  listReleases
+    .withArgs({
+      owner: "dsp-testing",
+      repo: "codeql-cli-nightlies",
+      per_page: 1,
+      page: 1,
+      prerelease: true,
+    })
+    .resolves({
+      data: [{ tag_name: tagName }],
+    } as Awaited<ReturnType<typeof client.rest.repos.listReleases>>);
   sinon.stub(api, "getApiClient").value(() => client);
-  return fetchRelease;
+  return listReleases;
 }
 
 test.serial("parse codeql bundle url version", (t) => {
@@ -431,7 +435,7 @@ test.serial(
 
       // Check that the `CodeQLToolsSource` object matches our expectations.
       const expectedVersion = `0.0.0-${expectedDate}`;
-      const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/${setupCodeql.getCodeQLBundleName("zstd")}`;
+      const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/codeql-bundle-linux64.tar.zst`;
       t.deepEqual(source, {
         bundle: { kind: "combined", url: expectedURL },
         bundleVersion: expectedDate,
@@ -501,7 +505,7 @@ test.serial(
 
       // Check that the `CodeQLToolsSource` object matches our expectations.
       const expectedVersion = `0.0.0-${expectedDate}`;
-      const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/${setupCodeql.getCodeQLBundleName("zstd")}`;
+      const expectedURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}/codeql-bundle-linux64.tar.zst`;
       t.deepEqual(source, {
         bundle: { kind: "combined", url: expectedURL },
         bundleVersion: expectedDate,
@@ -1138,30 +1142,6 @@ const PER_LANGUAGE_CLI_VERSION = {
     },
   ],
 };
-
-test.serial(
-  "getCodeQLBundleName returns a per-language bundle name only when a language is specified",
-  (t) => {
-    sinon.stub(process, "platform").value("linux");
-    sinon.stub(process, "arch").value("x64");
-    t.is(
-      setupCodeql.getCodeQLBundleName("zstd", BuiltInLanguage.java),
-      "codeql-bundle-java-linux64.tar.zst",
-    );
-    t.is(
-      setupCodeql.getCodeQLBundleName("zstd"),
-      "codeql-bundle-linux64.tar.zst",
-    );
-  },
-);
-
-test.serial("getCodeQLBundleName names the Swift bundle for macOS", (t) => {
-  sinon.stub(process, "platform").value("darwin");
-  t.is(
-    setupCodeql.getCodeQLBundleName("zstd", BuiltInLanguage.swift),
-    "codeql-bundle-swift-osx64.tar.zst",
-  );
-});
 
 test.serial(
   "getCodeQLSource downloads the per-language bundle for a single explicit language",

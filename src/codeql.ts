@@ -937,6 +937,7 @@ async function getCodeQLForCmd(
           "--format=json",
           `--language=${language}`,
           "--extractor-include-aliases",
+          "-J-XX:-UsePerfData",
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
@@ -951,7 +952,13 @@ async function getCodeQLForCmd(
           },
         },
       ).exec();
-      return JSON.parse(extractorPath) as string;
+      try {
+        return JSON.parse(extractorPath) as string;
+      } catch (err) {
+        throw new Error(
+          `Failed to parse extractor path for '${language}' from CLI: ${getErrorMessage(err)}\nOutput was: ${extractorPath}`,
+        );
+      }
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
       const codeqlArgs = [

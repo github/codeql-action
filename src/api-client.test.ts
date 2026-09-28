@@ -111,71 +111,69 @@ test.serial("getGitHubVersion for GHEC-DR", async (t) => {
   t.deepEqual({ type: util.GitHubVariant.GHEC_DR }, gheDotcom);
 });
 
+test("wrapApiConfigurationError doesn't wrap errors it isn't supposed to", (t) => {
+  const unwrappedErrors = [
+    // We don't reclassify arbitrary errors
+    new Error("arbitrary error"),
+    // Same goes for arbitrary strings
+    "arbitrary error",
+    // If an HTTP error doesn't contain a specific error message, we don't wrap it.
+    new util.HTTPError("arbitrary HTTP error", 456),
+  ];
+
+  for (const unwrappedError of unwrappedErrors) {
+    const res = api.wrapApiConfigurationError(unwrappedError);
+    t.is(
+      res,
+      unwrappedError,
+      `${util.getErrorMessage(unwrappedError)} should not be wrapped by wrapApiConfigurationError`,
+    );
+  }
+});
+
 test("wrapApiConfigurationError correctly wraps specific configuration errors", (t) => {
-  // We don't reclassify arbitrary errors
-  const arbitraryError = new Error("arbitrary error");
-  let res = api.wrapApiConfigurationError(arbitraryError);
-  t.is(res, arbitraryError);
-
-  // Same goes for arbitrary errors
-  const configError = new util.ConfigurationError("arbitrary error");
-  res = api.wrapApiConfigurationError(configError);
-  t.is(res, configError);
-
-  // If an HTTP error doesn't contain a specific error message, we don't
-  // wrap is an an API error.
-  const httpError = new util.HTTPError("arbitrary HTTP error", 456);
-  res = api.wrapApiConfigurationError(httpError);
-  t.is(res, httpError);
-
   // For other HTTP errors, we wrap them as Configuration errors if they contain
   // specific error messages.
   const httpNotFoundError = new util.HTTPError("commit not found", 404);
-  res = api.wrapApiConfigurationError(httpNotFoundError);
-  t.deepEqual(res, new util.ConfigurationError("commit not found"));
-
   const refNotFoundError = new util.HTTPError(
     "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
     404,
   );
-  res = api.wrapApiConfigurationError(refNotFoundError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError(
-      "ref 'refs/heads/jitsi' not found in this repository - https://docs.github.com/rest",
-    ),
-  );
-
   const apiRateLimitError = new util.HTTPError(
     "API rate limit exceeded for installation",
     403,
   );
-  res = api.wrapApiConfigurationError(apiRateLimitError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError("API rate limit exceeded for installation"),
-  );
-
-  const tokenSuggestionMessage =
-    "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
-  const badCredentialsError = new util.HTTPError("Bad credentials", 401);
-  res = api.wrapApiConfigurationError(badCredentialsError);
-  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
-
-  const notFoundError = new util.HTTPError("Not Found", 404);
-  res = api.wrapApiConfigurationError(notFoundError);
-  t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
-
   const resourceNotAccessibleError = new util.HTTPError(
     "Resource not accessible by integration",
     403,
   );
-  res = api.wrapApiConfigurationError(resourceNotAccessibleError);
-  t.deepEqual(
-    res,
-    new util.ConfigurationError("Resource not accessible by integration"),
-  );
+  const errorsToWrap = [
+    httpNotFoundError,
+    refNotFoundError,
+    apiRateLimitError,
+    resourceNotAccessibleError,
+  ];
 
+  for (const errorToWrap of errorsToWrap) {
+    const res = api.wrapApiConfigurationError(errorToWrap);
+    t.deepEqual(res, new util.ConfigurationError(errorToWrap.message));
+  }
+});
+
+test("wrapApiConfigurationError wraps token errors", async (t) => {
+  const tokenSuggestionMessage =
+    "Please check that your token is valid and has the required permissions: contents: read, security-events: write";
+  const badCredentialsError = new util.HTTPError("Bad credentials", 401);
+  const notFoundError = new util.HTTPError("Not Found", 404);
+  const errorsToWrap = [badCredentialsError, notFoundError];
+
+  for (const errorToWrap of errorsToWrap) {
+    const res = api.wrapApiConfigurationError(errorToWrap);
+    t.deepEqual(res, new util.ConfigurationError(tokenSuggestionMessage));
+  }
+});
+
+test("wrapApiConfigurationError wraps enablement errors", async (t) => {
   // Enablement errors.
   const enablementErrorMessages = [
     "Code Security must be enabled for this repository to use code scanning",
@@ -195,7 +193,7 @@ test("wrapApiConfigurationError correctly wraps specific configuration errors", 
         transform(enablementErrorMessage),
         403,
       );
-      res = api.wrapApiConfigurationError(enablementError);
+      const res = api.wrapApiConfigurationError(enablementError);
       t.deepEqual(
         res,
         new util.ConfigurationError(

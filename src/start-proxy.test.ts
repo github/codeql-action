@@ -12,6 +12,7 @@ import { UnvalidatedObject, validateSchema } from "./json";
 import { makeFromSchema } from "./json/testing-util";
 import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
+import { BundlePlatform, getBundlePlatform } from "./platform";
 import * as startProxyExports from "./start-proxy";
 import * as statusReport from "./status-report";
 import {
@@ -721,6 +722,10 @@ function mockOfflineFeatures(tempDir: string, logger: Logger) {
   return setUpFeatureFlagTests(tempDir, logger, gitHubVersion);
 }
 
+/** The result of `getBundlePlatform` or `Linux64` if `undefined`. */
+const testPlatform: BundlePlatform =
+  getBundlePlatform() ?? BundlePlatform.Linux64;
+
 test.serial(
   "getDownloadUrl returns fallback when `getReleaseByVersion` rejects",
   async (t) => {
@@ -737,7 +742,9 @@ test.serial(
       t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
       t.is(
         info.url,
-        startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+        startProxyExports.getFallbackUrl(
+          startProxyExports.getProxyPackage(testPlatform),
+        ),
       );
     });
   },
@@ -762,7 +769,9 @@ test.serial(
         t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
         t.is(
           info.url,
-          startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+          startProxyExports.getFallbackUrl(
+            startProxyExports.getProxyPackage(testPlatform),
+          ),
         );
 
         stub.restore();
@@ -775,7 +784,10 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
   const logger = new RecordingLogger();
   const assets = [
     { name: "foo", url: "other-url" },
-    { name: startProxyExports.getProxyPackage(), url: "url-we-want" },
+    {
+      name: startProxyExports.getProxyPackage(testPlatform),
+      url: "url-we-want",
+    },
   ];
   mockGetReleaseByTag(assets);
 
@@ -935,7 +947,10 @@ test.serial(
     const logger = new RecordingLogger();
     const downloadUrl = "url-we-want";
     mockGetReleaseByTag([
-      { name: startProxyExports.getProxyPackage(), url: downloadUrl },
+      {
+        name: startProxyExports.getProxyPackage(testPlatform),
+        url: downloadUrl,
+      },
     ]);
 
     const toolcachePath = "/path/to/proxy/dir";
@@ -976,7 +991,7 @@ test.serial(
     );
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found '${startProxyExports.getProxyPackage()}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
+      `Found '${startProxyExports.getProxyPackage(testPlatform)}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
     ]);
   },
 );
@@ -994,7 +1009,7 @@ test.serial(
     const downloadUrl = "url-we-want";
     const assets = [
       {
-        name: startProxyExports.getProxyPackage(),
+        name: startProxyExports.getProxyPackage(testPlatform),
         url: downloadUrl,
       },
     ];
@@ -1067,7 +1082,7 @@ test.serial(
     });
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found '${startProxyExports.getProxyPackage()}' in release '${expectedTag}' at '${downloadUrl}'`,
+      `Found '${startProxyExports.getProxyPackage(testPlatform)}' in release '${expectedTag}' at '${downloadUrl}'`,
     ]);
   },
 );

@@ -3,6 +3,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 
+import { ActionState } from "./action-common";
 import {
   getApiClient,
   getApiDetails,
@@ -20,6 +21,7 @@ import {
 import * as json from "./json";
 import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
+import { BundlePlatform, getBundlePlatform } from "./platform";
 import {
   Address,
   Registry,
@@ -370,14 +372,10 @@ export function getCredentials(
 
 /**
  * Gets the name of the proxy release asset for the current platform.
+ *
+ * @param platform The platform to get the asset name for.
  */
-export function getProxyPackage(): string {
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "darwin"
-        ? "osx64"
-        : "linux64";
+export function getProxyPackage(platform: BundlePlatform): string {
   return `${UPDATEJOB_PROXY}-${platform}.tar.gz`;
 }
 
@@ -425,7 +423,17 @@ export async function getDownloadUrl(
   logger: Logger,
   features: FeatureEnablement,
 ): Promise<{ url: string; version: string }> {
-  const proxyPackage = getProxyPackage();
+  // Default to linux64 if we don't recognise the platform+arch pair.
+  // This maintains the behaviour we had before switching to `getBundlePlatform` here.
+  let platform = getBundlePlatform();
+  if (platform === undefined) {
+    logger.warning(
+      `Unsupported platform ${process.platform} on architecture ${process.arch}, defaulting to ${BundlePlatform.Linux64}`,
+    );
+    platform = BundlePlatform.Linux64;
+  }
+
+  const proxyPackage = getProxyPackage(platform);
 
   try {
     const useFeaturesToDetermineCLI = await features.getValue(

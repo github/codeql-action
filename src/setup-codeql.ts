@@ -25,8 +25,13 @@ import {
 import {
   BundleSelection,
   BundleSelectionOptions,
+  CodeQLRelease,
+  CodeQLReleaseReference,
   getPublicRelease,
   getRelease,
+  getReleaseCliVersion,
+  getRequestedRelease,
+  parseCodeQLReleaseUrl,
   selectBundle,
 } from "./codeql-release";
 import * as defaults from "./defaults.json";
@@ -89,6 +94,53 @@ export function getCodeQLActionRepository(logger: Logger): string {
   return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
 }
 
+/** Returns the repositories that release the default bundles, most preferred first. */
+function getDefaultBundleSources(
+  apiDetails: api.GitHubApiDetails,
+  logger: Logger,
+): Array<[serverURL: string, repository: string]> {
+  const codeQLActionRepository = getCodeQLActionRepository(logger);
+  const potentialDownloadSources: Array<[string, string]> = [
+    // This GitHub instance, and this Action.
+    [apiDetails.url, codeQLActionRepository],
+    // This GitHub instance, and the canonical Action.
+    [apiDetails.url, CODEQL_DEFAULT_ACTION_REPOSITORY],
+    // GitHub.com, and the canonical Action.
+    [util.GITHUB_DOTCOM_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
+  ];
+  // We now filter out any duplicates.
+  // Duplicates will happen either because the GitHub instance is GitHub.com, or because the Action is not a fork.
+  return potentialDownloadSources.filter((source, index, self) => {
+    return !self.slice(0, index).some((other) => deepEqual(source, other));
+  });
+}
+
+/**
+ * Whether a release requested by URL contains the same build as the toolcache entry for its CLI
+ * version. The toolcache is keyed by version alone, so we only assume this for stable releases
+ * tagged `codeql-bundle-v<version>` in the repositories we download the default bundles from.
+ */
+function isCacheableRelease(
+  reference: CodeQLReleaseReference,
+  cliVersion: string | undefined,
+  apiDetails: api.GitHubApiDetails,
+  logger: Logger,
+): boolean {
+  if (
+    cliVersion === undefined ||
+    !/^\d+\.\d+\.\d+$/.test(cliVersion) ||
+    reference.tagName !== `codeql-bundle-v${cliVersion}`
+  ) {
+    return false;
+  }
+  const repository = `${reference.owner}/${reference.repo}`.toLowerCase();
+  return getDefaultBundleSources(apiDetails, logger).some(
+    ([serverURL, sourceRepository]) =>
+      new URL(serverURL).origin === new URL(reference.serverURL).origin &&
+      sourceRepository.toLowerCase() === repository,
+  );
+}
+
 /**
  * Selects a bundle from the first release tagged `tagName` that has a compatible bundle, trying the
  * Action repositories on this GitHub instance before the canonical Action on GitHub.com. If we
@@ -102,23 +154,10 @@ async function selectDefaultBundle(
   options: BundleSelectionOptions,
 ): Promise<BundleSelection> {
   const { logger } = action;
-  const codeQLActionRepository = getCodeQLActionRepository(logger);
-  const potentialDownloadSources = [
-    // This GitHub instance, and this Action.
-    [apiDetails.url, codeQLActionRepository],
-    // This GitHub instance, and the canonical Action.
-    [apiDetails.url, CODEQL_DEFAULT_ACTION_REPOSITORY],
-    // GitHub.com, and the canonical Action.
-    [util.GITHUB_DOTCOM_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
-  ];
-  // We now filter out any duplicates.
-  // Duplicates will happen either because the GitHub instance is GitHub.com, or because the Action is not a fork.
-  const uniqueDownloadSources = potentialDownloadSources.filter(
-    (source, index, self) => {
-      return !self.slice(0, index).some((other) => deepEqual(source, other));
-    },
-  );
-  for (const [serverURL, repository] of uniqueDownloadSources) {
+  for (const [serverURL, repository] of getDefaultBundleSources(
+    apiDetails,
+    logger,
+  )) {
     // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
     if (
       serverURL === util.GITHUB_DOTCOM_URL &&
@@ -191,6 +230,12 @@ export function tryGetTagNameFromUrl(
   return match[1];
 }
 
+/**
+ * Converts a bundle version to a semantic version, for example to use in the toolcache. Semantic
+ * versions are normalized with `semver.clean`, which drops a leading `v` and any build metadata.
+ * Anything else, such as a date, becomes a prerelease of `0.0.0`. Throws if the result isn't a
+ * valid semantic version.
+ */
 export function convertToSemVer(version: string, logger: Logger): string {
   if (!semver.valid(version)) {
     logger.debug(
@@ -386,6 +431,11 @@ async function resolveDefaultCliVersion(
  * We handle the `tools` input in this order:
  *
  * - A local path is extracted without using the toolcache.
+ * - A release URL selects a bundle from that release, and takes precedence over the `force_nightly`
+ *   feature flag. Only stable releases in the repositories we download the default bundles from use
+ *   the toolcache, since other releases may contain a different build than the cached bundle for
+ *   their version. Bundle URLs keep using the toolcache for the version in their tag, for
+ *   compatibility.
  * - `nightly` or `nightly-latest`, or the `force_nightly` feature flag in a dynamic workflow,
  *   selects a bundle from the latest nightly release. We then continue with that bundle's URL.
  * - `linked`, or its old name `latest`, selects the version shipped with the Action.
@@ -394,8 +444,9 @@ async function resolveDefaultCliVersion(
  * - Any other value is the URL of a bundle.
  * - Without a `tools` input, we use the default version.
  *
- * Apart from a local path, we look for the resolved version in the toolcache before downloading. A
- * cached version takes precedence even if the job could use a per-language bundle.
+ * For other inputs apart from a local path, we look for the resolved version in the toolcache
+ * before downloading. A cached version takes precedence even if the job could use a per-language
+ * bundle.
  *
  * @param toolsInput The argument provided for the `tools` input, if any.
  * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
@@ -444,6 +495,11 @@ export async function getCodeQLSource(
     };
   }
 
+  const requestedRelease =
+    toolsInput === undefined
+      ? undefined
+      : parseCodeQLReleaseUrl(toolsInput, apiDetails);
+
   /** Requested CLI version number, for example 2.12.6. */
   let cliVersion: string | undefined;
   /** Tag name of the CodeQL bundle, for example `codeql-bundle-20230120`. */
@@ -455,10 +511,17 @@ export async function getCodeQLSource(
    */
   let url: string | undefined;
   let bundle: CodeQLBundle | undefined;
+  /** The release requested by URL, which we select the bundle from. */
+  let release: CodeQLRelease | undefined;
+  /** The page of a requested release whose bundles we don't cache. */
+  let customReleaseURL: string | undefined;
 
   // We allow forcing the nightly CLI via the FF for `dynamic` events (or in test mode) where the
-  // `tools` input cannot be adjusted to explicitly request it.
-  const canForceNightlyWithFF = isDynamicWorkflow() || util.isInTestMode();
+  // `tools` input cannot be adjusted to explicitly request it. An explicitly requested release
+  // takes precedence.
+  const canForceNightlyWithFF =
+    requestedRelease === undefined &&
+    (isDynamicWorkflow() || util.isInTestMode());
   const forceNightlyValueFF = await features.getValue(Feature.ForceNightly);
   const forceNightly = forceNightlyValueFF && canForceNightlyWithFF;
 
@@ -579,6 +642,20 @@ export async function getCodeQLSource(
       cliVersion = version.cliVersion;
       tagName = version.tagName;
     }
+  } else if (requestedRelease !== undefined) {
+    release = await getRequestedRelease(
+      { apiClient: api.getApiClient() },
+      requestedRelease,
+    );
+    tagName = requestedRelease.tagName;
+    cliVersion = getReleaseCliVersion(
+      tagName,
+      release.assetNames ?? [],
+      logger,
+    );
+    if (!isCacheableRelease(requestedRelease, cliVersion, apiDetails, logger)) {
+      customReleaseURL = release.url;
+    }
   } else if (toolsInput !== undefined) {
     // Any other value is a bundle URL, including one we selected from the latest nightly above.
     // We use the version in its tag, if any, for the toolcache, so we assume that bundles with the
@@ -606,7 +683,8 @@ export async function getCodeQLSource(
   }
 
   const bundleVersion =
-    tagName !== undefined
+    // Custom releases aren't cached, and their tags needn't contain a bundle version.
+    tagName !== undefined && customReleaseURL === undefined
       ? tryGetBundleVersionFromTagName(tagName, logger)
       : undefined;
   const resolvedVersion =
@@ -623,13 +701,138 @@ export async function getCodeQLSource(
       `URL: ${url ?? "unspecified"}.`,
   );
 
+  // A custom release may contain a different build than the bundle with the same version.
+  const codeqlFolder =
+    customReleaseURL === undefined
+      ? await findCodeQLInToolcache(
+          cliVersion,
+          tagName,
+          humanReadableVersion,
+          logger,
+        )
+      : undefined;
+  if (codeqlFolder) {
+    if (cliVersion) {
+      logger.info(
+        `Using CodeQL CLI version ${cliVersion} from toolcache at ${codeqlFolder}`,
+      );
+    } else {
+      logger.info(`Using CodeQL CLI from toolcache at ${codeqlFolder}`);
+    }
+    return {
+      codeqlFolder,
+      sourceType: "toolcache",
+      toolsVersion: cliVersion ?? humanReadableVersion,
+    };
+  }
+
+  // If we don't find the requested version on Enterprise, we may allow a
+  // different version to save download time if the version hasn't been
+  // specified explicitly (in which case we always honor it).
+  if (
+    variant === util.GitHubVariant.GHES &&
+    !forceShippedTools &&
+    !toolsInput
+  ) {
+    const result = await findOverridingToolsInCache(
+      humanReadableVersion,
+      logger,
+    );
+    if (result !== undefined) {
+      return result;
+    }
+  }
+
+  let compressionMethod: tar.CompressionMethod;
+  let perLanguageBundleFallback: true | undefined;
+
+  if (!url) {
+    const selectionOptions: BundleSelectionOptions = {
+      rawLanguages,
+      cliVersion,
+      platform: getBundlePlatform(),
+      variant,
+      tarSupportsZstd,
+    };
+    let selection: BundleSelection;
+    if (release !== undefined) {
+      selection = await selectBundle(
+        { env: getEnv(), features, logger },
+        release,
+        selectionOptions,
+      );
+    } else {
+      if (tagName === undefined) {
+        throw new Error(
+          "Could not determine a release tag for the requested CodeQL bundle.",
+        );
+      }
+      selection = await selectDefaultBundle(
+        { env: getEnv(), features, logger },
+        tagName,
+        apiDetails,
+        selectionOptions,
+      );
+    }
+    ({ bundle, compressionMethod, perLanguageBundleFallback } = selection);
+    url = bundle.url;
+  } else {
+    const method = tar.inferCompressionMethod(url);
+    if (method === undefined) {
+      throw new util.ConfigurationError(
+        `Could not infer compression method from URL ${url}. Please specify a URL ` +
+          "ending in '.tar.gz' or '.tar.zst'.",
+      );
+    }
+    compressionMethod = method;
+
+    // Keep the bundle we selected from the latest nightly, which records the combined bundle to
+    // fall back to. Otherwise, classify the explicit URL, which gets no fallback.
+    bundle ??= getCodeQLBundleFromUrl(url);
+    if (bundle.kind === "per-language") {
+      logger.info(
+        `${url} appears to be a CodeQL bundle that contains only ${bundle.language}.`,
+      );
+    }
+  }
+
+  if (cliVersion) {
+    logger.info(`Using CodeQL CLI version ${cliVersion} sourced from ${url} .`);
+  } else {
+    logger.info(`Using CodeQL CLI sourced from ${url} .`);
+  }
+  return {
+    bundle,
+    bundleVersion,
+    cliVersion,
+    compressionMethod,
+    ...(customReleaseURL !== undefined ? { customReleaseURL } : {}),
+    ...(perLanguageBundleFallback ? { perLanguageBundleFallback } : {}),
+    sourceType: "download",
+    toolsVersion: resolvedVersion ?? "unknown",
+  };
+}
+
+/**
+ * Looks for the requested version of the CodeQL tools in the toolcache, allowing for the different
+ * version numbers that toolcaches may use for the same bundle. We try the exact CLI version, then a
+ * single `x.y.z-*` entry for that version, then `0.0.0-<bundle version>`. The `x.y.z-*` entry can
+ * be any prerelease of the CLI version.
+ */
+async function findCodeQLInToolcache(
+  cliVersion: string | undefined,
+  tagName: string | undefined,
+  humanReadableVersion: string,
+  logger: Logger,
+): Promise<string | undefined> {
   let codeqlFolder: string | undefined;
 
   if (cliVersion) {
     // If we find the specified CLI version, we always use that.
     codeqlFolder = toolcache.find("CodeQL", cliVersion);
 
-    // Fall back to matching `x.y.z-<tagName>`.
+    // Fall back to a single `x.y.z-*` entry, since older toolcaches store bundles as
+    // `x.y.z-<bundle version>`.
     if (!codeqlFolder) {
       logger.debug(
         "Didn't find a version of the CodeQL tools in the toolcache with a version number " +
@@ -641,8 +844,6 @@ export async function getCodeQLSource(
           allVersions,
         )}.`,
       );
-      // If there is exactly one version of the CodeQL tools in the toolcache, and that version is
-      // the form `x.y.z-<tagName>`, then use it.
       const candidateVersions = allVersions.filter((version) =>
         version.startsWith(`${cliVersion}-`),
       );
@@ -693,96 +894,7 @@ export async function getCodeQLSource(
       `Did not find CodeQL tools version ${humanReadableVersion} in the toolcache.`,
     );
   }
-
-  if (codeqlFolder) {
-    if (cliVersion) {
-      logger.info(
-        `Using CodeQL CLI version ${cliVersion} from toolcache at ${codeqlFolder}`,
-      );
-    } else {
-      logger.info(`Using CodeQL CLI from toolcache at ${codeqlFolder}`);
-    }
-    return {
-      codeqlFolder,
-      sourceType: "toolcache",
-      toolsVersion: cliVersion ?? humanReadableVersion,
-    };
-  }
-
-  // If we don't find the requested version on Enterprise, we may allow a
-  // different version to save download time if the version hasn't been
-  // specified explicitly (in which case we always honor it).
-  if (
-    variant === util.GitHubVariant.GHES &&
-    !forceShippedTools &&
-    !toolsInput
-  ) {
-    const result = await findOverridingToolsInCache(
-      humanReadableVersion,
-      logger,
-    );
-    if (result !== undefined) {
-      return result;
-    }
-  }
-
-  let compressionMethod: tar.CompressionMethod;
-  let perLanguageBundleFallback: true | undefined;
-
-  if (!url) {
-    if (tagName === undefined) {
-      throw new Error(
-        "Could not determine a release tag for the requested CodeQL bundle.",
-      );
-    }
-    ({ bundle, compressionMethod, perLanguageBundleFallback } =
-      await selectDefaultBundle(
-        { env: getEnv(), features, logger },
-        tagName,
-        apiDetails,
-        {
-          rawLanguages,
-          cliVersion,
-          platform: getBundlePlatform(),
-          variant,
-          tarSupportsZstd,
-        },
-      ));
-    url = bundle.url;
-  } else {
-    const method = tar.inferCompressionMethod(url);
-    if (method === undefined) {
-      throw new util.ConfigurationError(
-        `Could not infer compression method from URL ${url}. Please specify a URL ` +
-          "ending in '.tar.gz' or '.tar.zst'.",
-      );
-    }
-    compressionMethod = method;
-
-    // Keep the bundle we selected from the latest nightly, which records the combined bundle to
-    // fall back to. Otherwise, classify the explicit URL, which gets no fallback.
-    bundle ??= getCodeQLBundleFromUrl(url);
-    if (bundle.kind === "per-language") {
-      logger.info(
-        `${url} appears to be a CodeQL bundle that contains only ${bundle.language}.`,
-      );
-    }
-  }
-
-  if (cliVersion) {
-    logger.info(`Using CodeQL CLI version ${cliVersion} sourced from ${url} .`);
-  } else {
-    logger.info(`Using CodeQL CLI sourced from ${url} .`);
-  }
-  return {
-    bundle,
-    bundleVersion,
-    cliVersion,
-    compressionMethod,
-    ...(perLanguageBundleFallback ? { perLanguageBundleFallback } : {}),
-    sourceType: "download",
-    toolsVersion: resolvedVersion ?? "unknown",
-  };
+  return codeqlFolder;
 }
 
 /**
@@ -878,11 +990,21 @@ export const downloadCodeQL = async function (
 
 /**
  * Returns the canonical toolcache directory, or the reason the bundle cannot be cached.
+ *
+ * The toolcache is keyed by version, so we don't cache bundles that would give a later request for
+ * the same version the wrong tools: per-language bundles, which lack the other languages, and
+ * custom releases, which may be a different build.
  */
 function getToolcacheDestination(
   { logger }: ActionState<["Logger"]>,
   source: CodeQLDownloadSource,
 ): util.Result<string, string> {
+  if (source.customReleaseURL !== undefined) {
+    return new util.Failure(
+      `Not caching the CodeQL tools from ${source.customReleaseURL}, since we only cache stable ` +
+        "releases in the CodeQL Action repositories.",
+    );
+  }
   if (source.bundle.kind !== "combined") {
     return new util.Failure(
       "Not caching the CodeQL tools because they came from a bundle that contains only a " +
@@ -973,11 +1095,11 @@ function getCanonicalToolcacheVersion(
   bundleVersion: string,
   logger: Logger,
 ): string {
-  // If the CLI version is a pre-release or contains build metadata, then cache the
-  // bundle as `0.0.0-<bundleVersion>` to avoid the bundle being interpreted as containing a stable
-  // CLI release. In principle, it should be enough to just check that the CLI version isn't a
-  // pre-release, but the version numbers of CodeQL nightlies have the format `x.y.z+<timestamp>`,
-  // and we don't want these nightlies to override stable CLI versions in the toolcache.
+  // If the CLI version is unknown, as for nightlies, which are tagged by date, or isn't a plain
+  // `x.y.z`, for example a prerelease, cache the bundle under its bundle version, such as
+  // `0.0.0-<date>` or `x.y.z-rc.1`, so that it isn't cached as a stable release. However,
+  // `convertToSemVer` drops build metadata, so a bundle URL tagged `codeql-bundle-vX.Y.Z+<build>`
+  // is still cached as `X.Y.Z`.
   if (!cliVersion?.match(/^[0-9]+\.[0-9]+\.[0-9]+$/)) {
     return convertToSemVer(bundleVersion, logger);
   }

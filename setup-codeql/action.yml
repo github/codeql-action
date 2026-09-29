@@ -10,6 +10,8 @@ inputs:
 
       - A local path to a CodeQL Bundle tarball, or
       - The URL of a CodeQL Bundle tarball GitHub release asset, or
+      - A release URL from GitHub.com or the current GitHub instance, such as
+        https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.27.0.
       - A special value `linked` which uses the version of the CodeQL tools
         that the Action has been bundled with.
       - A special value `nightly` which uses the latest nightly version of the

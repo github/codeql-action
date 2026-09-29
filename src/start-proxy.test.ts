@@ -688,6 +688,12 @@ test("getCredentials always returns ALWAYS_ENABLED_REGISTRY_TYPE credentials for
   }
 });
 
+test("getProxyPackage - includes platform in name", (t) => {
+  for (const platform of Object.values(BundlePlatform)) {
+    t.true(startProxyExports.getProxyPackage(platform).includes(platform));
+  }
+});
+
 function mockGetApiClient(endpoints: any) {
   return (
     sinon
@@ -730,6 +736,37 @@ function getTestPlatform(action: ActionState<["Base"]>) {
     getBundlePlatform(action.platform, action.arch) ?? BundlePlatform.Linux64
   );
 }
+
+test.serial(
+  "getDownloadUrl logs unknown platforms/arch and defaults to linux64",
+  async (t) => {
+    const logger = new RecordingLogger();
+    mockGetReleaseByTag();
+
+    await withTmpDir(async (tempDir) => {
+      const features = mockOfflineFeatures(tempDir, logger);
+      const state = initAllState({
+        platform: "android",
+        arch: "ppc",
+        logger,
+        features,
+      });
+      const info = await startProxyExports.getDownloadUrl(state);
+
+      t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+      t.is(
+        info.url,
+        startProxyExports.getFallbackUrl(
+          startProxyExports.getProxyPackage(BundlePlatform.Linux64),
+        ),
+      );
+
+      t.true(
+        logger.hasMessage(`Unsupported platform android on architecture ppc`),
+      );
+    });
+  },
+);
 
 test.serial(
   "getDownloadUrl returns fallback when `getReleaseByVersion` rejects",

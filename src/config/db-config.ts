@@ -33,6 +33,15 @@ export interface QuerySpec {
   uses: string;
 }
 
+// A set of default query suite names that are understood by the CLI.
+export const defaultSuites: Set<string> = new Set([
+  "security-experimental",
+  "security-extended",
+  "security-and-quality",
+  "code-quality",
+  "code-scanning",
+]);
+
 const ORG_SCHEMA = {
   /** An array of model pack names. */
   "model-packs": json.optional(json.array(json.string)),

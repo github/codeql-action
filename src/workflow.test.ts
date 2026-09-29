@@ -4,10 +4,12 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { createStubCodeQL, getCodeQLForTesting } from "./codeql";
-import { EnvVar } from "./environment";
+import { ActionsEnvVars, EnvVar } from "./environment";
 import {
   checkExpectedLogMessages,
+  createTestConfig,
   getRecordingLogger,
+  getTestEnv,
   LoggedMessage,
   setupTests,
 } from "./testing-utils";
@@ -1002,3 +1004,124 @@ test.serial(
     t.is(messages.length, 0);
   },
 );
+
+test("getRepositoryRootOrThrow - gets root from config", async (t) => {
+  const expectedRoot = "/path/to/root";
+  const repositoryRoot = workflow.getRepositoryRootOrThrow(
+    {},
+    "testJob",
+    {},
+    createTestConfig({ repositoryRoot: expectedRoot }),
+    getTestEnv(),
+  );
+
+  t.is(repositoryRoot, expectedRoot);
+});
+
+test("getRepositoryRootOrThrow - gets root from workflow", async (t) => {
+  const expectedRoot = "/path/to/root";
+  const repositoryRoot = workflow.getRepositoryRootOrThrow(
+    {
+      jobs: {
+        testJob: {
+          steps: [
+            {
+              uses: "github/codeql-action/analyze",
+              with: { checkout_path: expectedRoot },
+            },
+          ],
+        },
+      },
+    },
+    "testJob",
+    {},
+    createTestConfig({}),
+    getTestEnv(),
+  );
+
+  t.is(repositoryRoot, expectedRoot);
+});
+
+test("getRepositoryRootOrThrow - gets root from environment", async (t) => {
+  const expectedRoot = "/path/to/root";
+  const repositoryRoot = workflow.getRepositoryRootOrThrow(
+    {
+      jobs: { testJob: { steps: [{ uses: "github/codeql-action/analyze" }] } },
+    },
+    "testJob",
+    {},
+    createTestConfig({}),
+    getTestEnv({ [ActionsEnvVars.GITHUB_WORKSPACE]: expectedRoot }),
+  );
+
+  t.is(repositoryRoot, expectedRoot);
+});
+
+test("getRepositoryRootOrThrow - throws if there's no matching job", async (t) => {
+  t.throws(
+    () =>
+      workflow.getRepositoryRootOrThrow(
+        {
+          jobs: {
+            otherJob: {
+              steps: [
+                {
+                  uses: "github/codeql-action/analyze",
+                  with: { checkout_path: "/some/path" },
+                },
+              ],
+            },
+          },
+        },
+        "testJob",
+        {},
+        createTestConfig({}),
+        getTestEnv(),
+      ),
+    { message: /since the workflow has no job named testJob./ },
+  );
+});
+
+test("getRepositoryRootOrThrow - throws if there's no analyze step", async (t) => {
+  t.throws(
+    () =>
+      workflow.getRepositoryRootOrThrow(
+        {
+          jobs: {
+            testJob: { steps: [] },
+          },
+        },
+        "testJob",
+        {},
+        createTestConfig({}),
+        getTestEnv(),
+      ),
+    { message: /since the testJob job does not call/ },
+  );
+});
+
+test("getRepositoryRootOrThrow - throws if the env var is not set", async (t) => {
+  t.throws(
+    () =>
+      workflow.getRepositoryRootOrThrow(
+        {
+          jobs: {
+            testJob: {
+              steps: [
+                {
+                  uses: "github/codeql-action/analyze",
+                },
+              ],
+            },
+          },
+        },
+        "testJob",
+        {},
+        createTestConfig({}),
+        getTestEnv(),
+      ),
+    {
+      message: `${ActionsEnvVars.GITHUB_WORKSPACE} environment variable must be set`,
+    },
+  );
+});

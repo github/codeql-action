@@ -46,7 +46,7 @@ export interface DatabaseUploadResult {
 }
 
 export async function cleanupAndUploadDatabases(
-  action: ActionState<["Logger", "FeatureFlags"]>,
+  action: ActionState<["ReadOnlyEnv", "Logger", "FeatureFlags"]>,
   repositoryNwo: RepositoryNwo,
   codeql: CodeQL,
   config: Config,
@@ -81,7 +81,7 @@ export async function cleanupAndUploadDatabases(
     return [];
   }
 
-  if (!(await gitUtils.isAnalyzingDefaultBranch())) {
+  if (!(await gitUtils.isAnalyzingDefaultBranch(action.env, checkoutPath))) {
     // We only want to upload a database if we are analyzing the default branch.
     logger.debug("Not analyzing default branch. Skipping upload.");
     return [];
@@ -113,7 +113,7 @@ export async function cleanupAndUploadDatabases(
         includeDiagnostics: false,
       });
       bundledDbSize = fs.statSync(bundledDb).size;
-      const commitOid = await gitUtils.getCommitOid(checkoutPath);
+      const commitOid = await gitUtils.getCommitOid(action.env, checkoutPath);
       // Upload with manual retry logic. We disable Octokit's built-in retries
       // because the request body is a ReadStream, which can only be consumed
       // once.

@@ -426,7 +426,7 @@ export async function getDownloadUrl(
   let platform = getBundlePlatform(action.platform, action.arch);
   if (platform === undefined) {
     action.logger.warning(
-      `Unsupported platform ${process.platform} on architecture ${process.arch}, defaulting to ${BundlePlatform.Linux64}`,
+      `Unsupported platform ${action.platform} on architecture ${action.arch}, defaulting to ${BundlePlatform.Linux64}`,
     );
     platform = BundlePlatform.Linux64;
   }

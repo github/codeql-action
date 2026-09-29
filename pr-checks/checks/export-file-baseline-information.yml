@@ -11,6 +11,8 @@ installDotNet: true
 env:
   CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
+  # Per-language bundles only report file baseline information for their own language.
+  CODEQL_ACTION_PER_LANGUAGE_BUNDLES: false
 steps:
   - uses: ./../action/init
     id: init

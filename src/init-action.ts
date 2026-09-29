@@ -13,6 +13,7 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
+  isDynamicWorkflow,
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
@@ -40,7 +41,10 @@ import {
 } from "./diagnostics";
 import { ActionsEnvVars, EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import { loadRepositoryProperties } from "./feature-flags/properties";
+import {
+  loadRepositoryProperties,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -58,6 +62,7 @@ import {
   OverlayBaseDatabaseDownloadStats,
 } from "./overlay/caching";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { getOtherLanguagePacksReason } from "./per-language-bundles";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -302,6 +307,14 @@ async function run(
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
+    const otherLanguagePacksReason = getOtherLanguagePacksReason({
+      configFile,
+      configInput: getOptionalInput("config"),
+      queriesInput: getOptionalInput("queries"),
+      extraQueriesProperty:
+        repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
+      isDynamicWorkflow: isDynamicWorkflow(actionState.env),
+    });
     const useOverlayAwareDefaultCliVersion =
       analysisKinds?.length === 1 &&
       analysisKinds[0] === AnalysisKind.CodeScanning;
@@ -312,6 +325,7 @@ async function run(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
+      otherLanguagePacksReason,
       useOverlayAwareDefaultCliVersion,
       features,
       logger,

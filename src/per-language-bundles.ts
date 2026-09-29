@@ -2,7 +2,9 @@ import * as semver from "semver";
 
 import { ActionState } from "./action-common";
 import { isGitHubHostedRunner } from "./actions-util";
+import { defaultSuites } from "./config/db-config";
 import { Feature } from "./feature-flags";
+import { RepositoryPropertyName } from "./feature-flags/properties";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { BundlePlatform } from "./platform";
 import * as tar from "./tar";
@@ -31,10 +33,88 @@ const PER_LANGUAGE_BUNDLE_LANGUAGES: Readonly<
   [BundlePlatform.Win64]: new Set(),
 };
 
+/** Query configuration that is known before CodeQL is set up. */
+export interface QueryConfigInputs {
+  /** The configuration file from the `config-file` input or repository property. */
+  configFile: string | undefined;
+  /** The `config` input. */
+  configInput: string | undefined;
+  /** The `queries` input. */
+  queriesInput: string | undefined;
+  /** The `github-codeql-extra-queries` repository property. */
+  extraQueriesProperty: string | undefined;
+  /** Whether the Action is running in a dynamic workflow, such as default setup. */
+  isDynamicWorkflow: boolean;
+}
+
+/**
+ * Explains why the configured queries may need library packs for languages other than the one
+ * being analyzed, which a per-language bundle doesn't contain. Returns `undefined` if the only
+ * queries that these inputs add are built-in query suites. The `packs` input doesn't matter, since
+ * query packs are downloaded together with their dependencies.
+ *
+ * The configuration isn't loaded until CodeQL is set up, so any configuration file or `config`
+ * input is assumed to configure such queries, except for the `config` input in dynamic workflows.
+ */
+export function getOtherLanguagePacksReason(
+  inputs: QueryConfigInputs,
+): string | undefined {
+  if (inputs.configFile !== undefined) {
+    return (
+      `the configuration file '${inputs.configFile}' may use queries that need library packs ` +
+      "for other languages"
+    );
+  }
+
+  // We assume that dynamic workflows, which GitHub manages, don't use the `config` input to add
+  // queries. For example, default setup only uses it for threat models and model packs.
+  if (inputs.configInput !== undefined && !inputs.isDynamicWorkflow) {
+    return "the 'config' input may use queries that need library packs for other languages";
+  }
+
+  // We can't tell which language a local query or a query from another repository is for without
+  // loading it, and CodeQL resolves the library packs for every configured query, including those
+  // for languages that aren't being analyzed.
+  const query = findNonBuiltInQuery(inputs.queriesInput);
+  if (query !== undefined) {
+    return `the query '${query}' from the 'queries' input may need library packs for other languages`;
+  }
+  const extraQuery = findNonBuiltInQuery(inputs.extraQueriesProperty);
+  if (extraQuery !== undefined) {
+    return (
+      `the query '${extraQuery}' from the '${RepositoryPropertyName.EXTRA_QUERIES}' repository ` +
+      "property may need library packs for other languages"
+    );
+  }
+
+  return undefined;
+}
+
+/**
+ * Returns the first query in a comma-separated list of queries, in the format of the `queries`
+ * input, that isn't a built-in query suite.
+ */
+function findNonBuiltInQuery(queries: string | undefined): string | undefined {
+  return (
+    queries
+      ?.trim()
+      // A leading '+' combines these queries with those configured elsewhere.
+      .replace(/^\+/, "")
+      .split(",")
+      .map((query) => query.trim())
+      .find((query) => query !== "" && !defaultSuites.has(query))
+  );
+}
+
 /** Inputs that determine whether we may download a per-language bundle. */
 export interface PerLanguageBundleOptions {
   /** Explicit input only: autodetection needs a CLI instance. */
   rawLanguages: string[] | undefined;
+  /**
+   * Why the configured queries may need library packs for other languages, if they might. See
+   * `getOtherLanguagePacksReason`.
+   */
+  otherLanguagePacksReason: string | undefined;
   /** Requested CLI version, if known. Ignored when requesting the latest nightly. */
   cliVersion: string | undefined;
   compressionMethod: tar.CompressionMethod;
@@ -56,6 +136,7 @@ export async function getPerLanguageBundleLanguage(
 ): Promise<BuiltInLanguage | undefined> {
   const {
     rawLanguages,
+    otherLanguagePacksReason,
     cliVersion,
     compressionMethod,
     platform,
@@ -83,6 +164,10 @@ export async function getPerLanguageBundleLanguage(
   const language = parseBuiltInLanguage(rawLanguages[0]);
   if (language === undefined) {
     return explain(`'${rawLanguages[0]}' is not a known CodeQL language`);
+  }
+
+  if (otherLanguagePacksReason !== undefined) {
+    return explain(otherLanguagePacksReason);
   }
 
   if (compressionMethod !== "zstd") {

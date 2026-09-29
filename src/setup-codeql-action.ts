@@ -165,6 +165,7 @@ async function run(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
+      undefined, // otherLanguagePacksReason: this Action doesn't take a query configuration
       analysisKinds.length === 1 &&
         analysisKinds[0] === AnalysisKind.CodeScanning,
       features,

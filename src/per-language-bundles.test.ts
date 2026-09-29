@@ -4,9 +4,11 @@ import { ActionsEnvVars } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import {
+  getOtherLanguagePacksReason,
   getPerLanguageBundleLanguage,
   MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   PerLanguageBundleOptions,
+  QueryConfigInputs,
 } from "./per-language-bundles";
 import { BundlePlatform } from "./platform";
 import {
@@ -21,6 +23,7 @@ import { GitHubVariant } from "./util";
 /** Options for which we would use a per-language bundle. */
 const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
   rawLanguages: ["java"],
+  otherLanguagePacksReason: undefined,
   // Any version at least as new as the minimum will do.
   cliVersion: MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   compressionMethod: "zstd",
@@ -79,6 +82,20 @@ test("getPerLanguageBundleLanguage requires exactly one language", async (t) => 
 
 test("getPerLanguageBundleLanguage requires a known language", async (t) => {
   t.is(await checkEligibility({ rawLanguages: ["cobol"] }), undefined);
+});
+
+test("getPerLanguageBundleLanguage explains queries that may need library packs for other languages", async (t) => {
+  const messages: LoggedMessage[] = [];
+  const language = await checkEligibility(
+    { otherLanguagePacksReason: "an example reason" },
+    { logger: getRecordingLogger(messages, { logToConsole: false }) },
+  );
+
+  t.is(language, undefined);
+  t.deepEqual(
+    messages.map((message) => message.message),
+    ["Not using a per-language CodeQL bundle since an example reason."],
+  );
 });
 
 test("getPerLanguageBundleLanguage requires a zstd bundle", async (t) => {
@@ -155,6 +172,7 @@ test("getPerLanguageBundleLanguage skips only the release version check for the 
   for (const overrides of [
     { rawLanguages: undefined },
     { rawLanguages: ["java", "python"] },
+    { otherLanguagePacksReason: "an example reason" },
     { compressionMethod: "gzip" as const },
     { platform: BundlePlatform.Osx64 },
     { variant: GitHubVariant.GHES },
@@ -171,5 +189,95 @@ test("getPerLanguageBundleLanguage skips only the release version check for the 
       env: getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),
     }),
     undefined,
+  );
+});
+
+/** Query configuration inputs that configure nothing. */
+const NO_QUERY_CONFIG: QueryConfigInputs = {
+  configFile: undefined,
+  configInput: undefined,
+  queriesInput: undefined,
+  extraQueriesProperty: undefined,
+  isDynamicWorkflow: false,
+};
+
+test("getOtherLanguagePacksReason returns undefined when no queries are configured", (t) => {
+  t.is(getOtherLanguagePacksReason(NO_QUERY_CONFIG), undefined);
+});
+
+test("getOtherLanguagePacksReason returns undefined for built-in query suites", (t) => {
+  for (const queries of [
+    "security-extended",
+    "+security-and-quality",
+    " security-extended , code-quality ",
+  ]) {
+    t.is(
+      getOtherLanguagePacksReason({
+        ...NO_QUERY_CONFIG,
+        queriesInput: queries,
+        extraQueriesProperty: queries,
+      }),
+      undefined,
+      queries,
+    );
+  }
+});
+
+test("getOtherLanguagePacksReason returns undefined for the config input in a dynamic workflow", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      configInput: "threat-models: [ local ]",
+      isDynamicWorkflow: true,
+    }),
+    undefined,
+  );
+});
+
+test("getOtherLanguagePacksReason explains a configuration file, including in a dynamic workflow", (t) => {
+  // Default setup can get a configuration file from a repository property.
+  for (const isDynamicWorkflow of [false, true]) {
+    t.is(
+      getOtherLanguagePacksReason({
+        ...NO_QUERY_CONFIG,
+        configFile: "./.github/codeql/codeql-config.yml",
+        isDynamicWorkflow,
+      }),
+      "the configuration file './.github/codeql/codeql-config.yml' may use queries that need " +
+        "library packs for other languages",
+    );
+  }
+});
+
+test("getOtherLanguagePacksReason explains the config input outside a dynamic workflow", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      configInput: "queries: [ { uses: ./queries/show_ifs.ql } ]",
+    }),
+    "the 'config' input may use queries that need library packs for other languages",
+  );
+});
+
+test("getOtherLanguagePacksReason explains the first query in the queries input that isn't a built-in query suite", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      queriesInput:
+        "+security-extended, ./queries/show_ifs.ql, octo-org/queries@main",
+    }),
+    "the query './queries/show_ifs.ql' from the 'queries' input may need library packs for " +
+      "other languages",
+  );
+});
+
+test("getOtherLanguagePacksReason explains a query in the extra queries repository property that isn't a built-in query suite", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      extraQueriesProperty: "+octo-org/queries/show_ifs.ql@main",
+    }),
+    "the query 'octo-org/queries/show_ifs.ql@main' from the 'github-codeql-extra-queries' " +
+      "repository property may need library packs for other languages",
   );
 });

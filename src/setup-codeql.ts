@@ -377,8 +377,9 @@ async function resolveDefaultCliVersion(
  * @param toolsInput The argument provided for the `tools` input, if any.
  * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
  * @param rawLanguages Raw set of languages.
- * @param otherLanguagePacksReason Why the configured queries may need library packs for languages
- *   other than `rawLanguages`, if they might. See `getOtherLanguagePacksReason`.
+ * @param otherLanguagePacksReason Why the CodeQL CLI may need packs for languages other than
+ *   `rawLanguages`, or `undefined` if it won't. If defined, the combined bundle is used. See
+ *   `PerLanguageBundleOptions.otherLanguagePacksReason`.
  * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param apiDetails Information about the GitHub API.
  * @param variant The GitHub variant we are running on.

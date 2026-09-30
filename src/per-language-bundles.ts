@@ -111,7 +111,9 @@ export interface PerLanguageBundleOptions {
   /** Explicit input only: autodetection needs a CLI instance. */
   rawLanguages: string[] | undefined;
   /**
-   * Why the configured queries may need library packs for other languages, if they might. See
+   * Why the CodeQL CLI may need packs for other languages, for example because of the configured
+   * queries, or `undefined` if it won't. If defined, the combined bundle is used, and this reason is
+   * logged to complete the sentence "Not using a per-language CodeQL bundle since ...". See
    * `getOtherLanguagePacksReason`.
    */
   otherLanguagePacksReason: string | undefined;
@@ -153,6 +155,12 @@ export async function getPerLanguageBundleLanguage(
     return explain(`the ${Feature.PerLanguageBundles} feature is disabled`);
   }
 
+  // This reason applies whichever languages were requested, so check it first to avoid suggesting
+  // that requesting a single language would be enough.
+  if (otherLanguagePacksReason !== undefined) {
+    return explain(otherLanguagePacksReason);
+  }
+
   if (rawLanguages?.length !== 1) {
     return explain(
       `exactly one language must be requested via the 'languages' input, but ${
@@ -164,10 +172,6 @@ export async function getPerLanguageBundleLanguage(
   const language = parseBuiltInLanguage(rawLanguages[0]);
   if (language === undefined) {
     return explain(`'${rawLanguages[0]}' is not a known CodeQL language`);
-  }
-
-  if (otherLanguagePacksReason !== undefined) {
-    return explain(otherLanguagePacksReason);
   }
 
   if (compressionMethod !== "zstd") {

@@ -84,18 +84,21 @@ test("getPerLanguageBundleLanguage requires a known language", async (t) => {
   t.is(await checkEligibility({ rawLanguages: ["cobol"] }), undefined);
 });
 
-test("getPerLanguageBundleLanguage explains queries that may need library packs for other languages", async (t) => {
-  const messages: LoggedMessage[] = [];
-  const language = await checkEligibility(
-    { otherLanguagePacksReason: "an example reason" },
-    { logger: getRecordingLogger(messages, { logToConsole: false }) },
-  );
+test("getPerLanguageBundleLanguage explains why the CodeQL CLI may need packs for other languages before checking the languages", async (t) => {
+  // Without a language, the explanation would otherwise suggest requesting a single language.
+  for (const rawLanguages of [["java"], undefined]) {
+    const messages: LoggedMessage[] = [];
+    const language = await checkEligibility(
+      { rawLanguages, otherLanguagePacksReason: "an example reason" },
+      { logger: getRecordingLogger(messages, { logToConsole: false }) },
+    );
 
-  t.is(language, undefined);
-  t.deepEqual(
-    messages.map((message) => message.message),
-    ["Not using a per-language CodeQL bundle since an example reason."],
-  );
+    t.is(language, undefined);
+    t.deepEqual(
+      messages.map((message) => message.message),
+      ["Not using a per-language CodeQL bundle since an example reason."],
+    );
+  }
 });
 
 test("getPerLanguageBundleLanguage requires a zstd bundle", async (t) => {

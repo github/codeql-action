@@ -302,8 +302,9 @@ export function isDiskConfigurationError(e: unknown): boolean {
  * @param variant
  * @param defaultCliVersion
  * @param rawLanguages Raw set of languages.
- * @param otherLanguagePacksReason Why the configured queries may need library packs for languages
- *   other than `rawLanguages`, if they might. See `getOtherLanguagePacksReason`.
+ * @param otherLanguagePacksReason Why the CodeQL CLI may need packs for languages other than
+ *   `rawLanguages`, or `undefined` if it won't. If defined, the combined bundle is used. See
+ *   `PerLanguageBundleOptions.otherLanguagePacksReason`.
  * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param features Information about the features that are enabled.
  * @param logger

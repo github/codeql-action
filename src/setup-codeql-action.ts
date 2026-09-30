@@ -165,7 +165,12 @@ async function run(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
-      undefined, // otherLanguagePacksReason: this Action doesn't take a query configuration
+      // CodeQL resolves the dependencies of queries that aren't in compiled packs from the bundle,
+      // so the queries that the workflow runs with this CLI may need library packs for languages
+      // other than those in the `languages` input. That input therefore only informs the choice of
+      // CLI version.
+      "the 'setup-codeql' Action can't tell whether the queries that the workflow runs will need " +
+        "library packs for other languages",
       analysisKinds.length === 1 &&
         analysisKinds[0] === AnalysisKind.CodeScanning,
       features,

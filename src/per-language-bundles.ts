@@ -75,8 +75,9 @@ export function getOtherLanguagePacksReason(
     );
   }
 
-  // We assume that dynamic workflows, which GitHub manages, don't use the `config` input to add
-  // queries. For example, default setup only uses it for threat models and model packs.
+  // The `config` input can configure queries in the same way as a configuration file. We assume
+  // that dynamic workflows, which GitHub manages, don't use it to add queries. For example, default
+  // setup only uses it for threat models and model packs.
   if (inputs.configInput !== undefined && !inputs.isDynamicWorkflow) {
     return "the 'config' input may use queries that need library packs for other languages";
   }

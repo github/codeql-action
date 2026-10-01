@@ -446,20 +446,53 @@ export async function calculateAugmentation(
     languages,
     packsInputCombines,
   );
-  const queriesInputCombines = shouldCombine(rawQueriesInput);
-  const queriesInput = parseQueriesFromInput(
-    rawQueriesInput,
-    queriesInputCombines,
+  const queries = parseQueriesInput(rawQueriesInput);
+  const repoPropertyQueries = parseExtraQueriesProperty(
+    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
   );
 
-  const repoExtraQueries =
-    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES];
-  const repoExtraQueriesCombines = shouldCombine(repoExtraQueries);
-  const repoPropertyQueries = {
-    combines: repoExtraQueriesCombines,
+  return {
+    packsInputCombines,
+    packsInput: packsInput?.[languages[0]],
+    queriesInput: queries.input,
+    queriesInputCombines: queries.combines,
+    repoPropertyQueries,
+  };
+}
+
+/**
+ * Parses the `queries` input, a comma-separated list of queries that's combined with the queries
+ * from the configuration if it starts with '+'. The `input` of the result is `undefined` if the
+ * value is unset or empty. Entries aren't validated, so an empty entry becomes `{ uses: "" }`.
+ *
+ * @throws A `ConfigurationError` if the input is a '+' with no queries after it.
+ */
+export function parseQueriesInput(
+  rawQueriesInput: string | undefined,
+): Augmentation<QuerySpec[]> {
+  const combines = shouldCombine(rawQueriesInput);
+  return {
+    combines,
+    input: parseQueriesFromInput(rawQueriesInput, combines),
+  };
+}
+
+/**
+ * Parses the `github-codeql-extra-queries` repository property, which has the same format as the
+ * `queries` input. The `input` of the result is `undefined` if the value is unset or empty. Entries
+ * aren't validated, so an empty entry becomes `{ uses: "" }`.
+ *
+ * @throws A `ConfigurationError` if the value is a '+' with no queries after it.
+ */
+export function parseExtraQueriesProperty(
+  value: string | undefined,
+): Augmentation<QuerySpec[]> {
+  const combines = shouldCombine(value);
+  return {
+    combines,
     input: parseQueriesFromInput(
-      repoExtraQueries,
-      repoExtraQueriesCombines,
+      value,
+      combines,
       new ConfigurationError(
         errorMessages.getRepoPropertyError(
           RepositoryPropertyName.EXTRA_QUERIES,
@@ -467,14 +500,6 @@ export async function calculateAugmentation(
         ),
       ),
     ),
-  };
-
-  return {
-    packsInputCombines,
-    packsInput: packsInput?.[languages[0]],
-    queriesInput,
-    queriesInputCombines,
-    repoPropertyQueries,
   };
 }
 

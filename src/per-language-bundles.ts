@@ -4,6 +4,7 @@ import { ActionState } from "./action-common";
 import { isGitHubHostedRunner } from "./actions-util";
 import {
   defaultSuites,
+  matchesDefaultSetupConfigSchema,
   parseExtraQueriesProperty,
   parseQueriesInput,
   QuerySpec,
@@ -48,8 +49,6 @@ export interface QueryConfigInputs {
   queriesInput: string | undefined;
   /** The `github-codeql-extra-queries` repository property. */
   extraQueriesProperty: string | undefined;
-  /** Whether the Action is running in a dynamic workflow, such as default setup. */
-  isDynamicWorkflow: boolean;
 }
 
 /**
@@ -58,8 +57,9 @@ export interface QueryConfigInputs {
  * queries that these inputs add are built-in query suites. The `packs` input doesn't matter, since
  * query packs are downloaded together with their dependencies.
  *
- * The configuration isn't loaded until CodeQL is set up, so any configuration file or `config`
- * input is assumed to configure such queries, except for the `config` input in dynamic workflows.
+ * Any configuration file is assumed to configure such queries, since reading it may need file or API
+ * access. The `config` input is only assumed to if it sets anything other than valid threat models
+ * and model packs, which are the properties that default setup uses.
  *
  * @throws A `ConfigurationError` if the `queries` input or the `github-codeql-extra-queries`
  *   repository property is a '+' with no queries after it, unless an input that's checked earlier
@@ -75,10 +75,12 @@ export function getOtherLanguagePacksReason(
     );
   }
 
-  // The `config` input can configure queries in the same way as a configuration file. We assume
-  // that dynamic workflows, which GitHub manages, don't use it to add queries. For example, default
-  // setup only uses it for threat models and model packs.
-  if (inputs.configInput !== undefined && !inputs.isDynamicWorkflow) {
+  // The `config` input can configure queries in the same way as a configuration file. Default
+  // setup only uses it for threat models and model packs, neither of which adds queries.
+  if (
+    inputs.configInput !== undefined &&
+    !matchesDefaultSetupConfigSchema(inputs.configInput)
+  ) {
     return "the 'config' input may use queries that need library packs for other languages";
   }
 

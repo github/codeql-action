@@ -95,6 +95,28 @@ const DEFAULT_SETUP_CONFIG_SCHEMA = {
 } as const satisfies json.Schema;
 
 /**
+ * Returns whether `contents` is a YAML mapping that only sets the properties that Default Setup
+ * uses, which are threat models and model packs, to valid values. Returns `false` otherwise,
+ * including if `contents` isn't valid YAML.
+ */
+export function matchesDefaultSetupConfigSchema(contents: string): boolean {
+  let config: unknown;
+  try {
+    config = yaml.load(contents);
+  } catch (error) {
+    if (error instanceof yaml.YAMLException) {
+      return false;
+    }
+    throw error;
+  }
+  if (!json.isObject(config)) {
+    return false;
+  }
+  const result = json.checkSchema(DEFAULT_SETUP_CONFIG_SCHEMA, config);
+  return result.valid && result.unknownKeys.length === 0;
+}
+
+/**
  * Merges supported properties from two configuration files. This is intended only for
  * use with merging the `config` input provided by Default Setup with a potentially
  * richer configuration file provided by a user.

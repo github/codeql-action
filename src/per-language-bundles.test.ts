@@ -18,7 +18,7 @@ import {
   initAllState,
   LoggedMessage,
 } from "./testing-utils";
-import { GitHubVariant } from "./util";
+import { ConfigurationError, GitHubVariant } from "./util";
 
 /** Options for which we would use a per-language bundle. */
 const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
@@ -281,4 +281,17 @@ test("getOtherLanguagePacksReason explains a query in the extra queries reposito
     "the query 'octo-org/queries/show_ifs.ql@main' from the 'github-codeql-extra-queries' " +
       "repository property may need library packs for other languages",
   );
+});
+
+test("getOtherLanguagePacksReason throws a ConfigurationError for a '+' with no queries after it", (t) => {
+  // Loading the configuration would throw the same errors.
+  for (const inputs of [
+    { queriesInput: "+" },
+    { extraQueriesProperty: " + " },
+  ]) {
+    t.throws(
+      () => getOtherLanguagePacksReason({ ...NO_QUERY_CONFIG, ...inputs }),
+      { instanceOf: ConfigurationError },
+    );
+  }
 });

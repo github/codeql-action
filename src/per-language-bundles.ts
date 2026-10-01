@@ -2,7 +2,12 @@ import * as semver from "semver";
 
 import { ActionState } from "./action-common";
 import { isGitHubHostedRunner } from "./actions-util";
-import { defaultSuites } from "./config/db-config";
+import {
+  defaultSuites,
+  parseExtraQueriesProperty,
+  parseQueriesInput,
+  QuerySpec,
+} from "./config/db-config";
 import { Feature } from "./feature-flags";
 import { RepositoryPropertyName } from "./feature-flags/properties";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
@@ -55,6 +60,10 @@ export interface QueryConfigInputs {
  *
  * The configuration isn't loaded until CodeQL is set up, so any configuration file or `config`
  * input is assumed to configure such queries, except for the `config` input in dynamic workflows.
+ *
+ * @throws A `ConfigurationError` if the `queries` input or the `github-codeql-extra-queries`
+ *   repository property is a '+' with no queries after it, unless an input that's checked earlier
+ *   already gives a reason.
  */
 export function getOtherLanguagePacksReason(
   inputs: QueryConfigInputs,
@@ -75,11 +84,15 @@ export function getOtherLanguagePacksReason(
   // We can't tell which language a local query or a query from another repository is for without
   // loading it, and CodeQL resolves the library packs for every configured query, including those
   // for languages that aren't being analyzed.
-  const query = findNonBuiltInQuery(inputs.queriesInput);
+  const query = findNonBuiltInQuery(
+    parseQueriesInput(inputs.queriesInput).input,
+  );
   if (query !== undefined) {
     return `the query '${query}' from the 'queries' input may need library packs for other languages`;
   }
-  const extraQuery = findNonBuiltInQuery(inputs.extraQueriesProperty);
+  const extraQuery = findNonBuiltInQuery(
+    parseExtraQueriesProperty(inputs.extraQueriesProperty).input,
+  );
   if (extraQuery !== undefined) {
     return (
       `the query '${extraQuery}' from the '${RepositoryPropertyName.EXTRA_QUERIES}' repository ` +
@@ -90,20 +103,11 @@ export function getOtherLanguagePacksReason(
   return undefined;
 }
 
-/**
- * Returns the first query in a comma-separated list of queries, in the format of the `queries`
- * input, that isn't a built-in query suite.
- */
-function findNonBuiltInQuery(queries: string | undefined): string | undefined {
-  return (
-    queries
-      ?.trim()
-      // A leading '+' combines these queries with those configured elsewhere.
-      .replace(/^\+/, "")
-      .split(",")
-      .map((query) => query.trim())
-      .find((query) => query !== "" && !defaultSuites.has(query))
-  );
+/** Returns the `uses` value of the first of `queries` that isn't a built-in query suite. */
+function findNonBuiltInQuery(
+  queries: QuerySpec[] | undefined,
+): string | undefined {
+  return queries?.find((query) => !defaultSuites.has(query.uses))?.uses;
 }
 
 /** Inputs that determine whether we may download a per-language bundle. */

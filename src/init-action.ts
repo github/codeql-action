@@ -307,10 +307,12 @@ async function run(
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
+    const configInput = getOptionalInput("config");
+    const queriesInput = getOptionalInput("queries");
     const otherLanguagePacksReason = getOtherLanguagePacksReason({
       configFile,
-      configInput: getOptionalInput("config"),
-      queriesInput: getOptionalInput("queries"),
+      configInput,
+      queriesInput,
       extraQueriesProperty:
         repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
       isDynamicWorkflow: isDynamicWorkflow(actionState.env),
@@ -376,13 +378,13 @@ async function run(
     config = await initConfig(actionStateWithFeatures, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
-      queriesInput: getOptionalInput("queries"),
+      queriesInput,
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       ramInput: getOptionalInput("ram"),
       configFile,
       dbLocation: getOptionalInput("db-location"),
-      configInput: getOptionalInput("config"),
+      configInput,
       dependencyCachingEnabled: getDependencyCachingEnabled(),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.

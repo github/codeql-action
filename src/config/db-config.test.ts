@@ -625,3 +625,43 @@ test("mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Se
     `Invalid keys in Default Setup configuration: ${expectedInvalidKeys}`,
   ]);
 });
+
+test("matchesDefaultSetupConfigSchema - returns true for configurations that only use Default Setup properties", (t) => {
+  for (const contents of [
+    [
+      "default-setup:",
+      "  org:",
+      "    model-packs: [ github/immutable-actions-list@0.0.1 ]",
+      "threat-models: [  ]",
+    ].join("\n"),
+    "threat-models: [ local ]",
+    "{}",
+  ]) {
+    t.true(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+  }
+});
+
+test("matchesDefaultSetupConfigSchema - returns false for configurations that use other properties", (t) => {
+  for (const contents of [
+    "queries: [ { uses: ./queries/show_ifs.ql } ]",
+    "paths-ignore: [ tests ]",
+    "default-setup: { org: { model-packs: [], queries: [] } }",
+  ]) {
+    t.false(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+  }
+});
+
+test("matchesDefaultSetupConfigSchema - returns false for invalid Default Setup properties", (t) => {
+  for (const contents of [
+    "threat-models: local",
+    "default-setup: { org: { model-packs: [ 1 ] } }",
+  ]) {
+    t.false(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+  }
+});
+
+test("matchesDefaultSetupConfigSchema - returns false for contents that aren't a YAML object", (t) => {
+  for (const contents of ["threat-models: [", "- threat-models", "local", ""]) {
+    t.false(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+  }
+});

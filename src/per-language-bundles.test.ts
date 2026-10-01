@@ -199,7 +199,6 @@ const NO_QUERY_CONFIG: QueryConfigInputs = {
   configInput: undefined,
   queriesInput: undefined,
   extraQueriesProperty: undefined,
-  isDynamicWorkflow: false,
 };
 
 test("getOtherLanguagePacksReason returns undefined when no queries are configured", (t) => {
@@ -224,33 +223,34 @@ test("getOtherLanguagePacksReason returns undefined for built-in query suites", 
   }
 });
 
-test("getOtherLanguagePacksReason returns undefined for the config input in a dynamic workflow", (t) => {
+test("getOtherLanguagePacksReason returns undefined for a config input that only uses default setup properties", (t) => {
   t.is(
     getOtherLanguagePacksReason({
       ...NO_QUERY_CONFIG,
-      configInput: "threat-models: [ local ]",
-      isDynamicWorkflow: true,
+      // The shape of the `config` input that default setup passes.
+      configInput: [
+        "default-setup:",
+        "  org:",
+        "    model-packs: [ github/immutable-actions-list@0.0.1 ]",
+        "threat-models: [  ]",
+      ].join("\n"),
     }),
     undefined,
   );
 });
 
-test("getOtherLanguagePacksReason explains a configuration file, including in a dynamic workflow", (t) => {
-  // Default setup can get a configuration file from a repository property.
-  for (const isDynamicWorkflow of [false, true]) {
-    t.is(
-      getOtherLanguagePacksReason({
-        ...NO_QUERY_CONFIG,
-        configFile: "./.github/codeql/codeql-config.yml",
-        isDynamicWorkflow,
-      }),
-      "the configuration file './.github/codeql/codeql-config.yml' may use queries that need " +
-        "library packs for other languages",
-    );
-  }
+test("getOtherLanguagePacksReason explains a configuration file", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      configFile: "./.github/codeql/codeql-config.yml",
+    }),
+    "the configuration file './.github/codeql/codeql-config.yml' may use queries that need " +
+      "library packs for other languages",
+  );
 });
 
-test("getOtherLanguagePacksReason explains the config input outside a dynamic workflow", (t) => {
+test("getOtherLanguagePacksReason explains a config input that uses other properties", (t) => {
   t.is(
     getOtherLanguagePacksReason({
       ...NO_QUERY_CONFIG,

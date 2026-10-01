@@ -13,7 +13,6 @@ import {
   getOptionalInput,
   getRequiredInput,
   getTemporaryDirectory,
-  isDynamicWorkflow,
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
@@ -315,7 +314,6 @@ async function run(
       queriesInput,
       extraQueriesProperty:
         repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
-      isDynamicWorkflow: isDynamicWorkflow(actionState.env),
     });
     const useOverlayAwareDefaultCliVersion =
       analysisKinds?.length === 1 &&

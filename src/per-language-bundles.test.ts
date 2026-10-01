@@ -163,7 +163,7 @@ test("getPerLanguageBundleLanguage explains a disabled feature before checking e
   t.deepEqual(
     messages.map((message) => message.message),
     [
-      "Not using a per-language CodeQL bundle since the per_language_bundles feature is disabled.",
+      "Not using a per-language CodeQL bundle since the per_language_bundles_v2 feature is disabled.",
     ],
   );
 });

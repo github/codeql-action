@@ -168,7 +168,7 @@ export enum Feature {
    * Controls whether we may download a bundle containing only the single language being analysed,
    * rather than the combined bundle that contains every language.
    */
-  PerLanguageBundles = "per_language_bundles",
+  PerLanguageBundles = "per_language_bundles_v2",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Routes (some) API requests through the registry proxy. */
   ProxyApiRequests = "proxy_api_requests",

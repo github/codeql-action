@@ -152,7 +152,7 @@ export async function getPerLanguageBundleLanguage(
   };
 
   if (!(await features.getValue(Feature.PerLanguageBundles))) {
-    return explain(`the ${Feature.PerLanguageBundles} feature is disabled`);
+    return explain("the feature is disabled");
   }
 
   // This reason applies whichever languages were requested, so check it first to avoid suggesting

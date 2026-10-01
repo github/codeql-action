@@ -160,8 +160,9 @@ export async function getPerLanguageBundleLanguage(
     return explain("the feature is disabled");
   }
 
-  // This reason applies whichever languages were requested, so check it first to avoid suggesting
-  // that requesting a single language would be enough.
+  // A defined reason means the CodeQL CLI may need packs for other languages, for example because
+  // of the configured queries. That applies whichever languages were requested, so check it first
+  // to avoid suggesting that requesting a single language would be enough.
   if (otherLanguagePacksReason !== undefined) {
     return explain(otherLanguagePacksReason);
   }

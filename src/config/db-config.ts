@@ -33,6 +33,15 @@ export interface QuerySpec {
   uses: string;
 }
 
+// A set of default query suite names that are understood by the CLI.
+export const defaultSuites: Set<string> = new Set([
+  "security-experimental",
+  "security-extended",
+  "security-and-quality",
+  "code-quality",
+  "code-scanning",
+]);
+
 const ORG_SCHEMA = {
   /** An array of model pack names. */
   "model-packs": json.optional(json.array(json.string)),
@@ -77,13 +86,42 @@ export interface UserConfig {
   "default-setup"?: DefaultSetupConfig;
 }
 
-/** A subset of the `UserConfig` schema that is used by Default Setup. */
+/**
+ * A subset of the `UserConfig` schema that is used by Default Setup. None of these properties may
+ * add queries, since a per-language CodeQL bundle can be used with a `config` input that only sets
+ * them.
+ */
 const DEFAULT_SETUP_CONFIG_SCHEMA = {
   "threat-models": json.optional(json.array(json.string)),
   "default-setup": json.optional<DefaultSetupConfig>(
     json.object(DEFAULT_SETUP_SCHEMA),
   ),
 } as const satisfies json.Schema;
+
+/**
+ * Checks `config` against the properties that Default Setup sets in the `config` input. The result
+ * lists any other properties in `unknownKeys`, and any properties with invalid values in
+ * `invalidKeys`.
+ */
+function checkDefaultSetupConfig(
+  config: json.UnvalidatedObject<any>,
+): json.CheckSchemaResult {
+  return json.checkSchema(DEFAULT_SETUP_CONFIG_SCHEMA, config);
+}
+
+/**
+ * Returns whether `config` is a mapping that only sets the properties that Default Setup sets in
+ * the `config` input, to valid values.
+ */
+export function matchesDefaultSetupConfigSchema(config: UserConfig): boolean {
+  // Unless validation is enabled, `parseUserConfig` doesn't check that the YAML is a mapping.
+  if (!json.isObject(config)) {
+    return false;
+  }
+  const result = checkDefaultSetupConfig(config as json.UnvalidatedObject<any>);
+  // `valid` doesn't account for unknown properties.
+  return result.valid && result.unknownKeys.length === 0;
+}
 
 /**
  * Merges supported properties from two configuration files. This is intended only for
@@ -107,8 +145,7 @@ export function mergeDefaultSetupAndUserConfigs(
   // Check for unexpected keys in the configuration from the `config` input
   // that was provided by Default Setup. This should only contain the keys
   // we would expect to receive from Default Setup.
-  const schemaCheckResult = json.checkSchema(
-    DEFAULT_SETUP_CONFIG_SCHEMA,
+  const schemaCheckResult = checkDefaultSetupConfig(
     fromConfigInput as json.UnvalidatedObject<any>,
   );
 
@@ -437,63 +474,59 @@ export async function calculateAugmentation(
     languages,
     packsInputCombines,
   );
-  const queriesInputCombines = shouldCombine(rawQueriesInput);
-  const queriesInput = parseQueriesFromInput(
-    rawQueriesInput,
-    queriesInputCombines,
+  const queries = parseQueriesFromInput(rawQueriesInput);
+  const repoPropertyQueries = parseQueriesFromInput(
+    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
+    RepositoryPropertyName.EXTRA_QUERIES,
   );
-
-  const repoExtraQueries =
-    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES];
-  const repoExtraQueriesCombines = shouldCombine(repoExtraQueries);
-  const repoPropertyQueries = {
-    combines: repoExtraQueriesCombines,
-    input: parseQueriesFromInput(
-      repoExtraQueries,
-      repoExtraQueriesCombines,
-      new ConfigurationError(
-        errorMessages.getRepoPropertyError(
-          RepositoryPropertyName.EXTRA_QUERIES,
-          errorMessages.getEmptyCombinesError(),
-        ),
-      ),
-    ),
-  };
 
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
-    queriesInput,
-    queriesInputCombines,
+    queriesInput: queries.input,
+    queriesInputCombines: queries.combines,
     repoPropertyQueries,
   };
 }
 
-function parseQueriesFromInput(
-  rawQueriesInput: string | undefined,
-  queriesInputCombines: boolean,
-  errorToThrow?: ConfigurationError,
-) {
-  if (!rawQueriesInput) {
-    return undefined;
+/**
+ * Parses a comma-separated list of queries, which may start with '+'. `combines` is whether it
+ * starts with '+', and `input` holds the queries, or is `undefined` if `value` is unset or empty.
+ * Entries aren't validated, so an empty entry becomes `{ uses: "" }`.
+ *
+ * @param value The list of queries.
+ * @param repositoryProperty The repository property that `value` comes from, if any. Errors name
+ *   this property, or the `queries` input if it's unset.
+ * @throws A `ConfigurationError` if `value` is a '+' with no queries after it.
+ */
+export function parseQueriesFromInput(
+  value: string | undefined,
+  repositoryProperty?: RepositoryPropertyName,
+): Augmentation<QuerySpec[]> {
+  const combines = shouldCombine(value);
+  if (!value) {
+    return { combines, input: undefined };
   }
 
-  const trimmedInput = queriesInputCombines
-    ? rawQueriesInput.trim().slice(1).trim()
-    : (rawQueriesInput?.trim() ?? "");
-  if (queriesInputCombines && trimmedInput.length === 0) {
-    if (errorToThrow) {
-      throw errorToThrow;
-    }
+  const trimmedInput = combines ? value.trim().slice(1).trim() : value.trim();
+  if (combines && trimmedInput.length === 0) {
     throw new ConfigurationError(
-      errorMessages.getConfigFilePropertyError(
-        undefined,
-        "queries",
-        "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
-      ),
+      repositoryProperty !== undefined
+        ? errorMessages.getRepoPropertyError(
+            repositoryProperty,
+            errorMessages.getEmptyCombinesError(),
+          )
+        : errorMessages.getConfigFilePropertyError(
+            undefined,
+            "queries",
+            "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
+          ),
     );
   }
-  return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
+  return {
+    combines,
+    input: trimmedInput.split(",").map((query) => ({ uses: query.trim() })),
+  };
 }
 
 /**

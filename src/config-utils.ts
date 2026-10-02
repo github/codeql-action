@@ -337,7 +337,8 @@ export interface InitConfigInputs {
   packsInput: string | undefined;
   configFile: string | undefined;
   dbLocation: string | undefined;
-  configInput: string | undefined;
+  /** The configuration from the `config` input. */
+  configInput: UserConfig | undefined;
   buildModeInput: string | undefined;
   ramInput: string | undefined;
   dependencyCachingEnabled: string | undefined;
@@ -1044,6 +1045,29 @@ export async function applyIncrementalAnalysisSettings(
 }
 
 /**
+ * Parses the `config` input, which contains a configuration in YAML.
+ *
+ * @returns The configuration, or `undefined` if the input isn't set. Unless configuration validation
+ *   is enabled, the configuration might not be a mapping.
+ * @throws A `ConfigurationError` if the input isn't valid YAML or, when configuration validation is
+ *   enabled, isn't a valid configuration.
+ */
+export async function parseConfigInput(
+  { logger, features }: ActionState<["Logger", "FeatureFlags"]>,
+  configInput: string | undefined,
+): Promise<UserConfig | undefined> {
+  if (configInput === undefined) {
+    return undefined;
+  }
+  return parseUserConfig(
+    logger,
+    "`config` input",
+    configInput,
+    await features.getValue(Feature.ValidateDbConfig),
+  );
+}
+
+/**
  * Determines where to load the `UserConfig` for the CLI from and loads it.
  *
  * @param inputs The Action inputs. The `configFile` value will be mutated
@@ -1057,17 +1081,13 @@ export async function determineUserConfig(
   tempDir: string,
   inputs: InitConfigInputs,
 ): Promise<UserConfig> {
-  const validateConfig = await action.features.getValue(
-    Feature.ValidateDbConfig,
-  );
-
   // We have the following cases:
   // 1. A `config` or `config-file` input is provided, but not both: use the provided one.
   // 2. Both are provided and we are in an advanced workflow: ignore the `config-file` input.
   // 3. Both are provided and we are in Default Setup: the `config` input uses a limited
   //    set of options, which are supported by `mergeDefaultSetupAndUserConfigs`,
   //    and we merge the two configs.
-  if (inputs.configInput) {
+  if (inputs.configInput !== undefined) {
     const computedConfigPath = userConfigFromActionPath(tempDir);
 
     // Get a function which enables us to determine whether the FF that allows us to
@@ -1084,12 +1104,6 @@ export async function determineUserConfig(
     ) {
       // If the FF is enabled and we are in Default Setup, combine the supported
       // configuration file properties and write the result to disk.
-      const fromConfigInput = parseUserConfig(
-        action.logger,
-        "`config` input",
-        inputs.configInput,
-        validateConfig,
-      );
       const fromConfigFile = await loadUserConfig(
         action,
         inputs.configFile,
@@ -1102,7 +1116,7 @@ export async function determineUserConfig(
       // the CLI or other CodeQL Action steps.
       const mergedConfig = mergeDefaultSetupAndUserConfigs(
         action.logger,
-        fromConfigInput,
+        inputs.configInput,
         fromConfigFile,
       );
       fs.writeFileSync(computedConfigPath, yaml.dump(mergedConfig));
@@ -1122,12 +1136,13 @@ export async function determineUserConfig(
         );
       }
 
-      // Write the `config` input straight to disk.
-      fs.writeFileSync(computedConfigPath, inputs.configInput);
+      // Write the `config` input to disk.
+      fs.writeFileSync(computedConfigPath, yaml.dump(inputs.configInput));
       inputs.configFile = computedConfigPath;
       action.logger.debug(
         `Using config from action input: ${inputs.configFile}`,
       );
+      return inputs.configInput;
     }
   }
 

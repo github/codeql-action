@@ -19,6 +19,10 @@ export interface BaseState {
   name: ActionName;
   /** When the Action was started. */
   startedAt: Date;
+  /** The platform the Action is running on. */
+  platform: NodeJS.Platform;
+  /** The architecture of the host. */
+  arch: NodeJS.Architecture;
 }
 
 /** Describes different state features that an Action may have. */
@@ -98,6 +102,8 @@ export async function runInActions(action: Action) {
     const actionState = {
       name: action.name,
       startedAt,
+      platform: process.platform,
+      arch: process.arch,
       logger,
       env,
       actions: actionsEnv,

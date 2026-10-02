@@ -70,11 +70,11 @@ jobs:
           if [ "$MERGE_RESULT" -ne 0 ]; then
             echo "merge-in-progress=true" >> $GITHUB_OUTPUT
 
-            # Check for merge conflicts outside of `lib`. Disable git diff's trailing whitespace check
-            # since `node_modules/@types/semver/README.md` fails it.
-            if git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/'; then
+            # Check for merge conflicts outside of `lib`.
+            CONFLICTS_OUTSIDE_LIB=$(git diff --name-only --diff-filter=U | grep --invert-match '^lib/' || true)
+            if [ -n "$CONFLICTS_OUTSIDE_LIB" ]; then
               echo "Merge conflicts were detected outside of the lib directory. Please resolve them manually."
-              git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/' || true
+              echo "$CONFLICTS_OUTSIDE_LIB"
               exit 1
             fi
 

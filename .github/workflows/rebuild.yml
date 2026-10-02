@@ -54,20 +54,12 @@ jobs:
         run: |
           git fetch origin "$BASE_BRANCH"
 
-          # Allow merge conflicts in `lib`, since rebuilding should resolve them.
-          git merge "origin/$BASE_BRANCH"
-          MERGE_RESULT=$?
-
-          if [ "$MERGE_RESULT" -eq 0 ]; then
+          # Allow merge conflicts in `lib`, since rebuilding should resolve them. Conflicts leave the
+          # merge in progress, so check for `MERGE_HEAD` to tell them apart from failures that don't.
+          if git merge "origin/$BASE_BRANCH"; then
             echo "Merge succeeded cleanly."
-          elif [ "$MERGE_RESULT" -eq 1 ]; then
-            echo "Merge conflicts detected (exit code $MERGE_RESULT), continuing."
-          else
-            echo "git merge failed with unexpected exit code $MERGE_RESULT."
-            exit 1
-          fi
-
-          if [ "$MERGE_RESULT" -ne 0 ]; then
+          elif git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
+            echo "Merge conflicts detected, continuing."
             echo "merge-in-progress=true" >> $GITHUB_OUTPUT
 
             # Check for merge conflicts outside of `lib`.
@@ -80,6 +72,9 @@ jobs:
 
             echo "No merge conflicts found outside the lib directory. We should be able to resolve all of" \
               "these by rebuilding the Action."
+          else
+            echo "git merge failed for a reason other than merge conflicts."
+            exit 1
           fi
 
       - name: Compile TypeScript

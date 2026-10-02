@@ -468,9 +468,10 @@ export async function calculateAugmentation(
     languages,
     packsInputCombines,
   );
-  const queries = parseQueriesInput(rawQueriesInput);
-  const repoPropertyQueries = parseExtraQueriesProperty(
+  const queries = parseQueriesFromInput(rawQueriesInput);
+  const repoPropertyQueries = parseQueriesFromInput(
     repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
+    RepositoryPropertyName.EXTRA_QUERIES,
   );
 
   return {
@@ -483,73 +484,43 @@ export async function calculateAugmentation(
 }
 
 /**
- * Parses the `queries` input, a comma-separated list of queries that's combined with the queries
- * from the configuration if it starts with '+'. The `input` of the result is `undefined` if the
- * value is unset or empty. Entries aren't validated, so an empty entry becomes `{ uses: "" }`.
+ * Parses a comma-separated list of queries, which may start with '+'. `combines` is whether it
+ * starts with '+', and `input` holds the queries, or is `undefined` if `value` is unset or empty.
+ * Entries aren't validated, so an empty entry becomes `{ uses: "" }`.
  *
- * @throws A `ConfigurationError` if the input is a '+' with no queries after it.
+ * @param value The list of queries.
+ * @param repositoryProperty The repository property that `value` comes from, if any. Errors name
+ *   this property, or the `queries` input if it's unset.
+ * @throws A `ConfigurationError` if `value` is a '+' with no queries after it.
  */
-export function parseQueriesInput(
-  rawQueriesInput: string | undefined,
-): Augmentation<QuerySpec[]> {
-  const combines = shouldCombine(rawQueriesInput);
-  return {
-    combines,
-    input: parseQueriesFromInput(rawQueriesInput, combines),
-  };
-}
-
-/**
- * Parses the `github-codeql-extra-queries` repository property, which has the same format as the
- * `queries` input. The `input` of the result is `undefined` if the value is unset or empty. Entries
- * aren't validated, so an empty entry becomes `{ uses: "" }`.
- *
- * @throws A `ConfigurationError` if the value is a '+' with no queries after it.
- */
-export function parseExtraQueriesProperty(
+export function parseQueriesFromInput(
   value: string | undefined,
+  repositoryProperty?: RepositoryPropertyName,
 ): Augmentation<QuerySpec[]> {
   const combines = shouldCombine(value);
-  return {
-    combines,
-    input: parseQueriesFromInput(
-      value,
-      combines,
-      new ConfigurationError(
-        errorMessages.getRepoPropertyError(
-          RepositoryPropertyName.EXTRA_QUERIES,
-          errorMessages.getEmptyCombinesError(),
-        ),
-      ),
-    ),
-  };
-}
-
-function parseQueriesFromInput(
-  rawQueriesInput: string | undefined,
-  queriesInputCombines: boolean,
-  errorToThrow?: ConfigurationError,
-) {
-  if (!rawQueriesInput) {
-    return undefined;
+  if (!value) {
+    return { combines, input: undefined };
   }
 
-  const trimmedInput = queriesInputCombines
-    ? rawQueriesInput.trim().slice(1).trim()
-    : (rawQueriesInput?.trim() ?? "");
-  if (queriesInputCombines && trimmedInput.length === 0) {
-    if (errorToThrow) {
-      throw errorToThrow;
-    }
+  const trimmedInput = combines ? value.trim().slice(1).trim() : value.trim();
+  if (combines && trimmedInput.length === 0) {
     throw new ConfigurationError(
-      errorMessages.getConfigFilePropertyError(
-        undefined,
-        "queries",
-        "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
-      ),
+      repositoryProperty !== undefined
+        ? errorMessages.getRepoPropertyError(
+            repositoryProperty,
+            errorMessages.getEmptyCombinesError(),
+          )
+        : errorMessages.getConfigFilePropertyError(
+            undefined,
+            "queries",
+            "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
+          ),
     );
   }
-  return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
+  return {
+    combines,
+    input: trimmedInput.split(",").map((query) => ({ uses: query.trim() })),
+  };
 }
 
 /**

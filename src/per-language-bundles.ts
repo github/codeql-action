@@ -5,8 +5,7 @@ import { isGitHubHostedRunner } from "./actions-util";
 import {
   defaultSuites,
   matchesDefaultSetupConfigSchema,
-  parseExtraQueriesProperty,
-  parseQueriesInput,
+  parseQueriesFromInput,
   QuerySpec,
 } from "./config/db-config";
 import { Feature } from "./feature-flags";
@@ -88,13 +87,16 @@ export function getOtherLanguagePacksReason(
   // loading it, and CodeQL resolves the library packs for every configured query, including those
   // for languages that aren't being analyzed.
   const query = findNonBuiltInQuery(
-    parseQueriesInput(inputs.queriesInput).input,
+    parseQueriesFromInput(inputs.queriesInput).input,
   );
   if (query !== undefined) {
     return `the query '${query}' from the 'queries' input may need library packs for other languages`;
   }
   const extraQuery = findNonBuiltInQuery(
-    parseExtraQueriesProperty(inputs.extraQueriesProperty).input,
+    parseQueriesFromInput(
+      inputs.extraQueriesProperty,
+      RepositoryPropertyName.EXTRA_QUERIES,
+    ).input,
   );
   if (extraQuery !== undefined) {
     return (

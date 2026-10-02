@@ -221,6 +221,12 @@ const languageSetups: LanguageSetups = {
           cache: "npm",
         },
       },
+      // Install a new enough version of `npm` to understand `min-release-age`
+      // that is still compatible with Node 20.
+      {
+        name: "Install newer npm",
+        run: "npm install -g npm@11.19.1",
+      },
       {
         name: "Install dependencies",
         run: "npm ci",

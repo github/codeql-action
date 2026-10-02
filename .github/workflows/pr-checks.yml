@@ -47,6 +47,12 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
 
+      # Install a new enough version of `npm` to understand `min-release-age`
+      # that is still compatible with Node 20.
+      - name: Install newer npm
+        if: matrix.node-version == 20
+        run: npm install -g npm@11.19.1
+
       - name: Install dependencies
         run: |
           # Use the system Bash shell to ensure we can run commands like `npm ci`

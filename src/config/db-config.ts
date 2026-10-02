@@ -106,24 +106,16 @@ function checkDefaultSetupConfig(
 }
 
 /**
- * Returns whether `contents` is a YAML mapping that only sets the properties that Default Setup
- * uses, which are threat models and model packs, to valid values. Returns `false` otherwise,
- * including if `contents` isn't valid YAML.
+ * Returns whether `config` is a mapping that only sets the properties that Default Setup sets in
+ * the `config` input, to valid values.
  */
-export function matchesDefaultSetupConfigSchema(contents: string): boolean {
-  let config: unknown;
-  try {
-    config = yaml.load(contents);
-  } catch (error) {
-    if (error instanceof yaml.YAMLException) {
-      return false;
-    }
-    throw error;
-  }
+export function matchesDefaultSetupConfigSchema(config: UserConfig): boolean {
+  // Unless validation is enabled, `parseUserConfig` doesn't check that the YAML is a mapping.
   if (!json.isObject(config)) {
     return false;
   }
-  const result = checkDefaultSetupConfig(config);
+  const result = checkDefaultSetupConfig(config as json.UnvalidatedObject<any>);
+  // `valid` doesn't account for unknown properties.
   return result.valid && result.unknownKeys.length === 0;
 }
 

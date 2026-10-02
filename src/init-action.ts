@@ -306,7 +306,10 @@ async function run(
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
-    const configInput = getOptionalInput("config");
+    const configInput = await configUtils.parseConfigInput(
+      actionStateWithFeatures,
+      getOptionalInput("config"),
+    );
     const queriesInput = getOptionalInput("queries");
     const otherLanguagePacksReason = getOtherLanguagePacksReason({
       configFile,

@@ -10,8 +10,7 @@ on:
         required: true
   # Only for dry-runs of changes to the workflow.
   push:
-    # Don't run dry-run on release branches, to avoid an issue where the
-    # "new" tag determined by the "Prepare release" job already exists.
+    # Don't run dry-run on release branches, since that's unnecessary.
     branches-ignore:
       - releases/v*
     paths:

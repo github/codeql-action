@@ -716,7 +716,7 @@ async function run(
       );
     }
 
-    const tracerConfig = await getCombinedTracerConfig(codeql, config);
+    const tracerConfig = await getCombinedTracerConfig(logger, codeql, config);
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
         core.exportVariable(key, value);

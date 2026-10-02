@@ -626,6 +626,16 @@ test("mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Se
   ]);
 });
 
+/** Parses `contents` as a configuration without validating it. */
+function parseUnvalidatedConfig(contents: string): dbConfig.UserConfig {
+  return dbConfig.parseUserConfig(
+    getRunnerLogger(true),
+    "test",
+    contents,
+    false,
+  );
+}
+
 test("matchesDefaultSetupConfigSchema - returns true for configurations that only use Default Setup properties", (t) => {
   for (const contents of [
     [
@@ -637,7 +647,12 @@ test("matchesDefaultSetupConfigSchema - returns true for configurations that onl
     "threat-models: [ local ]",
     "{}",
   ]) {
-    t.true(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+    t.true(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
   }
 });
 
@@ -647,7 +662,12 @@ test("matchesDefaultSetupConfigSchema - returns false for configurations that us
     "paths-ignore: [ tests ]",
     "default-setup: { org: { model-packs: [], queries: [] } }",
   ]) {
-    t.false(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+    t.false(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
   }
 });
 
@@ -656,12 +676,22 @@ test("matchesDefaultSetupConfigSchema - returns false for invalid Default Setup 
     "threat-models: local",
     "default-setup: { org: { model-packs: [ 1 ] } }",
   ]) {
-    t.false(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+    t.false(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
   }
 });
 
-test("matchesDefaultSetupConfigSchema - returns false for contents that aren't a YAML object", (t) => {
-  for (const contents of ["threat-models: [", "- threat-models", "local", ""]) {
-    t.false(dbConfig.matchesDefaultSetupConfigSchema(contents), contents);
+test("matchesDefaultSetupConfigSchema - returns false for configurations that aren't mappings", (t) => {
+  for (const contents of ["- threat-models", "local", "null"]) {
+    t.false(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
   }
 });

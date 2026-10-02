@@ -227,13 +227,13 @@ test("getOtherLanguagePacksReason returns undefined for a config input that only
   t.is(
     getOtherLanguagePacksReason({
       ...NO_QUERY_CONFIG,
-      // The shape of the `config` input that default setup passes.
-      configInput: [
-        "default-setup:",
-        "  org:",
-        "    model-packs: [ github/immutable-actions-list@0.0.1 ]",
-        "threat-models: [  ]",
-      ].join("\n"),
+      // The configuration from the `config` input that default setup passes.
+      configInput: {
+        "default-setup": {
+          org: { "model-packs": ["github/immutable-actions-list@0.0.1"] },
+        },
+        "threat-models": [],
+      },
     }),
     undefined,
   );
@@ -254,7 +254,7 @@ test("getOtherLanguagePacksReason explains a config input that uses other proper
   t.is(
     getOtherLanguagePacksReason({
       ...NO_QUERY_CONFIG,
-      configInput: "queries: [ { uses: ./queries/show_ifs.ql } ]",
+      configInput: { queries: [{ uses: "./queries/show_ifs.ql" }] },
     }),
     "the 'config' input may use queries that need library packs for other languages",
   );

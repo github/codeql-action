@@ -7,6 +7,7 @@ import {
   matchesDefaultSetupConfigSchema,
   parseQueriesFromInput,
   QuerySpec,
+  UserConfig,
 } from "./config/db-config";
 import { Feature } from "./feature-flags";
 import { RepositoryPropertyName } from "./feature-flags/properties";
@@ -42,8 +43,8 @@ const PER_LANGUAGE_BUNDLE_LANGUAGES: Readonly<
 export interface QueryConfigInputs {
   /** The configuration file from the `config-file` input or repository property. */
   configFile: string | undefined;
-  /** The `config` input. */
-  configInput: string | undefined;
+  /** The configuration from the `config` input. */
+  configInput: UserConfig | undefined;
   /** The `queries` input. */
   queriesInput: string | undefined;
   /** The `github-codeql-extra-queries` repository property. */

@@ -86,7 +86,11 @@ export interface UserConfig {
   "default-setup"?: DefaultSetupConfig;
 }
 
-/** A subset of the `UserConfig` schema that is used by Default Setup. */
+/**
+ * A subset of the `UserConfig` schema that is used by Default Setup. None of these properties may
+ * add queries, since a per-language CodeQL bundle can be used with a `config` input that only sets
+ * them.
+ */
 const DEFAULT_SETUP_CONFIG_SCHEMA = {
   "threat-models": json.optional(json.array(json.string)),
   "default-setup": json.optional<DefaultSetupConfig>(

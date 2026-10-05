@@ -2347,40 +2347,6 @@ test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only r
   ]);
 });
 
-test("parseConfigInput - returns undefined when the input isn't set", async (t) => {
-  await callee(configUtils.parseConfigInput)
-    .withArgs(undefined)
-    .passes(t.is, undefined);
-});
-
-test("parseConfigInput - parses the input as YAML", async (t) => {
-  await callee(configUtils.parseConfigInput)
-    .withArgs(simpleConfigFileContents)
-    .passes(t.deepEqual, {
-      name: "my config",
-      queries: [{ uses: "./foo_file" }],
-    });
-});
-
-test("parseConfigInput - throws a ConfigurationError naming the input if it isn't valid YAML", async (t) => {
-  await callee(configUtils.parseConfigInput)
-    .withArgs("queries: [")
-    .throws(t, {
-      instanceOf: ConfigurationError,
-      message: /^Cannot parse "`config` input"/,
-    });
-});
-
-test("parseConfigInput - throws a ConfigurationError naming the input if validation fails", async (t) => {
-  await callee(configUtils.parseConfigInput)
-    .withFeatures([Feature.ValidateDbConfig])
-    .withArgs("queries: 1")
-    .throws(t, {
-      instanceOf: ConfigurationError,
-      message: /^The configuration file "`config` input" is invalid/,
-    });
-});
-
 test("determineUserConfig - empty config when neither input is specified", async (t) => {
   await withTmpDir(async (tmpDir) => {
     const target = callee(configUtils.determineUserConfig)

@@ -1045,29 +1045,6 @@ export async function applyIncrementalAnalysisSettings(
 }
 
 /**
- * Parses the `config` input, which contains a configuration in YAML.
- *
- * @returns The configuration, or `undefined` if the input isn't set. Unless configuration validation
- *   is enabled, the configuration might not be a mapping.
- * @throws A `ConfigurationError` if the input isn't valid YAML or, when configuration validation is
- *   enabled, isn't a valid configuration.
- */
-export async function parseConfigInput(
-  { logger, features }: ActionState<["Logger", "FeatureFlags"]>,
-  configInput: string | undefined,
-): Promise<UserConfig | undefined> {
-  if (configInput === undefined) {
-    return undefined;
-  }
-  return parseUserConfig(
-    logger,
-    "`config` input",
-    configInput,
-    await features.getValue(Feature.ValidateDbConfig),
-  );
-}
-
-/**
  * Determines where to load the `UserConfig` for the CLI from and loads it.
  *
  * @param inputs The Action inputs. The `configFile` value will be mutated

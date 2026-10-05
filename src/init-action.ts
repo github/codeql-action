@@ -23,6 +23,7 @@ import {
   shouldRestoreCache,
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
+import { parseUserConfig } from "./config/db-config";
 import { getConfigFileInput } from "./config/file";
 import { ComputedInput, getToolsInput } from "./config/inputs";
 import * as configUtils from "./config-utils";
@@ -306,10 +307,16 @@ async function run(
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
-    const configInput = await configUtils.parseConfigInput(
-      actionStateWithFeatures,
-      getOptionalInput("config"),
-    );
+    const rawConfigInput = getOptionalInput("config");
+    const configInput =
+      rawConfigInput === undefined
+        ? undefined
+        : parseUserConfig(
+            logger,
+            "`config` input",
+            rawConfigInput,
+            await features.getValue(Feature.ValidateDbConfig),
+          );
     const queriesInput = getOptionalInput("queries");
     const otherLanguagePacksReason = getOtherLanguagePacksReason({
       configFile,

@@ -602,7 +602,14 @@ test.serial(
         }),
       );
 
-      t.deepEqual(config.originalUserInput, configInput);
+      t.deepEqual(config.originalUserInput, {
+        name: "my config",
+        queries: [{ uses: "./foo" }],
+        packs: {
+          javascript: ["a/b@1.2.3"],
+          python: ["c/d@1.2.3"],
+        },
+      });
     });
   },
 );

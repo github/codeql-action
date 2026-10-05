@@ -490,13 +490,14 @@ export async function calculateAugmentation(
 }
 
 /**
- * Parses a comma-separated list of queries, which may start with '+'. `combines` is whether it
- * starts with '+', and `input` holds the queries, or is `undefined` if `value` is unset or empty.
- * Entries aren't validated, so an empty entry becomes `{ uses: "" }`.
+ * Parses a comma-separated list of queries, which may have a '+' prefix. Entries aren't validated,
+ * so an empty entry becomes `{ uses: "" }`.
  *
  * @param value The list of queries.
- * @param repositoryProperty The repository property that `value` comes from, if any. Errors name
- *   this property, or the `queries` input if it's unset.
+ * @param repositoryProperty The repository property that `value` comes from, if any. Error messages
+ *   refer to this property, or to the `queries` input if no property is given.
+ * @returns An `Augmentation` containing the parsed queries and whether `value` has a '+' prefix.
+ *   The queries are `undefined` if `value` is unset or empty.
  * @throws A `ConfigurationError` if `value` is a '+' with no queries after it.
  */
 export function parseQueriesFromInput(

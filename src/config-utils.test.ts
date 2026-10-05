@@ -473,8 +473,11 @@ const simpleConfigFileContents = `
   queries:
     - uses: ./foo_file`;
 
-/** The configuration in `simpleConfigFileContents`, as parsed from the `config` input. */
-const simpleConfigInput = yaml.load(simpleConfigFileContents) as UserConfig;
+/** The configuration in `simpleConfigFileContents`. */
+const simpleConfigInput: UserConfig = {
+  name: "my config",
+  queries: [{ uses: "./foo_file" }],
+};
 
 /** A less minimal configuration file. */
 const otherConfigFileContents = `
@@ -561,16 +564,14 @@ test.serial(
         tempDir,
       );
 
-      const configInput = `
-      name: my config
-      queries:
-        - uses: ./foo
-      packs:
-        javascript:
-          - a/b@1.2.3
-        python:
-          - c/d@1.2.3
-    `;
+      const configInput: UserConfig = {
+        name: "my config",
+        queries: [{ uses: "./foo" }],
+        packs: {
+          javascript: ["a/b@1.2.3"],
+          python: ["c/d@1.2.3"],
+        },
+      };
 
       fs.mkdirSync(path.join(tempDir, "foo"));
 
@@ -594,14 +595,14 @@ test.serial(
         createTestInitConfigInputs({
           languagesInput,
           configFile: configFilePath,
-          configInput: yaml.load(configInput) as UserConfig,
+          configInput,
           tempDir,
           codeql,
           workspacePath: tempDir,
         }),
       );
 
-      t.deepEqual(config.originalUserInput, yaml.load(configInput));
+      t.deepEqual(config.originalUserInput, configInput);
     });
   },
 );
@@ -2520,12 +2521,15 @@ test("determineUserConfig - ignores config file input when both specified", asyn
   });
 });
 
-/** The configuration from a `config` input that we might get from Default Setup. */
-const defaultSetupConfigInput = yaml.load(`
-  threat-models: [local, remote]
-  default-setup:
-    org:
-      model-packs: [foo, bar]`) as UserConfig;
+/** A `config` input that we might get from Default Setup. */
+const defaultSetupConfigInput: UserConfig = {
+  "threat-models": ["local", "remote"],
+  "default-setup": {
+    org: {
+      "model-packs": ["foo", "bar"],
+    },
+  },
+};
 
 test("determineUserConfig - merges configs if FF is enabled in Default Setup", async (t) => {
   await withTmpDir(async (tmpDir) => {

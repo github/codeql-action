@@ -630,15 +630,6 @@ async function run(
       core.exportVariable("CODEQL_GIT_BACKEND", "jgit");
     }
 
-    const kotlinLimitVar =
-      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
-    if (
-      (await codeQlVersionAtLeast(codeql, "2.20.3")) &&
-      !(await codeQlVersionAtLeast(codeql, "2.20.4"))
-    ) {
-      core.exportVariable(kotlinLimitVar, "2.1.20");
-    }
-
     // Restore dependency cache(s), if they exist.
     if (shouldRestoreCache(config.dependencyCachingEnabled)) {
       const dependencyCachingResult = await downloadDependencyCaches(

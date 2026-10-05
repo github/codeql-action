@@ -602,6 +602,8 @@ test.serial(
         }),
       );
 
+      // Compare with a separate object rather than `configInput` itself, so that the test catches
+      // changes made to the input in place.
       t.deepEqual(config.originalUserInput, {
         name: "my config",
         queries: [{ uses: "./foo" }],

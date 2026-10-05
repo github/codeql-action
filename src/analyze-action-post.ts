@@ -9,7 +9,6 @@ import * as core from "@actions/core";
 
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
-import { getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import {
@@ -38,12 +37,9 @@ export async function runWrapper() {
         logger,
       );
       if (config !== undefined) {
-        const codeql = await getCodeQL(logger, config.codeQLCmd);
-        const version = await codeql.getVersion();
         await debugArtifacts.uploadCombinedSarifArtifacts(
           logger,
           config.gitHubVersion.type,
-          version.version,
         );
       }
     }

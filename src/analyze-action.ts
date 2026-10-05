@@ -267,17 +267,6 @@ async function run({
       );
     }
 
-    // Unset the CODEQL_PROXY_* environment variables when using older CodeQL
-    // CLIs, as they are not needed and can cause issues.
-    if (
-      process.env.CODEQL_PROXY_HOST === "" &&
-      !(await util.codeQlVersionAtLeast(codeql, "2.20.7"))
-    ) {
-      delete process.env.CODEQL_PROXY_HOST;
-      delete process.env.CODEQL_PROXY_PORT;
-      delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
-    }
-
     if (actionsUtil.getOptionalInput("cleanup-level")) {
       logger.info(
         "The 'cleanup-level' input is ignored since the CodeQL Action now automatically " +

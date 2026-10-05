@@ -504,11 +504,11 @@ export function parseQueriesFromInput(
   value: string | undefined,
   repositoryProperty?: RepositoryPropertyName,
 ): Augmentation<QuerySpec[]> {
-  const combines = shouldCombine(value);
   if (!value) {
-    return { combines, input: undefined };
+    return { combines: false, input: undefined };
   }
 
+  const combines = shouldCombine(value);
   const trimmedInput = combines ? value.trim().slice(1).trim() : value.trim();
   if (combines && trimmedInput.length === 0) {
     throw new ConfigurationError(

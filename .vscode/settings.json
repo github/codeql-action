@@ -7,6 +7,10 @@
     // transpiled JavaScript
     "build": true,
     "lib": true,
+
+    // exclude "tests" by default because it causes VSCode to start language-specific extensions
+    // that are not typically needed during development (or indeed may not work correctly)
+    "tests": true
   },
   "search.exclude": {
     "**/node_modules": true,

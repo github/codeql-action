@@ -16,10 +16,6 @@ import * as json from "./json";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
 import {
-  isSafeArtifactUpload,
-  SafeArtifactUploadVersion,
-} from "./tools-features";
-import {
   bundleDb,
   doesDirectoryExist,
   getCodeQLDatabasePath,
@@ -40,7 +36,6 @@ export function sanitizeArtifactName(name: string): string {
 export async function uploadCombinedSarifArtifacts(
   logger: Logger,
   gitHubVariant: GitHubVariant,
-  codeQlVersion: string | undefined,
 ) {
   const tempDir = getTemporaryDirectory();
 
@@ -70,13 +65,12 @@ export async function uploadCombinedSarifArtifacts(
       }
 
       try {
-        await uploadDebugArtifacts(
+        await uploadArtifacts(
           logger,
           toUpload,
           baseTempDir,
           "combined-sarif-artifacts",
           gitHubVariant,
-          codeQlVersion,
         );
       } catch (e) {
         logger.warning(
@@ -172,7 +166,6 @@ export async function tryUploadAllAvailableDebugArtifacts(
   codeql: CodeQL,
   config: Config,
   logger: Logger,
-  codeQlVersion: string | undefined,
 ) {
   const filesToUpload: string[] = [];
   try {
@@ -231,13 +224,12 @@ export async function tryUploadAllAvailableDebugArtifacts(
 
   try {
     await withGroup("Uploading debug artifacts", async () =>
-      uploadDebugArtifacts(
+      uploadArtifacts(
         logger,
         filesToUpload,
         config.dbLocation,
         config.debugArtifactName,
         config.gitHubVersion.type,
-        codeQlVersion,
       ),
     );
   } catch (e) {
@@ -282,26 +274,6 @@ export type UploadArtifactsResult =
   | "no-artifacts-to-upload"
   | "upload-successful"
   | "upload-failed";
-
-export async function uploadDebugArtifacts(
-  logger: Logger,
-  toUpload: string[],
-  rootDir: string,
-  artifactName: string,
-  ghVariant: GitHubVariant,
-  codeQlVersion: string | undefined,
-): Promise<UploadArtifactsResult | "upload-not-supported"> {
-  const uploadSupported = isSafeArtifactUpload(codeQlVersion);
-
-  if (!uploadSupported) {
-    core.info(
-      `Skipping debug artifact upload because the current CLI does not support safe upload. Please upgrade to CLI v${SafeArtifactUploadVersion} or later.`,
-    );
-    return "upload-not-supported";
-  }
-
-  return uploadArtifacts(logger, toUpload, rootDir, artifactName, ghVariant);
-}
 
 /**
  * Uploads the specified files as a single workflow artifact.

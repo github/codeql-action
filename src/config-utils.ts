@@ -1136,7 +1136,7 @@ export async function determineUserConfig(
         );
       }
 
-      // Write the `config` input to disk.
+      // Write the `config` input to disk without merging it with a configuration file.
       fs.writeFileSync(computedConfigPath, yaml.dump(inputs.configInput));
       inputs.configFile = computedConfigPath;
       action.logger.debug(

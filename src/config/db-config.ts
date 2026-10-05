@@ -639,10 +639,12 @@ export function generateCodeScanningConfig(
  *
  * @param logger The logger to use.
  * @param pathInput Where `contents` came from, such as the path to a file, for use in error messages.
- * @param contents The string contents of a YAML file to try and parse as a `UserConfig`.
- * @param validateConfig Whether to validate the configuration file against the schema.
- * @returns The `UserConfig` corresponding to `contents`, if parsing was successful.
- * @throws A `ConfigurationError` if parsing failed.
+ * @param contents The YAML to try and parse as a `UserConfig`.
+ * @param validateConfig Whether to validate the configuration against the schema.
+ * @returns The `UserConfig` corresponding to `contents`, if parsing was successful. Unless
+ *   `validateConfig` is set, the result might not be a mapping.
+ * @throws A `ConfigurationError` if `contents` isn't valid YAML or, when `validateConfig` is set,
+ *   isn't a valid configuration.
  */
 export function parseUserConfig(
   logger: Logger,

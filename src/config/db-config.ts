@@ -638,7 +638,7 @@ export function generateCodeScanningConfig(
  * Attempts to parse `contents` into a `UserConfig` value.
  *
  * @param logger The logger to use.
- * @param pathInput The path to the file where `contents` was obtained from, for use in error messages.
+ * @param pathInput Where `contents` came from, such as the path to a file, for use in error messages.
  * @param contents The string contents of a YAML file to try and parse as a `UserConfig`.
  * @param validateConfig Whether to validate the configuration file against the schema.
  * @returns The `UserConfig` corresponding to `contents`, if parsing was successful.

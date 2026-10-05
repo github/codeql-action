@@ -58,8 +58,8 @@ export interface QueryConfigInputs {
  * query packs are downloaded together with their dependencies.
  *
  * Any configuration file is assumed to configure such queries, since reading it may need file or API
- * access. So is the `config` input, unless it only sets the properties that default setup sets (see
- * `matchesDefaultSetupConfigSchema`).
+ * access. So is the `config` input, unless it only sets the properties that default setup is known
+ * to set (see `matchesDefaultSetupConfigSchema`).
  *
  * @throws A `ConfigurationError` if the `queries` input or the `github-codeql-extra-queries`
  *   repository property is a '+' with no queries after it, unless an input that's checked earlier
@@ -76,7 +76,7 @@ export function getOtherLanguagePacksReason(
   }
 
   // The `config` input can configure queries in the same way as a configuration file. The
-  // properties that default setup sets, listed in `DEFAULT_SETUP_CONFIG_SCHEMA` in
+  // properties that default setup is known to set, listed in `DEFAULT_SETUP_CONFIG_SCHEMA` in
   // `config/db-config.ts`, don't add queries.
   if (
     inputs.configInput !== undefined &&

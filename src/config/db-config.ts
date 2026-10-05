@@ -87,9 +87,9 @@ export interface UserConfig {
 }
 
 /**
- * A subset of the `UserConfig` schema that is used by Default Setup. None of these properties may
- * add queries, since a per-language CodeQL bundle can be used with a `config` input that only sets
- * them.
+ * A subset of the `UserConfig` schema that is known to be used by Default Setup. None of these
+ * properties may add queries, since a per-language CodeQL bundle can be used with a `config` input
+ * that only sets them.
  */
 const DEFAULT_SETUP_CONFIG_SCHEMA = {
   "threat-models": json.optional(json.array(json.string)),
@@ -99,8 +99,9 @@ const DEFAULT_SETUP_CONFIG_SCHEMA = {
 } as const satisfies json.Schema;
 
 /**
- * Returns whether `config` is a mapping that only sets the properties that Default Setup sets in
- * the `config` input, to valid values.
+ * Returns whether `config` matches what we expect Default Setup to send in the `config` input: a
+ * mapping that only sets properties in `DEFAULT_SETUP_CONFIG_SCHEMA`, with values of the expected
+ * types.
  */
 export function matchesDefaultSetupConfigSchema(config: UserConfig): boolean {
   // Unless validation is enabled, `parseUserConfig` doesn't check that the YAML is a mapping.

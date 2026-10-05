@@ -99,17 +99,6 @@ const DEFAULT_SETUP_CONFIG_SCHEMA = {
 } as const satisfies json.Schema;
 
 /**
- * Checks `config` against the properties that Default Setup sets in the `config` input. The result
- * lists any other properties in `unknownKeys`, and any properties with invalid values in
- * `invalidKeys`.
- */
-function checkDefaultSetupConfig(
-  config: json.UnvalidatedObject<any>,
-): json.CheckSchemaResult {
-  return json.checkSchema(DEFAULT_SETUP_CONFIG_SCHEMA, config);
-}
-
-/**
  * Returns whether `config` is a mapping that only sets the properties that Default Setup sets in
  * the `config` input, to valid values.
  */
@@ -118,7 +107,10 @@ export function matchesDefaultSetupConfigSchema(config: UserConfig): boolean {
   if (!json.isObject(config)) {
     return false;
   }
-  const result = checkDefaultSetupConfig(config as json.UnvalidatedObject<any>);
+  const result = json.checkSchema(
+    DEFAULT_SETUP_CONFIG_SCHEMA,
+    config as json.UnvalidatedObject<any>,
+  );
   // `valid` doesn't account for unknown properties.
   return result.valid && result.unknownKeys.length === 0;
 }
@@ -145,7 +137,8 @@ export function mergeDefaultSetupAndUserConfigs(
   // Check for unexpected keys in the configuration from the `config` input
   // that was provided by Default Setup. This should only contain the keys
   // we would expect to receive from Default Setup.
-  const schemaCheckResult = checkDefaultSetupConfig(
+  const schemaCheckResult = json.checkSchema(
+    DEFAULT_SETUP_CONFIG_SCHEMA,
     fromConfigInput as json.UnvalidatedObject<any>,
   );
 

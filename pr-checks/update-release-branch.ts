@@ -701,7 +701,7 @@ export async function prepareNewBranch(
       { ...options, initChangelog: true },
     );
 
-    runGit(["add", "CHANGELOG.md"], {
+    runGit(["add", "CHANGELOG.md", "unreleased-change-notes"], {
       dryRun: options.dryRun,
     });
     runGit(["commit", "-m", `Update changelog for v${version}`], {

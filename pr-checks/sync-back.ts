@@ -21,10 +21,11 @@ import * as fs from "fs";
 import { parseArgs } from "node:util";
 import * as path from "path";
 
-const THIS_DIR = __dirname;
-const CHECKS_DIR = path.join(THIS_DIR, "checks");
-const WORKFLOW_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
-const SYNC_TS_PATH = path.join(THIS_DIR, "sync.ts");
+import { PR_CHECKS_DIR, REPO_ROOT } from "./config";
+
+const CHECKS_DIR = path.join(PR_CHECKS_DIR, "checks");
+const WORKFLOW_DIR = path.join(REPO_ROOT, ".github", "workflows");
+const SYNC_TS_PATH = path.join(PR_CHECKS_DIR, "sync.ts");
 
 /**
  * Scan generated workflow files to extract the latest action versions.
@@ -232,6 +233,6 @@ function main(): number {
 }
 
 // Only call `main` if this script was run directly.
-if (require.main === module) {
+if (import.meta.main) {
   process.exit(main());
 }

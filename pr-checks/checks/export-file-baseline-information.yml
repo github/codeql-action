@@ -11,6 +11,10 @@ installDotNet: true
 env:
   CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
+  # To balance speed and coverage, we analyze only a single language (JavaScript), but use the
+  # combined bundle so we can test that baseline information is reported for each language in the
+  # multi-language source directory.
+  CODEQL_ACTION_PER_LANGUAGE_BUNDLES: false
 steps:
   - uses: ./../action/init
     id: init

@@ -377,6 +377,9 @@ async function resolveDefaultCliVersion(
  * @param toolsInput The argument provided for the `tools` input, if any.
  * @param defaultCliVersion The default CLI version that's linked to the CodeQL Action.
  * @param rawLanguages Raw set of languages.
+ * @param otherLanguagePacksReason Why the CodeQL CLI may need packs for languages other than
+ *   `rawLanguages`, or `undefined` if it won't. If defined, the combined bundle is used. See
+ *   `PerLanguageBundleOptions.otherLanguagePacksReason`.
  * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param apiDetails Information about the GitHub API.
  * @param variant The GitHub variant we are running on.
@@ -390,6 +393,7 @@ export async function getCodeQLSource(
   toolsInput: string | undefined,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  otherLanguagePacksReason: string | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
   apiDetails: api.GitHubApiDetails,
   variant: util.GitHubVariant,
@@ -478,6 +482,7 @@ export async function getCodeQLSource(
     bundle = await getLatestNightlyBundle(
       { env: getEnv(), features, logger },
       rawLanguages,
+      otherLanguagePacksReason,
       variant,
     );
     toolsInput = bundle.url;
@@ -721,6 +726,7 @@ export async function getCodeQLSource(
       { env: getEnv(), features, logger },
       {
         rawLanguages,
+        otherLanguagePacksReason,
         cliVersion,
         compressionMethod,
         platform,
@@ -1001,6 +1007,7 @@ export async function setupCodeQLBundle(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  otherLanguagePacksReason: string | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
@@ -1016,6 +1023,7 @@ export async function setupCodeQLBundle(
     toolsInput,
     defaultCliVersion,
     rawLanguages,
+    otherLanguagePacksReason,
     useOverlayAwareDefaultCliVersion,
     apiDetails,
     variant,
@@ -1159,6 +1167,7 @@ function getTempExtractionDir(tempDir: string) {
 async function getLatestNightlyBundle(
   action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
   rawLanguages: string[] | undefined,
+  otherLanguagePacksReason: string | undefined,
   variant: util.GitHubVariant,
 ): Promise<CodeQLBundle> {
   const { logger } = action;
@@ -1174,6 +1183,7 @@ async function getLatestNightlyBundle(
   const platform = getBundlePlatform();
   const language = await getPerLanguageBundleLanguage(action, {
     rawLanguages,
+    otherLanguagePacksReason,
     cliVersion: undefined,
     compressionMethod,
     platform,

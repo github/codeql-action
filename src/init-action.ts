@@ -23,6 +23,7 @@ import {
   shouldRestoreCache,
 } from "./caching-utils";
 import { CodeQL } from "./codeql";
+import { parseUserConfig } from "./config/db-config";
 import { getConfigFileInput } from "./config/file";
 import { ComputedInput, getToolsInput } from "./config/inputs";
 import * as configUtils from "./config-utils";
@@ -40,7 +41,10 @@ import {
 } from "./diagnostics";
 import { ActionsEnvVars, EnvVar } from "./environment";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import { loadRepositoryProperties } from "./feature-flags/properties";
+import {
+  loadRepositoryProperties,
+  RepositoryPropertyName,
+} from "./feature-flags/properties";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -58,6 +62,7 @@ import {
   OverlayBaseDatabaseDownloadStats,
 } from "./overlay/caching";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { getOtherLanguagePacksReason } from "./per-language-bundles";
 import { getRepositoryNwo } from "./repository";
 import { ToolsSource } from "./setup-codeql";
 import {
@@ -302,6 +307,24 @@ async function run(
     const rawLanguages = configUtils.getRawLanguagesNoAutodetect(
       getOptionalInput("languages"),
     );
+    const rawConfigInput = getOptionalInput("config");
+    const configInput =
+      rawConfigInput === undefined
+        ? undefined
+        : parseUserConfig(
+            logger,
+            "`config` input",
+            rawConfigInput,
+            await features.getValue(Feature.ValidateDbConfig),
+          );
+    const queriesInput = getOptionalInput("queries");
+    const otherLanguagePacksReason = getOtherLanguagePacksReason({
+      configFile,
+      configInput,
+      queriesInput,
+      extraQueriesProperty:
+        repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
+    });
     const useOverlayAwareDefaultCliVersion =
       analysisKinds?.length === 1 &&
       analysisKinds[0] === AnalysisKind.CodeScanning;
@@ -312,6 +335,7 @@ async function run(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
+      otherLanguagePacksReason,
       useOverlayAwareDefaultCliVersion,
       features,
       logger,
@@ -362,13 +386,13 @@ async function run(
     config = await initConfig(actionStateWithFeatures, {
       analysisKinds,
       languagesInput: getOptionalInput("languages"),
-      queriesInput: getOptionalInput("queries"),
+      queriesInput,
       packsInput: getOptionalInput("packs"),
       buildModeInput: getOptionalInput("build-mode"),
       ramInput: getOptionalInput("ram"),
       configFile,
       dbLocation: getOptionalInput("db-location"),
-      configInput: getOptionalInput("config"),
+      configInput,
       dependencyCachingEnabled: getDependencyCachingEnabled(),
       // Debug mode is enabled if:
       // - The `init` Action is passed `debug: true`.

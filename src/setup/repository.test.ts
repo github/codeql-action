@@ -4,28 +4,31 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "../actions-util";
-import { getRunnerLogger } from "../logging";
-import { setupTests } from "../testing-utils";
+import { ActionsEnvVars } from "../environment";
+import { callee, setupTests } from "../testing-utils";
 import { initializeEnvironment } from "../util";
 
 import { getCodeQLActionRepository } from "./repository";
 
 setupTests(test);
 
-test.serial("getCodeQLActionRepository", (t) => {
-  const logger = getRunnerLogger(true);
-
+test.serial("getCodeQLActionRepository", async (t) => {
   initializeEnvironment("1.2.3");
 
+  const target = callee(getCodeQLActionRepository)
+    .withArgs()
+    .withEnv((env) => {
+      env.set(ActionsEnvVars.RUNNER_TEMP, path.dirname(__dirname));
+    });
+
   // isRunningLocalAction() === true
-  delete process.env["GITHUB_ACTION_REPOSITORY"];
-  process.env["RUNNER_TEMP"] = path.dirname(__dirname);
-  const repoLocalRunner = getCodeQLActionRepository(logger);
-  t.deepEqual(repoLocalRunner, "github/codeql-action");
+  await target.passes(t.deepEqual, "github/codeql-action");
 
   // isRunningLocalAction() === false
   sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
-  process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
-  const repoEnv = getCodeQLActionRepository(logger);
-  t.deepEqual(repoEnv, "xxx/yyy");
+  await target
+    .withEnv((env) => {
+      env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "xxx/yyy");
+    })
+    .passes(t.deepEqual, "xxx/yyy");
 });

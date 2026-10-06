@@ -82,7 +82,10 @@ async function getCodeQLBundleDownloadURL(
   codeQLBundleName: string,
   logger: Logger,
 ): Promise<string> {
-  const codeQLActionRepository = getCodeQLActionRepository(logger);
+  const codeQLActionRepository = getCodeQLActionRepository({
+    logger,
+    env: getEnv(),
+  });
   const potentialDownloadSources = [
     // This GitHub instance, and this Action.
     [apiDetails.url, codeQLActionRepository],

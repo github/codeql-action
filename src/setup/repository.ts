@@ -51,6 +51,14 @@ const isSameDownloadSource = (
 /** A download URL is represented as a string. */
 export type DownloadURL = string;
 
+/** Gets the default GitHub.com download URL for `assetName` in a release tagged `tagName`. */
+export function getDefaultDotComDownloadURL(
+  tagName: string,
+  assetName: string,
+): DownloadURL {
+  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${assetName}`;
+}
+
 /** Enumerates log-friendly descriptions of different kinds of assets we might look for in releases. */
 export type ReleaseAssetKind = "CodeQL bundle" | "private registry proxy";
 
@@ -128,5 +136,5 @@ export async function getCodeQLAssetDownloadURL(
     }
   }
 
-  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${assetName}`;
+  return getDefaultDotComDownloadURL(tagName, assetName);
 }

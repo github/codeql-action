@@ -112,7 +112,7 @@ export async function determineAutobuildLanguages(
   return languages;
 }
 
-export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
+export async function setupCppAutobuild(logger: Logger) {
   const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
   const gitHubVersion = await getGitHubVersion();
@@ -123,7 +123,7 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
     getTemporaryDirectory(),
     logger,
   );
-  if (await features.getValue(Feature.CppDependencyInstallation, codeql)) {
+  if (await features.getValue(Feature.CppDependencyInstallation)) {
     // disable autoinstall on self-hosted runners unless explicitly requested
     if (
       process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] === "self-hosted" &&
@@ -157,7 +157,7 @@ export async function runAutobuild(
   logger.startGroup(`Attempting to automatically build ${language} code`);
   const codeQL = await getCodeQL(logger, config.codeQLCmd);
   if (language === BuiltInLanguage.cpp) {
-    await setupCppAutobuild(codeQL, logger);
+    await setupCppAutobuild(logger);
   }
   if (config.buildMode) {
     await codeQL.extractUsingBuildMode(config, language);

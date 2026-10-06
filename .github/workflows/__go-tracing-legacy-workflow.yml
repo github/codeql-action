@@ -55,6 +55,8 @@ jobs:
           - os: ubuntu-latest
             version: stable-v2.24.3
           - os: ubuntu-latest
+            version: stable-v2.25.6
+          - os: ubuntu-latest
             version: default
           - os: ubuntu-latest
             version: linked

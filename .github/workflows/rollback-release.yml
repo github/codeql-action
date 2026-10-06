@@ -10,8 +10,7 @@ on:
         required: true
   # Only for dry-runs of changes to the workflow.
   push:
-    # Don't run dry-run on release branches, to avoid an issue where the
-    # "new" tag determined by the "Prepare release" job already exists.
+    # Don't run dry-run on release branches, since that's unnecessary.
     branches-ignore:
       - releases/v*
     paths:
@@ -24,7 +23,7 @@ defaults:
 
 jobs:
   prepare:
-    name: "Prepare release"
+    name: "Prepare"
     if: github.repository == 'github/codeql-action'
 
     permissions:
@@ -107,8 +106,10 @@ jobs:
           # We usually expect to checkout `inputs.rollback-tag` (required for `workflow_dispatch`),
           # but use `v0.0.0` for testing.
           ROLLBACK_TAG: ${{ inputs.rollback-tag || 'v0.0.0' }}
-          RELEASE_TAG: ${{ needs.prepare.outputs.version }}
-          MAJOR_VERSION_TAG: ${{ needs.prepare.outputs.major_version }}
+          # Use `needs.prepare.outputs.version` for actual runs and `v0.0.1` for testing.
+          RELEASE_TAG: ${{ case(github.event_name == 'workflow_dispatch', needs.prepare.outputs.version, 'v0.0.1') }}
+          # Use `needs.prepare.outputs.major_version` for actual runs and `v0` for testing.
+          MAJOR_VERSION_TAG: ${{ case(github.event_name == 'workflow_dispatch', needs.prepare.outputs.major_version, 'v0') }}
         run: |
           git checkout "refs/tags/${ROLLBACK_TAG}"
           git tag --annotate "${RELEASE_TAG}" --message "${RELEASE_TAG}"
@@ -184,4 +185,3 @@ jobs:
           # Setting this to `true` for non-workflow_dispatch events will
           # still push the `branch`, but won't create a corresponding PR
           dry-run: "${{ github.event_name != 'workflow_dispatch' }}"
-

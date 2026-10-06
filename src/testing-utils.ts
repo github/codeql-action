@@ -163,6 +163,34 @@ export function setupTests(testFn: TestFn<any>) {
   });
 }
 
+export interface AvaSinonAssertions {
+  /**
+   * Asserts that `stub` must have been called once with at least the `expected` arguments.
+   */
+  onceWith: <TArgs extends readonly any[]>(
+    stub: sinon.SinonStub<TArgs>,
+    ...expected: sinon.MatchPartialArguments<TArgs>
+  ) => boolean;
+}
+
+/** Adds additional assertions for use with `sinon` to `t`. */
+export function addSinonAssertions(
+  t: ExecutionContext<unknown>,
+): ExecutionContext<unknown> & AvaSinonAssertions {
+  return {
+    ...t,
+    onceWith: (stub, ...expected) => {
+      if (stub.callCount > 0) {
+        // Reduce the arguments of the first call to the same number that was provided,
+        // so that extra arguments don't lead to a failure.
+        return t.deepEqual(stub.args[0].slice(0, expected.length), expected);
+      } else {
+        return t.fail("The stub wasn't called.");
+      }
+    },
+  };
+}
+
 /**
  * Declare a reusable test implementation, with better type safety than `test.macro`.
  */

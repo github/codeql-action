@@ -51,6 +51,9 @@ const isSameDownloadSource = (
 /** A download URL is represented as a string. */
 export type DownloadURL = string;
 
+/** Enumerates log-friendly descriptions of different kinds of assets we might look for in releases. */
+export type ReleaseAssetKind = "CodeQL bundle" | "private registry proxy";
+
 /**
  * Tries to find a download URL for `assetName` in a release tagged with `tagName`.
  *
@@ -73,7 +76,7 @@ export async function getCodeQLAssetDownloadURL(
   apiDetails: api.GitHubApiDetails,
   tagName: string,
   assetName: string,
-  assetKind: "CodeQL bundle" = "CodeQL bundle",
+  assetKind: ReleaseAssetKind = "CodeQL bundle",
 ): Promise<DownloadURL> {
   const codeQLActionRepository = getCodeQLActionRepository(action);
 

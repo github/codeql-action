@@ -240,7 +240,7 @@ export const featureConfig = {
     defaultValue: false,
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     legacyApi: true,
-    minimumVersion: "2.15.0",
+    minimumVersion: undefined,
   },
   [Feature.CsharpCacheBuildModeNone]: {
     defaultValue: false,

@@ -58,7 +58,7 @@ function getChangenotes(): ChangenoteFile[] {
  */
 export function transferChangenotesToChangelog(contents: string): string {
   const changenotes = getChangenotes();
-  const changenoteBodies = changenotes.map((c) => c.content);
+  const changenoteBodies = changenotes.map((c) => c.content.trim());
   const changenotePaths = changenotes.map((c) => c.absolutePath);
 
   const changelog = parseChangelog(contents);

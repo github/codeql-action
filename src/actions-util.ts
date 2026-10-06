@@ -103,7 +103,7 @@ export function getWorkflowEventName(env: Env = getEnv()) {
  * Returns whether the current workflow is executing a local copy of the Action, e.g. we're running
  * a workflow on the codeql-action repo itself.
  */
-export function isRunningLocalAction(env: Env = getEnv()): boolean {
+export function isRunningLocalAction(env: ReadOnlyEnv = getEnv()): boolean {
   const relativeScriptPath = getRelativeScriptPath(env);
   return (
     relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)
@@ -115,7 +115,7 @@ export function isRunningLocalAction(env: Env = getEnv()): boolean {
  *
  * This can be used to get the Action's name or tell if we're running a local Action.
  */
-function getRelativeScriptPath(env: Env): string {
+function getRelativeScriptPath(env: ReadOnlyEnv): string {
   const runnerTemp = env.getRequired(ActionsEnvVars.RUNNER_TEMP);
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);

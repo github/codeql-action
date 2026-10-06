@@ -7,6 +7,8 @@ import * as yaml from "yaml";
 
 import { BuiltInLanguage } from "../src/languages";
 
+import { PR_CHECKS_DIR, REPO_ROOT } from "./config";
+
 /**
  * Returns a `uses` value for `action` pinned to a commit SHA, with the
  * human-readable version recorded in a trailing comment.
@@ -312,9 +314,8 @@ const languageSetups: LanguageSetups = {
 // See https://github.com/github/codeql-action/pull/3423
 const YQ_VERSION = "v4.50.1";
 
-const THIS_DIR = __dirname;
-const CHECKS_DIR = path.join(THIS_DIR, "checks");
-const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
+const CHECKS_DIR = path.join(PR_CHECKS_DIR, "checks");
+const OUTPUT_DIR = path.join(REPO_ROOT, ".github", "workflows");
 
 /**
  * Loads and parses a YAML file.

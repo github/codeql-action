@@ -1,7 +1,7 @@
 name: "Rust analysis"
 description: "Tests creation of a Rust database"
 versions:
-  # oldest supported version; experimental rust support, requires action to set `CODEQL_ENABLE_EXPERIMENTAL_FEATURES`
+  # oldest CodeQL version supported by the Action, where Rust support is experimental and requires the Action to set `CODEQL_ENABLE_EXPERIMENTAL_FEATURES`
   - stable-v2.20.7
   # first public preview version
   - stable-v2.22.1

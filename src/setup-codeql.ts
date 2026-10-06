@@ -14,7 +14,6 @@ import {
   isAnalyzingPullRequest,
   isDynamicWorkflow,
   isGitHubHostedRunner,
-  isRunningLocalAction,
 } from "./actions-util";
 import * as api from "./api-client";
 import {
@@ -45,6 +44,10 @@ import {
   logPerLanguageBundleFallback,
 } from "./per-language-bundles";
 import { getBundlePlatform } from "./platform";
+import {
+  CODEQL_DEFAULT_ACTION_REPOSITORY,
+  getCodeQLActionRepository,
+} from "./setup/repository";
 import * as tar from "./tar";
 import {
   deleteToolcacheBundles,
@@ -66,27 +69,12 @@ export enum ToolsSource {
   Download = "DOWNLOAD",
 }
 
-const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 const CODEQL_NIGHTLIES_REPOSITORY_OWNER = "dsp-testing";
 const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
 const CODEQL_TOOLCACHE_INPUT = "toolcache";
-
-export function getCodeQLActionRepository(logger: Logger): string {
-  if (isRunningLocalAction()) {
-    // This handles the case where the Action does not come from an Action repository,
-    // e.g. our integration tests which use the Action code from the current checkout.
-    // In these cases, the GITHUB_ACTION_REPOSITORY environment variable is not set.
-    logger.info(
-      "The CodeQL Action is checked out locally. Using the default CodeQL Action repository.",
-    );
-    return CODEQL_DEFAULT_ACTION_REPOSITORY;
-  }
-
-  return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
-}
 
 async function getCodeQLBundleDownloadURL(
   tagName: string,

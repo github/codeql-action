@@ -14,7 +14,7 @@ import {
   renderChangelog,
   withChangelog,
 } from "./changelog";
-import { isValidChangenoteFile } from "./changelog/validate.mjs";
+import { isValidChangenoteFile } from "./changelog/validate";
 import { CHANGENOTES_DIR } from "./config";
 
 /**

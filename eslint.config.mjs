@@ -158,7 +158,7 @@ export default [
     },
   },
   {
-    files: ["**/*.ts", "**/*.js", "**/*.mts"],
+    files: ["**/*.ts", "**/*.js"],
 
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
@@ -180,7 +180,7 @@ export default [
     },
   },
   {
-    files: ["pr-checks/**/*.ts", "pr-checks/**/*.mts"],
+    files: ["pr-checks/**/*.ts"],
 
     languageOptions: {
       parserOptions: {

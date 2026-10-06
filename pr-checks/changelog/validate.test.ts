@@ -9,7 +9,7 @@ import {
   isValidChangenoteFile,
   isValidChangenoteFilename,
   VALID_CHANGE_NOTE_CATEGORIES,
-} from "./validate.mjs";
+} from "./validate";
 
 await describe("isValidChangenoteContent", async () => {
   await it("recognizes an unordered Markdown list", () => {

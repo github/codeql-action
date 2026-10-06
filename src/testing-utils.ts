@@ -179,13 +179,25 @@ export function addSinonAssertions(
 ): ExecutionContext<unknown> & AvaSinonAssertions {
   return {
     ...t,
-    onceWith: (stub, ...expected) => {
-      if (stub.callCount > 0) {
-        // Reduce the arguments of the first call to the same number that was provided,
-        // so that extra arguments don't lead to a failure.
-        return t.deepEqual(stub.args[0].slice(0, expected.length), expected);
+    onceWith: <TArgs extends readonly any[]>(
+      stub: sinon.SinonStub<TArgs>,
+      ...expected: sinon.MatchPartialArguments<TArgs>
+    ) => {
+      // Fail if the stub hasn't been called at all so that we can safely compare
+      // the arguments of the first call in the else branch.
+      if (stub.callCount === 0) {
+        t.fail("The stub wasn't called.");
       } else {
-        return t.fail("The stub wasn't called.");
+        // Reduce the arguments of each to the same number that was provided,
+        // so that extra arguments don't lead to a failure.
+        const actual = stub.args.map<sinon.MatchPartialArguments<TArgs>>(
+          (args: TArgs) =>
+            args.slice(
+              0,
+              expected.length,
+            ) as sinon.MatchPartialArguments<TArgs>,
+        );
+        return t.deepEqual(actual, [expected]);
       }
     },
   };

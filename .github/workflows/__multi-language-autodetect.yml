@@ -55,10 +55,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.19.4
-          - os: macos-15-xlarge
-            version: stable-v2.19.4
-          - os: ubuntu-latest
             version: stable-v2.20.7
           - os: macos-15-xlarge
             version: stable-v2.20.7

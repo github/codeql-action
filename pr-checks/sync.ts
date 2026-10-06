@@ -145,6 +145,8 @@ const defaultTestVersions = [
   "stable-v2.23.9",
   // The last CodeQL release in the 2.24 series.
   "stable-v2.24.3",
+  // The last CodeQL release in the 2.25 series.
+  "stable-v2.25.6",
   // The default version of CodeQL for Dotcom, as determined by feature flags.
   "default",
   // The version of CodeQL shipped with the Action in `defaults.json`. During the release process

@@ -6,6 +6,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 - _Upcoming breaking change_: CodeQL version 2.21.2 and earlier were discontinued on 24 September 2026 alongside GitHub Enterprise Server 3.17, and will be unsupported by the next minor release of the CodeQL Action. Added a deprecation warning for customers using these versions of CodeQL. [#4188](https://github.com/github/codeql-action/pull/4188)
 - Update default CodeQL bundle version to [2.27.2](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.27.2). [#4203](https://github.com/github/codeql-action/pull/4203)
+- _Breaking change_: Bump the minimum required CodeQL bundle version to 2.20.7. [#XXXX](https://github.com/github/codeql-action/pull/XXXX)
 
 ## 4.38.2 - 24 Sept 2026
 

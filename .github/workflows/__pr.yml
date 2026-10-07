@@ -60,7 +60,7 @@ jobs:
     name: Initial checks
     permissions:
       contents: read
-      security-events: read
+      security-events: write
     uses: ./.github/workflows/pr-checks.yml
   all-platform-bundle:
     needs:

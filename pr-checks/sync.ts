@@ -709,16 +709,20 @@ function generateValidationJobs(
 function workflowCall(
   jobName: string,
   workflowBaseName: string,
-  inputs?: Record<string, string>,
+  options?: {
+    inputs?: Record<string, string>;
+    permissions?: Record<string, "read" | "write">;
+  },
 ) {
   return {
     name: jobName,
     permissions: {
       contents: "read",
       "security-events": "read",
+      ...options?.permissions,
     },
     uses: `./.github/workflows/${workflowBaseName}.yml`,
-    with: inputs,
+    with: options?.inputs,
   };
 }
 
@@ -740,7 +744,9 @@ function main(): void {
 
   let allInputs: Record<string, WorkflowInput> = {};
 
-  const initialChecksJob = workflowCall("Initial checks", "pr-checks");
+  const initialChecksJob = workflowCall("Initial checks", "pr-checks", {
+    permissions: { "security-events": "write" },
+  });
 
   const cron = new yaml.Scalar("0 5 * * *");
   cron.type = yaml.Scalar.QUOTE_SINGLE;
@@ -856,11 +862,9 @@ function main(): void {
         checkWith[inputName] = `\${{ inputs.${inputName} }}`;
       }
 
-      jobs[checkName] = workflowCall(
-        specification.name,
-        `__${checkName}`,
-        checkWith,
-      );
+      jobs[checkName] = workflowCall(specification.name, `__${checkName}`, {
+        inputs: checkWith,
+      });
     }
 
     const collectionWorkflow = {

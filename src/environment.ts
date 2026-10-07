@@ -305,6 +305,16 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
   }
 
   /**
+   * Gets a value indicating whether we should skip uploads of
+   * all kinds (SARIF results, status reports, DBs, ...).
+   *
+   * This is not guaranteed to be set in all test environments.
+   */
+  public isSkippingUploadsInTests(): boolean {
+    return this.getOptional(EnvVar.TEST_MODE) === "true";
+  }
+
+  /**
    * Gets a value indicative of whether we are in a testing environment
    * by testing whether the value of the `NODE_ENV` variable is "test".
    * This is expected to be the case if e.g. `ava` is running the tests
@@ -366,9 +376,14 @@ export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
  * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
  *
  * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
+ *
+ * @deprecated
+ *  The purpose of this function is ambiguous. Use `isSkippingUploadsInTests` on
+ *  a `ReadOnlyEnv` instance instead for equivalent behaviour. Use `isTestingEnv`
+ *  to determine if we are running in a unit test.
  */
 export function isInTestMode(): boolean {
-  return process.env[EnvVar.TEST_MODE] === "true";
+  return getEnv().isSkippingUploadsInTests();
 }
 
 /**

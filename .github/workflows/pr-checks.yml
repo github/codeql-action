@@ -2,13 +2,11 @@ name: PR Checks
 
 on:
   push:
-  pull_request:
-  merge_group:
-    types: [checks_requested]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
-  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_call' }}
   group: ${{ github.workflow }}-${{ github.ref }}
 
 defaults:

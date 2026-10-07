@@ -737,6 +737,45 @@ function main(): void {
 
   console.log(`Found ${checkFiles.length} check specification(s).`);
 
+  let allInputs: Record<string, WorkflowInput> = {};
+
+  const initialChecksJob = workflowCall("Initial checks", "pr-checks");
+
+  const cron = new yaml.Scalar("0 5 * * *");
+  cron.type = yaml.Scalar.QUOTE_SINGLE;
+
+  const checkWorkflow = {
+    name: `PR Checks`,
+    env: {
+      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
+      GO111MODULE: "auto",
+    },
+    on: {
+      push: {
+        branches: ["main", "releases/v*"],
+      },
+      pull_request: {},
+      merge_group: {
+        types: ["checks_requested"],
+      },
+      schedule: [{ cron }],
+      workflow_dispatch: {
+        inputs: {},
+      },
+      workflow_call: {
+        inputs: {},
+      },
+    },
+    defaults: {
+      run: {
+        shell: "bash",
+      },
+    },
+    jobs: {
+      "pr-checks": initialChecksJob,
+    },
+  };
+
   const collections: Record<
     string,
     Array<{
@@ -781,9 +820,6 @@ function main(): void {
       extraGroupName += `-\${{inputs.${inputName}}}`;
     }
 
-    const cron = new yaml.Scalar("0 5 * * *");
-    cron.type = yaml.Scalar.QUOTE_SINGLE;
-
     const workflow = {
       name: `PR Check - ${checkSpecification.name}`,
       env: {
@@ -825,6 +861,12 @@ function main(): void {
     const outputPath = path.join(OUTPUT_DIR, `__${checkName}.yml`);
     writeYaml(outputPath, workflow);
   }
+
+  checkWorkflow.on.workflow_call.inputs = allInputs;
+  checkWorkflow.on.workflow_dispatch.inputs = allInputs;
+
+  const mainOutputPath = path.join(OUTPUT_DIR, `__pr.yml`);
+  writeYaml(mainOutputPath, checkWorkflow);
 
   // Write workflow files for collections.
   for (const collectionName of Object.keys(collections)) {

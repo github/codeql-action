@@ -1,7 +1,6 @@
 name: PR Checks
 
 on:
-  push:
   workflow_dispatch:
   workflow_call:
 

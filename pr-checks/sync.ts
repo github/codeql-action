@@ -704,7 +704,9 @@ function generateValidationJobs(
  *
  * @param jobName The friendly name of the job.
  * @param workflowBaseName The base name of the workflow file to call.
- * @param inputs Optionally, the inputs for the workflow.
+ * @param options Optional settings and overrides for the workflow call.
+ * @param options.inputs Optionally, the inputs for the workflow.
+ * @param options.permissions Permission overrides for the call.
  */
 function workflowCall(
   jobName: string,

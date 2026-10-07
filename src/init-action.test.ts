@@ -47,15 +47,26 @@ test.serial(
       };
 
       try {
-        sinon.stub(apiClient, "getGitHubVersion").resolves({
-          type: util.GitHubVariant.DOTCOM,
-        });
-        sinon.stub(featureFlags, "initFeatures").returns(createFeatures([]));
+        const getGitHubVersionStub = sinon
+          .stub(apiClient, "getGitHubVersion")
+          .resolves({
+            type: util.GitHubVariant.DOTCOM,
+          });
+        const initFeaturesStub = sinon
+          .stub(featureFlags, "initFeatures")
+          .returns(createFeatures([]));
         sinon
           .stub(analyses, "getAnalysisKinds")
           .resolves([analyses.AnalysisKind.CodeScanning]);
-        sinon.stub(configFile, "getConfigFileInput").resolves(undefined);
-        sinon.stub(statusReport, "createStatusReportBase").resolves(undefined);
+        const getConfigFileInputStub = sinon
+          .stub(configFile, "getConfigFileInput")
+          .resolves(undefined);
+        const createStatusReportBaseStub = sinon
+          .stub(statusReport, "createStatusReportBase")
+          .resolves(undefined);
+        const sendStatusReportStub = sinon
+          .stub(statusReport, "sendStatusReport")
+          .resolves();
         sinon.stub(util, "checkDiskUsage").resolves(undefined);
         sinon.stub(util, "checkForTimeout").resolves();
 
@@ -71,6 +82,11 @@ test.serial(
 
         await runWrapper();
 
+        t.false(getGitHubVersionStub.called);
+        t.false(initFeaturesStub.called);
+        t.false(getConfigFileInputStub.called);
+        t.false(createStatusReportBaseStub.called);
+        t.false(sendStatusReportStub.called);
         t.false(getToolsInputStub.called);
         t.false(initCodeQLStub.called);
         t.false(databaseInitStub.called);

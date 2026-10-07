@@ -199,10 +199,8 @@ export function getPullRequestCommitShas(
   return { base: baseSha, head: headSha };
 }
 
-/** Determine whether the current run should stop before CodeQL initialization. */
-export async function getAnalysisSkipReason(
-  logger: Logger,
-): Promise<string | undefined> {
+/** Determine whether a confirmed draft should skip before status reporting. */
+export function getDraftAnalysisSkipReason(logger: Logger): string | undefined {
   const skipIfDraft = actionsUtil.getOptionalInput("skip-if-draft") === "true";
   const draftState = getDraftState();
   const managedWorkflowDraft = process.env.CODE_SCANNING_IS_DRAFT === "true";
@@ -214,7 +212,13 @@ export async function getAnalysisSkipReason(
       "Draft status is unavailable in this workflow event; continuing with analysis.",
     );
   }
+  return undefined;
+}
 
+/** Determine whether the current run should stop before CodeQL initialization. */
+export async function getAnalysisSkipReason(
+  logger: Logger,
+): Promise<string | undefined> {
   const skipUnchangedLanguage =
     actionsUtil.getOptionalInput("skip-if-no-language-changes") === "true";
   if (!skipUnchangedLanguage) {

@@ -16,7 +16,10 @@ import {
   persistInputs,
 } from "./actions-util";
 import { AnalysisKind, getAnalysisKinds } from "./analyses";
-import { getAnalysisSkipReason } from "./analysis-skip";
+import {
+  getAnalysisSkipReason,
+  getDraftAnalysisSkipReason,
+} from "./analysis-skip";
 import { getGitHubVersion, GitHubApiCombinedDetails } from "./api-client";
 import {
   getDependencyCachingEnabled,
@@ -201,6 +204,17 @@ async function sendCompletedStatusReport(
   }
 }
 
+function markAnalysisSkipped(reason: string, logger: Logger) {
+  logger.info(
+    `Skipping CodeQL before tool download and database initialization: ${reason}.`,
+  );
+  core.exportVariable(EnvVar.ANALYSIS_SKIP_REASON, reason);
+  core.exportVariable(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
+  core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+  core.setOutput("analysis-skipped", "true");
+  core.setOutput("analysis-skip-reason", reason);
+}
+
 async function run(
   actionState: ActionState<["Base", "Logger", "Env", "Actions"]>,
 ) {
@@ -227,6 +241,22 @@ async function run(
 
     // Make inputs accessible in the `post` step.
     persistInputs();
+
+    // This is a workflow configuration error independent of draft state, so
+    // retain the existing validation before taking the early skip path.
+    if (process.env[EnvVar.SETUP_CODEQL_ACTION_HAS_RUN] === "true") {
+      throw new ConfigurationError(
+        `The 'init' action should not be run in the same workflow as 'setup-codeql'.`,
+      );
+    }
+
+    const draftSkipReason = getDraftAnalysisSkipReason(logger);
+    if (draftSkipReason !== undefined) {
+      // Do not send start/completion status reports here. They make API calls
+      // before and after the skip, and a draft needs no CodeQL status payload.
+      markAnalysisSkipped(draftSkipReason, logger);
+      return;
+    }
 
     apiDetails = {
       auth: getRequiredInput("token"),
@@ -290,23 +320,9 @@ async function run(
     // Send a status report indicating that an analysis is starting.
     await sendStartingStatusReport(startedAt, { analysisKinds }, logger);
 
-    // Throw a `ConfigurationError` if the `setup-codeql` action has been run.
-    if (process.env[EnvVar.SETUP_CODEQL_ACTION_HAS_RUN] === "true") {
-      throw new ConfigurationError(
-        `The 'init' action should not be run in the same workflow as 'setup-codeql'.`,
-      );
-    }
-
     const analysisSkipReason = await getAnalysisSkipReason(logger);
     if (analysisSkipReason !== undefined) {
-      logger.info(
-        `Skipping CodeQL before tool download and database initialization: ${analysisSkipReason}.`,
-      );
-      core.exportVariable(EnvVar.ANALYSIS_SKIP_REASON, analysisSkipReason);
-      core.exportVariable(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
-      core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
-      core.setOutput("analysis-skipped", "true");
-      core.setOutput("analysis-skip-reason", analysisSkipReason);
+      markAnalysisSkipped(analysisSkipReason, logger);
       await sendCompletedStatusReport(
         startedAt,
         undefined,

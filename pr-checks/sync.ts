@@ -699,6 +699,29 @@ function generateValidationJobs(
 }
 
 /**
+ * Constructs the body of a job that calls another workflow.
+ *
+ * @param jobName The friendly name of the job.
+ * @param workflowBaseName The base name of the workflow file to call.
+ * @param inputs Optionally, the inputs for the workflow.
+ */
+function workflowCall(
+  jobName: string,
+  workflowBaseName: string,
+  inputs?: Record<string, string>,
+) {
+  return {
+    name: jobName,
+    permissions: {
+      contents: "read",
+      "security-events": "read",
+    },
+    uses: `./.github/workflows/${workflowBaseName}.yml`,
+    with: inputs,
+  };
+}
+
+/**
  * Main entry point for the sync script.
  */
 function main(): void {
@@ -818,15 +841,11 @@ function main(): void {
         checkWith[inputName] = `\${{ inputs.${inputName} }}`;
       }
 
-      jobs[checkName] = {
-        name: specification.name,
-        permissions: {
-          contents: "read",
-          "security-events": "read",
-        },
-        uses: `./.github/workflows/__${checkName}.yml`,
-        with: checkWith,
-      };
+      jobs[checkName] = workflowCall(
+        specification.name,
+        `__${checkName}`,
+        checkWith,
+      );
     }
 
     const collectionWorkflow = {

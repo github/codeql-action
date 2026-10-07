@@ -40,6 +40,17 @@ Actions with special purposes and unlikely to be used directly:
 
 All advanced setup code scanning workflows must have the `security-events: write` permission. Workflows in private repositories must additionally have the `contents: read` permission. For more information, see "[Assigning permissions to jobs](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs)."
 
+### Skipping analysis during pull request iteration
+
+The `init` action supports two opt-in inputs, both disabled by default:
+
+- `skip-if-draft: true` skips analysis when the pull request event confirms that the PR is a draft. Include `ready_for_review` in the workflow's `pull_request.types` so analysis runs when the PR becomes ready. Confirmed draft skips return before repository configuration lookups, status reporting, tool download, or database initialization.
+- `skip-if-no-language-changes: true` skips a single explicitly selected built-in language only when a complete comparison of the PR event's immutable commit SHAs contains exclusively recognized non-code paths. Source files, workflows, build and dependency configuration, shell scripts, unknown paths, incomplete comparisons, and API errors retain full analysis. This is a conservative path heuristic; leave it disabled when documentation or other allowed non-code files are inputs to code generation.
+
+For example, include `types: [opened, synchronize, reopened, ready_for_review]` under `on.pull_request`, assign an `id` to the `init` step, and enable the desired inputs. The `analysis-skipped` and `analysis-skip-reason` outputs describe the decision. Guard custom build steps with `if: steps.init.outputs.analysis-skipped != 'true'`. The `autobuild`, `analyze`, and post actions handle intentional skips automatically. When analysis runs, it still uses the complete language database rather than analyzing only changed files.
+
+GitHub-managed workflows require integration by their workflow generator to provide the inputs and draft metadata. These inputs do not configure managed Code Quality from a repository workflow file.
+
 ### Build Modes
 
 The CodeQL Action supports different build modes for analyzing the source code. The available build modes are:

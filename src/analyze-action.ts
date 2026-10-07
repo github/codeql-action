@@ -41,6 +41,7 @@ import {
   createStatusReportBase,
   DatabaseCreationTimings,
   getActionsStatus,
+  JobStatus,
   StatusReportBase,
 } from "./status-report";
 import {
@@ -217,6 +218,20 @@ async function run({
   logger,
   actions,
 }: ActionState<["Base", "Logger", "Actions"]>) {
+  const analysisSkipReason = process.env[EnvVar.ANALYSIS_SKIP_REASON];
+  if (analysisSkipReason !== undefined) {
+    logger.info(
+      `Skipping CodeQL analysis because init intentionally skipped it: ${analysisSkipReason}.`,
+    );
+    core.setOutput("analysis-skipped", "true");
+    core.setOutput("analysis-skip-reason", analysisSkipReason);
+    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+    core.exportVariable(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
+    return;
+  }
+  core.setOutput("analysis-skipped", "false");
+  core.setOutput("analysis-skip-reason", "");
+
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 

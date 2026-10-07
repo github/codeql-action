@@ -50,6 +50,12 @@ async function run(startedAt: Date) {
   // possible, and only use safe functions outside.
 
   const logger = getActionsLogger();
+  if (process.env[EnvVar.ANALYSIS_SKIP_REASON] !== undefined) {
+    logger.info(
+      `Skipping init post-action because analysis was skipped: ${process.env[EnvVar.ANALYSIS_SKIP_REASON]}`,
+    );
+    return;
+  }
   let config: Config | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult

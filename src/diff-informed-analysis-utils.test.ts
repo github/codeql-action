@@ -5,6 +5,7 @@ import * as actionsUtil from "./actions-util";
 import type { PullRequestBranches } from "./actions-util";
 import * as apiClient from "./api-client";
 import {
+  getPullRequestChangedFiles,
   getDiffInformedAnalysisBranches,
   prepareDiffInformedAnalysis,
   exportedForTesting,
@@ -175,6 +176,71 @@ testShouldPerformDiffInformedAnalysis.serial(
     pullRequestBranches: undefined,
   },
   false,
+);
+
+test.serial(
+  "getPullRequestChangedFiles returns both sides of renames",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const mockApiClient = {
+        rest: {
+          repos: {
+            compareCommitsWithBasehead: sinon.stub().resolves({
+              data: {
+                files: [
+                  {
+                    filename: "src/new_guard.mjs",
+                    previous_filename: "src/old_guard.py",
+                    changes: 0,
+                  },
+                ],
+              },
+            }),
+          },
+        },
+      } as unknown as ReturnType<typeof apiClient.getApiClient>;
+      sinon.stub(apiClient, "getApiClient").returns(mockApiClient);
+
+      const files = await getPullRequestChangedFiles(
+        { base: "main", head: "feature" },
+        getRunnerLogger(true),
+      );
+
+      t.deepEqual(files, ["src/new_guard.mjs", "src/old_guard.py"]);
+    });
+  },
+);
+
+test.serial(
+  "getPullRequestChangedFiles fails open when the compare API truncates the diff",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const mockApiClient = {
+        rest: {
+          repos: {
+            compareCommitsWithBasehead: sinon.stub().resolves({
+              data: {
+                files: Array.from({ length: 300 }, (_, index) => ({
+                  filename: `src/file-${index}.js`,
+                  changes: 1,
+                })),
+              },
+            }),
+          },
+        },
+      } as unknown as ReturnType<typeof apiClient.getApiClient>;
+      sinon.stub(apiClient, "getApiClient").returns(mockApiClient);
+
+      const files = await getPullRequestChangedFiles(
+        { base: "main", head: "feature" },
+        getRunnerLogger(true),
+      );
+
+      t.is(files, undefined);
+    });
+  },
 );
 
 test.serial(

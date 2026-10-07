@@ -1,83 +1,12 @@
 import * as github from "@actions/github";
 
 import * as actionsUtil from "./actions-util";
+import type { PullRequestBranches } from "./actions-util";
 import { getPullRequestChangedFiles } from "./diff-informed-analysis-utils";
-import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
+import { parseBuiltInLanguage } from "./languages";
 import type { Logger } from "./logging";
 
-type ChangedFileKind = BuiltInLanguage | "non-code" | "global";
-
-const languageExtensions: Record<BuiltInLanguage, ReadonlySet<string>> = {
-  [BuiltInLanguage.actions]: new Set(),
-  [BuiltInLanguage.cpp]: new Set([
-    ".c",
-    ".cc",
-    ".cpp",
-    ".cxx",
-    ".h",
-    ".hh",
-    ".hpp",
-    ".hxx",
-  ]),
-  [BuiltInLanguage.csharp]: new Set([".cs"]),
-  [BuiltInLanguage.go]: new Set([".go"]),
-  [BuiltInLanguage.java]: new Set([".java", ".kt", ".kts"]),
-  [BuiltInLanguage.javascript]: new Set([
-    ".cjs",
-    ".html",
-    ".js",
-    ".jsx",
-    ".mjs",
-    ".ts",
-    ".tsx",
-  ]),
-  [BuiltInLanguage.python]: new Set([".py", ".pyi"]),
-  [BuiltInLanguage.ruby]: new Set([".rb", ".rake", ".gemspec", ".erb"]),
-  [BuiltInLanguage.rust]: new Set([".rs"]),
-  [BuiltInLanguage.swift]: new Set([".swift"]),
-};
-
-const languageConfigFiles: Record<BuiltInLanguage, ReadonlySet<string>> = {
-  [BuiltInLanguage.actions]: new Set(),
-  [BuiltInLanguage.cpp]: new Set(["cmakelists.txt"]),
-  [BuiltInLanguage.csharp]: new Set([
-    "directory.build.props",
-    "directory.build.targets",
-  ]),
-  [BuiltInLanguage.go]: new Set(["go.mod", "go.sum"]),
-  [BuiltInLanguage.java]: new Set([
-    "build.gradle",
-    "build.gradle.kts",
-    "gradle.properties",
-    "pom.xml",
-    "settings.gradle",
-    "settings.gradle.kts",
-  ]),
-  [BuiltInLanguage.javascript]: new Set([
-    ".npmrc",
-    "jsconfig.json",
-    "package-lock.json",
-    "package.json",
-    "pnpm-lock.yaml",
-    "tsconfig.json",
-    "yarn.lock",
-  ]),
-  [BuiltInLanguage.python]: new Set([
-    ".python-version",
-    "pipfile",
-    "pipfile.lock",
-    "poetry.lock",
-    "pyproject.toml",
-    "requirements.txt",
-    "setup.cfg",
-    "setup.py",
-    "tox.ini",
-    "uv.lock",
-  ]),
-  [BuiltInLanguage.ruby]: new Set(["gemfile", "gemfile.lock"]),
-  [BuiltInLanguage.rust]: new Set(["cargo.lock", "cargo.toml"]),
-  [BuiltInLanguage.swift]: new Set(["package.swift"]),
-};
+type ChangedFileKind = "non-code" | "global";
 
 const nonCodeExtensions = new Set([
   ".adoc",
@@ -94,11 +23,39 @@ const nonCodeExtensions = new Set([
   ".rst",
   ".scss",
   ".svg",
-  ".txt",
   ".webp",
 ]);
-const workflowExtensions = new Set([".yml", ".yaml"]);
-
+const buildConfigurationFiles = new Set([
+  ".npmrc",
+  ".python-version",
+  "build.gradle",
+  "build.gradle.kts",
+  "cargo.lock",
+  "cargo.toml",
+  "directory.build.props",
+  "directory.build.targets",
+  "gemfile",
+  "gemfile.lock",
+  "go.mod",
+  "go.sum",
+  "gradle.properties",
+  "jsconfig.json",
+  "package-lock.json",
+  "package.json",
+  "pipfile",
+  "pipfile.lock",
+  "poetry.lock",
+  "pom.xml",
+  "pyproject.toml",
+  "settings.gradle",
+  "settings.gradle.kts",
+  "setup.cfg",
+  "setup.py",
+  "tox.ini",
+  "tsconfig.json",
+  "uv.lock",
+  "yarn.lock",
+]);
 /**
  * Returns whether the supplied pull-request metadata authorizes a draft skip.
  * Unknown draft state deliberately fails open.
@@ -119,7 +76,6 @@ export function shouldSkipUnchangedLanguage(
   enabled: boolean,
   languagesInput: string | undefined,
   changedFiles: readonly string[] | undefined,
-  buildMode: string | undefined = undefined,
 ): boolean {
   if (!enabled || languagesInput === undefined || changedFiles === undefined) {
     return false;
@@ -128,33 +84,20 @@ export function shouldSkipUnchangedLanguage(
   const languages = languagesInput
     .split(",")
     .map((language) => parseBuiltInLanguage(language));
-  if (
-    languages.length === 0 ||
-    languages.length > 1 ||
-    languages.some((language) => language === undefined)
-  ) {
-    return false;
-  }
-
-  const language = languages[0];
-  if (language === undefined) {
+  if (languages.length !== 1 || languages[0] === undefined) {
     return false;
   }
 
   return changedFiles.every((file) => {
-    const fileKind = classifyChangedFile(file, buildMode);
-    return (
-      fileKind !== undefined &&
-      (fileKind === "non-code" ||
-        (fileKind !== "global" && fileKind !== language))
-    );
+    const fileKind = classifyChangedFile(file);
+    // File extensions cannot establish whether code in another language is a
+    // generator or build input for this analysis. Only explicitly non-code
+    // paths are safe evidence that the analyzed language is unaffected.
+    return fileKind === "non-code";
   });
 }
 
-function classifyChangedFile(
-  file: string,
-  buildMode: string | undefined,
-): ChangedFileKind | undefined {
+function classifyChangedFile(file: string): ChangedFileKind | undefined {
   const normalizedPath = file.replaceAll("\\", "/").toLowerCase();
   const basename = normalizedPath.slice(normalizedPath.lastIndexOf("/") + 1);
 
@@ -169,48 +112,34 @@ function classifyChangedFile(
     return "global";
   }
 
-  for (const language of Object.values(BuiltInLanguage)) {
-    if (languageConfigFiles[language].has(basename)) {
-      return language;
-    }
+  if (
+    normalizedPath.startsWith(".github/workflows/") ||
+    normalizedPath.includes("/.github/workflows/")
+  ) {
+    // Workflow files can change queries, inline CodeQL config, build steps, or
+    // generated-source behavior for any language.
+    return "global";
   }
 
   if (
-    (normalizedPath.startsWith(".github/workflows/") ||
-      normalizedPath.includes("/.github/workflows/")) &&
-    workflowExtensions.has(extensionOf(basename))
+    buildConfigurationFiles.has(basename) ||
+    basename === "cmakelists.txt" ||
+    basename.endsWith(".csproj") ||
+    basename.endsWith(".sln") ||
+    (basename.startsWith("requirements") &&
+      (basename.endsWith(".txt") || basename.endsWith(".in"))) ||
+    (basename.startsWith("tsconfig") &&
+      (basename.endsWith(".json") || basename.endsWith(".jsonc")))
   ) {
-    return BuiltInLanguage.actions;
+    return "global";
   }
 
-  if (
-    basename.startsWith("requirements") &&
-    (basename.endsWith(".txt") || basename.endsWith(".in"))
-  ) {
-    return BuiltInLanguage.python;
-  }
-  if (
-    basename.startsWith("tsconfig") &&
-    (basename.endsWith(".json") || basename.endsWith(".jsonc"))
-  ) {
-    return BuiltInLanguage.javascript;
-  }
-  if (basename.endsWith(".csproj") || basename.endsWith(".sln")) {
-    return BuiltInLanguage.csharp;
-  }
-
+  // Shell scripts may build or generate sources. The effective build mode can
+  // differ from its input value, so do not treat them as unrelated changes.
   const extension = extensionOf(basename);
   if (extension === ".sh" || extension === ".bash") {
-    // Build scripts can affect generated or compiled sources. They are safe to
-    // ignore only when the workflow explicitly uses build-mode: none.
-    return buildMode === "none" ? "non-code" : undefined;
+    return undefined;
   }
-  for (const language of Object.values(BuiltInLanguage)) {
-    if (languageExtensions[language].has(extension)) {
-      return language;
-    }
-  }
-
   if (nonCodeExtensions.has(extension)) {
     return "non-code";
   }
@@ -251,6 +180,25 @@ function getDraftState(): boolean | undefined {
   );
 }
 
+/** Return immutable PR commit SHAs for a snapshot-specific diff comparison. */
+export function getPullRequestCommitShas(
+  pullRequest: unknown,
+): PullRequestBranches | undefined {
+  if (typeof pullRequest !== "object" || pullRequest === null) {
+    return undefined;
+  }
+  const pullRequestData = pullRequest as {
+    base?: { sha?: unknown };
+    head?: { sha?: unknown };
+  };
+  const baseSha = pullRequestData.base?.sha;
+  const headSha = pullRequestData.head?.sha;
+  if (typeof baseSha !== "string" || typeof headSha !== "string") {
+    return undefined;
+  }
+  return { base: baseSha, head: headSha };
+}
+
 /** Determine whether the current run should stop before CodeQL initialization. */
 export async function getAnalysisSkipReason(
   logger: Logger,
@@ -281,10 +229,12 @@ export async function getAnalysisSkipReason(
     return undefined;
   }
 
-  const branches = actionsUtil.getPullRequestBranches();
+  const branches = getPullRequestCommitShas(
+    github.context.payload.pull_request,
+  );
   if (!branches) {
     logger.info(
-      "Cannot skip an unchanged-language analysis outside a pull request.",
+      "Cannot skip an unchanged-language analysis without immutable pull-request commit SHAs.",
     );
     return undefined;
   }
@@ -305,14 +255,7 @@ export async function getAnalysisSkipReason(
     return undefined;
   }
 
-  if (
-    shouldSkipUnchangedLanguage(
-      true,
-      languagesInput,
-      changedFiles,
-      actionsUtil.getOptionalInput("build-mode"),
-    )
-  ) {
+  if (shouldSkipUnchangedLanguage(true, languagesInput, changedFiles)) {
     return `the pull request changes no files for ${languagesInput}`;
   }
   return undefined;

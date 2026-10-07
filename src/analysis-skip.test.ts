@@ -2,6 +2,7 @@ import test from "ava";
 
 import {
   getDraftStateFromContext,
+  getPullRequestCommitShas,
   shouldSkipDraftAnalysis,
   shouldSkipUnchangedLanguage,
 } from "./analysis-skip";
@@ -24,11 +25,13 @@ test("draft state can be supplied by a pull_request or dynamic event", (t) => {
   t.is(getDraftStateFromContext(undefined), undefined);
 });
 
-test("JavaScript changes do not start an unchanged Python analysis", (t) => {
-  const files = [".github/issue-triage/guard.mjs", "docs/setup.md"];
-
-  t.false(shouldSkipUnchangedLanguage(true, "javascript-typescript", files));
-  t.true(shouldSkipUnchangedLanguage(true, "python", files));
+test("source changes in another language fail open", (t) => {
+  t.false(
+    shouldSkipUnchangedLanguage(true, "python", [
+      ".github/issue-triage/guard.mjs",
+      "docs/setup.md",
+    ]),
+  );
 });
 
 test("documentation-only changes can skip a language analysis", (t) => {
@@ -49,14 +52,35 @@ test("language-specific dependency files keep their language analysis", (t) => {
   t.false(
     shouldSkipUnchangedLanguage(true, "python", ["requirements-dev.txt"]),
   );
+  t.false(shouldSkipUnchangedLanguage(true, "cpp", ["CMakeLists.txt"]));
 });
 
-test("build scripts are ignored only when the workflow uses build-mode none", (t) => {
-  const files = ["src/guard.mjs", "scripts/test-issue-triage.sh"];
+test("build scripts always keep the analysis enabled", (t) => {
+  t.false(
+    shouldSkipUnchangedLanguage(true, "python", [
+      "scripts/test-issue-triage.sh",
+    ]),
+  );
+});
 
-  t.true(shouldSkipUnchangedLanguage(true, "python", files, "none"));
-  t.false(shouldSkipUnchangedLanguage(true, "python", files, "manual"));
-  t.false(shouldSkipUnchangedLanguage(true, "python", files));
+test("workflow changes are relevant to every language", (t) => {
+  t.false(
+    shouldSkipUnchangedLanguage(true, "python", [
+      ".github/workflows/codeql.yml",
+    ]),
+  );
+});
+
+test("pull-request diffs use immutable event commit SHAs", (t) => {
+  t.deepEqual(
+    getPullRequestCommitShas({
+      base: { sha: "base-sha" },
+      head: { sha: "head-sha" },
+    }),
+    { base: "base-sha", head: "head-sha" },
+  );
+  t.is(getPullRequestCommitShas({ base: { sha: "base-sha" } }), undefined);
+  t.is(getPullRequestCommitShas(undefined), undefined);
 });
 
 test("renames are relevant to both the old and new languages", (t) => {
@@ -77,6 +101,8 @@ test("unknown and CodeQL configuration paths fail open", (t) => {
       ".github/codeql/codeql-config.yml",
     ]),
   );
+  t.false(shouldSkipUnchangedLanguage(true, "cpp", ["meson_options.txt"]));
+  t.false(shouldSkipUnchangedLanguage(true, "python", ["conanfile.txt"]));
 });
 
 test("incomplete inputs, multi-language jobs, and disabled gates fail open", (t) => {

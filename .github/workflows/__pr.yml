@@ -19,9 +19,39 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
-    inputs: {}
+    inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
   workflow_call:
-    inputs: {}
+    inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 defaults:
   run:
     shell: bash
@@ -32,3 +62,3842 @@ jobs:
       contents: read
       security-events: read
     uses: ./.github/workflows/pr-checks.yml
+  all-platform-bundle:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest-xlarge
+            version: nightly-latest
+          - os: windows-latest
+            version: nightly-latest
+    name: All-platform bundle
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'true'
+          setup-kotlin: 'true'
+      - id: init
+        uses: ./../action/init
+        with:
+          # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          languages: cpp,csharp,go,java,javascript,python,ruby
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  analysis-kinds:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: code-scanning,code-quality
+          - os: ubuntu-latest
+            version: linked
+            analysis-kinds: risk-assessment
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: code-scanning,code-quality
+          - os: ubuntu-latest
+            version: nightly-latest
+            analysis-kinds: risk-assessment
+    name: Analysis kinds
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: javascript
+          analysis-kinds: ${{ matrix.analysis-kinds }}
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+          post-processed-sarif-path: '${{ runner.temp }}/post-processed'
+
+      - name: Upload SARIF files
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: |
+            analysis-kinds-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}
+          path: '${{ runner.temp }}/results/*.sarif'
+          retention-days: 7
+
+      - name: Upload post-processed SARIF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: |
+            post-processed-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}
+          path: '${{ runner.temp }}/post-processed'
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Check quality query does not appear in security SARIF
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'
+          EXPECT_PRESENT: 'false'
+        with:
+          script: ${{ env.CHECK_SCRIPT }}
+      - name: Check quality query appears in quality SARIF
+        if: contains(matrix.analysis-kinds, 'code-quality')
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          SARIF_PATH: '${{ runner.temp }}/results/javascript.quality.sarif'
+          EXPECT_PRESENT: 'true'
+        with:
+          script: ${{ env.CHECK_SCRIPT }}
+    env:
+      CODEQL_ACTION_RISK_ASSESSMENT_ID: 1
+      CHECK_SCRIPT: |
+        const fs = require('fs');
+
+        const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+        const expectPresent = JSON.parse(process.env['EXPECT_PRESENT']);
+        const run = sarif.runs[0];
+        const extensions = run.tool.extensions;
+
+        if (extensions === undefined) {
+          core.setFailed('`extensions` property not found in the SARIF run property bag.');
+        }
+
+        // ID of a query we want to check the presence for
+        const targetId = 'js/regex/always-matches';
+        const found = extensions.find(extension => extension.rules && extension.rules.find(rule => rule.id === targetId));
+
+        if (found && expectPresent) {
+          console.log(`Found rule with id '${targetId}'.`);
+        } else if (!found && !expectPresent) {
+          console.log(`Rule with id '${targetId}' was not found.`);
+        } else {
+          core.setFailed(`${ found ? "Found" : "Didn't find" } rule ${targetId}`);
+        }
+      CODEQL_ACTION_TEST_MODE: true
+  analyze-ref-input:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+    name: "Analyze: 'ref' and 'sha' from inputs"
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: cpp,csharp,java,javascript,python
+          config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  autobuild-action:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+    name: autobuild-action
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: csharp
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        env:
+          # Explicitly disable the CLR tracer.
+          COR_ENABLE_PROFILING: ''
+          COR_PROFILER: ''
+          COR_PROFILER_PATH_64: ''
+          CORECLR_ENABLE_PROFILING: ''
+          CORECLR_PROFILER: ''
+          CORECLR_PROFILER_PATH_64: ''
+      - uses: ./../action/analyze
+      - name: Check database
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d csharp ]]; then
+            echo "Did not find a C# database"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  autobuild-direct-tracing-with-working-dir:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: windows-latest
+            version: nightly-latest
+    name: Autobuild direct tracing (custom working directory)
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Test setup
+        run: |
+          # Make sure that Gradle build succeeds in autobuild-dir ...
+          cp -a ../action/tests/java-repo autobuild-dir
+          # ... and fails if attempted in the current directory
+          echo > build.gradle
+      - uses: ./../action/init
+        with:
+          build-mode: autobuild
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check that indirect tracing is disabled
+        run: |
+          if [[ ! -z "${CODEQL_RUNNER}" ]]; then
+            echo "Expected indirect tracing to be disabled, but the" \
+              "CODEQL_RUNNER environment variable is set."
+            exit 1
+          fi
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_AUTOBUILD_BUILD_MODE_DIRECT_TRACING: true
+      CODEQL_ACTION_TEST_MODE: true
+  autobuild-working-dir:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Autobuild working directory
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Test setup
+        run: |
+          # Make sure that Gradle build succeeds in autobuild-dir ...
+          cp -a ../action/tests/java-repo autobuild-dir
+          # ... and fails if attempted in the current directory
+          echo > build.gradle
+      - uses: ./../action/init
+        with:
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+      - uses: ./../action/analyze
+      - name: Check database
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d java ]]; then
+            echo "Did not find a Java database"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  build-mode-autobuild:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: windows-latest
+            version: nightly-latest
+    name: Build mode autobuild
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Java
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
+      - name: Install yq
+        if: runner.os == 'Windows'
+        env:
+          YQ_PATH: ${{ runner.temp }}/yq
+          YQ_VERSION: v4.50.1
+        run: |-
+          gh release download --repo mikefarah/yq --pattern "yq_windows_amd64.exe" "$YQ_VERSION" -O "$YQ_PATH/yq.exe"
+          echo "$YQ_PATH" >> "$GITHUB_PATH"
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Set up Java test repo configuration
+        run: |
+          mv * .github ../action/tests/multi-language-repo/
+          mv ../action/tests/multi-language-repo/.github/workflows .github
+          mv ../action/tests/java-repo/* .
+
+      - uses: ./../action/init
+        id: init
+        with:
+          build-mode: autobuild
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Validate database build mode
+        run: |
+          metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"
+          build_mode=$(yq eval '.buildMode' "$metadata_path")
+          if [[ "$build_mode" != "autobuild" ]]; then
+            echo "Expected build mode to be 'autobuild' but was $build_mode"
+            exit 1
+          fi
+
+      - name: Check that indirect tracing is disabled
+        run: |
+          if [[ ! -z "${CODEQL_RUNNER}" ]]; then
+            echo "Expected indirect tracing to be disabled, but the" \
+              "CODEQL_RUNNER environment variable is set."
+            exit 1
+          fi
+
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  build-mode-manual:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Build mode manual
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          build-mode: manual
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Validate database build mode
+        run: |
+          metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"
+          build_mode=$(yq eval '.buildMode' "$metadata_path")
+          if [[ "$build_mode" != "manual" ]]; then
+            echo "Expected build mode to be 'manual' but was $build_mode"
+            exit 1
+          fi
+
+      - name: Build code
+        run: ./build.sh
+
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  build-mode-none:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Build mode none
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          build-mode: none
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Validate database build mode
+        run: |
+          metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"
+          build_mode=$(yq eval '.buildMode' "$metadata_path")
+          if [[ "$build_mode" != "none" ]]; then
+            echo "Expected build mode to be 'none' but was $build_mode"
+            exit 1
+          fi
+
+      # The latest nightly supports omitting the autobuild Action when the build mode is specified.
+      - uses: ./../action/autobuild
+        if: matrix.version != 'nightly-latest'
+
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  build-mode-rollback:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Build mode rollback
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Set up Java test repo configuration
+        run: |
+          mv * .github ../action/tests/multi-language-repo/
+          mv ../action/tests/multi-language-repo/.github/workflows .github
+          mv ../action/tests/java-repo/* .
+
+      - uses: ./../action/init
+        id: init
+        with:
+          build-mode: none
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Validate database build mode
+        run: |
+          metadata_path="$RUNNER_TEMP/customDbLocation/java/codeql-database.yml"
+          build_mode=$(yq eval '.buildMode' "$metadata_path")
+          if [[ "$build_mode" != "autobuild" ]]; then
+            echo "Expected build mode to be 'autobuild' but was $build_mode"
+            exit 1
+          fi
+
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_DISABLE_JAVA_BUILDLESS: true
+      CODEQL_ACTION_TEST_MODE: true
+  bundle-from-nightly:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: 'Bundle: From nightly'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - id: init
+        uses: ./../action/init
+        env:
+          CODEQL_ACTION_FORCE_NIGHTLY: true
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: javascript
+      - name: Fail if the CodeQL version is not a nightly
+        if: ${{ !contains(steps.init.outputs.codeql-version, '+') }}
+        run: exit 1
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  bundle-from-toolcache:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: toolcache
+    name: 'Bundle: From toolcache'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Install @actions/tool-cache
+        run: npm install @actions/tool-cache@3
+      - name: Check toolcache contains CodeQL
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            if (allCodeqlVersions.length === 0) {
+              throw new Error(`CodeQL could not be found in the toolcache`);
+            }
+      - id: setup-codeql
+        uses: ./../action/setup-codeql
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check CodeQL is installed within the toolcache
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            console.log(`Found CodeQL versions: ${allCodeqlVersions}`);
+            if (allCodeqlVersions.length === 0) {
+              throw new Error('CodeQL not found in toolcache');
+            }
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  bundle-toolcache:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+    name: 'Bundle: Caching checks'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Remove CodeQL from toolcache
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const codeqlPath = path.join(process.env['RUNNER_TOOL_CACHE'], 'CodeQL');
+            fs.rmdirSync(codeqlPath, { recursive: true });
+      - name: Install @actions/tool-cache
+        run: npm install @actions/tool-cache@3
+      - name: Check toolcache does not contain CodeQL
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            if (allCodeqlVersions.length !== 0) {
+              throw new Error(`CodeQL should not be found in the toolcache, but found ${allCodeqlVersions}`);
+            }
+            console.log('No versions of CodeQL found in the toolcache');
+      - id: init
+        uses: ./../action/init
+        with:
+          # Request multiple languages so this check uses the combined bundle.
+          languages: javascript,python
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        with:
+          output: ${{ runner.temp }}/results
+          upload-database: false
+      - name: Check CodeQL is installed within the toolcache
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const toolcache = require('@actions/tool-cache');
+            const allCodeqlVersions = toolcache.findAllVersions('CodeQL');
+            console.log(`Found CodeQL versions: ${allCodeqlVersions}`);
+            if (allCodeqlVersions.length === 0) {
+              throw new Error('CodeQL not found in toolcache');
+            }
+            if (allCodeqlVersions.length > 1) {
+              throw new Error('Multiple CodeQL versions found in toolcache');
+            }
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  cleanup-db-cluster-dir:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Clean up database cluster directory
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Add a file to the database cluster directory
+        run: |
+          mkdir -p "${{ runner.temp }}/customDbLocation/javascript"
+          touch "${{ runner.temp }}/customDbLocation/javascript/a-file-to-clean-up.txt"
+
+      - uses: ./../action/init
+        id: init
+        with:
+          build-mode: none
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Validate file cleaned up
+        run: |
+          if [[ -f "${{ runner.temp }}/customDbLocation/javascript/a-file-to-clean-up.txt" ]]; then
+            echo "File was not cleaned up"
+            exit 1
+          fi
+          echo "File was cleaned up"
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  config-export:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Config export
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: javascript
+          queries: security-extended
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+      - name: Upload SARIF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: config-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+          path: '${{ runner.temp }}/results/javascript.sarif'
+          retention-days: 7
+      - name: Check config properties appear in SARIF
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'
+        with:
+          script: |
+            const fs = require('fs');
+
+            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+            const run = sarif.runs[0];
+            const configSummary = run.properties.codeqlConfigSummary;
+
+            if (configSummary === undefined) {
+              core.setFailed('`codeqlConfigSummary` property not found in the SARIF run property bag.');
+            }
+            if (configSummary.disableDefaultQueries !== false) {
+              core.setFailed('`disableDefaultQueries` property incorrect: expected false, got ' +
+                `${JSON.stringify(configSummary.disableDefaultQueries)}.`);
+            }
+            const expectedQueries = [{ type: 'builtinSuite', uses: 'security-extended' }];
+            // Use JSON.stringify to deep-equal the arrays.
+            if (JSON.stringify(configSummary.queries) !== JSON.stringify(expectedQueries)) {
+              core.setFailed(`\`queries\` property incorrect: expected ${JSON.stringify(expectedQueries)}, got ` +
+                `${JSON.stringify(configSummary.queries)}.`);
+            }
+            core.info('Finished config export tests.');
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  config-input:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Config input
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Copy queries into workspace
+        run: |
+          cp -a ../action/queries .
+
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: javascript
+          build-mode: none
+          config: |
+            disable-default-queries: true
+            queries:
+              - name: Run custom query
+                uses: ./queries/default-setup-environment-variables.ql
+            paths-ignore:
+              - tests
+              - lib
+
+      - uses: ./../action/analyze
+        with:
+          output: ${{ runner.temp }}/results
+
+      - name: Check SARIF
+        uses: ./../action/.github/actions/check-sarif
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: javascript/codeql-action/default-setup-env-vars
+          queries-not-run: javascript/codeql-action/default-setup-context-properties
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  cpp-deptrace-disabled:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'C/C++: disabling autoinstalling dependencies (Linux)'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Test setup
+        run: |
+          cp -a ../action/tests/cpp-autobuild autobuild-dir
+      - uses: ./../action/init
+        with:
+          languages: cpp
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+        env:
+          CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: false
+      - run: |
+          if ls /usr/bin/errno; then
+            echo "C/C++ autobuild installed errno, but it should not have since auto-install dependencies is disabled."
+            exit 1
+          fi
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true
+  cpp-deptrace-enabled-on-macos:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            version: linked
+          - os: macos-latest
+            version: nightly-latest
+    name: 'C/C++: autoinstalling dependencies is skipped (macOS)'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Test setup
+        run: |
+          cp -a ../action/tests/cpp-autobuild autobuild-dir
+      - uses: ./../action/init
+        with:
+          languages: cpp
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+        env:
+          CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
+      - run: |
+          if ! ls /usr/bin/errno; then
+            echo "As expected, CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES is a no-op on macOS"
+          else
+            echo "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES should not have had any effect on macOS"
+            exit 1
+          fi
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true
+  cpp-deptrace-enabled:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'C/C++: autoinstalling dependencies (Linux)'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Test setup
+        run: |
+          cp -a ../action/tests/cpp-autobuild autobuild-dir
+      - uses: ./../action/init
+        with:
+          languages: cpp
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+        with:
+          working-directory: autobuild-dir
+        env:
+          CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES: true
+      - run: |
+          if ! ls /usr/bin/errno; then
+            echo "Did not autoinstall errno"
+            exit 1
+          fi
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true
+  diagnostics-export:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Diagnostic export
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Add test diagnostics
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+        run: |
+          "$CODEQL_PATH" database add-diagnostic \
+            "$RUNNER_TEMP/codeql_databases/javascript" \
+            --file-path /path/to/file \
+            --plaintext-message "Plaintext message" \
+            --source-id "lang/diagnostics/example" \
+            --source-name "Diagnostic name" \
+            --ready-for-status-page
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+      - name: Upload SARIF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+          path: '${{ runner.temp }}/results/javascript.sarif'
+          retention-days: 7
+      - name: Check diagnostics appear in SARIF
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'
+        with:
+          script: |
+            const fs = require('fs');
+
+            function checkStatusPageNotification(n) {
+              const expectedMessage = 'Plaintext message';
+              if (n.message.text !== expectedMessage) {
+                core.setFailed(`Expected the status page diagnostic to have the message '${expectedMessage}', but found '${n.message.text}'.`);
+              }
+              if (n.locations.length !== 1) {
+                core.setFailed(`Expected the status page diagnostic to have exactly 1 location, but found ${n.locations.length}.`);
+              }
+            }
+
+            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+            const run = sarif.runs[0];
+
+            const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
+            const statusPageNotifications = toolExecutionNotifications.filter(n =>
+              n.descriptor.id === 'lang/diagnostics/example' && n.properties?.visibility?.statusPage
+            );
+            if (statusPageNotifications.length !== 1) {
+              core.setFailed(
+                'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
+                  `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
+                  `${statusPageNotifications.length}. All notification reporting descriptors: ` +
+                  `${JSON.stringify(toolExecutionNotifications)}.`
+              );
+            }
+            checkStatusPageNotification(statusPageNotifications[0]);
+
+            const notifications = run.tool.driver.notifications;
+            const diagnosticNotification = notifications.filter(n =>
+              n.id === 'lang/diagnostics/example' && n.name === 'lang/diagnostics/example' &&
+                n.fullDescription.text === 'Diagnostic name'
+            );
+            if (diagnosticNotification.length !== 1) {
+              core.setFailed(
+                'Expected exactly one notification for this diagnostic in the ' +
+                  `'runs[].tool.driver.notifications[]' SARIF property, but found ` +
+                  `${diagnosticNotification.length}. All notifications: ` +
+                  `${JSON.stringify(notifications)}.`
+              );
+            }
+
+            core.info('Finished diagnostic export test');
+    env:
+      CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
+      CODEQL_ACTION_TEST_MODE: true
+  export-file-baseline-information:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+          - os: windows-latest
+            version: nightly-latest
+    name: Export file baseline information
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+      - name: Upload SARIF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+          path: '${{ runner.temp }}/results/javascript.sarif'
+          retention-days: 7
+      - name: Check results
+        run: |
+          cd "$RUNNER_TEMP/results"
+          expected_baseline_languages="c csharp go java kotlin javascript python ruby"
+          if [[ $RUNNER_OS == "macOS" ]]; then
+            expected_baseline_languages+=" swift"
+          fi
+
+          for lang in ${expected_baseline_languages}; do
+            rule_name="cli/expected-extracted-files/${lang}"
+            found_notification=$(jq --arg rule_name "${rule_name}" '[.runs[0].tool.driver.notifications |
+              select(. != null) | flatten | .[].id] | any(. == $rule_name)' javascript.sarif)
+            if [[ "${found_notification}" != "true" ]]; then
+              echo "Expected SARIF output to contain notification '${rule_name}', but found no such notification."
+              exit 1
+            else
+              echo "Found notification '${rule_name}'."
+            fi
+          done
+    env:
+      CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
+      CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
+      CODEQL_ACTION_PER_LANGUAGE_BUNDLES: false
+      CODEQL_ACTION_TEST_MODE: true
+  extractor-ram-threads:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Extractor ram and threads options test
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: java
+          ram: 230
+          threads: 1
+      - name: Assert Results
+        run: |
+          if [ "${CODEQL_RAM}" != "230" ]; then
+            echo "CODEQL_RAM is '${CODEQL_RAM}' instead of 230"
+            exit 1
+          fi
+          if [ "${CODEQL_EXTRACTOR_JAVA_RAM}" != "230" ]; then
+            echo "CODEQL_EXTRACTOR_JAVA_RAM is '${CODEQL_EXTRACTOR_JAVA_RAM}' instead of 230"
+            exit 1
+          fi
+          if [ "${CODEQL_THREADS}" != "1" ]; then
+            echo "CODEQL_THREADS is '${CODEQL_THREADS}' instead of 1"
+            exit 1
+          fi
+          if [ "${CODEQL_EXTRACTOR_JAVA_THREADS}" != "1" ]; then
+            echo "CODEQL_EXTRACTOR_JAVA_THREADS is '${CODEQL_EXTRACTOR_JAVA_THREADS}' instead of 1"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  global-proxy:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Proxy test
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'false'
+      - name: Block direct internet access to force proxy usage
+        run: |
+          apt-get update -qq && apt-get install -y -qq iptables >/dev/null 2>&1
+          PROXY_IP=$(getent hosts squid-proxy | awk '{ print $1 }')
+          echo "Squid proxy IP: $PROXY_IP"
+          # Allow all traffic to the proxy container
+          iptables -A OUTPUT -d "$PROXY_IP" -j ACCEPT
+          # Allow DNS resolution
+          iptables -A OUTPUT -p udp --dport 53 -j ACCEPT
+          iptables -A OUTPUT -p tcp --dport 53 -j ACCEPT
+          # Allow loopback
+          iptables -A OUTPUT -o lo -j ACCEPT
+          # Allow already-established connections (from checkout/prepare-test)
+          iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+          # Block all other outbound HTTP and HTTPS, ensuring direct access fails
+          iptables -A OUTPUT -p tcp --dport 80 -j REJECT --reject-with tcp-reset
+          iptables -A OUTPUT -p tcp --dport 443 -j REJECT --reject-with tcp-reset
+          echo "Direct HTTP/HTTPS access is now blocked - all traffic must go through the proxy"
+
+      - name: Set proxy environment variables
+        shell: bash
+        run: |
+          echo "http_proxy=http://squid-proxy:3128" >> $GITHUB_ENV
+          echo "HTTP_PROXY=http://squid-proxy:3128" >> $GITHUB_ENV
+          echo "https_proxy=http://squid-proxy:3128" >> $GITHUB_ENV
+          echo "HTTPS_PROXY=http://squid-proxy:3128" >> $GITHUB_ENV
+
+      - uses: ./../action/init
+        with:
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_TOLERATE_MISSING_GIT_VERSION: true
+      CODEQL_ACTION_TEST_MODE: true
+    container:
+      image: ubuntu:22.04
+      options: --cap-add=NET_ADMIN
+    services:
+      squid-proxy:
+        image: ubuntu/squid:latest
+        ports:
+          - 3128:3128
+  go-custom-queries:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Go: Custom queries'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: go
+          config-file: ./.github/codeql/custom-queries.yml
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true
+  go-indirect-tracing-workaround-diagnostic:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+    name: 'Go: diagnostic when Go is changed after init step'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: go
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      # Deliberately change Go after the `init` step
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.20'
+      - name: Build code
+        run: go build main.go
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+      - name: Check diagnostic appears in SARIF
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          SARIF_PATH: '${{ runner.temp }}/results/go.sarif'
+        with:
+          script: |
+            const fs = require('fs');
+
+            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+            const run = sarif.runs[0];
+
+            const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
+            const statusPageNotifications = toolExecutionNotifications.filter(n =>
+              n.descriptor.id === 'go/workflow/go-installed-after-codeql-init' && n.properties?.visibility?.statusPage
+            );
+            if (statusPageNotifications.length !== 1) {
+              core.setFailed(
+                'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
+                  `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
+                  `${statusPageNotifications.length}. All notification reporting descriptors: ` +
+                  `${JSON.stringify(toolExecutionNotifications)}.`
+              );
+            }
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  go-indirect-tracing-workaround-no-file-program:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+    name: 'Go: diagnostic when `file` is not installed'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Remove `file` program
+        run: |
+          echo $(which file)
+          sudo rm -rf $(which file)
+          echo $(which file)
+      - uses: ./../action/init
+        with:
+          languages: go
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: go build main.go
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+      - name: Check diagnostic appears in SARIF
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          SARIF_PATH: '${{ runner.temp }}/results/go.sarif'
+        with:
+          script: |
+            const fs = require('fs');
+
+            const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
+            const run = sarif.runs[0];
+
+            const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
+            const statusPageNotifications = toolExecutionNotifications.filter(n =>
+              n.descriptor.id === 'go/workflow/file-program-unavailable' && n.properties?.visibility?.statusPage
+            );
+            if (statusPageNotifications.length !== 1) {
+              core.setFailed(
+                'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
+                  `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
+                  `${statusPageNotifications.length}. All notification reporting descriptors: ` +
+                  `${JSON.stringify(toolExecutionNotifications)}.`
+              );
+            }
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  go-indirect-tracing-workaround:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+    name: 'Go: workaround for indirect tracing'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: go
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: go build main.go
+      - uses: ./../action/analyze
+      - run: |
+          if [[ -z "${CODEQL_ACTION_GO_BINARY}" ]]; then
+            echo "Expected the workaround for indirect tracing of static binaries to trigger, but the" \
+              "CODEQL_ACTION_GO_BINARY environment variable is not set."
+            exit 1
+          fi
+          if [[ ! -f "${CODEQL_ACTION_GO_BINARY}" ]]; then
+            echo "CODEQL_ACTION_GO_BINARY is set, but the corresponding script does not exist."
+            exit 1
+          fi
+
+
+          # Once we start running Bash 4.2 in all environments, we can replace the
+          # `! -z` flag with the more elegant `-v` which confirms that the variable
+          # is actually unset and not potentially set to a blank value.
+          if [[ ! -z "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" ]]; then
+            echo "Expected the Go autobuilder not to be run, but the" \
+              "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was set."
+            exit 1
+          fi
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d go ]]; then
+            echo "Did not find a Go database"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  go-tracing-autobuilder:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: stable-v2.19.4
+          - os: ubuntu-latest
+            version: stable-v2.20.7
+          - os: ubuntu-latest
+            version: stable-v2.21.4
+          - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: ubuntu-latest
+            version: stable-v2.23.9
+          - os: ubuntu-latest
+            version: stable-v2.24.3
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+    name: 'Go: tracing with autobuilder step'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: go
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/autobuild
+      - uses: ./../action/analyze
+      - run: |
+          if [[ "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" != true ]]; then
+            echo "Expected the Go autobuilder to be run, but the" \
+              "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was not true."
+            exit 1
+          fi
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d go ]]; then
+            echo "Did not find a Go database"
+            exit 1
+          fi
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true
+  go-tracing-custom-build-steps:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: stable-v2.19.4
+          - os: ubuntu-latest
+            version: stable-v2.20.7
+          - os: ubuntu-latest
+            version: stable-v2.21.4
+          - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: ubuntu-latest
+            version: stable-v2.23.9
+          - os: ubuntu-latest
+            version: stable-v2.24.3
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+    name: 'Go: tracing with custom build steps'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: go
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: go build main.go
+      - uses: ./../action/analyze
+      - run: |
+          # Once we start running Bash 4.2 in all environments, we can replace the
+          # `! -z` flag with the more elegant `-v` which confirms that the variable
+          # is actually unset and not potentially set to a blank value.
+          if [[ ! -z "${CODEQL_ACTION_DID_AUTOBUILD_GOLANG}" ]]; then
+            echo "Expected the Go autobuilder not to be run, but the" \
+              "CODEQL_ACTION_DID_AUTOBUILD_GOLANG environment variable was set."
+            exit 1
+          fi
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d go ]]; then
+            echo "Did not find a Go database"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  go-tracing-legacy-workflow:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: stable-v2.19.4
+          - os: ubuntu-latest
+            version: stable-v2.20.7
+          - os: ubuntu-latest
+            version: stable-v2.21.4
+          - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: ubuntu-latest
+            version: stable-v2.23.9
+          - os: ubuntu-latest
+            version: stable-v2.24.3
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+    name: 'Go: tracing with legacy workflow'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: go
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+      - run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d go ]]; then
+            echo "Did not find a Go database"
+            exit 1
+          fi
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true
+  init-with-registries:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Packaging: Download using registries'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      packages: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Init with registries
+        uses: ./../action/init
+        with:
+          db-location: '${{ runner.temp }}/customDbLocation'
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          config-file: ./.github/codeql/codeql-config-registries.yml
+          languages: javascript
+          registries: |
+            - url: "https://ghcr.io/v2/"
+              packages: "*/*"
+              token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Verify packages installed
+        run: |
+          PRIVATE_PACK="$HOME/.codeql/packages/codeql-testing/private-pack"
+          CODEQL_PACK1="$HOME/.codeql/packages/codeql-testing/codeql-pack1"
+
+          if [[ -d $PRIVATE_PACK ]]
+          then
+              echo "$PRIVATE_PACK was installed."
+          else
+              echo "::error $PRIVATE_PACK pack was not installed."
+              exit 1
+          fi
+
+          if [[ -d $CODEQL_PACK1 ]]
+          then
+              echo "$CODEQL_PACK1 was installed."
+          else
+              echo "::error $CODEQL_PACK1 pack was not installed."
+              exit 1
+          fi
+
+      - name: Verify qlconfig.yml file was created
+        run: |
+          QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
+          echo "Expected qlconfig.yml file to be created at $QLCONFIG_PATH"
+          if [[ -f $QLCONFIG_PATH ]]
+          then
+              echo "qlconfig.yml file was created."
+          else
+              echo "::error qlconfig.yml file was not created."
+              exit 1
+          fi
+
+      - name: Verify contents of qlconfig.yml
+        run: |
+          QLCONFIG_PATH=$RUNNER_TEMP/qlconfig.yml
+          cat $QLCONFIG_PATH | yq -e '.registries[] | select(.url == "https://ghcr.io/v2/") | select(.packages == "*/*")'
+          if [[ $? -eq 0 ]]
+          then
+              echo "Registry was added to qlconfig.yml file."
+          else
+              echo "::error Registry was not added to qlconfig.yml file."
+              echo "Contents of qlconfig.yml file:"
+              cat $QLCONFIG_PATH
+              exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  javascript-source-root:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Custom source root
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Move codeql-action
+        run: |
+          mkdir ../new-source-root
+          mv * ../new-source-root
+      - uses: ./../action/init
+        with:
+          languages: javascript
+          source-root: ../new-source-root
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        with:
+          skip-queries: true
+      - name: Assert database exists
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          if [[ ! -d javascript ]]; then
+            echo "Did not find a JavaScript database"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  job-run-uuid-sarif:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Job run UUID added to SARIF
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+      - name: Upload SARIF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.os }}-${{ matrix.version }}.sarif.json
+          path: '${{ runner.temp }}/results/javascript.sarif'
+          retention-days: 7
+      - name: Check results
+        run: |
+          cd "$RUNNER_TEMP/results"
+          actual=$(jq -r '.runs[0].properties.jobRunUuid' javascript.sarif)
+          if [[ "$actual" != "$CODEQL_ACTION_JOB_RUN_UUID" ]]; then
+            echo "Expected SARIF output to contain job run UUID '$CODEQL_ACTION_JOB_RUN_UUID', but found '$actual'."
+            exit 1
+          else
+            echo "Found job run UUID '$actual'."
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  language-aliases:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Language aliases
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: C#,java-kotlin,typescript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: 'Check languages'
+        run: |
+          expected_languages="csharp,java,javascript"
+          actual_languages=$(jq -r '.languages | join(",")' "$RUNNER_TEMP"/config)
+
+          if [ "$expected_languages" != "$actual_languages" ]; then
+            echo "Resolved languages did not match expected list. " \
+              "Expected languages: $expected_languages. Actual languages: $actual_languages."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  linux-arm64:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            version: nightly-latest
+    name: Linux Arm64
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: ${{ env.LANGUAGES }}
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          upload-database: false
+      - name: Assert databases exist
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          for lang in ${LANGUAGES//,/ }; do
+            if [[ ! -d "$lang" ]]; then
+              echo "Did not find a database for $lang"
+              exit 1
+            fi
+            echo "Found database for $lang"
+          done
+    env:
+      LANGUAGES: cpp,csharp,go,java,javascript,python,ruby
+      CODEQL_ACTION_TEST_MODE: true
+  local-bundle:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Local CodeQL bundle
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Fetch latest CodeQL bundle
+        run: |
+          wget https://github.com/github/codeql-action/releases/latest/download/codeql-bundle-linux64.tar.zst
+      - id: init
+        uses: ./../action/init
+        with:
+          # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          languages: cpp,csharp,go,java,javascript,python,ruby
+          tools: ./codeql-bundle-linux64.tar.zst
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  multi-language-autodetect:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: stable-v2.19.4
+          - os: macos-15-xlarge
+            version: stable-v2.19.4
+          - os: ubuntu-latest
+            version: stable-v2.20.7
+          - os: macos-15-xlarge
+            version: stable-v2.20.7
+          - os: ubuntu-latest
+            version: stable-v2.21.4
+          - os: macos-15-xlarge
+            version: stable-v2.21.4
+          - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: macos-15-xlarge
+            version: stable-v2.22.4
+          - os: ubuntu-latest
+            version: stable-v2.23.9
+          - os: macos-latest-xlarge
+            version: stable-v2.23.9
+          - os: ubuntu-latest
+            version: stable-v2.24.3
+          - os: macos-latest-xlarge
+            version: stable-v2.24.3
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest-xlarge
+            version: default
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest-xlarge
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest-xlarge
+            version: nightly-latest
+    name: Multi-language repository
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Install Python 3.13 for older CLI versions
+        # We need Python 3.13 for older CLI versions because they are not compatible with Python 3.14 or newer.
+        # See https://github.com/github/codeql-action/pull/3212
+        if: matrix.version != 'nightly-latest' && matrix.version != 'linked'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Use Xcode 16
+        # Only the older CodeQL CLI versions need Xcode 16, and these run on macOS 15.
+        if: matrix.os == 'macos-15-xlarge'
+        run: sudo xcode-select -s "/Applications/Xcode_16.app"
+
+      - uses: ./../action/init
+        id: init
+        with:
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Build code
+        run: ./build.sh
+
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+
+      - name: Check language autodetect for all languages excluding Swift
+        run: |
+          CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
+          if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for CPP, or created it in the wrong location."
+            exit 1
+          fi
+          CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
+          if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for C Sharp, or created it in the wrong location."
+            exit 1
+          fi
+          GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
+          if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Go, or created it in the wrong location."
+            exit 1
+          fi
+          JAVA_DB=${{ fromJson(steps.analysis.outputs.db-locations).java }}
+          if [[ ! -d $JAVA_DB ]] || [[ ! $JAVA_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Java, or created it in the wrong location."
+            exit 1
+          fi
+          JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
+          if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Javascript, or created it in the wrong location."
+            exit 1
+          fi
+          PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
+          if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Python, or created it in the wrong location."
+            exit 1
+          fi
+          RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
+          if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Ruby, or created it in the wrong location."
+            exit 1
+          fi
+
+      - name: Check language autodetect for Swift on macOS
+        if: runner.os == 'macOS'
+        run: |
+          SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+          if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
+            echo "Did not create a database for Swift, or created it in the wrong location."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_CLEANUP_TOOLCACHE_BUNDLES: true
+      CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
+      CODEQL_ACTION_TEST_MODE: true
+  overlay-init-fallback:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Overlay database init fallback
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: actions # Any language without overlay support will do
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+        env:
+          CODEQL_OVERLAY_DATABASE_MODE: overlay-base
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check database
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases/actions"
+          if ! grep -q 'overlayBaseDatabase: false' codeql-database.yml ; then
+            echo "This test needs to be updated to use a non-overlay language."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  packaging-codescanning-config-inputs-js:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Packaging: Config and input passed to the CLI'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          config-file: '.github/codeql/codeql-config-packaging3.yml'
+          packs: +codeql-testing/codeql-pack1@1.0.0
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+
+      - name: Check results
+        uses: ./../action/.github/actions/check-sarif
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+          queries-not-run: foo,bar
+
+      - name: Assert Results
+        run: |
+          cd "$RUNNER_TEMP/results"
+          # We should have 4 hits from these rules
+          EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+
+          # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+          RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
+          echo "Found matching rules '$RULES'"
+          if [ "$RULES" != "$EXPECTED_RULES" ]; then
+            echo "Did not match expected rules '$EXPECTED_RULES'."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  packaging-config-inputs-js:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Packaging: Config and input'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          config-file: '.github/codeql/codeql-config-packaging3.yml'
+          packs: +codeql-testing/codeql-pack1@1.0.0
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+
+      - name: Check results
+        uses: ./../action/.github/actions/check-sarif
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+          queries-not-run: foo,bar
+
+      - name: Assert Results
+        run: |
+          cd "$RUNNER_TEMP/results"
+          # We should have 4 hits from these rules
+          EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+
+          # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+          RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
+          echo "Found matching rules '$RULES'"
+          if [ "$RULES" != "$EXPECTED_RULES" ]; then
+            echo "Did not match expected rules '$EXPECTED_RULES'."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  packaging-config-js:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Packaging: Config file'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          config-file: '.github/codeql/codeql-config-packaging.yml'
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+
+      - name: Check results
+        uses: ./../action/.github/actions/check-sarif
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+          queries-not-run: foo,bar
+
+      - name: Assert Results
+        run: |
+          cd "$RUNNER_TEMP/results"
+          # We should have 4 hits from these rules
+          EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+
+          # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+          RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
+          echo "Found matching rules '$RULES'"
+          if [ "$RULES" != "$EXPECTED_RULES" ]; then
+            echo "Did not match expected rules '$EXPECTED_RULES'."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  packaging-inputs-js:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: 'Packaging: Action input'
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          config-file: '.github/codeql/codeql-config-packaging2.yml'
+          languages: javascript
+          packs: codeql-testing/codeql-pack1@1.0.0, codeql-testing/codeql-pack2, codeql-testing/codeql-pack3:other-query.ql
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+
+      - name: Check results
+        uses: ./../action/.github/actions/check-sarif
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: javascript/example/empty-or-one-block,javascript/example/empty-or-one-block,javascript/example/other-query-block,javascript/example/two-block
+          queries-not-run: foo,bar
+
+      - name: Assert Results
+        run: |
+          cd "$RUNNER_TEMP/results"
+          # We should have 4 hits from these rules
+          EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+
+          # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+          RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
+          echo "Found matching rules '$RULES'"
+          if [ "$RULES" != "$EXPECTED_RULES" ]; then
+            echo "Did not match expected rules '$EXPECTED_RULES'."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  per-language-bundle-validation:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            os: ubuntu-latest
+            version: nightly-latest
+            expected-extractors: actions javascript
+          - language: cpp
+            os: ubuntu-latest
+            version: nightly-latest
+            build-mode: manual
+            build-command: gcc -o main main.c
+          - language: csharp
+            os: ubuntu-latest
+            version: nightly-latest
+            build-mode: none
+          - language: go
+            os: ubuntu-latest
+            version: nightly-latest
+            build-mode: autobuild
+          - language: java
+            os: ubuntu-latest
+            version: nightly-latest
+            build-mode: none
+          - language: javascript
+            os: ubuntu-latest
+            version: nightly-latest
+          - language: python
+            os: ubuntu-latest
+            version: nightly-latest
+          - language: ruby
+            os: ubuntu-latest
+            version: nightly-latest
+          - language: rust
+            os: ubuntu-latest
+            version: nightly-latest
+          - language: swift
+            os: macos-latest-xlarge
+            version: nightly-latest
+            build-mode: autobuild
+    name: Per-language bundles
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix['build-mode'] }}
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check that the bundle contains only the expected extractors
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+          LANGUAGE: ${{ matrix.language }}
+          EXPECTED_EXTRACTORS: ${{ matrix['expected-extractors'] || matrix.language }}
+        run: |
+          extractors="$("$CODEQL_PATH" resolve languages --format=json | jq -r 'keys[]')"
+          echo "Extractors in the bundle:"
+          echo "$extractors"
+          echo "Expected: $EXPECTED_EXTRACTORS"
+
+          for expected in $EXPECTED_EXTRACTORS; do
+            if ! echo "$extractors" | grep -qx "$expected"; then
+              echo "::error::The ${LANGUAGE} bundle does not contain the ${expected} extractor."
+              exit 1
+            fi
+          done
+
+          # If the bundle contained extractors beyond those the language needs, then it would not
+          # have been trimmed, and this job would be silently validating the combined bundle.
+          for other in actions cpp csharp go java javascript python ruby rust swift; do
+            if echo "$EXPECTED_EXTRACTORS" | grep -qw "$other"; then
+              continue
+            fi
+            if echo "$extractors" | grep -qx "$other"; then
+              echo "::error::The ${LANGUAGE} bundle also contains the ${other} extractor, so it is not trimmed."
+              exit 1
+            fi
+          done
+      - name: Check that the bundle was not added to the toolcache
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+        run: |
+          # A bundle that is missing most of its extractors must never be left in the toolcache,
+          # where a later job analyzing a different language could pick it up. The runner image
+          # ships with its own CodeQL in the toolcache, so check where this bundle was extracted to
+          # rather than whether the toolcache contains CodeQL at all.
+          echo "CodeQL is at $CODEQL_PATH"
+          if [[ "$CODEQL_PATH" == "$RUNNER_TOOL_CACHE"/* ]]; then
+            echo "::error::The per-language bundle was added to the toolcache at $CODEQL_PATH."
+            exit 1
+          fi
+          if [[ "$CODEQL_PATH" != "$RUNNER_TEMP"/* ]]; then
+            echo "::error::Expected the per-language bundle to be extracted under $RUNNER_TEMP, but found it at $CODEQL_PATH."
+            exit 1
+          fi
+      - name: Build code
+        if: matrix['build-command']
+        run: ${{ matrix['build-command'] }}
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check that a database was created for the language
+        env:
+          DB_LOCATIONS: ${{ steps.analysis.outputs.db-locations }}
+          LANGUAGE: ${{ matrix.language }}
+        run: |
+          database="$(echo "$DB_LOCATIONS" | jq -r --arg lang "$LANGUAGE" '.[$lang] // empty')"
+          if [ -z "$database" ] || [ ! -d "$database" ]; then
+            echo "::error::No CodeQL database was created for ${LANGUAGE}."
+            echo "Databases: $DB_LOCATIONS"
+            exit 1
+          fi
+          echo "Created a ${LANGUAGE} database at ${database}."
+    env:
+      CODEQL_ACTION_PER_LANGUAGE_BUNDLES: true
+      CODEQL_ACTION_TEST_MODE: true
+  remote-config:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Remote config file
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: cpp,csharp,java,javascript,python
+          config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  resolve-environment-action:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Resolve environment
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: go,javascript-typescript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Resolve environment for Go
+        uses: ./../action/resolve-environment
+        id: resolve-environment-go
+        with:
+          language: go
+
+      - name: Fail if Go configuration missing
+        if: (!fromJSON(steps.resolve-environment-go.outputs.environment).configuration.go)
+        run: exit 1
+
+      - name: Resolve environment for JavaScript/TypeScript
+        uses: ./../action/resolve-environment
+        id: resolve-environment-js
+        with:
+          language: javascript-typescript
+
+      - name: Fail if JavaScript/TypeScript configuration present
+        if: fromJSON(steps.resolve-environment-js.outputs.environment).configuration.javascript
+        run: exit 1
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  rubocop-multi-language:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+    name: RuboCop multi-language
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
+        with:
+          ruby-version: 2.6
+      - name: Install Code Scanning integration
+        run: bundle add code-scanning-rubocop --version 0.3.0 --skip-install
+      - name: Install dependencies
+        run: bundle install
+      - name: RuboCop run
+        run: |
+          bash -c "
+            bundle exec rubocop --require code_scanning --format CodeScanning::SarifFormatter -o rubocop.sarif
+            [[ $? -ne 2 ]]
+          "
+      - uses: ./../action/upload-sarif
+        with:
+          sarif_file: rubocop.sarif
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  ruby:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+    name: Ruby analysis
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: ruby
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check database
+        run: |
+          RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
+          if [[ ! -d "$RUBY_DB" ]]; then
+            echo "Did not create a database for Ruby."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  rust:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: stable-v2.19.4
+          - os: ubuntu-latest
+            version: stable-v2.22.1
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Rust analysis
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          languages: rust
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check database
+        run: |
+          RUST_DB="${{ fromJson(steps.analysis.outputs.db-locations).rust }}"
+          if [[ ! -d "$RUST_DB" ]]; then
+            echo "Did not create a database for Rust."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  split-workflow:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest
+            version: nightly-latest
+    name: Split workflow
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          config-file: '.github/codeql/codeql-config-packaging3.yml'
+          packs: +codeql-testing/codeql-pack1@1.0.0
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          skip-queries: true
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+
+      - name: Assert No Results
+        run: |
+          if [ "$(ls -A $RUNNER_TEMP/results)" ]; then
+            echo "Expected results directory to be empty after skipping query execution!"
+            exit 1
+          fi
+      - uses: ./../action/analyze
+        with:
+          output: '${{ runner.temp }}/results'
+          upload-database: false
+      - name: Assert Results
+        run: |
+          cd "$RUNNER_TEMP/results"
+          # We should have 4 hits from these rules
+          EXPECTED_RULES="javascript/example/empty-or-one-block javascript/example/empty-or-one-block javascript/example/other-query-block javascript/example/two-block"
+
+          # use tr to replace newlines with spaces and xargs to trim leading and trailing whitespace
+          RULES="$(cat javascript.sarif | jq -r '.runs[0].results[].ruleId' | sort | tr "\n\r" " " | xargs)"
+          echo "Found matching rules '$RULES'"
+          if [ "$RULES" != "$EXPECTED_RULES" ]; then
+            echo "Did not match expected rules '$EXPECTED_RULES'."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  start-proxy:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest
+            version: linked
+          - os: windows-latest
+            version: linked
+    name: Start proxy
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Setup proxy for registries
+        id: proxy
+        uses: ./../action/start-proxy
+        with:
+          language: java
+          registry_secrets: |
+            [
+              {
+                "type": "maven_repository",
+                "url": "https://repo.maven.apache.org/maven2/"
+              },
+              {
+                "type": "maven_repository",
+                "url": "https://repo1.maven.org/maven2"
+              }
+            ]
+
+      - name: Print proxy outputs
+        run: |
+          echo "${{ steps.proxy.outputs.proxy_host }}"
+          echo "${{ steps.proxy.outputs.proxy_port }}"
+          echo "${{ steps.proxy.outputs.proxy_urls }}"
+
+      - name: Fail if proxy outputs are not set
+        if: (!steps.proxy.outputs.proxy_host) || (!steps.proxy.outputs.proxy_port) || (!steps.proxy.outputs.proxy_ca_certificate) || (!steps.proxy.outputs.proxy_urls)
+        run: exit 1
+
+      - name: Fail if proxy_urls does not contain all registries
+        if: |
+          join(fromJSON(steps.proxy.outputs.proxy_urls)[*].type, ',') != 'maven_repository,maven_repository'
+          || !contains(steps.proxy.outputs.proxy_urls, 'https://repo.maven.apache.org/maven2/')
+          || !contains(steps.proxy.outputs.proxy_urls, 'https://repo1.maven.org/maven2')
+        run: exit 1
+
+      - uses: ./../action/init
+        env:
+          CODEQL_PROXY_HOST: ${{ steps.proxy.outputs.proxy_host }}
+          CODEQL_PROXY_PORT: ${{ steps.proxy.outputs.proxy_port }}
+          CODEQL_PROXY_CA_CERTIFICATE: ${{ steps.proxy.outputs.proxy_ca_certificate }}
+        with:
+          languages: java
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          config-file: codeql-action@main:tests/multi-language-repo/.github/codeql/custom-queries.yml
+    env:
+      CODEQL_ACTION_PROXY_API_REQUESTS: 'true'
+      CODEQL_ACTION_TEST_MODE: true
+  submit-sarif-failure:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: default
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Submit SARIF after failure
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./init
+        with:
+          languages: javascript
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Fail
+        # We want this job to pass if the Action correctly uploads the SARIF file for
+        # the failed run.
+        # Setting this step to continue on error means that it is marked as completing
+        # successfully, so will not fail the job.
+        continue-on-error: true
+        run: exit 1
+      - uses: ./analyze
+        # In a real workflow, this step wouldn't run. Since we used `continue-on-error`
+        # above, we manually disable it with an `if` condition.
+        if: false
+        with:
+          category: '/test-codeql-version:${{ matrix.version }}'
+    env:
+      CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF: true
+      CODEQL_ACTION_UPLOAD_FAILED_SARIF: true
+      CODEQL_ACTION_TEST_MODE: false
+      CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
+  swift-autobuild:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest-xlarge
+            version: nightly-latest
+    name: Swift analysis using autobuild
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: swift
+          build-mode: autobuild
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check working directory
+        run: pwd
+      - uses: ./../action/autobuild
+        timeout-minutes: 30
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check database
+        run: |
+          SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+          if [[ ! -d "$SWIFT_DB" ]]; then
+            echo "Did not create a database for Swift."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  swift-custom-build:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest-xlarge
+            version: linked
+          - os: macos-latest-xlarge
+            version: default
+          - os: macos-latest-xlarge
+            version: nightly-latest
+    name: Swift analysis using a custom build command
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: swift
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check working directory
+        run: pwd
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - name: Check database
+        run: |
+          SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
+          if [[ ! -d "$SWIFT_DB" ]]; then
+            echo "Did not create a database for Swift."
+            exit 1
+          fi
+    env:
+      DOTNET_GENERATE_ASPNET_CERTIFICATE: 'false'
+      CODEQL_ACTION_TEST_MODE: true
+  unset-environment:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+    name: Test unsetting environment variables
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        id: init
+        with:
+          db-location: ${{ runner.temp }}/customDbLocation
+          # Swift is not supported on Ubuntu so we manually exclude it from the list here
+          languages: cpp,csharp,go,java,javascript,python,ruby
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: env -i PATH="$PATH" HOME="$HOME" ./build.sh
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+      - run: |
+          CPP_DB="${{ fromJson(steps.analysis.outputs.db-locations).cpp }}"
+          if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "${RUNNER_TEMP}/customDbLocation/cpp" ]]; then
+            echo "::error::Did not create a database for CPP, or created it in the wrong location." \
+              "Expected location was '${RUNNER_TEMP}/customDbLocation/cpp' but actual was '${CPP_DB}'"
+            exit 1
+          fi
+          CSHARP_DB="${{ fromJson(steps.analysis.outputs.db-locations).csharp }}"
+          if [[ ! -d "$CSHARP_DB" ]] || [[ ! "$CSHARP_DB" == "${RUNNER_TEMP}/customDbLocation/csharp" ]]; then
+            echo "::error::Did not create a database for C Sharp, or created it in the wrong location." \
+              "Expected location was '${RUNNER_TEMP}/customDbLocation/csharp' but actual was '${CSHARP_DB}'"
+            exit 1
+          fi
+          GO_DB="${{ fromJson(steps.analysis.outputs.db-locations).go }}"
+          if [[ ! -d "$GO_DB" ]] || [[ ! "$GO_DB" == "${RUNNER_TEMP}/customDbLocation/go" ]]; then
+            echo "::error::Did not create a database for Go, or created it in the wrong location." \
+              "Expected location was '${RUNNER_TEMP}/customDbLocation/go' but actual was '${GO_DB}'"
+            exit 1
+          fi
+          JAVA_DB="${{ fromJson(steps.analysis.outputs.db-locations).java }}"
+          if [[ ! -d "$JAVA_DB" ]] || [[ ! "$JAVA_DB" == "${RUNNER_TEMP}/customDbLocation/java" ]]; then
+            echo "::error::Did not create a database for Java, or created it in the wrong location." \
+              "Expected location was '${RUNNER_TEMP}/customDbLocation/java' but actual was '${JAVA_DB}'"
+            exit 1
+          fi
+          JAVASCRIPT_DB="${{ fromJson(steps.analysis.outputs.db-locations).javascript }}"
+          if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "${RUNNER_TEMP}/customDbLocation/javascript" ]]; then
+            echo "::error::Did not create a database for Javascript, or created it in the wrong location." \
+              "Expected location was '${RUNNER_TEMP}/customDbLocation/javascript' but actual was '${JAVASCRIPT_DB}'"
+            exit 1
+          fi
+          PYTHON_DB="${{ fromJson(steps.analysis.outputs.db-locations).python }}"
+          if [[ ! -d "$PYTHON_DB" ]] || [[ ! "$PYTHON_DB" == "${RUNNER_TEMP}/customDbLocation/python" ]]; then
+            echo "::error::Did not create a database for Python, or created it in the wrong location." \
+              "Expected location was '${RUNNER_TEMP}/customDbLocation/python' but actual was '${PYTHON_DB}'"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  upload-ref-sha-input:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+    name: "Upload-sarif: 'ref' and 'sha' from inputs"
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: cpp,csharp,java,javascript,python
+          config-file: ${{ github.repository }}/tests/multi-language-repo/.github/codeql/custom-queries.yml@${{ github.sha }}
+      - name: Build code
+        run: ./build.sh
+      # Generate some SARIF we can upload with the upload-sarif step
+      - uses: ./../action/analyze
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+          upload: never
+      - uses: ./../action/upload-sarif
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  upload-sarif:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-scanning
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-quality
+          - os: ubuntu-latest
+            version: default
+            analysis-kinds: code-scanning,code-quality
+    name: Test different uses of `upload-sarif`
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          languages: csharp,java,javascript,python
+          analysis-kinds: ${{ matrix.analysis-kinds }}
+      - name: Build code
+        run: ./build.sh
+      # Generate some SARIF we can upload with the upload-sarif step
+      - uses: ./../action/analyze
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+          upload: never
+          output: ${{ runner.temp }}/results
+
+      - name: |
+          Upload all SARIF files for `analysis-kinds: ${{ matrix.analysis-kinds }}`
+        uses: ./../action/upload-sarif
+        id: upload-sarif
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+          sarif_file: ${{ runner.temp }}/results
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:all-files/
+      - name: 'Fail for missing output from `upload-sarif` step for `code-scanning`'
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-scanning)
+        run: exit 1
+      - name: 'Fail for missing output from `upload-sarif` step for `code-quality`'
+        if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-sarif.outputs.sarif-ids).code-quality)
+        run: exit 1
+
+      - name: Upload single SARIF file for Code Scanning
+        uses: ./../action/upload-sarif
+        id: upload-single-sarif-code-scanning
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+          sarif_file: ${{ runner.temp }}/results/javascript.sarif
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-scanning/
+      - name: 'Fail for missing output from `upload-single-sarif-code-scanning` step'
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-sarif-code-scanning.outputs.sarif-ids).code-scanning)
+        run: exit 1
+      - name: Upload single SARIF file for Code Quality
+        uses: ./../action/upload-sarif
+        id: upload-single-sarif-code-quality
+        if: contains(matrix.analysis-kinds, 'code-quality')
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+          sarif_file: ${{ runner.temp }}/results/javascript.quality.sarif
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-quality/
+      - name: 'Fail for missing output from `upload-single-sarif-code-quality` step'
+        if: contains(matrix.analysis-kinds, 'code-quality') && !(fromJSON(steps.upload-single-sarif-code-quality.outputs.sarif-ids).code-quality)
+        run: exit 1
+
+      - name: Change SARIF file extension
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        run: mv ${{ runner.temp }}/results/javascript.sarif ${{ runner.temp }}/results/javascript.sarif.json
+      - name: Upload single non-`.sarif` file
+        uses: ./../action/upload-sarif
+        id: upload-single-non-sarif
+        if: contains(matrix.analysis-kinds, 'code-scanning')
+        with:
+          ref: 'refs/heads/main'
+          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+          sarif_file: ${{ runner.temp }}/results/javascript.sarif.json
+          category: |
+            ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:non-sarif/
+      - name: 'Fail for missing output from `upload-single-non-sarif` step'
+        if: contains(matrix.analysis-kinds, 'code-scanning') && !(fromJSON(steps.upload-single-non-sarif.outputs.sarif-ids).code-scanning)
+        run: exit 1
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+  with-checkout-path:
+    needs:
+      - pr-checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Use a custom `checkout_path`
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      # This ensures we don't accidentally use the original checkout for any part of the test.
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Delete original checkout
+        run: |
+          # delete the original checkout so we don't accidentally use it.
+          # Actions does not support deleting the current working directory, so we
+          # delete the contents of the directory instead.
+          rm -rf ./* .github .git
+      # Check out the actions repo again, but at a different location.
+      # choose an arbitrary SHA so that we can later test that the commit_oid is not from main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
+          path: x/y/z/some-path
+
+      - uses: ./../action/init
+        with:
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+          # it's enough to test one compiled language and one interpreted language
+          languages: csharp,javascript
+          source-root: x/y/z/some-path/tests/multi-language-repo
+
+      - name: Build code
+        working-directory: x/y/z/some-path/tests/multi-language-repo
+        run: |
+          ./build.sh
+
+      - uses: ./../action/analyze
+        with:
+          checkout_path: x/y/z/some-path/tests/multi-language-repo
+          ref: v1.1.0
+          sha: 474bbf07f9247ffe1856c6a0f94aeeb10e7afee6
+
+      - name: Verify SARIF after upload
+        run: |
+          PAYLOAD_FILE="$RUNNER_TEMP/payload-code-scanning.json"
+          EXPECTED_COMMIT_OID="474bbf07f9247ffe1856c6a0f94aeeb10e7afee6"
+          EXPECTED_REF="v1.1.0"
+          EXPECTED_CHECKOUT_URI_SUFFIX="/x/y/z/some-path/tests/multi-language-repo"
+
+          ACTUAL_COMMIT_OID="$(cat "$PAYLOAD_FILE" | jq -r .commit_oid)"
+          ACTUAL_REF="$(cat "$PAYLOAD_FILE" | jq -r .ref)"
+          ACTUAL_CHECKOUT_URI="$(cat "$PAYLOAD_FILE" | jq -r .checkout_uri)"
+
+          if [[ "$EXPECTED_COMMIT_OID" != "$ACTUAL_COMMIT_OID" ]]; then
+            echo "::error Invalid commit oid. Expected: $EXPECTED_COMMIT_OID Actual: $ACTUAL_COMMIT_OID"
+            echo "$PAYLOAD_FILE"
+            exit 1
+          fi
+
+          if [[ "$EXPECTED_REF" != "$ACTUAL_REF" ]]; then
+            echo "::error Invalid ref. Expected: '$EXPECTED_REF' Actual: '$ACTUAL_REF'"
+            echo "$PAYLOAD_FILE"
+            exit 1
+          fi
+
+          if [[ "$ACTUAL_CHECKOUT_URI" != *$EXPECTED_CHECKOUT_URI_SUFFIX ]]; then
+            echo "::error Invalid checkout URI suffix. Expected suffix: $EXPECTED_CHECKOUT_URI_SUFFIX Actual uri: $ACTUAL_CHECKOUT_URI"
+            echo "$PAYLOAD_FILE"
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: pr-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}-${{inputs.java-version}}

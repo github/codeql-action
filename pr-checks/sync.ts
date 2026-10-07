@@ -571,6 +571,7 @@ function generateJob(
   specSteps.items.unshift(...steps);
 
   const checkJob: Record<string, any> = {
+    needs: ["pr-checks"],
     strategy: {
       "fail-fast": false,
       matrix: checkSpecification.matrix ?? {
@@ -815,52 +816,24 @@ function main(): void {
       });
     }
 
-    let extraGroupName = "";
-    for (const inputName of Object.keys(combinedInputs)) {
-      extraGroupName += `-\${{inputs.${inputName}}}`;
+    allInputs = { ...allInputs, ...combinedInputs };
+
+    checkWorkflow.jobs[checkName] = checkJob;
+
+    for (const [name, job] of Object.entries(validationJobs)) {
+      checkWorkflow.jobs[name] = job;
     }
-
-    const workflow = {
-      name: `PR Check - ${checkSpecification.name}`,
-      env: {
-        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
-        GO111MODULE: "auto",
-      },
-      on: {
-        push: {
-          branches: ["main", "releases/v*"],
-        },
-        pull_request: {},
-        merge_group: {
-          types: ["checks_requested"],
-        },
-        schedule: [{ cron }],
-        workflow_dispatch: {
-          inputs: combinedInputs,
-        },
-        workflow_call: {
-          inputs: combinedInputs,
-        },
-      },
-      defaults: {
-        run: {
-          shell: "bash",
-        },
-      },
-      concurrency: {
-        "cancel-in-progress":
-          "${{ github.event_name == 'pull_request' || false }}",
-        group: `${checkName}-\${{github.ref}}${extraGroupName}`,
-      },
-      jobs: {
-        [checkName]: checkJob,
-        ...validationJobs,
-      },
-    };
-
-    const outputPath = path.join(OUTPUT_DIR, `__${checkName}.yml`);
-    writeYaml(outputPath, workflow);
   }
+
+  let extraGroupName = "";
+  for (const inputName of Object.keys(allInputs)) {
+    extraGroupName += `-\${{inputs.${inputName}}}`;
+  }
+
+  checkWorkflow["concurrency"] = {
+    "cancel-in-progress": "${{ github.event_name == 'pull_request' || false }}",
+    group: `pr-\${{github.ref}}${extraGroupName}`,
+  };
 
   checkWorkflow.on.workflow_call.inputs = allInputs;
   checkWorkflow.on.workflow_dispatch.inputs = allInputs;
@@ -909,7 +882,7 @@ function main(): void {
   }
 
   console.log(
-    `\nDone. Wrote ${checkFiles.length} workflow file(s) to ${OUTPUT_DIR}`,
+    `\nDone. Generated ${checkFiles.length} check(s) to ${OUTPUT_DIR}`,
   );
 }
 

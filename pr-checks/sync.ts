@@ -745,7 +745,7 @@ function main(): void {
   let allInputs: Record<string, WorkflowInput> = {};
 
   const initialChecksJob = workflowCall("Initial checks", "pr-checks", {
-    permissions: { "security-events": "write" },
+    permissions: { "security-events": "write", "pull-requests": "write" },
   });
 
   const cron = new yaml.Scalar("0 5 * * *");

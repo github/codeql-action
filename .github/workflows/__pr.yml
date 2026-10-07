@@ -61,6 +61,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      pull-requests: write
     uses: ./.github/workflows/pr-checks.yml
   all-platform-bundle:
     needs:

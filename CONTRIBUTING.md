@@ -142,7 +142,7 @@ You may validate your change-note file locally by running `npx tsx pr-checks/cha
 
 #### File name
 
-Change-note files must be named according to the following pattern: `YYYY-MM-DD-<short-title>.md`, where `YYYY-MM-DD` is the date of the change and `<short-title>` is a short non-spaced description of the change. For example, a change-note file for a JSON-related bug fix that was made on January 1st, 2020 might be named `2020-01-01-fix-json-bug.md`.
+Change-note files must be named according to the following pattern: `YYYY-MM-DD-<short-title>.md`, where `YYYY-MM-DD` is the date of the change and `<short-title>` is a short description of the change. The `<short-title>` must contain only lowercase letters (`a-z`), digits (`0-9`), and hyphens (`-`), and must start with a letter or digit. Hyphens may be used to separate words. For example, a change-note file for a JSON-related bug fix that was made on January 1st, 2020 might be named `2020-01-01-fix-json-bug.md`.
 
 #### Frontmatter
 

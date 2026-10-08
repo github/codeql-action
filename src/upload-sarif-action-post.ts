@@ -17,9 +17,10 @@ export async function runWrapper() {
   // possible, and only use safe functions outside.
 
   try {
-    // Restore inputs from `upload-sarif` Action.
-    actionsUtil.restoreInputs();
     const logger = getActionsLogger();
+
+    // Restore inputs from `upload-sarif` Action.
+    actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 

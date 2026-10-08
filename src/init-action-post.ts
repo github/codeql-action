@@ -12,7 +12,7 @@ import {
   getTemporaryDirectory,
   printDebugLogs,
 } from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { getCodeQL } from "./codeql";
 import { type Config, getConfig } from "./config-utils";
@@ -62,9 +62,11 @@ async function run(startedAt: Date) {
     const jobStatus = getOptionalInput("job-status");
 
     // Restore inputs from `init` Action.
-    restoreInputs();
+    restoreInputs(logger);
 
-    const gitHubVersion = await getGitHubVersion();
+    config = await getConfig(getTemporaryDirectory(), logger);
+
+    const gitHubVersion = config?.gitHubVersion ?? (await getGitHubVersion());
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     const repositoryNwo = getRepositoryNwo();
@@ -75,7 +77,6 @@ async function run(startedAt: Date) {
       logger,
     );
 
-    config = await getConfig(getTemporaryDirectory(), logger);
     if (config === undefined) {
       logger.warning(
         "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
@@ -107,7 +108,7 @@ async function run(startedAt: Date) {
       }
     }
   } catch (unwrappedError) {
-    const error = wrapError(unwrappedError);
+    const error = wrapApiConfigurationError(wrapError(unwrappedError));
     core.setFailed(error.message);
 
     const statusReportBase = await createStatusReportBase(

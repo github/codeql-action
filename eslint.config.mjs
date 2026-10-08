@@ -141,14 +141,13 @@ export default [
       "no-sequences": "error",
       "no-shadow": "off",
 
-      // A basic check that we don't use `exportVariable` from `@actions/core`. This rule depends on
-      // the module being imported as `core`, but that is a good enough check for us.
+      // A basic check that we don't use `exportVariable` from `@actions/core`.
       "no-restricted-syntax": [
         "error",
         {
-          selector:
-            "MemberExpression[object.name='core'][property.name='exportVariable']",
-          message: "Use `exportVariable` from `environment.ts` instead.",
+          selector: "MemberExpression[property.name='exportVariable']",
+          message:
+            "Use the `export` method of an `Env` instance or `exportEnvVar` from `environment.ts` instead.",
         },
       ],
 

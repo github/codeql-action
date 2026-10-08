@@ -11,7 +11,7 @@ import { dbIsFinalized } from "./analyze";
 import { scanArtifactsForTokens } from "./artifact-scanner";
 import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { EnvVar, exportVariable } from "./environment";
+import { EnvVar, exportEnvVar } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
@@ -330,7 +330,7 @@ export async function uploadArtifacts(
   // some issues early.
   if (isInTestMode()) {
     await scanArtifactsForTokens(toUpload, logger);
-    exportVariable("CODEQL_ACTION_ARTIFACT_SCAN_FINISHED", "true");
+    exportEnvVar("CODEQL_ACTION_ARTIFACT_SCAN_FINISHED", "true");
   }
 
   const suffix = getArtifactSuffix(getOptionalInput("matrix"));

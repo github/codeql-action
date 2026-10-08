@@ -28,7 +28,7 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { EnvVar, exportVariable, getEnv } from "./environment";
+import { EnvVar, exportEnvVar, getEnv } from "./environment";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
@@ -1070,7 +1070,7 @@ export async function setupCodeQLBundle(
 
   // Record that this job now has a copy of the CodeQL tools, so that a later step doesn't delete
   // the toolcache out from under the path we are about to return.
-  exportVariable(EnvVar.HAS_SET_UP_CODEQL, "true");
+  exportEnvVar(EnvVar.HAS_SET_UP_CODEQL, "true");
 
   return {
     codeqlFolder,

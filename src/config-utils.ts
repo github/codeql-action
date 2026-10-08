@@ -45,7 +45,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
-import { EnvVar, exportVariable } from "./environment";
+import { EnvVar, exportEnvVar } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";
 import {
@@ -964,10 +964,10 @@ async function setCppTrapCachingEnvironmentVariables(
       );
     } else if (config.trapCaches[BuiltInLanguage.cpp]) {
       logger.info("Enabling TRAP caching for C/C++.");
-      exportVariable(envVar, "true");
+      exportEnvVar(envVar, "true");
     } else {
       logger.debug(`Disabling TRAP caching for C/C++.`);
-      exportVariable(envVar, "false");
+      exportEnvVar(envVar, "false");
     }
   }
 }

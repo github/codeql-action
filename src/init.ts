@@ -16,7 +16,7 @@ import {
 import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { EnvVar, exportVariable } from "./environment";
+import { EnvVar, exportEnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -410,5 +410,5 @@ export function logFileCoverageOnPrsDeprecationWarning(logger: Logger): void {
   }
 
   logger.warning(message);
-  exportVariable(EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION, "true");
+  exportEnvVar(EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION, "true");
 }

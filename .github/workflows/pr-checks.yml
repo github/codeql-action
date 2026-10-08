@@ -270,9 +270,8 @@ jobs:
 
       - name: Post a warning about modifying CHANGELOG.md
         # Release, backport, mergeback, and bundle-update PRs deliberately modify CHANGELOG.md,
-        # so skip the warning for these automation flows.
+        # so skip comment management entirely for these automation flows.
         if: >-
-          needs.other-checks.outputs.changelog-changed == 'true' &&
           !(
             startsWith(github.event.pull_request.title, 'Merge main into releases/v') &&
             startsWith(github.event.pull_request.head.ref, 'update-v') &&
@@ -290,6 +289,7 @@ jobs:
           COMMENT_MARKER: "<!-- changelog-warning-bot -->"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED: ${{ needs.other-checks.outputs.changelog-changed }}
         run: |
           comment_id=$(
             gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
@@ -298,6 +298,20 @@ jobs:
               | head -n 1
           )
 
+          # If CHANGELOG.md is no longer modified (e.g. a later commit reverted the change),
+          # remove any stale warning comment left over from an earlier push instead of leaving it
+          # to incorrectly claim the file is still modified.
+          if [[ "$CHANGED" == "false" ]]; then
+            if [[ -n "$comment_id" ]]; then
+              echo "CHANGELOG.md is no longer modified; deleting stale warning comment ($comment_id)."
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id"
+            else
+              echo "CHANGELOG.md was not modified and no warning comment exists; nothing to do."
+            fi
+            exit 0
+          fi
+
+          # If CHANGELOG.md has been modified and a warning comment already exists, do not post a duplicate comment.
           if [[ -n "$comment_id" ]]; then
             echo "CHANGELOG.md warning comment already exists ($comment_id)."
             exit 0

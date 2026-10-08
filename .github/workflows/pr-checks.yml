@@ -92,6 +92,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      changelog-changed: ${{ steps.changelog-check.outputs.changed }}
 
     concurrency:
       cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
@@ -195,18 +197,6 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Post a warning about modifying CHANGELOG.md
-        if: steps.fetch-base.outcome == 'success' && steps.changelog-check.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          body="⚠️ CHANGELOG.md was modified in this PR. Please do not modify CHANGELOG.md directly. \
-          Instead, describe your change as a change-note. The CHANGELOG.md file will be automatically \
-          generated from change-notes. For more information, \
-          see [CONTRIBUTING.md](https://github.com/github/codeql-action/blob/main/CONTRIBUTING.md)."
-          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"
-
       - name: "Backport: Check out base ref"
         id: checkout-base
         if: ${{ startsWith(github.head_ref, 'backport-') }}
@@ -227,8 +217,8 @@ jobs:
             exit 1
           fi
 
-  post-repo-size-comment:
-    name: Post repo size comment
+  post-pr-comments:
+    name: Post PR comments
     needs: other-checks
     # Keep write permissions isolated from the job that checks out and tests PR code. This job only
     # posts the candidate comment body produced by the read-only `pr-checks` job.
@@ -277,3 +267,15 @@ jobs:
           else
             echo "Skipping repo size comment because the delta is below the threshold and no sticky comment exists."
           fi
+
+      - name: Post a warning about modifying CHANGELOG.md
+        if: needs.other-checks.outputs.changelog-changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          body="⚠️ CHANGELOG.md was modified in this PR. Please do not modify CHANGELOG.md directly. \
+          Instead, describe your change as a change-note. The CHANGELOG.md file will be automatically \
+          generated from change-notes. For more information, \
+          see [CONTRIBUTING.md](https://github.com/github/codeql-action/blob/main/CONTRIBUTING.md)."
+          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"

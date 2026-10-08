@@ -269,7 +269,16 @@ jobs:
           fi
 
       - name: Post a warning about modifying CHANGELOG.md
-        if: needs.other-checks.outputs.changelog-changed == 'true'
+        # Release and backport PRs created by `update-release-branch.ts` are titled
+        # `Merge <source-branch> into <target-branch>`, where the target branch is always a
+        # `releases/v*` branch. These PRs deliberately modify CHANGELOG.md as part of the release
+        # process, so skip the warning for them.
+        if: >-
+          needs.other-checks.outputs.changelog-changed == 'true' &&
+          !(
+            startsWith(github.event.pull_request.title, 'Merge ') &&
+            contains(github.event.pull_request.title, ' into releases/v')
+          )
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

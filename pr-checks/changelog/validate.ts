@@ -95,21 +95,7 @@ export function isValidChangenoteFile(filename: string): boolean {
     return false;
   }
 
-  const { data: frontmatter, content } = matter(fileData);
-
-  if (!isValidChangenoteFilename(path.basename(filename))) {
-    isValid = false;
-    console.error(
-      `${filename}: invalid filename; must match pattern YYYY-MM-DD-id.md`,
-    );
-  }
-  if (!hasValidChangenoteCategory(frontmatter)) {
-    isValid = false;
-    const categories = Object.keys(VALID_CHANGE_NOTE_CATEGORIES).join(", ");
-    console.error(
-      `${filename}: invalid category; must be one of: ${categories}`,
-    );
-  }
+  const { content } = matter(fileData);
   if (!isValidChangenoteContent(content)) {
     isValid = false;
     console.error(

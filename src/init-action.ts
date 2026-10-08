@@ -349,7 +349,7 @@ async function run(
     // to the workflow log. No exceptions are thrown.
     await checkWorkflow(logger, codeql);
 
-    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if between 2.19.3 (included) and 2.22.1 (excluded)
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if the CLI is older than 2.22.1.
     // We need to set this environment variable before initializing the config, otherwise Rust
     // analysis will not be enabled (experimental language packs are only active with that environment
     // variable set to `true`).
@@ -360,14 +360,8 @@ async function run(
         .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
         .includes(BuiltInLanguage.rust)
     ) {
-      const experimental = "2.19.3";
       const publicPreview = "2.22.1";
       const actualVer = (await codeql.getVersion()).version;
-      if (semver.lt(actualVer, experimental)) {
-        throw new ConfigurationError(
-          `Rust analysis is supported by CodeQL CLI version ${experimental} or higher, but found version ${actualVer}`,
-        );
-      }
       if (semver.lt(actualVer, publicPreview)) {
         core.exportVariable(EnvVar.EXPERIMENTAL_FEATURES, "true");
         logger.info("Experimental Rust analysis enabled");
@@ -628,15 +622,6 @@ async function run(
     // Emergency override to force the CodeQL CLI back to the JGit-based Git backend.
     if (await features.getValue(Feature.ForceJGit)) {
       core.exportVariable("CODEQL_GIT_BACKEND", "jgit");
-    }
-
-    const kotlinLimitVar =
-      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
-    if (
-      (await codeQlVersionAtLeast(codeql, "2.20.3")) &&
-      !(await codeQlVersionAtLeast(codeql, "2.20.4"))
-    ) {
-      core.exportVariable(kotlinLimitVar, "2.1.20");
     }
 
     // Restore dependency cache(s), if they exist.

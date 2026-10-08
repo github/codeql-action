@@ -33,7 +33,6 @@ The first line of the file must be a YAML frontmatter block, which is delimited 
 The body of the change-note file must:
 
 - Be written in valid [GitHub-Flavored Markdown](https://github.github.com/gfm/).
-- Describe the change in a way that is understandable to users of the Action. Limit the description to 1-2 sentences, and avoid technical details that are not relevant to users.
 - Be structured as a single unordered Markdown list with hyphen (`-`) bullets. Each list item should describe a single change. If there are multiple changes, use multiple list items.
 
 ### Example change-note file

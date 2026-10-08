@@ -28,7 +28,7 @@ import {
   getEnv,
   ReadOnlyEnv,
   RegistryProxyVars,
-  exportVariable,
+  exportEnvVar,
 } from "./environment";
 import { getRef } from "./git-utils";
 import * as json from "./json";
@@ -272,12 +272,12 @@ export function getJobStatusDisplayName(status: JobStatus): string {
  */
 function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
   if (actionStatus === "user-error") {
-    exportVariable(
+    exportEnvVar(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
     );
   } else if (actionStatus === "failure" || actionStatus === "aborted") {
-    exportVariable(
+    exportEnvVar(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.FailureStatus,
     );
@@ -380,7 +380,7 @@ export async function createStatusReportBase(
     let workflowStartedAt = process.env[EnvVar.WORKFLOW_STARTED_AT];
     if (workflowStartedAt === undefined) {
       workflowStartedAt = actionStartedAt.toISOString();
-      exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
+      exportEnvVar(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
     }
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
     const codeQlCliVersion = getCachedCodeQlVersion(
@@ -392,7 +392,7 @@ export async function createStatusReportBase(
     // re-export the testing environment variable so that it is available to subsequent steps,
     // even if it was only set for this step
     if (testingEnvironment) {
-      exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
+      exportEnvVar(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
     }
     const isSteadyStateDefaultSetupRun =
       process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";

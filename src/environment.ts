@@ -393,7 +393,7 @@ export function isInTestMode(): boolean {
  *
  * @deprecated Use `export` on an `Env` instance instead.
  */
-export function exportVariable(name: string, val: any): void {
+export function exportEnvVar(name: string, val: any): void {
   const env = getEnv();
 
   if (typeof val === "string") {

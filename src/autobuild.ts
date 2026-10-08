@@ -3,7 +3,7 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { ActionsEnvVars, EnvVar, exportVariable } from "./environment";
+import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { Feature, featureConfig, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -134,16 +134,16 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
             : ""
         }`,
       );
-      exportVariable(envVar, "false");
+      exportEnvVar(envVar, "false");
     } else {
       logger.info(
         `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false'. See ${DocUrl.DEFINE_ENV_VARIABLES} for more information.`,
       );
-      exportVariable(envVar, "true");
+      exportEnvVar(envVar, "true");
     }
   } else {
     logger.info(`Disabling ${featureName}.`);
-    exportVariable(envVar, "false");
+    exportEnvVar(envVar, "false");
   }
 }
 
@@ -163,7 +163,7 @@ export async function runAutobuild(
     await codeQL.runAutobuild(config, language);
   }
   if (language === BuiltInLanguage.go) {
-    exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
+    exportEnvVar(EnvVar.DID_AUTOBUILD_GOLANG, "true");
   }
   logger.endGroup();
 }

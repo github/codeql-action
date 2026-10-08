@@ -18,7 +18,7 @@ import {
   EnvVar,
   getRequiredEnvParam,
   isInTestMode,
-  exportVariable,
+  exportEnvVar,
 } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
@@ -552,7 +552,7 @@ export function checkGitHubVersionInRange(
     );
   }
   hasBeenWarnedAboutVersion = true;
-  exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
+  exportEnvVar(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
 }
 
 export enum DisallowedAPIVersionReason {
@@ -596,11 +596,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  exportVariable(EnvVar.VERSION, version);
+  exportEnvVar(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  exportEnvVar(EnvVar.FEATURE_SANDWICH, "false");
+  exportEnvVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportEnvVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  exportEnvVar(EnvVar.VERSION, version);
 }
 
 export class HTTPError extends Error {
@@ -949,7 +949,7 @@ export async function checkDiskUsage(
       } else {
         logger.debug(message);
       }
-      exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
+      exportEnvVar(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
       numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
@@ -998,7 +998,7 @@ export function checkActionVersion(
           "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
-      exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
+      exportEnvVar(EnvVar.LOG_VERSION_DEPRECATION, "true");
     }
   }
 }

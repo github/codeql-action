@@ -126,24 +126,6 @@ test.serial("convert to semver", (t) => {
   }
 });
 
-test.serial("getCodeQLActionRepository", (t) => {
-  const logger = getRunnerLogger(true);
-
-  initializeEnvironment("1.2.3");
-
-  // isRunningLocalAction() === true
-  delete process.env["GITHUB_ACTION_REPOSITORY"];
-  process.env["RUNNER_TEMP"] = path.dirname(__dirname);
-  const repoLocalRunner = setupCodeql.getCodeQLActionRepository(logger);
-  t.deepEqual(repoLocalRunner, "github/codeql-action");
-
-  // isRunningLocalAction() === false
-  sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
-  process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
-  const repoEnv = setupCodeql.getCodeQLActionRepository(logger);
-  t.deepEqual(repoEnv, "xxx/yyy");
-});
-
 test.serial(
   "getCodeQLSource sets CLI version for a semver tagged bundle",
   async (t) => {

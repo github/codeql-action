@@ -5,7 +5,6 @@ import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
-import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
 import { v4 as uuidV4 } from "uuid";
 
@@ -14,7 +13,6 @@ import {
   isAnalyzingPullRequest,
   isDynamicWorkflow,
   isGitHubHostedRunner,
-  isRunningLocalAction,
 } from "./actions-util";
 import * as api from "./api-client";
 import {
@@ -45,6 +43,7 @@ import {
   logPerLanguageBundleFallback,
 } from "./per-language-bundles";
 import { getBundlePlatform } from "./platform";
+import { getCodeQLAssetDownloadURL } from "./setup/repository";
 import * as tar from "./tar";
 import {
   deleteToolcacheBundles,
@@ -66,82 +65,12 @@ export enum ToolsSource {
   Download = "DOWNLOAD",
 }
 
-const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
 const CODEQL_NIGHTLIES_REPOSITORY_OWNER = "dsp-testing";
 const CODEQL_NIGHTLIES_REPOSITORY_NAME = "codeql-cli-nightlies";
 
 const CODEQL_BUNDLE_VERSION_ALIAS: string[] = ["linked", "latest"];
 const CODEQL_NIGHTLY_TOOLS_INPUTS = ["nightly", "nightly-latest"];
 const CODEQL_TOOLCACHE_INPUT = "toolcache";
-
-export function getCodeQLActionRepository(logger: Logger): string {
-  if (isRunningLocalAction()) {
-    // This handles the case where the Action does not come from an Action repository,
-    // e.g. our integration tests which use the Action code from the current checkout.
-    // In these cases, the GITHUB_ACTION_REPOSITORY environment variable is not set.
-    logger.info(
-      "The CodeQL Action is checked out locally. Using the default CodeQL Action repository.",
-    );
-    return CODEQL_DEFAULT_ACTION_REPOSITORY;
-  }
-
-  return util.getRequiredEnvParam("GITHUB_ACTION_REPOSITORY");
-}
-
-async function getCodeQLBundleDownloadURL(
-  tagName: string,
-  apiDetails: api.GitHubApiDetails,
-  codeQLBundleName: string,
-  logger: Logger,
-): Promise<string> {
-  const codeQLActionRepository = getCodeQLActionRepository(logger);
-  const potentialDownloadSources = [
-    // This GitHub instance, and this Action.
-    [apiDetails.url, codeQLActionRepository],
-    // This GitHub instance, and the canonical Action.
-    [apiDetails.url, CODEQL_DEFAULT_ACTION_REPOSITORY],
-    // GitHub.com, and the canonical Action.
-    [util.GITHUB_DOTCOM_URL, CODEQL_DEFAULT_ACTION_REPOSITORY],
-  ];
-  // We now filter out any duplicates.
-  // Duplicates will happen either because the GitHub instance is GitHub.com, or because the Action is not a fork.
-  const uniqueDownloadSources = potentialDownloadSources.filter(
-    (source, index, self) => {
-      return !self.slice(0, index).some((other) => deepEqual(source, other));
-    },
-  );
-  for (const downloadSource of uniqueDownloadSources) {
-    const [apiURL, repository] = downloadSource;
-    // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
-    if (
-      apiURL === util.GITHUB_DOTCOM_URL &&
-      repository === CODEQL_DEFAULT_ACTION_REPOSITORY
-    ) {
-      break;
-    }
-    const [repositoryOwner, repositoryName] = repository.split("/");
-    try {
-      const release = await api.getApiClient().rest.repos.getReleaseByTag({
-        owner: repositoryOwner,
-        repo: repositoryName,
-        tag: tagName,
-      });
-      for (const asset of release.data.assets) {
-        if (asset.name === codeQLBundleName) {
-          logger.info(
-            `Found CodeQL bundle ${codeQLBundleName} in ${repository} on ${apiURL} with URL ${asset.url}.`,
-          );
-          return asset.url;
-        }
-      }
-    } catch (e) {
-      logger.info(
-        `Looked for CodeQL bundle ${codeQLBundleName} in ${repository} on ${apiURL} but got error ${e}.`,
-      );
-    }
-  }
-  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${codeQLBundleName}`;
-}
 
 function tryGetBundleVersionFromTagName(
   tagName: string,
@@ -721,9 +650,10 @@ export async function getCodeQLSource(
         ? "zstd"
         : "gzip";
 
+    const action = { env: getEnv(), logger };
     const platform = getBundlePlatform();
     const perLanguageBundleLanguage = await getPerLanguageBundleLanguage(
-      { env: getEnv(), features, logger },
+      { ...action, features },
       {
         rawLanguages,
         otherLanguagePacksReason,
@@ -736,11 +666,11 @@ export async function getCodeQLSource(
 
     // Resolves the combined or per-language bundle URL for the requested release.
     const resolveBundleURL = (language?: BuiltInLanguage) =>
-      getCodeQLBundleDownloadURL(
-        bundleTagName,
+      getCodeQLAssetDownloadURL(
+        action,
         apiDetails,
+        bundleTagName,
         getCodeQLBundleName(compressionMethod, platform, language),
-        logger,
       );
 
     const combinedBundleURL = await resolveBundleURL();

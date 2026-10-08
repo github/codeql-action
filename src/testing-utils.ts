@@ -30,7 +30,7 @@ import {
   featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
-import { Logger } from "./logging";
+import { joinMessageStrings, Loggable, LoggableError, Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
@@ -161,6 +161,46 @@ export function setupTests(testFn: TestFn<any>) {
     // Undo any modifications to the env
     process.env = t.context.env;
   });
+}
+
+export interface AvaSinonAssertions {
+  /**
+   * Asserts that `stub` must have been called once with at least the `expected` arguments.
+   */
+  onceWith: <TArgs extends readonly any[]>(
+    stub: sinon.SinonStub<TArgs>,
+    ...expected: sinon.MatchPartialArguments<TArgs>
+  ) => boolean;
+}
+
+/** Adds additional assertions for use with `sinon` to `t`. */
+export function addSinonAssertions(
+  t: ExecutionContext<unknown>,
+): ExecutionContext<unknown> & AvaSinonAssertions {
+  return {
+    ...t,
+    onceWith: <TArgs extends readonly any[]>(
+      stub: sinon.SinonStub<TArgs>,
+      ...expected: sinon.MatchPartialArguments<TArgs>
+    ) => {
+      // Fail if the stub hasn't been called at all so that we can safely compare
+      // the arguments of the first call in the else branch.
+      if (stub.callCount === 0) {
+        t.fail("The stub wasn't called.");
+      } else {
+        // Reduce the arguments of each to the same number that was provided,
+        // so that extra arguments don't lead to a failure.
+        const actual = stub.args.map<sinon.MatchPartialArguments<TArgs>>(
+          (args: TArgs) =>
+            args.slice(
+              0,
+              expected.length,
+            ) as sinon.MatchPartialArguments<TArgs>,
+        );
+        return t.deepEqual(actual, [expected]);
+      }
+    },
+  };
 }
 
 /**
@@ -622,8 +662,8 @@ export class RecordingLogger implements Logger {
 
   constructor(private readonly logToConsole: boolean = true) {}
 
-  private addMessage(level: LogLevel, message: string | Error): void {
-    this.messages.push({ type: level, message });
+  private addMessage(level: LogLevel, message: LoggableError): void {
+    this.messages.push({ type: level, message: joinMessageStrings(message) });
 
     if (this.logToConsole) {
       // eslint-disable-next-line no-console
@@ -648,19 +688,19 @@ export class RecordingLogger implements Logger {
     return true;
   }
 
-  debug(message: string) {
+  debug(message: Loggable) {
     this.addMessage("debug", message);
   }
 
-  info(message: string) {
+  info(message: Loggable) {
     this.addMessage("info", message);
   }
 
-  warning(message: string | Error) {
+  warning(message: LoggableError) {
     this.addMessage("warning", message);
   }
 
-  error(message: string | Error) {
+  error(message: LoggableError) {
     this.addMessage("error", message);
   }
 

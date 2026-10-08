@@ -1,6 +1,6 @@
-## unreleased-change-notes
+## Change notes
 
-Change-notes are Markdown files used to document user-facing changes. When making a change that affects users, create a change-note file here that describes the change. At the next release, the change-note files in `unreleased-change-notes/` will be combined into a new entry in `CHANGELOG.md`.
+Change-notes are Markdown files used to document user-facing changes. When making a change that affects users, create a markdown file here that describes the change. During the next release, the change-note files in `unreleased-change-notes/` will automatically be added to `CHANGELOG.md`.
 
 ### Change-note file format
 

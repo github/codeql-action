@@ -29,6 +29,24 @@ inputs:
       For more information, see
       https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning#changing-the-languages-that-are-analyzed.
     required: false
+  skip-if-draft:
+    description: >-
+      When true and the current event confirms this is a draft pull request, skip CodeQL before
+      downloading tools or initializing a database. The workflow must run again on `ready_for_review`
+      to analyze the PR once it is marked ready. For a `dynamic` workflow, the workflow generator can
+      set `CODE_SCANNING_IS_DRAFT=true` to trigger the same early skip. If draft state is unavailable,
+      analysis continues.
+    required: false
+    default: 'false'
+  skip-if-no-language-changes:
+    description: >-
+      When true for a single explicitly requested built-in language, skip CodeQL before tool download
+      and database initialization if the complete pull-request diff contains no relevant source or
+      language configuration files. Unknown, incomplete, or unrecognized diffs fail open and run the
+      full analysis. This uses the complete language database when relevant changes exist; it does
+      not restrict analysis to changed files.
+    required: false
+    default: 'false'
   build-mode:
     description: >-
       The build mode that will be used to analyze the language. This input is only available when
@@ -176,6 +194,10 @@ outputs:
     description: The path of the CodeQL binary used for analysis
   codeql-version:
     description: The version of the CodeQL binary used for analysis
+  analysis-skipped:
+    description: Whether analysis was intentionally skipped before CodeQL initialization
+  analysis-skip-reason:
+    description: Why analysis was intentionally skipped, if applicable
 runs:
   using: node24
   main: '../lib/init-entry.js'

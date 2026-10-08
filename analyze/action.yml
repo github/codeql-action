@@ -93,6 +93,10 @@ outputs:
     description: Absolute, local path to the directory containing the generated SARIF file.
   sarif-id:
     description: The ID of the uploaded SARIF file.
+  analysis-skipped:
+    description: Whether analysis was intentionally skipped before CodeQL finalization
+  analysis-skip-reason:
+    description: Why analysis was intentionally skipped, if applicable
 runs:
   using: node24
   main: "../lib/analyze-entry.js"

@@ -18,6 +18,9 @@ export enum EnvVar {
   /** Whether the `analyze` Action completes successfully. */
   ANALYZE_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_ANALYZE_DID_COMPLETE_SUCCESSFULLY",
 
+  /** Why CodeQL analysis was intentionally skipped before database initialization. */
+  ANALYSIS_SKIP_REASON = "CODEQL_ACTION_ANALYSIS_SKIP_REASON",
+
   /** Whether the `autobuild` Action completes successfully. */
   AUTOBUILD_DID_COMPLETE_SUCCESSFULLY = "CODEQL_ACTION_AUTOBUILD_DID_COMPLETE_SUCCESSFULLY",
 

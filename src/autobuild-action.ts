@@ -75,6 +75,15 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
   let config: Config | undefined;
   let currentLanguage: Language | undefined;
   let languages: Language[] | undefined;
+  const analysisSkipReason = process.env[EnvVar.ANALYSIS_SKIP_REASON];
+  if (analysisSkipReason !== undefined) {
+    logger.info(
+      `Skipping autobuild because CodeQL analysis was intentionally skipped: ${analysisSkipReason}.`,
+    );
+    core.exportVariable(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
+    return;
+  }
+
   try {
     const statusReportBase = await createStatusReportBase(
       ActionName.Autobuild,

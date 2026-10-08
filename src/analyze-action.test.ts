@@ -6,6 +6,7 @@ import * as analyze from "./analyze";
 import { runWrapper } from "./analyze-action";
 import * as api from "./api-client";
 import * as configUtils from "./config-utils";
+import { EnvVar } from "./environment";
 import * as gitUtils from "./git-utils";
 import * as statusReport from "./status-report";
 import {
@@ -137,6 +138,27 @@ test.serial(
           "--threads=-1",
         ),
       );
+    });
+  },
+);
+
+test.serial(
+  "analyze action no-ops after an intentional init skip",
+  async (t) => {
+    await util.withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[EnvVar.ANALYSIS_SKIP_REASON] = "draft pull request";
+
+      const getConfigStub = sinon.stub(configUtils, "getConfig");
+      const runFinalizeStub = sinon.stub(analyze, "runFinalize");
+      const runQueriesStub = sinon.stub(analyze, "runQueries");
+
+      await runWrapper();
+
+      t.false(getConfigStub.called);
+      t.false(runFinalizeStub.called);
+      t.false(runQueriesStub.called);
+      t.is(process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY], "true");
     });
   },
 );

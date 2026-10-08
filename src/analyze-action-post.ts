@@ -26,6 +26,12 @@ export async function runWrapper() {
 
   try {
     const logger = getActionsLogger();
+    if (process.env[EnvVar.ANALYSIS_SKIP_REASON] !== undefined) {
+      logger.info(
+        `Skipping analyze post-action because analysis was skipped: ${process.env[EnvVar.ANALYSIS_SKIP_REASON]}`,
+      );
+      return;
+    }
     actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);

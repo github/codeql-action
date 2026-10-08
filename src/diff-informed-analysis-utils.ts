@@ -16,6 +16,7 @@ import { getErrorMessage, GitHubVariant, satisfiesGHESVersion } from "./util";
 interface FileDiff {
   filename: string;
   changes: number;
+  previous_filename?: string | undefined;
   // A patch may be absent if the file is binary, if the file diff is too large,
   // or if the file is unchanged.
   patch?: string | undefined;
@@ -241,6 +242,39 @@ async function getFileDiffsWithBasehead(
       throw error;
     }
   }
+}
+
+/**
+ * Return changed paths for a pull request when the complete file list is
+ * available. The caller should perform a full analysis if this returns
+ * `undefined`, since the compare API may have truncated or failed to load the
+ * diff.
+ */
+export async function getPullRequestChangedFiles(
+  branches: PullRequestBranches,
+  logger: Logger,
+): Promise<string[] | undefined> {
+  const fileDiffs = await getFileDiffsWithBasehead(branches, logger);
+  if (fileDiffs === undefined) {
+    return undefined;
+  }
+  if (fileDiffs.length >= 300) {
+    logger.warning(
+      `Cannot retrieve the full diff because there are too many ` +
+        `(${fileDiffs.length}) changed files in the pull request.`,
+    );
+    return undefined;
+  }
+
+  return Array.from(
+    new Set(
+      fileDiffs.flatMap((fileDiff) =>
+        fileDiff.previous_filename
+          ? [fileDiff.filename, fileDiff.previous_filename]
+          : [fileDiff.filename],
+      ),
+    ),
+  );
 }
 
 function getDiffRanges(

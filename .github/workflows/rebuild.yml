@@ -54,32 +54,27 @@ jobs:
         run: |
           git fetch origin "$BASE_BRANCH"
 
-          # Allow merge conflicts in `lib`, since rebuilding should resolve them.
-          git merge "origin/$BASE_BRANCH"
-          MERGE_RESULT=$?
-
-          if [ "$MERGE_RESULT" -eq 0 ]; then
+          # Allow merge conflicts in `lib`, since rebuilding should resolve them. Conflicts leave the
+          # merge in progress, so check for `MERGE_HEAD` to tell them apart from failures that don't.
+          if git merge "origin/$BASE_BRANCH"; then
             echo "Merge succeeded cleanly."
-          elif [ "$MERGE_RESULT" -eq 1 ]; then
-            echo "Merge conflicts detected (exit code $MERGE_RESULT), continuing."
-          else
-            echo "git merge failed with unexpected exit code $MERGE_RESULT."
-            exit 1
-          fi
-
-          if [ "$MERGE_RESULT" -ne 0 ]; then
+          elif git rev-parse --verify MERGE_HEAD >/dev/null 2>&1; then
+            echo "Merge conflicts detected, continuing."
             echo "merge-in-progress=true" >> $GITHUB_OUTPUT
 
-            # Check for merge conflicts outside of `lib`. Disable git diff's trailing whitespace check
-            # since `node_modules/@types/semver/README.md` fails it.
-            if git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/'; then
+            # Check for merge conflicts outside of `lib`.
+            CONFLICTS_OUTSIDE_LIB=$(git diff --name-only --diff-filter=U | grep --invert-match '^lib/' || true)
+            if [ -n "$CONFLICTS_OUTSIDE_LIB" ]; then
               echo "Merge conflicts were detected outside of the lib directory. Please resolve them manually."
-              git -c core.whitespace=-trailing-space diff --check | grep --invert-match '^lib/' || true
+              echo "$CONFLICTS_OUTSIDE_LIB"
               exit 1
             fi
 
             echo "No merge conflicts found outside the lib directory. We should be able to resolve all of" \
               "these by rebuilding the Action."
+          else
+            echo "git merge failed for a reason other than merge conflicts."
+            exit 1
           fi
 
       - name: Compile TypeScript

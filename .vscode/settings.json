@@ -7,6 +7,10 @@
     // transpiled JavaScript
     "build": true,
     "lib": true,
+
+    // exclude "tests" by default because it causes VSCode to start language-specific extensions
+    // that are not typically needed during development (or indeed may not work correctly)
+    "tests": true
   },
   "search.exclude": {
     "**/node_modules": true,
@@ -18,7 +22,7 @@
   "git.ignoreLimitWarning": true,
   // Use the vendored TypeScript version to have a consistent development experience across
   // machines.
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },

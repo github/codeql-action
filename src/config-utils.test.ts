@@ -473,6 +473,12 @@ const simpleConfigFileContents = `
   queries:
     - uses: ./foo_file`;
 
+/** The configuration in `simpleConfigFileContents`. */
+const simpleConfigInput: UserConfig = {
+  name: "my config",
+  queries: [{ uses: "./foo_file" }],
+};
+
 /** A less minimal configuration file. */
 const otherConfigFileContents = `
   name: my config
@@ -558,16 +564,14 @@ test.serial(
         tempDir,
       );
 
-      const configInput = `
-      name: my config
-      queries:
-        - uses: ./foo
-      packs:
-        javascript:
-          - a/b@1.2.3
-        python:
-          - c/d@1.2.3
-    `;
+      const configInput: UserConfig = {
+        name: "my config",
+        queries: [{ uses: "./foo" }],
+        packs: {
+          javascript: ["a/b@1.2.3"],
+          python: ["c/d@1.2.3"],
+        },
+      };
 
       fs.mkdirSync(path.join(tempDir, "foo"));
 
@@ -598,7 +602,16 @@ test.serial(
         }),
       );
 
-      t.deepEqual(config.originalUserInput, yaml.load(configInput));
+      // Compare with a separate object rather than `configInput` itself, so that the test catches
+      // changes made to the input in place.
+      t.deepEqual(config.originalUserInput, {
+        name: "my config",
+        queries: [{ uses: "./foo" }],
+        packs: {
+          javascript: ["a/b@1.2.3"],
+          python: ["c/d@1.2.3"],
+        },
+      });
     });
   },
 );
@@ -2413,7 +2426,7 @@ test("determineUserConfig - loads config input", async (t) => {
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
     const inputs = createTestInitConfigInputs({
-      configInput: simpleConfigFileContents,
+      configInput: simpleConfigInput,
       configFile: undefined,
       workspacePath: tmpDir,
     });
@@ -2423,17 +2436,15 @@ test("determineUserConfig - loads config input", async (t) => {
 
     await target
       // The input source and path of the generated config file should have been logged.
-      .logs(
-        t,
-        "Using config from action input:",
-        `Using configuration file: ${expectedConfigPath}`,
-      )
-      // The message about no configuration input and
-      // the warning about both inputs should not have been logged.
+      .logs(t, `Using config from action input: ${expectedConfigPath}`)
+      // The message about no configuration input and the warning about both inputs should not have
+      // been logged. The generated config file isn't loaded, since the `config` input has already
+      // been parsed.
       .notLogs(
         t,
         "No configuration file was provided",
         "Both a config file and config input were provided. Ignoring config file.",
+        `Using configuration file: ${expectedConfigPath}`,
       )
       // The loaded configuration should match `simpleConfigFileContents`.
       .passes(t.deepEqual, {
@@ -2452,7 +2463,7 @@ test("determineUserConfig - ignores config file input when both specified", asyn
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
     const inputs = createTestInitConfigInputs({
-      configInput: simpleConfigFileContents,
+      configInput: simpleConfigInput,
       configFile: configFilePath,
       workspacePath: tmpDir,
     });
@@ -2466,10 +2477,14 @@ test("determineUserConfig - ignores config file input when both specified", asyn
       .logs(
         t,
         `Using config from action input: ${expectedConfigPath}`,
-        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
       )
-      .notLogs(t, "No configuration file was provided")
+      // The generated config file isn't loaded, since the `config` input has already been parsed.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
       // The loaded configuration should match `simpleConfigFileContents`.
       .passes(t.deepEqual, {
         name: "my config",
@@ -2482,11 +2497,14 @@ test("determineUserConfig - ignores config file input when both specified", asyn
 });
 
 /** A `config` input that we might get from Default Setup. */
-const defaultSetupConfigInput = `
-  threat-models: [local, remote]
-  default-setup:
-    org:
-      model-packs: [foo, bar]`;
+const defaultSetupConfigInput: UserConfig = {
+  "threat-models": ["local", "remote"],
+  "default-setup": {
+    org: {
+      "model-packs": ["foo", "bar"],
+    },
+  },
+};
 
 test("determineUserConfig - merges configs if FF is enabled in Default Setup", async (t) => {
   await withTmpDir(async (tmpDir) => {
@@ -2555,7 +2573,7 @@ test("determineUserConfig - ignores config file input in Default Setup if FF is 
       .withArgs(
         tmpDir,
         createTestInitConfigInputs({
-          configInput: simpleConfigFileContents,
+          configInput: simpleConfigInput,
           configFile: configFilePath,
           workspacePath: tmpDir,
         }),
@@ -2565,10 +2583,14 @@ test("determineUserConfig - ignores config file input in Default Setup if FF is 
       .logs(
         t,
         `Using config from action input: ${expectedConfigPath}`,
-        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
       )
-      .notLogs(t, "No configuration file was provided")
+      // The generated config file isn't loaded, since the `config` input has already been parsed.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
       .passes(t.deepEqual, {
         name: "my config",
         queries: [{ uses: "./foo_file" }],
@@ -2587,7 +2609,7 @@ test("determineUserConfig - ignores config file input outside Default Setup if F
       .withArgs(
         tmpDir,
         createTestInitConfigInputs({
-          configInput: simpleConfigFileContents,
+          configInput: simpleConfigInput,
           configFile: configFilePath,
           workspacePath: tmpDir,
         }),
@@ -2597,10 +2619,14 @@ test("determineUserConfig - ignores config file input outside Default Setup if F
       .logs(
         t,
         `Using config from action input: ${expectedConfigPath}`,
-        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
       )
-      .notLogs(t, "No configuration file was provided")
+      // The generated config file isn't loaded, since the `config` input has already been parsed.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
       .passes(t.deepEqual, {
         name: "my config",
         queries: [{ uses: "./foo_file" }],

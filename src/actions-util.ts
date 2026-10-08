@@ -14,6 +14,7 @@ import {
   getCodeQLDatabasePath,
   ConfigurationError,
   getEnv,
+  getErrorMessage,
 } from "./util";
 
 /**
@@ -412,14 +413,23 @@ export const persistInputs = function (env: Env = getEnv()) {
 /**
  * Restores all inputs to the action from the persisted state.
  */
-export const restoreInputs = function () {
-  const persistedInputs = core.getState(persistedInputsKey);
-  if (persistedInputs) {
-    for (const [name, value] of JSON.parse(persistedInputs)) {
-      process.env[name] = value;
+export function restoreInputs(logger: Logger) {
+  try {
+    const persistedInputsValue = core.getState(persistedInputsKey);
+    if (persistedInputsValue) {
+      const persistedInputs = JSON.parse(persistedInputsValue);
+
+      for (const [name, value] of persistedInputs) {
+        process.env[name] = value;
+      }
     }
+  } catch (err) {
+    logger.error(`Unable to restore inputs: ${getErrorMessage(err)}`);
+    throw new Error(
+      "Failed to restore inputs from the state set by this action's main execution.",
+    );
   }
-};
+}
 
 export interface PullRequestBranches {
   base: string;

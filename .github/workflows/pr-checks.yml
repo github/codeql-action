@@ -196,7 +196,7 @@ jobs:
           fi
 
       - name: Post a warning about modifying CHANGELOG.md
-        if: steps.changelog-check.outputs.changed == 'true'
+        if: steps.fetch-base.outcome == 'success' && steps.changelog-check.outputs.changed == 'true'
         uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
         with:
           issue-number: ${{ github.event.pull_request.number }}

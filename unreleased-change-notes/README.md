@@ -40,9 +40,9 @@ The body of the change-note file must:
 
 ```
 ---
-category: feature
+category: fix
 ---
 
-- Added support for the SARIF v2.2 specification in the `github/codeql-action/upload` Action.
-- Added a new `sarif-version` input to the `github/codeql-action/upload` Action, allowing users to specify the SARIF version to use when uploading results.
+- Fixed a bug where a network error while streaming the download of the CodeQL bundle could terminate the `init` Action instead of falling back to downloading the bundle before extracting it. [#4061](https://github.com/github/codeql-action/pull/4061)
+- Fix incorrect minimum required Git version for [improved incremental analysis](https://github.com/github/roadmap/issues/1158): it should have been 2.36.0, not 2.11.0. [#3781](https://github.com/github/codeql-action/pull/3781)
 ```

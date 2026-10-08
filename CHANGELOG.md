@@ -2,11 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
-## 3.38.3 - 08 Oct 2026
+## [UNRELEASED]
 
-- _Upcoming breaking change_: CodeQL version 2.21.2 and earlier were discontinued on 24 September 2026 alongside GitHub Enterprise Server 3.17, and will be unsupported by the next minor release of the CodeQL Action. Added a deprecation warning for customers using these versions of CodeQL. [#4188](https://github.com/github/codeql-action/pull/4188)
-- Update default CodeQL bundle version to [2.27.2](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.27.2). [#4203](https://github.com/github/codeql-action/pull/4203)
-- Fixed a bug where the decision of whether to use a per-language bundle did not account for custom configurations that reference queries outside of compiled CodeQL packs. This issue was caught during internal testing and did not affect any customer repositories. We will resume the roll out of per-language bundles in the coming weeks. [#4184](https://github.com/github/codeql-action/pull/4184)
+No user facing changes.
+
+## v3.38.3 - 08 Oct 2026
+
+This release rolls back 4.38.3 due to issues with that release. It is identical to 0.0.0.
 
 ## 3.38.2 - 24 Sept 2026
 
@@ -1292,3 +1294,4 @@ No user facing changes.
 - Add this changelog file. [#507](https://github.com/github/codeql-action/pull/507)
 - Improve grouping of analysis logs. Add a new log group containing a summary of metrics and diagnostics, if they were produced by CodeQL builtin queries. [#515](https://github.com/github/codeql-action/pull/515)
 - Add metrics and diagnostics summaries from custom query suites to the analysis summary log group. [#532](https://github.com/github/codeql-action/pull/532)
+

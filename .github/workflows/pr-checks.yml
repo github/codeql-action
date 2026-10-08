@@ -282,11 +282,25 @@ jobs:
             startsWith(github.event.pull_request.head.ref, 'update-bundle/')
           )
         env:
+          COMMENT_MARKER: "<!-- changelog-warning-bot -->"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          body="⚠️ CHANGELOG.md was modified in this PR. Please do not modify CHANGELOG.md directly. \
-          Instead, describe your change as a change-note. The CHANGELOG.md file will be automatically \
-          generated from change-notes. For more information, \
+          comment_id=$(
+            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+              --paginate \
+              --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
+              | head -n 1
+          )
+
+          if [[ -n "$comment_id" ]]; then
+            echo "CHANGELOG.md warning comment already exists ($comment_id)."
+            exit 0
+          fi
+
+          body="$COMMENT_MARKER
+          ⚠️ CHANGELOG.md was modified in this PR. Please do not modify CHANGELOG.md directly.
+          Instead, describe your change as a change-note. The CHANGELOG.md file will be automatically
+          generated from change-notes. For more information,
           see [CONTRIBUTING.md](https://github.com/github/codeql-action/blob/main/CONTRIBUTING.md)."
           gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"

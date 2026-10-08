@@ -299,8 +299,8 @@ jobs:
           fi
 
           body="$COMMENT_MARKER
-          ⚠️ CHANGELOG.md was modified in this PR. Please do not modify CHANGELOG.md directly.
-          Instead, describe your change as a change-note. The CHANGELOG.md file will be automatically
-          generated from change-notes. For more information,
-          see [CONTRIBUTING.md](https://github.com/github/codeql-action/blob/main/CONTRIBUTING.md)."
+          ⚠️ CHANGELOG.md has been modified in this PR. Please do not modify CHANGELOG.md directly.
+          Instead, create a change-note file in `unreleased-change-notes/`. The CHANGELOG.md
+          file will be automatically generated from those change-notes.
+          See [unreleased-change-notes/README.md](unreleased-change-notes/README.md) for more information."
           gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"

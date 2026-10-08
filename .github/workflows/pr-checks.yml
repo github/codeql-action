@@ -274,8 +274,13 @@ jobs:
         if: >-
           needs.other-checks.outputs.changelog-changed == 'true' &&
           !(
-            startsWith(github.event.pull_request.title, 'Merge ') &&
-            contains(github.event.pull_request.title, ' into releases/v') ||
+            startsWith(github.event.pull_request.title, 'Merge main into releases/v') &&
+            startsWith(github.event.pull_request.head.ref, 'update-v') &&
+            startsWith(github.event.pull_request.base.ref, 'releases/v') ||
+            startsWith(github.event.pull_request.title, 'Merge releases/v') &&
+            contains(github.event.pull_request.title, ' into releases/v') &&
+            startsWith(github.event.pull_request.head.ref, 'backport-v') &&
+            startsWith(github.event.pull_request.base.ref, 'releases/v') ||
             startsWith(github.event.pull_request.title, 'Mergeback ') &&
             startsWith(github.event.pull_request.head.ref, 'mergeback/') ||
             startsWith(github.event.pull_request.title, 'Update default bundle to ') &&

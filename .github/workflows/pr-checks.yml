@@ -197,14 +197,15 @@ jobs:
 
       - name: Post a warning about modifying CHANGELOG.md
         if: steps.fetch-base.outcome == 'success' && steps.changelog-check.outputs.changed == 'true'
-        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9 # v5.0.0
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: >-
-            ⚠️ CHANGELOG.md was modified in this PR. Please do not modify CHANGELOG.md directly.
-            Instead, describe your change as a change-note. The CHANGELOG.md file will be automatically
-            generated from change-notes. For more information,
-            see [CONTRIBUTING.md](https://github.com/github/codeql-action/blob/main/CONTRIBUTING.md).
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          body="⚠️ CHANGELOG.md was modified in this PR. Please do not modify CHANGELOG.md directly. \
+          Instead, describe your change as a change-note. The CHANGELOG.md file will be automatically \
+          generated from change-notes. For more information, \
+          see [CONTRIBUTING.md](https://github.com/github/codeql-action/blob/main/CONTRIBUTING.md)."
+          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"
 
       - name: "Backport: Check out base ref"
         id: checkout-base

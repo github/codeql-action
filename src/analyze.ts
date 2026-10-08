@@ -9,6 +9,7 @@ import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
+import { defaultSuites } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import {
   getCsharpTempDependencyDir,
@@ -356,15 +357,6 @@ dataExtensions:
 
   return diffRangeDir;
 }
-
-// A set of default query suite names that are understood by the CLI.
-export const defaultSuites: Set<string> = new Set([
-  "security-experimental",
-  "security-extended",
-  "security-and-quality",
-  "code-quality",
-  "code-scanning",
-]);
 
 /**
  * If `maybeSuite` is the name of a default query suite, it is resolved into the corresponding

@@ -258,17 +258,17 @@ const CODEQL_MINIMUM_VERSION = "2.19.4";
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.20.7";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.21.3";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.16";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.17";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-07-01";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-09-24";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
@@ -302,6 +302,9 @@ export function isDiskConfigurationError(e: unknown): boolean {
  * @param variant
  * @param defaultCliVersion
  * @param rawLanguages Raw set of languages.
+ * @param otherLanguagePacksReason Why the CodeQL CLI may need packs for languages other than
+ *   `rawLanguages`, or `undefined` if it won't. If defined, the combined bundle is used. See
+ *   `PerLanguageBundleOptions.otherLanguagePacksReason`.
  * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param features Information about the features that are enabled.
  * @param logger
@@ -316,6 +319,7 @@ export async function setupCodeQL(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  otherLanguagePacksReason: string | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
@@ -339,6 +343,7 @@ export async function setupCodeQL(
       variant,
       defaultCliVersion,
       rawLanguages,
+      otherLanguagePacksReason,
       useOverlayAwareDefaultCliVersion,
       features,
       logger,
@@ -952,7 +957,13 @@ async function getCodeQLForCmd(
           },
         },
       ).exec();
-      return JSON.parse(extractorPath) as string;
+      try {
+        return JSON.parse(extractorPath) as string;
+      } catch (err) {
+        throw new Error(
+          `Failed to parse extractor path for '${language}' from CLI: ${getErrorMessage(err)}\nOutput was: ${extractorPath}`,
+        );
+      }
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
       const codeqlArgs = [

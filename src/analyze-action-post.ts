@@ -25,8 +25,8 @@ export async function runWrapper() {
   // possible, and only use safe functions outside.
 
   try {
-    actionsUtil.restoreInputs();
     const logger = getActionsLogger();
+    actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 

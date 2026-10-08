@@ -21,19 +21,16 @@ inputs:
     required: false
   languages:
     description: >-
-      A comma-separated list of CodeQL languages that will be analyzed in subsequent
-      `github/codeql-action/init` and `github/codeql-action/analyze` invocations. If specified, the
-      Action may use this list to select a CodeQL CLI version that is best suited to analyzing those
-      languages, for example by preferring a version that has a cached overlay-base database for the
-      specified languages. This input is not remembered and must also be passed to
-      `github/codeql-action/init`.
+      A comma-separated list of CodeQL languages that the installed CodeQL CLI will be used to
+      analyze. If specified, the Action may use this list to select a CodeQL CLI version that is
+      best suited to analyzing those languages, for example by preferring a version that has a
+      cached overlay-base database for the specified languages.
     required: false
   analysis-kinds:
     description: >-
-      [Internal] A comma-separated list of analysis kinds that subsequent
-      `github/codeql-action/init` invocations will enable. If specified, the Action may use this
-      list to select a CodeQL CLI version that is best suited to those analysis kinds. This input is
-      not remembered and must also be passed to `github/codeql-action/init`.
+      [Internal] A comma-separated list of analysis kinds that the installed CodeQL CLI will be used
+      for. If specified, the Action may use this list to select a CodeQL CLI version that is best
+      suited to those analysis kinds.
 
       Available options are the same as for the `analysis-kinds` input on the `init` Action.
     default: 'code-scanning'

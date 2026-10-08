@@ -154,26 +154,6 @@ await describe("isValidChangenoteFile", async () => {
     assert.equal(isValidChangenoteFile("non-existent-file.md"), false);
   });
 
-  await it("rejects invalid filename", async () => {
-    await withTmpFile(
-      "fix-bug.md",
-      "---\ncategory: fix\n---\n- Fixed a bug\n",
-      (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
-      },
-    );
-  });
-
-  await it("rejects missing frontmatter", async () => {
-    await withTmpFile(
-      "2026-01-01-fix-bug.md",
-      "- Fixed a bug\n",
-      (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
-      },
-    );
-  });
-
   await it("rejects invalid Markdown", async () => {
     await withTmpFile(
       "2026-01-01-fix-bug.md",

@@ -5,6 +5,8 @@ contains:
   - "test-setup-python-scripts"
   - "update"
   - "Update"
+  # Matrix-ed job; the name starts with this
+  - "Create backport"
 is:
   - "Agent"
   - "check-expected-release-files"
@@ -15,4 +17,6 @@ is:
   - "Label PR with size"
   - "Post repo size comment"
   - "Prepare"
+  - "Release info"
   - "Upload results"
+  - "Update release branch"

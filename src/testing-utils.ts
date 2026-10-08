@@ -184,12 +184,6 @@ export function makeMacro<Args extends unknown[]>(
 }
 
 export function getTestEnv(testEnv: NodeJS.ProcessEnv = {}): Env {
-  // In unit tests run by `ava`, this environment variable is set for the process,
-  // but we default to an empty environment here for `testEnv`, so we must set it
-  // explicitly to ensure that we get test-specific behaviour in functions when
-  // we need it.
-  testEnv["NODE_ENV"] = "test";
-
   return getEnv(testEnv);
 }
 

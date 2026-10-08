@@ -1,6 +1,11 @@
 import * as core from "@actions/core";
 
 /**
+ * This constant is set in `ava.setup.mjs` for tests.
+ */
+declare const __CODEQL_ACTION_TEST_ENV__: string | undefined;
+
+/**
  * Environment variables used by Default Setup to communicate the private registry proxy configuration.
  */
 export enum RegistryProxyVars {
@@ -321,7 +326,7 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
    * or if this instance was constructed by `getTestEnv`.
    */
   public isTestingEnv(): boolean {
-    return this.getOptional(SystemEnvVar.NODE_ENV) === "test";
+    return __CODEQL_ACTION_TEST_ENV__ === "unit-test";
   }
 }
 

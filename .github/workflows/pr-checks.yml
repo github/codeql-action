@@ -2,6 +2,9 @@ name: PR Checks
 
 on:
   push:
+    branches:
+      - "main"
+      - "releases/v*"
   pull_request:
   merge_group:
     types: [checks_requested]

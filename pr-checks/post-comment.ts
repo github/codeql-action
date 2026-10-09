@@ -85,9 +85,9 @@ function parseBoolean(flag: string, value: string | undefined): boolean {
 /** Parses and validates `value` as an issue/pull request number. */
 function parseIssueId(value: string | undefined): number {
   return parseFlag("issue-id", value, (raw) => {
-    const parsed = Number.parseInt(raw, 10);
-    if (Number.isNaN(parsed)) {
-      throw new Error("Must be an integer.");
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new Error("Must be a positive integer.");
     }
     return parsed;
   });

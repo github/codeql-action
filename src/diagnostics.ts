@@ -7,7 +7,7 @@ import type { Config } from "./config-utils";
 import type { FileSystem } from "./fs";
 import { Language } from "./languages";
 import { getActionsLogger, type Logger } from "./logging";
-import { getCodeQLDatabasePath } from "./util";
+import { getCodeQLDatabasePath, getErrorMessage } from "./util";
 
 /**
  * Known tags for diagnostics. There is currently only "internal-error",
@@ -304,6 +304,7 @@ export function flushDiagnostics(
     `Moving ${diagnosticsCount} diagnostic(s) to their respective databases.`,
   );
 
+  const failedFlushDiagnostics: TemporaryDiagnostic[] = [];
   for (const temporary of temporaryDiagnostics) {
     // If `temporary.language` is `undefined`, then we didn't have a `config` at the time that
     // `addNoLanguageDiagnostic` was called. In that case, we arbitrarily choose the first
@@ -315,11 +316,20 @@ export function flushDiagnostics(
     const filename = path.basename(temporary.path);
     const destination = path.join(directory, filename);
 
-    action.fs.renameSync(temporary.path, destination);
+    try {
+      action.fs.mkdirSync(directory, { recursive: true });
+      action.fs.renameSync(temporary.path, destination);
+    } catch (err) {
+      action.logger.warning(
+        `Failed to rename '${temporary.path}' to '${destination}': ${getErrorMessage(err)}`,
+      );
+
+      failedFlushDiagnostics.push(temporary);
+    }
   }
 
   // Reset the temporary diagnostics arrays.
-  temporaryDiagnostics = [];
+  temporaryDiagnostics = failedFlushDiagnostics;
 }
 
 /**

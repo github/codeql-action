@@ -4,8 +4,10 @@ import * as sinon from "sinon";
 import { getCodeQLForTesting } from "../codeql";
 import * as diagnostics from "../diagnostics";
 import { ActionsEnvVars } from "../environment";
+import { Feature } from "../feature-flags";
 import {
   checkExpectedLogMessages,
+  createFeatures,
   createTestConfig,
   getTestEnv,
   initAllState,
@@ -176,6 +178,68 @@ test.serial(
             languages: [BuiltInLanguage.swift],
             macOSVersion: "27.0.0",
           },
+          severity: "warning",
+          source: {
+            id: "codeql-action/unsupported-traced-swift-analysis-macos",
+            name: "Traced Swift analysis is not supported on this version of macOS",
+          },
+          visibility: {
+            cliSummaryTable: true,
+            statusPage: true,
+            telemetry: true,
+          },
+        } satisfies Partial<diagnostics.DiagnosticMessage>,
+      ]);
+    }),
+);
+
+// `addDiagnostic` changes global state and we must stub it, so this test must be serial.
+test.serial(
+  "isSwiftCompatible throws if macOS version is unsupported and FF is enabled",
+  async (t) =>
+    withTmpDir(async (tmpDir) => {
+      const logger = new RecordingLogger();
+      const env = getTestEnv();
+      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+      const features = createFeatures([
+        Feature.SwiftSkipUnsupportedTracedAnalysis,
+      ]);
+
+      const codeql = await getCodeQLForTesting(
+        "codeql-for-testing",
+        logger,
+        env,
+      );
+      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+      const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
+
+      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
+      await t.throwsAsync(
+        isSwiftCompatible(
+          initAllState({
+            logger,
+            platform: "darwin",
+            osRelease: "27.0.0",
+            env,
+            features,
+          }),
+          config,
+          codeql,
+        ),
+      );
+
+      t.is(addDiagnostic.callCount, 1);
+      t.like(addDiagnostic.args[0], [
+        config,
+        BuiltInLanguage.swift,
+        {
+          attributes: {
+            languages: [BuiltInLanguage.swift],
+            macOSVersion: "27.0.0",
+          },
+          severity: "error",
           source: {
             id: "codeql-action/unsupported-traced-swift-analysis-macos",
             name: "Traced Swift analysis is not supported on this version of macOS",

@@ -2,6 +2,7 @@ import { ActionState } from "../action-common";
 import { CodeQL } from "../codeql";
 import { Config } from "../config-utils";
 import { addDiagnostic, makeDiagnostic } from "../diagnostics";
+import { Feature } from "../feature-flags";
 import { macOSVersion } from "../platform";
 import { ToolsFeature } from "../tools-features";
 import { ConfigurationError } from "../util";
@@ -24,7 +25,7 @@ export const SWIFT_TRACED_UNSUPPORTED_XCODE = 27;
  * @returns True if we can run a Swift analysis.
  */
 export async function isSwiftCompatible(
-  action: ActionState<["Base", "Logger"]>,
+  action: ActionState<["Base", "Logger", "FeatureFlags"]>,
   config: Config,
   codeql: CodeQL,
 ) {
@@ -57,15 +58,15 @@ export async function isSwiftCompatible(
     return;
   }
 
+  const skipUnsupportedTracedAnalysis = await action.features.getValue(
+    Feature.SwiftSkipUnsupportedTracedAnalysis,
+  );
   if (version.major >= SWIFT_TRACED_UNSUPPORTED_MACOS) {
     const baseMessage = [
       `Traced Swift analysis is not supported on macOS ${SWIFT_TRACED_UNSUPPORTED_MACOS} or above.`,
       `Configure your analysis to run on macOS ${SWIFT_TRACED_UNSUPPORTED_MACOS - 1} or below`,
       `and XCode ${SWIFT_TRACED_UNSUPPORTED_XCODE - 1} or below.`,
     ].join(" ");
-
-    // Log the message. This will also show up as a workflow annotation.
-    action.logger.warning(baseMessage);
 
     // Create a diagnostic that will show up on the TSP.
     addDiagnostic(
@@ -80,7 +81,7 @@ export async function isSwiftCompatible(
             macOSVersion: version.toString(),
           },
           markdownMessage: baseMessage,
-          severity: "warning",
+          severity: skipUnsupportedTracedAnalysis ? "error" : "warning",
           visibility: {
             cliSummaryTable: true,
             statusPage: true,
@@ -89,5 +90,15 @@ export async function isSwiftCompatible(
         },
       ),
     );
+
+    // Throw an error to abort the analysis if the FF is enabled or log the message.
+    if (skipUnsupportedTracedAnalysis) {
+      // ConfigurationErrors are converted to the "aborted" status by the exception handler
+      // in `init-action.ts` that guards the call to `isSwiftCompatible`.
+      throw new ConfigurationError(baseMessage);
+    } else {
+      // This will also show up as a workflow annotation.
+      action.logger.warning(baseMessage);
+    }
   }
 }

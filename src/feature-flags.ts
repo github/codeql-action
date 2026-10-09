@@ -170,6 +170,8 @@ export enum Feature {
    */
   PerLanguageBundles = "per_language_bundles_v2",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  /** Whether we should fail early if we detect that traced Swift analysis is unsupported. */
+  SwiftSkipUnsupportedTracedAnalysis = "swift_skip_unsupported_traced_analysis",
   /** Routes (some) API requests through the registry proxy. */
   ProxyApiRequests = "proxy_api_requests",
   /** Note that this currently only disables baseline file coverage information. */
@@ -464,6 +466,11 @@ export const featureConfig = {
   [Feature.StartProxyUseFeaturesRelease]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_START_PROXY_USE_FEATURES_RELEASE",
+    minimumVersion: undefined,
+  },
+  [Feature.SwiftSkipUnsupportedTracedAnalysis]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_SWIFT_SKIP_UNSUPPORTED_TRACED_ANALYSIS",
     minimumVersion: undefined,
   },
   [Feature.ToolsRepositoryProperty]: {

@@ -1,11 +1,18 @@
 import { ActionState } from "../action-common";
 import { CodeQL } from "../codeql";
 import { Config } from "../config-utils";
+import { addDiagnostic, makeDiagnostic } from "../diagnostics";
 import { macOSVersion } from "../platform";
 import { ToolsFeature } from "../tools-features";
 import { ConfigurationError } from "../util";
 
 import { BuiltInLanguage } from ".";
+
+/** macOS 27 and above do not support traced extraction for Swift. */
+export const SWIFT_TRACED_UNSUPPORTED_MACOS = 27;
+
+/** Xcode 27 and above do not support traced extraction for Swift. */
+export const SWIFT_TRACED_UNSUPPORTED_XCODE = 27;
 
 /**
  * Determines whether we can run a Swift analysis on the current runner.
@@ -48,5 +55,39 @@ export async function isSwiftCompatible(
       `Unable to determine version of macOS, got: ${version}`,
     );
     return;
+  }
+
+  if (version.major >= SWIFT_TRACED_UNSUPPORTED_MACOS) {
+    const baseMessage = [
+      `Traced Swift analysis is not supported on macOS ${SWIFT_TRACED_UNSUPPORTED_MACOS} or above.`,
+      `Configure your analysis to run on macOS ${SWIFT_TRACED_UNSUPPORTED_MACOS - 1} or below`,
+      `and XCode ${SWIFT_TRACED_UNSUPPORTED_XCODE - 1} or below.`,
+    ].join(" ");
+
+    // Log the message. This will also show up as a workflow annotation.
+    action.logger.warning(baseMessage);
+
+    // Create a diagnostic that will show up on the TSP.
+    addDiagnostic(
+      config,
+      BuiltInLanguage.swift,
+      makeDiagnostic(
+        "codeql-action/unsupported-traced-swift-analysis-macos",
+        "Traced Swift analysis is not supported on this version of macOS",
+        {
+          attributes: {
+            languages: config.languages,
+            macOSVersion: version.toString(),
+          },
+          markdownMessage: baseMessage,
+          severity: "warning",
+          visibility: {
+            cliSummaryTable: true,
+            statusPage: true,
+            telemetry: true,
+          },
+        },
+      ),
+    );
   }
 }

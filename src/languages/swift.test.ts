@@ -1,59 +1,130 @@
 import test from "ava";
+import * as sinon from "sinon";
 
+import { getCodeQLForTesting } from "../codeql";
+import { ActionsEnvVars } from "../environment";
 import {
   checkExpectedLogMessages,
   createTestConfig,
+  getTestEnv,
   initAllState,
+  makeVersionInfo,
   RecordingLogger,
 } from "../testing-utils";
+import { ToolsFeature } from "../tools-features";
+import { withTmpDir } from "../util";
 
 import { isSwiftCompatible } from "./swift";
 
 import { BuiltInLanguage } from ".";
 
-test("isSwiftCompatible doesn't throw for non-Swift languages", (t) => {
+test("isSwiftCompatible doesn't throw for non-Swift languages", async (t) => {
   for (const language of Object.values(BuiltInLanguage)) {
     if (language === BuiltInLanguage.swift) {
       continue;
     }
 
-    t.notThrows(() =>
+    const codeql = await getCodeQLForTesting();
+    await t.notThrowsAsync(
       isSwiftCompatible(
         initAllState(),
         createTestConfig({ languages: [language] }),
+        codeql,
       ),
     );
   }
 });
 
-test("isSwiftCompatible doesn't throw for Swift on darwin", (t) => {
-  t.notThrows(() => {
-    isSwiftCompatible(
-      initAllState({ platform: "darwin" }),
-      createTestConfig({ languages: [BuiltInLanguage.swift] }),
+test("isSwiftCompatible doesn't throw for Swift if CLI supports swiftSupportsAllPlatforms", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+    const codeql = await getCodeQLForTesting("codeql-for-testing", logger, env);
+    const supportsFeature = sinon
+      .stub(codeql, "supportsFeature")
+      .withArgs(ToolsFeature.SwiftSupportsAllPlatforms)
+      .resolves(true);
+
+    await t.notThrowsAsync(
+      isSwiftCompatible(
+        initAllState({ platform: "darwin", env, logger }),
+        createTestConfig({ languages: [BuiltInLanguage.swift] }),
+        codeql,
+      ),
     );
-  });
-});
+
+    t.is(supportsFeature.callCount, 1);
+    t.deepEqual(supportsFeature.args[0], [
+      ToolsFeature.SwiftSupportsAllPlatforms,
+    ]);
+  }));
+
+test("isSwiftCompatible doesn't throw for Swift on darwin", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+    const codeql = await getCodeQLForTesting("codeql-for-testing", logger, env);
+    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+    await t.notThrowsAsync(
+      isSwiftCompatible(
+        initAllState({ platform: "darwin", env, logger }),
+        createTestConfig({ languages: [BuiltInLanguage.swift] }),
+        codeql,
+      ),
+    );
+  }));
 
 const nonDarwinPlatforms: NodeJS.Platform[] = ["linux", "win32"];
 for (const nonDarwinPlatform of nonDarwinPlatforms) {
-  test(`isSwiftCompatible throws for Swift on ${nonDarwinPlatform}`, (t) => {
-    t.throws(() => {
-      isSwiftCompatible(
-        initAllState({ platform: nonDarwinPlatform }),
-        createTestConfig({ languages: [BuiltInLanguage.swift] }),
+  test(`isSwiftCompatible throws for Swift on ${nonDarwinPlatform}`, async (t) =>
+    withTmpDir(async (tmpDir) => {
+      const logger = new RecordingLogger();
+      const env = getTestEnv();
+      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+      const codeql = await getCodeQLForTesting(
+        "codeql-for-testing",
+        logger,
+        env,
       );
-    });
-  });
+      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+      await t.throwsAsync(
+        isSwiftCompatible(
+          initAllState({ platform: nonDarwinPlatform, env, logger }),
+          createTestConfig({ languages: [BuiltInLanguage.swift] }),
+          codeql,
+        ),
+      );
+    }));
 }
 
-test("isSwiftCompatible warns if version string is not a semver", (t) => {
-  const logger = new RecordingLogger();
-  isSwiftCompatible(
-    initAllState({ logger, platform: "darwin", osRelease: "unexpected" }),
-    createTestConfig({ languages: [BuiltInLanguage.swift] }),
-  );
-  checkExpectedLogMessages(t, logger.messages, [
-    "Unable to determine version of macOS, got: unexpected",
-  ]);
-});
+test("isSwiftCompatible warns if version string is not a semver", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+    const codeql = await getCodeQLForTesting("codeql-for-testing", logger, env);
+    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+    await isSwiftCompatible(
+      initAllState({
+        logger,
+        platform: "darwin",
+        osRelease: "unexpected",
+        env,
+      }),
+      createTestConfig({ languages: [BuiltInLanguage.swift] }),
+      codeql,
+    );
+
+    checkExpectedLogMessages(t, logger.messages, [
+      "Unable to determine version of macOS, got: unexpected",
+    ]);
+  }));

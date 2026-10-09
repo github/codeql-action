@@ -1,6 +1,11 @@
 import test from "ava";
 
-import { createTestConfig, initAllState } from "../testing-utils";
+import {
+  checkExpectedLogMessages,
+  createTestConfig,
+  initAllState,
+  RecordingLogger,
+} from "../testing-utils";
 
 import { isSwiftCompatible } from "./swift";
 
@@ -41,3 +46,14 @@ for (const nonDarwinPlatform of nonDarwinPlatforms) {
     });
   });
 }
+
+test("isSwiftCompatible warns if version string is not a semver", (t) => {
+  const logger = new RecordingLogger();
+  isSwiftCompatible(
+    initAllState({ logger, platform: "darwin", osRelease: "unexpected" }),
+    createTestConfig({ languages: [BuiltInLanguage.swift] }),
+  );
+  checkExpectedLogMessages(t, logger.messages, [
+    "Unable to determine version of macOS, got: unexpected",
+  ]);
+});

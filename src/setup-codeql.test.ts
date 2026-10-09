@@ -1647,16 +1647,20 @@ test.serial(
       },
     ]);
 
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, [
-      { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
-      { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
-    ]);
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result =
+        await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+          overlayMatchEnabledVersions,
+          ["javascript"],
+          createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
+          getRunnerLogger(true),
+        );
+      t.deepEqual(result, [
+        { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
+        { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
+      ]);
+    });
   },
 );
 
@@ -1773,21 +1777,25 @@ test.serial(
       },
     ]);
 
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersionDryRun]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(
-      result,
-      [],
-      "Dry-run should return an empty list so the caller falls back.",
-    );
-    t.assert(
-      listStub.calledOnce,
-      "Dry-run should still list Actions caches to populate the diagnostic.",
-    );
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result =
+        await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+          overlayMatchEnabledVersions,
+          ["javascript"],
+          createFeatures([Feature.OverlayAnalysisMatchCodeqlVersionDryRun]),
+          getRunnerLogger(true),
+        );
+      t.deepEqual(
+        result,
+        [],
+        "Dry-run should return an empty list so the caller falls back.",
+      );
+      t.assert(
+        listStub.calledOnce,
+        "Dry-run should still list Actions caches to populate the diagnostic.",
+      );
+    });
   },
 );
 
@@ -1801,18 +1809,22 @@ test.serial(
       },
     ]);
 
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([
-        Feature.OverlayAnalysisMatchCodeqlVersion,
-        Feature.OverlayAnalysisMatchCodeqlVersionDryRun,
-      ]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, [
-      { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
-    ]);
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result =
+        await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+          overlayMatchEnabledVersions,
+          ["javascript"],
+          createFeatures([
+            Feature.OverlayAnalysisMatchCodeqlVersion,
+            Feature.OverlayAnalysisMatchCodeqlVersionDryRun,
+          ]),
+          getRunnerLogger(true),
+        );
+      t.deepEqual(result, [
+        { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
+      ]);
+    });
   },
 );
 

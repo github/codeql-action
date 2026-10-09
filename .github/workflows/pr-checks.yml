@@ -302,7 +302,7 @@ jobs:
             ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
             Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`
             file will be automatically generated from those change-notes.
-            See [`unreleased-change-notes/README.md`](unreleased-change-notes/README.md) for more information.
+            See [`unreleased-change-notes/README.md`](https://github.com/github/codeql-action/blob/main/unreleased-change-notes/README.md) for more information.
           action-condition: ${{ needs.other-checks.outputs.changelog-changed }}
           action-if-true: upsert
           action-if-false: delete

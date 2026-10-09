@@ -1,5 +1,3 @@
-import * as nodefs from "fs";
-
 import * as semver from "semver";
 
 import { ActionState, Logger } from "../action-common";
@@ -36,7 +34,7 @@ export const SWIFT_TRACED_UNSUPPORTED_XCODE = 27;
  */
 export function xcodeVersion(
   logger: Logger,
-  fs: FileSystem<"statSync" | "readlinkSync"> = nodefs,
+  fs: FileSystem<"statSync" | "readlinkSync">,
 ): semver.SemVer | undefined {
   try {
     // Stat the expected symbolic link to check that it exists and is a symbolic link.
@@ -88,6 +86,66 @@ export function xcodeVersion(
 }
 
 /**
+ * Creates a diagnostic indicating that `version` of `product` is unsupported for traced Swift analysis.
+ * Depending on `skipUnsupportedTracedAnalysis`, this function then either throws a {@link ConfigurationError}
+ * or logs the problem as a warning.
+ *
+ * @param logger The logger to use.
+ * @param config The CodeQL Action configuration.
+ * @param skipUnsupportedTracedAnalysis Whether this is a fatal error.
+ * @param product The product that the version is unsupported of.
+ * @param version The unsupported version.
+ */
+function handleUnsupportedVersion(
+  logger: Logger,
+  config: Config,
+  skipUnsupportedTracedAnalysis: boolean,
+  product: "macOS" | "Xcode",
+  version: semver.SemVer,
+) {
+  const baseMessage = [
+    `Traced Swift analysis is not supported on ${product} ${SWIFT_TRACED_UNSUPPORTED_MACOS} or above.`,
+    `Configure your analysis to run on macOS ${SWIFT_TRACED_UNSUPPORTED_MACOS - 1} or below`,
+    `and XCode ${SWIFT_TRACED_UNSUPPORTED_XCODE - 1} or below.`,
+  ].join(" ");
+
+  const attributeName = product === "macOS" ? "macOSVersion" : "xcodeVersion";
+
+  // Create a diagnostic that will show up on the TSP.
+  addDiagnostic(
+    config,
+    BuiltInLanguage.swift,
+    makeDiagnostic(
+      `codeql-action/unsupported-traced-swift-analysis-${product.toLowerCase()}`,
+      `Traced Swift analysis is not supported on this version of ${product}`,
+      {
+        attributes: {
+          languages: config.languages,
+          [attributeName]: version.toString(),
+        },
+        markdownMessage: baseMessage,
+        severity: skipUnsupportedTracedAnalysis ? "error" : "warning",
+        visibility: {
+          cliSummaryTable: true,
+          statusPage: true,
+          telemetry: true,
+        },
+      },
+    ),
+  );
+
+  // Throw an error to abort the analysis if the FF is enabled or log the message.
+  if (skipUnsupportedTracedAnalysis) {
+    // ConfigurationErrors are converted to the "aborted" status by the exception handler
+    // in `init-action.ts` that guards the call to `isSwiftCompatible`.
+    throw new ConfigurationError(baseMessage);
+  } else {
+    // This will also show up as a workflow annotation.
+    logger.warning(baseMessage);
+  }
+}
+
+/**
  * Determines whether we can run a Swift analysis on the current runner.
  *
  * @param action The Action state.
@@ -122,55 +180,39 @@ export async function isSwiftCompatible(
       `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
     );
   }
-  // If we got a string, we are on macOS but couldn't parse the version string.
-  if (typeof version === "string") {
-    action.logger.warning(
-      `Unable to determine version of macOS, got: ${version}`,
-    );
-    return;
-  }
 
   const skipUnsupportedTracedAnalysis = await action.features.getValue(
     Feature.SwiftSkipUnsupportedTracedAnalysis,
   );
-  if (version.major >= SWIFT_TRACED_UNSUPPORTED_MACOS) {
-    const baseMessage = [
-      `Traced Swift analysis is not supported on macOS ${SWIFT_TRACED_UNSUPPORTED_MACOS} or above.`,
-      `Configure your analysis to run on macOS ${SWIFT_TRACED_UNSUPPORTED_MACOS - 1} or below`,
-      `and XCode ${SWIFT_TRACED_UNSUPPORTED_XCODE - 1} or below.`,
-    ].join(" ");
-
-    // Create a diagnostic that will show up on the TSP.
-    addDiagnostic(
-      config,
-      BuiltInLanguage.swift,
-      makeDiagnostic(
-        "codeql-action/unsupported-traced-swift-analysis-macos",
-        "Traced Swift analysis is not supported on this version of macOS",
-        {
-          attributes: {
-            languages: config.languages,
-            macOSVersion: version.toString(),
-          },
-          markdownMessage: baseMessage,
-          severity: skipUnsupportedTracedAnalysis ? "error" : "warning",
-          visibility: {
-            cliSummaryTable: true,
-            statusPage: true,
-            telemetry: true,
-          },
-        },
-      ),
+  if (typeof version === "string") {
+    // If we got a string, we are on macOS but couldn't parse the version string.
+    action.logger.warning(
+      `Unable to determine version of macOS, got: ${version}`,
     );
+  } else if (version.major >= SWIFT_TRACED_UNSUPPORTED_MACOS) {
+    handleUnsupportedVersion(
+      action.logger,
+      config,
+      skipUnsupportedTracedAnalysis,
+      "macOS",
+      version,
+    );
+  }
 
-    // Throw an error to abort the analysis if the FF is enabled or log the message.
-    if (skipUnsupportedTracedAnalysis) {
-      // ConfigurationErrors are converted to the "aborted" status by the exception handler
-      // in `init-action.ts` that guards the call to `isSwiftCompatible`.
-      throw new ConfigurationError(baseMessage);
-    } else {
-      // This will also show up as a workflow annotation.
-      action.logger.warning(baseMessage);
-    }
+  // Determining whether the Xcode version is supported only makes sense on macOS, so we only do it
+  // after determining that we are running on macOS.
+  const xcodeVer = xcodeVersion(action.logger, action.fs);
+
+  if (
+    xcodeVer !== undefined &&
+    xcodeVer.major >= SWIFT_TRACED_UNSUPPORTED_XCODE
+  ) {
+    handleUnsupportedVersion(
+      action.logger,
+      config,
+      skipUnsupportedTracedAnalysis,
+      "Xcode",
+      xcodeVer,
+    );
   }
 }

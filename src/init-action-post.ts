@@ -6,6 +6,7 @@
 
 import * as core from "@actions/core";
 
+import { runInActions, type Action, type ActionState } from "./action-common";
 import {
   restoreInputs,
   getOptionalInput,
@@ -25,12 +26,10 @@ import { EnvVar, getEnv, exportEnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import * as initActionPostHelper from "./init-action-post-helper";
-import { getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
   StatusReportBase,
   sendStatusReport,
-  sendUnhandledErrorStatusReport,
   createStatusReportBase,
   getActionsStatus,
   ActionName,
@@ -45,16 +44,17 @@ interface InitPostStatusReport
     initActionPostHelper.JobStatusReport,
     initActionPostHelper.DependencyCachingUsageReport {}
 
-async function run(startedAt: Date) {
+async function run(action: ActionState<["Base", "Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const logger = action.logger;
 
-  const logger = getActionsLogger();
   let config: Config | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
   let dependencyCachingUsage: DependencyCachingUsageReport | undefined;
+
   try {
     // Read the job status before restoring inputs, since it is provided by the Actions runtime
     // environment for this step and would otherwise be overwritten by the value that the `init`
@@ -64,7 +64,8 @@ async function run(startedAt: Date) {
     // Restore inputs from `init` Action.
     restoreInputs(logger);
 
-    config = await getConfig(getTemporaryDirectory(), logger);
+    const tmpDir = getTemporaryDirectory();
+    config = await getConfig(tmpDir, logger);
 
     const gitHubVersion = config?.gitHubVersion ?? (await getGitHubVersion());
     checkGitHubVersionInRange(gitHubVersion, logger);
@@ -112,9 +113,9 @@ async function run(startedAt: Date) {
     core.setFailed(error.message);
 
     const statusReportBase = await createStatusReportBase(
-      ActionName.InitPost,
+      action.name,
       getActionsStatus(error),
-      startedAt,
+      action.startedAt,
       config,
       await checkDiskUsage(logger),
       logger,
@@ -130,9 +131,9 @@ async function run(startedAt: Date) {
   logger.info(`CodeQL job status was ${getJobStatusDisplayName(jobStatus)}.`);
 
   const statusReportBase = await createStatusReportBase(
-    ActionName.InitPost,
+    action.name,
     "success",
-    startedAt,
+    action.startedAt,
     config,
     await checkDiskUsage(logger),
     logger,
@@ -216,18 +217,11 @@ function getJobStatusFromEnvironment(): JobStatus | undefined {
   return undefined;
 }
 
+const initPost: Action = {
+  name: ActionName.InitPost,
+  run,
+};
+
 export async function runWrapper() {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(`init post action failed: ${wrapError(error).message}`);
-    await sendUnhandledErrorStatusReport(
-      ActionName.InitPost,
-      startedAt,
-      error,
-      logger,
-    );
-  }
+  return await runInActions(initPost);
 }

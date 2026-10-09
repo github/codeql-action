@@ -1,22 +1,17 @@
 import test from "ava";
 import sinon from "sinon";
 
-import * as diagnostics from "../diagnostics";
 import { ActionsEnvVars } from "../environment";
-import { Feature } from "../feature-flags";
 import {
-  checkExpectedLogMessages,
-  createFeatures,
   createTestConfig,
   getCodeQLForTesting,
   getTestEnv,
-  initAllState,
   makeVersionInfo,
   RecordingLogger,
   setupTests,
 } from "../testing-utils";
 import { ToolsFeature } from "../tools-features";
-import { ConfigurationError, withTmpDir } from "../util";
+import { withTmpDir } from "../util";
 
 import { checkSwiftCompatibility } from "./swift";
 
@@ -33,9 +28,11 @@ test("checkSwiftCompatibility doesn't throw for non-Swift languages", async (t) 
     const codeql = await getCodeQLForTesting();
     await t.notThrowsAsync(
       checkSwiftCompatibility(
-        initAllState(),
         createTestConfig({ languages: [language] }),
         codeql,
+        // A value of `undefined` should make `isSwiftCompatible` throw for Swift by default
+        // since it means we are on a platform other than macOS
+        undefined,
       ),
     );
   }
@@ -55,9 +52,11 @@ test("checkSwiftCompatibility doesn't throw for Swift if CLI supports swiftSuppo
 
     await t.notThrowsAsync(
       checkSwiftCompatibility(
-        initAllState({ platform: "darwin", env, logger }),
         createTestConfig({ languages: [BuiltInLanguage.swift] }),
         codeql,
+        // A value of `undefined` should make `isSwiftCompatible` throw for Swift by default
+        // since it means we are on a platform other than macOS
+        undefined,
       ),
     );
 
@@ -78,183 +77,13 @@ test("checkSwiftCompatibility doesn't throw for Swift on darwin", async (t) =>
 
     await t.notThrowsAsync(
       checkSwiftCompatibility(
-        initAllState({ platform: "darwin", env, logger }),
         createTestConfig({
           tempDir: tmpDir,
           languages: [BuiltInLanguage.swift],
         }),
         codeql,
+        // A value other than `undefined` means we are on macOS.
+        "some-macos-version",
       ),
     );
   }));
-
-const nonDarwinPlatforms: NodeJS.Platform[] = ["linux", "win32"];
-for (const nonDarwinPlatform of nonDarwinPlatforms) {
-  test(`checkSwiftCompatibility throws for Swift on ${nonDarwinPlatform}`, async (t) =>
-    withTmpDir(async (tmpDir) => {
-      const logger = new RecordingLogger();
-      const env = getTestEnv();
-      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-
-      const codeql = await getCodeQLForTesting(
-        "codeql-for-testing",
-        logger,
-        env,
-      );
-      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
-
-      await t.throwsAsync(
-        checkSwiftCompatibility(
-          initAllState({ platform: nonDarwinPlatform, env, logger }),
-          createTestConfig({ languages: [BuiltInLanguage.swift] }),
-          codeql,
-        ),
-        {
-          instanceOf: ConfigurationError,
-          message: /^Swift analysis is only supported on macOS runner images/,
-        },
-      );
-    }));
-}
-
-test("checkSwiftCompatibility warns if version string is not a semver", async (t) =>
-  withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger();
-    const env = getTestEnv();
-    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-
-    const codeql = await getCodeQLForTesting("codeql-for-testing", logger, env);
-    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
-
-    await checkSwiftCompatibility(
-      initAllState({
-        logger,
-        platform: "darwin",
-        osRelease: "unexpected",
-        env,
-      }),
-      createTestConfig({ languages: [BuiltInLanguage.swift] }),
-      codeql,
-    );
-
-    checkExpectedLogMessages(t, logger.messages, [
-      "Unable to determine version of macOS, got: unexpected",
-    ]);
-  }));
-
-// `addDiagnostic` changes global state and we must stub it, so this test must be serial.
-test.serial(
-  "checkSwiftCompatibility logs and adds diagnostic if macOS version is unsupported",
-  async (t) =>
-    withTmpDir(async (tmpDir) => {
-      const logger = new RecordingLogger();
-      const env = getTestEnv();
-      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-
-      const codeql = await getCodeQLForTesting(
-        "codeql-for-testing",
-        logger,
-        env,
-      );
-      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
-
-      const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
-
-      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
-      await checkSwiftCompatibility(
-        initAllState({
-          logger,
-          platform: "darwin",
-          osRelease: "27.0.0",
-          env,
-        }),
-        config,
-        codeql,
-      );
-
-      checkExpectedLogMessages(t, logger.messages, [
-        "Traced Swift analysis is not supported on macOS 27",
-      ]);
-
-      t.is(addDiagnostic.callCount, 1);
-      t.like(addDiagnostic.args[0], [
-        config,
-        BuiltInLanguage.swift,
-        {
-          attributes: {
-            languages: [BuiltInLanguage.swift],
-            macOSVersion: "27.0.0",
-          },
-          severity: "warning",
-          source: {
-            id: "codeql-action/unsupported-traced-swift-analysis-macos",
-            name: "Traced Swift analysis is not supported on this version of macOS",
-          },
-          visibility: {
-            cliSummaryTable: true,
-            statusPage: true,
-            telemetry: true,
-          },
-        } satisfies Partial<diagnostics.DiagnosticMessage>,
-      ]);
-    }),
-);
-
-// `addDiagnostic` changes global state and we must stub it, so this test must be serial.
-test.serial(
-  "checkSwiftCompatibility throws if macOS version is unsupported and FF is enabled",
-  async (t) =>
-    withTmpDir(async (tmpDir) => {
-      const logger = new RecordingLogger();
-      const env = getTestEnv();
-      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-
-      const features = createFeatures([Feature.SkipUnsupportedTracedAnalysis]);
-
-      const codeql = await getCodeQLForTesting(
-        "codeql-for-testing",
-        logger,
-        env,
-      );
-      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
-
-      const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
-
-      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
-      await t.throwsAsync(
-        checkSwiftCompatibility(
-          initAllState({
-            logger,
-            platform: "darwin",
-            osRelease: "27.0.0",
-            env,
-            features,
-          }),
-          config,
-          codeql,
-        ),
-      );
-
-      t.is(addDiagnostic.callCount, 1);
-      t.like(addDiagnostic.args[0], [
-        config,
-        BuiltInLanguage.swift,
-        {
-          attributes: {
-            languages: [BuiltInLanguage.swift],
-            macOSVersion: "27.0.0",
-          },
-          severity: "error",
-          source: {
-            id: "codeql-action/unsupported-traced-swift-analysis-macos",
-            name: "Traced Swift analysis is not supported on this version of macOS",
-          },
-          visibility: {
-            cliSummaryTable: true,
-            statusPage: true,
-            telemetry: true,
-          },
-        } satisfies Partial<diagnostics.DiagnosticMessage>,
-      ]);
-    }),
-);

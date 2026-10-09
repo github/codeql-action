@@ -97,7 +97,7 @@ export function xcodeVersion(
  * @returns True if we can run a Swift analysis.
  */
 export async function isSwiftCompatible(
-  action: ActionState<["Base", "Logger", "FeatureFlags"]>,
+  action: ActionState<["Base", "Logger", "FeatureFlags", "FS"]>,
   config: Config,
   codeql: CodeQL,
 ) {

@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "fs";
+import * as nodefs from "fs";
 import path from "path";
 
 import { getTemporaryDirectory } from "./actions-util";
@@ -172,7 +166,7 @@ export function addDiagnostic(
 
   // Check that the database exists before writing to it. If the database does not yet exist,
   // store the diagnostic in memory and write it later.
-  if (existsSync(databasePath)) {
+  if (nodefs.existsSync(databasePath)) {
     writeDiagnostic(config, language, diagnostic);
   } else {
     logger.debug(
@@ -218,7 +212,7 @@ function writeDiagnosticFile(
   diagnostic: DiagnosticMessage,
 ): string {
   // Create the directory if it doesn't exist yet.
-  mkdirSync(diagnosticsPath, { recursive: true });
+  nodefs.mkdirSync(diagnosticsPath, { recursive: true });
 
   // Include a monotonically increasing suffix to avoid filename collisions
   // between diagnostics produced within the same millisecond.
@@ -234,7 +228,7 @@ function writeDiagnosticFile(
     `codeql-action-${sanitizedTimestamp}-${uniqueSuffix}.json`,
   );
 
-  writeFileSync(jsonPath, JSON.stringify(diagnostic));
+  nodefs.writeFileSync(jsonPath, JSON.stringify(diagnostic));
 
   return jsonPath;
 }
@@ -281,7 +275,7 @@ export function logTemporaryDiagnostics() {
     );
 
     for (const temporary of temporaryDiagnostics) {
-      logger.debug(readFileSync(temporary.path, "utf-8"));
+      logger.debug(nodefs.readFileSync(temporary.path, "utf-8"));
     }
   }
 }
@@ -306,7 +300,7 @@ export function flushDiagnostics(config: Config) {
     const filename = path.basename(temporary.path);
     const destination = path.join(directory, filename);
 
-    renameSync(temporary.path, destination);
+    nodefs.renameSync(temporary.path, destination);
   }
 
   // Reset the temporary diagnostics arrays.

@@ -17,6 +17,8 @@ const paths = fs.readdirSync(sarifDirectory, {
   encoding: "utf-8",
 });
 
+core.info(`Found ${paths.length} paths in '${sarifDirectory}'.`);
+
 let found = false;
 for (const diagnosticPath of paths) {
   if (path.extname(diagnosticPath) !== ".json") {
@@ -30,6 +32,9 @@ for (const diagnosticPath of paths) {
   ) as diagnostics.DiagnosticMessage;
 
   if (contents.source.id === DIAGNOSTIC_ID) {
+    core.info(
+      `Found '${DIAGNOSTIC_ID}' in '${diagnosticPath}'. Skipping remaining files.`,
+    );
     found = true;
     break;
   }

@@ -56,6 +56,7 @@ import {
   runDatabaseInitCluster,
 } from "./init";
 import { JavaEnvVars, BuiltInLanguage } from "./languages";
+import { isSwiftCompatible } from "./languages/swift";
 import { Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -417,14 +418,7 @@ async function run(
       logger,
     });
 
-    if (
-      config.languages.includes(BuiltInLanguage.swift) &&
-      process.platform !== "darwin"
-    ) {
-      throw new ConfigurationError(
-        `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
-      );
-    }
+    isSwiftCompatible(actionState, config);
 
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(

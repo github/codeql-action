@@ -1,19 +1,91 @@
-import { ActionState } from "../action-common";
+import * as nodefs from "fs";
+
+import * as semver from "semver";
+
+import { ActionState, Logger } from "../action-common";
 import { CodeQL } from "../codeql";
 import { Config } from "../config-utils";
 import { addDiagnostic, makeDiagnostic } from "../diagnostics";
 import { Feature } from "../feature-flags";
+import { FileSystem } from "../fs";
 import { macOSVersion } from "../platform";
 import { ToolsFeature } from "../tools-features";
-import { ConfigurationError } from "../util";
+import { ConfigurationError, getErrorMessage } from "../util";
 
 import { BuiltInLanguage } from ".";
+
+/** The static path we check for a symbolic link to the (dynamic) Xcode location. */
+export const XCODE_SELECT_LINK_PATH = "/private/var/db/xcode_select_link";
+
+/** The pattern we expect to find in the Xcode path. */
+export const XCODE_APP_FILENAME_PATTERN = new RegExp(
+  /(?<filename>Xcode_(?<majorMinor>\d+.\d+).app)/,
+);
 
 /** macOS 27 and above do not support traced extraction for Swift. */
 export const SWIFT_TRACED_UNSUPPORTED_MACOS = 27;
 
 /** Xcode 27 and above do not support traced extraction for Swift. */
 export const SWIFT_TRACED_UNSUPPORTED_XCODE = 27;
+
+/**
+ * Tries to determine the version of Xcode that is installed.
+ *
+ * @param logger The logger to use.
+ * @returns The Xcode version or `undefined` if it couldn't be determined.
+ */
+export function xcodeVersion(
+  logger: Logger,
+  fs: FileSystem<"statSync" | "readlinkSync"> = nodefs,
+): semver.SemVer | undefined {
+  try {
+    // Stat the expected symbolic link to check that it exists and is a symbolic link.
+    // The `readlinkSync` call below returns an empty string in either case and so
+    // this check allows us to distinguish between the two cases.
+    const stats = fs.statSync(XCODE_SELECT_LINK_PATH);
+
+    if (!stats.isSymbolicLink()) {
+      logger.warning(
+        `${XCODE_SELECT_LINK_PATH} exists, but is not a symbolic link.`,
+      );
+      return undefined;
+    }
+
+    // Read what the symbolic link points to.
+    const xcodePath = fs.readlinkSync(XCODE_SELECT_LINK_PATH);
+
+    if (xcodePath === "") {
+      logger.warning(
+        `Resolving ${XCODE_SELECT_LINK_PATH} unexpectedly returned nothing.`,
+      );
+      return undefined;
+    }
+
+    // Try to extract the version from the path.
+    const matchResult = xcodePath.match(XCODE_APP_FILENAME_PATTERN);
+
+    if (matchResult?.groups === undefined) {
+      logger.warning(
+        `Xcode path '${xcodePath}' does not contain expected pattern.`,
+      );
+      return undefined;
+    }
+
+    const majorMinor = matchResult.groups["majorMinor"];
+    const version = semver.coerce(majorMinor);
+
+    if (version === null) {
+      logger.warning(`Couldn't parse '${majorMinor}' as a semantic version.`);
+      return undefined;
+    }
+    return version;
+  } catch (err) {
+    logger.warning(
+      `Unable to determine Xcode version: ${getErrorMessage(err)}`,
+    );
+    return undefined;
+  }
+}
 
 /**
  * Determines whether we can run a Swift analysis on the current runner.

@@ -17,6 +17,8 @@ import {
 } from "./status-report";
 import { getEnv, getErrorMessage, wrapError } from "./util";
 
+export type { Logger } from "./logging";
+
 /** Base state that is available to an Action on startup. */
 export interface BaseState {
   /** The name of the Action. */

@@ -8,6 +8,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "../actions-util";
 import * as apiClient from "../api-client";
 import type { ResolveDatabaseOutput } from "../codeql";
+import * as environment from "../environment";
 import * as gitUtils from "../git-utils";
 import { BuiltInLanguage } from "../languages";
 import { getRunnerLogger } from "../logging";
@@ -82,7 +83,7 @@ const testDownloadOverlayBaseDatabaseFromCache = makeMacro({
 
       sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
 
-      sinon.stub(utils, "isInTestMode").returns(testCase.isInTestMode);
+      sinon.stub(environment, "isInTestMode").returns(testCase.isInTestMode);
 
       if (testCase.restoreCacheResult instanceof Error) {
         sinon

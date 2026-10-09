@@ -202,10 +202,6 @@ class TestActionsEnv implements ActionsEnv {
   public getOptionalInput(_name: string): string | undefined {
     return undefined;
   }
-
-  public exportVariable(name: string, value: string): void {
-    this.env.set(name, value);
-  }
 }
 
 /**

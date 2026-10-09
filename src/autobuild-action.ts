@@ -68,7 +68,11 @@ async function sendCompletedStatusReport(
   }
 }
 
-async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
+async function run({
+  startedAt,
+  env,
+  logger,
+}: ActionState<["Base", "Env", "Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
@@ -135,7 +139,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     return;
   }
 
-  core.exportVariable(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
+  env.export(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
 
   await sendCompletedStatusReport(config, logger, startedAt, languages ?? []);
 }

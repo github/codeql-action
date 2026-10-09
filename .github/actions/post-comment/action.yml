@@ -1,0 +1,46 @@
+name: "Post comment"
+description: "Create, update, or delete a sticky PR comment identified by an automatically-derived HTML-comment marker. If this action is used more than once within the same job, give each step an explicit 'id:' so the derived marker stays unique."
+inputs:
+  body:
+    description: "Full comment markdown."
+    required: true
+  action-condition:
+    description: "The business condition ('true' or 'false') that selects which action to perform."
+    required: true
+  action-if-true:
+    description: "Action to perform when action-condition is 'true'. One of: none, insert, upsert, delete."
+    required: true
+  action-if-false:
+    description: "Action to perform when action-condition is 'false'. One of: none, insert, upsert, delete."
+    required: true
+  issue-id:
+    description: "The issue or pull request number to post/update/delete the comment on. Defaults to the current pull request if not provided."
+    required: false
+  token:
+    description: "The GitHub token to authenticate with."
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Post comment
+      shell: bash
+      env:
+        BODY: ${{ inputs.body }}
+        # Derived from the workflow name, job id, and step id/sequence-number so that repeated
+        # runs of the same step find the same comment (for upsert/delete), while distinct steps
+        # (even within the same job) get distinct markers.
+        MARKER: <!-- post-comment:${{ github.workflow }}:${{ github.job }}:${{ github.action }} -->
+        GH_TOKEN: ${{ inputs.token }}
+        ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
+        ACTION_CONDITION: ${{ inputs.action-condition }}
+        ACTION_IF_TRUE: ${{ inputs.action-if-true }}
+        ACTION_IF_FALSE: ${{ inputs.action-if-false }}
+      run: |
+        npx tsx ./pr-checks/post-comment.ts \
+          --body "$BODY" \
+          --marker "$MARKER" \
+          --action-condition "$ACTION_CONDITION" \
+          --action-if-true "$ACTION_IF_TRUE" \
+          --action-if-false "$ACTION_IF_FALSE" \
+          --issue-id "$ISSUE_ID" \
+          --repository "$GITHUB_REPOSITORY"

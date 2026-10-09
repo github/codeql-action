@@ -211,7 +211,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.triggering_actor != 'dependabot[bot]' &&
+      github.actor != 'dependabot[bot]' &&
       needs.other-checks.result == 'success'
     permissions:
       contents: read

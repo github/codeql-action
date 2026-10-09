@@ -148,12 +148,11 @@ jobs:
 
       - name: Fetch base commit
         id: fetch-base
-        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
-        # check in those cases.
+        # Skip this (and subsequent steps) if the PR originates from a fork, since this workflow
+        # won't have the necessary permissions to post comments on the PR.
         if: >-
           github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
+          github.event.pull_request.head.repo.full_name == github.repository
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -212,7 +211,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.triggering_actor != 'dependabot[bot]' &&
       needs.other-checks.result == 'success'
     permissions:
       contents: read

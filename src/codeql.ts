@@ -18,7 +18,7 @@ import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar, getEnv, exportEnvVar } from "./environment";
+import { EnvVar, getEnv, exportEnvVar, Env, ReadOnlyEnv } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -499,13 +499,14 @@ export async function getCodeQLForCmd(
   logger: Logger,
   cmd: string,
   checkVersion: boolean,
+  env: Env = getEnv(),
 ): Promise<CodeQL> {
   const codeql: CodeQL = {
     getPath() {
       return cmd;
     },
     async getVersion() {
-      const cacheFilePath = outputCache.getCommandCacheFilePath(getEnv());
+      const cacheFilePath = outputCache.getCommandCacheFilePath(env);
       let result = outputCache.getCachedCodeQlVersion(
         logger,
         cacheFilePath,
@@ -631,7 +632,7 @@ export async function getCodeQLForCmd(
       }
     },
     async runAutobuild(config: Config, language: Language) {
-      applyAutobuildAzurePipelinesTimeoutFix();
+      applyAutobuildAzurePipelinesTimeoutFix(env);
 
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),
@@ -641,8 +642,11 @@ export async function getCodeQLForCmd(
 
       // Bump the verbosity of the autobuild command if we're in debug mode
       if (config.debugMode) {
-        process.env[EnvVar.CLI_VERBOSITY] =
-          process.env[EnvVar.CLI_VERBOSITY] || EXTRACTION_DEBUG_MODE_VERBOSITY;
+        env.set(
+          EnvVar.CLI_VERBOSITY,
+          env.getOptional(EnvVar.CLI_VERBOSITY) ??
+            EXTRACTION_DEBUG_MODE_VERBOSITY,
+        );
       }
 
       // On macOS, System Integrity Protection (SIP) typically interferes with
@@ -674,7 +678,7 @@ export async function getCodeQLForCmd(
     },
     async extractUsingBuildMode(config: Config, language: Language) {
       if (config.buildMode === BuildMode.Autobuild) {
-        applyAutobuildAzurePipelinesTimeoutFix();
+        applyAutobuildAzurePipelinesTimeoutFix(env);
       }
       try {
         await runCli(cmd, [
@@ -806,7 +810,7 @@ export async function getCodeQLForCmd(
         "--sarif-group-rules-by-pack",
         "--sarif-include-query-help=always",
         "--sublanguage-file-coverage",
-        ...(await getJobRunUuidSarifOptions()),
+        ...(await getJobRunUuidSarifOptions(env)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (sarifRunPropertyFlag !== undefined) {
@@ -1054,7 +1058,7 @@ export async function getCodeQLForCmd(
     );
   } else if (
     checkVersion &&
-    process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
+    env.getOptional(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING) !== "true" &&
     !(await util.codeQlVersionAtLeast(codeql, CODEQL_NEXT_MINIMUM_VERSION))
   ) {
     const result = await codeql.getVersion();
@@ -1276,17 +1280,20 @@ function getExtractionVerbosityArguments(
  * Without the fix, long build processes will timeout when pulling down Java packages
  * https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
  */
-function applyAutobuildAzurePipelinesTimeoutFix() {
-  const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
-  process.env["JAVA_TOOL_OPTIONS"] = [
-    ...javaToolOptions.split(/\s+/),
-    "-Dhttp.keepAlive=false",
-    "-Dmaven.wagon.http.pool=false",
-  ].join(" ");
+function applyAutobuildAzurePipelinesTimeoutFix(env: Env) {
+  const javaToolOptions = env.getOptional("JAVA_TOOL_OPTIONS") ?? "";
+  env.set(
+    "JAVA_TOOL_OPTIONS",
+    [
+      ...javaToolOptions.split(/\s+/),
+      "-Dhttp.keepAlive=false",
+      "-Dmaven.wagon.http.pool=false",
+    ].join(" "),
+  );
 }
 
-async function getJobRunUuidSarifOptions() {
-  const jobRunUuid = process.env[EnvVar.JOB_RUN_UUID];
+async function getJobRunUuidSarifOptions(env: ReadOnlyEnv) {
+  const jobRunUuid = env.getOptional(EnvVar.JOB_RUN_UUID);
 
   return jobRunUuid ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`] : [];
 }

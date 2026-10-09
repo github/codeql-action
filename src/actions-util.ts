@@ -72,7 +72,7 @@ export const getOptionalInput = function (name: string): string | undefined {
  * directory that has been set in `CODEQL_ACTION_TEMP` by e.g. a previous step, or the
  * value of `RUNNER_TEMP` otherwise.
  */
-export function getTemporaryDirectory(env: Env = getEnv()): string {
+export function getTemporaryDirectory(env: ReadOnlyEnv = getEnv()): string {
   return (
     env.getOptional(EnvVar.TEMP) ?? env.getRequired(ActionsEnvVars.RUNNER_TEMP)
   );

@@ -81,6 +81,13 @@ describe("parseOptions", async () => {
     );
   });
 
+  await it("rejects an empty --marker", () => {
+    assert.throws(
+      () => parseOptions(withFlag("--marker", "")),
+      /Missing required flag --marker/,
+    );
+  });
+
   await it("rejects an invalid --action-condition value", () => {
     assert.throws(
       () => parseOptions(withFlag("--action-condition", "yes")),

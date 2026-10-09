@@ -56,6 +56,29 @@ export interface FeatureState {
 /** Identifies a type of state an Action may have. */
 export type StateFeature = keyof FeatureState;
 
+/**
+ * The `Env` feature implies the availability of the `ReadOnlyEnv` feature.
+ *
+ * If `T` is `Env`, this returns `Env | ReadOnlyEnv`.
+ * Otherwise, it is the identity and returns T.
+ */
+type ImpliedFeatures<T extends StateFeature> = T extends "Env"
+  ? "Env" | "ReadOnlyEnv"
+  : T;
+
+/**
+ * Given an object type `Obj`, this tries to lookup a corresponding `StateFeature`
+ * to which the object type belongs in `FeatureState`. Resolves to `never` if there
+ * is no match.
+ */
+type FeatureNameFor<Obj extends object> = {
+  [K in StateFeature]: [Obj] extends [FeatureState[K]]
+    ? [FeatureState[K]] extends [Obj]
+      ? K
+      : never
+    : never;
+}[StateFeature];
+
 /** Constructs the intersection of all state types identifies by `Fs`. */
 export type FieldsOf<Fs extends readonly StateFeature[]> = Fs extends []
   ? Record<never, never>
@@ -66,8 +89,54 @@ export type FieldsOf<Fs extends readonly StateFeature[]> = Fs extends []
     ? FeatureState[Head] & FieldsOf<Tail>
     : never;
 
+/**
+ * Symbol used for a field in `ActionState` that carries the type array of state features.
+ * This is a Symbol so that it doesn't clash with any property names we might want to have.
+ */
+const stateFeatures = Symbol();
+
 /** Describes the state of an Action that has access to the state corresponding to `Fs`. */
-export type ActionState<Fs extends readonly StateFeature[]> = FieldsOf<Fs>;
+export type ActionState<Fs extends readonly StateFeature[]> = FieldsOf<Fs> & {
+  /**
+   * When given a chance, TypeScript will simplify an `ActionState<Fs>` type as much as possible,
+   * which results in a concrete object type that doesn't mention `Fs`.
+   *
+   * That causes problems for functions which accept `ActionState<Fs>` values, but need to know the
+   * feature keys `Fs`. This property here explicitly captures `Fs` in the concrete object type
+   * that results from simplifying `ActionState<Fs>`.
+   *
+   * This is a function rather than a field, because we want to be able to provide values of type
+   * `ActionState<Fs>` to functions expecting `ActionState<As>` where `As` is a subset of `Fs`.
+   *
+   * Since function types are contravariant in the types of their parameters, using a function
+   * type here allows that to happen.
+   *
+   * Because the field is optional, we don't have to explicitly provide a value
+   * for it anywhere while the type is still inferred.
+   *
+   * `Fs[number]` returns the union of all features in `Fs`. We wrap it in `ImpliedFeatures`
+   * so that `Env` is expanded into `Env | ReadOnlyEnv`, allowing functions that expect the
+   * `ReadOnlyEnv` feature to be provided with an `ActionState` that has the `Env` feature
+   * without requiring this to be made explicit.
+   */
+  readonly [stateFeatures]?: (ts: ImpliedFeatures<Fs[number]>) => void;
+};
+
+/** Extends `state` with an `extra` feature. */
+export function extendActionState<
+  // In first position, so that it can be explicitly provided if `FeatureNameFor`
+  // should not work on `extra`.
+  F extends StateFeature,
+  Fs extends readonly StateFeature[],
+  E extends FeatureState[F],
+>(
+  state: ActionState<Fs>,
+  extra: E,
+): ActionState<[...Fs, FeatureNameFor<E> & F]> {
+  return { ...state, ...extra } as unknown as ActionState<
+    [...Fs, FeatureNameFor<E> & F]
+  >;
+}
 
 /** The type of an Action's main entry point. This is a function that is provided
  * with a basic `ActionState` object with features that are always available.

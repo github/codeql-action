@@ -88,9 +88,8 @@ test("addDiagnostic writes temporary diagnostics and flushDiagnostics moves them
     );
   });
 
-  // addDiagnostic
   t.is(existsSync.callCount, 1);
-  t.is(mkdirSync.callCount, 1);
+  t.is(mkdirSync.callCount, 2);
   t.is(writeFileSync.callCount, 1);
   t.is(writeFileSync.args[0].length, 2);
   t.is(writeFileSync.args[0][1], JSON.stringify(diagnostic));

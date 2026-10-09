@@ -5,7 +5,12 @@ import * as core from "@actions/core";
 import * as io from "@actions/io";
 import * as semver from "semver";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import {
   FileCmdNotFoundError,
   getActionVersion,
@@ -278,7 +283,9 @@ async function run(
     }
 
     // Compute the value of the `config-file` input.
-    const actionStateWithFeatures = { ...actionState, features };
+    const actionStateWithFeatures = extendActionState(actionState, {
+      features,
+    });
     configFile = await getConfigFileInput(
       actionStateWithFeatures,
       repositoryProperties,

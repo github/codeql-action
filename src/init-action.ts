@@ -471,7 +471,7 @@ async function run(
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
-    logTemporaryDiagnostics();
+    logTemporaryDiagnostics(actionState);
     return;
   }
 
@@ -765,7 +765,7 @@ async function run(
 
     // Move diagnostics to the database that we previously kept in a temporary location
     // because the database did not exist until now
-    flushDiagnostics(config);
+    flushDiagnostics(actionState, config);
 
     // We save the config here instead of at the end of `initConfig` because we
     // may have updated the config returned from `initConfig`, e.g. to revert to
@@ -794,7 +794,7 @@ async function run(
     );
     return;
   } finally {
-    logTemporaryDiagnostics();
+    logTemporaryDiagnostics(actionState);
   }
   await sendCompletedStatusReport(
     startedAt,

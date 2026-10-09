@@ -68,6 +68,8 @@ export enum ActionName {
 export function getDisplayActionName(actionName: ActionName): string {
   if (actionName === ActionName.Analyze) {
     return "analyze";
+  } else if (actionName === ActionName.InitPost) {
+    return "init post";
   }
   return actionName;
 }

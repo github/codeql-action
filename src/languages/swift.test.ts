@@ -3,6 +3,7 @@ import sinon from "sinon";
 
 import { ActionsEnvVars } from "../environment";
 import {
+  checkExpectedLogMessages,
   createTestConfig,
   getCodeQLForTesting,
   getTestEnv,
@@ -68,3 +69,14 @@ for (const nonDarwinPlatform of nonDarwinPlatforms) {
     );
   });
 }
+
+test("checkSwiftCompatibility warns if version string is not a semver", (t) => {
+  const logger = new RecordingLogger();
+  checkSwiftCompatibility(
+    initAllState({ logger, platform: "darwin", osRelease: "unexpected" }),
+    createTestConfig({ languages: [BuiltInLanguage.swift] }),
+  );
+  checkExpectedLogMessages(t, logger.messages, [
+    "Unable to determine version of macOS, got: unexpected",
+  ]);
+});

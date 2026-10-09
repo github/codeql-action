@@ -18,6 +18,7 @@ import {
   sanitizeArtifactName,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
+import { getTempDiagnosticPath } from "./diagnostics";
 import { EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
@@ -178,7 +179,19 @@ async function generateFailedSarif(
     databasePath === undefined ||
     !(await features.getValue(Feature.ExportDiagnosticsEnabled, codeql))
   ) {
-    await codeql.diagnosticsExport(sarifFile, category, config);
+    // If we don't have a database path, then we may have diagnostics that were written to a
+    // temporary location. Get the path that they would have been written to and check whether
+    // it exists. If so, pass it on to the CLI. The CLI will not complain if we give it a
+    // path that doesn't exist, so we are just being extra defensive here.
+    let diagnosticDir: string | undefined = getTempDiagnosticPath(
+      config.tempDir,
+    );
+
+    if (!fs.existsSync(diagnosticDir)) {
+      diagnosticDir = undefined;
+    }
+
+    await codeql.diagnosticsExport(sarifFile, category, config, diagnosticDir);
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
     await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);

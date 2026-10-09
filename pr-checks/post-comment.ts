@@ -126,7 +126,7 @@ export function parseOptions(argv?: string[]): Options {
   if (values.body === undefined) {
     throw new Error("Missing required flag --body.");
   }
-  if (values.marker === undefined) {
+  if (values.marker === undefined || values.marker.trim() === "") {
     throw new Error("Missing required flag --marker.");
   }
 

@@ -238,6 +238,25 @@ jobs:
       group: check-repo-size-${{ github.event.pull_request.number }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Check out the base ref, not the PR's head, since this job runs with
+          # `pull-requests: write` permissions and must not execute untrusted code from the PR.
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: |
+            pr-checks
+            .github/actions/post-comment
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --workspace=pr-checks
+
       - name: Download repo size comment
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -269,6 +288,7 @@ jobs:
           fi
 
       - name: Post a warning about modifying CHANGELOG.md
+        id: post-changelog-warning
         # Release, backport, mergeback, and bundle-update PRs deliberately modify CHANGELOG.md,
         # so skip comment management entirely for these automation flows.
         if: >-
@@ -276,41 +296,14 @@ jobs:
           !startsWith(github.event.pull_request.head.ref, 'backport-v') &&
           !startsWith(github.event.pull_request.head.ref, 'mergeback/') &&
           !startsWith(github.event.pull_request.head.ref, 'update-bundle/')
-        env:
-          COMMENT_MARKER: "<!-- changelog-warning-bot -->"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          CHANGED: ${{ needs.other-checks.outputs.changelog-changed }}
-        run: |
-          comment_id=$(
-            gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
-              --paginate \
-              --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
-              | head -n 1
-          )
-
-          # If CHANGELOG.md is no longer modified (e.g. a later commit reverted the change),
-          # remove any stale warning comment left over from an earlier push instead of leaving it
-          # to incorrectly claim the file is still modified.
-          if [[ "$CHANGED" == "false" ]]; then
-            if [[ -n "$comment_id" ]]; then
-              echo "CHANGELOG.md is no longer modified; deleting stale warning comment ($comment_id)."
-              gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$comment_id"
-            else
-              echo "CHANGELOG.md was not modified and no warning comment exists; nothing to do."
-            fi
-            exit 0
-          fi
-
-          # If CHANGELOG.md has been modified and a warning comment already exists, do not post a duplicate comment.
-          if [[ -n "$comment_id" ]]; then
-            echo "CHANGELOG.md warning comment already exists ($comment_id)."
-            exit 0
-          fi
-
-          body="$COMMENT_MARKER
-          ⚠️ \`CHANGELOG.md\` has been modified in this PR. Please do not modify \`CHANGELOG.md\` directly.
-          Instead, create a change-note file in \`unreleased-change-notes/\`. The \`CHANGELOG.md\`
-          file will be automatically generated from those change-notes.
-          See [\`unreleased-change-notes/README.md\`](unreleased-change-notes/README.md) for more information."
-          gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --field body="$body"
+        uses: ./.github/actions/post-comment
+        with:
+          body: |
+            ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
+            Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`
+            file will be automatically generated from those change-notes.
+            See [`unreleased-change-notes/README.md`](unreleased-change-notes/README.md) for more information.
+          action-condition: ${{ needs.other-checks.outputs.changelog-changed }}
+          action-if-true: upsert
+          action-if-false: delete
+          token: ${{ secrets.GITHUB_TOKEN }}

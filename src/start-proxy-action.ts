@@ -3,7 +3,12 @@ import * as path from "path";
 
 import * as core from "@actions/core";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { FeatureEnablement, initFeatures } from "./feature-flags";
@@ -98,7 +103,8 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     };
 
     // Start the Proxy
-    const proxyBin = await getProxyBinaryPath({ ...action, features });
+    const actionWithFeatures = extendActionState(action, { features });
+    const proxyBin = await getProxyBinaryPath(actionWithFeatures);
     const proxyInfo = await startProxy(
       proxyBin,
       proxyConfig,

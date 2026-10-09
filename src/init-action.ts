@@ -35,7 +35,7 @@ import {
   addDiagnostic,
   addNoLanguageDiagnostic,
   flushDiagnostics,
-  logUnwrittenDiagnostics,
+  logTemporaryDiagnostics,
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
@@ -471,6 +471,7 @@ async function run(
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
+    logTemporaryDiagnostics();
     return;
   }
 
@@ -762,8 +763,8 @@ async function run(
       );
     }
 
-    // Write diagnostics to the database that we previously stored in memory because the database
-    // did not exist until now.
+    // Move diagnostics to the database that we previously kept in a temporary location
+    // because the database did not exist until now
     flushDiagnostics(config);
 
     // We save the config here instead of at the end of `initConfig` because we
@@ -793,7 +794,7 @@ async function run(
     );
     return;
   } finally {
-    logUnwrittenDiagnostics();
+    logTemporaryDiagnostics();
   }
   await sendCompletedStatusReport(
     startedAt,

@@ -172,16 +172,17 @@ export async function findExistingComment(
   return comments.find((comment) => comment.body?.startsWith(marker))?.id;
 }
 
-async function main(): Promise<number> {
-  const options = parseOptions();
-  const action = options.actionCondition
-    ? options.actionIfTrue
-    : options.actionIfFalse;
-  console.info(`Resolved action: ${action}`);
-
-  const token = resolveToken(process.env);
+/**
+ * Performs the resolved `action` against a (possibly pre-existing) marked comment, using
+ * `client` to talk to the GitHub API. This is the core dispatch logic of this script, extracted
+ * from `main` so it can be unit-tested with an injected (fake) `client`.
+ */
+export async function performAction(
+  client: ApiClient,
+  action: Action,
+  options: Options,
+): Promise<void> {
   const { issueId, marker, repository } = options;
-  const client = getApiClient(token);
   const body = `${marker}\n${options.body}`;
 
   let existingCommentId: number | undefined;
@@ -235,6 +236,19 @@ async function main(): Promise<number> {
       }
       break;
   }
+}
+
+async function main(): Promise<number> {
+  const options = parseOptions();
+  const action = options.actionCondition
+    ? options.actionIfTrue
+    : options.actionIfFalse;
+  console.info(`Resolved action: ${action}`);
+
+  const token = resolveToken(process.env);
+  const client = getApiClient(token);
+
+  await performAction(client, action, options);
 
   return 0;
 }

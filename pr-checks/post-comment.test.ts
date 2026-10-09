@@ -10,7 +10,9 @@ import { describe, it } from "node:test";
 import { type ApiClient } from "./api-client";
 import {
   findExistingComment,
+  type Options,
   parseOptions,
+  performAction,
   resolveToken,
 } from "./post-comment";
 
@@ -209,5 +211,89 @@ describe("findExistingComment", async () => {
       "<!-- marker -->",
     );
     assert.equal(id, undefined);
+  });
+});
+
+/** A baseline set of `Options`, for use in `performAction` tests. */
+const baseOptions: Options = {
+  body: "hello",
+  marker: "<!-- marker -->",
+  actionCondition: true,
+  actionIfTrue: "insert",
+  actionIfFalse: "delete",
+  issueId: 42,
+  repository: { owner: "owner", repo: "repo" },
+};
+
+describe("performAction", async () => {
+  await it("does nothing for 'none'", async () => {
+    const { client, calls } = fakeClient([]);
+    await performAction(client, "none", baseOptions);
+    assert.deepEqual(calls, {
+      createComment: [],
+      updateComment: [],
+      deleteComment: [],
+    });
+  });
+
+  await it("creates a new comment for 'insert', with the marker prepended", async () => {
+    const { client, calls } = fakeClient([]);
+    await performAction(client, "insert", baseOptions);
+    assert.deepEqual(calls.createComment, [
+      {
+        owner: "owner",
+        repo: "repo",
+        issue_number: 42,
+        body: "<!-- marker -->\nhello",
+      },
+    ]);
+    assert.deepEqual(calls.updateComment, []);
+    assert.deepEqual(calls.deleteComment, []);
+  });
+
+  await it("creates a new comment for 'upsert' when no existing comment is found", async () => {
+    const { client, calls } = fakeClient([{ id: 1, body: "unrelated" }]);
+    await performAction(client, "upsert", baseOptions);
+    assert.deepEqual(calls.createComment, [
+      {
+        owner: "owner",
+        repo: "repo",
+        issue_number: 42,
+        body: "<!-- marker -->\nhello",
+      },
+    ]);
+    assert.deepEqual(calls.updateComment, []);
+  });
+
+  await it("updates the existing comment for 'upsert' when one is found", async () => {
+    const { client, calls } = fakeClient([
+      { id: 7, body: "<!-- marker -->\nold" },
+    ]);
+    await performAction(client, "upsert", baseOptions);
+    assert.deepEqual(calls.updateComment, [
+      {
+        owner: "owner",
+        repo: "repo",
+        comment_id: 7,
+        body: "<!-- marker -->\nhello",
+      },
+    ]);
+    assert.deepEqual(calls.createComment, []);
+  });
+
+  await it("does nothing for 'delete' when no existing comment is found", async () => {
+    const { client, calls } = fakeClient([{ id: 1, body: "unrelated" }]);
+    await performAction(client, "delete", baseOptions);
+    assert.deepEqual(calls.deleteComment, []);
+  });
+
+  await it("deletes the existing comment for 'delete' when one is found", async () => {
+    const { client, calls } = fakeClient([
+      { id: 9, body: "<!-- marker -->\nold" },
+    ]);
+    await performAction(client, "delete", baseOptions);
+    assert.deepEqual(calls.deleteComment, [
+      { owner: "owner", repo: "repo", comment_id: 9 },
+    ]);
   });
 });

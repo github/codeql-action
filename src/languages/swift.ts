@@ -1,5 +1,6 @@
 import { ActionState } from "../action-common";
 import { Config } from "../config-utils";
+import { macOSVersion } from "../platform";
 import { ConfigurationError } from "../util";
 
 import { BuiltInLanguage } from ".";
@@ -14,15 +15,28 @@ import { BuiltInLanguage } from ".";
  * @returns True if we can run a Swift analysis.
  */
 export function isSwiftCompatible(
-  action: ActionState<["Base"]>,
+  action: ActionState<["Base", "Logger"]>,
   config: Config,
 ) {
-  if (
-    config.languages.includes(BuiltInLanguage.swift) &&
-    action.platform !== "darwin"
-  ) {
+  // The checks are not relevant if we are not trying to analyse Swift.
+  if (!config.languages.includes(BuiltInLanguage.swift)) {
+    return;
+  }
+
+  // Try to get the macOS version.
+  const version = macOSVersion(action);
+
+  // If `version` is undefined, then we are not on macOS.
+  if (version === undefined) {
     throw new ConfigurationError(
       `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
     );
+  }
+  // If we got a string, we are on macOS but couldn't parse the version string.
+  if (typeof version === "string") {
+    action.logger.warning(
+      `Unable to determine version of macOS, got: ${version}`,
+    );
+    return;
   }
 }

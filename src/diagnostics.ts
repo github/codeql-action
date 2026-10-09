@@ -178,6 +178,33 @@ export function addNoLanguageDiagnostic(
 }
 
 /**
+ * Writes {@link diagnostic} to a file in {@link diagnosticsPath}.
+ */
+function writeDiagnosticFile(
+  diagnosticsPath: string,
+  diagnostic: DiagnosticMessage,
+) {
+  // Create the directory if it doesn't exist yet.
+  mkdirSync(diagnosticsPath, { recursive: true });
+
+  // Include a monotonically increasing suffix to avoid filename collisions
+  // between diagnostics produced within the same millisecond.
+  const uniqueSuffix = (diagnosticCounter++).toString();
+  // We should only need to remove colons, but to be defensive, only allow a restricted set of
+  // characters.
+  const sanitizedTimestamp = diagnostic.timestamp.replace(
+    /[^a-zA-Z0-9.-]/g,
+    "",
+  );
+  const jsonPath = path.resolve(
+    diagnosticsPath,
+    `codeql-action-${sanitizedTimestamp}-${uniqueSuffix}.json`,
+  );
+
+  writeFileSync(jsonPath, JSON.stringify(diagnostic));
+}
+
+/**
  * Writes the given diagnostic to the database.
  *
  * @param config The configuration that tells us where to store the diagnostic.
@@ -200,24 +227,7 @@ function writeDiagnostic(
   );
 
   try {
-    // Create the directory if it doesn't exist yet.
-    mkdirSync(diagnosticsPath, { recursive: true });
-
-    // Include a monotonically increasing suffix to avoid filename collisions
-    // between diagnostics produced within the same millisecond.
-    const uniqueSuffix = (diagnosticCounter++).toString();
-    // We should only need to remove colons, but to be defensive, only allow a restricted set of
-    // characters.
-    const sanitizedTimestamp = diagnostic.timestamp.replace(
-      /[^a-zA-Z0-9.-]/g,
-      "",
-    );
-    const jsonPath = path.resolve(
-      diagnosticsPath,
-      `codeql-action-${sanitizedTimestamp}-${uniqueSuffix}.json`,
-    );
-
-    writeFileSync(jsonPath, JSON.stringify(diagnostic));
+    writeDiagnosticFile(diagnosticsPath, diagnostic);
   } catch (err) {
     logger.warning(`Unable to write diagnostic message to database: ${err}`);
     logger.debug(JSON.stringify(diagnostic));

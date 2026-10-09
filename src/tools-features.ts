@@ -8,6 +8,7 @@ export enum ToolsFeature {
   BundleSupportsOverlay = "bundleSupportsOverlay",
   IndirectTracingSupportsStaticBinaries = "indirectTracingSupportsStaticBinaries",
   SuppressesMissingFileBaselineWarning = "suppressesMissingFileBaselineWarning",
+  SwiftSupportsAllPlatforms = "swiftSupportsAllPlatforms",
 }
 
 /**

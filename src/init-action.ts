@@ -419,7 +419,7 @@ async function run(
       logger,
     });
 
-    checkSwiftCompatibility(actionState, config);
+    await checkSwiftCompatibility(actionState, config, codeql);
 
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(

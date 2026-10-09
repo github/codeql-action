@@ -35,6 +35,7 @@ import { joinMessageStrings, Loggable, LoggableError, Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
+import { ToolsFeature } from "./tools-features";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -913,7 +914,7 @@ export function mockLanguagesInRepo(languages: string[]) {
  */
 export const makeVersionInfo = (
   version: string,
-  features?: { [name: string]: boolean },
+  features?: { [key in ToolsFeature]?: boolean },
   overlayVersion?: number,
 ): VersionInfo => ({
   version,

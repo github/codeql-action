@@ -6,6 +6,7 @@ import { ActionsEnv, getActionsEnv } from "./actions-util";
 import type { ApiClient } from "./api-client";
 import { Env, ReadOnlyEnv } from "./environment";
 import type { FeatureEnablement } from "./feature-flags";
+import type { FileSystem } from "./fs";
 import { getActionsLogger, Logger } from "./logging";
 import {
   ActionName,
@@ -54,6 +55,10 @@ export interface FeatureState {
   FeatureFlags: {
     /** Information about enabled feature flags. */
     features: FeatureEnablement;
+  };
+  FS: {
+    /** The file system operations to use. */
+    fs: FileSystem;
   };
 }
 

@@ -92,6 +92,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      changelog-changed: ${{ steps.changelog-check.outputs.changed }}
 
     concurrency:
       cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
@@ -181,6 +183,20 @@ jobs:
           path: ${{ runner.temp }}/repo-size/
           if-no-files-found: error
 
+      - name: Check for CHANGELOG.md changes
+        id: changelog-check
+        if: steps.fetch-base.outcome == 'success'
+        env:
+          BASE_SHA: ${{ steps.fetch-base.outputs.merge_base }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if ! git diff --exit-code --quiet "$BASE_SHA" "$HEAD_SHA" -- CHANGELOG.md; then
+            echo "CHANGELOG.md was modified in this PR."
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: "Backport: Check out base ref"
         id: checkout-base
         if: ${{ startsWith(github.head_ref, 'backport-') }}
@@ -201,8 +217,8 @@ jobs:
             exit 1
           fi
 
-  post-repo-size-comment:
-    name: Post repo size comment
+  post-pr-comments:
+    name: Post PR comments
     needs: other-checks
     # Keep write permissions isolated from the job that checks out and tests PR code. This job only
     # posts the candidate comment body produced by the read-only `pr-checks` job.
@@ -222,6 +238,25 @@ jobs:
       group: check-repo-size-${{ github.event.pull_request.number }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Check out the base ref, not the PR's head, since this job runs with
+          # `pull-requests: write` permissions and must not execute untrusted code from the PR.
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: |
+            pr-checks
+            .github/actions/post-comment
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --workspace=pr-checks
+
       - name: Download repo size comment
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -251,3 +286,24 @@ jobs:
           else
             echo "Skipping repo size comment because the delta is below the threshold and no sticky comment exists."
           fi
+
+      - name: Post a warning about modifying CHANGELOG.md
+        id: post-changelog-warning
+        # Release, backport, mergeback, and bundle-update PRs deliberately modify CHANGELOG.md,
+        # so skip comment management entirely for these automation flows.
+        if: >-
+          !startsWith(github.event.pull_request.head.ref, 'update-v') &&
+          !startsWith(github.event.pull_request.head.ref, 'backport-v') &&
+          !startsWith(github.event.pull_request.head.ref, 'mergeback/') &&
+          !startsWith(github.event.pull_request.head.ref, 'update-bundle/')
+        uses: ./.github/actions/post-comment
+        with:
+          body: |
+            ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
+            Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`
+            file will be automatically generated from those change-notes.
+            See [`unreleased-change-notes/README.md`](https://github.com/github/codeql-action/blob/main/unreleased-change-notes/README.md) for more information.
+          action-condition: ${{ needs.other-checks.outputs.changelog-changed }}
+          action-if-true: upsert
+          action-if-false: delete
+          token: ${{ secrets.GITHUB_TOKEN }}

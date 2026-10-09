@@ -1,4 +1,5 @@
 import { TextDecoder } from "node:util";
+import * as os from "os";
 import path from "path";
 
 import * as github from "@actions/github";
@@ -232,6 +233,7 @@ export function initAllState(
     startedAt: new Date(),
     platform: process.platform,
     arch: process.arch,
+    osRelease: os.release(),
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),

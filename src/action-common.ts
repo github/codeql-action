@@ -1,3 +1,5 @@
+import * as os from "os";
+
 import * as core from "@actions/core";
 
 import { ActionsEnv, getActionsEnv } from "./actions-util";
@@ -23,6 +25,8 @@ export interface BaseState {
   platform: NodeJS.Platform;
   /** The architecture of the host. */
   arch: NodeJS.Architecture;
+  /** The version of the operating system. */
+  osRelease: string;
 }
 
 /** Describes different state features that an Action may have. */
@@ -104,6 +108,7 @@ export async function runInActions(action: Action) {
       startedAt,
       platform: process.platform,
       arch: process.arch,
+      osRelease: os.release(),
       logger,
       env,
       actions: actionsEnv,

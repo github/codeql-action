@@ -1,0 +1,25 @@
+name: "Diagnostic export without database"
+description: "Tests that temporary diagnostics are correctly included in the failed SARIF."
+versions:
+  # Overriden by the FF below.
+  - linked
+installNode: true
+steps:
+  # We deliberately need to make this step fail before the database is initialised, but after
+  # some diagnostic has been produced. The simplest way to do that right now is to force the
+  # use of a nightly release and then fail because we are attempting to analyse Swift on
+  # a non-macOS runner.
+  - name: Initialise failing analysis
+    id: init
+    uses: ./../action/init
+    continue-on-error: true
+    env:
+      CODEQL_ACTION_FORCE_NIGHTLY: true
+    with:
+      languages: swift
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Check diagnostics appear on disk
+    env:
+      SARIF_PATH: "${{ runner.temp }}/codeql-action-temp-diagnostics/"
+    run: npx tsx ./pr-checks/diagnostics-without-db.ts

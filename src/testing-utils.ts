@@ -1054,6 +1054,7 @@ export function makeTestToken(length: number = 36) {
 export async function getCodeQLForTesting(
   cmd = "codeql-for-testing",
   logger: Logger = new RecordingLogger(),
+  env: Env = getEnv(),
 ): Promise<codeql.CodeQL> {
-  return codeql.getCodeQLForCmd(logger, cmd, false);
+  return codeql.getCodeQLForCmd(logger, cmd, false, env);
 }

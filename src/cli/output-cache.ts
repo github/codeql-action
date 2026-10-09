@@ -2,7 +2,7 @@ import * as fs from "fs";
 import path from "path";
 
 import { getTemporaryDirectory } from "../actions-util";
-import { Env } from "../environment";
+import { ReadOnlyEnv } from "../environment";
 import * as json from "../json";
 import { Logger } from "../logging";
 
@@ -51,7 +51,7 @@ export function resetCachedCodeQlVersion(): void {
  * Returns the path to the temporary file that backs the
  * on-disk cache of CLI responses between workflow steps.
  */
-export function getCommandCacheFilePath(env: Env): string {
+export function getCommandCacheFilePath(env: ReadOnlyEnv): string {
   return path.join(getTemporaryDirectory(env), COMMAND_CACHE_FILENAME);
 }
 

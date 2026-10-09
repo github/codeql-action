@@ -1,9 +1,13 @@
+import * as fs from "fs";
+import * as os from "os";
+
 import * as core from "@actions/core";
 
 import { ActionsEnv, getActionsEnv } from "./actions-util";
 import type { ApiClient } from "./api-client";
 import { Env, ReadOnlyEnv } from "./environment";
 import type { FeatureEnablement } from "./feature-flags";
+import type { FileSystem } from "./fs";
 import { getActionsLogger, Logger } from "./logging";
 import {
   ActionName,
@@ -23,6 +27,8 @@ export interface BaseState {
   platform: NodeJS.Platform;
   /** The architecture of the host. */
   arch: NodeJS.Architecture;
+  /** The version of the operating system. */
+  osRelease: string;
 }
 
 /** Describes different state features that an Action may have. */
@@ -51,6 +57,10 @@ export interface FeatureState {
     /** Information about enabled feature flags. */
     features: FeatureEnablement;
   };
+  FS: {
+    /** The file system operations to use. */
+    fs: FileSystem;
+  };
 }
 
 /** Identifies a type of state an Action may have. */
@@ -74,7 +84,7 @@ export type ActionState<Fs extends readonly StateFeature[]> = FieldsOf<Fs>;
  * Each Action can then augment the `state` further if additional features are required.
  */
 export type ActionMain = (
-  state: ActionState<["Base", "Logger", "Env", "Actions"]>,
+  state: ActionState<["Base", "FS", "Logger", "Env", "Actions"]>,
 ) => Promise<void>;
 
 /** A specification for a CodeQL Action step. */
@@ -104,6 +114,8 @@ export async function runInActions(action: Action) {
       startedAt,
       platform: process.platform,
       arch: process.arch,
+      osRelease: os.release(),
+      fs,
       logger,
       env,
       actions: actionsEnv,

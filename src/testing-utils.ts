@@ -1,4 +1,6 @@
+import * as fs from "fs";
 import { TextDecoder } from "node:util";
+import * as os from "os";
 import path from "path";
 
 import * as github from "@actions/github";
@@ -220,6 +222,7 @@ type AllState = [
   "Actions",
   "Api",
   "FeatureFlags",
+  "FS",
 ];
 
 /** Initialise a fresh `ActionState<AllState>` value. */
@@ -232,11 +235,13 @@ export function initAllState(
     startedAt: new Date(),
     platform: process.platform,
     arch: process.arch,
+    osRelease: os.release(),
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),
     apiClient: github.getOctokit("123"),
     features: createFeatures([]),
+    fs,
     ...overrides,
   };
 }

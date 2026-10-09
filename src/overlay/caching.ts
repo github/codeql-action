@@ -290,7 +290,7 @@ export async function downloadOverlayBaseDatabaseFromCache(
       actionsCache.restoreCache(
         [dbLocation],
         cacheRestoreKeyPrefix,
-        undefined,
+        [cacheRestoreKeyPrefix],
         {
           // Azure SDK download (which is the default) uses 128MB segments; see
           // https://github.com/actions/toolkit/blob/main/packages/cache/README.md.

@@ -900,6 +900,21 @@ export function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Approximates whether {@link error} is like a {@link NodeJS.ErrnoException}.
+ * We only typically care about the `code` property, so that's what we check for here.
+ */
+export function isErrnoException(
+  error: unknown,
+): error is NodeJS.ErrnoException {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+  );
+}
+
 export function prettyPrintPack(pack: Pack) {
   return `${pack.name}${pack.version ? `@${pack.version}` : ""}${
     pack.path ? `:${pack.path}` : ""

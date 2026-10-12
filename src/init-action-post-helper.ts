@@ -326,7 +326,6 @@ export async function uploadFailureInfo(
     codeql: CodeQL,
     config: Config,
     logger: Logger,
-    codeQlVersion: string,
   ) => Promise<void>,
   printDebugLogs: (config: Config) => Promise<void>,
   codeql: CodeQL,
@@ -381,13 +380,7 @@ export async function uploadFailureInfo(
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
-    const version = await codeql.getVersion();
-    await uploadAllAvailableDebugArtifacts(
-      codeql,
-      config,
-      logger,
-      version.version,
-    );
+    await uploadAllAvailableDebugArtifacts(codeql, config, logger);
     await printDebugLogs(config);
   }
 

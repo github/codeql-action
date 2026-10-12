@@ -99,7 +99,7 @@ export async function getCodeQLAssetDownloadURL(
 ): Promise<DownloadURL> {
   const codeQLActionRepository = getCodeQLActionRepository(action);
 
-  const potentialDownloadSources: Array<[string, RepositoryNwoStr]> = [
+  const potentialDownloadSources: DownloadSource[] = [
     // This GitHub instance, and this Action.
     [apiDetails.url, codeQLActionRepository],
     // This GitHub instance, and the canonical Action.

@@ -119,7 +119,7 @@ export async function getCodeQLAssetDownloadURL(
   );
 
   for (const [apiURL, repository] of uniqueDownloadSources) {
-    // If we've reached the final case, short-circuit the API check since we know the bundle exists and is public.
+    // If we've reached the final case, short-circuit the API check since we know the asset exists and is public.
     if (isSameDownloadSource(DEFAULT_DOWNLOAD_SOURCE, [apiURL, repository])) {
       break;
     }

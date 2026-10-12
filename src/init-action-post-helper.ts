@@ -45,6 +45,7 @@ import {
   parseMatrixInput,
   Result,
   shouldSkipGenerateFailedSarif,
+  shouldSkipSarifUpload,
   Success,
   wrapError,
 } from "./util";
@@ -240,6 +241,14 @@ async function maybeUploadFailedSarif(
     logger,
     { isUnsuccessfulExecution: true },
   );
+
+  // If SARIF upload is disabled for testing, `uploadFiles` will not have uploaded the failed
+  // SARIF file and instead will have written it to disk. Upload it as a workflow artifact so that
+  // we can inspect it in validation jobs.
+  if (uploadResult.sarifID && shouldSkipSarifUpload()) {
+    await uploadSarifArtifact(logger, "test-mode-sarif", failedSarif);
+  }
+
   return uploadResult
     ? { ...uploadResult.statusReport, sarifID: uploadResult.sarifID }
     : {};
@@ -258,7 +267,15 @@ async function maybeUploadFailedSarifArtifact(
   }
 
   const failedSarif = failedSarifResult.value;
+  return uploadSarifArtifact(logger, "sarif-artifact", failedSarif);
+}
 
+/** Uploads a failed SARIF file as workflow artifact. */
+async function uploadSarifArtifact(
+  logger: Logger,
+  prefix: string,
+  failedSarif: FailedSarifInfo,
+): Promise<UploadFailedSarifResult> {
   logger.info(
     `Uploading failed SARIF file ${failedSarif.sarifFile} as artifact`,
   );
@@ -267,7 +284,7 @@ async function maybeUploadFailedSarifArtifact(
   const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
 
   const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
-  const name = sanitizeArtifactName(`sarif-artifact-${suffix}`);
+  const name = sanitizeArtifactName(`${prefix}-${suffix}`);
   await client.uploadArtifact(
     name,
     [path.normalize(failedSarif.sarifFile)],

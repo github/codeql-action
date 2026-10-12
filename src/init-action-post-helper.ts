@@ -7,6 +7,7 @@ import * as actionsUtil from "./actions-util";
 import { CodeScanning, RiskAssessment } from "./analyses";
 import { getApiClient, getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
 import {
   Config,
   isCodeScanningEnabled,
@@ -87,6 +88,11 @@ interface FailedSarifInfo {
   checkoutPath: string;
 }
 
+/** The minimal Action configuration required to prepare and upload a failed SARIF. */
+export type FailedSarifConfig = ActionConfig<
+  "codeQLCmd" | "tempDir" | "analysisKinds" | "languages"
+>;
+
 /**
  * Tries to prepare a SARIF file that contains information about a failed analysis.
  *
@@ -95,7 +101,7 @@ interface FailedSarifInfo {
 async function prepareFailedSarif(
   logger: Logger,
   features: FeatureEnablement,
-  config: Config,
+  config: FailedSarifConfig,
 ): Promise<Result<FailedSarifInfo, UploadFailedSarifResult>> {
   if (!config.codeQLCmd) {
     return new Failure({
@@ -161,7 +167,7 @@ async function prepareFailedSarif(
 async function generateFailedSarif(
   logger: Logger,
   features: FeatureEnablement,
-  config: Config,
+  config: ActionConfig<"codeQLCmd" | "tempDir">,
   category: string | undefined,
   checkoutPath: string,
   sarifFile?: string,
@@ -210,7 +216,7 @@ async function generateFailedSarif(
  * category for the workflow.
  */
 async function maybeUploadFailedSarif(
-  config: Config,
+  config: FailedSarifConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
@@ -245,7 +251,7 @@ async function maybeUploadFailedSarif(
 
 /** Uploads a failed SARIF file as workflow artifact, if it can be generated. */
 async function maybeUploadFailedSarifArtifact(
-  config: Config,
+  config: FailedSarifConfig,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
@@ -285,7 +291,7 @@ async function maybeUploadFailedSarifArtifact(
  * @returns The results of uploading the SARIF file for the failure.
  */
 export async function tryUploadSarifIfRunFailed(
-  config: Config,
+  config: FailedSarifConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,

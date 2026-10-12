@@ -206,7 +206,10 @@ test("isSwiftCompatible doesn't throw for Swift on darwin", async (t) =>
     await t.notThrowsAsync(
       isSwiftCompatible(
         initAllState({ platform: "darwin", env, logger }),
-        createTestConfig({ languages: [BuiltInLanguage.swift] }),
+        createTestConfig({
+          tempDir: tmpDir,
+          languages: [BuiltInLanguage.swift],
+        }),
         codeql,
       ),
     );

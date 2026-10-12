@@ -4,7 +4,7 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
-No user facing changes.
+- _Breaking change_: Bump the minimum required CodeQL bundle version to 2.20.7. [#4205](https://github.com/github/codeql-action/pull/4205)
 
 ## 4.38.3 - 08 Oct 2026
 

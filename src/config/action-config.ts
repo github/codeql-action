@@ -136,7 +136,7 @@ export type ActionConfigProperties = keyof Config;
  *
  * By default, this is equivalent to `Config`. By explicitly
  * providing required property names for `T` this can be restricted
- * to requiring only those. For example, in `ActionConfig<"codeqlCmd">`
+ * to requiring only those. For example, in `ActionConfig<"codeQLCmd">`
  * all properties except `codeqlCmd` are optional.
  */
 export type ActionConfig<

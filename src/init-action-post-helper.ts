@@ -410,6 +410,10 @@ export async function uploadFailureInfo(
         `Failed to clean up database cluster directory ${config.dbLocation}. Details: ${e}`,
       );
     }
+  } else if (config.dbLocation === undefined) {
+    logger.debug(
+      "Skipping cleanup of database cluster directory since the configuration does not include a database path.",
+    );
   } else {
     logger.debug(
       "Skipping cleanup of database cluster directory since we are running on a GitHub-hosted " +

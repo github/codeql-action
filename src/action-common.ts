@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as os from "os";
 
 import * as core from "@actions/core";
@@ -84,7 +83,7 @@ export type ActionState<Fs extends readonly StateFeature[]> = FieldsOf<Fs>;
  * Each Action can then augment the `state` further if additional features are required.
  */
 export type ActionMain = (
-  state: ActionState<["Base", "FS", "Logger", "Env", "Actions"]>,
+  state: ActionState<["Base", "Logger", "Env", "Actions"]>,
 ) => Promise<void>;
 
 /** A specification for a CodeQL Action step. */
@@ -115,7 +114,6 @@ export async function runInActions(action: Action) {
       platform: process.platform,
       arch: process.arch,
       osRelease: os.release(),
-      fs,
       logger,
       env,
       actions: actionsEnv,

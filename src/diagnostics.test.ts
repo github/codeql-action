@@ -1,11 +1,11 @@
 import * as fs from "fs";
+import fsModule from "fs";
 import path from "path";
 
 import test from "ava";
 import * as sinon from "sinon";
 
 import * as diagnostics from "./diagnostics";
-import type { FileSystem } from "./fs";
 import { BuiltInLanguage } from "./languages";
 import {
   checkExpectedLogMessages,
@@ -16,37 +16,6 @@ import {
 } from "./testing-utils";
 
 setupTests(test);
-
-type TestFS = FileSystem<
-  "existsSync" | "mkdirSync" | "writeFileSync" | "readFileSync" | "renameSync"
->;
-
-function makeStubFS() {
-  // The functions in `fs` cannot be stubbed. Create a new, minimal object
-  // that we can stub.
-  const stubbedFS: TestFS = {
-    existsSync: fs.existsSync,
-    mkdirSync: fs.mkdirSync,
-    writeFileSync: fs.writeFileSync,
-    readFileSync: fs.readFileSync,
-    renameSync: fs.renameSync,
-  };
-
-  const existsSync = sinon.stub(stubbedFS, "existsSync");
-  const mkdirSync = sinon.stub(stubbedFS, "mkdirSync");
-  const writeFileSync = sinon.stub(stubbedFS, "writeFileSync");
-  const readFileSync = sinon.stub(stubbedFS, "readFileSync");
-  const renameSync = sinon.stub(stubbedFS, "renameSync");
-
-  return {
-    stubbedFS,
-    existsSync,
-    mkdirSync,
-    writeFileSync,
-    readFileSync,
-    renameSync,
-  };
-}
 
 const id = "codeql-action/test-diagnostic";
 const name = "Test title";
@@ -61,14 +30,16 @@ test("makeDiagnostic - adds expected properties", (t) => {
 
 test("addDiagnostic writes temporary diagnostics and flushDiagnostics moves them", (t) => {
   const logger = new RecordingLogger();
-  const { stubbedFS, existsSync, mkdirSync, writeFileSync, renameSync } =
-    makeStubFS();
 
   let databasePath: fs.PathLike | undefined;
-  existsSync.callsFake((p) => {
+
+  const existsSync = sinon.stub(fsModule, "existsSync").callsFake((p) => {
     databasePath = p;
     return false;
   });
+  const mkdirSync = sinon.stub(fsModule, "mkdirSync").callThrough();
+  const renameSync = sinon.stub(fsModule, "renameSync").callThrough();
+  const writeFileSync = sinon.stub(fsModule, "writeFileSync").callThrough();
 
   const diagnostic = diagnostics.makeDiagnostic(id, name, {});
   t.notThrows(() => {
@@ -77,10 +48,9 @@ test("addDiagnostic writes temporary diagnostics and flushDiagnostics moves them
       BuiltInLanguage.actions,
       diagnostic,
       logger,
-      stubbedFS as FileSystem,
     );
     diagnostics.flushDiagnostics(
-      initAllState({ logger, fs: stubbedFS as FileSystem }),
+      initAllState({ logger }),
       createTestConfig({
         tempDir: path.resolve("/temp/"),
         dbLocation: path.resolve("/test/database/"),

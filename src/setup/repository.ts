@@ -118,9 +118,11 @@ export async function getCodeQLAssetDownloadURL(
     },
   );
 
-  for (const [apiURL, repository] of uniqueDownloadSources) {
+  for (const [instanceURL, repository] of uniqueDownloadSources) {
     // If we've reached the final case, short-circuit the API check since we know the asset exists and is public.
-    if (isSameDownloadSource(DEFAULT_DOWNLOAD_SOURCE, [apiURL, repository])) {
+    if (
+      isSameDownloadSource(DEFAULT_DOWNLOAD_SOURCE, [instanceURL, repository])
+    ) {
       break;
     }
 
@@ -135,14 +137,14 @@ export async function getCodeQLAssetDownloadURL(
       for (const asset of release.data.assets) {
         if (asset.name === assetName) {
           action.logger.info(
-            `Found ${assetKind} ${assetName} in ${repository} on ${apiURL} with URL ${asset.url}.`,
+            `Found ${assetKind} ${assetName} in ${repository} on ${instanceURL} with URL ${asset.url}.`,
           );
           return asset.url;
         }
       }
     } catch (e) {
       action.logger.info(
-        `Looked for ${assetKind} ${assetName} in ${repository} on ${apiURL} but got error ${e}.`,
+        `Looked for ${assetKind} ${assetName} in ${repository} on ${instanceURL} but got error ${e}.`,
       );
     }
   }

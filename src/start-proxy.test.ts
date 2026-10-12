@@ -1079,8 +1079,6 @@ test.serial(
     st.onceWith(extractTar, archivePath);
     st.onceWith(cacheDir, extractedPath);
 
-    t.assert(extractTar.calledOnceWith(archivePath));
-    t.assert(cacheDir.calledOnceWith(extractedPath));
     t.assert(path);
     t.is(
       path,

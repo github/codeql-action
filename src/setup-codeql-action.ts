@@ -1,6 +1,11 @@
 import * as core from "@actions/core";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import {
   getActionVersion,
   getOptionalInput,
@@ -131,7 +136,9 @@ async function run(
     );
     const repositoryProperties = repositoryPropertiesResult.orElse({});
 
-    const actionStateWithFeatures = { ...actionState, features };
+    const actionStateWithFeatures = extendActionState(actionState, {
+      features,
+    });
 
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,
@@ -165,6 +172,12 @@ async function run(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
+      // CodeQL resolves the dependencies of queries that aren't in compiled packs from the bundle,
+      // so the queries that the workflow runs with this CLI may need library packs for languages
+      // other than those in the `languages` input. That input therefore only informs the choice of
+      // CLI version.
+      "the 'setup-codeql' Action can't tell whether the queries that the workflow runs will need " +
+        "library packs for other languages",
       analysisKinds.length === 1 &&
         analysisKinds[0] === AnalysisKind.CodeScanning,
       features,
@@ -178,7 +191,7 @@ async function run(
     core.setOutput("codeql-path", codeql.getPath());
     core.setOutput("codeql-version", (await codeql.getVersion()).version);
 
-    core.exportVariable(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
+    actionState.env.export(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

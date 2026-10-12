@@ -139,6 +139,7 @@ test.serial(
         url,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -224,6 +225,7 @@ for (const {
           "linked",
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
@@ -257,6 +259,7 @@ test.serial(
         "latest",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -302,6 +305,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         logger,
@@ -359,6 +363,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         logger,
@@ -407,6 +412,7 @@ test.serial(
         "nightly",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -434,6 +440,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         ["javascript"],
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         logger,
@@ -477,6 +484,7 @@ test.serial(
         undefined,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -532,6 +540,7 @@ for (const bundlePath of [
           GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([]),
           getRecordingLogger(messages),
@@ -585,6 +594,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         createFeatures([Feature.CleanupToolcacheBundles]),
         getRunnerLogger(true),
@@ -618,6 +628,7 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
           toolsInput,
           SAMPLE_DEFAULT_CLI_VERSION,
           ["java"],
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
@@ -653,12 +664,23 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      for (const { languages, features } of [
+      for (const { languages, otherLanguagePacksReason, features } of [
         // The per-language feature is disabled.
-        { languages: ["java"], features: createFeatures([]) },
+        {
+          languages: ["java"],
+          otherLanguagePacksReason: undefined,
+          features: createFeatures([]),
+        },
         // More than one language requires a combined bundle.
         {
           languages: ["java", "python"],
+          otherLanguagePacksReason: undefined,
+          features: createFeatures([Feature.PerLanguageBundles]),
+        },
+        // The configured queries may need library packs for other languages.
+        {
+          languages: ["java"],
+          otherLanguagePacksReason: "an example reason",
           features: createFeatures([Feature.PerLanguageBundles]),
         },
       ]) {
@@ -666,6 +688,7 @@ test.serial(
           "nightly",
           SAMPLE_DEFAULT_CLI_VERSION,
           languages,
+          otherLanguagePacksReason,
           false, // useOverlayAwareDefaultCliVersion
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
@@ -700,6 +723,7 @@ for (const perLanguageBundles of [false, true]) {
           undefined, // toolsInput: the nightly is selected by ForceNightly
           SAMPLE_DEFAULT_CLI_VERSION,
           ["java"],
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
@@ -759,6 +783,7 @@ for (const date of ["20200101", "30260213"]) {
             url,
             SAMPLE_DEFAULT_CLI_VERSION,
             ["java"],
+            undefined, // otherLanguagePacksReason
             false,
             SAMPLE_DOTCOM_API_DETAILS,
             GitHubVariant.DOTCOM,
@@ -786,6 +811,7 @@ for (const date of ["20200101", "30260213"]) {
               GitHubVariant.DOTCOM,
               SAMPLE_DEFAULT_CLI_VERSION,
               ["java"],
+              undefined, // otherLanguagePacksReason
               false,
               features,
               logger,
@@ -816,6 +842,7 @@ test.serial(
           "toolcache",
           SAMPLE_DEFAULT_CLI_VERSION,
           ["java"],
+          undefined, // otherLanguagePacksReason
           false,
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
@@ -857,6 +884,7 @@ test.serial(
         "toolcache",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -926,6 +954,7 @@ const toolcacheInputFallbackMacro = makeMacro({
         "toolcache",
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -1063,6 +1092,7 @@ test.serial(
         undefined,
         overlayMatchEnabledVersions,
         ["javascript"],
+        undefined, // otherLanguagePacksReason
         true,
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -1101,6 +1131,7 @@ test.serial(
         undefined,
         overlayMatchEnabledVersions,
         ["javascript"],
+        undefined, // otherLanguagePacksReason
         false,
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -1138,6 +1169,7 @@ test.serial(
         undefined,
         PER_LANGUAGE_CLI_VERSION,
         ["java-kotlin"],
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
@@ -1167,7 +1199,7 @@ test.serial(
 );
 
 test.serial(
-  "getCodeQLSource downloads the combined bundle when the feature is disabled",
+  "getCodeQLSource downloads the combined bundle when per-language selection is ineligible",
   async (t) => {
     sinon.stub(process, "platform").value("linux");
     sinon.stub(process, "arch").value("x64");
@@ -1175,22 +1207,33 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      const source = await setupCodeql.getCodeQLSource(
-        undefined,
-        PER_LANGUAGE_CLI_VERSION,
-        ["java"],
-        false, // useOverlayAwareDefaultCliVersion
-        SAMPLE_DOTCOM_API_DETAILS,
-        GitHubVariant.DOTCOM,
-        true, // tarSupportsZstd
-        createFeatures([]),
-        getRunnerLogger(true),
-      );
+      for (const { otherLanguagePacksReason, features } of [
+        // The per-language feature is disabled.
+        { otherLanguagePacksReason: undefined, features: createFeatures([]) },
+        // The configured queries may need library packs for other languages.
+        {
+          otherLanguagePacksReason: "an example reason",
+          features: createFeatures([Feature.PerLanguageBundles]),
+        },
+      ]) {
+        const source = await setupCodeql.getCodeQLSource(
+          undefined,
+          PER_LANGUAGE_CLI_VERSION,
+          ["java"],
+          otherLanguagePacksReason,
+          false, // useOverlayAwareDefaultCliVersion
+          SAMPLE_DOTCOM_API_DETAILS,
+          GitHubVariant.DOTCOM,
+          true, // tarSupportsZstd
+          features,
+          getRunnerLogger(true),
+        );
 
-      t.is(source.sourceType, "download");
-      if (source.sourceType === "download") {
-        t.true(source.bundle.url.endsWith("/codeql-bundle-linux64.tar.zst"));
-        t.is(source.bundle.kind, "combined");
+        t.is(source.sourceType, "download");
+        if (source.sourceType === "download") {
+          t.true(source.bundle.url.endsWith("/codeql-bundle-linux64.tar.zst"));
+          t.is(source.bundle.kind, "combined");
+        }
       }
     });
   },
@@ -1250,6 +1293,7 @@ for (const fallback of [false, true]) {
           GitHubVariant.DOTCOM,
           PER_LANGUAGE_CLI_VERSION,
           ["java"],
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([Feature.PerLanguageBundles]),
           getRunnerLogger(true),
@@ -1345,6 +1389,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
           GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           bundle === "combined" ? ["javascript", "python"] : ["javascript"],
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
           logger,
@@ -1425,6 +1470,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
             GitHubVariant.DOTCOM,
             SAMPLE_DEFAULT_CLI_VERSION,
             ["javascript"],
+            undefined, // otherLanguagePacksReason
             false, // useOverlayAwareDefaultCliVersion
             features,
             logger,
@@ -1460,6 +1506,7 @@ for (const asset of [
           GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([]),
           getRecordingLogger(messages),
@@ -1514,6 +1561,7 @@ for (const error of [
             GitHubVariant.DOTCOM,
             PER_LANGUAGE_CLI_VERSION,
             ["java"],
+            undefined, // otherLanguagePacksReason
             false, // useOverlayAwareDefaultCliVersion
             createFeatures([Feature.PerLanguageBundles]),
             getRunnerLogger(true),
@@ -1549,6 +1597,7 @@ test.serial(
           GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([]),
           getRunnerLogger(true),
@@ -2221,6 +2270,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         createFeatures([]),
         getRunnerLogger(true),
@@ -2260,6 +2310,7 @@ test.serial(
           GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([Feature.CleanupToolcacheBundles]),
           getRunnerLogger(true),

@@ -1,6 +1,7 @@
 {
   "private": true,
   "description": "Dependencies for codeql-action scripts",
+  "type": "module",
   "dependencies": {
     "@actions/core": "^2.0.3",
     "@actions/github": "^8.0.1",
@@ -13,7 +14,7 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@types/node": "^20.19.43",
+    "@types/node": "^24.19.0",
     "tsx": "^4.23.15"
   }
 }

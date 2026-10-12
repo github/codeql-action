@@ -1,3 +1,10 @@
+import * as core from "@actions/core";
+
+/**
+ * This constant is set in `ava.setup.mjs` for tests.
+ */
+declare const __CODEQL_ACTION_TEST_ENV__: string | undefined;
+
 /**
  * Environment variables used by Default Setup to communicate the private registry proxy configuration.
  */
@@ -211,8 +218,20 @@ export enum ActionsEnvVars {
   RUNNER_TOOL_CACHE = "RUNNER_TOOL_CACHE",
 }
 
+/** Environment variables which are not specific to CodeQL. */
+export enum SystemEnvVar {
+  /**
+   * Used by Node and related tools to indicate what kind of environment we are running in.
+   */
+  NODE_ENV = "NODE_ENV",
+}
+
 /** A type representing all known environment variables. */
-export type KnownEnvVar = EnvVar | ActionsEnvVars | RegistryProxyVars;
+export type KnownEnvVar =
+  | EnvVar
+  | ActionsEnvVars
+  | RegistryProxyVars
+  | SystemEnvVar;
 
 /**
  * Gets an environment variable, but throws an error if it is not set.
@@ -289,6 +308,26 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
   public entries(): Array<[string, T]> {
     return Object.entries(this.vars);
   }
+
+  /**
+   * Gets a value indicating whether we should skip uploads of
+   * all kinds (SARIF results, status reports, DBs, ...).
+   *
+   * This is not guaranteed to be set in all test environments.
+   */
+  public isSkippingUploadsInTests(): boolean {
+    return this.getOptional(EnvVar.TEST_MODE) === "true";
+  }
+
+  /**
+   * Gets a value indicative of whether we are in a testing environment
+   * by testing whether the value of the `NODE_ENV` variable is "test".
+   * This is expected to be the case if e.g. `ava` is running the tests
+   * or if this instance was constructed by `getTestEnv`.
+   */
+  public isTestingEnv(): boolean {
+    return __CODEQL_ACTION_TEST_ENV__ === "unit-test";
+  }
 }
 
 /**
@@ -307,6 +346,26 @@ export class Env<
     this.changed = true;
   }
 
+  /**
+   * Wrapper around `core.exportVariable` which does not call `core.exportVariable`
+   * when running unit tests. This is important, because otherwise `core.exportVariable`
+   * sets environment variables for other steps in a workflow when we run unit tests in CI.
+   *
+   * @param name The name of the environment variable to set and export.
+   * @param val The value to set and export for the environment variable.
+   */
+  public export(name: string, val: T): void {
+    // Setting the environment variable for this instance is always OK, including
+    // in tests, since we use fresh `Env` instances whenever needed. This allows
+    // tests to pass that rely on that part of the `core.exportVariable` behaviour.
+    this.set(name, val);
+
+    // Call `core.exportVariable` whenever we are not in a test environment.
+    if (!this.isTestingEnv()) {
+      core.exportVariable(name, val);
+    }
+  }
+
   /** Gets a value indicating whether `set` was called at least once. */
   public hasChanged(): boolean {
     return this.changed;
@@ -316,4 +375,35 @@ export class Env<
 /** Gets an `Env` instance for `env`, which is `process.env` by default. */
 export function getEnv(env: NodeJS.ProcessEnv = process.env): Env {
   return new Env(env);
+}
+
+/**
+ * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
+ *
+ * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
+ *
+ * @deprecated
+ *  The purpose of this function is ambiguous. Use `isSkippingUploadsInTests` on
+ *  a `ReadOnlyEnv` instance instead for equivalent behaviour. Use `isTestingEnv`
+ *  to determine if we are running in a unit test.
+ */
+export function isInTestMode(): boolean {
+  return getEnv().isSkippingUploadsInTests();
+}
+
+/**
+ * Wrapper around `core.exportVariable` which does not call `core.exportVariable`
+ * when running unit tests. This is important, because otherwise `core.exportVariable`
+ * sets environment variables for other steps in a workflow when we run unit tests in CI.
+ *
+ * @deprecated Use `export` on an `Env` instance instead.
+ */
+export function exportEnvVar(name: string, val: any): void {
+  const env = getEnv();
+
+  if (typeof val === "string") {
+    env.export(name, val);
+  } else {
+    env.export(name, JSON.stringify(val));
+  }
 }

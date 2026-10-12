@@ -14,7 +14,7 @@ import {
   renderChangelog,
   withChangelog,
 } from "./changelog";
-import { isValidChangenoteFile } from "./changelog/validate.mjs";
+import { isValidChangenoteFile } from "./changelog/validate";
 import { CHANGENOTES_DIR } from "./config";
 
 /**
@@ -28,12 +28,12 @@ interface ChangenoteFile {
 
 /**
  * Returns the absolute file paths of all files in
- * {@link CHANGENOTES_DIR} (except ".gitkeep").
+ * {@link CHANGENOTES_DIR} (except ".gitkeep" and "README.md").
  * */
 function listUnreleasedChangenoteDir(): string[] {
   return fs
     .readdirSync(CHANGENOTES_DIR)
-    .filter((name) => name !== ".gitkeep")
+    .filter((name) => ![".gitkeep", "README.md"].includes(name))
     .map((name) => path.join(CHANGENOTES_DIR, name));
 }
 
@@ -82,9 +82,9 @@ function main(): ExitCode {
 
 function usage(): ExitCode {
   const message =
-    "Usage: changenotes.mts assemble\n" +
-    "       changenotes.mts validate\n" +
-    "       changenotes.mts help";
+    "Usage: changenotes.ts assemble\n" +
+    "       changenotes.ts validate\n" +
+    "       changenotes.ts help";
   console.log(message);
   return ExitCode.Success;
 }

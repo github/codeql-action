@@ -17,7 +17,7 @@ import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar, getEnv } from "./environment";
+import { EnvVar, getEnv, exportEnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -253,7 +253,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.19.4";
+const CODEQL_MINIMUM_VERSION = "2.20.7";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -1054,7 +1054,7 @@ async function getCodeQLForCmd(
         }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
-    core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
+    exportEnvVar(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }

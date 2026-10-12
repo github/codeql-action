@@ -3,7 +3,6 @@ import { OutgoingHttpHeaders } from "http";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 import { default as deepEqual } from "fast-deep-equal";
 import * as semver from "semver";
@@ -29,7 +28,7 @@ import {
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { EnvVar, getEnv } from "./environment";
+import { EnvVar, exportEnvVar, getEnv } from "./environment";
 import {
   CODEQL_VERSION_ZSTD_BUNDLE,
   CodeQLDefaultVersionInfo,
@@ -1071,7 +1070,7 @@ export async function setupCodeQLBundle(
 
   // Record that this job now has a copy of the CodeQL tools, so that a later step doesn't delete
   // the toolcache out from under the path we are about to return.
-  core.exportVariable(EnvVar.HAS_SET_UP_CODEQL, "true");
+  exportEnvVar(EnvVar.HAS_SET_UP_CODEQL, "true");
 
   return {
     codeqlFolder,

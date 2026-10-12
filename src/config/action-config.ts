@@ -126,3 +126,19 @@ export interface Config {
    */
   enableFileCoverageInformation: boolean;
 }
+
+/** Properties available in `Config`. */
+export type ActionConfigProperties = keyof Config;
+
+/**
+ * The CodeQL Action configuration state that is persisted
+ * between steps of the CodeQL Action in a CodeQL workflow.
+ *
+ * By default, this is equivalent to `Config`. By explicitly
+ * providing required property names for `T` this can be restricted
+ * to requiring only those. For example, in `ActionConfig<"codeqlCmd">`
+ * all properties except `codeqlCmd` are optional.
+ */
+export type ActionConfig<
+  T extends ActionConfigProperties = ActionConfigProperties,
+> = Partial<Config> & Pick<Config, T>;

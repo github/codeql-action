@@ -780,7 +780,7 @@ test.serial(
       t.is(info.version, defaults.cliVersion);
       t.is(
         info.url,
-        repository.getDefaultDotComDownloadURL(
+        repository.getDefaultDotcomDownloadURL(
           defaults.bundleVersion,
           startProxyExports.getProxyPackage(BundlePlatform.Linux64),
         ),
@@ -810,7 +810,7 @@ test.serial(
       t.is(info.version, defaults.cliVersion);
       t.is(
         info.url,
-        repository.getDefaultDotComDownloadURL(
+        repository.getDefaultDotcomDownloadURL(
           defaults.bundleVersion,
           startProxyExports.getProxyPackage(getTestPlatform(state)),
         ),
@@ -842,7 +842,7 @@ test.serial(
         t.is(info.version, defaults.cliVersion);
         t.is(
           info.url,
-          repository.getDefaultDotComDownloadURL(
+          repository.getDefaultDotcomDownloadURL(
             defaults.bundleVersion,
             startProxyExports.getProxyPackage(getTestPlatform(state)),
           ),

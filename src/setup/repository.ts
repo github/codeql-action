@@ -63,7 +63,7 @@ const isSameDownloadSource = (
 export type DownloadURL = string;
 
 /** Gets the default GitHub.com download URL for `assetName` in a release tagged `tagName`. */
-export function getDefaultDotComDownloadURL(
+export function getDefaultDotcomDownloadURL(
   tagName: string,
   assetName: string,
 ): DownloadURL {
@@ -147,5 +147,5 @@ export async function getCodeQLAssetDownloadURL(
     }
   }
 
-  return getDefaultDotComDownloadURL(tagName, assetName);
+  return getDefaultDotcomDownloadURL(tagName, assetName);
 }

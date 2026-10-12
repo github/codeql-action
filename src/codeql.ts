@@ -198,7 +198,7 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config,
+    config: ActionConfig<"tempDir">,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -914,7 +914,7 @@ async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config,
+      config: ActionConfig<"tempDir">,
     ): Promise<void> {
       const args = [
         "diagnostics",

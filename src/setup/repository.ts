@@ -67,7 +67,7 @@ export function getDefaultDotComDownloadURL(
   tagName: string,
   assetName: string,
 ): DownloadURL {
-  return `https://github.com/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${assetName}`;
+  return `${GITHUB_DOTCOM_URL}/${CODEQL_DEFAULT_ACTION_REPOSITORY}/releases/download/${tagName}/${assetName}`;
 }
 
 /** Enumerates log-friendly descriptions of different kinds of assets we might look for in releases. */

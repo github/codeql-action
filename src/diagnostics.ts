@@ -179,11 +179,7 @@ export function addDiagnostic(
     );
 
     // Write the diagnostic to a temporary location.
-    const tempDiagnosticsPath = getTempDiagnosticPath(config.tempDir, language);
-    const diagnosticPath = writeDiagnosticFile(tempDiagnosticsPath, diagnostic);
-
-    // Track the temporary file.
-    temporaryDiagnostics.push({ path: diagnosticPath, language });
+    writeTemporaryDiagnosticFile(logger, config.tempDir, language, diagnostic);
   }
 }
 
@@ -191,6 +187,7 @@ export function addDiagnostic(
 export function addNoLanguageDiagnostic(
   config: Config | undefined,
   diagnostic: DiagnosticMessage,
+  logger: Logger = getActionsLogger(),
 ) {
   if (config !== undefined) {
     addDiagnostic(
@@ -201,11 +198,42 @@ export function addNoLanguageDiagnostic(
       diagnostic,
     );
   } else {
-    const tempDiagnosticsPath = getTempDiagnosticPath(getTemporaryDirectory());
+    logger.debug(
+      `Writing a diagnostic not associated with any language, but we have no configuration to tell us where the database is yet.`,
+    );
+
+    // Write the diagnostic to a temporary location.
+    writeTemporaryDiagnosticFile(
+      logger,
+      getTemporaryDirectory(),
+      undefined,
+      diagnostic,
+    );
+  }
+}
+
+/**
+ * Writes {@link diagnostic} for an optional {@link language} to a subdirectory of {@link tempDir}
+ * and tracks it as a diagnostic that was written to a temporary location.
+ */
+function writeTemporaryDiagnosticFile(
+  logger: Logger,
+  tempDir: string,
+  language: Language | undefined,
+  diagnostic: DiagnosticMessage,
+) {
+  const tempDiagnosticsPath = getTempDiagnosticPath(tempDir, language);
+
+  try {
+    // Write the diagnostic to a temporary location.
     const diagnosticPath = writeDiagnosticFile(tempDiagnosticsPath, diagnostic);
 
     // Track the temporary file.
-    temporaryDiagnostics.push({ path: diagnosticPath });
+    temporaryDiagnostics.push({ path: diagnosticPath, language });
+  } catch (err) {
+    logger.warning(
+      `Unable to write temporary diagnostic to '${tempDiagnosticsPath}': ${getErrorMessage(err)}\n\n${JSON.stringify(diagnostic)}`,
+    );
   }
 }
 

@@ -90,7 +90,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
       logger,
     );
 
-    if (config?.codeQLCmd === undefined) {
+    if (config === undefined) {
       logger.warning(
         "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
       );

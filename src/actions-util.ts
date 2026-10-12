@@ -6,7 +6,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as github from "@actions/github";
 import * as io from "@actions/io";
 
-import type { Config } from "./config-utils";
+import { hasConfigKey, type Config } from "./config/action-config";
 import { Env, EnvVar, ActionsEnvVars, ReadOnlyEnv } from "./environment";
 import { Logger } from "./logging";
 import {
@@ -131,7 +131,14 @@ export function getWorkflowEvent(env: Env = getEnv()): any {
   }
 }
 
-export async function printDebugLogs(config: Config) {
+export async function printDebugLogs(config: Partial<Config>) {
+  if (
+    !hasConfigKey(config, "languages") ||
+    !hasConfigKey(config, "dbLocation")
+  ) {
+    return;
+  }
+
   for (const language of config.languages) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);
     const logsDirectory = path.join(databaseDirectory, "log");

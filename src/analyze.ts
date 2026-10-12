@@ -9,6 +9,7 @@ import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
 import { defaultSuites } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import {
@@ -171,7 +172,7 @@ async function shouldExtractLanguage(
 }
 
 export function dbIsFinalized(
-  config: configUtils.Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ) {

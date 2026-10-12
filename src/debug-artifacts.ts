@@ -10,7 +10,7 @@ import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
 import { scanArtifactsForTokens } from "./artifact-scanner";
 import { type CodeQL } from "./codeql";
-import { Config } from "./config-utils";
+import type { ActionConfig } from "./config/action-config";
 import { EnvVar, exportEnvVar } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
@@ -95,7 +95,7 @@ export async function uploadCombinedSarifArtifacts(
  * @return The path to that debug artifact, or undefined if an error occurs.
  */
 function tryPrepareSarifDebugArtifact(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ): string | undefined {
@@ -137,7 +137,7 @@ function tryPrepareSarifDebugArtifact(
  */
 async function tryBundleDatabase(
   codeql: CodeQL,
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ): Promise<string | undefined> {
@@ -163,6 +163,11 @@ async function tryBundleDatabase(
   }
 }
 
+/** The minimal configuration needed for `tryUploadAllAvailableDebugArtifacts`. */
+export type UploadDebugArtifactsConfig = ActionConfig<
+  "languages" | "gitHubVersion" | "dbLocation" | "debugArtifactName"
+>;
+
 /**
  * Attempt to upload all available debug artifacts.
  *
@@ -170,7 +175,7 @@ async function tryBundleDatabase(
  */
 export async function tryUploadAllAvailableDebugArtifacts(
   codeql: CodeQL,
-  config: Config,
+  config: UploadDebugArtifactsConfig,
   logger: Logger,
   codeQlVersion: string | undefined,
 ) {
@@ -381,7 +386,7 @@ export async function getArtifactUploaderClient(
  * all files in the database folder and return the path.
  */
 async function createPartialDatabaseBundle(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
 ): Promise<string> {
   const databasePath = getCodeQLDatabasePath(config, language);
@@ -422,7 +427,7 @@ async function createPartialDatabaseBundle(
  */
 async function createDatabaseBundleCli(
   codeql: CodeQL,
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
 ): Promise<string> {
   const databaseBundlePath = await bundleDb(

@@ -3,7 +3,7 @@ import { isRunningLocalAction } from "../actions-util";
 import * as api from "../api-client";
 import { ActionsEnvVars } from "../environment";
 import { isRepositoryNwoStr, type RepositoryNwoStr } from "../repository";
-import { GITHUB_DOTCOM_URL } from "../util";
+import { GITHUB_DOTCOM_URL, type InstanceURL } from "../util";
 
 /** The NWO of the standard CodeQL Action repository. */
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
@@ -43,7 +43,7 @@ export function getCodeQLActionRepository(
 }
 
 /**A download source is a pair of strings. */
-export type DownloadSource = [string, RepositoryNwoStr];
+export type DownloadSource = [InstanceURL, RepositoryNwoStr];
 
 /** GitHub.com, and the canonical Action. */
 export const DEFAULT_DOWNLOAD_SOURCE: DownloadSource = [

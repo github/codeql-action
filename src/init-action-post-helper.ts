@@ -471,9 +471,13 @@ async function recordOverlayStatus(
   if (
     config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
     env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true" ||
-    !(await features.getValue(Feature.OverlayAnalysisStatusSave)) ||
-    config.languages === undefined
+    !(await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
+    return;
+  } else if (config.languages === undefined) {
+    logger.debug(
+      "Not recording overlay status, because the configuration contains no 'languages'.",
+    );
     return;
   }
 

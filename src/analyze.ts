@@ -124,7 +124,7 @@ export async function runExtraction(
           language === BuiltInLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
-          await setupCppAutobuild(codeql, logger);
+          await setupCppAutobuild(logger);
         }
 
         // The Java and C# `build-mode: none` extractors place dependencies in the

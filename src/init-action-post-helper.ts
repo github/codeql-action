@@ -7,7 +7,11 @@ import * as actionsUtil from "./actions-util";
 import { CodeScanning, RiskAssessment } from "./analyses";
 import { getApiClient, getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
-import type { ActionConfig } from "./config/action-config";
+import {
+  hasConfigKey,
+  type AbortedInitConfig,
+  type ActionConfig,
+} from "./config/action-config";
 import {
   Config,
   isCodeScanningEnabled,
@@ -17,6 +21,7 @@ import {
   getArtifactSuffix,
   getArtifactUploaderClient,
   sanitizeArtifactName,
+  type UploadDebugArtifactsConfig,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
 import { EnvVar, ReadOnlyEnv } from "./environment";
@@ -330,12 +335,12 @@ export async function tryUploadSarifIfRunFailed(
 export async function uploadFailureInfo(
   uploadAllAvailableDebugArtifacts: (
     codeql: CodeQL,
-    config: Config,
+    config: UploadDebugArtifactsConfig,
     logger: Logger,
   ) => Promise<void>,
-  printDebugLogs: (config: Config) => Promise<void>,
+  printDebugLogs: (config: Partial<Config>) => Promise<void>,
   codeql: CodeQL,
-  config: Config,
+  config: Config | AbortedInitConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   jobStatus: string | undefined,
@@ -382,7 +387,7 @@ export async function uploadFailureInfo(
   }
 
   // Upload appropriate Actions artifacts for debugging
-  if (config.debugMode) {
+  if (config.debugMode && hasConfigKey(config, "dbLocation")) {
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
@@ -390,7 +395,7 @@ export async function uploadFailureInfo(
     await printDebugLogs(config);
   }
 
-  if (actionsUtil.isSelfHostedRunner()) {
+  if (actionsUtil.isSelfHostedRunner() && config.dbLocation) {
     try {
       fs.rmSync(config.dbLocation, {
         recursive: true,
@@ -453,7 +458,7 @@ function isConclusiveJobStatus(jobStatus: string | undefined): boolean {
  */
 async function recordOverlayStatus(
   codeql: CodeQL,
-  config: Config,
+  config: Partial<Config>,
   features: FeatureEnablement,
   jobStatus: string | undefined,
   env: ReadOnlyEnv,
@@ -462,7 +467,8 @@ async function recordOverlayStatus(
   if (
     config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
     env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true" ||
-    !(await features.getValue(Feature.OverlayAnalysisStatusSave))
+    !(await features.getValue(Feature.OverlayAnalysisStatusSave)) ||
+    config.languages === undefined
   ) {
     return;
   }

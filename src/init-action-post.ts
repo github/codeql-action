@@ -16,7 +16,12 @@ import {
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { getCodeQL } from "./codeql";
-import { type Config, getConfig } from "./config-utils";
+import {
+  hasConfigKey,
+  type AbortedInitConfig,
+  type Config,
+} from "./config/action-config";
+import { getAbortedInitConfig, getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import {
   DependencyCachingUsageReport,
@@ -49,7 +54,7 @@ async function run(action: ActionState<["Base", "Logger"]>) {
   // possible, and only use safe functions outside.
   const logger = action.logger;
 
-  let config: Config | undefined;
+  let config: Config | AbortedInitConfig | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
@@ -67,6 +72,13 @@ async function run(action: ActionState<["Base", "Logger"]>) {
     const tmpDir = getTemporaryDirectory();
     config = await getConfig(tmpDir, logger);
 
+    // If we weren't able to read the normal configuration file, the `init` step failed before it could write it.
+    // Try to load the "failed" configuration file instead which may have been written by the `init` step
+    // with a minimal configuration for this post-action.
+    if (config === undefined) {
+      config = getAbortedInitConfig(action, tmpDir);
+    }
+
     const gitHubVersion = config?.gitHubVersion ?? (await getGitHubVersion());
     checkGitHubVersionInRange(gitHubVersion, logger);
 
@@ -78,7 +90,7 @@ async function run(action: ActionState<["Base", "Logger"]>) {
       logger,
     );
 
-    if (config === undefined) {
+    if (config?.codeQLCmd === undefined) {
       logger.warning(
         "Debugging artifacts are unavailable since the 'init' Action failed before it could produce any.",
       );
@@ -103,6 +115,7 @@ async function run(action: ActionState<["Base", "Logger"]>) {
       // and where caching may not be enabled.
       if (
         (await gitUtils.isAnalyzingDefaultBranch()) &&
+        hasConfigKey(config, "dependencyCachingEnabled") &&
         config.dependencyCachingEnabled !== CachingKind.None
       ) {
         dependencyCachingUsage = await getDependencyCacheUsage(logger);
@@ -158,7 +171,7 @@ async function run(action: ActionState<["Base", "Logger"]>) {
  * Otherwise, we determine the job status based on whether the analyze step
  * completed successfully and whether we have a valid CodeQL config.
  */
-function getFinalJobStatus(config: Config | undefined): JobStatus {
+function getFinalJobStatus(config: Partial<Config> | undefined): JobStatus {
   const existingJobStatus = getJobStatusFromEnvironment();
   if (existingJobStatus !== undefined) {
     return existingJobStatus;

@@ -143,6 +143,14 @@ export type ActionConfig<
   T extends ActionConfigProperties = ActionConfigProperties,
 > = Partial<Config> & Pick<Config, T>;
 
+/** Helper function to check whether `config` has `key` to narrow the type of `config`. */
+export function hasConfigKey<Key extends ActionConfigProperties>(
+  config: Partial<Config>,
+  key: Key,
+): config is ActionConfig<Key> {
+  return config[key] !== undefined;
+}
+
 /** A minimal configuration that we can make available even when `init` aborts. */
 export type AbortedInitConfig = ActionConfig<
   | "version"

@@ -461,9 +461,14 @@ export async function downloadProxy(
   try {
     // Download the proxy archive from `url`. We let `downloadTool` choose where
     // to store it. The path to the downloaded file will be returned if successful.
-    return toolcache.downloadTool(url, /* dest: */ undefined, authorization, {
-      accept: "application/octet-stream",
-    });
+    return await toolcache.downloadTool(
+      url,
+      /* dest: */ undefined,
+      authorization,
+      {
+        accept: "application/octet-stream",
+      },
+    );
   } catch (error) {
     logger.error(
       `Failed to download proxy archive from ${url}: ${getErrorMessage(error)}`,

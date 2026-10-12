@@ -231,6 +231,14 @@ function getAutomationID(
   return api.computeAutomationID(analysis_key, environment);
 }
 
+/** Gets the path to a saved payload file for {@link analysisKind}. */
+export function getSavedPayloadPath(analysisKind: analyses.AnalysisKind) {
+  return path.join(
+    actionsUtil.getTemporaryDirectory(),
+    `payload-${analysisKind}.json`,
+  );
+}
+
 /**
  * Upload the given payload.
  * If the request fails then this will retry a small number of times.
@@ -245,10 +253,7 @@ export async function uploadPayload(
   logger.info("Uploading results");
 
   if (util.shouldSkipSarifUpload()) {
-    const payloadSaveFile = path.join(
-      actionsUtil.getTemporaryDirectory(),
-      `payload-${analysis.kind}.json`,
-    );
+    const payloadSaveFile = getSavedPayloadPath(analysis.kind);
     logger.info(
       `SARIF upload disabled by an environment variable. Saving to ${payloadSaveFile}`,
     );

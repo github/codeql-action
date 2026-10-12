@@ -729,7 +729,10 @@ function mockGetReleaseByTag(expectedTag?: string, assets?: ReleaseAssets) {
           }
         });
 
-  return mockGetApiClient({ repos: { getReleaseByTag } });
+  return {
+    getReleaseByTag,
+    getApiClient: mockGetApiClient({ repos: { getReleaseByTag } }),
+  };
 }
 
 function mockOfflineFeatures(tempDir: string, logger: Logger) {
@@ -833,7 +836,7 @@ test.serial(
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
       for (const assets of testAssets) {
-        const stub = mockGetReleaseByTag(defaults.bundleVersion, assets);
+        const stubs = mockGetReleaseByTag(defaults.bundleVersion, assets);
         const info = await startProxyExports.getDownloadUrl(
           state,
           SAMPLE_DOTCOM_API_DETAILS,
@@ -848,7 +851,9 @@ test.serial(
           ),
         );
 
-        stub.restore();
+        // mockGetReleaseByTag stubs the global getApiClient; since we are calling
+        // that in a loop, we need to manually restore it here
+        stubs.getApiClient.restore();
       }
     });
   },
@@ -864,7 +869,7 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
       url: "url-we-want",
     },
   ];
-  const getReleaseByTag = mockGetReleaseByTag(defaults.bundleVersion, assets);
+  const stubs = mockGetReleaseByTag(defaults.bundleVersion, assets);
 
   await withTmpDir(async (tempDir) => {
     state.env.set(ActionsEnvVars.RUNNER_TEMP, tempDir);
@@ -879,7 +884,7 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
       SAMPLE_DOTCOM_API_DETAILS,
     );
 
-    t.is(getReleaseByTag.callCount, 1);
+    t.is(stubs.getReleaseByTag.callCount, 1);
 
     t.is(info.version, defaults.cliVersion);
     t.is(info.url, "url-we-want");
@@ -1036,7 +1041,7 @@ test.serial(
     const logger = new RecordingLogger();
     const state = initAllState({ logger });
     const downloadUrl = "url-we-want";
-    const getApiClient = mockGetReleaseByTag(defaults.bundleVersion, [
+    const stubs = mockGetReleaseByTag(defaults.bundleVersion, [
       {
         name: startProxyExports.getProxyPackage(getTestPlatform(state)),
         url: downloadUrl,
@@ -1070,7 +1075,7 @@ test.serial(
       SAMPLE_DOTCOM_API_DETAILS,
     );
 
-    t.is(getApiClient.callCount, 1);
+    t.is(stubs.getReleaseByTag.callCount, 1);
     t.assert(find.calledOnce);
     t.assert(getAuthorizationHeaderFor.calledOnce);
 

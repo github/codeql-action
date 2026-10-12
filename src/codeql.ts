@@ -197,7 +197,7 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config,
+    tempDir: string,
     diagnosticDir: string | undefined,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
@@ -919,7 +919,7 @@ async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config,
+      tempDir: string,
       diagnosticDir: string | undefined,
     ): Promise<void> {
       const args = [
@@ -928,7 +928,7 @@ async function getCodeQLForCmd(
         "--format=sarif-latest",
         `--output=${sarifFile}`,
         `--sarif-codescanning-config=${getGeneratedCodeScanningConfigPath(
-          config.tempDir,
+          tempDir,
         )}`,
         ...(diagnosticDir !== undefined
           ? [`--diagnostic-dir=${diagnosticDir}`]

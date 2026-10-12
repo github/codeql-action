@@ -786,7 +786,7 @@ async function testFailedSarifUpload(
         diagnosticsExportStub.calledOnceWith(
           sinon.match.string,
           category,
-          config,
+          config.tempDir,
         ),
         `Actual args were: ${JSON.stringify(diagnosticsExportStub.args)}`,
       );
@@ -893,7 +893,7 @@ test.serial(
       diagnosticsExport.calledOnceWith(
         sinon.match(expectedFilePattern),
         "/language:javascript",
-        config,
+        config.tempDir,
       ),
     );
   },

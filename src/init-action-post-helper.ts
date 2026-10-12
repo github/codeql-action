@@ -191,7 +191,12 @@ async function generateFailedSarif(
       diagnosticDir = undefined;
     }
 
-    await codeql.diagnosticsExport(sarifFile, category, config, diagnosticDir);
+    await codeql.diagnosticsExport(
+      sarifFile,
+      category,
+      config.tempDir,
+      diagnosticDir,
+    );
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
     await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);

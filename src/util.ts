@@ -46,10 +46,13 @@ const BASE_DATABASE_OIDS_FILE_NAME = "base-database-oids.json";
  */
 const BROKEN_VERSIONS = ["0.0.0-20211207"];
 
+/** A string representing a GitHub instance. */
+export type InstanceURL = string;
+
 /**
  * The URL for github.com.
  */
-export const GITHUB_DOTCOM_URL = "https://github.com";
+export const GITHUB_DOTCOM_URL: InstanceURL = "https://github.com";
 
 /**
  * Default name of the debugging artifact.

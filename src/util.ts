@@ -19,6 +19,8 @@ import {
   getRequiredEnvParam,
   isInTestMode,
   exportEnvVar,
+  getEnv,
+  type Env,
 } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
@@ -595,12 +597,12 @@ export function assertNever(value: never): never {
  * Set some initial environment variables that we can set even without
  * knowing what version of CodeQL we're running.
  */
-export function initializeEnvironment(version: string) {
-  exportEnvVar(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  exportEnvVar(EnvVar.FEATURE_SANDWICH, "false");
-  exportEnvVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  exportEnvVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  exportEnvVar(EnvVar.VERSION, version);
+export function initializeEnvironment(version: string, env: Env = getEnv()) {
+  env.export(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  env.export(EnvVar.FEATURE_SANDWICH, "false");
+  env.export(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  env.export(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  env.export(EnvVar.VERSION, version);
 }
 
 export class HTTPError extends Error {

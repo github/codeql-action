@@ -817,7 +817,7 @@ async function getCodeQLForCmd(
         "--print-metrics-summary",
         "--sarif-add-baseline-file-info",
         `--sarif-codescanning-config=${getGeneratedCodeScanningConfigPath(
-          config,
+          config.tempDir,
         )}`,
         "--sarif-group-rules-by-pack",
         "--sarif-include-query-help=always",
@@ -928,7 +928,7 @@ async function getCodeQLForCmd(
         "--format=sarif-latest",
         `--output=${sarifFile}`,
         `--sarif-codescanning-config=${getGeneratedCodeScanningConfigPath(
-          config,
+          config.tempDir,
         )}`,
         ...(diagnosticDir !== undefined
           ? [`--diagnostic-dir=${diagnosticDir}`]
@@ -1191,7 +1191,9 @@ async function writeCodeScanningConfigFile(
   config: Config,
   logger: Logger,
 ): Promise<string> {
-  const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(config);
+  const codeScanningConfigFile = getGeneratedCodeScanningConfigPath(
+    config.tempDir,
+  );
 
   // Apply the `extraQueryExclusions` from the CodeQL Action state to the CLI configuration.
   // We do this here at the latest possible point before passing the CLI configuration on to
@@ -1247,8 +1249,8 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-function getGeneratedCodeScanningConfigPath(config: Config): string {
-  return path.resolve(config.tempDir, "user-config.yaml");
+function getGeneratedCodeScanningConfigPath(tempDir: string): string {
+  return path.resolve(tempDir, "user-config.yaml");
 }
 
 function getExtractionVerbosityArguments(

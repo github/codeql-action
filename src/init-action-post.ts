@@ -27,7 +27,7 @@ import {
   DependencyCachingUsageReport,
   getDependencyCacheUsage,
 } from "./dependency-caching";
-import { EnvVar, getEnv, exportEnvVar } from "./environment";
+import { EnvVar, type ReadOnlyEnv } from "./environment";
 import { initFeatures } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -49,7 +49,7 @@ interface InitPostStatusReport
     initActionPostHelper.JobStatusReport,
     initActionPostHelper.DependencyCachingUsageReport {}
 
-async function run(action: ActionState<["Base", "Logger"]>) {
+async function run(action: ActionState<["Base", "Logger", "Env"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
   const logger = action.logger;
@@ -105,7 +105,7 @@ async function run(action: ActionState<["Base", "Logger"]>) {
         repositoryNwo,
         features,
         jobStatus,
-        getEnv(),
+        action.env,
         logger,
       );
 
@@ -140,7 +140,7 @@ async function run(action: ActionState<["Base", "Logger"]>) {
     }
     return;
   }
-  const jobStatus = getFinalJobStatus(config);
+  const jobStatus = getFinalJobStatus(action, config);
   logger.info(`CodeQL job status was ${getJobStatusDisplayName(jobStatus)}.`);
 
   const statusReportBase = await createStatusReportBase(
@@ -171,16 +171,21 @@ async function run(action: ActionState<["Base", "Logger"]>) {
  * Otherwise, we determine the job status based on whether the analyze step
  * completed successfully and whether we have a valid CodeQL config.
  */
-function getFinalJobStatus(config: Partial<Config> | undefined): JobStatus {
-  const existingJobStatus = getJobStatusFromEnvironment();
+function getFinalJobStatus(
+  action: ActionState<["Env"]>,
+  config: Partial<Config> | undefined,
+): JobStatus {
+  const existingJobStatus = getJobStatusFromEnvironment(action.env);
   if (existingJobStatus !== undefined) {
     return existingJobStatus;
   }
 
   let jobStatus: JobStatus;
 
-  if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true") {
-    exportEnvVar(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
+  if (
+    action.env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true"
+  ) {
+    action.env.export(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
     jobStatus = JobStatus.SuccessStatus;
   } else if (config !== undefined) {
     // - We have computed a CodeQL config
@@ -205,7 +210,7 @@ function getFinalJobStatus(config: Partial<Config> | undefined): JobStatus {
 
   // This shouldn't be necessary, but in the odd case that we run more than one
   // `init` post step, ensure the job status is consistent between them.
-  exportEnvVar(EnvVar.JOB_STATUS, jobStatus);
+  action.env.export(EnvVar.JOB_STATUS, jobStatus);
   return jobStatus;
 }
 
@@ -214,8 +219,8 @@ function getFinalJobStatus(config: Partial<Config> | undefined): JobStatus {
  *
  * If the job status is invalid, return `UnknownStatus`.
  */
-function getJobStatusFromEnvironment(): JobStatus | undefined {
-  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
+function getJobStatusFromEnvironment(env: ReadOnlyEnv): JobStatus | undefined {
+  const jobStatusFromEnvironment = env.getOptional(EnvVar.JOB_STATUS);
 
   if (jobStatusFromEnvironment !== undefined) {
     // Validate the job status from the environment. If it is invalid, return unknown.

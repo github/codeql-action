@@ -1426,7 +1426,9 @@ export function saveAbortedInitConfig(
 ) {
   // Should only be called by init.
   if (action.name !== ActionName.Init) {
-    return;
+    throw new Error(
+      `Internal error: 'saveAbortedInitConfig' should only be called by '${ActionName.Init}', but was called by '${action.name}'.`,
+    );
   }
 
   // Create a copy of the input `Config` that only contains the keys we want.
@@ -1510,7 +1512,9 @@ export function getAbortedInitConfig(
 ): AbortedInitConfig | undefined {
   // Only intended to be called by the `init-post` action.
   if (action.name !== ActionName.InitPost) {
-    return undefined;
+    throw new Error(
+      `Internal error: 'getAbortedInitConfig' should only be called by '${ActionName.InitPost}', but was called by '${action.name}'.`,
+    );
   }
 
   return readConfigFile(action.logger, getPathToFailedConfigFile(tempDir));

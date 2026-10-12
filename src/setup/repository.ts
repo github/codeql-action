@@ -2,6 +2,7 @@ import { ActionState } from "../action-common";
 import { isRunningLocalAction } from "../actions-util";
 import * as api from "../api-client";
 import { ActionsEnvVars } from "../environment";
+import { isRepositoryNwoStr, type RepositoryNwoStr } from "../repository";
 import { GITHUB_DOTCOM_URL } from "../util";
 
 /** The NWO of the standard CodeQL Action repository. */
@@ -17,7 +18,7 @@ export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
  */
 export function getCodeQLActionRepository(
   action: ActionState<["ReadOnlyEnv", "Logger"]>,
-): string {
+): RepositoryNwoStr {
   if (isRunningLocalAction(action.env)) {
     // This handles the case where the Action does not come from an Action repository,
     // e.g. our integration tests which use the Action code from the current checkout.
@@ -28,11 +29,21 @@ export function getCodeQLActionRepository(
     return CODEQL_DEFAULT_ACTION_REPOSITORY;
   }
 
-  return action.env.getRequired(ActionsEnvVars.GITHUB_ACTION_REPOSITORY);
+  const actionRepository = action.env.getRequired(
+    ActionsEnvVars.GITHUB_ACTION_REPOSITORY,
+  );
+
+  if (isRepositoryNwoStr(actionRepository)) {
+    return actionRepository;
+  }
+
+  throw new Error(
+    `The value of '${ActionsEnvVars.GITHUB_ACTION_REPOSITORY}' is '${actionRepository}', which does not match the expected 'owner/repo' format.`,
+  );
 }
 
 /**A download source is a pair of strings. */
-export type DownloadSource = [string, string];
+export type DownloadSource = [string, RepositoryNwoStr];
 
 /** GitHub.com, and the canonical Action. */
 export const DEFAULT_DOWNLOAD_SOURCE: DownloadSource = [
@@ -88,7 +99,7 @@ export async function getCodeQLAssetDownloadURL(
 ): Promise<DownloadURL> {
   const codeQLActionRepository = getCodeQLActionRepository(action);
 
-  const potentialDownloadSources: Array<[string, string]> = [
+  const potentialDownloadSources: Array<[string, RepositoryNwoStr]> = [
     // This GitHub instance, and this Action.
     [apiDetails.url, codeQLActionRepository],
     // This GitHub instance, and the canonical Action.

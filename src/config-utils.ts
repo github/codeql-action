@@ -21,7 +21,11 @@ import {
 import * as api from "./api-client";
 import { getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
-import { type ActionConfig, type Config } from "./config/action-config";
+import {
+  type AbortedInitConfig,
+  type ActionConfig,
+  type Config,
+} from "./config/action-config";
 import {
   calculateAugmentation,
   ExcludeQueryFilter,
@@ -71,6 +75,7 @@ import {
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
+import { ActionName } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
 import {
@@ -1379,31 +1384,84 @@ export function getPathToParsedConfigFile(tempDir: string): string {
   return path.join(tempDir, "config");
 }
 
+function getPathToFailedConfigFile(tempDir: string): string {
+  return path.join(tempDir, "failed-config");
+}
+
 /**
- * Store the given config to the path returned from getPathToParsedConfigFile.
+ * Writes {@link config} to {@link configFilePath}.
+ *
+ * This function is not intended to be called, other than by
+ * {@link saveConfig} and {@link saveFailedConfig} below.
  */
-export async function saveConfig(config: Config, logger: Logger) {
+function saveConfigFile(
+  logger: Logger,
+  configFilePath: string,
+  config: Partial<Config>,
+) {
   const configString = JSON.stringify(config);
-  const configFile = getPathToParsedConfigFile(config.tempDir);
-  fs.mkdirSync(path.dirname(configFile), { recursive: true });
-  fs.writeFileSync(configFile, configString, "utf8");
+  fs.mkdirSync(path.dirname(configFilePath), { recursive: true });
+  fs.writeFileSync(configFilePath, configString, "utf8");
   logger.debug("Saved config:");
   logger.debug(configString);
 }
 
 /**
- * Get the config that has been saved to the given temp dir.
- * If the config could not be found then returns undefined.
+ * Store the given config to the path returned from getPathToParsedConfigFile.
  */
-export async function getConfig(
-  tempDir: string,
+export async function saveConfig(config: Config, logger: Logger) {
+  const configFile = getPathToParsedConfigFile(config.tempDir);
+  saveConfigFile(logger, configFile, config);
+}
+
+/**
+ * Store parts of {@link config} as a failed configuration file.
+ *
+ * The file will only contain parts of {@link config} that are relevant to
+ * the `init-post` step in the workflow.
+ */
+export function saveAbortedInitConfig(
+  action: ActionState<["Base", "Logger"]>,
+  config: Config,
+) {
+  // Should only be called by init.
+  if (action.name !== ActionName.Init) {
+    return;
+  }
+
+  // Create a copy of the input `Config` that only contains the keys we want.
+  const failedConfig: AbortedInitConfig = {
+    version: config.version,
+    tempDir: config.tempDir,
+    codeQLCmd: config.codeQLCmd,
+    debugMode: config.debugMode,
+    gitHubVersion: config.gitHubVersion,
+    languages: config.languages,
+    analysisKinds: config.analysisKinds,
+  };
+
+  action.logger.debug(`Saving config for failed init step.`);
+  saveConfigFile(
+    action.logger,
+    getPathToFailedConfigFile(config.tempDir),
+    failedConfig,
+  );
+}
+
+/**
+ * Attempts to read a {@link Config} from {@link configFilePath}.
+ *
+ * This function is not intended to be called, other than by
+ * {@link getConfig} and {@link getAbortedInitConfig} below.
+ */
+function readConfigFile(
   logger: Logger,
-): Promise<Config | undefined> {
-  const configFile = getPathToParsedConfigFile(tempDir);
-  if (!fs.existsSync(configFile)) {
+  configFilePath: string,
+): Config | undefined {
+  if (!fs.existsSync(configFilePath)) {
     return undefined;
   }
-  const configString = fs.readFileSync(configFile, "utf8");
+  const configString = fs.readFileSync(configFilePath, "utf8");
   logger.debug("Loaded config:");
   logger.debug(configString);
 
@@ -1426,6 +1484,36 @@ export async function getConfig(
   }
 
   return config as Config;
+}
+
+/**
+ * Get the config that has been saved to the given temp dir.
+ * If the config could not be found then returns undefined.
+ */
+export async function getConfig(
+  tempDir: string,
+  logger: Logger,
+): Promise<Config | undefined> {
+  const configFile = getPathToParsedConfigFile(tempDir);
+  return readConfigFile(logger, configFile);
+}
+
+/**
+ * Loads a {@link AbortedInitConfig} from a failed `init` step if it exists.
+ *
+ * The result will only contain parts of a {@link Config} that are relevant to
+ * the `init-post` step in the workflow.
+ */
+export function getAbortedInitConfig(
+  action: ActionState<["Base", "Logger"]>,
+  tempDir: string,
+): AbortedInitConfig | undefined {
+  // Only intended to be called by the `init-post` action.
+  if (action.name !== ActionName.InitPost) {
+    return undefined;
+  }
+
+  return readConfigFile(action.logger, getPathToFailedConfigFile(tempDir));
 }
 
 /**

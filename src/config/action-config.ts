@@ -142,3 +142,14 @@ export type ActionConfigProperties = keyof Config;
 export type ActionConfig<
   T extends ActionConfigProperties = ActionConfigProperties,
 > = Partial<Config> & Pick<Config, T>;
+
+/** A minimal configuration that we can make available even when `init` aborts. */
+export type AbortedInitConfig = ActionConfig<
+  | "version"
+  | "tempDir"
+  | "gitHubVersion"
+  | "debugMode"
+  | "languages"
+  | "analysisKinds"
+  | "codeQLCmd"
+>;

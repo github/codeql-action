@@ -1392,7 +1392,7 @@ function getPathToFailedConfigFile(tempDir: string): string {
  * Writes {@link config} to {@link configFilePath}.
  *
  * This function is not intended to be called, other than by
- * {@link saveConfig} and {@link saveFailedConfig} below.
+ * {@link saveConfig} and {@link saveAbortedInitConfig} below.
  */
 function saveConfigFile(
   logger: Logger,

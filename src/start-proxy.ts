@@ -537,24 +537,44 @@ export async function getProxyBinaryPath(
   apiDetails: GitHubApiDetails,
 ): Promise<string> {
   const logger = action.logger;
-  const proxyFileName = getProxyFilename();
-  const proxyInfo = await getDownloadUrl(action, apiDetails);
+  logger.startGroup("Setting up authentication proxy");
 
-  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
-  if (!proxyBin) {
-    const authorization = getAuthorizationHeaderFor(
-      logger,
-      apiDetails,
-      proxyInfo.url,
+  try {
+    const proxyFileName = getProxyFilename();
+    const proxyInfo = await getDownloadUrl(action, apiDetails);
+
+    logger.info(
+      `Using authentication proxy from CodeQL release ${proxyInfo.version}.`,
     );
-    const temp = await downloadProxy(logger, proxyInfo.url, authorization);
-    const extracted = await extractProxy(logger, temp);
-    proxyBin = await cacheProxy(
-      logger,
-      extracted,
-      proxyFileName,
-      proxyInfo.version,
-    );
+
+    let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
+
+    if (!proxyBin) {
+      logger.info(
+        `Authentication proxy is not in the toolcache. Will try to download it from '${proxyInfo.url}'.`,
+      );
+
+      const authorization = getAuthorizationHeaderFor(
+        logger,
+        apiDetails,
+        proxyInfo.url,
+      );
+      const temp = await downloadProxy(logger, proxyInfo.url, authorization);
+
+      logger.info(`Downloaded the authentication proxy assset to '${temp}'.`);
+
+      const extracted = await extractProxy(logger, temp);
+      proxyBin = await cacheProxy(
+        logger,
+        extracted,
+        proxyFileName,
+        proxyInfo.version,
+      );
+
+      logger.info(`Extracted the authentication proxy to '${proxyBin}'.`);
+    }
+    return path.join(proxyBin, proxyFileName);
+  } finally {
+    logger.endGroup();
   }
-  return path.join(proxyBin, proxyFileName);
 }

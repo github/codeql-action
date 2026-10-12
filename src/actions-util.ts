@@ -131,11 +131,14 @@ export function getWorkflowEvent(env: Env = getEnv()): any {
   }
 }
 
-export async function printDebugLogs(config: Partial<Config>) {
+export async function printDebugLogs(logger: Logger, config: Partial<Config>) {
   if (
     !hasConfigKey(config, "languages") ||
     !hasConfigKey(config, "dbLocation")
   ) {
+    logger.debug(
+      `Not printing debug logs, because the configuration does not include the 'languages' or 'dbLocation' fields.`,
+    );
     return;
   }
 
@@ -143,23 +146,23 @@ export async function printDebugLogs(config: Partial<Config>) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);
     const logsDirectory = path.join(databaseDirectory, "log");
     if (!doesDirectoryExist(logsDirectory)) {
-      core.info(`Directory ${logsDirectory} does not exist.`);
+      logger.info(`Directory ${logsDirectory} does not exist.`);
       continue; // Skip this language database.
     }
 
     const walkLogFiles = (dir: string) => {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       if (entries.length === 0) {
-        core.info(`No debug logs found at directory ${logsDirectory}.`);
+        logger.info(`No debug logs found at directory ${logsDirectory}.`);
       }
       for (const entry of entries) {
         if (entry.isFile()) {
           const absolutePath = path.resolve(dir, entry.name);
-          core.startGroup(
+          logger.startGroup(
             `CodeQL Debug Logs - ${language} - ${entry.name} from file at path ${absolutePath}`,
           );
-          process.stdout.write(fs.readFileSync(absolutePath));
-          core.endGroup();
+          logger.info(fs.readFileSync(absolutePath, "utf-8"));
+          logger.endGroup();
         } else if (entry.isDirectory()) {
           walkLogFiles(path.resolve(dir, entry.name));
         }

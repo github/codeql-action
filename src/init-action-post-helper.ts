@@ -338,7 +338,7 @@ export async function uploadFailureInfo(
     config: UploadDebugArtifactsConfig,
     logger: Logger,
   ) => Promise<void>,
-  printDebugLogs: (config: Partial<Config>) => Promise<void>,
+  printDebugLogs: (logger: Logger, config: Partial<Config>) => Promise<void>,
   codeql: CodeQL,
   config: Config | AbortedInitConfig,
   repositoryNwo: RepositoryNwo,
@@ -392,7 +392,7 @@ export async function uploadFailureInfo(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
     await uploadAllAvailableDebugArtifacts(codeql, config, logger);
-    await printDebugLogs(config);
+    await printDebugLogs(logger, config);
   }
 
   if (actionsUtil.isSelfHostedRunner() && config.dbLocation) {

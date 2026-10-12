@@ -61,15 +61,21 @@ export enum ActionName {
   UploadSarif = "upload-sarif",
 }
 
+/** A partial mapping from `ActionName` to names for actions whose display name is not the `ActionName` value. */
+export const ACTION_DISPLAY_NAMES: Partial<Record<ActionName, string>> = {
+  [ActionName.Analyze]: "analyze",
+  [ActionName.InitPost]: "init post",
+};
+
 /**
- * Maps an `ActionName` to its display name. Usually that is the same, except
- * for `ActionName.Analyze` where it is `"analyze"` instead of `"finish"`.
+ * Maps an {@link ActionName} to its display name. Usually that is the same, except
+ * for actions which have a different display name in {@link ACTION_DISPLAY_NAMES}.
  */
 export function getDisplayActionName(actionName: ActionName): string {
-  if (actionName === ActionName.Analyze) {
-    return "analyze";
-  } else if (actionName === ActionName.InitPost) {
-    return "init post";
+  const displayName = ACTION_DISPLAY_NAMES[actionName];
+
+  if (displayName !== undefined) {
+    return displayName;
   }
   return actionName;
 }

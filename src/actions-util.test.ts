@@ -12,7 +12,7 @@ import {
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests } from "./testing-utils";
 import { initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
@@ -102,15 +102,17 @@ test("computeAutomationID()", async (t) => {
 });
 
 test("printDebugLogs - doesn't throw when config doesn't have needed properties", async (t) => {
-  await t.notThrowsAsync(printDebugLogs({}));
-  await t.notThrowsAsync(printDebugLogs({ languages: [] }));
-  await t.notThrowsAsync(printDebugLogs({ dbLocation: "nowhere" }));
+  const logger = new RecordingLogger();
+  await t.notThrowsAsync(printDebugLogs(logger, {}));
+  await t.notThrowsAsync(printDebugLogs(logger, { languages: [] }));
+  await t.notThrowsAsync(printDebugLogs(logger, { dbLocation: "nowhere" }));
 });
 
 test("printDebugLogs - doesn't throw when language db doesn't exist", async (t) =>
   withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
     await t.notThrowsAsync(
-      printDebugLogs({ dbLocation: tmpDir, languages: ["javascript"] }),
+      printDebugLogs(logger, { dbLocation: tmpDir, languages: ["javascript"] }),
     );
   }));
 

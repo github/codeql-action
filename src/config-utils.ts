@@ -21,7 +21,7 @@ import {
 import * as api from "./api-client";
 import { getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
-import { type Config } from "./config/action-config";
+import { type ActionConfig, type Config } from "./config/action-config";
 import {
   calculateAugmentation,
   ExcludeQueryFilter,
@@ -1618,21 +1618,27 @@ export function appendExtraQueryExclusions(
 /**
  * Returns `true` if Code Scanning analysis is enabled, or `false` if not.
  */
-export function isCodeScanningEnabled(config: Config): boolean {
+export function isCodeScanningEnabled(
+  config: ActionConfig<"analysisKinds">,
+): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeScanning);
 }
 
 /**
  * Returns `true` if Code Quality analysis is enabled, or `false` if not.
  */
-export function isCodeQualityEnabled(config: Config): boolean {
+export function isCodeQualityEnabled(
+  config: ActionConfig<"analysisKinds">,
+): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeQuality);
 }
 
 /**
  * Returns `true` if Code Scanning Risk Assessment analysis is enabled, or `false` if not.
  */
-export function isRiskAssessmentEnabled(config: Config): boolean {
+export function isRiskAssessmentEnabled(
+  config: ActionConfig<"analysisKinds">,
+): boolean {
   return config.analysisKinds.includes(AnalysisKind.RiskAssessment);
 }
 

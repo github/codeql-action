@@ -19,16 +19,15 @@ import {
   getEnv,
   exportEnvVar,
 } from "./environment";
+import { GITHUB_DOTCOM_URL, parseGitHubUrl } from "./github";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
   asHTTPError,
   ConfigurationError,
   getRequiredEnvParam,
-  GITHUB_DOTCOM_URL,
   GitHubVariant,
   GitHubVersion,
-  parseGitHubUrl,
   parseMatrixInput,
 } from "./util";
 

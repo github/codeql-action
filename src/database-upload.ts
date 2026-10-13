@@ -12,11 +12,12 @@ import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
+import { parseGitHubUrl } from "./github";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
-import { asHTTPError, bundleDb, CleanupLevel, parseGitHubUrl } from "./util";
+import { asHTTPError, bundleDb, CleanupLevel } from "./util";
 
 /** Information about a database upload. */
 export interface DatabaseUploadResult {

@@ -19,7 +19,12 @@ import {
   getEnv,
   exportEnvVar,
 } from "./environment";
-import { GITHUB_DOTCOM_URL, parseGitHubUrl } from "./github";
+import {
+  GITHUB_DOTCOM_URL,
+  parseGitHubUrl,
+  type GitHubApiCombinedDetails,
+  type GitHubApiDetails,
+} from "./github";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
@@ -31,6 +36,8 @@ import {
   parseMatrixInput,
 } from "./util";
 
+export type { GitHubApiDetails, GitHubApiCombinedDetails } from "./github";
+
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 
 /**
@@ -41,39 +48,6 @@ const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
  * from the default list to ensure that these errors are retried.
  */
 export const DO_NOT_RETRY_STATUSES = [400, 410, 422, 451];
-
-/**
- * Represents information about a GitHub instance, how to authenticate to it,
- * and how to authenticate to other repos on it.
- */
-export type GitHubApiCombinedDetails = GitHubApiDetails &
-  GitHubApiExternalRepoDetails;
-
-/** Represents information about a GitHub instance. */
-export type GitHubInstance = {
-  /** The base URL of the GitHub instance, such as `https://github.com`. */
-  url: string;
-  /**
-   * The API base URL of the GitHub instance, such as `https://api.github.com`.
-   * Typically this is the `api.` subdomain of the `url` domain.
-   */
-  apiURL: string | undefined;
-};
-
-/** Represents a {@link GitHubInstance} with a token for accessing the API. */
-export type GitHubApiDetails = GitHubInstance & {
-  /** The token to use for accessing the API of the GitHub instance. */
-  auth: string;
-};
-
-/**
- * Represents information for accessing a repository on the same GitHub instance as the Action
- * is currently running on.
- */
-export type GitHubApiExternalRepoDetails = {
-  /** An optional token for accessing repo(s) on the same GitHub instance. */
-  externalRepoAuth?: string;
-};
 
 /**
  * Gets the configuration for the private registry authentication proxy,

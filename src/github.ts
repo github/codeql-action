@@ -1,4 +1,3 @@
-import type { GitHubInstance } from "./api-client";
 import { ActionsEnvVars, type ReadOnlyEnv } from "./environment";
 import { ConfigurationError } from "./util";
 
@@ -17,6 +16,39 @@ export type InstanceApiURL = string;
  * The URL for api.github.com.
  */
 export const GITHUB_DOTCOM_API_URL: InstanceApiURL = "https://api.github.com";
+
+/**
+ * Represents information about a GitHub instance, how to authenticate to it,
+ * and how to authenticate to other repos on it.
+ */
+export type GitHubApiCombinedDetails = GitHubApiDetails &
+  GitHubApiExternalRepoDetails;
+
+/** Represents information about a GitHub instance. */
+export type GitHubInstance = {
+  /** The base URL of the GitHub instance, such as `https://github.com`. */
+  url: string;
+  /**
+   * The API base URL of the GitHub instance, such as `https://api.github.com`.
+   * Typically this is the `api.` subdomain of the `url` domain.
+   */
+  apiURL: string | undefined;
+};
+
+/** Represents a {@link GitHubInstance} with a token for accessing the API. */
+export type GitHubApiDetails = GitHubInstance & {
+  /** The token to use for accessing the API of the GitHub instance. */
+  auth: string;
+};
+
+/**
+ * Represents information for accessing a repository on the same GitHub instance as the Action
+ * is currently running on.
+ */
+export type GitHubApiExternalRepoDetails = {
+  /** An optional token for accessing repo(s) on the same GitHub instance. */
+  externalRepoAuth?: string;
+};
 
 /**
  * Parses user input of a github.com or GHES URL to a canonical form.

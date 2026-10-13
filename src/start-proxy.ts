@@ -428,17 +428,27 @@ export function getProxyFilename() {
     : UPDATEJOB_PROXY;
 }
 
+export type ProxyBinary = {
+  /** The path to the proxy binary to run. */
+  path: string;
+  /**
+   * The version associated with the proxy binary.
+   * This usually corresponds to the CodeQL CLI release that the binary was obtained from.
+   */
+  version: string;
+};
+
 /**
  * Gets a path to the proxy binary. If possible, this function will find the proxy in the
  * runner's tool cache. Otherwise, it downloads and extracts the proxy binary,
  * and stores it in the tool cache.
  *
  * @param action The action state.
- * @returns The path to the proxy binary.
+ * @returns The path to the proxy binary and its version.
  */
 export async function getProxyBinaryPath(
   action: ActionState<["Base", "Logger", "FeatureFlags"]>,
-): Promise<string> {
+): Promise<ProxyBinary> {
   const logger = action.logger;
   const proxyFileName = getProxyFilename();
   const proxyInfo = await getDownloadUrl(action);
@@ -460,5 +470,9 @@ export async function getProxyBinaryPath(
       proxyInfo.version,
     );
   }
-  return path.join(proxyBin, proxyFileName);
+
+  return {
+    path: path.join(proxyBin, proxyFileName),
+    version: proxyInfo.version,
+  };
 }

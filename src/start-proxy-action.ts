@@ -106,7 +106,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     const actionWithFeatures = extendActionState(action, { features });
     const proxyBin = await getProxyBinaryPath(actionWithFeatures);
     const proxyInfo = await startProxy(
-      proxyBin,
+      proxyBin.path,
       proxyConfig,
       proxyLogFilePath,
       logger,

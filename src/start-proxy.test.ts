@@ -886,9 +886,10 @@ test.serial(
 
       t.assert(path);
       t.is(
-        path,
+        path.path,
         filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
       );
+      t.is(path.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
     });
   },
 );
@@ -939,9 +940,10 @@ test.serial(
     t.assert(cacheDir.calledOnceWith(extractedPath));
     t.assert(path);
     t.is(
-      path,
+      path.path,
       filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
     );
+    t.is(path.version, defaults.cliVersion);
 
     checkExpectedLogMessages(t, logger.messages, [
       `Found '${startProxyExports.getProxyPackage(getTestPlatform(state))}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
@@ -954,7 +956,8 @@ test.serial(
   async (t) => {
     const logger = new RecordingLogger();
     const state = initAllState({ logger });
-    const expectedTag = "codeql-bundle-v2.20.1";
+    const expectedVersion = "2.20.1";
+    const expectedTag = `codeql-bundle-v${expectedVersion}`;
     const expectedParams = {
       owner: "github",
       repo: "codeql-action",
@@ -1012,7 +1015,9 @@ test.serial(
       const getDefaultCliVersion = sinon
         .stub(features, "getEnabledDefaultCliVersions")
         .resolves({
-          enabledVersions: [{ cliVersion: "2.20.1", tagName: expectedTag }],
+          enabledVersions: [
+            { cliVersion: expectedVersion, tagName: expectedTag },
+          ],
         });
       const path = await startProxyExports.getProxyBinaryPath({
         ...state,
@@ -1033,9 +1038,10 @@ test.serial(
 
       t.assert(path);
       t.is(
-        path,
+        path.path,
         filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
       );
+      t.is(path.version, expectedVersion);
     });
 
     checkExpectedLogMessages(t, logger.messages, [

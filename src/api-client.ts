@@ -13,7 +13,6 @@ import {
 import type { ActionState } from "./action-common";
 import { getActionVersion, getRequiredInput } from "./actions-util";
 import {
-  ActionsEnvVars,
   EnvVar,
   ReadOnlyEnv,
   RegistryProxyVars,
@@ -21,6 +20,7 @@ import {
   exportEnvVar,
 } from "./environment";
 import {
+  getCurrentInstance,
   GITHUB_DOTCOM_URL,
   parseGitHubUrl,
   type GitHubApiCombinedDetails,
@@ -154,11 +154,15 @@ function createApiClientWithDetails(
   return new retryingOctokit(opts);
 }
 
+/**
+ * Gets a `GitHubApiDetails` object describing the GitHub instance we are currently running on.
+ *
+ * @param env The environment variables to read.
+ */
 export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
-    url: env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
-    apiURL: env.getRequired(ActionsEnvVars.GITHUB_API_URL),
+    ...getCurrentInstance(env),
   };
 }
 

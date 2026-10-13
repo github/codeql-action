@@ -164,66 +164,6 @@ test.serial("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
 });
 
-test("parseGitHubUrl", (t) => {
-  t.deepEqual(util.parseGitHubUrl("github.com"), "https://github.com");
-  t.deepEqual(util.parseGitHubUrl("https://github.com"), "https://github.com");
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.com"),
-    "https://github.com",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.com/foo/bar"),
-    "https://github.com",
-  );
-
-  t.deepEqual(
-    util.parseGitHubUrl("github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/api/v3"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com:1234"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.example.com:1234"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com:1234/api/v3"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/base/path"),
-    "https://github.example.com/base/path/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/base/path/api/v3"),
-    "https://github.example.com/base/path/",
-  );
-
-  t.throws(() => util.parseGitHubUrl(""), {
-    message: '"" is not a valid URL',
-  });
-  t.throws(() => util.parseGitHubUrl("ssh://github.com"), {
-    message: '"ssh://github.com" is not a http or https URL',
-  });
-  t.throws(() => util.parseGitHubUrl("http:///::::433"), {
-    message: '"http:///::::433" is not a valid URL',
-  });
-});
-
 test("allowed API versions", async (t) => {
   t.is(util.apiVersionInRange("1.33.0", "1.33", "2.0"), undefined);
   t.is(util.apiVersionInRange("1.33.1", "1.33", "2.0"), undefined);

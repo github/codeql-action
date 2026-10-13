@@ -18,6 +18,7 @@ import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
+import * as github from "./github";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
@@ -33,7 +34,6 @@ import * as util from "./util";
 import {
   ConfigurationError,
   getErrorMessage,
-  getRequiredEnvParam,
   GitHubVariant,
   GitHubVersion,
   satisfiesGHESVersion,
@@ -104,6 +104,8 @@ async function combineSarifFilesUsingCLI(
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<Partial<sarif.Log>> {
+  const env = util.getEnv();
+
   logger.info("Combining SARIF files using the CodeQL CLI");
 
   const sarifObjects = sarifFiles.map(sarif.readSarifFile);
@@ -152,8 +154,7 @@ async function combineSarifFilesUsingCLI(
       externalRepoAuth: actionsUtil.getOptionalInput(
         "external-repository-token",
       ),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+      ...github.getCurrentInstance(env),
     };
 
     const codeQLDefaultVersionInfo =

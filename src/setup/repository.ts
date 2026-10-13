@@ -2,7 +2,11 @@ import { ActionState } from "../action-common";
 import { isRunningLocalAction } from "../actions-util";
 import * as api from "../api-client";
 import { ActionsEnvVars } from "../environment";
-import { isRepositoryNwoStr, type RepositoryNwoStr } from "../repository";
+import {
+  isRepositoryNwoStr,
+  parseRepositoryNwo,
+  type RepositoryNwoStr,
+} from "../repository";
 import { GITHUB_DOTCOM_URL, type InstanceURL } from "../util";
 
 /** The NWO of the standard CodeQL Action repository. */
@@ -126,7 +130,8 @@ export async function getCodeQLAssetDownloadURL(
       break;
     }
 
-    const [repositoryOwner, repositoryName] = repository.split("/");
+    const { owner: repositoryOwner, repo: repositoryName } =
+      parseRepositoryNwo(repository);
     try {
       const release = await api.getApiClient().rest.repos.getReleaseByTag({
         owner: repositoryOwner,

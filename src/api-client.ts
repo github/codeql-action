@@ -18,9 +18,11 @@ import {
   RegistryProxyVars,
   getEnv,
   exportEnvVar,
+  ActionsEnvVars,
 } from "./environment";
 import {
   getCurrentInstance,
+  getDotcomInstance,
   GITHUB_DOTCOM_URL,
   parseGitHubUrl,
   type GitHubApiCombinedDetails,
@@ -185,6 +187,28 @@ export function getApiClient(
   apiDetails?: GitHubApiDetails,
 ) {
   return createApiClientWithDetails(apiDetails ?? getApiDetails(env));
+}
+
+/*
+ * Gets a `GitHubApiDetails` object describing the GitHub Dotcom instance.
+ *
+ * @param env The environment variables to read.
+ */
+export function getDotcomApiDetails(env: ReadOnlyEnv): GitHubApiDetails {
+  // If we are currently running on dotcom, then just call `getApiDetails` which will
+  // construct the appropriate `GitHubApiDetails` from the environment and include the
+  // value of the `token` input. The `token` input relates to the GitHub instance that
+  // we are running on only. Therefore, if we are not currently running on dotcom,
+  // then we construct `GitHubApiDetails` without the `token` value and using the
+  // hard-coded instance and API URLs.
+  if (env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL) === GITHUB_DOTCOM_URL) {
+    return getApiDetails(env);
+  } else {
+    return {
+      auth: undefined,
+      ...getDotcomInstance(),
+    };
+  }
 }
 
 export function getApiClientWithExternalAuth(

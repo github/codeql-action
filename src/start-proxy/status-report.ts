@@ -12,18 +12,30 @@ import {
 } from "../status-report";
 import * as util from "../util";
 
+/** Additional status report data from `start-proxy`. */
+export interface StartProxyStatus {
+  proxy_version: string;
+}
+
+/** The type of successful status reports from `start-proxy`. */
+type StartProxySuccessReport = StatusReportBase & {
+  start_proxy: StartProxyStatus;
+};
+
 /**
  * Sends a status report for the `start-proxy` action indicating a successful outcome.
  *
  * @param startedAt When the action was started.
  * @param config The configuration used.
  * @param registry_types The types of registries that are configured.
+ * @param status Status information.
  * @param logger The logger to use.
  */
 export async function sendSuccessStatusReport(
   startedAt: Date,
   config: Partial<Config>,
   registry_types: string[],
+  status: StartProxyStatus,
   logger: Logger,
 ) {
   const statusReportBase = await createStatusReportBase(
@@ -35,9 +47,10 @@ export async function sendSuccessStatusReport(
     logger,
   );
   if (statusReportBase !== undefined) {
-    const statusReport: StatusReportBase = {
+    const statusReport: StartProxySuccessReport = {
       ...statusReportBase,
       registry_types: registry_types.join(","),
+      start_proxy: status,
     };
     await sendStatusReport(statusReport);
   }

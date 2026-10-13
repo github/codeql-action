@@ -131,7 +131,9 @@ function createApiClientWithDetails(
   { allowExternal = false, proxy = undefined }: CreateApiClientOptions = {},
 ): ApiClient {
   const auth =
-    (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
+    allowExternal && apiDetails.externalRepoAuth !== undefined
+      ? apiDetails.externalRepoAuth
+      : apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
   const requestOptions = makeProxyRequestOptions(proxy);
 

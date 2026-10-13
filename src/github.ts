@@ -60,3 +60,19 @@ export function parseGitHubUrl(inputUrl: string): string {
 
   return url.toString();
 }
+
+/** Retrieves a {@link GitHubInstance} describing the instance we are running on. */
+export function getCurrentInstance(env: ReadOnlyEnv): GitHubInstance {
+  return {
+    url: env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
+    apiURL: env.getRequired(ActionsEnvVars.GITHUB_API_URL),
+  };
+}
+
+/** Retrieves a {@link GitHubInstance} describing the GitHub.com instance. */
+export function getDotcomInstance(): GitHubInstance {
+  return {
+    url: GITHUB_DOTCOM_URL,
+    apiURL: GITHUB_DOTCOM_API_URL,
+  };
+}

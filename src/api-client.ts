@@ -138,7 +138,8 @@ function createApiClientWithDetails(
   const requestOptions = makeProxyRequestOptions(proxy);
 
   const opts: OctokitOptions = {
-    auth: auth !== undefined ? `token ${auth}` : undefined,
+    auth:
+      auth !== undefined && auth.trim() !== "" ? `token ${auth}` : undefined,
     baseUrl: apiDetails.apiURL,
     userAgent: `CodeQL-Action/${getActionVersion()}`,
     log: {

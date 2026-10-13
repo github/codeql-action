@@ -38,7 +38,7 @@ export type GitHubInstance = {
 /** Represents a {@link GitHubInstance} with a token for accessing the API. */
 export type GitHubApiDetails = GitHubInstance & {
   /** The token to use for accessing the API of the GitHub instance. */
-  auth: string;
+  auth?: string;
 };
 
 /**

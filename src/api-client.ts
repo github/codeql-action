@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
+import type { OctokitOptions } from "@octokit/core";
 import * as retry from "@octokit/plugin-retry";
 import { RequestRequestOptions } from "@octokit/types";
 import {
@@ -133,22 +134,24 @@ function createApiClientWithDetails(
     (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
   const requestOptions = makeProxyRequestOptions(proxy);
-  return new retryingOctokit(
-    githubUtils.getOctokitOptions(auth, {
-      baseUrl: apiDetails.apiURL,
-      userAgent: `CodeQL-Action/${getActionVersion()}`,
-      log: {
-        debug: core.debug,
-        info: core.info,
-        warn: core.warning,
-        error: core.error,
-      },
-      request: requestOptions,
-      retry: {
-        doNotRetry: DO_NOT_RETRY_STATUSES,
-      },
-    }),
-  );
+
+  const opts: OctokitOptions = {
+    auth: auth !== undefined ? `token ${auth}` : undefined,
+    baseUrl: apiDetails.apiURL,
+    userAgent: `CodeQL-Action/${getActionVersion()}`,
+    log: {
+      debug: core.debug,
+      info: core.info,
+      warn: core.warning,
+      error: core.error,
+    },
+    request: requestOptions,
+    retry: {
+      doNotRetry: DO_NOT_RETRY_STATUSES,
+    },
+  };
+
+  return new retryingOctokit(opts);
 }
 
 export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {

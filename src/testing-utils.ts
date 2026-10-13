@@ -14,6 +14,7 @@ import * as sinon from "sinon";
 
 import { ActionState, StateFeature } from "./action-common";
 import { ActionsEnv, getActionVersion } from "./actions-util";
+import * as actionsUtil from "./actions-util";
 import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
@@ -51,6 +52,23 @@ export const SAMPLE_DOTCOM_API_DETAILS = {
   url: "https://github.com",
   apiURL: "https://api.github.com",
 };
+
+export function mockApiDetails(
+  apiDetails: Required<GitHubApiDetails>,
+  env: Env = getEnv(),
+) {
+  // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
+  // mock this directly. The difficulty is that `getApiDetails()` is called locally in
+  // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to
+  // `getApiDetails()` via an imported `api` module.
+  const getRequiredInput = sinon.stub(actionsUtil, "getRequiredInput");
+  getRequiredInput.withArgs("token").returns(apiDetails.auth);
+
+  env.set("GITHUB_SERVER_URL", apiDetails.url);
+  env.set("GITHUB_API_URL", apiDetails.apiURL ?? "");
+
+  return getRequiredInput;
+}
 
 export const LINKED_CLI_VERSION = {
   cliVersion: defaults.cliVersion,

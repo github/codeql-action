@@ -32,6 +32,7 @@ import {
   getTestEnv,
   initAllState,
   makeMacro,
+  mockApiDetails,
   mockBundleDownloadApi,
   setupActionsVars,
   setupTests,
@@ -221,6 +222,7 @@ for (const {
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         const source = await setupCodeql.getCodeQLSource(
           "linked",
           SAMPLE_DEFAULT_CLI_VERSION,
@@ -255,6 +257,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       const source = await setupCodeql.getCodeQLSource(
         "latest",
         SAMPLE_DEFAULT_CLI_VERSION,
@@ -298,6 +301,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       const result = await setupCodeql.setupCodeQLBundle(
         "linked",
         SAMPLE_DOTCOM_API_DETAILS,
@@ -479,6 +483,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
 
       const source = await setupCodeql.getCodeQLSource(
         undefined,
@@ -624,6 +629,7 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         const source = await setupCodeql.getCodeQLSource(
           toolsInput,
           SAMPLE_DEFAULT_CLI_VERSION,
@@ -945,6 +951,7 @@ const toolcacheInputFallbackMacro = makeMacro({
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
 
       for (const [k, v] of Object.entries(environment)) {
         process.env[k] = v;
@@ -1165,6 +1172,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       const source = await setupCodeql.getCodeQLSource(
         undefined,
         PER_LANGUAGE_CLI_VERSION,
@@ -1207,6 +1215,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       for (const { otherLanguagePacksReason, features } of [
         // The per-language feature is disabled.
         { otherLanguagePacksReason: undefined, features: createFeatures([]) },
@@ -1286,6 +1295,7 @@ for (const fallback of [false, true]) {
         setupActionsVars(tmpDir, tmpDir, {
           GITHUB_ACTION_REPOSITORY: "codeql-testing/action-fork",
         });
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         const result = await setupCodeql.setupCodeQLBundle(
           undefined,
           SAMPLE_DOTCOM_API_DETAILS,
@@ -1553,6 +1563,7 @@ for (const error of [
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         await t.throwsAsync(
           setupCodeql.setupCodeQLBundle(
             undefined,
@@ -2259,6 +2270,7 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       delete process.env[EnvVar.HAS_SET_UP_CODEQL];
 
       stubDownloadAndExtract();
@@ -2294,6 +2306,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
       delete process.env[EnvVar.HAS_SET_UP_CODEQL];
       const staleDirectory = createToolcacheEntry(

@@ -9,7 +9,7 @@ import { ActionState } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
-import { ActionsEnvVars } from "./environment";
+import { ActionsEnvVars, type Env } from "./environment";
 import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
 import { UnvalidatedObject, validateSchema } from "./json";
 import { makeFromSchema } from "./json/testing-util";
@@ -27,6 +27,7 @@ import {
   initAllState,
   makeMacro,
   makeTestToken,
+  mockApiDetails,
   RecordingLogger,
   SAMPLE_DOTCOM_API_DETAILS,
   setupTests,
@@ -699,18 +700,23 @@ test("getProxyPackage - includes platform in name", (t) => {
   }
 });
 
-function mockGetApiClient(endpoints: any) {
-  return (
-    sinon
-      .stub(apiClient, "getApiClient")
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      .returns({ rest: endpoints } as any)
-  );
+function mockGetApiClient(env: Env, endpoints: any) {
+  const getRequiredInput = mockApiDetails(SAMPLE_DOTCOM_API_DETAILS, env);
+  const getApiClient = sinon
+    .stub(apiClient, "getApiClient")
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    .returns({ rest: endpoints } as any);
+
+  return { getRequiredInput, getApiClient };
 }
 
 type ReleaseAssets = Array<{ name: string; url?: string }>;
 
-function mockGetReleaseByTag(expectedTag?: string, assets?: ReleaseAssets) {
+function mockGetReleaseByTag(
+  env: Env,
+  expectedTag?: string,
+  assets?: ReleaseAssets,
+) {
   const getReleaseByTag =
     assets === undefined
       ? sinon.stub().rejects()
@@ -731,7 +737,7 @@ function mockGetReleaseByTag(expectedTag?: string, assets?: ReleaseAssets) {
 
   return {
     getReleaseByTag,
-    getApiClient: mockGetApiClient({ repos: { getReleaseByTag } }),
+    ...mockGetApiClient(env, { repos: { getReleaseByTag } }),
   };
 }
 
@@ -757,7 +763,6 @@ test.serial(
   "getDownloadUrl logs unknown platforms/arch and defaults to linux64",
   async (t) => {
     const logger = new RecordingLogger();
-    mockGetReleaseByTag();
 
     await withTmpDir(async (tempDir) => {
       const features = mockOfflineFeatures(tempDir, logger);
@@ -767,6 +772,7 @@ test.serial(
         logger,
         features,
       });
+      mockGetReleaseByTag(state.env);
 
       // Stub this to always return `true` so we get the default repo for the tests.
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
@@ -796,11 +802,11 @@ test.serial(
   "getDownloadUrl returns default bundle URL for linked version",
   async (t) => {
     const logger = new RecordingLogger();
-    mockGetReleaseByTag();
 
     await withTmpDir(async (tempDir) => {
       const features = mockOfflineFeatures(tempDir, logger);
       const state = initAllState({ logger, features });
+      mockGetReleaseByTag(state.env);
 
       // Stub this to always return `true` so we get the default repo for the tests.
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
@@ -836,7 +842,11 @@ test.serial(
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
       for (const assets of testAssets) {
-        const stubs = mockGetReleaseByTag(defaults.bundleVersion, assets);
+        const stubs = mockGetReleaseByTag(
+          state.env,
+          defaults.bundleVersion,
+          assets,
+        );
         const info = await startProxyExports.getDownloadUrl(
           state,
           SAMPLE_DOTCOM_API_DETAILS,
@@ -854,6 +864,7 @@ test.serial(
         // mockGetReleaseByTag stubs the global getApiClient; since we are calling
         // that in a loop, we need to manually restore it here
         stubs.getApiClient.restore();
+        stubs.getRequiredInput.restore();
       }
     });
   },
@@ -869,7 +880,7 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
       url: "url-we-want",
     },
   ];
-  const stubs = mockGetReleaseByTag(defaults.bundleVersion, assets);
+  const stubs = mockGetReleaseByTag(state.env, defaults.bundleVersion, assets);
 
   await withTmpDir(async (tempDir) => {
     state.env.set(ActionsEnvVars.RUNNER_TEMP, tempDir);
@@ -1011,7 +1022,6 @@ test.serial(
   "getProxyBinaryPath - returns path from tool cache if available",
   async (t) => {
     const logger = new RecordingLogger();
-    mockGetReleaseByTag();
 
     await withTmpDir(async (tempDir) => {
       const toolcachePath = "/path/to/proxy/dir";
@@ -1021,8 +1031,11 @@ test.serial(
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
       const features = mockOfflineFeatures(tempDir, logger);
+      const state = initAllState({ logger, features });
+      mockGetReleaseByTag(state.env);
+
       const path = await startProxyExports.getProxyBinaryPath(
-        initAllState({ logger, features }),
+        state,
         SAMPLE_DOTCOM_API_DETAILS,
       );
 
@@ -1041,7 +1054,7 @@ test.serial(
     const logger = new RecordingLogger();
     const state = initAllState({ logger });
     const downloadUrl = "url-we-want";
-    const stubs = mockGetReleaseByTag(defaults.bundleVersion, [
+    const stubs = mockGetReleaseByTag(state.env, defaults.bundleVersion, [
       {
         name: startProxyExports.getProxyPackage(getTestPlatform(state)),
         url: downloadUrl,
@@ -1091,7 +1104,7 @@ test.serial(
     );
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://github.com with URL ${downloadUrl}`,
+      `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://api.github.com with URL ${downloadUrl}`,
     ]);
   },
 );
@@ -1122,7 +1135,7 @@ test.serial(
       headers: {},
       url: "GET /repos/:owner/:repo/releases/tags/:tag",
     });
-    mockGetApiClient({ repos: { getReleaseByTag } });
+    mockGetApiClient(state.env, { repos: { getReleaseByTag } });
 
     await withTmpDir(async (tempDir) => {
       const toolcachePath = "/path/to/proxy/dir";
@@ -1187,7 +1200,7 @@ test.serial(
     });
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://github.com with URL url-we-want.`,
+      `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://api.github.com with URL url-we-want.`,
     ]);
   },
 );

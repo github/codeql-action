@@ -457,6 +457,18 @@ async function run(
 
     await checkInstallPython311(config.languages, codeql);
   } catch (unwrappedError) {
+    // If we have initialised the Action state, then try to save a subset of it for use by the `init-post` action
+    // so that it can try to create and upload additional diagnostic information.
+    if (config !== undefined) {
+      try {
+        configUtils.saveAbortedInitConfig(actionState, config);
+      } catch (configSaveError) {
+        logger.warning(
+          `Unable to save configuration for '${ActionName.InitPost}' step: ${getErrorMessage(configSaveError)}`,
+        );
+      }
+    }
+
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
     const statusReportBase = await createStatusReportBase(

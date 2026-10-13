@@ -126,3 +126,38 @@ export interface Config {
    */
   enableFileCoverageInformation: boolean;
 }
+
+/** Properties available in `Config`. */
+export type ActionConfigProperties = keyof Config;
+
+/**
+ * The CodeQL Action configuration state that is persisted
+ * between steps of the CodeQL Action in a CodeQL workflow.
+ *
+ * By default, this is equivalent to `Config`. By explicitly
+ * providing required property names for `T` this can be restricted
+ * to requiring only those. For example, in `ActionConfig<"codeQLCmd">`
+ * all properties except `codeqlCmd` are optional.
+ */
+export type ActionConfig<
+  T extends ActionConfigProperties = ActionConfigProperties,
+> = Partial<Config> & Pick<Config, T>;
+
+/** Helper function to check whether `config` has `key` to narrow the type of `config`. */
+export function hasConfigKey<Key extends ActionConfigProperties>(
+  config: Partial<Config>,
+  key: Key,
+): config is ActionConfig<Key> {
+  return config[key] !== undefined;
+}
+
+/** A minimal configuration that we can make available even when `init` aborts. */
+export type AbortedInitConfig = ActionConfig<
+  | "version"
+  | "tempDir"
+  | "gitHubVersion"
+  | "debugMode"
+  | "languages"
+  | "analysisKinds"
+  | "codeQLCmd"
+>;

@@ -12,6 +12,7 @@ import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
 import {
@@ -450,7 +451,10 @@ export function getThreadsFlag(
 /**
  * Get the path where the CodeQL database for the given language lives.
  */
-export function getCodeQLDatabasePath(config: Config, language: Language) {
+export function getCodeQLDatabasePath(
+  config: ActionConfig<"dbLocation">,
+  language: Language,
+) {
   return path.resolve(config.dbLocation, language);
 }
 
@@ -644,7 +648,9 @@ export async function codeQlVersionAtLeast(
   return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
-export function getBaseDatabaseOidsFilePath(config: Config): string {
+export function getBaseDatabaseOidsFilePath(
+  config: ActionConfig<"dbLocation">,
+): string {
   return path.join(config.dbLocation, BASE_DATABASE_OIDS_FILE_NAME);
 }
 
@@ -656,7 +662,7 @@ export function getBaseDatabaseOidsFilePath(config: Config): string {
  * given `includeDiagnostics` value.
  */
 export async function bundleDb(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   codeql: CodeQL,
   dbName: string,

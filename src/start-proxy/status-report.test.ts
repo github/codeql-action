@@ -4,7 +4,9 @@ import sinon from "sinon";
 
 import * as statusReport from "../status-report";
 import {
+  createTestConfig,
   makeMacro,
+  RecordingLogger,
   setupTests,
   withRecordingLoggerAsync,
 } from "../testing-utils";
@@ -13,6 +15,46 @@ import { ConfigurationError } from "../util";
 import * as startProxyExports from "./status-report";
 
 setupTests(test);
+
+test.serial("sendSuccessStatusReport", async (t) => {
+  const logger = new RecordingLogger();
+  const now = new Date();
+  const config = createTestConfig({});
+  const proxy_version = "1.2.3";
+  const registry_types = ["git_source", "docker_registry"];
+
+  const createStatusReportBase = sinon.stub(
+    statusReport,
+    "createStatusReportBase",
+  );
+  createStatusReportBase.resolves({
+    action_name: statusReport.ActionName.StartProxy,
+  } as statusReport.StatusReportBase);
+
+  const sendStatusReport = sinon
+    .stub(statusReport, "sendStatusReport")
+    .resolves();
+
+  await startProxyExports.sendSuccessStatusReport(
+    now,
+    config,
+    registry_types,
+    { proxy_version },
+    logger,
+  );
+
+  t.is(createStatusReportBase.callCount, 1);
+
+  t.is(sendStatusReport.callCount, 1);
+  t.is(sendStatusReport.args[0].length, 1);
+
+  const arg = sendStatusReport.args[0][0];
+  t.like(arg, {
+    action_name: statusReport.ActionName.StartProxy,
+    registry_types: "docker_registry,git_source",
+    start_proxy: { proxy_version },
+  });
+});
 
 const sendFailedStatusReportTest = makeMacro({
   exec: async (

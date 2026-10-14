@@ -292,6 +292,19 @@ test("makeProxyRequestOptions - returns fetch with custom proxy", async (t) => {
   );
 });
 
+test.serial(
+  "getApiClientWithExternalAuth constructs clients with or without tokens",
+  (t) => {
+    t.notThrows(() => {
+      api.getApiClientWithExternalAuth(SAMPLE_DOTCOM_API_DETAILS);
+      api.getApiClientWithExternalAuth({
+        ...SAMPLE_DOTCOM_API_DETAILS,
+        auth: undefined,
+      });
+    });
+  },
+);
+
 test("getAuthorizationHeaderFor - returns undefined if there's no token", (t) => {
   const logger = new RecordingLogger();
 

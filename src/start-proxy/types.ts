@@ -254,13 +254,19 @@ export function credentialToStr(credential: Credential): string {
   return result;
 }
 
-/** A package registry is identified by its type and address. */
-export type Registry = {
+/** The schema for `RegistryBase` objects. */
+export const registryBaseSchema = {
   /** The type of the package registry. */
-  type: string;
+  type: json.string,
   /** Whether the registry replaces the base registry for the ecosystem. */
-  "replaces-base"?: boolean;
-} & Address;
+  "replaces-base": json.optional(json.boolean),
+} as const satisfies json.Schema;
+
+/** Information about a registry, other than its address. */
+export type RegistryBase = json.FromSchema<typeof registryBaseSchema>;
+
+/** A package registry is identified by its type and address. */
+export type Registry = RegistryBase & Address;
 
 // If a registry has an `url`, then that takes precedence over the `host` which may or may
 // not be defined.

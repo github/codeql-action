@@ -1,11 +1,9 @@
-import * as core from "@actions/core";
-
 import { getTemporaryDirectory, getWorkflowEventName } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { ActionsEnvVars, EnvVar } from "./environment";
+import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { Feature, featureConfig, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger } from "./logging";
@@ -112,7 +110,7 @@ export async function determineAutobuildLanguages(
   return languages;
 }
 
-export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
+export async function setupCppAutobuild(logger: Logger) {
   const envVar = featureConfig[Feature.CppDependencyInstallation].envVar;
   const featureName = "C++ automatic installation of dependencies";
   const gitHubVersion = await getGitHubVersion();
@@ -123,7 +121,7 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
     getTemporaryDirectory(),
     logger,
   );
-  if (await features.getValue(Feature.CppDependencyInstallation, codeql)) {
+  if (await features.getValue(Feature.CppDependencyInstallation)) {
     // disable autoinstall on self-hosted runners unless explicitly requested
     if (
       process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] === "self-hosted" &&
@@ -136,16 +134,16 @@ export async function setupCppAutobuild(codeql: CodeQL, logger: Logger) {
             : ""
         }`,
       );
-      core.exportVariable(envVar, "false");
+      exportEnvVar(envVar, "false");
     } else {
       logger.info(
         `Enabling ${featureName}. This can be disabled by setting the ${envVar} environment variable to 'false'. See ${DocUrl.DEFINE_ENV_VARIABLES} for more information.`,
       );
-      core.exportVariable(envVar, "true");
+      exportEnvVar(envVar, "true");
     }
   } else {
     logger.info(`Disabling ${featureName}.`);
-    core.exportVariable(envVar, "false");
+    exportEnvVar(envVar, "false");
   }
 }
 
@@ -155,9 +153,9 @@ export async function runAutobuild(
   logger: Logger,
 ) {
   logger.startGroup(`Attempting to automatically build ${language} code`);
-  const codeQL = await getCodeQL(config.codeQLCmd);
+  const codeQL = await getCodeQL(logger, config.codeQLCmd);
   if (language === BuiltInLanguage.cpp) {
-    await setupCppAutobuild(codeQL, logger);
+    await setupCppAutobuild(logger);
   }
   if (config.buildMode) {
     await codeQL.extractUsingBuildMode(config, language);
@@ -165,7 +163,7 @@ export async function runAutobuild(
     await codeQL.runAutobuild(config, language);
   }
   if (language === BuiltInLanguage.go) {
-    core.exportVariable(EnvVar.DID_AUTOBUILD_GOLANG, "true");
+    exportEnvVar(EnvVar.DID_AUTOBUILD_GOLANG, "true");
   }
   logger.endGroup();
 }

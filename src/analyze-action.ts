@@ -212,7 +212,12 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
-async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
+async function run({
+  startedAt,
+  env,
+  logger,
+  actions,
+}: ActionState<["Base", "Env", "Logger", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
@@ -255,23 +260,12 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       );
     }
 
-    const codeql = await getCodeQL(config.codeQLCmd);
+    const codeql = await getCodeQL(logger, config.codeQLCmd);
 
     if (hasBadExpectErrorInput()) {
       throw new util.ConfigurationError(
         "`expect-error` input parameter is for internal use only. It should only be set by codeql-action or a fork.",
       );
-    }
-
-    // Unset the CODEQL_PROXY_* environment variables when using older CodeQL
-    // CLIs, as they are not needed and can cause issues.
-    if (
-      process.env.CODEQL_PROXY_HOST === "" &&
-      !(await util.codeQlVersionAtLeast(codeql, "2.20.7"))
-    ) {
-      delete process.env.CODEQL_PROXY_HOST;
-      delete process.env.CODEQL_PROXY_PORT;
-      delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
     }
 
     if (actionsUtil.getOptionalInput("cleanup-level")) {
@@ -283,7 +277,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
-    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
+    env.export(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,
@@ -307,8 +301,13 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       logger,
     );
 
+    const checkoutPath = actions.getRequiredInput("checkout_path");
+
     // Setup diff informed analysis if needed (based on whether init created the file)
-    const diffRangePackDir = await setupDiffInformedQueryRun(logger);
+    const diffRangePackDir = await setupDiffInformedQueryRun(
+      logger,
+      checkoutPath,
+    );
 
     await warnIfGoInstalledAfterInit(config, logger);
     await runAutobuildIfLegacyGoWorkflow(config, logger);
@@ -354,7 +353,6 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       actionsUtil.getOptionalInput("upload"),
     );
     if (runStats) {
-      const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
       const category = actionsUtil.getOptionalInput("category");
 
       uploadResults = await postProcessAndUploadSarif(
@@ -388,18 +386,23 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     // Possibly upload the overlay-base database to actions cache.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` level.
-    await cleanupAndUploadOverlayBaseDatabaseToCache(codeql, config, logger);
+    await cleanupAndUploadOverlayBaseDatabaseToCache(
+      codeql,
+      config,
+      logger,
+      checkoutPath,
+    );
 
     // Possibly upload the database bundles for remote queries.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
     databaseUploadResults = await cleanupAndUploadDatabases(
+      { logger, features },
       repositoryNwo,
       codeql,
       config,
       apiDetails,
-      features,
-      logger,
+      checkoutPath,
     );
 
     // Possibly upload the TRAP caches for later re-use
@@ -443,7 +446,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
         `expect-error input was set to true but no error was thrown.`,
       );
     }
-    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+    env.export(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     if (

@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as github from "@actions/github";
 import * as io from "@actions/io";
@@ -17,7 +16,7 @@ import {
 import { GitHubApiDetails } from "./api-client";
 import { CodeQL, setupCodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, exportEnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -40,6 +39,7 @@ export async function initCodeQL(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  otherLanguagePacksReason: string | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
@@ -58,6 +58,7 @@ export async function initCodeQL(
       variant,
       defaultCliVersion,
       rawLanguages,
+      otherLanguagePacksReason,
       useOverlayAwareDefaultCliVersion,
       features,
       logger,
@@ -89,7 +90,6 @@ export async function runDatabaseInitCluster(
   sourceRoot: string,
   processName: string | undefined,
   qlconfigFile: string | undefined,
-  logger: Logger,
 ): Promise<void> {
   fs.mkdirSync(config.dbLocation, { recursive: true });
   await configUtils.wrapEnvironment(
@@ -100,7 +100,6 @@ export async function runDatabaseInitCluster(
         sourceRoot,
         processName,
         qlconfigFile,
-        logger,
       ),
   );
 }
@@ -411,5 +410,5 @@ export function logFileCoverageOnPrsDeprecationWarning(logger: Logger): void {
   }
 
   logger.warning(message);
-  core.exportVariable(EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION, "true");
+  exportEnvVar(EnvVar.DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION, "true");
 }

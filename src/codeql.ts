@@ -12,10 +12,13 @@ import {
   runTool,
 } from "./actions-util";
 import * as api from "./api-client";
+import * as outputCache from "./cli/output-cache";
+import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
+import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import { EnvVar, getEnv, exportEnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -23,7 +26,7 @@ import {
 } from "./feature-flags";
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
-import { Logger } from "./logging";
+import { getRunnerLogger, Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as setupCodeql from "./setup-codeql";
@@ -91,7 +94,6 @@ export interface CodeQL {
     sourceRoot: string,
     processName: string | undefined,
     qlconfigFile: string | undefined,
-    logger: Logger,
   ): Promise<void>;
   /**
    * Runs the autobuilder for the given language.
@@ -196,7 +198,7 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config,
+    config: ActionConfig<"tempDir">,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -213,20 +215,6 @@ export interface CodeQL {
     outputFile: string,
     options: { mergeRunsFromEqualCategory?: boolean },
   ): Promise<void>;
-}
-
-export interface VersionInfo {
-  version: string;
-  features?: { [name: string]: boolean };
-  /**
-   * The overlay version helps deal with backward incompatible changes for
-   * overlay analysis. When a precompiled query pack reports the same overlay
-   * version as the CodeQL CLI, we can use the CodeQL CLI to perform overlay
-   * analysis with that pack. Otherwise, if the overlay versions are different,
-   * or if either the pack or the CLI does not report an overlay version,
-   * we need to revert to non-overlay analysis.
-   */
-  overlayVersion?: number;
 }
 
 export interface ResolveDatabaseOutput {
@@ -266,25 +254,45 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.19.4";
+const CODEQL_MINIMUM_VERSION = "2.20.7";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.20.7";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.21.3";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.16";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.17";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-07-01";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-09-24";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
+
+/**
+ * Decides whether `e` is a disk-related error outside of our control
+ * that should be classified as a `ConfigurationError`.
+ *
+ * @param e The error to check.
+ * @returns True if the error should be treated as a `ConfigurationError` or false if not.
+ */
+export function isDiskConfigurationError(e: unknown): boolean {
+  if (!(e instanceof Error)) {
+    return false;
+  }
+
+  return (
+    // out of disk space
+    e.message.includes("ENOSPC") ||
+    // access denied
+    e.message.includes("EACCES")
+  );
+}
 
 /**
  * Set up CodeQL CLI access.
@@ -295,6 +303,9 @@ const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
  * @param variant
  * @param defaultCliVersion
  * @param rawLanguages Raw set of languages.
+ * @param otherLanguagePacksReason Why the CodeQL CLI may need packs for languages other than
+ *   `rawLanguages`, or `undefined` if it won't. If defined, the combined bundle is used. See
+ *   `PerLanguageBundleOptions.otherLanguagePacksReason`.
  * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param features Information about the features that are enabled.
  * @param logger
@@ -309,6 +320,7 @@ export async function setupCodeQL(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  otherLanguagePacksReason: string | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
@@ -332,6 +344,7 @@ export async function setupCodeQL(
       variant,
       defaultCliVersion,
       rawLanguages,
+      otherLanguagePacksReason,
       useOverlayAwareDefaultCliVersion,
       features,
       logger,
@@ -346,7 +359,7 @@ export async function setupCodeQL(
       );
     }
 
-    cachedCodeQL = await getCodeQLForCmd(codeqlCmd, checkVersion);
+    cachedCodeQL = await getCodeQLForCmd(logger, codeqlCmd, checkVersion);
     return {
       codeql: cachedCodeQL,
       toolsDownloadStatusReport,
@@ -356,8 +369,7 @@ export async function setupCodeQL(
   } catch (rawError) {
     const e = api.wrapApiConfigurationError(rawError);
     const ErrorClass =
-      e instanceof util.ConfigurationError ||
-      (e instanceof Error && e.message.includes("ENOSPC")) // out of disk space
+      e instanceof util.ConfigurationError || isDiskConfigurationError(e)
         ? util.ConfigurationError
         : Error;
 
@@ -372,9 +384,9 @@ export async function setupCodeQL(
 /**
  * Use the CodeQL executable located at the given path.
  */
-export async function getCodeQL(cmd: string): Promise<CodeQL> {
+export async function getCodeQL(logger: Logger, cmd: string): Promise<CodeQL> {
   if (cachedCodeQL === undefined) {
-    cachedCodeQL = await getCodeQLForCmd(cmd, true);
+    cachedCodeQL = await getCodeQLForCmd(logger, cmd, true);
   }
   return cachedCodeQL;
 }
@@ -481,8 +493,9 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
  */
 export async function getCodeQLForTesting(
   cmd = "codeql-for-testing",
+  logger: Logger = getRunnerLogger(true),
 ): Promise<CodeQL> {
-  return getCodeQLForCmd(cmd, false);
+  return getCodeQLForCmd(logger, cmd, false);
 }
 
 /**
@@ -494,6 +507,7 @@ export async function getCodeQLForTesting(
  * @returns A new CodeQL object
  */
 async function getCodeQLForCmd(
+  logger: Logger,
   cmd: string,
   checkVersion: boolean,
 ): Promise<CodeQL> {
@@ -502,7 +516,12 @@ async function getCodeQLForCmd(
       return cmd;
     },
     async getVersion() {
-      let result = util.getCachedCodeQlVersion(cmd);
+      const cacheFilePath = outputCache.getCommandCacheFilePath(getEnv());
+      let result = outputCache.getCachedCodeQlVersion(
+        logger,
+        cacheFilePath,
+        cmd,
+      );
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
           cmd,
@@ -511,7 +530,7 @@ async function getCodeQLForCmd(
             noStreamStdout: true,
           },
         );
-        util.cacheCodeQlVersion(cmd, result);
+        outputCache.cacheCodeQlVersion(cacheFilePath, cmd, result);
       }
       return result;
     },
@@ -539,7 +558,6 @@ async function getCodeQLForCmd(
       sourceRoot: string,
       processName: string | undefined,
       qlconfigFile: string | undefined,
-      logger: Logger,
     ) {
       const extraArgs = config.languages.map(
         (language) => `--language=${language}`,
@@ -896,7 +914,7 @@ async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config,
+      config: ActionConfig<"tempDir">,
     ): Promise<void> {
       const args = [
         "diagnostics",
@@ -925,6 +943,7 @@ async function getCodeQLForCmd(
           "--format=json",
           `--language=${language}`,
           "--extractor-include-aliases",
+          "-J-XX:-UsePerfData",
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
@@ -939,7 +958,13 @@ async function getCodeQLForCmd(
           },
         },
       ).exec();
-      return JSON.parse(extractorPath) as string;
+      try {
+        return JSON.parse(extractorPath) as string;
+      } catch (err) {
+        throw new Error(
+          `Failed to parse extractor path for '${language}' from CLI: ${getErrorMessage(err)}\nOutput was: ${extractorPath}`,
+        );
+      }
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
       const codeqlArgs = [
@@ -1030,7 +1055,7 @@ async function getCodeQLForCmd(
         }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
-    core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
+    exportEnvVar(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }
@@ -1213,7 +1238,9 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-function getGeneratedCodeScanningConfigPath(config: Config): string {
+function getGeneratedCodeScanningConfigPath(
+  config: ActionConfig<"tempDir">,
+): string {
   return path.resolve(config.tempDir, "user-config.yaml");
 }
 

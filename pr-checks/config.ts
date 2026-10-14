@@ -1,4 +1,9 @@
 import path from "path";
+import { fileURLToPath } from "url";
+
+// For backwards-compatibility.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /** The oldest supported major version of the CodeQL Action. */
 export const OLDEST_SUPPORTED_MAJOR_VERSION = 3;
@@ -17,6 +22,9 @@ export const PACKAGE_JSON = path.join(REPO_ROOT, "package.json");
 
 /** The path of the changelog. */
 export const CHANGELOG_FILE = path.join(REPO_ROOT, "CHANGELOG.md");
+
+/** The path to the unreleased change-notes directory. */
+export const CHANGENOTES_DIR = path.join(REPO_ROOT, "unreleased-change-notes");
 
 /** The path to the esbuild metadata file. */
 export const BUNDLE_METADATA_FILE = path.join(REPO_ROOT, "meta.json");

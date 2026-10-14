@@ -51,6 +51,31 @@ test.beforeEach(() => {
   });
 });
 
+test("isDiskConfigurationError - true for expected errors", async (t) => {
+  t.true(
+    codeql.isDiskConfigurationError(new Error("ENOSPC: Out of disk space")),
+  );
+  t.true(
+    codeql.isDiskConfigurationError(
+      new Error(
+        "EACCES: permission denied, mkdir /opt/hostedtoolcache/CodeQL/",
+      ),
+    ),
+  );
+});
+
+test("isDiskConfigurationError - false for other errors", async (t) => {
+  t.false(codeql.isDiskConfigurationError("Not an Error instance"));
+
+  const otherMessages = [
+    "Does not contain an error code we test for",
+    "ENOSP: Not quite the full error code",
+  ];
+  for (const otherMessage of otherMessages) {
+    t.false(codeql.isDiskConfigurationError(new Error(otherMessage)));
+  }
+});
+
 async function installIntoToolcache({
   apiDetails = SAMPLE_DOTCOM_API_DETAILS,
   cliVersion,
@@ -65,7 +90,7 @@ async function installIntoToolcache({
   tmpDir: string;
 }) {
   const url = mockBundleDownloadApi({ apiDetails, isPinned, tagName });
-  await codeql.setupCodeQL(
+  return await codeql.setupCodeQL(
     cliVersion !== undefined ? undefined : url,
     apiDetails,
     tmpDir,
@@ -74,6 +99,7 @@ async function installIntoToolcache({
       ? { enabledVersions: [{ cliVersion, tagName }] }
       : SAMPLE_DEFAULT_CLI_VERSION,
     undefined, // rawLanguages
+    undefined, // otherLanguagePacksReason
     false, // useOverlayAwareDefaultCliVersion
     createFeatures([]),
     getRunnerLogger(true),
@@ -147,6 +173,7 @@ test.serial(
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
@@ -182,6 +209,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
@@ -221,6 +249,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
@@ -233,6 +262,65 @@ test.serial(
     });
   },
 );
+
+for (const { cliVersion, tagName, expectedToolcacheVersion } of [
+  {
+    cliVersion: "2.21.0",
+    tagName: "codeql-bundle-20240101",
+    expectedToolcacheVersion: "2.21.0",
+  },
+  {
+    cliVersion: "2.21.0-rc.1",
+    tagName: "codeql-bundle-20240101",
+    expectedToolcacheVersion: "0.0.0-20240101",
+  },
+  {
+    cliVersion: "2.21.0+20240101",
+    tagName: "codeql-bundle-20240101",
+    expectedToolcacheVersion: "0.0.0-20240101",
+  },
+  {
+    cliVersion: "2.21.0",
+    tagName: "custom-release",
+    expectedToolcacheVersion: undefined,
+  },
+]) {
+  test.serial(
+    `preserves CLI version ${cliVersion} when installing ${tagName}`,
+    async (t) => {
+      await util.withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+
+        const result = await installIntoToolcache({
+          cliVersion,
+          isPinned: false,
+          tagName,
+          tmpDir,
+        });
+
+        t.is(result.toolsVersion, cliVersion);
+        t.is(result.toolsSource, ToolsSource.Download);
+        t.true(
+          Number.isInteger(result.toolsDownloadStatusReport?.totalDurationMs),
+        );
+        t.deepEqual(
+          toolcache.findAllVersions("CodeQL"),
+          expectedToolcacheVersion === undefined
+            ? []
+            : [expectedToolcacheVersion],
+        );
+        if (expectedToolcacheVersion !== undefined) {
+          const cachedFolder = toolcache.find(
+            "CodeQL",
+            expectedToolcacheVersion,
+          );
+          t.truthy(cachedFolder);
+          t.true(fs.existsSync(`${cachedFolder}.complete`));
+        }
+      });
+    },
+  );
+}
 
 const EXPLICITLY_REQUESTED_BUNDLE_TEST_CASES = [
   {
@@ -271,6 +359,7 @@ for (const {
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
@@ -313,6 +402,7 @@ for (const toolcacheVersion of [
           util.GitHubVariant.DOTCOM,
           SAMPLE_DEFAULT_CLI_VERSION,
           undefined, // rawLanguages
+          undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
           getRunnerLogger(true),
@@ -357,6 +447,7 @@ test.serial(
           ],
         },
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
@@ -403,6 +494,7 @@ test.serial(
           ],
         },
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
@@ -442,6 +534,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
@@ -483,6 +576,7 @@ test.serial(
         util.GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
         undefined, // rawLanguages
+        undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
         getRunnerLogger(true),
@@ -580,7 +674,6 @@ const injectedConfigMacro = makeMacro({
         "",
         undefined,
         undefined,
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as string[];
@@ -856,7 +949,6 @@ test.serial(
         "",
         undefined,
         "/path/to/qlconfig.yml",
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as string[];
@@ -887,7 +979,6 @@ test.serial(
         "",
         undefined,
         undefined, // undefined qlconfigFile
-        getRunnerLogger(true),
       );
 
       const args = runnerConstructorStub.firstCall.args[1] as any[];
@@ -1066,7 +1157,6 @@ test.serial(
       "sourceRoot",
       undefined,
       undefined,
-      getRunnerLogger(false),
     );
 
     t.true(runnerConstructorStub.calledOnce);

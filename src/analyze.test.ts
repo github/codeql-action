@@ -7,12 +7,12 @@ import * as sinon from "sinon";
 import { CodeQuality, CodeScanning, RiskAssessment } from "./analyses";
 import {
   runQueries,
-  defaultSuites,
   resolveQuerySuiteAlias,
   addSarifExtension,
   diffRangeExtensionPackContents,
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
+import { defaultSuites } from "./config/db-config";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";

@@ -8,6 +8,11 @@ import { CodeScanning, RiskAssessment } from "./analyses";
 import { getApiClient, getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import {
+  hasConfigKey,
+  type AbortedInitConfig,
+  type ActionConfig,
+} from "./config/action-config";
+import {
   Config,
   isCodeScanningEnabled,
   isRiskAssessmentEnabled,
@@ -16,9 +21,10 @@ import {
   getArtifactSuffix,
   getArtifactUploaderClient,
   sanitizeArtifactName,
+  type UploadDebugArtifactsConfig,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
-import { EnvVar } from "./environment";
+import { EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
@@ -86,6 +92,11 @@ interface FailedSarifInfo {
   checkoutPath: string;
 }
 
+/** The minimal Action configuration required to prepare and upload a failed SARIF. */
+export type FailedSarifConfig = ActionConfig<
+  "codeQLCmd" | "tempDir" | "analysisKinds" | "languages"
+>;
+
 /**
  * Tries to prepare a SARIF file that contains information about a failed analysis.
  *
@@ -94,7 +105,7 @@ interface FailedSarifInfo {
 async function prepareFailedSarif(
   logger: Logger,
   features: FeatureEnablement,
-  config: Config,
+  config: FailedSarifConfig,
 ): Promise<Result<FailedSarifInfo, UploadFailedSarifResult>> {
   if (!config.codeQLCmd) {
     return new Failure({
@@ -123,6 +134,7 @@ async function prepareFailedSarif(
     const category = `/language:${language}`;
     const checkoutPath = ".";
     const result = await generateFailedSarif(
+      logger,
       features,
       config,
       category,
@@ -146,6 +158,7 @@ async function prepareFailedSarif(
     const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
 
     const result = await generateFailedSarif(
+      logger,
       features,
       config,
       category,
@@ -156,14 +169,15 @@ async function prepareFailedSarif(
 }
 
 async function generateFailedSarif(
+  logger: Logger,
   features: FeatureEnablement,
-  config: Config,
+  config: ActionConfig<"codeQLCmd" | "tempDir">,
   category: string | undefined,
   checkoutPath: string,
   sarifFile?: string,
 ) {
   const databasePath = config.dbLocation;
-  const codeql = await getCodeQL(config.codeQLCmd);
+  const codeql = await getCodeQL(logger, config.codeQLCmd);
 
   // Set the filename for the SARIF file if not already set.
   if (sarifFile === undefined) {
@@ -189,7 +203,7 @@ async function generateFailedSarif(
  * category for the workflow.
  */
 async function maybeUploadFailedSarif(
-  config: Config,
+  config: FailedSarifConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
@@ -224,7 +238,7 @@ async function maybeUploadFailedSarif(
 
 /** Uploads a failed SARIF file as workflow artifact, if it can be generated. */
 async function maybeUploadFailedSarifArtifact(
-  config: Config,
+  config: FailedSarifConfig,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
@@ -264,7 +278,7 @@ async function maybeUploadFailedSarifArtifact(
  * @returns The results of uploading the SARIF file for the failure.
  */
 export async function tryUploadSarifIfRunFailed(
-  config: Config,
+  config: FailedSarifConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
@@ -313,24 +327,27 @@ export async function tryUploadSarifIfRunFailed(
  * @param config The CodeQL Action configuration.
  * @param repositoryNwo The name and owner of the repository.
  * @param features Information about enabled features.
+ * @param jobStatus The status of the job, as reported by the Actions runtime environment.
+ * @param env The environment to read variables from.
  * @param logger The logger to use.
  * @returns The results of uploading the SARIF file for the failure.
  */
 export async function uploadFailureInfo(
   uploadAllAvailableDebugArtifacts: (
     codeql: CodeQL,
-    config: Config,
+    config: UploadDebugArtifactsConfig,
     logger: Logger,
-    codeQlVersion: string,
   ) => Promise<void>,
-  printDebugLogs: (config: Config) => Promise<void>,
+  printDebugLogs: (logger: Logger, config: Partial<Config>) => Promise<void>,
   codeql: CodeQL,
-  config: Config,
+  config: Config | AbortedInitConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
+  jobStatus: string | undefined,
+  env: ReadOnlyEnv,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
-  await recordOverlayStatus(codeql, config, features, logger);
+  await recordOverlayStatus(codeql, config, features, jobStatus, env, logger);
 
   const uploadFailedSarifResult = await tryUploadSarifIfRunFailed(
     config,
@@ -370,21 +387,15 @@ export async function uploadFailureInfo(
   }
 
   // Upload appropriate Actions artifacts for debugging
-  if (config.debugMode) {
+  if (config.debugMode && hasConfigKey(config, "dbLocation")) {
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
-    const version = await codeql.getVersion();
-    await uploadAllAvailableDebugArtifacts(
-      codeql,
-      config,
-      logger,
-      version.version,
-    );
-    await printDebugLogs(config);
+    await uploadAllAvailableDebugArtifacts(codeql, config, logger);
+    await printDebugLogs(logger, config);
   }
 
-  if (actionsUtil.isSelfHostedRunner()) {
+  if (actionsUtil.isSelfHostedRunner() && config.dbLocation) {
     try {
       fs.rmSync(config.dbLocation, {
         recursive: true,
@@ -399,6 +410,10 @@ export async function uploadFailureInfo(
         `Failed to clean up database cluster directory ${config.dbLocation}. Details: ${e}`,
       );
     }
+  } else if (config.dbLocation === undefined) {
+    logger.debug(
+      "Skipping cleanup of database cluster directory since the configuration does not include a database path.",
+    );
   } else {
     logger.debug(
       "Skipping cleanup of database cluster directory since we are running on a GitHub-hosted " +
@@ -410,21 +425,71 @@ export async function uploadFailureInfo(
 }
 
 /**
+ * Whether one of the CodeQL Actions reported an error for this job, which means the analysis
+ * genuinely failed.
+ *
+ * Note that the converse does not hold: an Action that is terminated abruptly, or that fails before
+ * it can gather telemetry, does not get to report anything.
+ */
+function didCodeQlReportError(env: ReadOnlyEnv): boolean {
+  const jobStatus = env.getOptional(EnvVar.JOB_STATUS);
+  return (
+    jobStatus === JobStatus.FailureStatus ||
+    jobStatus === JobStatus.ConfigErrorStatus
+  );
+}
+
+/**
+ * Whether the job status tells us anything about whether the analysis itself would have succeeded.
+ *
+ * We check for the statuses we know to be meaningful rather than excluding the ones that are not,
+ * so that a status we do not recognise is treated as inconclusive.
+ */
+function isConclusiveJobStatus(jobStatus: string | undefined): boolean {
+  switch (jobStatus?.trim().toLowerCase()) {
+    case "failure":
+    case "success":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * If overlay base database creation was attempted but the analysis did not complete
  * successfully, save the failure status to the Actions cache so that subsequent runs
  * can skip overlay analysis until something changes (e.g. a new CodeQL version).
  */
 async function recordOverlayStatus(
   codeql: CodeQL,
-  config: Config,
+  config: Partial<Config>,
   features: FeatureEnablement,
+  jobStatus: string | undefined,
+  env: ReadOnlyEnv,
   logger: Logger,
 ) {
   if (
     config.overlayDatabaseMode !== OverlayDatabaseMode.OverlayBase ||
-    process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true" ||
+    env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true" ||
     !(await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
+    return;
+  } else if (config.languages === undefined) {
+    logger.debug(
+      "Not recording overlay status, because the configuration contains no 'languages'.",
+    );
+    return;
+  }
+
+  // Only record a failure when the job outcome tells us something about the analysis. A cancelled
+  // job, or a status we do not recognise, says nothing about whether the analysis would have
+  // succeeded, so recording a failure would disable overlay analysis needlessly. We still record
+  // one if a CodeQL Action reported an error before the job ended.
+  if (!isConclusiveJobStatus(jobStatus) && !didCodeQlReportError(env)) {
+    logger.info(
+      "Not recording an improved incremental analysis failure for this job because the job " +
+        `status (${jobStatus ?? "unset"}) does not tell us whether the analysis itself failed.`,
+    );
     return;
   }
 

@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as os from "os";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
@@ -10,16 +11,27 @@ import * as yaml from "js-yaml";
 import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
-import type { CodeQL, VersionInfo } from "./codeql";
+import type { CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
-import { EnvVar, getRequiredEnvParam } from "./environment";
+import {
+  EnvVar,
+  getRequiredEnvParam,
+  isInTestMode,
+  exportEnvVar,
+} from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
-export { getRequiredEnvParam, getOptionalEnvVar, getEnv } from "./environment";
+export {
+  getRequiredEnvParam,
+  getOptionalEnvVar,
+  getEnv,
+  isInTestMode,
+} from "./environment";
 
 /**
  * The name of the file containing the base database OIDs, as stored in the
@@ -84,9 +96,32 @@ export async function withTmpDir<T>(
   body: (tmpDir: string) => Promise<T>,
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
-  const result = await body(tmpDir);
-  await fs.promises.rm(tmpDir, { force: true, recursive: true });
-  return result;
+  try {
+    return await body(tmpDir);
+  } finally {
+    await fs.promises.rm(tmpDir, { force: true, recursive: true });
+  }
+}
+
+/**
+ * Creates a temporary file with the given contents, runs the given body, and
+ * then deletes the file. Note that, to create a temporary file, we first create
+ * a temporary directory via {@link withTmpDir} and then create the file within
+ * that directory.
+ * @param baseFileName The name to assign the temporary file.
+ * @param contents The contents to write to the temporary file.
+ * @param body The function to execute with the temporary file.
+ */
+export async function withTmpFile<T>(
+  baseFileName: string,
+  contents: string,
+  body: (filePath: string) => Promise<T> | T,
+): Promise<T> {
+  return withTmpDir(async (tmpDir) => {
+    const filePath = path.join(tmpDir, baseFileName);
+    fs.writeFileSync(filePath, contents);
+    return body(filePath);
+  });
 }
 
 /**
@@ -411,7 +446,10 @@ export function getThreadsFlag(
 /**
  * Get the path where the CodeQL database for the given language lives.
  */
-export function getCodeQLDatabasePath(config: Config, language: Language) {
+export function getCodeQLDatabasePath(
+  config: ActionConfig<"dbLocation">,
+  language: Language,
+) {
   return path.resolve(config.dbLocation, language);
 }
 
@@ -518,7 +556,7 @@ export function checkGitHubVersionInRange(
     );
   }
   hasBeenWarnedAboutVersion = true;
-  core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
+  exportEnvVar(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
 }
 
 export enum DisallowedAPIVersionReason {
@@ -562,11 +600,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  core.exportVariable(EnvVar.VERSION, version);
+  exportEnvVar(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  exportEnvVar(EnvVar.FEATURE_SANDWICH, "false");
+  exportEnvVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportEnvVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  exportEnvVar(EnvVar.VERSION, version);
 }
 
 export class HTTPError extends Error {
@@ -598,90 +636,6 @@ export function asHTTPError(arg: any): HTTPError | undefined {
   return undefined;
 }
 
-let cachedCodeQlVersion: undefined | VersionInfo = undefined;
-
-/**
- * Resets the in-process cache of the CodeQL CLI version. Only for use in tests,
- * which exercise multiple "steps" within a single process.
- */
-export function resetCachedCodeQlVersion(): void {
-  cachedCodeQlVersion = undefined;
-}
-
-/** The persisted version together with the CLI path it was obtained from. */
-interface PersistedVersionInfo {
-  cmd: string;
-  version: VersionInfo;
-}
-
-function isVersionInfo(x: unknown): x is VersionInfo {
-  const candidate = x as Partial<VersionInfo> | null;
-  return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.version === "string" &&
-    (candidate.features === undefined ||
-      (typeof candidate.features === "object" &&
-        candidate.features !== null)) &&
-    (candidate.overlayVersion === undefined ||
-      typeof candidate.overlayVersion === "number")
-  );
-}
-
-function isPersistedVersionInfo(x: unknown): x is PersistedVersionInfo {
-  const candidate = x as Partial<PersistedVersionInfo> | null;
-  return (
-    typeof candidate === "object" &&
-    candidate !== null &&
-    typeof candidate.cmd === "string" &&
-    isVersionInfo(candidate.version)
-  );
-}
-
-export function cacheCodeQlVersion(cmd: string, version: VersionInfo): void {
-  if (cachedCodeQlVersion !== undefined) {
-    throw new Error("cacheCodeQlVersion() should be called only once");
-  }
-  cachedCodeQlVersion = version;
-  // Persist the version so that subsequent Actions steps, which run in separate
-  // processes, can reuse it rather than invoking `codeql version` again. We
-  // record the CLI path so that a different step using a different CodeQL bundle
-  // doesn't pick up a stale version.
-  core.exportVariable(
-    EnvVar.CODEQL_VERSION_INFO,
-    JSON.stringify({ cmd, version }),
-  );
-}
-
-export function getCachedCodeQlVersion(cmd?: string): undefined | VersionInfo {
-  if (cachedCodeQlVersion !== undefined) {
-    return cachedCodeQlVersion;
-  }
-  // Fall back to the value persisted by an earlier Actions step, if any. This is
-  // best-effort: any malformed or mismatched value is ignored so that the caller
-  // invokes `codeql version` instead.
-  const serialized = process.env[EnvVar.CODEQL_VERSION_INFO];
-  if (!serialized) {
-    return undefined;
-  }
-  let persisted: unknown;
-  try {
-    persisted = JSON.parse(serialized);
-  } catch {
-    return undefined;
-  }
-  if (
-    !isPersistedVersionInfo(persisted) ||
-    (cmd !== undefined && persisted.cmd !== cmd)
-  ) {
-    return undefined;
-  }
-  // Memoize the parsed value so that subsequent calls in this process don't
-  // re-parse the environment variable.
-  cachedCodeQlVersion = persisted.version;
-  return cachedCodeQlVersion;
-}
-
 export async function codeQlVersionAtLeast(
   codeql: CodeQL,
   requiredVersion: string,
@@ -689,7 +643,9 @@ export async function codeQlVersionAtLeast(
   return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
-export function getBaseDatabaseOidsFilePath(config: Config): string {
+export function getBaseDatabaseOidsFilePath(
+  config: ActionConfig<"dbLocation">,
+): string {
   return path.join(config.dbLocation, BASE_DATABASE_OIDS_FILE_NAME);
 }
 
@@ -701,7 +657,7 @@ export function getBaseDatabaseOidsFilePath(config: Config): string {
  * given `includeDiagnostics` value.
  */
 export async function bundleDb(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   codeql: CodeQL,
   dbName: string,
@@ -742,6 +698,11 @@ export async function bundleDb(
   return databaseBundlePath;
 }
 
+/** Returns the elapsed milliseconds, rounded, since `startTime` was recorded with `performance.now()`. */
+export function durationMsSince(startTime: number): number {
+  return Math.round(performance.now() - startTime);
+}
+
 /**
  * @param milliseconds time to delay
  * @param opts options
@@ -764,15 +725,6 @@ export async function delay(
 
 export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
-}
-
-/**
- * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
- *
- * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
- */
-export function isInTestMode(): boolean {
-  return process.env[EnvVar.TEST_MODE] === "true";
 }
 
 /**
@@ -926,9 +878,13 @@ export async function checkForTimeout() {
  * directory with the name hostedtoolcache which is present on
  * GitHub-hosted runners.
  *
- * @returns true iff the runner is hosted by GitHub
+ * Since this is a heuristic over how the runner happens to be named and laid out, it also matches
+ * self-hosted runners that are configured to resemble hosted ones. Prefer
+ * `isGitHubHostedRunner` when you need the answer the Actions service reports.
+ *
+ * @returns true iff the runner looks like it is hosted by GitHub
  */
-export function isHostedRunner() {
+export function looksLikeHostedRunner() {
   return (
     // Name of the runner on hosted Windows runners
     process.env["RUNNER_NAME"]?.includes("Hosted Agent") ||
@@ -945,7 +901,13 @@ export function parseMatrixInput(
   if (matrixInput === undefined || matrixInput === "null") {
     return undefined;
   }
-  return JSON.parse(matrixInput) as { [key: string]: string };
+  try {
+    return JSON.parse(matrixInput) as { [key: string]: string };
+  } catch (err) {
+    throw new Error(
+      `Failed to parse matrix input '${matrixInput}': ${getErrorMessage(err)}`,
+    );
+  }
 }
 
 export function wrapError(error: unknown): Error {
@@ -993,7 +955,7 @@ export async function checkDiskUsage(
       } else {
         logger.debug(message);
       }
-      core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
+      exportEnvVar(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
       numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
@@ -1042,7 +1004,7 @@ export function checkActionVersion(
           "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
-      core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
+      exportEnvVar(EnvVar.LOG_VERSION_DEPRECATION, "true");
     }
   }
 }
@@ -1088,7 +1050,11 @@ export enum BuildMode {
 }
 
 export function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj)) as T;
+  try {
+    return JSON.parse(JSON.stringify(obj)) as T;
+  } catch (err) {
+    throw new Error(`Cloning object failed: ${getErrorMessage(err)}`);
+  }
 }
 
 export async function cleanUpPath(file: string, name: string, logger: Logger) {

@@ -14,21 +14,32 @@ import {
   isSelfHostedRunner,
 } from "./actions-util";
 import { getAnalysisKey, getApiClient } from "./api-client";
+import {
+  getCachedCodeQlVersion,
+  getCommandCacheFilePath,
+} from "./cli/output-cache";
 import type { Config } from "./config/action-config";
 import type { ComputedInput, InputName } from "./config/inputs";
 import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
 import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
-import { EnvVar } from "./environment";
+import {
+  EnvVar,
+  getEnv,
+  ReadOnlyEnv,
+  RegistryProxyVars,
+  exportEnvVar,
+} from "./environment";
 import { getRef } from "./git-utils";
+import * as json from "./json";
 import type { Logger } from "./logging";
 import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
 import { getRepositoryNwo } from "./repository";
 import type { ToolsSource } from "./setup-codeql";
+import { registryBaseSchema } from "./start-proxy/types";
 import {
   ConfigurationError,
   getRequiredEnvParam,
-  getCachedCodeQlVersion,
   isInTestMode,
   GITHUB_DOTCOM_URL,
   DiskUsage,
@@ -50,13 +61,21 @@ export enum ActionName {
   UploadSarif = "upload-sarif",
 }
 
+/** A partial mapping from `ActionName` to names for actions whose display name is not the `ActionName` value. */
+export const ACTION_DISPLAY_NAMES: Partial<Record<ActionName, string>> = {
+  [ActionName.Analyze]: "analyze",
+  [ActionName.InitPost]: "init post",
+};
+
 /**
- * Maps an `ActionName` to its display name. Usually that is the same, except
- * for `ActionName.Analyze` where it is `"analyze"` instead of `"finish"`.
+ * Maps an {@link ActionName} to its display name. Usually that is the same, except
+ * for actions which have a different display name in {@link ACTION_DISPLAY_NAMES}.
  */
 export function getDisplayActionName(actionName: ActionName): string {
-  if (actionName === ActionName.Analyze) {
-    return "analyze";
+  const displayName = ACTION_DISPLAY_NAMES[actionName];
+
+  if (displayName !== undefined) {
+    return displayName;
   }
   return actionName;
 }
@@ -66,9 +85,7 @@ export function getDisplayActionName(actionName: ActionName): string {
  * environment and returns it.
  * If a new UUID is generated, it is also exported as an environment variable.
  */
-export function getJobUUID(
-  action: ActionState<["Logger", "ReadOnlyEnv", "Actions"]>,
-) {
+export function getJobUUID(action: ActionState<["Logger", "Env", "Actions"]>) {
   // Check if we already have a UUID for the analysis and return it if so.
   const existingJobRunUuid = action.env.getOptional(EnvVar.JOB_RUN_UUID);
 
@@ -81,7 +98,7 @@ export function getJobUUID(
   const jobRunUuid = uuid.v4();
   action.logger.info(`Job run UUID is ${jobRunUuid}.`);
 
-  action.actions.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+  action.env.export(EnvVar.JOB_RUN_UUID, jobRunUuid);
   return jobRunUuid;
 }
 
@@ -185,6 +202,12 @@ export interface StatusReportBase {
   ml_powered_javascript_queries?: string;
   /** Ref that the workflow was triggered on. */
   ref: string;
+  /**
+   * A comma-separated list of private registry types which are configured for CodeQL.
+   * This only includes registry types we support (as determined by the `start-proxy` action),
+   * not all that are configured.
+   */
+  registry_types?: string;
   /** Action runner hardware architecture (context runner.arch). */
   runner_arch?: string;
   /** Available disk space on the runner, in bytes. */
@@ -257,12 +280,12 @@ export function getJobStatusDisplayName(status: JobStatus): string {
  */
 function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
   if (actionStatus === "user-error") {
-    core.exportVariable(
+    exportEnvVar(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
     );
   } else if (actionStatus === "failure" || actionStatus === "aborted") {
-    core.exportVariable(
+    exportEnvVar(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.FailureStatus,
     );
@@ -286,6 +309,50 @@ export interface EventReport {
   properties?: object;
   /** Time this event started. */
   started_at: string;
+}
+
+/**
+ * Attempts to retrieve a list of private registry types from the `CODEQL_PROXY_URLS` environment
+ * variable and returns it as a comma-separated string if successful. Returns `undefined` otherwise.
+ */
+export function getRegistryTypesFromEnv(
+  logger: Logger,
+  env: ReadOnlyEnv = getEnv(),
+): string | undefined {
+  // Try to get the value of the environment variable.
+  const value = env.getOptional(RegistryProxyVars.PROXY_URLS);
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  // Try to parse the JSON we expect to find in it and return the comma-separated list of
+  // (unique) registry types.
+  try {
+    const data = JSON.parse(value) as unknown;
+
+    // Check that the parsed JSON meets our expectations.
+    if (!json.isArray(data)) {
+      logger.debug(
+        `Expected '${RegistryProxyVars.PROXY_URLS}' to contain a JSON array, but got '${typeof data}'.`,
+      );
+      return undefined;
+    }
+    if (!json.validateArray(registryBaseSchema, data)) {
+      logger.debug(
+        `Expected '${RegistryProxyVars.PROXY_URLS}' to contain a JSON array of registry objects, but got something else.`,
+      );
+      return undefined;
+    }
+
+    const types = new Set(data.map((r) => r.type));
+    return Array.from(types).sort().join(",");
+  } catch (err) {
+    logger.debug(
+      `Failed to parse '${RegistryProxyVars.PROXY_URLS}': ${getErrorMessage(err)}.`,
+    );
+    return undefined;
+  }
 }
 
 /**
@@ -321,16 +388,19 @@ export async function createStatusReportBase(
     let workflowStartedAt = process.env[EnvVar.WORKFLOW_STARTED_AT];
     if (workflowStartedAt === undefined) {
       workflowStartedAt = actionStartedAt.toISOString();
-      core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
+      exportEnvVar(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
     }
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
-    const codeQlCliVersion = getCachedCodeQlVersion();
+    const codeQlCliVersion = getCachedCodeQlVersion(
+      logger,
+      getCommandCacheFilePath(getEnv()),
+    );
     const actionRef = process.env["GITHUB_ACTION_REF"] || "";
     const testingEnvironment = getTestingEnvironment();
     // re-export the testing environment variable so that it is available to subsequent steps,
     // even if it was only set for this step
     if (testingEnvironment) {
-      core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
+      exportEnvVar(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
     }
     const isSteadyStateDefaultSetupRun =
       process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";
@@ -350,6 +420,7 @@ export async function createStatusReportBase(
       job_name: jobName,
       job_run_uuid: jobRunUUID,
       ref,
+      registry_types: getRegistryTypesFromEnv(logger),
       runner_os: runnerOs,
       started_at: workflowStartedAt,
       status,
@@ -563,16 +634,6 @@ export interface InitWithConfigStatusReport extends InitStatusReport {
   query_filters: string;
   /** Path to the specified code scanning config file, from the 'config-file' config field. */
   config_file: string;
-}
-
-/** Fields of the init status report populated when the tools source is `download`. */
-export interface InitToolsDownloadFields {
-  /** Time taken to download the bundle, in milliseconds. */
-  tools_download_duration_ms?: number;
-  /**
-   * Whether the relevant tools dotcom feature flags have been misconfigured.
-   * Only populated if we attempt to determine the default version based on the dotcom feature flags. */
-  tools_feature_flags_valid?: boolean;
 }
 
 /**

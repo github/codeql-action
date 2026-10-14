@@ -164,6 +164,13 @@ inputs:
       [Internal] The ID of the check run, as provided by the Actions runtime environment. Do not set this value manually.
     default: ${{ job.check_run_id }}
     required: false
+  job-status:
+    description: >-
+      [Internal] The status of the job, as provided by the Actions runtime environment. This is how the
+      post step learns whether the job as a whole succeeded, failed, or was cancelled. Do not set this
+      value manually.
+    default: ${{ job.status }}
+    required: false
 outputs:
   codeql-path:
     description: The path of the CodeQL binary used for analysis

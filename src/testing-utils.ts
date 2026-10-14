@@ -18,6 +18,8 @@ import { AnalysisKind } from "./analyses";
 import * as apiClient from "./api-client";
 import { GitHubApiDetails } from "./api-client";
 import { CachingKind } from "./caching-utils";
+import { resetCachedCodeQlVersion } from "./cli/output-cache";
+import type { VersionInfo } from "./cli/types";
 import * as codeql from "./codeql";
 import { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
@@ -30,6 +32,7 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
@@ -39,7 +42,6 @@ import {
   GitHubVariant,
   GitHubVersion,
   HTTPError,
-  resetCachedCodeQlVersion,
   Result,
   Success,
 } from "./util";
@@ -200,10 +202,6 @@ class TestActionsEnv implements ActionsEnv {
   public getOptionalInput(_name: string): string | undefined {
     return undefined;
   }
-
-  public exportVariable(name: string, value: string): void {
-    this.env.set(name, value);
-  }
 }
 
 /**
@@ -232,6 +230,8 @@ export function initAllState(
   return {
     name: ActionName.Init,
     startedAt: new Date(),
+    platform: process.platform,
+    arch: process.arch,
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),
@@ -872,7 +872,7 @@ export const makeVersionInfo = (
   version: string,
   features?: { [name: string]: boolean },
   overlayVersion?: number,
-): codeql.VersionInfo => ({
+): VersionInfo => ({
   version,
   features,
   overlayVersion,
@@ -932,19 +932,14 @@ export function mockBundleDownloadApi({
   platformSpecific?: boolean;
   tagName: string;
 }): string {
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "linux"
-        ? "linux64"
-        : "osx64";
+  const platform = platformSpecific ? getBundlePlatform() : undefined;
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
 
   const bundleUrls = ["tar.gz", "tar.zst"].map((extension) => {
     const relativeUrl = apiDetails
       ? `/${repo}/releases/download/${tagName}/codeql-bundle${
-          platformSpecific ? `-${platform}` : ""
+          platform !== undefined ? `-${platform}` : ""
         }.${extension}`
       : `/download/${tagName}/codeql-bundle.${extension}`;
 

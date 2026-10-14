@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import path from "path";
+import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import test from "ava";
@@ -508,6 +509,26 @@ test("joinAtMost - truncates list if array is > than limit", (t) => {
   t.false(result.includes("test6"));
 });
 
+test.serial(
+  "durationMsSince rounds elapsed milliseconds rather than the timestamps",
+  (t) => {
+    const startTime = 1000.25;
+    const now = sinon.stub(performance, "now");
+    for (const [endTime, expected] of [
+      [1000.25, 0],
+      [1000.74, 0],
+      [1000.75, 1],
+      [1001.74, 1],
+      [1001.75, 2],
+      [2000.74, 1000],
+      [2000.75, 1001],
+    ]) {
+      now.returns(endTime);
+      t.is(util.durationMsSince(startTime), expected);
+    }
+  },
+);
+
 test("Success creates a success result", (t) => {
   const result = new util.Success("test value");
   t.true(result.isSuccess());
@@ -532,58 +553,3 @@ test("Failure.orElse returns the default value for a failure result", (t) => {
   const result = new util.Failure(new Error("test error"));
   t.is(result.orElse("default value"), "default value");
 });
-
-test.serial(
-  "getCachedCodeQlVersion reuses a version persisted by an earlier step",
-  (t) => {
-    process.env[EnvVar.CODEQL_VERSION_INFO] = JSON.stringify({
-      cmd: "/path/to/codeql",
-      version: { version: "2.20.0" },
-    });
-    t.deepEqual(util.getCachedCodeQlVersion("/path/to/codeql"), {
-      version: "2.20.0",
-    });
-  },
-);
-
-test.serial(
-  "getCachedCodeQlVersion ignores a persisted version from a different CLI",
-  (t) => {
-    process.env[EnvVar.CODEQL_VERSION_INFO] = JSON.stringify({
-      cmd: "/path/to/other-codeql",
-      version: { version: "2.20.0" },
-    });
-    t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined);
-  },
-);
-
-test.serial(
-  "getCachedCodeQlVersion ignores a malformed persisted value",
-  (t) => {
-    process.env[EnvVar.CODEQL_VERSION_INFO] = "not valid json";
-    t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined);
-  },
-);
-
-test.serial(
-  "getCachedCodeQlVersion ignores a persisted value with the wrong structure",
-  (t) => {
-    for (const value of [
-      JSON.stringify({ cmd: "/path/to/codeql" }),
-      JSON.stringify({ cmd: "/path/to/codeql", version: {} }),
-      JSON.stringify({ cmd: "/path/to/codeql", version: { version: 2 } }),
-      JSON.stringify({ version: { version: "2.20.0" } }),
-      JSON.stringify({
-        cmd: "/path/to/codeql",
-        version: { version: "2.20.0", overlayVersion: "1" },
-      }),
-      JSON.stringify({
-        cmd: "/path/to/codeql",
-        version: { version: "2.20.0", features: "nope" },
-      }),
-    ]) {
-      process.env[EnvVar.CODEQL_VERSION_INFO] = value;
-      t.is(util.getCachedCodeQlVersion("/path/to/codeql"), undefined, value);
-    }
-  },
-);

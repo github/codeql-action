@@ -5,7 +5,7 @@ import * as core from "@actions/core";
 import { getOptionalInput, isDefaultSetup } from "./actions-util";
 import { EnvVar } from "./environment";
 import { Logger } from "./logging";
-import { isHostedRunner, tryGetFolderBytes } from "./util";
+import { looksLikeHostedRunner, tryGetFolderBytes } from "./util";
 
 /**
  * Returns the total size of all the specified paths.
@@ -109,7 +109,7 @@ export function getDependencyCachingEnabled(): CachingKind {
   if (dependencyCaching !== undefined) return getCachingKind(dependencyCaching);
 
   // On self-hosted runners which may have dependencies installed centrally, disable caching by default
-  if (!isHostedRunner()) return CachingKind.None;
+  if (!looksLikeHostedRunner()) return CachingKind.None;
 
   // Disable in advanced workflows by default.
   if (!isDefaultSetup()) return CachingKind.None;

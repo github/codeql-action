@@ -45,7 +45,13 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
+
+      # Install a new enough version of `npm` to understand `min-release-age`
+      # that is still compatible with Node 20.
+      - name: Install newer npm
+        if: matrix.node-version == 20
+        run: npm install -g npm@11.19.1
 
       - name: Install dependencies
         run: |
@@ -67,7 +73,12 @@ jobs:
 
       - name: Upload sarif
         uses: ./upload-sarif
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 24
+        # The merge queue deletes its `gh-readonly-queue` ref as soon as the queue entry resolves,
+        # so uploading against it races with that deletion. Both the `merge_group` run and the
+        # paired `push` run that the queue branch creates use that ref, so gate on the ref itself
+        # rather than the event. The same results are uploaded by the `pull_request` run and again
+        # by the `push` run on `main`.
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 24 && !startsWith(github.ref, 'refs/heads/gh-readonly-queue/')
         with:
           sarif_file: eslint.sarif
           category: eslint
@@ -90,11 +101,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Check for incorrect addresses in package-lock.json
+        run: |
+          if git grep -nE '(pkgs\.visualstudio\.com|pkgs\.dev\.azure\.com|packagefeedproxy\.microsoft\.io)' -- \
+              'package-lock.json'; then
+            echo "::error::package-lock.json contains internal package feed URLs. Replace them with public registry URLs."
+            exit 1
+          fi
+
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         id: install-deps
@@ -108,6 +127,10 @@ jobs:
         if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
         working-directory: pr-checks
         run: npx tsx --test
+
+      - name: Run `pr-checks/changenotes.ts` to ensure that all unreleased change notes are valid
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
+        run: npx tsx pr-checks/changenotes.ts validate
 
       - name: Verify all Actions use the same Node version
         id: head-version
@@ -158,14 +181,14 @@ jobs:
           path: ${{ runner.temp }}/repo-size/
           if-no-files-found: error
 
-      - name: 'Backport: Check out base ref'
+      - name: "Backport: Check out base ref"
         id: checkout-base
         if: ${{ startsWith(github.head_ref, 'backport-') }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.base_ref }}
 
-      - name: 'Backport: Verify Node versions unchanged'
+      - name: "Backport: Verify Node versions unchanged"
         if: steps.checkout-base.outcome == 'success'
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}

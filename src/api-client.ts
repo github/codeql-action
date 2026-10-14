@@ -1,8 +1,5 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
-import { type Octokit } from "@octokit/core";
-import { type PaginateInterface } from "@octokit/plugin-paginate-rest";
-import { type Api } from "@octokit/plugin-rest-endpoint-methods";
 import * as retry from "@octokit/plugin-retry";
 import { RequestRequestOptions } from "@octokit/types";
 import {
@@ -20,6 +17,7 @@ import {
   ReadOnlyEnv,
   RegistryProxyVars,
   getEnv,
+  exportEnvVar,
 } from "./environment";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
@@ -128,7 +126,7 @@ export function makeProxyRequestOptions(
 }
 
 /** The type of GitHub API client we use. */
-export type ApiClient = Octokit & Api & { paginate: PaginateInterface };
+export type ApiClient = InstanceType<typeof githubUtils.GitHub>;
 
 /** Options for `createApiClientWithDetails`. */
 interface CreateApiClientOptions {
@@ -222,25 +220,31 @@ export async function getGitHubVersionFromApi(
     return { type: GitHubVariant.DOTCOM };
   }
 
-  // Doesn't strictly have to be the meta endpoint as we're only
-  // using the response headers which are available on every request.
-  //
-  // See https://docs.github.com/en/rest/meta/meta#get-github-meta-information.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const response = await apiClient.rest.meta.get();
+  try {
+    // Doesn't strictly have to be the meta endpoint as we're only
+    // using the response headers which are available on every request.
+    //
+    // See https://docs.github.com/en/rest/meta/meta#get-github-meta-information.
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const response = await apiClient.rest.meta.get();
 
-  // This happens on dotcom, although we expect to have already returned in that
-  // case. This can also serve as a fallback in cases we haven't foreseen.
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
-    return { type: GitHubVariant.DOTCOM };
+    // This happens on dotcom, although we expect to have already returned in that
+    // case. This can also serve as a fallback in cases we haven't foreseen.
+    if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === undefined) {
+      return { type: GitHubVariant.DOTCOM };
+    }
+
+    if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
+      return { type: GitHubVariant.GHEC_DR };
+    }
+
+    const version = response.headers[
+      GITHUB_ENTERPRISE_VERSION_HEADER
+    ] as string;
+    return { type: GitHubVariant.GHES, version };
+  } catch (err) {
+    throw wrapApiConfigurationError(err);
   }
-
-  if (response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] === "ghe.com") {
-    return { type: GitHubVariant.GHEC_DR };
-  }
-
-  const version = response.headers[GITHUB_ENTERPRISE_VERSION_HEADER] as string;
-  return { type: GitHubVariant.GHES, version };
 }
 
 /**
@@ -252,9 +256,10 @@ export async function getGitHubVersionFromApi(
  */
 export async function getGitHubVersion(): Promise<GitHubVersion> {
   if (cachedGitHubVersion === undefined) {
+    const apiDetails = getApiDetails();
     cachedGitHubVersion = await getGitHubVersionFromApi(
-      getApiClient(),
-      getApiDetails(),
+      createApiClientWithDetails(apiDetails),
+      apiDetails,
     );
   }
   return cachedGitHubVersion;
@@ -312,7 +317,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
-  core.exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
+  exportEnvVar(EnvVar.ANALYSIS_KEY, analysisKey);
   return analysisKey;
 }
 
@@ -417,7 +422,14 @@ export function getFeatureEnablementError(message: string): string {
   return `Please verify that the necessary features are enabled: ${message}`;
 }
 
-export function wrapApiConfigurationError(e: unknown) {
+/**
+ * Decides whether `e` is a known error returned by the GitHub API that we should
+ * classify as a `ConfigurationError`.
+ *
+ * @param e The error to classify.
+ * @returns Either `e` or a corresponding `ConfigurationError`.
+ */
+export function wrapApiConfigurationError<T>(e: T): T | ConfigurationError {
   const httpError = asHTTPError(e);
   if (httpError !== undefined) {
     if (

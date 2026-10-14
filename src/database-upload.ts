@@ -259,7 +259,7 @@ async function recordClearCleanupSizes(
  *
  * @returns the duration of the upload in milliseconds
  */
-async function uploadBundledDatabase(
+export async function uploadBundledDatabase(
   repositoryNwo: RepositoryNwo,
   language: string,
   commitOid: string,

@@ -195,6 +195,12 @@ export function getAuthorizationHeaderFor(
   apiDetails: GitHubApiDetails,
   url: string,
 ): string | undefined {
+  // We don't have to check the `url` if we don't have a token to begin with.
+  const token = apiDetails.auth?.trim();
+  if (token === undefined || token === "") {
+    return undefined;
+  }
+
   // We only want to provide an authorization header if we are downloading
   // from the same GitHub instance the Action is running on.
   // This avoids leaking Enterprise tokens to dotcom.
@@ -203,7 +209,7 @@ export function getAuthorizationHeaderFor(
     (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
   ) {
     logger.debug(`Providing an authorization token.`);
-    return `token ${apiDetails.auth}`;
+    return `token ${token}`;
   }
 
   logger.debug(`Not using an authorization token.`);

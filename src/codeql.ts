@@ -15,6 +15,7 @@ import * as api from "./api-client";
 import * as outputCache from "./cli/output-cache";
 import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
+import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar, getEnv, exportEnvVar } from "./environment";
@@ -197,7 +198,7 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config,
+    config: ActionConfig<"tempDir">,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -913,7 +914,7 @@ async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config,
+      config: ActionConfig<"tempDir">,
     ): Promise<void> {
       const args = [
         "diagnostics",
@@ -1237,7 +1238,9 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-function getGeneratedCodeScanningConfigPath(config: Config): string {
+function getGeneratedCodeScanningConfigPath(
+  config: ActionConfig<"tempDir">,
+): string {
   return path.resolve(config.tempDir, "user-config.yaml");
 }
 

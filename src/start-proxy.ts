@@ -566,7 +566,7 @@ export async function getProxyBinaryPath(
       );
       const temp = await downloadProxy(logger, proxyInfo.url, authorization);
 
-      logger.info(`Downloaded the authentication proxy assset to '${temp}'.`);
+      logger.info(`Downloaded the authentication proxy asset to '${temp}'.`);
 
       const extracted = await extractProxy(logger, temp);
       proxyBin = await cacheProxy(

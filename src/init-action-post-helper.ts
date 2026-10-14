@@ -50,7 +50,7 @@ import {
 } from "./util";
 import {
   getCategoryInputOrThrow,
-  getCheckoutPathInputOrThrow,
+  getRepositoryRootOrThrow,
   getUploadInputOrThrow,
   getWorkflow,
 } from "./workflow";
@@ -155,7 +155,15 @@ async function prepareFailedSarif(
       });
     }
     const category = getCategoryInputOrThrow(workflow, jobName, matrix);
-    const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
+
+    // Try to determine the path at which the repository that we failed to analyse is checked out at.
+    // We need this to relativise the paths in the SARIF.
+    const checkoutPath = getRepositoryRootOrThrow(
+      workflow,
+      jobName,
+      matrix,
+      config,
+    );
 
     const result = await generateFailedSarif(
       logger,

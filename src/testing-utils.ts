@@ -619,11 +619,12 @@ export class RecordingLogger implements Logger {
   constructor(private readonly logToConsole: boolean = true) {}
 
   private addMessage(level: LogLevel, message: LoggableError): void {
-    this.messages.push({ type: level, message: joinMessageStrings(message) });
+    const joinedMessage = joinMessageStrings(message);
+    this.messages.push({ type: level, message: joinedMessage });
 
     if (this.logToConsole) {
       // eslint-disable-next-line no-console
-      console.debug(message);
+      console.debug(joinedMessage);
     }
   }
 

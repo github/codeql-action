@@ -767,11 +767,8 @@ export const downloadCodeQL = async function (
   if (searchParams.has("token")) {
     logger.debug("CodeQL tools URL contains an authorization token.");
   } else {
-    authorization = api.getAuthorizationHeaderFor(
-      logger,
-      source.apiDetails,
-      codeqlURL,
-    );
+    const client = new api.InstanceApiClient(source.apiDetails);
+    authorization = client.getAuthorizationHeaderFor(logger, codeqlURL);
   }
 
   const toolcacheDestination = getToolcacheDestination({ logger }, source);

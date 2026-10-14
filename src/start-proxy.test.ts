@@ -1023,6 +1023,8 @@ test.serial(
   async (t) => {
     const logger = new RecordingLogger();
 
+    sinon.stub(apiClient, "getApiDetails").returns(SAMPLE_DOTCOM_API_DETAILS);
+
     await withTmpDir(async (tempDir) => {
       const toolcachePath = "/path/to/proxy/dir";
       sinon.stub(toolcache, "find").returns(toolcachePath);
@@ -1063,9 +1065,16 @@ test.serial(
 
     const toolcachePath = "/path/to/proxy/dir";
     const find = sinon.stub(toolcache, "find").returns("");
+    const apiDetails = {
+      auth: "",
+      url: "",
+      apiURL: "",
+    } satisfies apiClient.GitHubApiDetails;
+    const client = new apiClient.InstanceApiClient(apiDetails);
     const getAuthorizationHeaderFor = sinon
-      .stub(apiClient, "getAuthorizationHeaderFor")
+      .stub(client, "getAuthorizationHeaderFor")
       .returns(undefined);
+    sinon.stub(apiClient, "InstanceApiClient").returns(client);
     const archivePath = "/path/to/archive";
     const downloadTool = sinon
       .stub(toolcache, "downloadTool")
@@ -1140,9 +1149,16 @@ test.serial(
     await withTmpDir(async (tempDir) => {
       const toolcachePath = "/path/to/proxy/dir";
       const find = sinon.stub(toolcache, "find").returns("");
+      const apiDetails = {
+        auth: "",
+        url: "",
+        apiURL: "",
+      } satisfies apiClient.GitHubApiDetails;
+      const client = new apiClient.InstanceApiClient(apiDetails);
       const getAuthorizationHeaderFor = sinon
-        .stub(apiClient, "getAuthorizationHeaderFor")
+        .stub(client, "getAuthorizationHeaderFor")
         .returns(undefined);
+      sinon.stub(apiClient, "InstanceApiClient").returns(client);
       const archivePath = "/path/to/archive";
       const downloadTool = sinon
         .stub(toolcache, "downloadTool")

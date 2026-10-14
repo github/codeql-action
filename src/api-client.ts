@@ -122,6 +122,61 @@ export function makeProxyRequestOptions(
 /** The type of GitHub API client we use. */
 export type ApiClient = InstanceType<typeof githubUtils.GitHub>;
 
+/**
+ * Encapsulates a {@link GitHubApiCombinedDetails} along with operations which ensure that any credentials
+ * are only used with the GitHub instance that is represented by the {@link GitHubApiCombinedDetails} value.
+ */
+export class InstanceApiClient {
+  private readonly client: ApiClient;
+  private readonly apiDetails: GitHubApiCombinedDetails;
+  private readonly authorizationHeader: string | undefined;
+
+  constructor(
+    apiDetails: GitHubApiCombinedDetails,
+    clientOptions: CreateApiClientOptions = {},
+  ) {
+    this.apiDetails = apiDetails;
+    this.client = createApiClientWithDetails(apiDetails, clientOptions);
+
+    // Compute the Authorization header value if we have a token.
+    const token = this.apiDetails.auth?.trim();
+    if (token !== undefined && token !== "") {
+      this.authorizationHeader = `token ${token}`;
+    }
+  }
+
+  /**
+   * Gets a value for the `Authorization` header for a request to `url`; or `undefined` if the
+   * `Authorization` header should not be set for `url`.
+   *
+   * @param logger The logger to use for debugging messages.
+   * @param url The URL for which we want to add an `Authorization` header.
+   */
+  public getAuthorizationHeaderFor(
+    logger: Logger,
+    url: string,
+  ): string | undefined {
+    // We don't have to check the `url` if we don't have a token to begin with.
+    if (this.authorizationHeader === undefined) {
+      return undefined;
+    }
+
+    // We only want to provide an authorization header if we are downloading
+    // from the same GitHub instance the Action is running on.
+    // This avoids leaking Enterprise tokens to dotcom.
+    if (
+      url.startsWith(`${this.apiDetails.url}/`) ||
+      (this.apiDetails.apiURL && url.startsWith(`${this.apiDetails.apiURL}/`))
+    ) {
+      logger.debug(`Providing an authorization token.`);
+      return this.authorizationHeader;
+    }
+
+    logger.debug(`Not using an authorization token.`);
+    return undefined;
+  }
+}
+
 /** Options for `createApiClientWithDetails`. */
 interface CreateApiClientOptions {
   allowExternal?: boolean;
@@ -216,42 +271,6 @@ export function getApiClientWithExternalAuth(
   proxy?: ProxyAgent,
 ) {
   return createApiClientWithDetails(apiDetails, { allowExternal: true, proxy });
-}
-
-/**
- * Gets a value for the `Authorization` header for a request to `url`; or `undefined` if the
- * `Authorization` header should not be set for `url`.
- *
- * @param logger The logger to use for debugging messages.
- * @param apiDetails Details of the GitHub API we are using.
- * @param url The URL for which we want to add an `Authorization` header.
- *
- * @returns The value for the `Authorization` header or `undefined` if it shouldn't be populated.
- */
-export function getAuthorizationHeaderFor(
-  logger: Logger,
-  apiDetails: GitHubApiDetails,
-  url: string,
-): string | undefined {
-  // We don't have to check the `url` if we don't have a token to begin with.
-  const token = apiDetails.auth?.trim();
-  if (token === undefined || token === "") {
-    return undefined;
-  }
-
-  // We only want to provide an authorization header if we are downloading
-  // from the same GitHub instance the Action is running on.
-  // This avoids leaking Enterprise tokens to dotcom.
-  if (
-    url.startsWith(`${apiDetails.url}/`) ||
-    (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
-  ) {
-    logger.debug(`Providing an authorization token.`);
-    return `token ${token}`;
-  }
-
-  logger.debug(`Not using an authorization token.`);
-  return undefined;
 }
 
 let cachedGitHubVersion: GitHubVersion | undefined = undefined;

@@ -1290,7 +1290,14 @@ for (const fallback of [false, true]) {
         request: { fetch: fetchRelease },
       });
       sinon.stub(api, "getApiClient").value(() => client);
-      const authorizationSpy = sinon.spy(api, "getAuthorizationHeaderFor");
+
+      const spyClient = new api.InstanceApiClient(SAMPLE_DOTCOM_API_DETAILS);
+      const authorizationSpy = sinon.spy(
+        spyClient,
+        "getAuthorizationHeaderFor",
+      );
+      sinon.stub(api, "InstanceApiClient").returns(spyClient);
+
       const extractStub = stubDownloadAndExtract();
       if (fallback) {
         extractStub.onFirstCall().rejects(new HTTPError("Not Found", 404));
@@ -1323,9 +1330,9 @@ for (const fallback of [false, true]) {
         t.is(extractStub.firstCall.args[0], assetURL);
         t.is(extractStub.lastCall.args[0], fallback ? combinedURL : assetURL);
         t.is(authorizationSpy.callCount, extractStub.callCount);
-        t.is(authorizationSpy.firstCall.args[2], assetURL);
+        t.is(authorizationSpy.firstCall.args[1], assetURL);
         t.is(
-          authorizationSpy.lastCall.args[2],
+          authorizationSpy.lastCall.args[1],
           fallback ? combinedURL : assetURL,
         );
         t.is(extractStub.lastCall.args[3], "token token");

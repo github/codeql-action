@@ -93,7 +93,7 @@ export function getActionVersion(): string {
  *
  * This will be "dynamic" for default setup workflow runs.
  */
-export function getWorkflowEventName(env: Env = getEnv()) {
+export function getWorkflowEventName(env: ReadOnlyEnv = getEnv()) {
   return env.getRequired(ActionsEnvVars.GITHUB_EVENT_NAME);
 }
 
@@ -120,7 +120,7 @@ function getRelativeScriptPath(env: ReadOnlyEnv): string {
 }
 
 /** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
-export function getWorkflowEvent(env: Env = getEnv()): any {
+export function getWorkflowEvent(env: ReadOnlyEnv = getEnv()): any {
   const eventJsonFile = env.getRequired(ActionsEnvVars.GITHUB_EVENT_PATH);
   try {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));

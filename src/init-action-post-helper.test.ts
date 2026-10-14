@@ -20,6 +20,7 @@ import {
   createFeatures,
   createTestConfig,
   DEFAULT_ACTIONS_VARS,
+  getCodeQLForTesting,
   getTestEnv,
   makeMacro,
   makeVersionInfo,
@@ -737,7 +738,7 @@ async function testFailedSarifUpload(
     .withArgs("matrix")
     .returns(JSON.stringify(matrix));
 
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   const databaseExportDiagnosticsStub = sinon.stub(
@@ -832,7 +833,7 @@ async function mockRiskAssessmentEnv(matrix: string) {
     .stub(apiClient, "getGitHubVersion")
     .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
 
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   const databaseExportDiagnostics = sinon
     .stub(codeqlObject, "databaseExportDiagnostics")
     .resolves();

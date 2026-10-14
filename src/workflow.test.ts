@@ -3,10 +3,11 @@ import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import { createStubCodeQL, getCodeQLForTesting } from "./codeql";
+import { createStubCodeQL } from "./codeql";
 import { EnvVar } from "./environment";
 import {
   checkExpectedLogMessages,
+  getCodeQLForTesting,
   getRecordingLogger,
   LoggedMessage,
   setupTests,

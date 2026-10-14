@@ -34,6 +34,7 @@ import {
   makeVersionInfo,
   createTestConfig,
   makeMacro,
+  getCodeQLForTesting,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
@@ -140,7 +141,7 @@ function mockApiDetails(apiDetails: GitHubApiDetails) {
 }
 
 async function stubCodeql(): Promise<codeql.CodeQL> {
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon
     .stub(codeqlObject, "isTracedLanguage")
@@ -1039,7 +1040,7 @@ test.serial("runTool summarizes autobuilder errors", async (t) => {
     [2019-09-18 12:00:01] [autobuild] A non-error message
   `;
   stubToolRunnerConstructor(1, stderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // io throws because of the test CodeQL object.
@@ -1095,7 +1096,7 @@ test.serial("runTool recognizes fatal internal errors", async (t) => {
     com.semmle.util.exception.CatastrophicError: An error occurred while evaluating ControlFlowGraph::ControlFlow::Root.isRootOf/1#dispred#f610e6ed/2@86282cc8
     Severe disk cache trouble (corruption or out of space) at /home/runner/work/_temp/codeql_databases/go/db-go/default/cache/pages/28/33.pack: Failed to write item to disk`;
   stubToolRunnerConstructor(1, stderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // io throws because of the test CodeQL object.

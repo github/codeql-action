@@ -99,6 +99,7 @@ export async function downloadTrapCaches(
     const found = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
       actionsCache.restoreCache([cacheDir], preferredKey, [
+        preferredKey,
         // Fall back to any cache with the right key prefix
         await cachePrefix(codeql, language),
       ]),

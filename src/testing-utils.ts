@@ -30,7 +30,7 @@ import {
   featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
-import { joinMessageStrings, Loggable, LoggableError, Logger } from "./logging";
+import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
@@ -658,8 +658,8 @@ export class RecordingLogger implements Logger {
 
   constructor(private readonly logToConsole: boolean = true) {}
 
-  private addMessage(level: LogLevel, message: LoggableError): void {
-    this.messages.push({ type: level, message: joinMessageStrings(message) });
+  private addMessage(level: LogLevel, message: string | Error): void {
+    this.messages.push({ type: level, message });
 
     if (this.logToConsole) {
       // eslint-disable-next-line no-console
@@ -684,19 +684,19 @@ export class RecordingLogger implements Logger {
     return true;
   }
 
-  debug(message: Loggable) {
+  debug(message: string) {
     this.addMessage("debug", message);
   }
 
-  info(message: Loggable) {
+  info(message: string) {
     this.addMessage("info", message);
   }
 
-  warning(message: LoggableError) {
+  warning(message: string | Error) {
     this.addMessage("warning", message);
   }
 
-  error(message: LoggableError) {
+  error(message: string | Error) {
     this.addMessage("error", message);
   }
 

@@ -14,7 +14,6 @@ import * as diagnostics from "./diagnostics";
 import { ActionsEnvVars, Env, EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
 import { MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION } from "./per-language-bundles";
 import * as setupCodeql from "./setup-codeql";
@@ -22,6 +21,7 @@ import * as tar from "./tar";
 import {
   LINKED_CLI_VERSION,
   LoggedMessage,
+  RecordingLogger,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
   checkExpectedLogMessages,
@@ -117,7 +117,7 @@ test.serial("convert to semver", (t) => {
     try {
       const parsedVersion = setupCodeql.convertToSemVer(
         version,
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
@@ -127,7 +127,7 @@ test.serial("convert to semver", (t) => {
 });
 
 test.serial("getCodeQLActionRepository", (t) => {
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
 
   initializeEnvironment("1.2.3");
 
@@ -163,7 +163,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         false,
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.deepEqual(source, {
@@ -249,7 +249,7 @@ for (const {
           GitHubVariant.DOTCOM,
           tarSupportsZstd,
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
         );
 
         t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
@@ -615,7 +615,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         createFeatures([Feature.CleanupToolcacheBundles]),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.is(result.toolsVersion, "local");
@@ -652,7 +652,7 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
           GitHubVariant.DOTCOM,
           true, // tarSupportsZstd
           createFeatures([Feature.PerLanguageBundles]),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         );
 
         t.deepEqual(source, {
@@ -712,7 +712,7 @@ test.serial(
           GitHubVariant.DOTCOM,
           true, // tarSupportsZstd
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
         );
 
         t.is(source.sourceType, "download");
@@ -751,7 +751,7 @@ for (const perLanguageBundles of [false, true]) {
               ? [Feature.ForceNightly, Feature.PerLanguageBundles]
               : [Feature.ForceNightly],
           ),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         );
 
         t.is(source.sourceType, "download");
@@ -866,7 +866,7 @@ test.serial(
           GitHubVariant.DOTCOM,
           true,
           createFeatures([]),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         ),
         {
           message:
@@ -1038,7 +1038,7 @@ test.serial(
     t.is(
       setupCodeql.tryGetTagNameFromUrl(
         "https://github.com/org/codeql-bundle-testing/releases/download/codeql-bundle-v2.19.0/codeql-bundle-linux64.tar.zst",
-        getRunnerLogger(true),
+        new RecordingLogger(),
       ),
       "codeql-bundle-v2.19.0",
     );
@@ -1050,7 +1050,7 @@ test.serial(
   (t) => {
     sinon.stub(toolcache, "findAllVersions").returns([]);
     t.is(
-      setupCodeql.getLatestToolcacheVersion(getRunnerLogger(true)),
+      setupCodeql.getLatestToolcacheVersion(new RecordingLogger()),
       undefined,
     );
   },
@@ -1062,7 +1062,7 @@ test.serial(
     const testVersions = ["2.3.1", "3.2.1", "1.2.3"];
     sinon.stub(toolcache, "findAllVersions").returns(testVersions);
 
-    t.is(setupCodeql.getLatestToolcacheVersion(getRunnerLogger(true)), "3.2.1");
+    t.is(setupCodeql.getLatestToolcacheVersion(new RecordingLogger()), "3.2.1");
   },
 );
 
@@ -1116,7 +1116,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         false,
         createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.assert(listStub.calledOnce);
@@ -1155,7 +1155,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         false,
         createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.assert(listStub.notCalled);
@@ -1193,7 +1193,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         true, // tarSupportsZstd
         createFeatures([Feature.PerLanguageBundles]),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.is(source.sourceType, "download");
@@ -1244,7 +1244,7 @@ test.serial(
           GitHubVariant.DOTCOM,
           true, // tarSupportsZstd
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
         );
 
         t.is(source.sourceType, "download");
@@ -1314,7 +1314,7 @@ for (const fallback of [false, true]) {
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([Feature.PerLanguageBundles]),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         );
 
         t.true(fetchRelease.calledTwice);
@@ -1582,7 +1582,7 @@ for (const error of [
             undefined, // otherLanguagePacksReason
             false, // useOverlayAwareDefaultCliVersion
             createFeatures([Feature.PerLanguageBundles]),
-            getRunnerLogger(true),
+            new RecordingLogger(),
           ),
           { is: error },
         );
@@ -1618,7 +1618,7 @@ test.serial(
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([]),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         ),
         { is: error },
       );
@@ -1651,7 +1651,7 @@ test.serial(
       overlayMatchEnabledVersions,
       ["javascript"],
       createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, [
       { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
@@ -1674,7 +1674,7 @@ test.serial(
       overlayMatchEnabledVersions,
       ["javascript"],
       createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, []);
   },
@@ -1691,7 +1691,7 @@ const noLanguagesMacro = makeMacro({
       overlayMatchEnabledVersions,
       rawLanguages,
       createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, []);
     t.assert(
@@ -1716,7 +1716,7 @@ test.serial(
       overlayMatchEnabledVersions,
       ["javascript"],
       createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, []);
   },
@@ -1736,7 +1736,7 @@ test.serial(
       overlayMatchEnabledVersions,
       ["javascript"],
       createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, [
       { cliVersion: "2.20.2", tagName: "codeql-bundle-v2.20.2" },
@@ -1753,7 +1753,7 @@ test.serial(
       overlayMatchEnabledVersions,
       ["javascript"],
       createFeatures([]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, []);
     t.assert(
@@ -1777,7 +1777,7 @@ test.serial(
       overlayMatchEnabledVersions,
       ["javascript"],
       createFeatures([Feature.OverlayAnalysisMatchCodeqlVersionDryRun]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(
       result,
@@ -1808,7 +1808,7 @@ test.serial(
         Feature.OverlayAnalysisMatchCodeqlVersion,
         Feature.OverlayAnalysisMatchCodeqlVersionDryRun,
       ]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, [
       { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
@@ -2138,7 +2138,7 @@ test.serial(
         env: new ReadOnlyEnv({
           [ActionsEnvVars.RUNNER_TOOL_CACHE]: injectedRoot,
         }),
-        logger: getRunnerLogger(true),
+        logger: new RecordingLogger(),
       });
 
       t.deepEqual(result, {
@@ -2291,7 +2291,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         createFeatures([]),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.is(
@@ -2331,7 +2331,7 @@ test.serial(
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([Feature.CleanupToolcacheBundles]),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         ),
         { is: error },
       );
@@ -2449,7 +2449,7 @@ test.serial(
   "isToolcacheOnWorkspaceFilesystem assumes a different filesystem when it cannot tell",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
 
       setupActionsVars(tmpDir, tmpDir);
       t.true(toolsDownload.isToolcacheOnWorkspaceFilesystem(logger));

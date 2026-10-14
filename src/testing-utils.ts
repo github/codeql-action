@@ -30,13 +30,7 @@ import {
   featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
-import {
-  getRunnerLogger,
-  joinMessageStrings,
-  Loggable,
-  LoggableError,
-  Logger,
-} from "./logging";
+import { joinMessageStrings, Loggable, LoggableError, Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
@@ -1014,7 +1008,7 @@ export function makeTestToken(length: number = 36) {
  */
 export async function getCodeQLForTesting(
   cmd = "codeql-for-testing",
-  logger: Logger = getRunnerLogger(true),
+  logger: Logger = new RecordingLogger(),
 ): Promise<codeql.CodeQL> {
   return codeql.getCodeQLForCmd(logger, cmd, false);
 }

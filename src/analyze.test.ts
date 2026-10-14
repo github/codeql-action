@@ -15,12 +15,12 @@ import { createStubCodeQL } from "./codeql";
 import { defaultSuites } from "./config/db-config";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import {
   setupTests,
   setupActionsVars,
   createFeatures,
   createTestConfig,
+  RecordingLogger,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
@@ -107,7 +107,7 @@ test.serial("status report fields", async (t) => {
         undefined,
         codeql,
         config,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         createFeatures([Feature.QaTelemetryEnabled]),
       );
       t.deepEqual(Object.keys(statusReport).sort(), [

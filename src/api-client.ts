@@ -169,8 +169,22 @@ export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
   };
 }
 
-export function getApiClient(env: ReadOnlyEnv = getEnv()) {
-  return createApiClientWithDetails(getApiDetails(env));
+/**
+ * Constructs an {@link ApiClient} using {@link apiDetails}.
+ *
+ * If {@link apiDetails} is not specified, then the GitHub instance URLs and auth token
+ * are taken from {@link env}.
+ *
+ * If {@link env} is not specified, then the process environment is used.
+ *
+ * @param env The environment to obtain the GitHub instance URLs from.
+ * @param apiDetails The {@link GitHubApiDetails} to construct the {@link ApiClient} for.
+ */
+export function getApiClient(
+  env: ReadOnlyEnv = getEnv(),
+  apiDetails?: GitHubApiDetails,
+) {
+  return createApiClientWithDetails(apiDetails ?? getApiDetails(env));
 }
 
 export function getApiClientWithExternalAuth(

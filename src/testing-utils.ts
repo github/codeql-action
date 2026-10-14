@@ -30,7 +30,13 @@ import {
   featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
-import { joinMessageStrings, Loggable, LoggableError, Logger } from "./logging";
+import {
+  getRunnerLogger,
+  joinMessageStrings,
+  Loggable,
+  LoggableError,
+  Logger,
+} from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
@@ -999,4 +1005,16 @@ export function makeTestToken(length: number = 36) {
   const chars =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   return chars.repeat(Math.ceil(length / chars.length)).slice(0, length);
+}
+
+/**
+ * Get a real, newly created CodeQL instance for testing. The instance refers to
+ * a non-existent placeholder codeql command, so tests that use this function
+ * should also stub the toolrunner.ToolRunner constructor.
+ */
+export async function getCodeQLForTesting(
+  cmd = "codeql-for-testing",
+  logger: Logger = getRunnerLogger(true),
+): Promise<codeql.CodeQL> {
+  return codeql.getCodeQLForCmd(logger, cmd, false);
 }

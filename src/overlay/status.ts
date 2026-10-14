@@ -130,7 +130,7 @@ export async function getOverlayStatus(
     await fs.promises.mkdir(path.dirname(statusFile), { recursive: true });
     const foundKey = await waitForResultWithTimeLimit(
       MAX_CACHE_OPERATION_MS,
-      actionsCache.restoreCache([statusFile], cacheKey),
+      actionsCache.restoreCache([statusFile], cacheKey, [cacheKey]),
       () => {
         logger.warning("Timed out restoring overlay status from cache.");
       },

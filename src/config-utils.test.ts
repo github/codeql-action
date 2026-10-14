@@ -2644,6 +2644,7 @@ test("loadUserConfig - loads local configuration files", async (t) => {
       ) =>
         configUtils.loadUserConfig(
           actionState,
+          [AnalysisKind.CodeScanning],
           filePath,
           workspaceDir,
           SAMPLE_DOTCOM_API_DETAILS,
@@ -2687,12 +2688,19 @@ test.serial("loadUserConfig - loads remote configuration files", async (t) => {
 
     const remoteAddress = "owner/repo/file@ref";
     await callee(configUtils.loadUserConfig)
-      .withArgs(remoteAddress, tmpDir, SAMPLE_DOTCOM_API_DETAILS, tmpDir)
+      .withArgs(
+        [AnalysisKind.CodeScanning],
+        remoteAddress,
+        tmpDir,
+        SAMPLE_DOTCOM_API_DETAILS,
+        tmpDir,
+      )
       .passes(t.deepEqual, {});
 
     t.true(
       getRemoteConfig.calledOnceWithExactly(
         sinon.match.any,
+        [AnalysisKind.CodeScanning],
         remoteAddress,
         SAMPLE_DOTCOM_API_DETAILS,
       ),
@@ -2726,9 +2734,9 @@ test.serial(
           // match our expectations. We break it down like this to get
           // more useful test output.
           const args = getRemoteConfig.getCalls()[0].args;
-          t.is(args.length, 3);
-          t.deepEqual(args[1], address);
-          t.deepEqual(args[2], SAMPLE_DOTCOM_API_DETAILS);
+          t.is(args.length, 4);
+          t.deepEqual(args[2], address);
+          t.deepEqual(args[3], SAMPLE_DOTCOM_API_DETAILS);
         };
 
       // Utility function to assert that `targetWithArgs` has not identified
@@ -2765,6 +2773,7 @@ test.serial(
 
         // Prepare the test call to `loadUserConfig`.
         const targetWithArgs = target.withArgs(
+          [AnalysisKind.CodeScanning],
           address,
           tmpDir,
           SAMPLE_DOTCOM_API_DETAILS,

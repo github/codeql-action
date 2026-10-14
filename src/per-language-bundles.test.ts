@@ -4,9 +4,11 @@ import { ActionsEnvVars } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import {
+  getOtherLanguagePacksReason,
   getPerLanguageBundleLanguage,
   MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   PerLanguageBundleOptions,
+  QueryConfigInputs,
 } from "./per-language-bundles";
 import { BundlePlatform } from "./platform";
 import {
@@ -16,11 +18,12 @@ import {
   initAllState,
   LoggedMessage,
 } from "./testing-utils";
-import { GitHubVariant } from "./util";
+import { ConfigurationError, GitHubVariant } from "./util";
 
 /** Options for which we would use a per-language bundle. */
 const ELIGIBLE_OPTIONS: PerLanguageBundleOptions = {
   rawLanguages: ["java"],
+  otherLanguagePacksReason: undefined,
   // Any version at least as new as the minimum will do.
   cliVersion: MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION,
   compressionMethod: "zstd",
@@ -79,6 +82,23 @@ test("getPerLanguageBundleLanguage requires exactly one language", async (t) => 
 
 test("getPerLanguageBundleLanguage requires a known language", async (t) => {
   t.is(await checkEligibility({ rawLanguages: ["cobol"] }), undefined);
+});
+
+test("getPerLanguageBundleLanguage explains why the CodeQL CLI may need packs for other languages before checking the languages", async (t) => {
+  // Without a language, the explanation would otherwise suggest requesting a single language.
+  for (const rawLanguages of [["java"], undefined]) {
+    const messages: LoggedMessage[] = [];
+    const language = await checkEligibility(
+      { rawLanguages, otherLanguagePacksReason: "an example reason" },
+      { logger: getRecordingLogger(messages, { logToConsole: false }) },
+    );
+
+    t.is(language, undefined);
+    t.deepEqual(
+      messages.map((message) => message.message),
+      ["Not using a per-language CodeQL bundle since an example reason."],
+    );
+  }
 });
 
 test("getPerLanguageBundleLanguage requires a zstd bundle", async (t) => {
@@ -142,9 +162,7 @@ test("getPerLanguageBundleLanguage explains a disabled feature before checking e
   t.is(language, undefined);
   t.deepEqual(
     messages.map((message) => message.message),
-    [
-      "Not using a per-language CodeQL bundle since the per_language_bundles feature is disabled.",
-    ],
+    ["Not using a per-language CodeQL bundle since the feature is disabled."],
   );
 });
 
@@ -155,6 +173,7 @@ test("getPerLanguageBundleLanguage skips only the release version check for the 
   for (const overrides of [
     { rawLanguages: undefined },
     { rawLanguages: ["java", "python"] },
+    { otherLanguagePacksReason: "an example reason" },
     { compressionMethod: "gzip" as const },
     { platform: BundlePlatform.Osx64 },
     { variant: GitHubVariant.GHES },
@@ -172,4 +191,107 @@ test("getPerLanguageBundleLanguage skips only the release version check for the 
     }),
     undefined,
   );
+});
+
+/** Query configuration inputs that configure nothing. */
+const NO_QUERY_CONFIG: QueryConfigInputs = {
+  configFile: undefined,
+  configInput: undefined,
+  queriesInput: undefined,
+  extraQueriesProperty: undefined,
+};
+
+test("getOtherLanguagePacksReason returns undefined when no queries are configured", (t) => {
+  t.is(getOtherLanguagePacksReason(NO_QUERY_CONFIG), undefined);
+});
+
+test("getOtherLanguagePacksReason returns undefined for built-in query suites", (t) => {
+  for (const queries of [
+    "security-extended",
+    "+security-and-quality",
+    " security-extended , code-quality ",
+  ]) {
+    t.is(
+      getOtherLanguagePacksReason({
+        ...NO_QUERY_CONFIG,
+        queriesInput: queries,
+        extraQueriesProperty: queries,
+      }),
+      undefined,
+      queries,
+    );
+  }
+});
+
+test("getOtherLanguagePacksReason returns undefined for a config input that only uses default setup properties", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      // The configuration from the `config` input that default setup passes.
+      configInput: {
+        "default-setup": {
+          org: { "model-packs": ["github/immutable-actions-list@0.0.1"] },
+        },
+        "threat-models": [],
+      },
+    }),
+    undefined,
+  );
+});
+
+test("getOtherLanguagePacksReason explains a configuration file", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      configFile: "./.github/codeql/codeql-config.yml",
+    }),
+    "the configuration file './.github/codeql/codeql-config.yml' may use queries that need " +
+      "library packs for other languages",
+  );
+});
+
+test("getOtherLanguagePacksReason explains a config input that uses other properties", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      configInput: { queries: [{ uses: "./queries/show_ifs.ql" }] },
+    }),
+    "the 'config' input may use queries that need library packs for other languages",
+  );
+});
+
+test("getOtherLanguagePacksReason explains the first query in the queries input that isn't a built-in query suite", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      queriesInput:
+        "+security-extended, ./queries/show_ifs.ql, octo-org/queries@main",
+    }),
+    "the query './queries/show_ifs.ql' from the 'queries' input may need library packs for " +
+      "other languages",
+  );
+});
+
+test("getOtherLanguagePacksReason explains a query in the extra queries repository property that isn't a built-in query suite", (t) => {
+  t.is(
+    getOtherLanguagePacksReason({
+      ...NO_QUERY_CONFIG,
+      extraQueriesProperty: "+octo-org/queries/show_ifs.ql@main",
+    }),
+    "the query 'octo-org/queries/show_ifs.ql@main' from the 'github-codeql-extra-queries' " +
+      "repository property may need library packs for other languages",
+  );
+});
+
+test("getOtherLanguagePacksReason throws a ConfigurationError for a '+' with no queries after it", (t) => {
+  // Loading the configuration would throw the same errors.
+  for (const inputs of [
+    { queriesInput: "+" },
+    { extraQueriesProperty: " + " },
+  ]) {
+    t.throws(
+      () => getOtherLanguagePacksReason({ ...NO_QUERY_CONFIG, ...inputs }),
+      { instanceOf: ConfigurationError },
+    );
+  }
 });

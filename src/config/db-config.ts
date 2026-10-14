@@ -33,6 +33,15 @@ export interface QuerySpec {
   uses: string;
 }
 
+// A set of default query suite names that are understood by the CLI.
+export const defaultSuites: Set<string> = new Set([
+  "security-experimental",
+  "security-extended",
+  "security-and-quality",
+  "code-quality",
+  "code-scanning",
+]);
+
 const ORG_SCHEMA = {
   /** An array of model pack names. */
   "model-packs": json.optional(json.array(json.string)),
@@ -77,13 +86,35 @@ export interface UserConfig {
   "default-setup"?: DefaultSetupConfig;
 }
 
-/** A subset of the `UserConfig` schema that is used by Default Setup. */
+/**
+ * A subset of the `UserConfig` schema that is known to be used by Default Setup. None of these
+ * properties may add queries, since a per-language CodeQL bundle can be used with a `config` input
+ * that only sets them.
+ */
 const DEFAULT_SETUP_CONFIG_SCHEMA = {
   "threat-models": json.optional(json.array(json.string)),
   "default-setup": json.optional<DefaultSetupConfig>(
     json.object(DEFAULT_SETUP_SCHEMA),
   ),
 } as const satisfies json.Schema;
+
+/**
+ * Returns whether `config` matches what we expect Default Setup to send in the `config` input: a
+ * mapping that only sets properties in `DEFAULT_SETUP_CONFIG_SCHEMA`, with values of the expected
+ * types.
+ */
+export function matchesDefaultSetupConfigSchema(config: UserConfig): boolean {
+  // Unless validation is enabled, `parseUserConfig` doesn't check that the YAML is a mapping.
+  if (!json.isObject(config)) {
+    return false;
+  }
+  const result = json.checkSchema(
+    DEFAULT_SETUP_CONFIG_SCHEMA,
+    config as json.UnvalidatedObject<any>,
+  );
+  // `valid` doesn't account for unknown properties.
+  return result.valid && result.unknownKeys.length === 0;
+}
 
 /**
  * Merges supported properties from two configuration files. This is intended only for
@@ -437,63 +468,60 @@ export async function calculateAugmentation(
     languages,
     packsInputCombines,
   );
-  const queriesInputCombines = shouldCombine(rawQueriesInput);
-  const queriesInput = parseQueriesFromInput(
-    rawQueriesInput,
-    queriesInputCombines,
+  const queries = parseQueriesFromInput(rawQueriesInput);
+  const repoPropertyQueries = parseQueriesFromInput(
+    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES],
+    RepositoryPropertyName.EXTRA_QUERIES,
   );
-
-  const repoExtraQueries =
-    repositoryProperties[RepositoryPropertyName.EXTRA_QUERIES];
-  const repoExtraQueriesCombines = shouldCombine(repoExtraQueries);
-  const repoPropertyQueries = {
-    combines: repoExtraQueriesCombines,
-    input: parseQueriesFromInput(
-      repoExtraQueries,
-      repoExtraQueriesCombines,
-      new ConfigurationError(
-        errorMessages.getRepoPropertyError(
-          RepositoryPropertyName.EXTRA_QUERIES,
-          errorMessages.getEmptyCombinesError(),
-        ),
-      ),
-    ),
-  };
 
   return {
     packsInputCombines,
     packsInput: packsInput?.[languages[0]],
-    queriesInput,
-    queriesInputCombines,
+    queriesInput: queries.input,
+    queriesInputCombines: queries.combines,
     repoPropertyQueries,
   };
 }
 
-function parseQueriesFromInput(
-  rawQueriesInput: string | undefined,
-  queriesInputCombines: boolean,
-  errorToThrow?: ConfigurationError,
-) {
-  if (!rawQueriesInput) {
-    return undefined;
+/**
+ * Parses a comma-separated list of queries, which may have a '+' prefix. Entries aren't validated,
+ * so an empty entry becomes `{ uses: "" }`.
+ *
+ * @param value The list of queries.
+ * @param repositoryProperty The repository property that `value` comes from, if any. Error messages
+ *   refer to this property, or to the `queries` input if no property is given.
+ * @returns An `Augmentation` containing the parsed queries and whether `value` has a '+' prefix.
+ *   The queries are `undefined` if `value` is unset or empty.
+ * @throws A `ConfigurationError` if `value` is a '+' with no queries after it.
+ */
+export function parseQueriesFromInput(
+  value: string | undefined,
+  repositoryProperty?: RepositoryPropertyName,
+): Augmentation<QuerySpec[]> {
+  if (!value) {
+    return { combines: false, input: undefined };
   }
 
-  const trimmedInput = queriesInputCombines
-    ? rawQueriesInput.trim().slice(1).trim()
-    : (rawQueriesInput?.trim() ?? "");
-  if (queriesInputCombines && trimmedInput.length === 0) {
-    if (errorToThrow) {
-      throw errorToThrow;
-    }
+  const combines = shouldCombine(value);
+  const trimmedInput = combines ? value.trim().slice(1).trim() : value.trim();
+  if (combines && trimmedInput.length === 0) {
     throw new ConfigurationError(
-      errorMessages.getConfigFilePropertyError(
-        undefined,
-        "queries",
-        "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
-      ),
+      repositoryProperty !== undefined
+        ? errorMessages.getRepoPropertyError(
+            repositoryProperty,
+            errorMessages.getEmptyCombinesError(),
+          )
+        : errorMessages.getConfigFilePropertyError(
+            undefined,
+            "queries",
+            "A '+' was used in the 'queries' input to specify that you wished to add some packs to your CodeQL analysis. However, no packs were specified. Please either remove the '+' or specify some packs.",
+          ),
     );
   }
-  return trimmedInput.split(",").map((query) => ({ uses: query.trim() }));
+  return {
+    combines,
+    input: trimmedInput.split(",").map((query) => ({ uses: query.trim() })),
+  };
 }
 
 /**
@@ -610,11 +638,13 @@ export function generateCodeScanningConfig(
  * Attempts to parse `contents` into a `UserConfig` value.
  *
  * @param logger The logger to use.
- * @param pathInput The path to the file where `contents` was obtained from, for use in error messages.
- * @param contents The string contents of a YAML file to try and parse as a `UserConfig`.
- * @param validateConfig Whether to validate the configuration file against the schema.
- * @returns The `UserConfig` corresponding to `contents`, if parsing was successful.
- * @throws A `ConfigurationError` if parsing failed.
+ * @param pathInput Where `contents` came from, such as the path to a file, for use in error messages.
+ * @param contents The YAML to try and parse as a `UserConfig`.
+ * @param validateConfig Whether to validate the configuration against the schema.
+ * @returns The `UserConfig` corresponding to `contents`, if parsing was successful. Unless
+ *   `validateConfig` is set, the result might not be a mapping.
+ * @throws A `ConfigurationError` if `contents` isn't valid YAML or, when `validateConfig` is set,
+ *   isn't a valid configuration.
  */
 export function parseUserConfig(
   logger: Logger,

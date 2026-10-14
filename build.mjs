@@ -78,7 +78,7 @@ const UPLOAD_LIB_SRC = "./src/upload-lib";
  *
  * The virtual module additionally re-exports `upload-lib` under the `uploadLib` namespace so that
  * external consumers can access it via the small `lib/upload-lib.js` stub emitted below.
- * 
+ *
  * A tiny stub file is emitted for each Action entrypoint, and one for `upload-lib`. Each stub
  * imports the shared bundle and calls/re-exports from the respective entry point.
  *
@@ -212,6 +212,7 @@ const context = await esbuild.context({
   target: ["node20"],
   define: {
     __CODEQL_ACTION_VERSION__: JSON.stringify(pkg.version),
+    __CODEQL_ACTION_TEST_ENV__: JSON.stringify(""),
   },
   metafile: true,
 });

@@ -10,15 +10,11 @@ import { getOptionalInput, getTemporaryDirectory } from "./actions-util";
 import { dbIsFinalized } from "./analyze";
 import { scanArtifactsForTokens } from "./artifact-scanner";
 import { type CodeQL } from "./codeql";
-import { Config } from "./config-utils";
-import { EnvVar } from "./environment";
+import type { ActionConfig } from "./config/action-config";
+import { EnvVar, exportEnvVar } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger, withGroup } from "./logging";
-import {
-  isSafeArtifactUpload,
-  SafeArtifactUploadVersion,
-} from "./tools-features";
 import {
   bundleDb,
   doesDirectoryExist,
@@ -40,7 +36,6 @@ export function sanitizeArtifactName(name: string): string {
 export async function uploadCombinedSarifArtifacts(
   logger: Logger,
   gitHubVariant: GitHubVariant,
-  codeQlVersion: string | undefined,
 ) {
   const tempDir = getTemporaryDirectory();
 
@@ -70,13 +65,12 @@ export async function uploadCombinedSarifArtifacts(
       }
 
       try {
-        await uploadDebugArtifacts(
+        await uploadArtifacts(
           logger,
           toUpload,
           baseTempDir,
           "combined-sarif-artifacts",
           gitHubVariant,
-          codeQlVersion,
         );
       } catch (e) {
         logger.warning(
@@ -95,7 +89,7 @@ export async function uploadCombinedSarifArtifacts(
  * @return The path to that debug artifact, or undefined if an error occurs.
  */
 function tryPrepareSarifDebugArtifact(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ): string | undefined {
@@ -137,7 +131,7 @@ function tryPrepareSarifDebugArtifact(
  */
 async function tryBundleDatabase(
   codeql: CodeQL,
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ): Promise<string | undefined> {
@@ -163,6 +157,11 @@ async function tryBundleDatabase(
   }
 }
 
+/** The minimal configuration needed for `tryUploadAllAvailableDebugArtifacts`. */
+export type UploadDebugArtifactsConfig = ActionConfig<
+  "languages" | "gitHubVersion" | "dbLocation" | "debugArtifactName"
+>;
+
 /**
  * Attempt to upload all available debug artifacts.
  *
@@ -170,9 +169,8 @@ async function tryBundleDatabase(
  */
 export async function tryUploadAllAvailableDebugArtifacts(
   codeql: CodeQL,
-  config: Config,
+  config: UploadDebugArtifactsConfig,
   logger: Logger,
-  codeQlVersion: string | undefined,
 ) {
   const filesToUpload: string[] = [];
   try {
@@ -231,13 +229,12 @@ export async function tryUploadAllAvailableDebugArtifacts(
 
   try {
     await withGroup("Uploading debug artifacts", async () =>
-      uploadDebugArtifacts(
+      uploadArtifacts(
         logger,
         filesToUpload,
         config.dbLocation,
         config.debugArtifactName,
         config.gitHubVersion.type,
-        codeQlVersion,
       ),
     );
   } catch (e) {
@@ -283,26 +280,6 @@ export type UploadArtifactsResult =
   | "upload-successful"
   | "upload-failed";
 
-export async function uploadDebugArtifacts(
-  logger: Logger,
-  toUpload: string[],
-  rootDir: string,
-  artifactName: string,
-  ghVariant: GitHubVariant,
-  codeQlVersion: string | undefined,
-): Promise<UploadArtifactsResult | "upload-not-supported"> {
-  const uploadSupported = isSafeArtifactUpload(codeQlVersion);
-
-  if (!uploadSupported) {
-    core.info(
-      `Skipping debug artifact upload because the current CLI does not support safe upload. Please upgrade to CLI v${SafeArtifactUploadVersion} or later.`,
-    );
-    return "upload-not-supported";
-  }
-
-  return uploadArtifacts(logger, toUpload, rootDir, artifactName, ghVariant);
-}
-
 /**
  * Uploads the specified files as a single workflow artifact.
  *
@@ -330,7 +307,7 @@ export async function uploadArtifacts(
   // some issues early.
   if (isInTestMode()) {
     await scanArtifactsForTokens(toUpload, logger);
-    core.exportVariable("CODEQL_ACTION_ARTIFACT_SCAN_FINISHED", "true");
+    exportEnvVar("CODEQL_ACTION_ARTIFACT_SCAN_FINISHED", "true");
   }
 
   const suffix = getArtifactSuffix(getOptionalInput("matrix"));
@@ -381,7 +358,7 @@ export async function getArtifactUploaderClient(
  * all files in the database folder and return the path.
  */
 async function createPartialDatabaseBundle(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
 ): Promise<string> {
   const databasePath = getCodeQLDatabasePath(config, language);
@@ -422,7 +399,7 @@ async function createPartialDatabaseBundle(
  */
 async function createDatabaseBundleCli(
   codeql: CodeQL,
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
 ): Promise<string> {
   const databaseBundlePath = await bundleDb(

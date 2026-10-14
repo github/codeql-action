@@ -3,6 +3,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 
+import { ActionState } from "./action-common";
 import {
   getApiClient,
   getApiDetails,
@@ -20,6 +21,7 @@ import {
 import * as json from "./json";
 import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
+import { BundlePlatform, getBundlePlatform } from "./platform";
 import {
   Address,
   Registry,
@@ -370,14 +372,10 @@ export function getCredentials(
 
 /**
  * Gets the name of the proxy release asset for the current platform.
+ *
+ * @param platform The platform to get the asset name for.
  */
-export function getProxyPackage(): string {
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "darwin"
-        ? "osx64"
-        : "linux64";
+export function getProxyPackage(platform: BundlePlatform): string {
   return `${UPDATEJOB_PROXY}-${platform}.tar.gz`;
 }
 
@@ -417,25 +415,33 @@ async function getCliVersionFromFeatures(
  * Determines the URL of the proxy release asset that we should download if its not
  * already in the toolcache, and its version.
  *
- * @param logger The logger to use.
- * @param features Information about enabled features.
+ * @param action The action state.
  * @returns Returns the download URL and version of the proxy package we plan to use.
  */
 export async function getDownloadUrl(
-  logger: Logger,
-  features: FeatureEnablement,
+  action: ActionState<["Base", "Logger", "FeatureFlags"]>,
 ): Promise<{ url: string; version: string }> {
-  const proxyPackage = getProxyPackage();
+  // Default to linux64 if we don't recognise the platform+arch pair.
+  // This maintains the behaviour we had before switching to `getBundlePlatform` here.
+  let platform = getBundlePlatform(action.platform, action.arch);
+  if (platform === undefined) {
+    action.logger.warning(
+      `Unsupported platform ${action.platform} on architecture ${action.arch}, defaulting to ${BundlePlatform.Linux64}`,
+    );
+    platform = BundlePlatform.Linux64;
+  }
+
+  const proxyPackage = getProxyPackage(platform);
 
   try {
-    const useFeaturesToDetermineCLI = await features.getValue(
+    const useFeaturesToDetermineCLI = await action.features.getValue(
       Feature.StartProxyUseFeaturesRelease,
     );
 
     // Retrieve information about the CLI version we should use. This will be either the linked
     // version, or the one enabled by FFs.
     const versionInfo = useFeaturesToDetermineCLI
-      ? (await getCliVersionFromFeatures(features)).enabledVersions[0]
+      ? (await getCliVersionFromFeatures(action.features)).enabledVersions[0]
       : {
           cliVersion: defaults.cliVersion,
           tagName: defaults.bundleVersion,
@@ -447,7 +453,7 @@ export async function getDownloadUrl(
     // Search the release's assets to find the one we are looking for.
     for (const asset of cliRelease.data.assets) {
       if (asset.name === proxyPackage) {
-        logger.info(
+        action.logger.info(
           `Found '${proxyPackage}' in release '${versionInfo.tagName}' at '${asset.url}'`,
         );
         return {
@@ -460,13 +466,13 @@ export async function getDownloadUrl(
       }
     }
   } catch (ex) {
-    logger.warning(
+    action.logger.warning(
       `Failed to retrieve information about the linked release: ${getErrorMessage(ex)}`,
     );
   }
 
   // Fallback to the hard-coded URL.
-  logger.info(
+  action.logger.info(
     `Did not find '${proxyPackage}' in the linked release, falling back to hard-coded version.`,
   );
   return {
@@ -559,15 +565,15 @@ export function getProxyFilename() {
  * runner's tool cache. Otherwise, it downloads and extracts the proxy binary,
  * and stores it in the tool cache.
  *
- * @param logger The logger to use.
+ * @param action The action state.
  * @returns The path to the proxy binary.
  */
 export async function getProxyBinaryPath(
-  logger: Logger,
-  features: FeatureEnablement,
+  action: ActionState<["Base", "Logger", "FeatureFlags"]>,
 ): Promise<string> {
+  const logger = action.logger;
   const proxyFileName = getProxyFilename();
-  const proxyInfo = await getDownloadUrl(logger, features);
+  const proxyInfo = await getDownloadUrl(action);
 
   let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
   if (!proxyBin) {

@@ -10,6 +10,8 @@ import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
+import { defaultSuites } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import {
   getCsharpTempDependencyDir,
@@ -177,7 +179,7 @@ export async function runExtraction(
           language === BuiltInLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
-          await setupCppAutobuild(codeql, logger);
+          await setupCppAutobuild(logger);
         }
 
         // The Java and C# `build-mode: none` extractors place dependencies in the
@@ -224,7 +226,7 @@ async function shouldExtractLanguage(
 }
 
 export function dbIsFinalized(
-  config: configUtils.Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ) {
@@ -410,15 +412,6 @@ dataExtensions:
 
   return diffRangeDir;
 }
-
-// A set of default query suite names that are understood by the CLI.
-export const defaultSuites: Set<string> = new Set([
-  "security-experimental",
-  "security-extended",
-  "security-and-quality",
-  "code-quality",
-  "code-scanning",
-]);
 
 /**
  * If `maybeSuite` is the name of a default query suite, it is resolved into the corresponding

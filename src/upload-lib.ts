@@ -14,7 +14,7 @@ import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
-import { ActionsEnvVars, EnvVar } from "./environment";
+import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
@@ -126,7 +126,7 @@ async function combineSarifFilesUsingCLI(
       logger.warning(
         `Uploading multiple SARIF runs with the same category is deprecated ${deprecationWarningMessage}. Please update your workflow to upload a single run per category. ${deprecationMoreInformationMessage}`,
       );
-      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
+      exportEnvVar("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
     }
 
     // If not, use the naive method of combining the files.
@@ -166,6 +166,7 @@ async function combineSarifFilesUsingCLI(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       undefined, // rawLanguages: upload-lib does not run analysis
+      undefined, // otherLanguagePacksReason: upload-lib does not run analysis
       false, // useOverlayAwareDefaultCliVersion: upload-lib does not run analysis
       features,
       logger,
@@ -1032,7 +1033,7 @@ export function validateUniqueCategory(
           `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`,
       );
     }
-    core.exportVariable(sentinelEnvVar, sentinelEnvVar);
+    exportEnvVar(sentinelEnvVar, sentinelEnvVar);
   }
 }
 

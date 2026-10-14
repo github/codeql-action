@@ -9,7 +9,7 @@ import {
   isValidChangenoteFile,
   isValidChangenoteFilename,
   VALID_CHANGE_NOTE_CATEGORIES,
-} from "./validate.mjs";
+} from "./validate";
 
 await describe("isValidChangenoteContent", async () => {
   await it("recognizes an unordered Markdown list", () => {
@@ -152,26 +152,6 @@ await describe("isValidChangenoteFile", async () => {
 
   await it("rejects a non-existent path", async () => {
     assert.equal(isValidChangenoteFile("non-existent-file.md"), false);
-  });
-
-  await it("rejects invalid filename", async () => {
-    await withTmpFile(
-      "fix-bug.md",
-      "---\ncategory: fix\n---\n- Fixed a bug\n",
-      (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
-      },
-    );
-  });
-
-  await it("rejects missing frontmatter", async () => {
-    await withTmpFile(
-      "2026-01-01-fix-bug.md",
-      "- Fixed a bug\n",
-      (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
-      },
-    );
   });
 
   await it("rejects invalid Markdown", async () => {

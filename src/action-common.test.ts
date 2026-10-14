@@ -19,6 +19,24 @@ import { getErrorMessage } from "./util";
 
 setupTests(test);
 
+for (const [key, displayName] of Object.entries(
+  statusReport.ACTION_DISPLAY_NAMES,
+)) {
+  test(`getDisplayActionName - '${displayName}' instead of '${key}'`, (t) => {
+    t.is(statusReport.getDisplayActionName(key as ActionName), displayName);
+  });
+}
+
+test("getDisplayActionName - returns action name", (t) => {
+  for (const actionName of Object.values(ActionName)) {
+    if (statusReport.ACTION_DISPLAY_NAMES[actionName]) {
+      continue;
+    }
+
+    t.is(statusReport.getDisplayActionName(actionName), actionName);
+  }
+});
+
 interface RunInActionsTestOpts {
   runFn?: () => Promise<any>;
   expectedErrorMessage?: string;

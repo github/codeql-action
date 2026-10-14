@@ -9,6 +9,7 @@ import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
 import { defaultSuites } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import {
@@ -124,7 +125,7 @@ export async function runExtraction(
           language === BuiltInLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
-          await setupCppAutobuild(codeql, logger);
+          await setupCppAutobuild(logger);
         }
 
         // The Java and C# `build-mode: none` extractors place dependencies in the
@@ -171,7 +172,7 @@ async function shouldExtractLanguage(
 }
 
 export function dbIsFinalized(
-  config: configUtils.Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ) {

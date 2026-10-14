@@ -30,7 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-        - stable-v2.20.3
+        - stable-v2.20.7
         - default
         - linked
         - nightly-latest

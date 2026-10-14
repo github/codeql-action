@@ -267,7 +267,10 @@ async function uploadBundledDatabase(
   bundledDbSize: number,
   apiDetails: GitHubApiDetails,
 ): Promise<number> {
-  const client = getApiClient();
+  // Ensure that the `apiDetails` that `getApiClient` uses match the ones we were given here,
+  // because we use `apiDetails.auth` below which must be used with the same instance that
+  // `apiDetails` refers to.
+  const client = getApiClient(util.getEnv(), apiDetails);
 
   const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
   uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;

@@ -1,14 +1,13 @@
 import * as fs from "fs";
 import path from "path";
 
-import * as core from "@actions/core";
 import * as github from "@actions/github";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
 import { createStubCodeQL } from "./codeql";
-import { ActionsEnvVars } from "./environment";
+import * as environment from "./environment";
 import { Feature } from "./feature-flags";
 import {
   checkPacksForOverlayCompatibility,
@@ -85,7 +84,7 @@ for (const { runnerEnv, ErrorConstructor, message } of [
     `cleanupDatabaseClusterDirectory throws a ${ErrorConstructor.name} when cleanup fails on ${runnerEnv} runner`,
     async (t) => {
       await withTmpDir(async (tmpDir: string) => {
-        process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = runnerEnv;
+        process.env[environment.ActionsEnvVars.RUNNER_ENVIRONMENT] = runnerEnv;
 
         const dbLocation = path.resolve(tmpDir, "dbs");
         fs.mkdirSync(dbLocation, { recursive: true });
@@ -546,7 +545,7 @@ test.serial(
 test.serial(
   "file coverage deprecation warning for org-owned repo with default setup recommends repo property",
   (t) => {
-    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const exportEnvVarStub = sinon.stub(environment, "exportEnvVar");
     sinon.stub(actionsUtil, "isDefaultSetup").returns(true);
     github.context.payload = {
       repository: {
@@ -566,14 +565,14 @@ test.serial(
         'with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to ' +
         "`true` in the repository's settings.",
     );
-    t.true(exportVariableStub.calledOnce);
+    t.true(exportEnvVarStub.calledOnce);
   },
 );
 
 test.serial(
   "file coverage deprecation warning for org-owned repo with advanced setup recommends env var and repo property",
   (t) => {
-    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const exportEnvVarStub = sinon.stub(environment, "exportEnvVar");
     sinon.stub(actionsUtil, "isDefaultSetup").returns(false);
     github.context.payload = {
       repository: {
@@ -594,14 +593,14 @@ test.serial(
         'with the name `github-codeql-file-coverage-on-prs` and the type "True/false", then set this property to ' +
         "`true` in the repository's settings.",
     );
-    t.true(exportVariableStub.calledOnce);
+    t.true(exportEnvVarStub.calledOnce);
   },
 );
 
 test.serial(
   "file coverage deprecation warning for user-owned repo with default setup recommends advanced setup",
   (t) => {
-    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const exportEnvVarStub = sinon.stub(environment, "exportEnvVar");
     sinon.stub(actionsUtil, "isDefaultSetup").returns(true);
     github.context.payload = {
       repository: {
@@ -620,14 +619,14 @@ test.serial(
         "To opt out of this change, switch to an advanced setup workflow and " +
         "set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
     );
-    t.true(exportVariableStub.calledOnce);
+    t.true(exportEnvVarStub.calledOnce);
   },
 );
 
 test.serial(
   "file coverage deprecation warning for user-owned repo with advanced setup recommends env var",
   (t) => {
-    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const exportEnvVarStub = sinon.stub(environment, "exportEnvVar");
     sinon.stub(actionsUtil, "isDefaultSetup").returns(false);
     github.context.payload = {
       repository: {
@@ -645,14 +644,14 @@ test.serial(
         "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
         "To opt out of this change, set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
     );
-    t.true(exportVariableStub.calledOnce);
+    t.true(exportEnvVarStub.calledOnce);
   },
 );
 
 test.serial(
   "file coverage deprecation warning for unknown owner type with default setup recommends advanced setup",
   (t) => {
-    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const exportEnvVarStub = sinon.stub(environment, "exportEnvVar");
     sinon.stub(actionsUtil, "isDefaultSetup").returns(true);
     github.context.payload = { repository: undefined };
     const messages: LoggedMessage[] = [];
@@ -666,14 +665,14 @@ test.serial(
         "To opt out of this change, switch to an advanced setup workflow and " +
         "set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
     );
-    t.true(exportVariableStub.calledOnce);
+    t.true(exportEnvVarStub.calledOnce);
   },
 );
 
 test.serial(
   "file coverage deprecation warning for unknown owner type with advanced setup recommends env var",
   (t) => {
-    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const exportEnvVarStub = sinon.stub(environment, "exportEnvVar");
     sinon.stub(actionsUtil, "isDefaultSetup").returns(false);
     github.context.payload = { repository: undefined };
     const messages: LoggedMessage[] = [];
@@ -686,7 +685,7 @@ test.serial(
         "to improve analysis performance. File coverage information will still be computed on non-PR analyses.\n\n" +
         "To opt out of this change, set the `CODEQL_ACTION_FILE_COVERAGE_ON_PRS` environment variable to `true`.",
     );
-    t.true(exportVariableStub.calledOnce);
+    t.true(exportEnvVarStub.calledOnce);
   },
 );
 
@@ -695,10 +694,10 @@ test.serial(
   (t) => {
     process.env["CODEQL_ACTION_DID_LOG_FILE_COVERAGE_ON_PRS_DEPRECATION"] =
       "true";
-    const exportVariableStub = sinon.stub(core, "exportVariable");
+    const exportEnvVarStub = sinon.stub(environment, "exportEnvVar");
     const messages: LoggedMessage[] = [];
     logFileCoverageOnPrsDeprecationWarning(getRecordingLogger(messages));
     t.is(messages.length, 0);
-    t.true(exportVariableStub.notCalled);
+    t.true(exportEnvVarStub.notCalled);
   },
 );

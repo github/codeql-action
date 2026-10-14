@@ -4,7 +4,12 @@ import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import {
@@ -266,17 +271,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       );
     }
 
-    // Unset the CODEQL_PROXY_* environment variables when using older CodeQL
-    // CLIs, as they are not needed and can cause issues.
-    if (
-      process.env.CODEQL_PROXY_HOST === "" &&
-      !(await util.codeQlVersionAtLeast(codeql, "2.20.7"))
-    ) {
-      delete process.env.CODEQL_PROXY_HOST;
-      delete process.env.CODEQL_PROXY_PORT;
-      delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
-    }
-
     if (actionsUtil.getOptionalInput("cleanup-level")) {
       logger.info(
         "The 'cleanup-level' input is ignored since the CodeQL Action now automatically " +
@@ -286,7 +280,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
-    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
+    action.env.export(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,
@@ -402,11 +396,13 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       checkoutPath,
     );
 
+    const actionWithFeatures = extendActionState(action, { features });
+
     // Possibly upload the database bundles for remote queries.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
     databaseUploadResults = await cleanupAndUploadDatabases(
-      { ...action, features },
+      actionWithFeatures,
       repositoryNwo,
       codeql,
       config,
@@ -455,7 +451,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
         `expect-error input was set to true but no error was thrown.`,
       );
     }
-    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+    action.env.export(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     if (

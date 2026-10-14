@@ -464,7 +464,7 @@ export function getRepositoryRootOrThrow(
   workflow: Workflow,
   jobName: string,
   matrixVars: { [key: string]: string } | undefined,
-  config: Config,
+  config: Partial<Config>,
   env: ReadOnlyEnv = getEnv(),
 ): string {
   return (

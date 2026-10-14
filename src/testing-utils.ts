@@ -202,10 +202,6 @@ class TestActionsEnv implements ActionsEnv {
   public getOptionalInput(_name: string): string | undefined {
     return undefined;
   }
-
-  public exportVariable(name: string, value: string): void {
-    this.env.set(name, value);
-  }
 }
 
 /**
@@ -234,6 +230,8 @@ export function initAllState(
   return {
     name: ActionName.Init,
     startedAt: new Date(),
+    platform: process.platform,
+    arch: process.arch,
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),

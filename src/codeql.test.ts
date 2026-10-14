@@ -22,7 +22,6 @@ import type { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import {
   setupTests,
@@ -35,6 +34,7 @@ import {
   createTestConfig,
   makeMacro,
   getCodeQLForTesting,
+  RecordingLogger,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
@@ -103,7 +103,7 @@ async function installIntoToolcache({
     undefined, // otherLanguagePacksReason
     false, // useOverlayAwareDefaultCliVersion
     createFeatures([]),
-    getRunnerLogger(true),
+    new RecordingLogger(),
     false,
   );
 }
@@ -177,7 +177,7 @@ test.serial(
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
           false,
         );
 
@@ -213,7 +213,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
 
@@ -253,7 +253,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
@@ -363,7 +363,7 @@ for (const {
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
           false,
         );
         t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
@@ -406,7 +406,7 @@ for (const toolcacheVersion of [
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
           false,
         );
         t.is(
@@ -451,7 +451,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.deepEqual(result.toolsVersion, "0.0.0-20200601");
@@ -498,7 +498,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -538,7 +538,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -580,7 +580,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
 
@@ -665,7 +665,7 @@ const injectedConfigMacro = makeMacro({
         tempDir,
       };
       thisStubConfig.computedConfig = generateCodeScanningConfig(
-        getRunnerLogger(true),
+        new RecordingLogger(),
         thisStubConfig.originalUserInput,
         augmentationProperties,
       );

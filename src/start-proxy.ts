@@ -552,9 +552,9 @@ export async function getProxyBinaryPath(
       `Using authentication proxy from CodeQL release ${proxyInfo.version}.`,
     );
 
-    let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
+    let proxyDir = toolcache.find(proxyFileName, proxyInfo.version);
 
-    if (!proxyBin) {
+    if (!proxyDir) {
       logger.info(
         `Authentication proxy is not in the toolcache. Will try to download it from '${proxyInfo.url}'.`,
       );
@@ -569,16 +569,16 @@ export async function getProxyBinaryPath(
       logger.info(`Downloaded the authentication proxy asset to '${temp}'.`);
 
       const extracted = await extractProxy(logger, temp);
-      proxyBin = await cacheProxy(
+      proxyDir = await cacheProxy(
         logger,
         extracted,
         proxyFileName,
         proxyInfo.version,
       );
 
-      logger.info(`Extracted the authentication proxy to '${proxyBin}'.`);
+      logger.info(`Extracted the authentication proxy to '${proxyDir}'.`);
     }
-    return path.join(proxyBin, proxyFileName);
+    return path.join(proxyDir, proxyFileName);
   } finally {
     logger.endGroup();
   }

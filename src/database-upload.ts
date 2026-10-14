@@ -279,6 +279,10 @@ async function uploadBundledDatabase(
     uploadsBaseUrl = uploadsBaseUrl.slice(0, -1);
   }
 
+  const token = apiDetails.auth?.trim();
+  const hasToken = token !== undefined && token !== "";
+  const authorization = hasToken ? `token ${token}` : undefined;
+
   const bundledDbReadStream = fs.createReadStream(bundledDb);
   try {
     const startTime = performance.now();
@@ -293,7 +297,7 @@ async function uploadBundledDatabase(
         commit_oid: commitOid,
         data: bundledDbReadStream,
         headers: {
-          authorization: `token ${apiDetails.auth}`,
+          authorization,
           "Content-Type": "application/zip",
           "Content-Length": bundledDbSize,
         },

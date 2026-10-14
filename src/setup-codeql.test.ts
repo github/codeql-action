@@ -156,6 +156,7 @@ test.serial(
         compressionMethod: "gzip",
         sourceType: "download",
         toolsVersion: "1.2.3",
+        apiDetails: SAMPLE_DOTCOM_API_DETAILS,
       } satisfies setupCodeql.CodeQLDownloadSource);
     });
   },
@@ -435,6 +436,7 @@ test.serial(
         compressionMethod: "zstd",
         sourceType: "download",
         toolsVersion: expectedVersion,
+        apiDetails: SAMPLE_DOTCOM_API_DETAILS,
       } satisfies setupCodeql.CodeQLToolsSource);
 
       const result = await setupCodeql.setupCodeQLBundle(
@@ -508,6 +510,7 @@ test.serial(
         compressionMethod: "zstd",
         sourceType: "download",
         toolsVersion: expectedVersion,
+        apiDetails: SAMPLE_DOTCOM_API_DETAILS,
       } satisfies setupCodeql.CodeQLToolsSource);
 
       // Afterwards, ensure that we see the expected messages in the log.
@@ -655,6 +658,7 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
           cliVersion: undefined,
           compressionMethod: "zstd",
           toolsVersion: "0.0.0-30260213",
+          apiDetails: SAMPLE_DOTCOM_API_DETAILS,
         } satisfies setupCodeql.CodeQLDownloadSource);
         t.true(latestNightlyRequest.calledOnce);
       });
@@ -807,6 +811,7 @@ for (const date of ["20200101", "30260213"]) {
             cliVersion: undefined,
             compressionMethod: "zstd",
             toolsVersion: `0.0.0-${date}`,
+            apiDetails: SAMPLE_DOTCOM_API_DETAILS,
           } satisfies setupCodeql.CodeQLDownloadSource);
 
           await t.throwsAsync(
@@ -1864,8 +1869,8 @@ async function runDownloadCodeQL(
       cliVersion: CLEANUP_CLI_VERSION,
       sourceType: "download",
       toolsVersion: CLEANUP_CLI_VERSION,
+      apiDetails: SAMPLE_DOTCOM_API_DETAILS,
     },
-    SAMPLE_DOTCOM_API_DETAILS,
     undefined, // tarVersion
     toolcacheRoot, // tempDir
   );

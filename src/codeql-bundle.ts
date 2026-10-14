@@ -1,3 +1,4 @@
+import type { GitHubApiDetails } from "./github";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { BundlePlatform } from "./platform";
 import type { CompressionMethod } from "./tar";
@@ -17,6 +18,8 @@ export type CodeQLBundle =
 export interface CodeQLDownloadSource {
   /** Distinguishes downloads from local archives and cached installations. */
   sourceType: "download";
+  /** Information about the GitHub instance that contains the asset. */
+  apiDetails: GitHubApiDetails;
   /** The bundle to download. */
   bundle: CodeQLBundle;
   /** The compression format of the bundle archive. */

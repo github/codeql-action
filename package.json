@@ -69,7 +69,7 @@
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^13.0.6",
     "globals": "^17.13.0",
-    "nock": "^14.0.17",
+    "nock": "^15.0.1",
     "sinon": "^22.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.1"

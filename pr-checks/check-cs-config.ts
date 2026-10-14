@@ -95,6 +95,6 @@ function main() {
   return 0;
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   process.exit(main());
 }

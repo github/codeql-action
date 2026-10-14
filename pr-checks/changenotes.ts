@@ -28,12 +28,12 @@ interface ChangenoteFile {
 
 /**
  * Returns the absolute file paths of all files in
- * {@link CHANGENOTES_DIR} (except ".gitkeep").
+ * {@link CHANGENOTES_DIR} (except ".gitkeep" and "README.md").
  * */
 function listUnreleasedChangenoteDir(): string[] {
   return fs
     .readdirSync(CHANGENOTES_DIR)
-    .filter((name) => name !== ".gitkeep")
+    .filter((name) => ![".gitkeep", "README.md"].includes(name))
     .map((name) => path.join(CHANGENOTES_DIR, name));
 }
 

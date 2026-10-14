@@ -12,15 +12,26 @@ import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
-import { EnvVar, getRequiredEnvParam } from "./environment";
+import {
+  EnvVar,
+  getRequiredEnvParam,
+  isInTestMode,
+  exportEnvVar,
+} from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
-export { getRequiredEnvParam, getOptionalEnvVar, getEnv } from "./environment";
+export {
+  getRequiredEnvParam,
+  getOptionalEnvVar,
+  getEnv,
+  isInTestMode,
+} from "./environment";
 
 /**
  * The name of the file containing the base database OIDs, as stored in the
@@ -435,7 +446,10 @@ export function getThreadsFlag(
 /**
  * Get the path where the CodeQL database for the given language lives.
  */
-export function getCodeQLDatabasePath(config: Config, language: Language) {
+export function getCodeQLDatabasePath(
+  config: ActionConfig<"dbLocation">,
+  language: Language,
+) {
   return path.resolve(config.dbLocation, language);
 }
 
@@ -542,7 +556,7 @@ export function checkGitHubVersionInRange(
     );
   }
   hasBeenWarnedAboutVersion = true;
-  core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
+  exportEnvVar(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
 }
 
 export enum DisallowedAPIVersionReason {
@@ -586,11 +600,11 @@ export function assertNever(value: never): never {
  * knowing what version of CodeQL we're running.
  */
 export function initializeEnvironment(version: string) {
-  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  core.exportVariable(EnvVar.VERSION, version);
+  exportEnvVar(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  exportEnvVar(EnvVar.FEATURE_SANDWICH, "false");
+  exportEnvVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  exportEnvVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  exportEnvVar(EnvVar.VERSION, version);
 }
 
 export class HTTPError extends Error {
@@ -629,7 +643,9 @@ export async function codeQlVersionAtLeast(
   return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
-export function getBaseDatabaseOidsFilePath(config: Config): string {
+export function getBaseDatabaseOidsFilePath(
+  config: ActionConfig<"dbLocation">,
+): string {
   return path.join(config.dbLocation, BASE_DATABASE_OIDS_FILE_NAME);
 }
 
@@ -641,7 +657,7 @@ export function getBaseDatabaseOidsFilePath(config: Config): string {
  * given `includeDiagnostics` value.
  */
 export async function bundleDb(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   codeql: CodeQL,
   dbName: string,
@@ -709,15 +725,6 @@ export async function delay(
 
 export function isGoodVersion(versionSpec: string) {
   return !BROKEN_VERSIONS.includes(versionSpec);
-}
-
-/**
- * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
- *
- * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
- */
-export function isInTestMode(): boolean {
-  return process.env[EnvVar.TEST_MODE] === "true";
 }
 
 /**
@@ -948,7 +955,7 @@ export async function checkDiskUsage(
       } else {
         logger.debug(message);
       }
-      core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
+      exportEnvVar(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
       numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
@@ -997,7 +1004,7 @@ export function checkActionVersion(
           "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
-      core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
+      exportEnvVar(EnvVar.LOG_VERSION_DEPRECATION, "true");
     }
   }
 }

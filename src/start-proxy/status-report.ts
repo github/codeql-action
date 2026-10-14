@@ -49,7 +49,7 @@ export async function sendSuccessStatusReport(
   if (statusReportBase !== undefined) {
     const statusReport: StartProxySuccessReport = {
       ...statusReportBase,
-      registry_types: registry_types.join(","),
+      registry_types: registry_types.sort().join(","),
       start_proxy: status,
     };
     await sendStatusReport(statusReport);

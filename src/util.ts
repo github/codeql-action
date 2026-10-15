@@ -20,6 +20,8 @@ import {
   getRequiredEnvParam,
   isInTestMode,
   exportEnvVar,
+  getEnv,
+  type Env,
 } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
@@ -45,10 +47,13 @@ const BASE_DATABASE_OIDS_FILE_NAME = "base-database-oids.json";
  */
 const BROKEN_VERSIONS = ["0.0.0-20211207"];
 
+/** A string representing a GitHub instance. */
+export type InstanceURL = string;
+
 /**
  * The URL for github.com.
  */
-export const GITHUB_DOTCOM_URL = "https://github.com";
+export const GITHUB_DOTCOM_URL: InstanceURL = "https://github.com";
 
 /**
  * Default name of the debugging artifact.
@@ -599,12 +604,12 @@ export function assertNever(value: never): never {
  * Set some initial environment variables that we can set even without
  * knowing what version of CodeQL we're running.
  */
-export function initializeEnvironment(version: string) {
-  exportEnvVar(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  exportEnvVar(EnvVar.FEATURE_SANDWICH, "false");
-  exportEnvVar(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  exportEnvVar(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  exportEnvVar(EnvVar.VERSION, version);
+export function initializeEnvironment(version: string, env: Env = getEnv()) {
+  env.export(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  env.export(EnvVar.FEATURE_SANDWICH, "false");
+  env.export(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  env.export(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  env.export(EnvVar.VERSION, version);
 }
 
 export class HTTPError extends Error {

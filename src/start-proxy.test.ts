@@ -5,16 +5,20 @@ import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
 
 import { ActionState } from "./action-common";
+import * as actionsUtil from "./actions-util";
 import * as apiClient from "./api-client";
 import * as defaults from "./defaults.json";
+import { ActionsEnvVars } from "./environment";
 import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
 import { UnvalidatedObject, validateSchema } from "./json";
 import { makeFromSchema } from "./json/testing-util";
 import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger, Logger } from "./logging";
 import { BundlePlatform, getBundlePlatform } from "./platform";
+import * as repository from "./setup/repository";
 import * as startProxyExports from "./start-proxy";
 import {
+  addSinonAssertions,
   assertNotLogged,
   checkExpectedLogMessages,
   createFeatures,
@@ -22,6 +26,7 @@ import {
   makeMacro,
   makeTestToken,
   RecordingLogger,
+  SAMPLE_DOTCOM_API_DETAILS,
   setupTests,
   withRecordingLoggerAsync,
 } from "./testing-utils";
@@ -619,18 +624,29 @@ function mockGetApiClient(endpoints: any) {
 
 type ReleaseAssets = Array<{ name: string; url?: string }>;
 
-function mockGetReleaseByTag(assets?: ReleaseAssets) {
+function mockGetReleaseByTag(expectedTag?: string, assets?: ReleaseAssets) {
   const getReleaseByTag =
     assets === undefined
       ? sinon.stub().rejects()
-      : sinon.stub().resolves({
-          status: 200,
-          data: { assets },
-          headers: {},
-          url: "GET /repos/:owner/:repo/releases/tags/:tag",
+      : sinon.stub().callsFake(({ tag }) => {
+          if (tag === expectedTag) {
+            return {
+              status: 200,
+              data: { assets },
+              headers: {},
+              url: "GET /repos/:owner/:repo/releases/tags/:tag",
+            };
+          } else {
+            return {
+              status: 404,
+            };
+          }
         });
 
-  return mockGetApiClient({ repos: { getReleaseByTag } });
+  return {
+    getReleaseByTag,
+    getApiClient: mockGetApiClient({ repos: { getReleaseByTag } }),
+  };
 }
 
 function mockOfflineFeatures(tempDir: string, logger: Logger) {
@@ -665,25 +681,33 @@ test.serial(
         logger,
         features,
       });
-      const info = await startProxyExports.getDownloadUrl(state);
 
-      t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
-      t.is(
-        info.url,
-        startProxyExports.getFallbackUrl(
-          startProxyExports.getProxyPackage(BundlePlatform.Linux64),
-        ),
+      // Stub this to always return `true` so we get the default repo for the tests.
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+
+      const info = await startProxyExports.getDownloadUrl(
+        state,
+        SAMPLE_DOTCOM_API_DETAILS,
       );
 
       t.true(
         logger.hasMessage(`Unsupported platform android on architecture ppc`),
+      );
+
+      t.is(info.version, defaults.cliVersion);
+      t.is(
+        info.url,
+        repository.getDefaultDotcomDownloadURL(
+          defaults.bundleVersion,
+          startProxyExports.getProxyPackage(BundlePlatform.Linux64),
+        ),
       );
     });
   },
 );
 
 test.serial(
-  "getDownloadUrl returns fallback when `getReleaseByVersion` rejects",
+  "getDownloadUrl returns default bundle URL for linked version",
   async (t) => {
     const logger = new RecordingLogger();
     mockGetReleaseByTag();
@@ -691,12 +715,20 @@ test.serial(
     await withTmpDir(async (tempDir) => {
       const features = mockOfflineFeatures(tempDir, logger);
       const state = initAllState({ logger, features });
-      const info = await startProxyExports.getDownloadUrl(state);
 
-      t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+      // Stub this to always return `true` so we get the default repo for the tests.
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+
+      const info = await startProxyExports.getDownloadUrl(
+        state,
+        SAMPLE_DOTCOM_API_DETAILS,
+      );
+
+      t.is(info.version, defaults.cliVersion);
       t.is(
         info.url,
-        startProxyExports.getFallbackUrl(
+        repository.getDefaultDotcomDownloadURL(
+          defaults.bundleVersion,
           startProxyExports.getProxyPackage(getTestPlatform(state)),
         ),
       );
@@ -705,7 +737,7 @@ test.serial(
 );
 
 test.serial(
-  "getDownloadUrl returns fallback when there's no matching release asset",
+  "getDownloadUrl doesn't check that the default asset exists",
   async (t) => {
     const logger = new RecordingLogger();
     const testAssets = [[], [{ name: "foo" }]];
@@ -714,19 +746,28 @@ test.serial(
       const features = mockOfflineFeatures(tempDir, logger);
       const state = initAllState({ logger, features });
 
-      for (const assets of testAssets) {
-        const stub = mockGetReleaseByTag(assets);
-        const info = await startProxyExports.getDownloadUrl(state);
+      // Stub this to always return `true` so we get the default repo for the tests.
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
-        t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+      for (const assets of testAssets) {
+        const stubs = mockGetReleaseByTag(defaults.bundleVersion, assets);
+        const info = await startProxyExports.getDownloadUrl(
+          state,
+          SAMPLE_DOTCOM_API_DETAILS,
+        );
+
+        t.is(info.version, defaults.cliVersion);
         t.is(
           info.url,
-          startProxyExports.getFallbackUrl(
+          repository.getDefaultDotcomDownloadURL(
+            defaults.bundleVersion,
             startProxyExports.getProxyPackage(getTestPlatform(state)),
           ),
         );
 
-        stub.restore();
+        // mockGetReleaseByTag stubs the global getApiClient; since we are calling
+        // that in a loop, we need to manually restore it here
+        stubs.getApiClient.restore();
       }
     });
   },
@@ -742,11 +783,22 @@ test.serial("getDownloadUrl returns matching release asset", async (t) => {
       url: "url-we-want",
     },
   ];
-  mockGetReleaseByTag(assets);
+  const stubs = mockGetReleaseByTag(defaults.bundleVersion, assets);
 
   await withTmpDir(async (tempDir) => {
+    state.env.set(ActionsEnvVars.RUNNER_TEMP, tempDir);
     const features = mockOfflineFeatures(tempDir, logger);
-    const info = await startProxyExports.getDownloadUrl({ ...state, features });
+
+    // Stub this to always return `false` so we force `getCodeQLAssetDownloadURL` to use the (mocked) API.
+    sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+    state.env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "test/repo");
+
+    const info = await startProxyExports.getDownloadUrl(
+      { ...state, features },
+      SAMPLE_DOTCOM_API_DETAILS,
+    );
+
+    t.is(stubs.getReleaseByTag.callCount, 1);
 
     t.is(info.version, defaults.cliVersion);
     t.is(info.url, "url-we-want");
@@ -879,9 +931,13 @@ test.serial(
       const toolcachePath = "/path/to/proxy/dir";
       sinon.stub(toolcache, "find").returns(toolcachePath);
 
+      // Stub this to always return `true` so we get the default repo for the tests.
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
+
       const features = mockOfflineFeatures(tempDir, logger);
       const path = await startProxyExports.getProxyBinaryPath(
         initAllState({ logger, features }),
+        SAMPLE_DOTCOM_API_DETAILS,
       );
 
       t.assert(path);
@@ -889,7 +945,7 @@ test.serial(
         path.path,
         filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
       );
-      t.is(path.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+      t.is(path.version, defaults.cliVersion);
     });
   },
 );
@@ -900,7 +956,7 @@ test.serial(
     const logger = new RecordingLogger();
     const state = initAllState({ logger });
     const downloadUrl = "url-we-want";
-    mockGetReleaseByTag([
+    const stubs = mockGetReleaseByTag(defaults.bundleVersion, [
       {
         name: startProxyExports.getProxyPackage(getTestPlatform(state)),
         url: downloadUrl,
@@ -909,11 +965,6 @@ test.serial(
 
     const toolcachePath = "/path/to/proxy/dir";
     const find = sinon.stub(toolcache, "find").returns("");
-    const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
-      auth: "",
-      url: "",
-      apiURL: "",
-    });
     const getAuthorizationHeaderFor = sinon
       .stub(apiClient, "getAuthorizationHeaderFor")
       .returns(undefined);
@@ -927,17 +978,27 @@ test.serial(
       .resolves(extractedPath);
     const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
 
-    const path = await startProxyExports.getProxyBinaryPath({
-      ...state,
-      features: createFeatures([]),
-    });
+    // Stub this to always return `false` so we force `getCodeQLAssetDownloadURL` to use the (mocked) API.
+    sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+    state.env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "test/repo");
 
+    const path = await startProxyExports.getProxyBinaryPath(
+      {
+        ...state,
+        features: createFeatures([]),
+      },
+      SAMPLE_DOTCOM_API_DETAILS,
+    );
+
+    t.is(stubs.getReleaseByTag.callCount, 1);
     t.assert(find.calledOnce);
-    t.assert(getApiDetails.calledOnce);
     t.assert(getAuthorizationHeaderFor.calledOnce);
-    t.assert(downloadTool.calledOnceWith(downloadUrl));
-    t.assert(extractTar.calledOnceWith(archivePath));
-    t.assert(cacheDir.calledOnceWith(extractedPath));
+
+    const st = addSinonAssertions(t);
+    st.onceWith(downloadTool, downloadUrl);
+    st.onceWith(extractTar, archivePath);
+    st.onceWith(cacheDir, extractedPath);
+
     t.assert(path);
     t.is(
       path.path,
@@ -946,7 +1007,7 @@ test.serial(
     t.is(path.version, defaults.cliVersion);
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found '${startProxyExports.getProxyPackage(getTestPlatform(state))}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
+      `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://github.com with URL ${downloadUrl}`,
     ]);
   },
 );
@@ -959,8 +1020,8 @@ test.serial(
     const expectedVersion = "2.20.1";
     const expectedTag = `codeql-bundle-v${expectedVersion}`;
     const expectedParams = {
-      owner: "github",
-      repo: "codeql-action",
+      owner: "test",
+      repo: "repo",
       tag: expectedTag,
     };
     const downloadUrl = "url-we-want";
@@ -983,11 +1044,6 @@ test.serial(
     await withTmpDir(async (tempDir) => {
       const toolcachePath = "/path/to/proxy/dir";
       const find = sinon.stub(toolcache, "find").returns("");
-      const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
-        auth: "",
-        url: "",
-        apiURL: "",
-      });
       const getAuthorizationHeaderFor = sinon
         .stub(apiClient, "getAuthorizationHeaderFor")
         .returns(undefined);
@@ -1019,22 +1075,28 @@ test.serial(
             { cliVersion: expectedVersion, tagName: expectedTag },
           ],
         });
-      const path = await startProxyExports.getProxyBinaryPath({
-        ...state,
-        features,
-      });
+
+      // Stub this to always return `false` so we force `getCodeQLAssetDownloadURL` to use the (mocked) API.
+      sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
+      state.env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "test/repo");
+
+      const path = await startProxyExports.getProxyBinaryPath(
+        {
+          ...state,
+          features,
+        },
+        SAMPLE_DOTCOM_API_DETAILS,
+      );
 
       t.assert(getDefaultCliVersion.calledOnce);
-      sinon.assert.calledOnceWithMatch(
-        getReleaseByTag,
-        sinon.match(expectedParams),
-      );
+
+      const st = addSinonAssertions(t);
+      st.onceWith(getReleaseByTag, expectedParams);
       t.assert(find.calledOnce);
-      t.assert(getApiDetails.calledOnce);
       t.assert(getAuthorizationHeaderFor.calledOnce);
-      t.assert(downloadTool.calledOnceWith(downloadUrl));
-      t.assert(extractTar.calledOnceWith(archivePath));
-      t.assert(cacheDir.calledOnceWith(extractedPath));
+      st.onceWith(downloadTool, downloadUrl);
+      st.onceWith(extractTar, archivePath);
+      st.onceWith(cacheDir, extractedPath);
 
       t.assert(path);
       t.is(
@@ -1045,7 +1107,7 @@ test.serial(
     });
 
     checkExpectedLogMessages(t, logger.messages, [
-      `Found '${startProxyExports.getProxyPackage(getTestPlatform(state))}' in release '${expectedTag}' at '${downloadUrl}'`,
+      `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://github.com with URL url-we-want.`,
     ]);
   },
 );

@@ -4,10 +4,9 @@ import * as toolcache from "@actions/tool-cache";
 
 import { ActionState } from "./action-common";
 import {
-  getApiClient,
-  getApiDetails,
   getAuthorizationHeaderFor,
   getGitHubVersion,
+  GitHubApiDetails,
 } from "./api-client";
 import * as artifactScanner from "./artifact-scanner";
 import * as defaults from "./defaults.json";
@@ -20,6 +19,7 @@ import * as json from "./json";
 import { BuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
 import { BundlePlatform, getBundlePlatform } from "./platform";
+import { getCodeQLAssetDownloadURL } from "./setup/repository";
 import {
   StartProxyError,
   StartProxyErrorType,
@@ -39,10 +39,8 @@ import { ConfigurationError, getErrorMessage, isDefined } from "./util";
 export * from "./start-proxy/types";
 export * from "./start-proxy/status-report";
 
+/** The basename of the proxy artifacts. */
 export const UPDATEJOB_PROXY = "update-job-proxy";
-export const UPDATEJOB_PROXY_VERSION = "v2.0.20250624110901";
-const UPDATEJOB_PROXY_URL_PREFIX =
-  "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.22.0/";
 
 function isPAT(value: string) {
   return artifactScanner.isAuthToken(value, [
@@ -247,30 +245,6 @@ export function getProxyPackage(platform: BundlePlatform): string {
   return `${UPDATEJOB_PROXY}-${platform}.tar.gz`;
 }
 
-/**
- * Gets the fallback URL for downloading the proxy release asset.
- *
- * @param proxyPackage The asset name.
- * @returns The full URL to download the specified asset from the fallback release.
- */
-export function getFallbackUrl(proxyPackage: string): string {
-  return `${UPDATEJOB_PROXY_URL_PREFIX}${proxyPackage}`;
-}
-
-/**
- * Uses the GitHub API to obtain information about the CodeQL CLI bundle release
- * that is tagged by `version`.
- *
- * @returns The response from the GitHub API.
- */
-async function getReleaseByVersion(version: string) {
-  return getApiClient().rest.repos.getReleaseByTag({
-    owner: "github",
-    repo: "codeql-action",
-    tag: version,
-  });
-}
-
 /** Uses `features` to determine the default CLI version. */
 async function getCliVersionFromFeatures(
   features: FeatureEnablement,
@@ -287,7 +261,8 @@ async function getCliVersionFromFeatures(
  * @returns Returns the download URL and version of the proxy package we plan to use.
  */
 export async function getDownloadUrl(
-  action: ActionState<["Base", "Logger", "FeatureFlags"]>,
+  action: ActionState<["Base", "ReadOnlyEnv", "Logger", "FeatureFlags"]>,
+  apiDetails: GitHubApiDetails,
 ): Promise<{ url: string; version: string }> {
   // Default to linux64 if we don't recognise the platform+arch pair.
   // This maintains the behaviour we had before switching to `getBundlePlatform` here.
@@ -316,37 +291,26 @@ export async function getDownloadUrl(
         };
 
     // Try to retrieve information about the CLI bundle release identified by `versionInfo`.
-    const cliRelease = await getReleaseByVersion(versionInfo.tagName);
+    const proxyAssetUrl = await getCodeQLAssetDownloadURL(
+      action,
+      apiDetails,
+      versionInfo.tagName,
+      proxyPackage,
+      "private registry proxy",
+    );
 
-    // Search the release's assets to find the one we are looking for.
-    for (const asset of cliRelease.data.assets) {
-      if (asset.name === proxyPackage) {
-        action.logger.info(
-          `Found '${proxyPackage}' in release '${versionInfo.tagName}' at '${asset.url}'`,
-        );
-        return {
-          url: asset.url,
-          // The `update-job-proxy` doesn't have a version as such. Since we now bundle it
-          // with CodeQL CLI bundle releases, we use the corresponding CLI version to
-          // differentiate between (potentially) different versions of `update-job-proxy`.
-          version: versionInfo.cliVersion,
-        };
-      }
-    }
+    return {
+      url: proxyAssetUrl,
+      // The `update-job-proxy` doesn't have a version as such. Since we now bundle it
+      // with CodeQL CLI bundle releases, we use the corresponding CLI version to
+      // differentiate between (potentially) different versions of `update-job-proxy`.
+      version: versionInfo.cliVersion,
+    };
   } catch (ex) {
-    action.logger.warning(
+    throw new Error(
       `Failed to retrieve information about the linked release: ${getErrorMessage(ex)}`,
     );
   }
-
-  // Fallback to the hard-coded URL.
-  action.logger.info(
-    `Did not find '${proxyPackage}' in the linked release, falling back to hard-coded version.`,
-  );
-  return {
-    url: getFallbackUrl(proxyPackage),
-    version: UPDATEJOB_PROXY_VERSION,
-  };
 }
 
 /**
@@ -365,9 +329,14 @@ export async function downloadProxy(
   try {
     // Download the proxy archive from `url`. We let `downloadTool` choose where
     // to store it. The path to the downloaded file will be returned if successful.
-    return toolcache.downloadTool(url, /* dest: */ undefined, authorization, {
-      accept: "application/octet-stream",
-    });
+    return await toolcache.downloadTool(
+      url,
+      /* dest: */ undefined,
+      authorization,
+      {
+        accept: "application/octet-stream",
+      },
+    );
   } catch (error) {
     logger.error(
       `Failed to download proxy archive from ${url}: ${getErrorMessage(error)}`,
@@ -447,32 +416,51 @@ export type ProxyBinary = {
  * @returns The path to the proxy binary and its version.
  */
 export async function getProxyBinaryPath(
-  action: ActionState<["Base", "Logger", "FeatureFlags"]>,
+  action: ActionState<["Base", "ReadOnlyEnv", "Logger", "FeatureFlags"]>,
+  apiDetails: GitHubApiDetails,
 ): Promise<ProxyBinary> {
   const logger = action.logger;
-  const proxyFileName = getProxyFilename();
-  const proxyInfo = await getDownloadUrl(action);
+  logger.startGroup("Setting up authentication proxy");
 
-  let proxyBin = toolcache.find(proxyFileName, proxyInfo.version);
-  if (!proxyBin) {
-    const apiDetails = getApiDetails();
-    const authorization = getAuthorizationHeaderFor(
-      logger,
-      apiDetails,
-      proxyInfo.url,
+  try {
+    const proxyFileName = getProxyFilename();
+    const proxyInfo = await getDownloadUrl(action, apiDetails);
+
+    logger.info(
+      `Using authentication proxy from CodeQL release ${proxyInfo.version}.`,
     );
-    const temp = await downloadProxy(logger, proxyInfo.url, authorization);
-    const extracted = await extractProxy(logger, temp);
-    proxyBin = await cacheProxy(
-      logger,
-      extracted,
-      proxyFileName,
-      proxyInfo.version,
-    );
+
+    let proxyDir = toolcache.find(proxyFileName, proxyInfo.version);
+
+    if (!proxyDir) {
+      logger.info(
+        `Authentication proxy is not in the toolcache. Will try to download it from '${proxyInfo.url}'.`,
+      );
+
+      const authorization = getAuthorizationHeaderFor(
+        logger,
+        apiDetails,
+        proxyInfo.url,
+      );
+      const temp = await downloadProxy(logger, proxyInfo.url, authorization);
+
+      logger.info(`Downloaded the authentication proxy asset to '${temp}'.`);
+
+      const extracted = await extractProxy(logger, temp);
+      proxyDir = await cacheProxy(
+        logger,
+        extracted,
+        proxyFileName,
+        proxyInfo.version,
+      );
+
+      logger.info(`Extracted the authentication proxy to '${proxyDir}'.`);
+    }
+    return {
+      path: path.join(proxyDir, proxyFileName),
+      version: proxyInfo.version,
+    };
+  } finally {
+    logger.endGroup();
   }
-
-  return {
-    path: path.join(proxyBin, proxyFileName),
-    version: proxyInfo.version,
-  };
 }

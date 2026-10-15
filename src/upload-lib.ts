@@ -14,7 +14,7 @@ import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import { getConfig } from "./config-utils";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
-import { EnvVar } from "./environment";
+import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
 import * as gitUtils from "./git-utils";
@@ -126,7 +126,7 @@ async function combineSarifFilesUsingCLI(
       logger.warning(
         `Uploading multiple SARIF runs with the same category is deprecated ${deprecationWarningMessage}. Please update your workflow to upload a single run per category. ${deprecationMoreInformationMessage}`,
       );
-      core.exportVariable("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
+      exportEnvVar("CODEQL_MERGE_SARIF_DEPRECATION_WARNING", "true");
     }
 
     // If not, use the naive method of combining the files.
@@ -762,12 +762,13 @@ export async function uploadPostProcessedFiles(
   const zippedSarif = zlib.gzipSync(sarifPayload).toString("base64");
   const checkoutURI = url.pathToFileURL(checkoutPath).href;
 
+  const env = util.getEnv();
   const payload = uploadTarget.transformPayload(
     buildPayload(
-      await gitUtils.getCommitOid(checkoutPath),
-      await gitUtils.getRef(),
+      await gitUtils.getCommitOid(env, checkoutPath),
+      await gitUtils.getRef(env, checkoutPath),
       postProcessingResults.analysisKey,
-      util.getRequiredEnvParam("GITHUB_WORKFLOW"),
+      env.getRequired(ActionsEnvVars.GITHUB_WORKFLOW),
       zippedSarif,
       actionsUtil.getWorkflowRunID(),
       actionsUtil.getWorkflowRunAttempt(),
@@ -1032,7 +1033,7 @@ export function validateUniqueCategory(
           `Category: (${id ? id : "none"}) Tool: (${tool ? tool : "none"})`,
       );
     }
-    core.exportVariable(sentinelEnvVar, sentinelEnvVar);
+    exportEnvVar(sentinelEnvVar, sentinelEnvVar);
   }
 }
 

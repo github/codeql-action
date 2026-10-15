@@ -1,0 +1,1 @@
+- Resolved an issue with third-party caching implementations that prevented caches from being restored correctly. [#4206](https://github.com/github/codeql-action/pull/4206)

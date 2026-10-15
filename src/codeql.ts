@@ -15,9 +15,10 @@ import * as api from "./api-client";
 import * as outputCache from "./cli/output-cache";
 import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
+import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar, getEnv } from "./environment";
+import { EnvVar, getEnv, exportEnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -197,7 +198,7 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config,
+    config: ActionConfig<"tempDir">,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -253,7 +254,7 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.19.4";
+const CODEQL_MINIMUM_VERSION = "2.20.7";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
@@ -913,7 +914,7 @@ async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config,
+      config: ActionConfig<"tempDir">,
     ): Promise<void> {
       const args = [
         "diagnostics",
@@ -1054,7 +1055,7 @@ async function getCodeQLForCmd(
         }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
-    core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
+    exportEnvVar(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }
@@ -1224,7 +1225,7 @@ export async function getTrapCachingExtractorConfigArgsForLang(
 ): Promise<string[]> {
   const cacheDir = config.trapCaches[language];
   if (cacheDir === undefined) return [];
-  const write = await isAnalyzingDefaultBranch();
+  const write = await isAnalyzingDefaultBranch(getEnv(), config.repositoryRoot);
   return [
     `-O=${language}.trap.cache.dir=${cacheDir}`,
     `-O=${language}.trap.cache.bound=${TRAP_CACHE_SIZE_MB}`,
@@ -1237,7 +1238,9 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-function getGeneratedCodeScanningConfigPath(config: Config): string {
+function getGeneratedCodeScanningConfigPath(
+  config: ActionConfig<"tempDir">,
+): string {
   return path.resolve(config.tempDir, "user-config.yaml");
 }
 

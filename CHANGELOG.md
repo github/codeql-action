@@ -2,6 +2,10 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## [UNRELEASED]
+
+No user facing changes.
+
 ## 4.39.0 - 15 Oct 2026
 
 - _Breaking change_: Bump the minimum required CodeQL bundle version to 2.20.7. [#4205](https://github.com/github/codeql-action/pull/4205)

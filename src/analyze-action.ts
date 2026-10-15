@@ -361,6 +361,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       uploadResults = await postProcessAndUploadSarif(
         logger,
         features,
+        config,
         uploadKind,
         checkoutPath,
         outputDir,

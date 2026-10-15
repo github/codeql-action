@@ -12,7 +12,7 @@ import * as analyses from "./analyses";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
-import { getConfig } from "./config-utils";
+import type { ActionConfig } from "./config/action-config";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
@@ -94,15 +94,19 @@ async function shouldDisableCombineSarifFiles(
   return true;
 }
 
-// Takes a list of paths to sarif files and combines them together using the
-// CLI `github merge-results` command when all SARIF files are produced by
-// CodeQL. Otherwise, it will fall back to combining the files in the action.
-// Returns the contents of the combined sarif file.
+/**
+ * Takes a list of paths to sarif files and combines them together using the
+ * CLI `github merge-results` command when all SARIF files are produced by
+ * CodeQL. Otherwise, it will fall back to combining the files in the action.
+ *
+ * @returns The contents of the combined sarif file.
+ */
 async function combineSarifFilesUsingCLI(
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
   features: FeatureEnablement,
   logger: Logger,
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
 ): Promise<Partial<sarif.Log>> {
   const env = util.getEnv();
 
@@ -140,7 +144,6 @@ async function combineSarifFilesUsingCLI(
   let codeQL: CodeQL;
   let tempDir: string = actionsUtil.getTemporaryDirectory();
 
-  const config = await getConfig(tempDir, logger);
   if (config !== undefined) {
     codeQL = await getCodeQL(logger, config.codeQLCmd);
     tempDir = config.tempDir;
@@ -599,6 +602,7 @@ export interface PostProcessingResults {
 export async function postProcessSarifFiles(
   logger: Logger,
   features: FeatureEnablement,
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
   checkoutPath: string,
   sarifPaths: string[],
   category: string | undefined,
@@ -623,6 +627,7 @@ export async function postProcessSarifFiles(
       gitHubVersion,
       features,
       logger,
+      config,
     );
   } else {
     const sarifPath = sarifPaths[0];
@@ -683,6 +688,7 @@ export async function writePostProcessedFiles(
  * to.
  */
 export async function uploadFiles(
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
   inputSarifPath: string,
   checkoutPath: string,
   category: string | undefined,
@@ -697,6 +703,7 @@ export async function uploadFiles(
 
   return uploadSpecifiedFiles(
     sarifPaths,
+    config,
     checkoutPath,
     category,
     features,
@@ -710,6 +717,7 @@ export async function uploadFiles(
  */
 async function uploadSpecifiedFiles(
   sarifPaths: string[],
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
   checkoutPath: string,
   category: string | undefined,
   features: FeatureEnablement,
@@ -719,6 +727,7 @@ async function uploadSpecifiedFiles(
   const processingResults: PostProcessingResults = await postProcessSarifFiles(
     logger,
     features,
+    config,
     checkoutPath,
     sarifPaths,
     category,

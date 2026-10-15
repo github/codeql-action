@@ -226,6 +226,7 @@ async function maybeUploadFailedSarif(
 
   logger.info(`Uploading failed SARIF file ${failedSarif.sarifFile}`);
   const uploadResult = await uploadLib.uploadFiles(
+    config,
     failedSarif.sarifFile,
     failedSarif.checkoutPath,
     failedSarif.category,

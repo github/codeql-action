@@ -1727,7 +1727,7 @@ test.serial(
 );
 
 test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases does not list caches when both gates are off",
+  "getEnabledVersionsWithOverlayBaseDatabases does not list caches when the gate is off",
   async (t) => {
     const listStub = sinon.stub(api, "listActionsCaches").resolves([]);
 
@@ -1740,61 +1740,8 @@ test.serial(
     t.deepEqual(result, []);
     t.assert(
       listStub.notCalled,
-      "Should not list Actions caches when both gating feature flags are off.",
+      "Should not list Actions caches when the gating feature flag is off.",
     );
-  },
-);
-
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases dry-run returns empty but lists caches",
-  async (t) => {
-    sinon.stub(api, "getAutomationID").resolves("test/");
-    const listStub = sinon.stub(api, "listActionsCaches").resolves([
-      {
-        key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
-      },
-    ]);
-
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersionDryRun]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(
-      result,
-      [],
-      "Dry-run should return an empty list so the caller falls back.",
-    );
-    t.assert(
-      listStub.calledOnce,
-      "Dry-run should still list Actions caches to populate the diagnostic.",
-    );
-  },
-);
-
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases match flag wins over dry-run",
-  async (t) => {
-    sinon.stub(api, "getAutomationID").resolves("test/");
-    sinon.stub(api, "listActionsCaches").resolves([
-      {
-        key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
-      },
-    ]);
-
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([
-        Feature.OverlayAnalysisMatchCodeqlVersion,
-        Feature.OverlayAnalysisMatchCodeqlVersionDryRun,
-      ]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, [
-      { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
-    ]);
   },
 );
 

@@ -153,7 +153,7 @@ inputs:
     required: false
   trap-caching:
     description: >-
-      Explicitly enable or disable TRAP caching rather than respecting the feature flag for it.
+      Explicitly enable or disable TRAP caching instead of using the automatically determined default.
     required: false
   dependency-caching:
     description: >-

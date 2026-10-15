@@ -114,13 +114,6 @@ export enum Feature {
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
   /**
-   * When set, chooses the default CodeQL CLI version as the highest version that is both enabled by
-   * feature flags and present as an overlay-base database in the Actions cache for the configured
-   * languages. Falls back to the highest feature flagged version if no intersecting overlay-base
-   * database exists in the cache.
-   */
-  OverlayAnalysisMatchCodeqlVersion = "overlay_analysis_match_codeql_version",
-  /**
    * Lowers the overlay minimum available disk space to 8 GB. The lowest enabled limit wins; if
    * none are enabled, the default applies.
    */
@@ -376,11 +369,6 @@ export const featureConfig = {
   [Feature.OverlayAnalysisDisableTrapCaching]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_DISABLE_TRAP_CACHING",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisMatchCodeqlVersion]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION",
     minimumVersion: undefined,
   },
   [Feature.OverlayAnalysisMinDisk8Gb]: {

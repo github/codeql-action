@@ -1069,8 +1069,53 @@ async function fakeOverlayBaseCacheKey(
   return `${prefix}${suffix}`;
 }
 
+for (const variant of [GitHubVariant.DOTCOM, GitHubVariant.GHEC_DR]) {
+  test.serial(
+    `getCodeQLSource uses overlay-aware default version for a Code Scanning PR on ${variant}`,
+    async (t) => {
+      await withTmpDir(async (tmpDir) => {
+        setupActionsVars(tmpDir, tmpDir);
+        process.env[EnvVar.CODE_SCANNING_REF] = "refs/heads/feature-branch";
+        process.env[EnvVar.CODE_SCANNING_BASE_BRANCH] = "main";
+
+        sinon.stub(api, "getAutomationID").resolves("test/");
+        const listStub = sinon.stub(api, "listActionsCaches").resolves([
+          {
+            key: await fakeOverlayBaseCacheKey(
+              "javascript",
+              "2.20.1",
+              "abc-1-1",
+            ),
+          },
+        ]);
+        sinon
+          .stub(toolcache, "find")
+          .withArgs("CodeQL", "2.20.1")
+          .returns("/path/to/codeql-2.20.1");
+
+        const source = await setupCodeql.getCodeQLSource(
+          undefined,
+          overlayMatchEnabledVersions,
+          ["javascript"],
+          undefined, // otherLanguagePacksReason
+          true,
+          SAMPLE_DOTCOM_API_DETAILS,
+          variant,
+          false,
+          createFeatures([]),
+          getRunnerLogger(true),
+        );
+
+        t.assert(listStub.calledOnce);
+        t.is(source.sourceType, "toolcache");
+        t.is(source.toolsVersion, "2.20.1");
+      });
+    },
+  );
+}
+
 test.serial(
-  "getCodeQLSource uses overlay-aware default version when requested for a PR",
+  "getCodeQLSource skips overlay-aware default version for a Code Scanning PR on GHES",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1085,8 +1130,96 @@ test.serial(
       ]);
       sinon
         .stub(toolcache, "find")
-        .withArgs("CodeQL", "2.20.1")
-        .returns("/path/to/codeql-2.20.1");
+        .withArgs("CodeQL", "2.20.2")
+        .returns("/path/to/codeql-2.20.2");
+
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        overlayMatchEnabledVersions,
+        ["javascript"],
+        undefined, // otherLanguagePacksReason
+        true,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.GHES,
+        false,
+        createFeatures([]),
+        getRunnerLogger(true),
+      );
+
+      t.assert(listStub.notCalled);
+      t.is(source.sourceType, "toolcache");
+      t.is(source.toolsVersion, "2.20.2");
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource skips the Actions cache when only one default version is enabled",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[EnvVar.CODE_SCANNING_REF] = "refs/heads/feature-branch";
+      process.env[EnvVar.CODE_SCANNING_BASE_BRANCH] = "main";
+
+      sinon.stub(api, "getAutomationID").resolves("test/");
+      const listStub = sinon.stub(api, "listActionsCaches").resolves([
+        {
+          key: await fakeOverlayBaseCacheKey(
+            "javascript",
+            SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+            "abc-1-1",
+          ),
+        },
+      ]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs(
+          "CodeQL",
+          SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+        )
+        .returns("/path/to/codeql");
+
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        ["javascript"],
+        undefined, // otherLanguagePacksReason
+        true,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        createFeatures([]),
+        getRunnerLogger(true),
+      );
+
+      t.assert(listStub.notCalled);
+      t.is(source.sourceType, "toolcache");
+      t.is(
+        source.toolsVersion,
+        SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+      );
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource skips overlay-aware default version outside pull request analysis",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(false);
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      sinon.stub(api, "getAutomationID").resolves("test/");
+      const listStub = sinon.stub(api, "listActionsCaches").resolves([
+        {
+          key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
+        },
+      ]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs("CodeQL", "2.20.2")
+        .returns("/path/to/codeql-2.20.2");
 
       const source = await setupCodeql.getCodeQLSource(
         undefined,
@@ -1097,19 +1230,19 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
-        createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
+        createFeatures([]),
         getRunnerLogger(true),
       );
 
-      t.assert(listStub.calledOnce);
+      t.assert(listStub.notCalled);
       t.is(source.sourceType, "toolcache");
-      t.is(source.toolsVersion, "2.20.1");
+      t.is(source.toolsVersion, "2.20.2");
     });
   },
 );
 
 test.serial(
-  "getCodeQLSource skips overlay-aware default version when not requested",
+  "getCodeQLSource skips overlay-aware default version when not requested for Code Scanning",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1136,7 +1269,7 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
-        createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
+        createFeatures([]),
         getRunnerLogger(true),
       );
 
@@ -1611,7 +1744,7 @@ test.serial(
 );
 
 test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases returns flag-enabled versions present in cache, sorted desc",
+  "getEnabledVersionsWithOverlayBaseDatabases returns enabled versions present in cache, sorted desc",
   async (t) => {
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
@@ -1632,7 +1765,6 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, [
@@ -1643,7 +1775,7 @@ test.serial(
 );
 
 test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases returns empty when no cached version is flag-enabled",
+  "getEnabledVersionsWithOverlayBaseDatabases returns empty when no cached version is enabled",
   async (t) => {
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
@@ -1655,7 +1787,6 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -1672,7 +1803,6 @@ const noLanguagesMacro = makeMacro({
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       rawLanguages,
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -1697,7 +1827,6 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, []);
@@ -1717,31 +1846,11 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
       getRunnerLogger(true),
     );
     t.deepEqual(result, [
       { cliVersion: "2.20.2", tagName: "codeql-bundle-v2.20.2" },
     ]);
-  },
-);
-
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases does not list caches when the gate is off",
-  async (t) => {
-    const listStub = sinon.stub(api, "listActionsCaches").resolves([]);
-
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, []);
-    t.assert(
-      listStub.notCalled,
-      "Should not list Actions caches when the gating feature flag is off.",
-    );
   },
 );
 

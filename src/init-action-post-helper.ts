@@ -44,7 +44,7 @@ import {
   getRequiredEnvParam,
   parseMatrixInput,
   Result,
-  shouldSkipSarifUpload,
+  shouldSkipGenerateFailedSarif,
   Success,
   wrapError,
 } from "./util";
@@ -115,7 +115,7 @@ async function prepareFailedSarif(
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
 
-  if (shouldSkipSarifUpload()) {
+  if (shouldSkipGenerateFailedSarif()) {
     return new Failure({
       upload_failed_run_skipped_because: "SARIF upload is disabled",
     });

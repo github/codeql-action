@@ -494,6 +494,45 @@ test("Failure.orElse returns the default value for a failure result", (t) => {
   t.is(result.orElse("default value"), "default value");
 });
 
+test("shouldSkipGenerateFailedSarif", (t) => {
+  const env = getTestEnv();
+
+  // Don't skip by default
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+
+  // Skip in test mode
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "true",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if not uploading SARIF
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Don't skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "false",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+});
+
 test("shouldSkipSarifUpload", (t) => {
   const env = getTestEnv();
 

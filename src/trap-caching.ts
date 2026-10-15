@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as actionsCache from "@actions/cache";
 
+import { type ActionState } from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
@@ -167,6 +168,25 @@ export async function uploadTrapCaches(
     );
   }
   return true;
+}
+
+/**
+ * Warns if the `CODEQL_ACTION_CLEANUP_TRAP_CACHES` environment variable is set to a non-empty
+ * value. That variable controlled the removed TRAP cache cleanup feature, so setting it has no
+ * effect.
+ */
+export function warnIfTrapCacheCleanupEnvVarIsSet({
+  env,
+  logger,
+}: ActionState<["Logger", "ReadOnlyEnv"]>): void {
+  if (env.getOptional("CODEQL_ACTION_CLEANUP_TRAP_CACHES") !== undefined) {
+    logger.warning(
+      "TRAP cache cleanup has been removed, so the CODEQL_ACTION_CLEANUP_TRAP_CACHES environment " +
+        "variable no longer has any effect and can be removed from your workflow. If you used TRAP " +
+        "cache cleanup to limit Actions cache usage, we recommend disabling TRAP caching instead by " +
+        "passing the `trap-caching: false` input to the `init` Action.",
+    );
+  }
 }
 
 export async function getLanguagesSupportingCaching(

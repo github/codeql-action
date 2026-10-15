@@ -10,7 +10,7 @@ import {
   runInActions,
 } from "./action-common";
 import * as actionsUtil from "./actions-util";
-import { getGitHubVersion } from "./api-client";
+import { getApiDetails, getGitHubVersion } from "./api-client";
 import { FeatureEnablement, initFeatures } from "./feature-flags";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { Logger } from "./logging";
@@ -104,9 +104,12 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
 
     // Start the Proxy
     const actionWithFeatures = extendActionState(action, { features });
-    const proxyBin = await getProxyBinaryPath(actionWithFeatures);
+    const proxyBin = await getProxyBinaryPath(
+      actionWithFeatures,
+      getApiDetails(action.env),
+    );
     const proxyInfo = await startProxy(
-      proxyBin,
+      proxyBin.path,
       proxyConfig,
       proxyLogFilePath,
       logger,
@@ -122,6 +125,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
         languages: language === undefined ? undefined : [language],
       },
       proxyConfig.all_credentials.map((c) => c.type),
+      { proxy_version: proxyBin.version },
       logger,
     );
   } catch (unwrappedError) {

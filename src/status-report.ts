@@ -23,7 +23,13 @@ import type { ComputedInput, InputName } from "./config/inputs";
 import { parseRegistriesWithoutCredentials } from "./config/pack-registries";
 import type { DependencyCacheRestoreStatusReport } from "./dependency-caching";
 import { DocUrl } from "./doc-url";
-import { EnvVar, getEnv, ReadOnlyEnv, RegistryProxyVars } from "./environment";
+import {
+  EnvVar,
+  getEnv,
+  ReadOnlyEnv,
+  RegistryProxyVars,
+  exportEnvVar,
+} from "./environment";
 import { getRef } from "./git-utils";
 import * as json from "./json";
 import type { Logger } from "./logging";
@@ -55,13 +61,21 @@ export enum ActionName {
   UploadSarif = "upload-sarif",
 }
 
+/** A partial mapping from `ActionName` to names for actions whose display name is not the `ActionName` value. */
+export const ACTION_DISPLAY_NAMES: Partial<Record<ActionName, string>> = {
+  [ActionName.Analyze]: "analyze",
+  [ActionName.InitPost]: "init post",
+};
+
 /**
- * Maps an `ActionName` to its display name. Usually that is the same, except
- * for `ActionName.Analyze` where it is `"analyze"` instead of `"finish"`.
+ * Maps an {@link ActionName} to its display name. Usually that is the same, except
+ * for actions which have a different display name in {@link ACTION_DISPLAY_NAMES}.
  */
 export function getDisplayActionName(actionName: ActionName): string {
-  if (actionName === ActionName.Analyze) {
-    return "analyze";
+  const displayName = ACTION_DISPLAY_NAMES[actionName];
+
+  if (displayName !== undefined) {
+    return displayName;
   }
   return actionName;
 }
@@ -71,9 +85,7 @@ export function getDisplayActionName(actionName: ActionName): string {
  * environment and returns it.
  * If a new UUID is generated, it is also exported as an environment variable.
  */
-export function getJobUUID(
-  action: ActionState<["Logger", "ReadOnlyEnv", "Actions"]>,
-) {
+export function getJobUUID(action: ActionState<["Logger", "Env", "Actions"]>) {
   // Check if we already have a UUID for the analysis and return it if so.
   const existingJobRunUuid = action.env.getOptional(EnvVar.JOB_RUN_UUID);
 
@@ -86,7 +98,7 @@ export function getJobUUID(
   const jobRunUuid = uuid.v4();
   action.logger.info(`Job run UUID is ${jobRunUuid}.`);
 
-  action.actions.exportVariable(EnvVar.JOB_RUN_UUID, jobRunUuid);
+  action.env.export(EnvVar.JOB_RUN_UUID, jobRunUuid);
   return jobRunUuid;
 }
 
@@ -268,12 +280,12 @@ export function getJobStatusDisplayName(status: JobStatus): string {
  */
 function setJobStatusIfUnsuccessful(actionStatus: ActionStatus) {
   if (actionStatus === "user-error") {
-    core.exportVariable(
+    exportEnvVar(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.ConfigErrorStatus,
     );
   } else if (actionStatus === "failure" || actionStatus === "aborted") {
-    core.exportVariable(
+    exportEnvVar(
       EnvVar.JOB_STATUS,
       process.env[EnvVar.JOB_STATUS] ?? JobStatus.FailureStatus,
     );
@@ -366,7 +378,7 @@ export async function createStatusReportBase(
   try {
     const commitOid =
       getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
-    const ref = await getRef();
+    const ref = await getRef(getEnv(), config?.repositoryRoot);
     const jobRunUUID = process.env[EnvVar.JOB_RUN_UUID] || "";
     const workflowRunID = getWorkflowRunID();
     const workflowRunAttempt = getWorkflowRunAttempt();
@@ -376,7 +388,7 @@ export async function createStatusReportBase(
     let workflowStartedAt = process.env[EnvVar.WORKFLOW_STARTED_AT];
     if (workflowStartedAt === undefined) {
       workflowStartedAt = actionStartedAt.toISOString();
-      core.exportVariable(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
+      exportEnvVar(EnvVar.WORKFLOW_STARTED_AT, workflowStartedAt);
     }
     const runnerOs = getRequiredEnvParam("RUNNER_OS");
     const codeQlCliVersion = getCachedCodeQlVersion(
@@ -388,7 +400,7 @@ export async function createStatusReportBase(
     // re-export the testing environment variable so that it is available to subsequent steps,
     // even if it was only set for this step
     if (testingEnvironment) {
-      core.exportVariable(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
+      exportEnvVar(EnvVar.TESTING_ENVIRONMENT, testingEnvironment);
     }
     const isSteadyStateDefaultSetupRun =
       process.env["CODE_SCANNING_IS_STEADY_STATE_DEFAULT_SETUP"] === "true";

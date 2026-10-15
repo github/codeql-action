@@ -55,25 +55,20 @@ test("getArtifactSuffix", (t) => {
   }
 });
 
-// These next tests check the correctness of the logic to determine whether or not
-// artifacts are uploaded in debug mode. Since it's not easy to mock the actual
-// call to upload an artifact, we just check that we get an "upload-failed" result,
-// instead of actually uploading the artifact.
-//
-// For tests where we expect artifact upload to be blocked, we check for a different
-// response from the function.
+// These next tests check whether `uploadArtifacts` attempts to upload an artifact. Since it's not
+// easy to mock the actual call to upload an artifact, we check that we get an "upload-failed"
+// result, instead of actually uploading the artifact.
 
-test("uploadDebugArtifacts when artifacts empty should emit 'no-artifacts-to-upload'", async (t) => {
+test("uploadArtifacts returns 'no-artifacts-to-upload' when there are no files to upload", async (t) => {
   // Test that no error is thrown if artifacts list is empty.
   const logger = getActionsLogger();
   await t.notThrowsAsync(async () => {
-    const uploaded = await debugArtifacts.uploadDebugArtifacts(
+    const uploaded = await debugArtifacts.uploadArtifacts(
       logger,
       [],
       "i-dont-exist",
       "artifactName",
       GitHubVariant.DOTCOM,
-      undefined,
     );
     t.is(
       uploaded,
@@ -83,64 +78,21 @@ test("uploadDebugArtifacts when artifacts empty should emit 'no-artifacts-to-upl
   });
 });
 
-test("uploadDebugArtifacts when no codeql version is used should invoke artifact upload", async (t) => {
-  // Test that the artifact is uploaded.
+test("uploadArtifacts attempts an upload when there are files to upload", async (t) => {
   const logger = getActionsLogger();
   await t.notThrowsAsync(async () => {
-    const uploaded = await debugArtifacts.uploadDebugArtifacts(
+    const uploaded = await debugArtifacts.uploadArtifacts(
       logger,
       ["hucairz"],
       "i-dont-exist",
       "artifactName",
       GitHubVariant.DOTCOM,
-      undefined,
     );
     t.is(
       uploaded,
       // The failure is expected since we don't want to actually upload any artifacts in unit tests.
       "upload-failed",
       "Expect failure to upload artifacts since root dir does not exist",
-    );
-  });
-});
-
-test("uploadDebugArtifacts when new codeql version is used should invoke artifact upload", async (t) => {
-  // Test that the artifact is uploaded.
-  const logger = getActionsLogger();
-  await t.notThrowsAsync(async () => {
-    const uploaded = await debugArtifacts.uploadDebugArtifacts(
-      logger,
-      ["hucairz"],
-      "i-dont-exist",
-      "artifactName",
-      GitHubVariant.DOTCOM,
-      "2.20.3",
-    );
-    t.is(
-      uploaded,
-      // The failure is expected since we don't want to actually upload any artifacts in unit tests.
-      "upload-failed",
-      "Expect failure to upload artifacts since root dir does not exist",
-    );
-  });
-});
-
-test("uploadDebugArtifacts when old codeql is used should avoid trying to upload artifacts", async (t) => {
-  // Test that the artifact is not uploaded.
-  const logger = getActionsLogger();
-  await t.notThrowsAsync(async () => {
-    const uploaded = await debugArtifacts.uploadDebugArtifacts(
-      logger,
-      ["hucairz"],
-      "i-dont-exist",
-      "artifactName",
-      GitHubVariant.DOTCOM,
-      "2.20.2",
-    );
-    t.is(
-      uploaded,
-      "upload-not-supported",
-      "Expected artifact upload to be blocked because of old CodeQL version",
     );
   });
 });

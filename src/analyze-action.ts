@@ -49,11 +49,7 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
-import {
-  cleanupTrapCaches,
-  TrapCacheCleanupStatusReport,
-  uploadTrapCaches,
-} from "./trap-caching";
+import { uploadTrapCaches } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import { postProcessAndUploadSarif } from "./upload-sarif";
@@ -86,7 +82,6 @@ async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
-  trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   dependencyCacheResults: DependencyCacheUploadStatusReport | undefined,
   databaseUploadResults: DatabaseUploadResult[],
   logger: Logger,
@@ -107,7 +102,6 @@ async function sendStatusReport(
       ...statusReportBase,
       ...(stats || {}),
       ...(dbCreationTimings || {}),
-      ...(trapCacheCleanup || {}),
       dependency_caching_upload_results: dependencyCacheResults,
       database_upload_results: databaseUploadResults,
     };
@@ -229,8 +223,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
-  let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
-    undefined;
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
@@ -415,13 +407,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
-    // Clean up TRAP caches
-    trapCacheCleanupTelemetry = await cleanupTrapCaches(
-      config,
-      features,
-      logger,
-    );
-
     // Store dependency cache(s) if dependency caching is enabled.
     if (shouldStoreCache(config.dependencyCachingEnabled)) {
       dependencyCacheResults = await uploadDependencyCaches(
@@ -471,7 +456,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -494,7 +478,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -508,7 +491,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -522,7 +504,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,

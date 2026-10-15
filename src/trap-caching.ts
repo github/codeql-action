@@ -4,21 +4,12 @@ import * as path from "path";
 import * as actionsCache from "@actions/cache";
 
 import * as actionsUtil from "./actions-util";
-import * as apiClient from "./api-client";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
-import { DocUrl } from "./doc-url";
-import { Feature, FeatureEnablement } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { Language } from "./languages";
 import { Logger } from "./logging";
-import {
-  asHTTPError,
-  getEnv,
-  getErrorMessage,
-  tryGetFolderBytes,
-  waitForResultWithTimeLimit,
-} from "./util";
+import { getEnv, tryGetFolderBytes, waitForResultWithTimeLimit } from "./util";
 
 // This constant should be bumped if we make a breaking change
 // to how the CodeQL Action stores or retrieves the TRAP cache,
@@ -176,113 +167,6 @@ export async function uploadTrapCaches(
     );
   }
   return true;
-}
-
-export interface TrapCacheCleanupStatusReport {
-  trap_cache_cleanup_error?: string;
-  trap_cache_cleanup_size_bytes?: number;
-  trap_cache_cleanup_skipped_because?: string;
-}
-
-export async function cleanupTrapCaches(
-  config: Config,
-  features: FeatureEnablement,
-  logger: Logger,
-): Promise<TrapCacheCleanupStatusReport> {
-  const env = getEnv();
-
-  if (!(await features.getValue(Feature.CleanupTrapCaches))) {
-    return {
-      trap_cache_cleanup_skipped_because: "feature disabled",
-    };
-  }
-  logger.warning(
-    "TRAP cache cleanup is deprecated and will be removed in May 2026. " +
-      "We recommend instead disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action.",
-  );
-  if (!(await gitUtils.isAnalyzingDefaultBranch(env, config.repositoryRoot))) {
-    return {
-      trap_cache_cleanup_skipped_because: "not analyzing default branch",
-    };
-  }
-
-  try {
-    let totalBytesCleanedUp = 0;
-
-    const allCaches = await apiClient.listActionsCaches(
-      CODEQL_TRAP_CACHE_PREFIX,
-      await gitUtils.getRef(env, config.repositoryRoot),
-    );
-
-    for (const language of config.languages) {
-      if (config.trapCaches[language]) {
-        const cachesToRemove = await getTrapCachesForLanguage(
-          allCaches,
-          language,
-          logger,
-        );
-        // Dates returned by the API are in ISO 8601 format, so we can sort them lexicographically
-        cachesToRemove.sort((a, b) => a.created_at.localeCompare(b.created_at));
-        // Keep the most recent cache
-        const mostRecentCache = cachesToRemove.pop();
-        logger.debug(
-          `Keeping most recent TRAP cache (${JSON.stringify(mostRecentCache)})`,
-        );
-
-        if (cachesToRemove.length === 0) {
-          logger.info(`No TRAP caches to clean up for ${language}.`);
-          continue;
-        }
-
-        for (const cache of cachesToRemove) {
-          logger.debug(`Cleaning up TRAP cache (${JSON.stringify(cache)})`);
-          await apiClient.deleteActionsCache(cache.id);
-        }
-        const bytesCleanedUp = cachesToRemove.reduce(
-          (acc, item) => acc + item.size_in_bytes,
-          0,
-        );
-        totalBytesCleanedUp += bytesCleanedUp;
-        const megabytesCleanedUp = (bytesCleanedUp / (1024 * 1024)).toFixed(2);
-        logger.info(
-          `Cleaned up ${megabytesCleanedUp} MiB of old TRAP caches for ${language}.`,
-        );
-      }
-    }
-    return { trap_cache_cleanup_size_bytes: totalBytesCleanedUp };
-  } catch (e) {
-    if (asHTTPError(e)?.status === 403) {
-      logger.warning(
-        "Could not cleanup TRAP caches as the token did not have the required permissions. " +
-          'To clean up TRAP caches, ensure the token has the "actions:write" permission. ' +
-          `See ${DocUrl.ASSIGNING_PERMISSIONS_TO_JOBS} for more information.`,
-      );
-    } else {
-      logger.info(`Failed to cleanup TRAP caches, continuing. Details: ${e}`);
-    }
-    return { trap_cache_cleanup_error: getErrorMessage(e) };
-  }
-}
-
-async function getTrapCachesForLanguage(
-  allCaches: apiClient.ActionsCacheItem[],
-  language: Language,
-  logger: Logger,
-): Promise<Array<Required<apiClient.ActionsCacheItem>>> {
-  logger.debug(`Listing TRAP caches for ${language}`);
-
-  for (const cache of allCaches) {
-    if (!cache.created_at || !cache.id || !cache.key || !cache.size_in_bytes) {
-      throw new Error(
-        "An unexpected cache item was returned from the API that was missing one or " +
-          `more required fields: ${JSON.stringify(cache)}`,
-      );
-    }
-  }
-
-  return allCaches.filter((cache) => {
-    return cache.key?.includes(`-${language}-`);
-  }) as Array<Required<apiClient.ActionsCacheItem>>;
 }
 
 export async function getLanguagesSupportingCaching(

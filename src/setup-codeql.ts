@@ -183,19 +183,14 @@ async function findOverridingToolsInCache(
 
 /**
  * Returns the sorted set of enabled versions that have cached overlay-base databases for the
- * given languages, or an empty list if the `OverlayAnalysisMatchCodeqlVersion` feature flag is
- * disabled.
+ * given languages.
  */
 export async function getEnabledVersionsWithOverlayBaseDatabases(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLVersionInfo[]> {
   if (rawLanguages === undefined || rawLanguages.length === 0) {
-    return [];
-  }
-  if (!(await features.getValue(Feature.OverlayAnalysisMatchCodeqlVersion))) {
     return [];
   }
 
@@ -231,24 +226,30 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
 
 /**
  * Resolves the newest enabled default CLI version that has a cached overlay-base database for the
- * relevant languages, if running a Code Scanning analysis for a pull request and one exists.
- * Otherwise, falls back to the newest enabled default CLI version.
+ * relevant languages, if running a Code Scanning analysis for a pull request with multiple enabled
+ * default versions in a supported environment and one exists. Otherwise, falls back to the newest
+ * enabled default CLI version.
  */
 async function resolveDefaultCliVersion(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
-  features: FeatureEnablement,
+  variant: util.GitHubVariant,
   logger: Logger,
 ): Promise<CodeQLVersionInfo> {
-  if (!useOverlayAwareDefaultCliVersion || !isAnalyzingPullRequest()) {
+  if (
+    !useOverlayAwareDefaultCliVersion ||
+    (variant !== util.GitHubVariant.DOTCOM &&
+      variant !== util.GitHubVariant.GHEC_DR) ||
+    defaultCliVersion.enabledVersions.length === 1 ||
+    !isAnalyzingPullRequest()
+  ) {
     return defaultCliVersion.enabledVersions[0];
   }
 
   const overlayVersions = await getEnabledVersionsWithOverlayBaseDatabases(
     defaultCliVersion,
     rawLanguages,
-    features,
     logger,
   );
   if (overlayVersions.length > 0) {
@@ -445,7 +446,7 @@ export async function getCodeQLSource(
         defaultCliVersion,
         rawLanguages,
         useOverlayAwareDefaultCliVersion,
-        features,
+        variant,
         logger,
       );
       cliVersion = version.cliVersion;
@@ -468,7 +469,7 @@ export async function getCodeQLSource(
       defaultCliVersion,
       rawLanguages,
       useOverlayAwareDefaultCliVersion,
-      features,
+      variant,
       logger,
     );
     cliVersion = version.cliVersion;

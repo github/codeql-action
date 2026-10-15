@@ -15,6 +15,7 @@ import * as configUtils from "./config-utils";
 import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
 import {
+  callee,
   createTestConfig,
   getRecordingLogger,
   makeVersionInfo,
@@ -24,6 +25,7 @@ import {
   downloadTrapCaches,
   getLanguagesSupportingCaching,
   uploadTrapCaches,
+  warnIfTrapCacheCleanupEnvVarIsSet,
 } from "./trap-caching";
 import * as util from "./util";
 
@@ -194,3 +196,28 @@ test.serial(
     });
   },
 );
+
+// `CODEQL_ACTION_CLEANUP_TRAP_CACHES` has no effect with either value, so we warn even when it's
+// set to `false`.
+for (const value of ["true", "false"]) {
+  test(`warnIfTrapCacheCleanupEnvVarIsSet warns when CODEQL_ACTION_CLEANUP_TRAP_CACHES is '${value}'`, async (t) => {
+    const target = callee(warnIfTrapCacheCleanupEnvVarIsSet)
+      .withEnv((env) => env.set("CODEQL_ACTION_CLEANUP_TRAP_CACHES", value))
+      .withArgs()
+      .logs(
+        t,
+        "CODEQL_ACTION_CLEANUP_TRAP_CACHES environment variable no longer has any effect",
+      );
+    await target.passes(t.is, undefined);
+    t.deepEqual(
+      target.getLogger().messages.map((m) => m.type),
+      ["warning"],
+    );
+  });
+}
+
+test("warnIfTrapCacheCleanupEnvVarIsSet doesn't warn when CODEQL_ACTION_CLEANUP_TRAP_CACHES is unset", async (t) => {
+  const target = callee(warnIfTrapCacheCleanupEnvVarIsSet).withArgs();
+  await target.passes(t.is, undefined);
+  t.deepEqual(target.getLogger().messages, []);
+});

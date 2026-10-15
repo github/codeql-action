@@ -49,7 +49,10 @@ import {
   getActionsStatus,
   StatusReportBase,
 } from "./status-report";
-import { uploadTrapCaches } from "./trap-caching";
+import {
+  uploadTrapCaches,
+  warnIfTrapCacheCleanupEnvVarIsSet,
+} from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
 import { postProcessAndUploadSarif } from "./upload-sarif";
@@ -269,6 +272,8 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
           "manages database cleanup. This input can safely be removed from your workflow.",
       );
     }
+
+    warnIfTrapCacheCleanupEnvVarIsSet(action);
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");

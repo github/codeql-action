@@ -2,6 +2,13 @@
 
 See the [releases page](https://github.com/github/codeql-action/releases) for the relevant changes to the CodeQL CLI and language packs.
 
+## 3.39.0 - 15 Oct 2026
+
+- _Breaking change_: Bump the minimum required CodeQL bundle version to 2.20.7. [#4205](https://github.com/github/codeql-action/pull/4205)
+- The `codeql-action/analyze` step now validates that a correct argument for the `checkout_path` input has been provided. The `checkout_path` input must be set to the path where the repository that is being analyzed is checked out at on the runner, if that path is something other than the workspace root. If the path does not point to a repository checkout or is different from the path that was used by `codeql-action/init`, then the CodeQL Action now produces a warning. [#4148](https://github.com/github/codeql-action/pull/4148)
+- Resolved an issue with third-party caching implementations that prevented caches from being restored correctly. [#4206](https://github.com/github/codeql-action/pull/4206)
+- The `codeql-action/start-proxy` step that is used in Code Scanning Default Setup now finds CodeQL releases using the same logic as `codeql-action/init`. This primarily benefits customers who are using GitHub instances other than `github.com` where the `codeql-action/start-proxy` step may previously have been unable to locate recent releases and ended up using outdated versions of the private registry authentication proxy as a result. [#4198](https://github.com/github/codeql-action/pull/4198)
+
 ## 3.38.3 - 08 Oct 2026
 
 - _Upcoming breaking change_: CodeQL version 2.21.2 and earlier were discontinued on 24 September 2026 alongside GitHub Enterprise Server 3.17, and will be unsupported by the next minor release of the CodeQL Action. Added a deprecation warning for customers using these versions of CodeQL. [#4188](https://github.com/github/codeql-action/pull/4188)

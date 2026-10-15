@@ -10,7 +10,6 @@ operatingSystems:
   - os: macos
     runner-image: macos-15-xlarge
     codeql-versions:
-      - stable-v2.19.4
       - stable-v2.20.7
       - stable-v2.21.4
       - stable-v2.22.4

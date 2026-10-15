@@ -23,7 +23,13 @@ import { parseArgs } from "node:util";
 
 import { type ApiClient, getApiClient } from "./api-client";
 import * as changelog from "./changelog";
-import { DryRunOption, REPO_ROOT } from "./config";
+import { transferChangenotesToChangelog } from "./changenotes";
+import {
+  CHANGELOG_FILE,
+  CHANGENOTES_DIR,
+  DryRunOption,
+  REPO_ROOT,
+} from "./config";
 import {
   getCurrentVersion,
   replaceVersionInPackageJson,
@@ -693,11 +699,14 @@ export async function prepareNewBranch(
 
     console.log("Updating changelog");
     changelog.withChangelog(
-      (contents) => changelog.setVersionAndDate(version, contents),
+      (contents) => {
+        const populatedContents = transferChangenotesToChangelog(contents);
+        return changelog.setVersionAndDate(version, populatedContents);
+      },
       { ...options, initChangelog: true },
     );
 
-    runGit(["add", "CHANGELOG.md"], {
+    runGit(["add", CHANGELOG_FILE, CHANGENOTES_DIR], {
       dryRun: options.dryRun,
     });
     runGit(["commit", "-m", `Update changelog for v${version}`], {

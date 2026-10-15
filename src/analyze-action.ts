@@ -4,12 +4,18 @@ import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import {
   CodeQLAnalysisError,
   dbIsFinalized,
+  determineCheckoutPath,
   QueriesStatusReport,
   runFinalize,
   runQueries,
@@ -212,13 +218,11 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
-async function run({
-  startedAt,
-  logger,
-  actions,
-}: ActionState<["Base", "Logger", "Actions"]>) {
+async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const startedAt = action.startedAt;
+  const logger = action.logger;
 
   let uploadResults:
     | Partial<Record<analyses.AnalysisKind, UploadResult>>
@@ -267,17 +271,6 @@ async function run({
       );
     }
 
-    // Unset the CODEQL_PROXY_* environment variables when using older CodeQL
-    // CLIs, as they are not needed and can cause issues.
-    if (
-      process.env.CODEQL_PROXY_HOST === "" &&
-      !(await util.codeQlVersionAtLeast(codeql, "2.20.7"))
-    ) {
-      delete process.env.CODEQL_PROXY_HOST;
-      delete process.env.CODEQL_PROXY_PORT;
-      delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
-    }
-
     if (actionsUtil.getOptionalInput("cleanup-level")) {
       logger.info(
         "The 'cleanup-level' input is ignored since the CodeQL Action now automatically " +
@@ -287,7 +280,7 @@ async function run({
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
-    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
+    action.env.export(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,
@@ -311,7 +304,7 @@ async function run({
       logger,
     );
 
-    const checkoutPath = actions.getRequiredInput("checkout_path");
+    const checkoutPath = await determineCheckoutPath(action, config);
 
     // Setup diff informed analysis if needed (based on whether init created the file)
     const diffRangePackDir = await setupDiffInformedQueryRun(
@@ -403,11 +396,13 @@ async function run({
       checkoutPath,
     );
 
+    const actionWithFeatures = extendActionState(action, { features });
+
     // Possibly upload the database bundles for remote queries.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
     databaseUploadResults = await cleanupAndUploadDatabases(
-      { logger, features },
+      actionWithFeatures,
       repositoryNwo,
       codeql,
       config,
@@ -456,7 +451,7 @@ async function run({
         `expect-error input was set to true but no error was thrown.`,
       );
     }
-    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+    action.env.export(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     if (

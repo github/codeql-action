@@ -685,6 +685,21 @@ export function isGoodVersion(versionSpec: string) {
 }
 
 /**
+ * Returns whether we specifically want to skip generating a failed SARIF.
+ */
+export function shouldSkipGenerateFailedSarif(
+  env: ReadOnlyEnv = getEnv(),
+): boolean {
+  const skipGenerateFailedSarif = env.getOptional(
+    EnvVar.SKIP_GENERATE_FAILED_SARIF,
+  );
+  return (
+    skipGenerateFailedSarif !== "false" &&
+    (shouldSkipSarifUpload(env) || skipGenerateFailedSarif === "true")
+  );
+}
+
+/**
  * Returns whether we specifically want to skip uploading SARIF files.
  */
 export function shouldSkipSarifUpload(env: ReadOnlyEnv = getEnv()): boolean {

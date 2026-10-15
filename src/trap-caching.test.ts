@@ -182,6 +182,7 @@ test.serial(
         stubCodeql,
         [BuiltInLanguage.javascript, BuiltInLanguage.cpp],
         logger,
+        undefined,
       );
       t.assert(
         stubRestore.calledOnceWith(

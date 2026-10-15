@@ -163,6 +163,46 @@ export function setupTests(testFn: TestFn<any>) {
   });
 }
 
+export interface AvaSinonAssertions {
+  /**
+   * Asserts that `stub` must have been called once with at least the `expected` arguments.
+   */
+  onceWith: <TArgs extends readonly any[]>(
+    stub: sinon.SinonStub<TArgs>,
+    ...expected: sinon.MatchPartialArguments<TArgs>
+  ) => boolean;
+}
+
+/** Adds additional assertions for use with `sinon` to `t`. */
+export function addSinonAssertions(
+  t: ExecutionContext<unknown>,
+): ExecutionContext<unknown> & AvaSinonAssertions {
+  return {
+    ...t,
+    onceWith: <TArgs extends readonly any[]>(
+      stub: sinon.SinonStub<TArgs>,
+      ...expected: sinon.MatchPartialArguments<TArgs>
+    ) => {
+      // Fail if the stub hasn't been called at all so that we can safely compare
+      // the arguments of the first call in the else branch.
+      if (stub.callCount === 0) {
+        t.fail("The stub wasn't called.");
+      } else {
+        // Reduce the arguments of each to the same number that was provided,
+        // so that extra arguments don't lead to a failure.
+        const actual = stub.args.map<sinon.MatchPartialArguments<TArgs>>(
+          (args: TArgs) =>
+            args.slice(
+              0,
+              expected.length,
+            ) as sinon.MatchPartialArguments<TArgs>,
+        );
+        return t.deepEqual(actual, [expected]);
+      }
+    },
+  };
+}
+
 /**
  * Declare a reusable test implementation, with better type safety than `test.macro`.
  */
@@ -967,6 +1007,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
     {},
     {
       version: getActionVersion(),
+      repositoryRoot: undefined,
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
       buildMode: undefined,

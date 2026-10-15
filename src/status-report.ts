@@ -378,7 +378,7 @@ export async function createStatusReportBase(
   try {
     const commitOid =
       getOptionalInput("sha") || process.env["GITHUB_SHA"] || "";
-    const ref = await getRef();
+    const ref = await getRef(getEnv(), config?.repositoryRoot);
     const jobRunUUID = process.env[EnvVar.JOB_RUN_UUID] || "";
     const workflowRunID = getWorkflowRunID();
     const workflowRunAttempt = getWorkflowRunAttempt();

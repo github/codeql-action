@@ -93,7 +93,7 @@ export function getActionVersion(): string {
  *
  * This will be "dynamic" for default setup workflow runs.
  */
-export function getWorkflowEventName(env: Env = getEnv()) {
+export function getWorkflowEventName(env: ReadOnlyEnv = getEnv()) {
   return env.getRequired(ActionsEnvVars.GITHUB_EVENT_NAME);
 }
 
@@ -101,7 +101,7 @@ export function getWorkflowEventName(env: Env = getEnv()) {
  * Returns whether the current workflow is executing a local copy of the Action, e.g. we're running
  * a workflow on the codeql-action repo itself.
  */
-export function isRunningLocalAction(env: Env = getEnv()): boolean {
+export function isRunningLocalAction(env: ReadOnlyEnv = getEnv()): boolean {
   const relativeScriptPath = getRelativeScriptPath(env);
   return (
     relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)
@@ -113,14 +113,14 @@ export function isRunningLocalAction(env: Env = getEnv()): boolean {
  *
  * This can be used to get the Action's name or tell if we're running a local Action.
  */
-function getRelativeScriptPath(env: Env): string {
+function getRelativeScriptPath(env: ReadOnlyEnv): string {
   const runnerTemp = env.getRequired(ActionsEnvVars.RUNNER_TEMP);
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
 }
 
 /** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
-export function getWorkflowEvent(env: Env = getEnv()): any {
+export function getWorkflowEvent(env: ReadOnlyEnv = getEnv()): any {
   const eventJsonFile = env.getRequired(ActionsEnvVars.GITHUB_EVENT_PATH);
   try {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));

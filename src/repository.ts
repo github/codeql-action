@@ -6,6 +6,14 @@ export interface RepositoryNwo {
   repo: string;
 }
 
+/** An approximation of what a repository NWO string looks like. */
+export type RepositoryNwoStr = `${string}/${string}`;
+
+/** A basic check that `val` looks like a `RepositoryNwoStr`. */
+export function isRepositoryNwoStr(val: string): val is RepositoryNwoStr {
+  return val.includes("/");
+}
+
 /**
  * Get the repository name with owner from the environment variable
  * `GITHUB_REPOSITORY`.

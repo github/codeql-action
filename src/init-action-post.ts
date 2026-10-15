@@ -114,7 +114,10 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
       // do this under these circumstances to avoid slowing down analyses for PRs
       // and where caching may not be enabled.
       if (
-        (await gitUtils.isAnalyzingDefaultBranch()) &&
+        (await gitUtils.isAnalyzingDefaultBranch(
+          action.env,
+          config.repositoryRoot,
+        )) &&
         hasConfigKey(config, "dependencyCachingEnabled") &&
         config.dependencyCachingEnabled !== CachingKind.None
       ) {

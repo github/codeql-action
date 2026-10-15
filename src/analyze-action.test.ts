@@ -45,6 +45,7 @@ test.serial(
       requiredInputStub.withArgs("token").returns("fake-token");
       requiredInputStub.withArgs("upload-database").returns("false");
       requiredInputStub.withArgs("output").returns("out");
+      requiredInputStub.withArgs("checkout_path").returns("");
       const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
       optionalInputStub.withArgs("expect-error").returns("false");
       sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);
@@ -104,6 +105,7 @@ test.serial(
       requiredInputStub.withArgs("token").returns("fake-token");
       requiredInputStub.withArgs("upload-database").returns("false");
       requiredInputStub.withArgs("output").returns("out");
+      requiredInputStub.withArgs("checkout_path").returns("");
       const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
       optionalInputStub.withArgs("expect-error").returns("false");
       sinon.stub(api, "getGitHubVersion").resolves(gitHubVersion);

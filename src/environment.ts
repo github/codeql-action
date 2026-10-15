@@ -346,6 +346,13 @@ export class Env<
     this.changed = true;
   }
 
+  /** Sets all environment variables given by `vars`. */
+  public setAll(vars: Record<string, T>): void {
+    for (const [key, val] of Object.entries(vars)) {
+      this.set(key, val);
+    }
+  }
+
   /**
    * Wrapper around `core.exportVariable` which does not call `core.exportVariable`
    * when running unit tests. This is important, because otherwise `core.exportVariable`

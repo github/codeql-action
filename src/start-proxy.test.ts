@@ -935,17 +935,17 @@ test.serial(
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
       const features = mockOfflineFeatures(tempDir, logger);
-      const path = await startProxyExports.getProxyBinaryPath(
+      const result = await startProxyExports.getProxyBinaryPath(
         initAllState({ logger, features }),
         SAMPLE_DOTCOM_API_DETAILS,
       );
 
-      t.assert(path);
+      t.assert(result);
       t.is(
-        path.path,
+        result.path,
         filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
       );
-      t.is(path.version, defaults.cliVersion);
+      t.is(result.version, defaults.cliVersion);
     });
   },
 );
@@ -982,7 +982,7 @@ test.serial(
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
     state.env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "test/repo");
 
-    const path = await startProxyExports.getProxyBinaryPath(
+    const result = await startProxyExports.getProxyBinaryPath(
       {
         ...state,
         features: createFeatures([]),
@@ -999,12 +999,12 @@ test.serial(
     st.onceWith(extractTar, archivePath);
     st.onceWith(cacheDir, extractedPath);
 
-    t.assert(path);
+    t.assert(result);
     t.is(
-      path.path,
+      result.path,
       filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
     );
-    t.is(path.version, defaults.cliVersion);
+    t.is(result.version, defaults.cliVersion);
 
     checkExpectedLogMessages(t, logger.messages, [
       `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://github.com with URL ${downloadUrl}`,
@@ -1080,7 +1080,7 @@ test.serial(
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
       state.env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "test/repo");
 
-      const path = await startProxyExports.getProxyBinaryPath(
+      const result = await startProxyExports.getProxyBinaryPath(
         {
           ...state,
           features,
@@ -1098,12 +1098,12 @@ test.serial(
       st.onceWith(extractTar, archivePath);
       st.onceWith(cacheDir, extractedPath);
 
-      t.assert(path);
+      t.assert(result);
       t.is(
-        path.path,
+        result.path,
         filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
       );
-      t.is(path.version, expectedVersion);
+      t.is(result.version, expectedVersion);
     });
 
     checkExpectedLogMessages(t, logger.messages, [

@@ -22,6 +22,12 @@ The main codebase of the CodeQL Action is written in TypeScript and compiled to 
 
 GitHub Actions workflows in the `.github/workflows` directory whose filenames start with two underscores (e.g. `__all-platform-bundle.yml`) are automatically generated using the `pr-checks/sync.sh` script from template files in the `pr-checks/checks` directory. Therefore, you do not need to review files in the `.github/workflows` directory that start with two underscores. However, you should review changes to the `pr-checks` directory as well as workflows in the `.github/workflows` directory that do not start with underscores.
 
+## Feature flags
+
+Some functionality in the code may be gated behind feature flags, which are controlled server-side. If the functionality that is gated behind them is user-facing, then this should be documented in a change note at the time that the gated functionality is added. See `CHANGELOG.md` for existing notes that mention "experimental" for examples. These typically include information about when users may expect to see the feature rolled out.
+
+When a feature flag that gates some functionality is removed, this does not need to be documented in a change note since the feature is already rolled out and the notes for the release which introduced the feature already describes it.
+
 ## Release process
 
 Changes that are merged to the `main` branch are not used in production straight away. Instead, changes from `main` must first be released using the release process, which has to be manually triggered by a staff member. Therefore, it is possible for further changes to be made to the code after some changes have been merged to `main` but before they are released. Once the release process automation is started, a series of PRs are automatically generated:

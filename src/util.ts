@@ -24,8 +24,8 @@ import {
   type Env,
 } from "./environment";
 import { ConfigurationError, getErrorMessage, wrapError } from "./errors";
-import { Language } from "./languages";
-import { Logger } from "./logging";
+import type { Language } from "./languages";
+import type { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
 export * from "./errors";

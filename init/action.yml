@@ -154,6 +154,9 @@ inputs:
   trap-caching:
     description: >-
       Explicitly enable or disable TRAP caching instead of using the automatically determined default.
+      TRAP caching is disabled by default when improved incremental analysis is enabled,
+      because improved incremental analysis of a pull request only extracts changed files,
+      which rarely benefit from TRAP caching.
     required: false
   dependency-caching:
     description: >-

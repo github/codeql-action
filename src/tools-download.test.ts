@@ -10,6 +10,7 @@ import { https } from "follow-redirects";
 import nock from "nock";
 import * as sinon from "sinon";
 
+import * as errors from "./errors";
 import { getRunnerLogger } from "./logging";
 import * as tar from "./tar";
 import { setupTests } from "./testing-utils";
@@ -164,7 +165,7 @@ test.serial(
 test.serial(
   "downloadAndExtract handles an unknown status as a non-HTTP error",
   async (t) => {
-    const asHTTPError = sinon.spy(util, "asHTTPError");
+    const asHTTPError = sinon.spy(errors, "asHTTPError");
     await util.withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
       const archivePath = path.join(tmpDir, "codeql-bundle.tar.zst");

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
+import * as semver from "semver";
 
 import {
   CommandInvocationError,
@@ -19,6 +20,7 @@ import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar, getEnv, exportEnvVar } from "./environment";
+import { getErrorMessage, isDiskConfigurationError } from "./errors";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -34,7 +36,9 @@ import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, CleanupLevel, getErrorMessage } from "./util";
+import { BuildMode, CleanupLevel } from "./util";
+
+export { isDiskConfigurationError } from "./errors";
 
 type Options = Array<string | number | boolean>;
 
@@ -70,6 +74,11 @@ export interface CodeQL {
    * Get a string containing the semver version of the CodeQL executable.
    */
   getVersion(): Promise<VersionInfo>;
+  /**
+   * Determines whether the CLI installation represented by this {@link CodeQL} instance
+   * has at least the {@link requiredVersion}.
+   */
+  isVersionAtLeast(requiredVersion: string): Promise<boolean>;
   /**
    * Print version information about CodeQL.
    */
@@ -275,26 +284,6 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-09-24";
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
 
 /**
- * Decides whether `e` is a disk-related error outside of our control
- * that should be classified as a `ConfigurationError`.
- *
- * @param e The error to check.
- * @returns True if the error should be treated as a `ConfigurationError` or false if not.
- */
-export function isDiskConfigurationError(e: unknown): boolean {
-  if (!(e instanceof Error)) {
-    return false;
-  }
-
-  return (
-    // out of disk space
-    e.message.includes("ENOSPC") ||
-    // access denied
-    e.message.includes("EACCES")
-  );
-}
-
-/**
  * Set up CodeQL CLI access.
  *
  * @param toolsInput
@@ -431,6 +420,19 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     getVersion: resolveFunction(partialCodeql, "getVersion", async () => ({
       version: "1.0.0",
     })),
+    isVersionAtLeast: resolveFunction(
+      partialCodeql,
+      "codeQlVersionAtLeast",
+      async (requiredVersion) => {
+        return (
+          !!partialCodeql.getVersion &&
+          semver.gte(
+            (await partialCodeql.getVersion()).version,
+            requiredVersion,
+          )
+        );
+      },
+    ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     supportsFeature: resolveFunction(
       partialCodeql,
@@ -533,6 +535,9 @@ async function getCodeQLForCmd(
         outputCache.cacheCodeQlVersion(cacheFilePath, cmd, result);
       }
       return result;
+    },
+    async isVersionAtLeast(requiredVersion: string) {
+      return semver.gte((await this.getVersion()).version, requiredVersion);
     },
     async printVersion() {
       // Reuse the cached version information rather than invoking the CLI again.
@@ -1028,7 +1033,7 @@ async function getCodeQLForCmd(
   // CodeQL object is created.
   if (
     checkVersion &&
-    !(await util.codeQlVersionAtLeast(codeql, CODEQL_MINIMUM_VERSION))
+    !(await codeql.isVersionAtLeast(CODEQL_MINIMUM_VERSION))
   ) {
     throw new util.ConfigurationError(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
@@ -1038,7 +1043,7 @@ async function getCodeQLForCmd(
   } else if (
     checkVersion &&
     process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
-    !(await util.codeQlVersionAtLeast(codeql, CODEQL_NEXT_MINIMUM_VERSION))
+    !(await codeql.isVersionAtLeast(CODEQL_NEXT_MINIMUM_VERSION))
   ) {
     const result = await codeql.getVersion();
     core.warning(

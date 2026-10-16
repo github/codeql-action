@@ -88,12 +88,10 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
-  codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getCodeQLMemoryLimit,
   getThreadsFlagValue,
-  initializeEnvironment,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -226,7 +224,7 @@ async function run(
   let toolsVersion: string;
 
   try {
-    initializeEnvironment(getActionVersion());
+    actionState.env.initialise(getActionVersion());
 
     // Make inputs accessible in the `post` step.
     persistInputs();
@@ -686,7 +684,7 @@ async function run(
         `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
       );
     } else if (
-      (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
+      (await codeql.isVersionAtLeast(CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
       config.languages.includes(BuiltInLanguage.java)

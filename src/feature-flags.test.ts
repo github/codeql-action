@@ -4,6 +4,7 @@ import * as path from "path";
 import test from "ava";
 
 import * as defaults from "./defaults.json";
+import { getEnv } from "./environment";
 import {
   Feature,
   featureConfig,
@@ -26,12 +27,12 @@ import {
   setupTests,
   stubFeatureFlagApiEndpoint,
 } from "./testing-utils";
-import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
+import { GitHubVariant, withTmpDir } from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment("1.2.3");
+  getEnv().initialise("1.2.3");
 });
 
 test.serial(

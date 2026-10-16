@@ -6,7 +6,6 @@ import * as sinon from "sinon";
 import * as actionsUtil from "../actions-util";
 import { ActionsEnvVars } from "../environment";
 import { callee, getTestEnv, setupTests } from "../testing-utils";
-import { initializeEnvironment } from "../util";
 
 import { getCodeQLActionRepository } from "./repository";
 
@@ -16,7 +15,7 @@ test.serial("getCodeQLActionRepository", async (t) => {
   const initialEnv = getTestEnv({
     [ActionsEnvVars.RUNNER_TEMP]: path.dirname(__dirname),
   });
-  initializeEnvironment("1.2.3", initialEnv);
+  initialEnv.initialise("1.2.3");
 
   const target = callee(getCodeQLActionRepository)
     .withArgs()

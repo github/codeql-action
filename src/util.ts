@@ -565,13 +565,6 @@ export function initializeEnvironment(version: string, env: Env = getEnv()) {
   env.export(EnvVar.VERSION, version);
 }
 
-export async function codeQlVersionAtLeast(
-  codeql: CodeQL,
-  requiredVersion: string,
-): Promise<boolean> {
-  return semver.gte((await codeql.getVersion()).version, requiredVersion);
-}
-
 export function getBaseDatabaseOidsFilePath(
   config: ActionConfig<"dbLocation">,
 ): string {

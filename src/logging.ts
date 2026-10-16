@@ -7,11 +7,47 @@ export type Loggable = string | string[];
 export type LoggableError = Loggable | Error;
 
 export interface Logger {
+  /**
+   * Logs {@link message} at debug-level.
+   * In Actions, this will only be output if workflow debugging is enabled.
+   *
+   * @param message
+   *    A string or an array of strings. If an array of strings is provided, they are joined using
+   *    space as the delimiter and printed as a single line.
+   */
   debug: (message: Loggable) => void;
+  /**
+   * Logs {@link message} at info-level.
+   * In Actions, this will always be output.
+   *
+   * @param message
+   *    A string or an array of strings. If an array of strings is provided, they are joined using
+   *    space as the delimiter and printed as a single line.
+   */
   info: (message: Loggable) => void;
+  /**
+   * Logs {@link message} at warning-level.
+   * In Actions, this will always be output and highlighted as a warning. It will additionally
+   * result in a warning-level workflow annotation.
+   *
+   * @param message
+   *    A string or an array of strings. If an array of strings is provided, they are joined using
+   *    space as the delimiter and printed as a single line.
+   */
   warning: (message: LoggableError) => void;
+  /**
+   * Logs {@link message} at error-level.
+   * In Actions, this will always be output and highlighted as an error. It will additionally
+   * result in an error-level workflow annotation.
+   *
+   * @param message
+   *    A string or an array of strings. If an array of strings is provided, they are joined using
+   *    space as the delimiter and printed as a single line.
+   */
   error: (message: LoggableError) => void;
-
+  /**
+   * Gets a value indicating whether debugging is enabled.
+   */
   isDebug: () => boolean;
 
   startGroup: (name: string) => void;

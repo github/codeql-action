@@ -7,7 +7,7 @@ import { ProxyAgent } from "undici";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { DO_NOT_RETRY_STATUSES } from "./api-client";
-import { ActionsEnvVars, RegistryProxyVars } from "./environment";
+import { ActionsEnvVars, RegistryProxyVars, getEnv } from "./environment";
 import { GITHUB_DOTCOM_API_URL, GITHUB_DOTCOM_URL } from "./github";
 import {
   callee,
@@ -21,7 +21,7 @@ import * as util from "./util";
 setupTests(test);
 
 test.beforeEach(() => {
-  util.initializeEnvironment(actionsUtil.getActionVersion());
+  getEnv().initialise(actionsUtil.getActionVersion());
 });
 
 test.serial("getApiClient", async (t) => {

@@ -38,7 +38,6 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
-  initializeEnvironment,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -108,7 +107,7 @@ async function run(
   let toolsVersion: string;
 
   try {
-    initializeEnvironment(getActionVersion());
+    actionState.env.initialise(getActionVersion());
 
     const apiDetails = {
       auth: getRequiredInput("token"),

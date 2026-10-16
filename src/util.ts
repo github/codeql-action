@@ -20,8 +20,6 @@ import {
   getRequiredEnvParam,
   isInTestMode,
   exportEnvVar,
-  getEnv,
-  type Env,
 } from "./environment";
 import { ConfigurationError, getErrorMessage, wrapError } from "./errors";
 import { GitHubVariant, type GitHubVersion } from "./github";
@@ -536,18 +534,6 @@ class ExhaustivityCheckingError extends Error {
  */
 export function assertNever(value: never): never {
   throw new ExhaustivityCheckingError(value);
-}
-
-/**
- * Set some initial environment variables that we can set even without
- * knowing what version of CodeQL we're running.
- */
-export function initializeEnvironment(version: string, env: Env = getEnv()) {
-  env.export(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  env.export(EnvVar.FEATURE_SANDWICH, "false");
-  env.export(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  env.export(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  env.export(EnvVar.VERSION, version);
 }
 
 export function getBaseDatabaseOidsFilePath(

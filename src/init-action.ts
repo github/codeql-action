@@ -50,6 +50,7 @@ import {
   loadRepositoryProperties,
   RepositoryPropertyName,
 } from "./feature-flags/properties";
+import * as github from "./github";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -233,8 +234,7 @@ async function run(
     apiDetails = {
       auth: getRequiredInput("token"),
       externalRepoAuth: getOptionalInput("external-repository-token"),
-      url: actionState.env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
-      apiURL: actionState.env.getRequired(ActionsEnvVars.GITHUB_API_URL),
+      ...github.getCurrentInstance(actionState.env),
     };
 
     const gitHubVersion = await getGitHubVersion();

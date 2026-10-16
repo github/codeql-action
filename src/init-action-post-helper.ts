@@ -276,22 +276,25 @@ async function uploadSarifArtifact(
   prefix: string,
   failedSarif: FailedSarifInfo,
 ): Promise<UploadFailedSarifResult> {
-  logger.info(
-    `Uploading failed SARIF file ${failedSarif.sarifFile} as artifact`,
-  );
+  logger.startGroup(`Uploading failed SARIF file as artifact`);
+  logger.info(`Uploading '${failedSarif.sarifFile}' as artifact`);
 
-  const gitHubVersion = await getGitHubVersion();
-  const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
+  try {
+    const gitHubVersion = await getGitHubVersion();
+    const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
 
-  const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
-  const name = sanitizeArtifactName(`${prefix}-${suffix}`);
-  await client.uploadArtifact(
-    name,
-    [path.normalize(failedSarif.sarifFile)],
-    path.normalize(".."),
-  );
+    const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
+    const name = sanitizeArtifactName(`${prefix}-${suffix}`);
+    await client.uploadArtifact(
+      name,
+      [path.normalize(failedSarif.sarifFile)],
+      path.normalize(".."),
+    );
 
-  return { sarifID: name };
+    return { sarifID: name };
+  } finally {
+    logger.endGroup();
+  }
 }
 
 /**

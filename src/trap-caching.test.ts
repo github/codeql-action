@@ -16,12 +16,12 @@ import * as configUtils from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import {
   createFeatures,
   createTestConfig,
   getRecordingLogger,
   makeVersionInfo,
+  RecordingLogger,
   setupTests,
 } from "./testing-utils";
 import {
@@ -265,7 +265,7 @@ test.serial("cleanup removes only old CodeQL TRAP caches", async (t) => {
     const statusReport = await cleanupTrapCaches(
       config,
       createFeatures([Feature.CleanupTrapCaches]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     t.is(listStub.callCount, 1);

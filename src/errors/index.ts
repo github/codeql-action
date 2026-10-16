@@ -19,6 +19,26 @@ export function getErrorMessage(error: unknown): string {
 }
 
 /**
+ * Decides whether `e` is a disk-related error outside of our control
+ * that should be classified as a `ConfigurationError`.
+ *
+ * @param e The error to check.
+ * @returns True if the error should be treated as a `ConfigurationError` or false if not.
+ */
+export function isDiskConfigurationError(e: unknown): boolean {
+  if (!(e instanceof Error)) {
+    return false;
+  }
+
+  return (
+    // out of disk space
+    e.message.includes("ENOSPC") ||
+    // access denied
+    e.message.includes("EACCES")
+  );
+}
+
+/**
  * An Error class that indicates an error that occurred due to
  * a misconfiguration of the action or the CodeQL CLI.
  */

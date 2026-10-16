@@ -288,7 +288,7 @@ async function uploadSarifArtifact(
     await client.uploadArtifact(
       name,
       [path.normalize(failedSarif.sarifFile)],
-      path.normalize(".."),
+      path.normalize(path.dirname(failedSarif.sarifFile)),
     );
 
     return { sarifID: name };

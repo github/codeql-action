@@ -126,7 +126,7 @@ function mockReleaseApi({
     });
 }
 
-function mockApiDetails(apiDetails: GitHubApiDetails) {
+function mockApiDetails(apiDetails: Required<GitHubApiDetails>) {
   // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
   // mock this directly. The difficulty is that `getApiDetails()` is called locally in
   // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to

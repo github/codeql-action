@@ -31,6 +31,7 @@ import {
   exportEnvVar,
 } from "./environment";
 import { getRef } from "./git-utils";
+import { GITHUB_DOTCOM_URL } from "./github";
 import * as json from "./json";
 import type { Logger } from "./logging";
 import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
@@ -41,7 +42,6 @@ import {
   ConfigurationError,
   getRequiredEnvParam,
   isInTestMode,
-  GITHUB_DOTCOM_URL,
   DiskUsage,
   assertNever,
   BuildMode,

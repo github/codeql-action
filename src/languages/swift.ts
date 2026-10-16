@@ -114,7 +114,7 @@ export async function isSwiftCompatible(
   }
 
   const skipUnsupportedTracedAnalysis = await action.features.getValue(
-    Feature.SwiftSkipUnsupportedTracedAnalysis,
+    Feature.SkipUnsupportedTracedAnalysis,
   );
   if (typeof version === "string") {
     // If we got a string, we are on macOS but couldn't parse the version string.

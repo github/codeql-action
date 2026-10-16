@@ -229,8 +229,8 @@ export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
 /**
  * Constructs an {@link ApiClient} using {@link apiDetails}.
  *
- * If {@link apiDetails} is not specified, then the GitHub instance URLs and auth token
- * are taken from {@link env}.
+ * If {@link apiDetails} is not specified, then the GitHub instance URLs are taken from {@link env}
+ * and the auth token is taken from the `token` input.
  *
  * If {@link env} is not specified, then the process environment is used.
  *

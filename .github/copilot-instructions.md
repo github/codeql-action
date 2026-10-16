@@ -11,7 +11,10 @@ The CodeQL Action is used in GitHub Actions workflows to run CodeQL scans using 
 
 ## Review instructions
 
-- When wording review comments, be helpful and friendly. Assume that the PR author has written the code with the best of intentions. Word your comments constructively as suggestions for improvements. Do not word suggestions as commands.
+- Prioritise identifying critical issues, such as logic bugs, over comments on documentation or typos.
+- When wording review comments, be helpful and friendly. Assume that the PR author has written the code with the best of intentions. Never word suggestions as commands, requests, or using the imperative. Examples of what you should never write: "Preserve that non-fatal behaviour here" or "Please preserve that non-fatal behaviour here".
+- When writing feedback, assume that the PR author is competent and is able to understand whether the point you are making is valid or not, why you are raising it, and how to best address it. While you can suggest how to address a point you are making, don't phrase it as a requirement or assume that it is the only solution.
+- Always word your comments constructively as suggestions for improvements, for example: "It would make sense to ..." or "Could you add ...?" or "Would it make sense to ...?"
 - If you want to comment on a change that you believe will fail a CI check, do not present the CI failure you expect as a fact. Instead, write that you think a change "may" lead to a failure in CI. Suggest that, if such a failure manifests, the changes you are commenting on may be the place responsible for the failure and are worth looking at.
 - If a suggestion you make is suitable for a follow-up, such as a refactoring that doesn't change the behaviour or fixing a typo in a comment, mention that it can be addressed in a later PR rather than blocking this one.
 - If a change is a net improvement, for example because it improves on an existing limitation of existing code, do not complain about pre-existing problems that remain. You may comment on them, but you should make it clear that the thing you are commenting on is not new by writing e.g. "Not new in this PR, but [..]" followed by your description of the issue and a suggestion that it could be improved at the same time with e.g. "Consider whether this is worth addressing as part of this PR as well."

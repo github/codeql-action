@@ -29,7 +29,11 @@ GitHub Actions workflows in the `.github/workflows` directory whose filenames st
 
 Some functionality in the code may be gated behind feature flags, which are controlled server-side. If the functionality that is gated behind them is user-facing, then this should be documented in a change note at the time that the gated functionality is added. See `CHANGELOG.md` for existing notes that mention "experimental" for examples. These typically include information about when users may expect to see the feature rolled out.
 
-When a feature flag that gates some functionality is removed, this does not need to be documented in a change note since the feature is already rolled out and the notes for the release which introduced the feature already describes it.
+When a feature flag that gates some functionality is removed, this does not need to be documented in a change note since the feature is already rolled out and the notes for the release which introduced the feature already describe it. The only exception is functionality which will start having an effect on GHES as a result of the feature flag removal:
+
+- Most functionality gated behind feature flags does not affect GHES.
+- We can make functionality available on GHES by setting `defaultValue` to `true` first and waiting for this to have had an effect on GHES. No change note is needed if a feature flag is removed where `defaultValue` was `true`.
+- When removing a feature flag where `defaultValue` was `false` and the functionality starts to affect GHES, a change note may be appropriate.
 
 ## Release process
 

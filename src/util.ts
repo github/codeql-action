@@ -24,6 +24,7 @@ import {
   type Env,
 } from "./environment";
 import { ConfigurationError, getErrorMessage, wrapError } from "./errors";
+import { GitHubVariant, type GitHubVersion } from "./github";
 import type { Language } from "./languages";
 import type { Logger } from "./logging";
 
@@ -35,6 +36,7 @@ export {
   getEnv,
   isInTestMode,
 } from "./environment";
+export { GitHubVariant, type GitHubVersion } from "./github";
 
 /**
  * The name of the file containing the base database OIDs, as stored in the
@@ -470,20 +472,6 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
   "CODEQL_ACTION_WARNED_ABOUT_VERSION";
 
 let hasBeenWarnedAboutVersion = false;
-
-export enum GitHubVariant {
-  /** [GitHub.com](https://github.com) */
-  DOTCOM = "GitHub.com",
-  /** [GitHub Enterprise Server](https://docs.github.com/en/enterprise-server@latest/admin/overview/about-github-enterprise-server) */
-  GHES = "GitHub Enterprise Server",
-  /** [GitHub Enterprise Cloud with data residency](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency) */
-  GHEC_DR = "GitHub Enterprise Cloud with data residency",
-}
-
-export type GitHubVersion =
-  | { type: GitHubVariant.DOTCOM }
-  | { type: GitHubVariant.GHEC_DR }
-  | { type: GitHubVariant.GHES; version: string };
 
 export function checkGitHubVersionInRange(
   version: GitHubVersion,

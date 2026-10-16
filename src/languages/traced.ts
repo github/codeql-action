@@ -79,6 +79,23 @@ function handleUnsupportedVersion(
 }
 
 /**
+ * Decides whether {@link config} has any traced languages by looking for tracer
+ * configurations in the {@link codeql} CLI installation.
+ */
+export async function hasTracedLanguages(
+  config: ActionConfig<"languages">,
+  codeql: CodeQL,
+): Promise<boolean> {
+  for (const language of config.languages) {
+    if (await codeql.isTracedLanguage(language)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Determines whether we can run a traced analysis on the current runner.
  *
  * @throws {ConfigurationError} If traced analysis is not possible on the current runner.
@@ -93,6 +110,16 @@ export async function checkRunnerSupportsTracedAnalysis(
 
   // Perform some initial, Swift-specific checks.
   await checkSwiftCompatibility(config, codeql, version);
+
+  // `build-mode: none` doesn't use the tracer, so it is always supported.
+  if (config.buildMode !== undefined && config.buildMode === "none") {
+    return;
+  }
+
+  // If none of the languages are traced, then we can skip the compatibility checks below as well.
+  if (!(await hasTracedLanguages(config, codeql))) {
+    return;
+  }
 
   const skipUnsupportedTracedAnalysis = await action.features.getValue(
     Feature.SkipUnsupportedTracedAnalysis,

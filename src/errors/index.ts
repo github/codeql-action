@@ -1,5 +1,35 @@
+import * as json from "../json";
+
 /**
  * An Error class that indicates an error that occurred due to
  * a misconfiguration of the action or the CodeQL CLI.
  */
 export class ConfigurationError extends Error {}
+
+/** Minimal representation of errors resulting from HTTP requests. */
+export class HTTPError extends Error {
+  public status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+/**
+ * Tries to convert {@link arg} to a {@link HTTPError}, but returns `undefined` if
+ * {@link arg} is not like a {@link HTTPError}.
+ */
+export function asHTTPError(arg: any): HTTPError | undefined {
+  if (!json.isObject<any>(arg) || !json.isString(arg.message)) {
+    return undefined;
+  }
+  if (Number.isInteger(arg.status)) {
+    return new HTTPError(arg.message, arg.status as number);
+  }
+  // See https://github.com/actions/toolkit/blob/acb230b99a46ed33a3f04a758cd68b47b9a82908/packages/tool-cache/src/tool-cache.ts#L19
+  if (Number.isInteger(arg.httpStatusCode)) {
+    return new HTTPError(arg.message, arg.httpStatusCode as number);
+  }
+  return undefined;
+}

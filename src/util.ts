@@ -23,11 +23,13 @@ import {
   getEnv,
   type Env,
 } from "./environment";
+import { ConfigurationError } from "./errors";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
+export { ConfigurationError } from "./errors";
 export {
   getRequiredEnvParam,
   getOptionalEnvVar,
@@ -572,12 +574,6 @@ export class HTTPError extends Error {
     this.status = status;
   }
 }
-
-/**
- * An Error class that indicates an error that occurred due to
- * a misconfiguration of the action or the CodeQL CLI.
- */
-export class ConfigurationError extends Error {}
 
 export function asHTTPError(arg: any): HTTPError | undefined {
   if (!json.isObject<any>(arg) || !json.isString(arg.message)) {

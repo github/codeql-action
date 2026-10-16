@@ -4,6 +4,7 @@ import * as path from "path";
 import * as core from "@actions/core";
 import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as yaml from "js-yaml";
+import * as semver from "semver";
 
 import {
   CommandInvocationError,
@@ -73,6 +74,11 @@ export interface CodeQL {
    * Get a string containing the semver version of the CodeQL executable.
    */
   getVersion(): Promise<VersionInfo>;
+  /**
+   * Determines whether the CLI installation represented by this {@link CodeQL} instance
+   * has at least the {@link requiredVersion}.
+   */
+  isVersionAtLeast(requiredVersion: string): Promise<boolean>;
   /**
    * Print version information about CodeQL.
    */
@@ -414,6 +420,19 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     getVersion: resolveFunction(partialCodeql, "getVersion", async () => ({
       version: "1.0.0",
     })),
+    isVersionAtLeast: resolveFunction(
+      partialCodeql,
+      "codeQlVersionAtLeast",
+      async (requiredVersion) => {
+        return (
+          !!partialCodeql.getVersion &&
+          semver.gte(
+            (await partialCodeql.getVersion()).version,
+            requiredVersion,
+          )
+        );
+      },
+    ),
     printVersion: resolveFunction(partialCodeql, "printVersion"),
     supportsFeature: resolveFunction(
       partialCodeql,
@@ -516,6 +535,9 @@ async function getCodeQLForCmd(
         outputCache.cacheCodeQlVersion(cacheFilePath, cmd, result);
       }
       return result;
+    },
+    async isVersionAtLeast(requiredVersion: string) {
+      return semver.gte((await this.getVersion()).version, requiredVersion);
     },
     async printVersion() {
       // Reuse the cached version information rather than invoking the CLI again.
@@ -1011,7 +1033,7 @@ async function getCodeQLForCmd(
   // CodeQL object is created.
   if (
     checkVersion &&
-    !(await util.codeQlVersionAtLeast(codeql, CODEQL_MINIMUM_VERSION))
+    !(await codeql.isVersionAtLeast(CODEQL_MINIMUM_VERSION))
   ) {
     throw new util.ConfigurationError(
       `Expected a CodeQL CLI with version at least ${CODEQL_MINIMUM_VERSION} but got version ${
@@ -1021,7 +1043,7 @@ async function getCodeQLForCmd(
   } else if (
     checkVersion &&
     process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
-    !(await util.codeQlVersionAtLeast(codeql, CODEQL_NEXT_MINIMUM_VERSION))
+    !(await codeql.isVersionAtLeast(CODEQL_NEXT_MINIMUM_VERSION))
   ) {
     const result = await codeql.getVersion();
     core.warning(

@@ -213,15 +213,9 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
   }
 
   const cachedVersionsSet = new Set(cachedVersions);
-  const overlayVersions = defaultCliVersion.enabledVersions.filter((v) =>
+  return defaultCliVersion.enabledVersions.filter((v) =>
     cachedVersionsSet.has(v.cliVersion),
   );
-
-  if (overlayVersions.length === 0) {
-    return [];
-  }
-
-  return overlayVersions;
 }
 
 /**

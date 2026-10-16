@@ -167,5 +167,4 @@ jobs:
           fi
           echo "Created a ${LANGUAGE} database at ${database}."
     env:
-      CODEQL_ACTION_PER_LANGUAGE_BUNDLES: true
       CODEQL_ACTION_TEST_MODE: true

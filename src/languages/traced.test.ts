@@ -3,10 +3,11 @@ import fs from "fs";
 import test from "ava";
 import * as sinon from "sinon";
 
-import { getCodeQLForTesting } from "../codeql";
+import { getCodeQLForTesting, type CodeQL } from "../codeql";
 import * as diagnostics from "../diagnostics";
-import { ActionsEnvVars } from "../environment";
+import { ActionsEnvVars, type Env } from "../environment";
 import { Feature } from "../feature-flags";
+import type { Logger } from "../logging";
 import { XCODE_SELECT_LINK_PATH } from "../platform";
 import {
   checkExpectedLogMessages,
@@ -19,13 +20,33 @@ import {
   RecordingLogger,
   setupTests,
 } from "../testing-utils";
-import { withTmpDir } from "../util";
+import { BuildMode, withTmpDir } from "../util";
 
 import { checkRunnerSupportsTracedAnalysis } from "./traced";
 
 import { BuiltInLanguage } from ".";
 
 setupTests(test);
+
+const TEST_DEFAULT_TRACED_LANGUAGES = {
+  [BuiltInLanguage.swift]: true,
+  [BuiltInLanguage.go]: true,
+};
+
+async function getCodeQLWithTracedStub(
+  cmd: string,
+  logger: Logger,
+  env: Env,
+  tracedLanguages: Partial<
+    Record<BuiltInLanguage, boolean>
+  > = TEST_DEFAULT_TRACED_LANGUAGES,
+): Promise<CodeQL> {
+  const codeql = await getCodeQLForTesting(cmd, logger, env);
+  sinon.stub(codeql, "isTracedLanguage").callsFake(async (language) => {
+    return tracedLanguages[language] === true;
+  });
+  return codeql;
+}
 
 const nonDarwinPlatforms: NodeJS.Platform[] = ["linux", "win32"];
 for (const nonDarwinPlatform of nonDarwinPlatforms) {
@@ -35,7 +56,7 @@ for (const nonDarwinPlatform of nonDarwinPlatforms) {
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const codeql = await getCodeQLForTesting(
+      const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
         logger,
         env,
@@ -52,13 +73,78 @@ for (const nonDarwinPlatform of nonDarwinPlatforms) {
     }));
 }
 
+test(`checkRunnerSupportsTracedAnalysis doesn't throw for BMN`, async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+    const codeql = await getCodeQLWithTracedStub(
+      "codeql-for-testing",
+      logger,
+      env,
+    );
+    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+    await t.notThrowsAsync(
+      checkRunnerSupportsTracedAnalysis(
+        initAllState({
+          platform: "darwin",
+          osRelease: "27.0.0",
+          env,
+          logger,
+        }),
+        createTestConfig({ buildMode: BuildMode.None }),
+        codeql,
+      ),
+    );
+  }));
+
+// Some languages not in `TEST_DEFAULT_TRACED_LANGUAGES`.
+const nonTracedLanguages: BuiltInLanguage[] = [
+  BuiltInLanguage.javascript,
+  BuiltInLanguage.actions,
+];
+for (const nonTracedLanguage of nonTracedLanguages) {
+  test(`checkRunnerSupportsTracedAnalysis doesn't throw for ${nonTracedLanguage} on unsupported macOS`, async (t) =>
+    withTmpDir(async (tmpDir) => {
+      const logger = new RecordingLogger();
+      const env = getTestEnv();
+      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+      const codeql = await getCodeQLWithTracedStub(
+        "codeql-for-testing",
+        logger,
+        env,
+      );
+      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+      await t.notThrowsAsync(
+        checkRunnerSupportsTracedAnalysis(
+          initAllState({
+            platform: "darwin",
+            osRelease: "27.0.0",
+            env,
+            logger,
+          }),
+          createTestConfig({ languages: [nonTracedLanguage] }),
+          codeql,
+        ),
+      );
+    }));
+}
+
 test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver", async (t) =>
   withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
     const env = getTestEnv();
     env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-    const codeql = await getCodeQLForTesting("codeql-for-testing", logger, env);
+    const codeql = await getCodeQLWithTracedStub(
+      "codeql-for-testing",
+      logger,
+      env,
+    );
     sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
 
     await checkRunnerSupportsTracedAnalysis(
@@ -86,7 +172,7 @@ test.serial(
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const codeql = await getCodeQLForTesting(
+      const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
         logger,
         env,
@@ -146,7 +232,7 @@ test.serial(
 
       const features = createFeatures([Feature.SkipUnsupportedTracedAnalysis]);
 
-      const codeql = await getCodeQLForTesting(
+      const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
         logger,
         env,
@@ -210,7 +296,7 @@ test.serial(
         .stub(fs, "readlinkSync")
         .returns("/Applications/Xcode_26.0.app/Contents/Developer");
 
-      const codeql = await getCodeQLForTesting(
+      const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
         logger,
         env,
@@ -260,7 +346,7 @@ test.serial(
         .stub(fs, "readlinkSync")
         .returns("/Applications/Xcode_27.0.app/Contents/Developer");
 
-      const codeql = await getCodeQLForTesting(
+      const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
         logger,
         env,
@@ -332,7 +418,7 @@ test.serial(
 
       const features = createFeatures([Feature.SkipUnsupportedTracedAnalysis]);
 
-      const codeql = await getCodeQLForTesting(
+      const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
         logger,
         env,

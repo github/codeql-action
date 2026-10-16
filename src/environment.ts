@@ -371,6 +371,18 @@ export class Env extends ReadOnlyEnv {
     }
   }
 
+  /**
+   * Set some initial environment variables that we can set even without
+   * knowing what version of CodeQL we're running.
+   */
+  public initialise(version: string) {
+    this.export(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+    this.export(EnvVar.FEATURE_SANDWICH, "false");
+    this.export(EnvVar.FEATURE_SARIF_COMBINE, "true");
+    this.export(EnvVar.FEATURE_WILL_UPLOAD, "true");
+    this.export(EnvVar.VERSION, version);
+  }
+
   /** Gets a value indicating whether `set` was called at least once. */
   public hasChanged(): boolean {
     return this.changed;

@@ -92,7 +92,6 @@ import {
   DEFAULT_DEBUG_DATABASE_NAME,
   getCodeQLMemoryLimit,
   getThreadsFlagValue,
-  initializeEnvironment,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -225,7 +224,7 @@ async function run(
   let toolsVersion: string;
 
   try {
-    initializeEnvironment(getActionVersion());
+    actionState.env.initialise(getActionVersion());
 
     // Make inputs accessible in the `post` step.
     persistInputs();

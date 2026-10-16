@@ -866,6 +866,16 @@ export async function waitForProcessing(
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
   try {
+    // If SARIF uplaod is disabled and we reach this point, then the file was written to disk and
+    // there is nothing to wait for. We still allow ourselves to get to this point so that we can
+    // see in the log that we would have waited for processing to finish if the upload had happened.
+    if (util.shouldSkipSarifUpload()) {
+      logger.info(
+        "Nothing to wait for, because SARIF upload is disabled by an environment variable and the SARIF was saved to disk.",
+      );
+      return;
+    }
+
     const client = api.getApiClient();
 
     // Do an initial wait because processing will always take a minimum of 2-3 seconds

@@ -1,0 +1,131 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: PR Check - Unsupported macOS
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request: {}
+  merge_group:
+    types:
+      - checks_requested
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: unsupported-macos-${{github.ref}}
+jobs:
+  unsupported-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: xcode-27
+            version: linked
+          - os: xcode-27
+            version: nightly-latest
+    name: Unsupported macOS
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Check xcode_select_link
+        run: |
+          readlink /private/var/db/xcode_select_link
+          file -h /private/var/db/xcode_select_link
+
+      - uses: ./../action/init
+        id: init
+        with:
+          languages: swift
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Analyze
+        # We could run `analyze` here from `./../analyze`, but `getAnalyzeActionName` in `workflow.ts`
+        # can't cope with that unless we introduce a different testing environment. Since this step
+        # would just fail on `xcode-27` anyway, we just skip it instead.
+        if: false
+        uses: ./analyze
+        with:
+          category: '/test-codeql-version:${{ matrix.version }}'
+    env:
+      CODEQL_ACTION_SKIP_GENERATE_FAILED_SARIF: false
+      CODEQL_ACTION_SKIP_SARIF_UPLOAD: true
+      CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
+      CODEQL_ACTION_TEST_MODE: true
+  unsupported-macos-sarif-checks:
+    if: github.triggering_actor != 'dependabot[bot]'
+    needs:
+      - unsupported-macos
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Download workflow artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: test-mode-sarif-*
+          path: sarif
+
+      - name: List artifact contents
+        run: ls -laR ./sarif
+
+      - name: Check diagnostics appear in SARIF
+        env:
+          SARIF_PATH: "./sarif/codeql-failed-run.sarif"
+          DIAGNOSTIC_ID: "codeql-action/unsupported-traced-analysis-macos"
+          DIAGNOSTIC_NAME: "Traced analysis is not supported on this version of macOS"
+          EXPECTED_LOCATIONS: "0"
+          EXPECTED_MESSAGE: |
+            Traced analysis is not supported on macOS 27 or above.
+        run: npx tsx ./pr-checks/check-diagnostics.ts
+    env:
+      CODEQL_ACTION_TEST_MODE: true

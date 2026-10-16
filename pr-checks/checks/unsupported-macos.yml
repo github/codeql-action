@@ -1,0 +1,63 @@
+name: "Unsupported macOS"
+description: "Tests that unsupported macOS versions are detected and result in appropriate diagnostics."
+versions:
+  - linked
+  - nightly-latest
+installNode: true
+
+operatingSystems:
+  - os: macos
+    runner-image: xcode-27
+
+env:
+  # Allow the failed SARIF file to be generated.
+  CODEQL_ACTION_SKIP_GENERATE_FAILED_SARIF: false
+  # But don't actually upload it.
+  CODEQL_ACTION_SKIP_SARIF_UPLOAD: true
+  # Mark telemetry for this workflow so it can be treated separately.
+  CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
+
+steps:
+  - name: Check xcode_select_link
+    run: |
+      readlink /private/var/db/xcode_select_link
+      file -h /private/var/db/xcode_select_link
+
+  - uses: ./../action/init
+    id: init
+    with:
+      languages: swift
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Analyze
+    # We could run `analyze` here from `./../analyze`, but `getAnalyzeActionName` in `workflow.ts`
+    # can't cope with that unless we introduce a different testing environment. Since this step
+    # would just fail on `xcode-27` anyway, we just skip it instead.
+    if: false
+    uses: ./analyze
+    with:
+      category: "/test-codeql-version:${{ matrix.version }}"
+
+validationJobs:
+  unsupported-macos-sarif-checks:
+    checkout: true
+    installNode: true
+    steps:
+      - name: Download workflow artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: test-mode-sarif-*
+          path: sarif
+
+      - name: List artifact contents
+        run: ls -laR ./sarif
+
+      - name: Check diagnostics appear in SARIF
+        env:
+          SARIF_PATH: "./sarif/codeql-failed-run.sarif"
+          DIAGNOSTIC_ID: "codeql-action/unsupported-traced-analysis-macos"
+          DIAGNOSTIC_NAME: "Traced analysis is not supported on this version of macOS"
+          EXPECTED_LOCATIONS: "0"
+          EXPECTED_MESSAGE: |
+            Traced analysis is not supported on macOS 27 or above.
+        run: npx tsx ./pr-checks/check-diagnostics.ts

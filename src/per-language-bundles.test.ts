@@ -1,7 +1,6 @@
 import test from "ava";
 
 import { ActionsEnvVars } from "./environment";
-import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import {
   getOtherLanguagePacksReason,
@@ -12,7 +11,6 @@ import {
 } from "./per-language-bundles";
 import { BundlePlatform } from "./platform";
 import {
-  createFeatures,
   getRecordingLogger,
   getTestEnv,
   initAllState,
@@ -40,7 +38,6 @@ async function checkEligibility(
       env: getTestEnv({
         [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
       }),
-      features: createFeatures([Feature.PerLanguageBundles]),
       ...stateOverrides,
     }),
     { ...ELIGIBLE_OPTIONS, ...overrides },
@@ -145,27 +142,6 @@ test("getPerLanguageBundleLanguage requires a supported release version", async 
   t.is(await checkEligibility({ cliVersion: "2.27.1" }), BuiltInLanguage.java);
 });
 
-test("getPerLanguageBundleLanguage requires the feature flag", async (t) => {
-  t.is(await checkEligibility({}, { features: createFeatures([]) }), undefined);
-});
-
-test("getPerLanguageBundleLanguage explains a disabled feature before checking eligibility", async (t) => {
-  const messages: LoggedMessage[] = [];
-  const language = await getPerLanguageBundleLanguage(
-    initAllState({
-      features: createFeatures([]),
-      logger: getRecordingLogger(messages, { logToConsole: false }),
-    }),
-    { ...ELIGIBLE_OPTIONS, rawLanguages: undefined, cliVersion: undefined },
-  );
-
-  t.is(language, undefined);
-  t.deepEqual(
-    messages.map((message) => message.message),
-    ["Not using a per-language CodeQL bundle since the feature is disabled."],
-  );
-});
-
 test("getPerLanguageBundleLanguage skips only the release version check for the latest nightly", async (t) => {
   const nightly = { isLatestNightly: true, cliVersion: undefined };
   t.is(await checkEligibility(nightly), BuiltInLanguage.java);
@@ -181,10 +157,6 @@ test("getPerLanguageBundleLanguage skips only the release version check for the 
   ]) {
     t.is(await checkEligibility({ ...nightly, ...overrides }), undefined);
   }
-  t.is(
-    await checkEligibility(nightly, { features: createFeatures([]) }),
-    undefined,
-  );
   t.is(
     await checkEligibility(nightly, {
       env: getTestEnv({ [ActionsEnvVars.RUNNER_ENVIRONMENT]: "self-hosted" }),

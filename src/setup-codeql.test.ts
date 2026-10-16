@@ -439,7 +439,7 @@ test.serial(
         tmpDir,
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
-        ["javascript"],
+        undefined, // rawLanguages
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
@@ -633,7 +633,7 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
           true, // tarSupportsZstd
-          createFeatures([Feature.PerLanguageBundles]),
+          createFeatures([]),
           getRunnerLogger(true),
         );
 
@@ -664,24 +664,16 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      for (const { languages, otherLanguagePacksReason, features } of [
-        // The per-language feature is disabled.
-        {
-          languages: ["java"],
-          otherLanguagePacksReason: undefined,
-          features: createFeatures([]),
-        },
+      for (const { languages, otherLanguagePacksReason } of [
         // More than one language requires a combined bundle.
         {
           languages: ["java", "python"],
           otherLanguagePacksReason: undefined,
-          features: createFeatures([Feature.PerLanguageBundles]),
         },
         // The configured queries may need library packs for other languages.
         {
           languages: ["java"],
           otherLanguagePacksReason: "an example reason",
-          features: createFeatures([Feature.PerLanguageBundles]),
         },
       ]) {
         const source = await setupCodeql.getCodeQLSource(
@@ -693,7 +685,7 @@ test.serial(
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
           true, // tarSupportsZstd
-          features,
+          createFeatures([]),
           getRunnerLogger(true),
         );
 
@@ -709,58 +701,48 @@ test.serial(
   },
 );
 
-for (const perLanguageBundles of [false, true]) {
-  test.serial(
-    `getCodeQLSource uses the latest ${perLanguageBundles ? "per-language" : "combined"} bundle for a forced nightly`,
-    async (t) => {
-      const expectedTag = "codeql-bundle-30260213";
-      const baseURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}`;
-      const latestNightlyRequest = stubHostedNightly(expectedTag);
+test.serial(
+  "getCodeQLSource uses the latest per-language bundle for a forced nightly",
+  async (t) => {
+    const expectedTag = "codeql-bundle-30260213";
+    const baseURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}`;
+    const latestNightlyRequest = stubHostedNightly(expectedTag);
 
-      await withTmpDir(async (tmpDir) => {
-        setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
-        const source = await setupCodeql.getCodeQLSource(
-          undefined, // toolsInput: the nightly is selected by ForceNightly
-          SAMPLE_DEFAULT_CLI_VERSION,
-          ["java"],
-          undefined, // otherLanguagePacksReason
-          false, // useOverlayAwareDefaultCliVersion
-          SAMPLE_DOTCOM_API_DETAILS,
-          GitHubVariant.DOTCOM,
-          true, // tarSupportsZstd
-          createFeatures(
-            perLanguageBundles
-              ? [Feature.ForceNightly, Feature.PerLanguageBundles]
-              : [Feature.ForceNightly],
-          ),
-          getRunnerLogger(true),
-        );
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
+      const source = await setupCodeql.getCodeQLSource(
+        undefined, // toolsInput: the nightly is selected by ForceNightly
+        SAMPLE_DEFAULT_CLI_VERSION,
+        ["java"],
+        undefined, // otherLanguagePacksReason
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        true, // tarSupportsZstd
+        createFeatures([Feature.ForceNightly]),
+        getRunnerLogger(true),
+      );
 
-        t.is(source.sourceType, "download");
-        t.true(latestNightlyRequest.calledOnce);
-        if (source.sourceType === "download") {
-          const combinedURL = `${baseURL}/codeql-bundle-linux64.tar.zst`;
-          t.deepEqual(
-            source.bundle,
-            perLanguageBundles
-              ? {
-                  kind: "per-language",
-                  language: BuiltInLanguage.java,
-                  url: `${baseURL}/codeql-bundle-java-linux64.tar.zst`,
-                  combinedBundleURL: combinedURL,
-                }
-              : { kind: "combined", url: combinedURL },
-          );
-        }
-      });
-    },
-  );
-}
+      t.is(source.sourceType, "download");
+      t.true(latestNightlyRequest.calledOnce);
+      if (source.sourceType === "download") {
+        t.deepEqual(source.bundle, {
+          kind: "per-language",
+          language: BuiltInLanguage.java,
+          url: `${baseURL}/codeql-bundle-java-linux64.tar.zst`,
+          combinedBundleURL: `${baseURL}/codeql-bundle-linux64.tar.zst`,
+        });
+      }
+    });
+  },
+);
 
 for (const date of ["20200101", "30260213"]) {
   for (const bundle of ["combined", "per-language"] as const) {
     test.serial(
-      `getCodeQLSource preserves an explicit ${bundle} nightly URL for ${date}`,
+      `getCodeQLSource preserves an explicit ${bundle} nightly URL for ${date}${
+        bundle === "per-language" ? " on GHES" : ""
+      }`,
       async (t) => {
         const latestNightlyRequest = stubHostedNightly(
           "codeql-bundle-30260213",
@@ -770,7 +752,9 @@ for (const date of ["20200101", "30260213"]) {
             ? "codeql-bundle-linux64.tar.zst"
             : "codeql-bundle-java-linux64.tar.zst";
         const url = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-${date}/${asset}`;
-        const features = createFeatures([Feature.PerLanguageBundles]);
+        const features = createFeatures([]);
+        const variant =
+          bundle === "per-language" ? GitHubVariant.GHES : GitHubVariant.DOTCOM;
         const logger = getRecordingLogger([], { logToConsole: false });
         const error = new HTTPError("Not Found", 404);
         const extractStub = sinon
@@ -786,7 +770,7 @@ for (const date of ["20200101", "30260213"]) {
             undefined, // otherLanguagePacksReason
             false,
             SAMPLE_DOTCOM_API_DETAILS,
-            GitHubVariant.DOTCOM,
+            variant,
             true,
             features,
             logger,
@@ -808,7 +792,7 @@ for (const date of ["20200101", "30260213"]) {
               url,
               SAMPLE_DOTCOM_API_DETAILS,
               tmpDir,
-              GitHubVariant.DOTCOM,
+              variant,
               SAMPLE_DEFAULT_CLI_VERSION,
               ["java"],
               undefined, // otherLanguagePacksReason
@@ -1174,7 +1158,7 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         true, // tarSupportsZstd
-        createFeatures([Feature.PerLanguageBundles]),
+        createFeatures([]),
         getRunnerLogger(true),
       );
 
@@ -1207,13 +1191,16 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      for (const { otherLanguagePacksReason, features } of [
-        // The per-language feature is disabled.
-        { otherLanguagePacksReason: undefined, features: createFeatures([]) },
+      for (const { otherLanguagePacksReason, variant } of [
+        // Automatic per-language selection is limited to GitHub.com.
+        {
+          otherLanguagePacksReason: undefined,
+          variant: GitHubVariant.GHES,
+        },
         // The configured queries may need library packs for other languages.
         {
           otherLanguagePacksReason: "an example reason",
-          features: createFeatures([Feature.PerLanguageBundles]),
+          variant: GitHubVariant.DOTCOM,
         },
       ]) {
         const source = await setupCodeql.getCodeQLSource(
@@ -1223,9 +1210,9 @@ test.serial(
           otherLanguagePacksReason,
           false, // useOverlayAwareDefaultCliVersion
           SAMPLE_DOTCOM_API_DETAILS,
-          GitHubVariant.DOTCOM,
+          variant,
           true, // tarSupportsZstd
-          features,
+          createFeatures([]),
           getRunnerLogger(true),
         );
 
@@ -1295,7 +1282,7 @@ for (const fallback of [false, true]) {
           ["java"],
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
-          createFeatures([Feature.PerLanguageBundles]),
+          createFeatures([]),
           getRunnerLogger(true),
         );
 
@@ -1375,7 +1362,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
           };
         });
       const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
-      const features = createFeatures([Feature.PerLanguageBundles]);
+      const features = createFeatures([]);
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
@@ -1560,7 +1547,7 @@ for (const error of [
             ["java"],
             undefined, // otherLanguagePacksReason
             false, // useOverlayAwareDefaultCliVersion
-            createFeatures([Feature.PerLanguageBundles]),
+            createFeatures([]),
             getRunnerLogger(true),
           ),
           { is: error },

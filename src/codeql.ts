@@ -19,6 +19,7 @@ import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
 import { EnvVar, getEnv, exportEnvVar } from "./environment";
+import { getErrorMessage, isDiskConfigurationError } from "./errors";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -34,7 +35,9 @@ import { ToolsDownloadStatusReport } from "./tools-download";
 import { ToolsFeature, isSupportedToolsFeature } from "./tools-features";
 import { shouldEnableIndirectTracing } from "./tracer-config";
 import * as util from "./util";
-import { BuildMode, CleanupLevel, getErrorMessage } from "./util";
+import { BuildMode, CleanupLevel } from "./util";
+
+export { isDiskConfigurationError } from "./errors";
 
 type Options = Array<string | number | boolean>;
 
@@ -273,26 +276,6 @@ const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-09-24";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
-
-/**
- * Decides whether `e` is a disk-related error outside of our control
- * that should be classified as a `ConfigurationError`.
- *
- * @param e The error to check.
- * @returns True if the error should be treated as a `ConfigurationError` or false if not.
- */
-export function isDiskConfigurationError(e: unknown): boolean {
-  if (!(e instanceof Error)) {
-    return false;
-  }
-
-  return (
-    // out of disk space
-    e.message.includes("ENOSPC") ||
-    // access denied
-    e.message.includes("EACCES")
-  );
-}
 
 /**
  * Set up CodeQL CLI access.

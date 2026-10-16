@@ -209,9 +209,7 @@ test.serial(
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const features = createFeatures([
-        Feature.SwiftSkipUnsupportedTracedAnalysis,
-      ]);
+      const features = createFeatures([Feature.SkipUnsupportedTracedAnalysis]);
 
       const codeql = await getCodeQLForTesting(
         "codeql-for-testing",
@@ -397,9 +395,7 @@ test.serial(
         .stub(fs, "readlinkSync")
         .returns("/Applications/Xcode_27.0.app/Contents/Developer");
 
-      const features = createFeatures([
-        Feature.SwiftSkipUnsupportedTracedAnalysis,
-      ]);
+      const features = createFeatures([Feature.SkipUnsupportedTracedAnalysis]);
 
       const codeql = await getCodeQLForTesting(
         "codeql-for-testing",

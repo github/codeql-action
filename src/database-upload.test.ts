@@ -599,6 +599,7 @@ test.serial(
       const nwo: RepositoryNwo = { owner: "test", repo: "foo" };
       const language: BuiltInLanguage = BuiltInLanguage.java;
 
+      const env = getTestEnv();
       await t.notThrowsAsync(async () => {
         await uploadBundledDatabase(
           nwo,
@@ -607,11 +608,14 @@ test.serial(
           dbPath,
           content.length,
           SAMPLE_DOTCOM_API_DETAILS,
+          env,
         );
       });
 
       // Check that our stubs were called and that they received the expected arguments.
       t.is(getApiClient.callCount, 1);
+      t.deepEqual(getApiClient.args[0], [env, SAMPLE_DOTCOM_API_DETAILS]);
+
       t.is(fetchStub.callCount, 1);
 
       const args = fetchStub.args[0];

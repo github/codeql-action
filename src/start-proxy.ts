@@ -4,9 +4,9 @@ import * as toolcache from "@actions/tool-cache";
 
 import { ActionState } from "./action-common";
 import {
-  getAuthorizationHeaderFor,
   getGitHubVersion,
-  GitHubApiDetails,
+  InstanceApiClient,
+  type GitHubApiDetails,
 } from "./api-client";
 import * as artifactScanner from "./artifact-scanner";
 import * as defaults from "./defaults.json";
@@ -423,6 +423,7 @@ export async function getProxyBinaryPath(
   logger.startGroup("Setting up authentication proxy");
 
   try {
+    const client = new InstanceApiClient(apiDetails);
     const proxyFileName = getProxyFilename();
     const proxyInfo = await getDownloadUrl(action, apiDetails);
 
@@ -437,9 +438,8 @@ export async function getProxyBinaryPath(
         `Authentication proxy is not in the toolcache. Will try to download it from '${proxyInfo.url}'.`,
       );
 
-      const authorization = getAuthorizationHeaderFor(
+      const authorization = client.getAuthorizationHeaderFor(
         logger,
-        apiDetails,
         proxyInfo.url,
       );
       const temp = await downloadProxy(logger, proxyInfo.url, authorization);

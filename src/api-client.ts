@@ -18,9 +18,11 @@ import {
   RegistryProxyVars,
   getEnv,
   exportEnvVar,
+  ActionsEnvVars,
 } from "./environment";
 import {
   getCurrentInstance,
+  getDotcomInstance,
   GITHUB_DOTCOM_URL,
   parseGitHubUrl,
   type GitHubApiCombinedDetails,
@@ -120,6 +122,66 @@ export function makeProxyRequestOptions(
 /** The type of GitHub API client we use. */
 export type ApiClient = InstanceType<typeof githubUtils.GitHub>;
 
+/**
+ * Encapsulates a {@link GitHubApiCombinedDetails} along with operations which ensure that any credentials
+ * are only used with the GitHub instance that is represented by the {@link GitHubApiCombinedDetails} value.
+ */
+export class InstanceApiClient {
+  private readonly client: ApiClient;
+  private readonly apiDetails: GitHubApiCombinedDetails;
+  private readonly authorizationHeader: string | undefined;
+
+  constructor(
+    apiDetails: GitHubApiCombinedDetails,
+    clientOptions: CreateApiClientOptions = {},
+  ) {
+    this.apiDetails = apiDetails;
+    this.client = createApiClientWithDetails(apiDetails, clientOptions);
+
+    // Compute the Authorization header value if we have a token.
+    const token = this.apiDetails.auth?.trim();
+    if (token !== undefined && token !== "") {
+      this.authorizationHeader = `token ${token}`;
+    }
+  }
+
+  /**
+   * In most cases, we use an {@link ApiClient} which automatically handles auth for requests
+   * made with it and this method is not needed and should not be used in that setting.
+   *
+   * In some cases, we need to make requests that can't go through an {@link ApiClient}, but still
+   * require auth. For example, this is the case when using the `toolcache` module to download
+   * files. For these cases, this method gets a value for the `Authorization` header for a request
+   * to `url`; or `undefined` if the `Authorization` header should not be set for `url`.
+   *
+   * @param logger The logger to use for debugging messages.
+   * @param url The URL for which we want to add an `Authorization` header.
+   */
+  public getAuthorizationHeaderFor(
+    logger: Logger,
+    url: string,
+  ): string | undefined {
+    // We don't have to check the `url` if we don't have a token to begin with.
+    if (this.authorizationHeader === undefined) {
+      return undefined;
+    }
+
+    // We only want to provide an authorization header if we are downloading
+    // from the same GitHub instance the Action is running on.
+    // This avoids leaking Enterprise tokens to dotcom.
+    if (
+      url.startsWith(`${this.apiDetails.url}/`) ||
+      (this.apiDetails.apiURL && url.startsWith(`${this.apiDetails.apiURL}/`))
+    ) {
+      logger.debug(`Providing an authorization token.`);
+      return this.authorizationHeader;
+    }
+
+    logger.debug(`Not using an authorization token.`);
+    return undefined;
+  }
+}
+
 /** Options for `createApiClientWithDetails`. */
 interface CreateApiClientOptions {
   allowExternal?: boolean;
@@ -172,8 +234,8 @@ export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
 /**
  * Constructs an {@link ApiClient} using {@link apiDetails}.
  *
- * If {@link apiDetails} is not specified, then the GitHub instance URLs and auth token
- * are taken from {@link env}.
+ * If {@link apiDetails} is not specified, then the GitHub instance URLs are taken from {@link env}
+ * and the auth token is taken from the `token` input.
  *
  * If {@link env} is not specified, then the process environment is used.
  *
@@ -187,47 +249,33 @@ export function getApiClient(
   return createApiClientWithDetails(apiDetails ?? getApiDetails(env));
 }
 
+/*
+ * Gets a `GitHubApiDetails` object describing the GitHub Dotcom instance.
+ *
+ * @param env The environment variables to read.
+ */
+export function getDotcomApiDetails(env: ReadOnlyEnv): GitHubApiDetails {
+  // If we are currently running on dotcom, then just call `getApiDetails` which will
+  // construct the appropriate `GitHubApiDetails` from the environment and include the
+  // value of the `token` input. The `token` input relates to the GitHub instance that
+  // we are running on only. Therefore, if we are not currently running on dotcom,
+  // then we construct `GitHubApiDetails` without the `token` value and using the
+  // hard-coded instance and API URLs.
+  if (env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL) === GITHUB_DOTCOM_URL) {
+    return getApiDetails(env);
+  } else {
+    return {
+      auth: undefined,
+      ...getDotcomInstance(),
+    };
+  }
+}
+
 export function getApiClientWithExternalAuth(
   apiDetails: GitHubApiCombinedDetails,
   proxy?: ProxyAgent,
 ) {
   return createApiClientWithDetails(apiDetails, { allowExternal: true, proxy });
-}
-
-/**
- * Gets a value for the `Authorization` header for a request to `url`; or `undefined` if the
- * `Authorization` header should not be set for `url`.
- *
- * @param logger The logger to use for debugging messages.
- * @param apiDetails Details of the GitHub API we are using.
- * @param url The URL for which we want to add an `Authorization` header.
- *
- * @returns The value for the `Authorization` header or `undefined` if it shouldn't be populated.
- */
-export function getAuthorizationHeaderFor(
-  logger: Logger,
-  apiDetails: GitHubApiDetails,
-  url: string,
-): string | undefined {
-  // We don't have to check the `url` if we don't have a token to begin with.
-  const token = apiDetails.auth?.trim();
-  if (token === undefined || token === "") {
-    return undefined;
-  }
-
-  // We only want to provide an authorization header if we are downloading
-  // from the same GitHub instance the Action is running on.
-  // This avoids leaking Enterprise tokens to dotcom.
-  if (
-    url.startsWith(`${apiDetails.url}/`) ||
-    (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
-  ) {
-    logger.debug(`Providing an authorization token.`);
-    return `token ${token}`;
-  }
-
-  logger.debug(`Not using an authorization token.`);
-  return undefined;
 }
 
 let cachedGitHubVersion: GitHubVersion | undefined = undefined;

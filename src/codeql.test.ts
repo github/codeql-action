@@ -34,6 +34,7 @@ import {
   makeVersionInfo,
   createTestConfig,
   makeMacro,
+  mockApiDetails,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
@@ -124,19 +125,6 @@ function mockReleaseApi({
       })),
       tag_name: tagName,
     });
-}
-
-function mockApiDetails(apiDetails: Required<GitHubApiDetails>) {
-  // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
-  // mock this directly. The difficulty is that `getApiDetails()` is called locally in
-  // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to
-  // `getApiDetails()` via an imported `api` module.
-  sinon
-    .stub(actionsUtil, "getRequiredInput")
-    .withArgs("token")
-    .returns(apiDetails.auth);
-  process.env["GITHUB_SERVER_URL"] = apiDetails.url;
-  process.env["GITHUB_API_URL"] = apiDetails.apiURL || "";
 }
 
 async function stubCodeql(): Promise<codeql.CodeQL> {
@@ -290,6 +278,7 @@ for (const { cliVersion, tagName, expectedToolcacheVersion } of [
     async (t) => {
       await util.withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
 
         const result = await installIntoToolcache({
           cliVersion,
@@ -470,6 +459,7 @@ test.serial(
 
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
 
       await installIntoToolcache({
         tagName: "codeql-bundle-20200601",
@@ -517,6 +507,7 @@ test.serial(
 
     await util.withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
 
       await installIntoToolcache({
         tagName: "codeql-bundle-20200601",

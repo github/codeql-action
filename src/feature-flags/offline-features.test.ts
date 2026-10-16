@@ -8,7 +8,7 @@ import {
   LoggedMessage,
   setupTests,
 } from "../testing-utils";
-import { GitHubVariant, initializeEnvironment, withTmpDir } from "../util";
+import { getEnv, GitHubVariant, withTmpDir } from "../util";
 
 import {
   assertAllFeaturesHaveDefaultValues,
@@ -18,7 +18,7 @@ import {
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment("1.2.3");
+  getEnv().initialise("1.2.3");
 });
 
 test("OfflineFeatures makes no API requests", async (t) => {

@@ -21,6 +21,7 @@ import {
 import type { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
+import { getEnv } from "./environment";
 import { BuiltInLanguage } from "./languages";
 import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
@@ -37,14 +38,13 @@ import {
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
-import { initializeEnvironment } from "./util";
 
 setupTests(test);
 
 let stubConfig: Config;
 
 test.beforeEach(() => {
-  initializeEnvironment("1.2.3");
+  getEnv().initialise("1.2.3");
 
   stubConfig = createTestConfig({
     languages: [BuiltInLanguage.cpp],

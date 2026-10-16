@@ -146,8 +146,13 @@ export class InstanceApiClient {
   }
 
   /**
-   * Gets a value for the `Authorization` header for a request to `url`; or `undefined` if the
-   * `Authorization` header should not be set for `url`.
+   * In most cases, we use an {@link ApiClient} which automatically handles auth for requests
+   * made with it and this method is not needed and should not be used in that setting.
+   *
+   * In some cases, we need to make requests that can't go through an {@link ApiClient}, but still
+   * require auth. For example, this is the case when using the `toolcache` module to download
+   * files. For these cases, this method gets a value for the `Authorization` header for a request
+   * to `url`; or `undefined` if the `Authorization` header should not be set for `url`.
    *
    * @param logger The logger to use for debugging messages.
    * @param url The URL for which we want to add an `Authorization` header.

@@ -17,9 +17,10 @@ import { getGitHubVersion } from "./api-client";
 import { CodeQL } from "./codeql";
 import { ComputedInput, getToolsInput } from "./config/inputs";
 import { getRawLanguagesNoAutodetect } from "./config-utils";
-import { ActionsEnvVars, EnvVar } from "./environment";
+import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { loadRepositoryProperties } from "./feature-flags/properties";
+import * as github from "./github";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -112,8 +113,7 @@ async function run(
     const apiDetails = {
       auth: getRequiredInput("token"),
       externalRepoAuth: getOptionalInput("external-repository-token"),
-      url: actionState.env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
-      apiURL: actionState.env.getRequired(ActionsEnvVars.GITHUB_API_URL),
+      ...github.getCurrentInstance(actionState.env),
     };
 
     const gitHubVersion = await getGitHubVersion();

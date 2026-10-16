@@ -3,7 +3,7 @@ import path from "path";
 
 import type { ActionState } from "./action-common";
 import { getTemporaryDirectory } from "./actions-util";
-import type { Config } from "./config-utils";
+import type { ActionConfig } from "./config/action-config";
 import { Language } from "./languages";
 import { getActionsLogger, type Logger } from "./logging";
 import {
@@ -177,7 +177,10 @@ export function getTempLanguageDiagnosticsPath(
 }
 
 /** Gets the path where diagnostics for {@link language} should be stored in the database. */
-export function getDatabaseDiagnosticsPath(config: Config, language: Language) {
+export function getDatabaseDiagnosticsPath(
+  config: ActionConfig<"dbLocation">,
+  language: Language,
+) {
   return getLanguageDiagnosticsPath(config.dbLocation, language);
 }
 
@@ -190,7 +193,7 @@ export function getDatabaseDiagnosticsPath(config: Config, language: Language) {
  * @param diagnostic The diagnostic message to add to the database.
  */
 export function addDiagnostic(
-  config: Config,
+  config: ActionConfig<"dbLocation" | "tempDir">,
   language: Language,
   diagnostic: DiagnosticMessage,
   logger: Logger = getActionsLogger(),
@@ -215,7 +218,7 @@ export function addDiagnostic(
 
 /** Adds a diagnostic that is not specific to any language. */
 export function addNoLanguageDiagnostic(
-  config: Config | undefined,
+  config: ActionConfig<"languages" | "dbLocation" | "tempDir"> | undefined,
   diagnostic: DiagnosticMessage,
   logger: Logger = getActionsLogger(),
 ) {
@@ -305,7 +308,7 @@ function writeDiagnosticFile(
  */
 function writeDiagnostic(
   action: ActionState<["Logger"]>,
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   diagnostic: DiagnosticMessage,
 ) {
@@ -348,7 +351,7 @@ export function logTemporaryDiagnostics(action: ActionState<["Logger"]>) {
 /** Relocates all temporary diagnostics to the respective databases. */
 export function flushDiagnostics(
   action: ActionState<["Logger"]>,
-  config: Config,
+  config: ActionConfig<"dbLocation" | "languages">,
 ) {
   const diagnosticsCount = temporaryDiagnostics.length;
   action.logger.debug(

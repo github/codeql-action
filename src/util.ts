@@ -23,12 +23,12 @@ import {
   getEnv,
   type Env,
 } from "./environment";
-import { ConfigurationError } from "./errors";
+import { ConfigurationError, getErrorMessage, wrapError } from "./errors";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
-export { ConfigurationError, HTTPError, asHTTPError } from "./errors";
+export * from "./errors";
 export {
   getRequiredEnvParam,
   getOptionalEnvVar,
@@ -837,20 +837,6 @@ export function parseMatrixInput(
       `Failed to parse matrix input '${matrixInput}': ${getErrorMessage(err)}`,
     );
   }
-}
-
-export function wrapError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
-}
-
-/**
- * Returns an appropriate message for the error.
- *
- * If the error is an `Error` instance, this returns the error message without
- * an `Error: ` prefix.
- */
-export function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function prettyPrintPack(pack: Pack) {

@@ -1,6 +1,24 @@
 import * as json from "../json";
 
 /**
+ * If {@link error} is not already an instance of {@link Error}, then this function constructs
+ * an {@link Error} with a string representation of {@link error} as the message.
+ */
+export function wrapError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+/**
+ * Returns an appropriate message for the error.
+ *
+ * If the error is an {@link Error} instance, this returns the error message without
+ * an `Error: ` prefix.
+ */
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
  * An Error class that indicates an error that occurred due to
  * a misconfiguration of the action or the CodeQL CLI.
  */

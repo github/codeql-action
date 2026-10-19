@@ -407,6 +407,7 @@ export async function runTool(
   return stdout;
 }
 
+type PersistedInputs = Array<[string, string | undefined]>;
 const persistedInputsKey = "persisted_inputs";
 
 /**
@@ -416,7 +417,7 @@ const persistedInputsKey = "persisted_inputs";
  */
 export const persistInputs = function (env: Env = getEnv()) {
   const entries = env.entries();
-  const inputEnvironmentVariables = entries.filter(([name]) =>
+  const inputEnvironmentVariables: PersistedInputs = entries.filter(([name]) =>
     name.startsWith("INPUT_"),
   );
   core.saveState(persistedInputsKey, JSON.stringify(inputEnvironmentVariables));

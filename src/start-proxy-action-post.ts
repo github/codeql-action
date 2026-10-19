@@ -5,18 +5,28 @@
  */
 import * as core from "@actions/core";
 
+import {
+  ActionName,
+  runInActions,
+  type Action,
+  type ActionState,
+} from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as configUtils from "./config-utils";
 import { uploadArtifacts } from "./debug-artifacts";
-import { getActionsLogger } from "./logging";
+import { getSafeErrorMessage } from "./start-proxy/status-report";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
-export async function runWrapper() {
+/**
+ * The main functionality of the `start-proxy` post-action is implemented by this function.
+ * This is called once by {@link runInActions} after it is called in {@link runWrapper}.
+ */
+export async function run(action: ActionState<["Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
-  const logger = getActionsLogger();
+  const logger = action.logger;
 
   try {
     // Restore inputs from `start-proxy` Action.
@@ -55,4 +65,16 @@ export async function runWrapper() {
       `start-proxy post-action step failed: ${getErrorMessage(error)}`,
     );
   }
+}
+
+/** Defines the `start-proxy` post-action. */
+const startProxyPostAction: Action = {
+  name: ActionName.StartProxyPost,
+  run,
+  transformTelemetryError: getSafeErrorMessage,
+};
+
+/** The main entry point for the `start-proxy` post-action. */
+export async function runWrapper() {
+  await runInActions(startProxyPostAction);
 }

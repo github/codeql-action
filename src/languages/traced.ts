@@ -4,6 +4,7 @@ import type { ActionState, Logger } from "../action-common";
 import type { CodeQL } from "../codeql";
 import type { ActionConfig } from "../config/action-config";
 import { addDiagnostic, makeDiagnostic } from "../diagnostics";
+import { DocUrl } from "../doc-url";
 import { Feature } from "../feature-flags";
 import { macOSVersion, xcodeVersion } from "../platform";
 import { ConfigurationError } from "../util";
@@ -55,7 +56,10 @@ function handleUnsupportedVersion(
             languages: config.languages,
             [attributeName]: version.toString(),
           },
-          markdownMessage: baseMessage,
+          markdownMessage: [
+            baseMessage,
+            `For more information, see [this announcement](${DocUrl.UNSUPPORTED_TRACED_ANALYSIS_MACOS27}).`,
+          ].join(" "),
           severity: skipUnsupportedTracedAnalysis ? "error" : "warning",
           visibility: {
             cliSummaryTable: true,
@@ -67,14 +71,20 @@ function handleUnsupportedVersion(
     );
   }
 
+  // Log messages generally don't render as markdown, so we include the URL verbatim there.
+  const logMessage = [
+    baseMessage,
+    `For more information, see ${DocUrl.UNSUPPORTED_TRACED_ANALYSIS_MACOS27}`,
+  ].join(" ");
+
   // Throw an error to abort the analysis if the FF is enabled or log the message.
   if (skipUnsupportedTracedAnalysis) {
     // ConfigurationErrors are converted to the "aborted" status by the exception handler
     // in `init-action.ts` that guards the call to `checkRunnerSupportsTracedAnalysis`.
-    throw new ConfigurationError(baseMessage);
+    throw new ConfigurationError(logMessage);
   } else {
     // This will also show up as a workflow annotation.
-    logger.warning(baseMessage);
+    logger.warning(logMessage);
   }
 }
 

@@ -74,11 +74,31 @@ test("macOSVersion returns semver if parsing succeeds", (t) => {
 test.serial("xcodeVersion returns undefined if symlink doesn't exist", (t) => {
   const logger = new RecordingLogger();
 
-  const statSync = sinon.stub(fs, "statSync").throws(new Error("ENOENT"));
+  const lstatSync = sinon.stub(fs, "lstatSync").returns(undefined);
 
   t.is(xcodeVersion(logger), undefined);
-  t.is(statSync.callCount, 1);
-  t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+  t.is(lstatSync.callCount, 1);
+  t.deepEqual(lstatSync.args[0], [
+    XCODE_SELECT_LINK_PATH,
+    { throwIfNoEntry: false },
+  ]);
+
+  checkExpectedLogMessages(t, logger.messages, [
+    "Xcode is probably not installed.",
+  ]);
+});
+
+test.serial("xcodeVersion returns undefined if lstatSync throws", (t) => {
+  const logger = new RecordingLogger();
+
+  const lstatSync = sinon.stub(fs, "lstatSync").throws(new Error("ENOENT"));
+
+  t.is(xcodeVersion(logger), undefined);
+  t.is(lstatSync.callCount, 1);
+  t.deepEqual(lstatSync.args[0], [
+    XCODE_SELECT_LINK_PATH,
+    { throwIfNoEntry: false },
+  ]);
 
   checkExpectedLogMessages(t, logger.messages, [
     "Unable to determine Xcode version: ENOENT",
@@ -88,13 +108,16 @@ test.serial("xcodeVersion returns undefined if symlink doesn't exist", (t) => {
 test.serial("xcodeVersion returns undefined if file is not a symlink", (t) => {
   const logger = new RecordingLogger();
 
-  const statSync = sinon
-    .stub(fs, "statSync")
+  const lstatSync = sinon
+    .stub(fs, "lstatSync")
     .returns({ isSymbolicLink: () => false } as fs.Stats);
 
   t.is(xcodeVersion(logger), undefined);
-  t.is(statSync.callCount, 1);
-  t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+  t.is(lstatSync.callCount, 1);
+  t.deepEqual(lstatSync.args[0], [
+    XCODE_SELECT_LINK_PATH,
+    { throwIfNoEntry: false },
+  ]);
 
   checkExpectedLogMessages(t, logger.messages, [
     "exists, but is not a symbolic link",
@@ -106,14 +129,17 @@ test.serial(
   (t) => {
     const logger = new RecordingLogger();
 
-    const statSync = sinon
-      .stub(fs, "statSync")
+    const lstatSync = sinon
+      .stub(fs, "lstatSync")
       .returns({ isSymbolicLink: () => true } as fs.Stats);
     const readlinkSync = sinon.stub(fs, "readlinkSync").returns("");
 
     t.is(xcodeVersion(logger), undefined);
-    t.is(statSync.callCount, 1);
-    t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+    t.is(lstatSync.callCount, 1);
+    t.deepEqual(lstatSync.args[0], [
+      XCODE_SELECT_LINK_PATH,
+      { throwIfNoEntry: false },
+    ]);
     t.is(readlinkSync.callCount, 1);
     t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -128,16 +154,19 @@ test.serial(
   (t) => {
     const logger = new RecordingLogger();
 
-    const statSync = sinon
-      .stub(fs, "statSync")
+    const lstatSync = sinon
+      .stub(fs, "lstatSync")
       .returns({ isSymbolicLink: () => true } as fs.Stats);
     const readlinkSync = sinon
       .stub(fs, "readlinkSync")
       .returns("/Applications/Xcode.app/Contents/Developer");
 
     t.is(xcodeVersion(logger), undefined);
-    t.is(statSync.callCount, 1);
-    t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+    t.is(lstatSync.callCount, 1);
+    t.deepEqual(lstatSync.args[0], [
+      XCODE_SELECT_LINK_PATH,
+      { throwIfNoEntry: false },
+    ]);
     t.is(readlinkSync.callCount, 1);
     t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -150,16 +179,19 @@ test.serial(
 test.serial("xcodeVersion returns undefined if match can't be parsed", (t) => {
   const logger = new RecordingLogger();
 
-  const statSync = sinon
-    .stub(fs, "statSync")
+  const lstatSync = sinon
+    .stub(fs, "lstatSync")
     .returns({ isSymbolicLink: () => true } as fs.Stats);
   const readlinkSync = sinon
     .stub(fs, "readlinkSync")
     .returns("/Applications/Xcode_00.0.app/Contents/Developer");
 
   t.is(xcodeVersion(logger), undefined);
-  t.is(statSync.callCount, 1);
-  t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+  t.is(lstatSync.callCount, 1);
+  t.deepEqual(lstatSync.args[0], [
+    XCODE_SELECT_LINK_PATH,
+    { throwIfNoEntry: false },
+  ]);
   t.is(readlinkSync.callCount, 1);
   t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -171,8 +203,8 @@ test.serial("xcodeVersion returns undefined if match can't be parsed", (t) => {
 test.serial("xcodeVersion returns version from resolved path", (t) => {
   const logger = new RecordingLogger();
 
-  const statSync = sinon
-    .stub(fs, "statSync")
+  const lstatSync = sinon
+    .stub(fs, "lstatSync")
     .returns({ isSymbolicLink: () => true } as fs.Stats);
   const readlinkSync = sinon
     .stub(fs, "readlinkSync")
@@ -185,8 +217,11 @@ test.serial("xcodeVersion returns version from resolved path", (t) => {
     t.is(result.minor, 4);
   }
 
-  t.is(statSync.callCount, 1);
-  t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+  t.is(lstatSync.callCount, 1);
+  t.deepEqual(lstatSync.args[0], [
+    XCODE_SELECT_LINK_PATH,
+    { throwIfNoEntry: false },
+  ]);
   t.is(readlinkSync.callCount, 1);
   t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 });

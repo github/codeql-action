@@ -294,8 +294,8 @@ test.serial(
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const statSync = sinon
-        .stub(fs, "statSync")
+      const lstatSync = sinon
+        .stub(fs, "lstatSync")
         .returns({ isSymbolicLink: () => true } as fs.Stats);
       const readlinkSync = sinon
         .stub(fs, "readlinkSync")
@@ -322,8 +322,11 @@ test.serial(
         codeql,
       );
 
-      t.is(statSync.callCount, 1);
-      t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+      t.is(lstatSync.callCount, 1);
+      t.deepEqual(lstatSync.args[0], [
+        XCODE_SELECT_LINK_PATH,
+        { throwIfNoEntry: false },
+      ]);
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -344,8 +347,8 @@ test.serial(
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const statSync = sinon
-        .stub(fs, "statSync")
+      const lstatSync = sinon
+        .stub(fs, "lstatSync")
         .returns({ isSymbolicLink: () => true } as fs.Stats);
       const readlinkSync = sinon
         .stub(fs, "readlinkSync")
@@ -372,8 +375,11 @@ test.serial(
         codeql,
       );
 
-      t.is(statSync.callCount, 1);
-      t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+      t.is(lstatSync.callCount, 1);
+      t.deepEqual(lstatSync.args[0], [
+        XCODE_SELECT_LINK_PATH,
+        { throwIfNoEntry: false },
+      ]);
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -414,8 +420,8 @@ test.serial(
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const statSync = sinon
-        .stub(fs, "statSync")
+      const lstatSync = sinon
+        .stub(fs, "lstatSync")
         .returns({ isSymbolicLink: () => true } as fs.Stats);
       const readlinkSync = sinon
         .stub(fs, "readlinkSync")
@@ -447,8 +453,11 @@ test.serial(
         ),
       );
 
-      t.is(statSync.callCount, 1);
-      t.deepEqual(statSync.args[0], [XCODE_SELECT_LINK_PATH]);
+      t.is(lstatSync.callCount, 1);
+      t.deepEqual(lstatSync.args[0], [
+        XCODE_SELECT_LINK_PATH,
+        { throwIfNoEntry: false },
+      ]);
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 

@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const SRC_DIR = join(__dirname, "src");
+const BUILD_DIR = join(__dirname, "build");
 const OUT_DIR = join(__dirname, "lib");
 
 /**
@@ -69,7 +70,7 @@ const SHARED_ENTRYPOINT = "entry-points";
 const UPLOAD_LIB_EXPORT = "uploadLib";
 
 /** The relative source path of the `upload-lib` module that we re-export from `entry-points`. */
-const UPLOAD_LIB_SRC = "./src/upload-lib";
+const UPLOAD_LIB_SRC = "./build/upload-lib.js";
 
 /**
  * This plugin finds all source files that contain Action entry points. It then generates the
@@ -95,7 +96,7 @@ const entryPointsPlugin = {
 
     // Find the source files containing Action entry points.
     build.onStart(() => {
-      const actionFiles = globSync("src/*-action{,-post}.ts");
+      const actionFiles = globSync(join(BUILD_DIR, "*-action{,-post}.js"));
       for (const actionFile of actionFiles) {
         const match = basename(actionFile).match(/(.*)-action(-post)?/);
 
@@ -137,7 +138,7 @@ const entryPointsPlugin = {
       const imports = actionsSorted
         .map(
           (action) =>
-            `import * as ${action.pascalCaseName} from "./src/${basename(action.path)}";`,
+            `import * as ${action.pascalCaseName} from "./build/${basename(action.path)}";`,
         )
         .join("\n");
       const wrappers = actionsSorted
@@ -153,14 +154,14 @@ const entryPointsPlugin = {
       return {
         contents: `"use strict";\n${imports}\n\n${uploadLibReExport}\n\n${wrappers}\n`,
         resolveDir: ".",
-        loader: "ts",
+        loader: "js",
       };
     });
 
     // Emit entry point stubs for each Action using the entry template.
     build.onEnd(async () => {
       const makeHeader = (templatePath, sourceFile) =>
-        `// Automatically generated from '${templatePath}' for 'src/${basename(sourceFile)}'.\n\n`;
+        `// Automatically generated from '${templatePath}' for 'build/${basename(sourceFile)}'.\n\n`;
 
       // Read the entry point template.
       const actionTemplatePath = "action-entry.js.tpl";
@@ -191,7 +192,7 @@ const entryPointsPlugin = {
       );
       await writeFile(
         join(OUT_DIR, "upload-lib.js"),
-        makeHeader(uploadLibStubTemplatePath, `${UPLOAD_LIB_SRC}.ts`) +
+        makeHeader(uploadLibStubTemplatePath, `${UPLOAD_LIB_SRC}`) +
           uploadLibStubTemplate.replaceAll(
             "__UPLOAD_LIB_EXPORT__",
             UPLOAD_LIB_EXPORT,

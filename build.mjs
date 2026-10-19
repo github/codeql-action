@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const SRC_DIR = join(__dirname, "src");
+const BUILD_DIR = join(__dirname, "build");
 const OUT_DIR = join(__dirname, "lib");
 
 /**
@@ -95,7 +96,7 @@ const entryPointsPlugin = {
 
     // Find the source files containing Action entry points.
     build.onStart(() => {
-      const actionFiles = globSync("src/*-action{,-post}.ts");
+      const actionFiles = globSync(join(BUILD_DIR, "*-action{,-post}.js"));
       for (const actionFile of actionFiles) {
         const match = basename(actionFile).match(/(.*)-action(-post)?/);
 
@@ -137,7 +138,7 @@ const entryPointsPlugin = {
       const imports = actionsSorted
         .map(
           (action) =>
-            `import * as ${action.pascalCaseName} from "./src/${basename(action.path)}";`,
+            `import * as ${action.pascalCaseName} from "./build/${basename(action.path)}";`,
         )
         .join("\n");
       const wrappers = actionsSorted
@@ -153,7 +154,7 @@ const entryPointsPlugin = {
       return {
         contents: `"use strict";\n${imports}\n\n${uploadLibReExport}\n\n${wrappers}\n`,
         resolveDir: ".",
-        loader: "ts",
+        loader: "js",
       };
     });
 

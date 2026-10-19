@@ -391,9 +391,9 @@ export function setCodeQL(codeql: Partial<CodeQL>): void {
   cachedCodeQL = createStubCodeQL(codeql);
 }
 
-function resolveFunction<T>(
+function resolveFunction<K extends keyof CodeQL, T extends CodeQL[K]>(
   partialCodeql: Partial<CodeQL>,
-  methodName: string,
+  methodName: K,
   defaultImplementation?: T,
 ): T {
   if (typeof partialCodeql[methodName] !== "function") {
@@ -403,7 +403,7 @@ function resolveFunction<T>(
     const dummyMethod = () => {
       throw new Error(`CodeQL ${methodName} method not correctly defined`);
     };
-    return dummyMethod as T;
+    return dummyMethod as unknown as T;
   }
   return partialCodeql[methodName] as T;
 }

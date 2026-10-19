@@ -5,20 +5,29 @@
  */
 import * as core from "@actions/core";
 
+import {
+  ActionName,
+  runInActions,
+  type Action,
+  type ActionState,
+} from "./action-common";
 import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import { getActionsLogger, withGroup } from "./logging";
+import { withGroup } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
-export async function runWrapper() {
+/**
+ * The main functionality of the `upload-sarif` post-action is implemented by this function.
+ * This is called once by {@link runInActions} after it is called in {@link runWrapper}.
+ */
+export async function run(action: ActionState<["Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const logger = action.logger;
 
   try {
-    const logger = getActionsLogger();
-
     // Restore inputs from `upload-sarif` Action.
     actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
@@ -42,4 +51,15 @@ export async function runWrapper() {
       `upload-sarif post-action step failed: ${getErrorMessage(error)}`,
     );
   }
+}
+
+/** Defines the `upload-sarif` post-action. */
+const uploadSarifPostAction: Action = {
+  name: ActionName.UploadSarifPost,
+  run,
+};
+
+/** The main entry point for the `upload-sarif` post-action. */
+export async function runWrapper() {
+  await runInActions(uploadSarifPostAction);
 }

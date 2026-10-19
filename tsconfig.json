@@ -9,6 +9,7 @@
     "rootDir": "./src",
     "sourceMap": true,
     "types": ["node"],
+    "removeComments": true,                   /* Remove all comments. */
 
     /* Strict Type-Checking Options */
     "strict": true,                           /* Enable all strict type-checking options. */

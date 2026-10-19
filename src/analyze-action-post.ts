@@ -34,7 +34,6 @@ export async function run(action: ActionState<["Logger"]>) {
   const logger = action.logger;
 
   try {
-    actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 

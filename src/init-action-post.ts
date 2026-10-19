@@ -8,7 +8,6 @@ import * as core from "@actions/core";
 
 import { runInActions, type Action, type ActionState } from "./action-common";
 import {
-  restoreInputs,
   getOptionalInput,
   getTemporaryDirectory,
   printDebugLogs,
@@ -65,9 +64,6 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
     // environment for this step and would otherwise be overwritten by the value that the `init`
     // Action saw, which is always a success.
     const jobStatus = getOptionalInput("job-status");
-
-    // Restore inputs from `init` Action.
-    restoreInputs(logger);
 
     const tmpDir = getTemporaryDirectory();
     config = await getConfig(tmpDir, logger);

@@ -73,6 +73,11 @@ export const ACTION_DISPLAY_NAMES: Partial<Record<ActionName, string>> = {
   [ActionName.UploadSarifPost]: "upload-sarif post-action",
 };
 
+/** Decides if {@link name} refers to a post-action. */
+export function isPostAction(name: ActionName) {
+  return name.endsWith("-post");
+}
+
 /**
  * Maps an {@link ActionName} to its display name. Usually that is the same, except
  * for actions which have a different display name in {@link ACTION_DISPLAY_NAMES}.

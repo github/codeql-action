@@ -11,7 +11,6 @@ import {
   type Action,
   type ActionState,
 } from "./action-common";
-import * as actionsUtil from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
@@ -28,8 +27,6 @@ export async function run(action: ActionState<["Logger"]>) {
   const logger = action.logger;
 
   try {
-    // Restore inputs from `upload-sarif` Action.
-    actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 

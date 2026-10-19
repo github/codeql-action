@@ -29,9 +29,6 @@ export async function run(action: ActionState<["Logger"]>) {
   const logger = action.logger;
 
   try {
-    // Restore inputs from `start-proxy` Action.
-    actionsUtil.restoreInputs(logger);
-
     // Kill the running proxy
     const pid = core.getState("proxy-process-pid");
     if (pid) {

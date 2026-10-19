@@ -6,6 +6,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as github from "@actions/github";
 import * as io from "@actions/io";
 
+import type { ActionState } from "./action-common";
 import { hasConfigKey, type Config } from "./config/action-config";
 import { Env, EnvVar, ActionsEnvVars, ReadOnlyEnv } from "./environment";
 import { Logger } from "./logging";
@@ -426,18 +427,26 @@ export const persistInputs = function (env: Env = getEnv()) {
 /**
  * Restores all inputs to the action from the persisted state.
  */
-export function restoreInputs(logger: Logger) {
+export function restoreInputs(
+  action: ActionState<["Env", "Logger", "Actions"]>,
+) {
   try {
-    const persistedInputsValue = core.getState(persistedInputsKey);
+    const persistedInputsValue = action.actions.getState(persistedInputsKey);
     if (persistedInputsValue) {
-      const persistedInputs = JSON.parse(persistedInputsValue);
+      const persistedInputs = JSON.parse(
+        persistedInputsValue,
+      ) as PersistedInputs;
+
+      if (!Array.isArray(persistedInputs)) {
+        throw new Error("Restored value is not an array.");
+      }
 
       for (const [name, value] of persistedInputs) {
-        process.env[name] = value;
+        action.env.set(name, value);
       }
     }
   } catch (err) {
-    logger.error(`Unable to restore inputs: ${getErrorMessage(err)}`);
+    action.logger.error(`Unable to restore inputs: ${getErrorMessage(err)}`);
     throw new Error(
       "Failed to restore inputs from the state set by this action's main execution.",
     );

@@ -183,7 +183,7 @@ export async function runInActions(action: Action) {
 
     // If this is a post-action, restore inputs from the main action.
     if (isPostAction(action.name)) {
-      restoreInputs(logger);
+      restoreInputs(actionState);
     }
 
     // Create a unique identifier for this run.

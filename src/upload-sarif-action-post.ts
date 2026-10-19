@@ -3,8 +3,6 @@
  * It will run after the all steps in this job, in reverse order in relation to
  * other `post:` hooks.
  */
-import * as core from "@actions/core";
-
 import {
   ActionName,
   runInActions,
@@ -21,7 +19,7 @@ import { checkGitHubVersionInRange, getErrorMessage } from "./util";
  * The main functionality of the `upload-sarif` post-action is implemented by this function.
  * This is called once by {@link runInActions} after it is called in {@link runWrapper}.
  */
-export async function run(action: ActionState<["Logger"]>) {
+export async function run(action: ActionState<["Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
   const logger = action.logger;
@@ -32,9 +30,9 @@ export async function run(action: ActionState<["Logger"]>) {
 
     // Upload SARIF artifacts if we determine that this is a third-party analysis run.
     // For first-party runs, this artifact will be uploaded in the `analyze-post` step.
-    if (process.env[EnvVar.INIT_ACTION_HAS_RUN] !== "true") {
+    if (action.env.getOptional(EnvVar.INIT_ACTION_HAS_RUN) !== "true") {
       if (gitHubVersion.type === undefined) {
-        core.warning(
+        logger.warning(
           `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
         );
         return;
@@ -44,7 +42,7 @@ export async function run(action: ActionState<["Logger"]>) {
       );
     }
   } catch (error) {
-    core.setFailed(
+    action.actions.setFailed(
       `upload-sarif post-action step failed: ${getErrorMessage(error)}`,
     );
   }

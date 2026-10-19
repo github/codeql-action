@@ -422,7 +422,7 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
     })),
     isVersionAtLeast: resolveFunction(
       partialCodeql,
-      "codeQlVersionAtLeast",
+      "isVersionAtLeast",
       async (requiredVersion) => {
         return (
           !!partialCodeql.getVersion &&

@@ -76,8 +76,16 @@ export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
     // Stat the expected symbolic link to check that it exists and is a symbolic link.
     // The `readlinkSync` call below returns an empty string in either case and so
     // this check allows us to distinguish between the two cases.
-    const stats = fs.statSync(XCODE_SELECT_LINK_PATH);
+    const stats = fs.lstatSync(XCODE_SELECT_LINK_PATH, {
+      throwIfNoEntry: false,
+    });
 
+    if (stats === undefined) {
+      logger.debug(
+        `'${XCODE_SELECT_LINK_PATH}' does not exist. Xcode is probably not installed.`,
+      );
+      return undefined;
+    }
     if (!stats.isSymbolicLink()) {
       logger.warning(
         `${XCODE_SELECT_LINK_PATH} exists, but is not a symbolic link.`,

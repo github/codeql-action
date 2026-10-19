@@ -31,6 +31,7 @@ export interface ActionsEnv {
   getRequiredInput: (name: string) => string;
   getOptionalInput: (name: string) => string | undefined;
   setFailed: (message: string) => void;
+  getState: (name: string) => string;
 }
 
 /**
@@ -41,6 +42,7 @@ export function getActionsEnv(): ActionsEnv {
     getRequiredInput,
     getOptionalInput,
     setFailed: core.setFailed,
+    getState: core.getState,
   };
 }
 

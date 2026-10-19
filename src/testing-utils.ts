@@ -255,6 +255,10 @@ class TestActionsEnv implements ActionsEnv {
   get hasFailed() {
     return this.failed;
   }
+
+  public getState(name: string): string {
+    throw new Error(`State '${name}' requested but not set.`);
+  }
 }
 
 /**

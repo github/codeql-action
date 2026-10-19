@@ -52,19 +52,25 @@ import {
 
 export enum ActionName {
   Analyze = "finish",
+  AnalyzePost = "analyze-post",
   Autobuild = "autobuild",
   Init = "init",
   InitPost = "init-post",
   ResolveEnvironment = "resolve-environment",
   SetupCodeQL = "setup-codeql",
   StartProxy = "start-proxy",
+  StartProxyPost = "start-proxy-post",
   UploadSarif = "upload-sarif",
+  UploadSarifPost = "upload-sarif-post",
 }
 
 /** A partial mapping from `ActionName` to names for actions whose display name is not the `ActionName` value. */
 export const ACTION_DISPLAY_NAMES: Partial<Record<ActionName, string>> = {
   [ActionName.Analyze]: "analyze",
+  [ActionName.AnalyzePost]: "analyze post-action",
   [ActionName.InitPost]: "init post",
+  [ActionName.StartProxyPost]: "start-proxy post-action",
+  [ActionName.UploadSarifPost]: "upload-sarif post-action",
 };
 
 /**

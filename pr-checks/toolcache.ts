@@ -19,7 +19,7 @@ function removeCodeQLFromToolcache() {
   }
 
   const codeqlPath = path.join(toolcachePath, "CodeQL");
-  fs.rmdirSync(codeqlPath, { recursive: true });
+  fs.rmSync(codeqlPath, { recursive: true });
 
   core.info(`Removed '${codeqlPath}' from the toolcache.`);
 }

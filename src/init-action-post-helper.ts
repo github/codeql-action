@@ -44,6 +44,7 @@ import {
   getRequiredEnvParam,
   parseMatrixInput,
   Result,
+  shouldSkipGenerateFailedSarif,
   shouldSkipSarifUpload,
   Success,
   wrapError,
@@ -115,7 +116,7 @@ async function prepareFailedSarif(
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
 
-  if (shouldSkipSarifUpload()) {
+  if (shouldSkipGenerateFailedSarif()) {
     return new Failure({
       upload_failed_run_skipped_because: "SARIF upload is disabled",
     });
@@ -226,6 +227,7 @@ async function maybeUploadFailedSarif(
 
   logger.info(`Uploading failed SARIF file ${failedSarif.sarifFile}`);
   const uploadResult = await uploadLib.uploadFiles(
+    config,
     failedSarif.sarifFile,
     failedSarif.checkoutPath,
     failedSarif.category,
@@ -239,6 +241,14 @@ async function maybeUploadFailedSarif(
     logger,
     { isUnsuccessfulExecution: true },
   );
+
+  // If SARIF upload is disabled for testing, `uploadFiles` will not have uploaded the failed
+  // SARIF file and instead will have written it to disk. Upload it as a workflow artifact so that
+  // we can inspect it in validation jobs.
+  if (uploadResult.sarifID && shouldSkipSarifUpload()) {
+    await uploadSarifArtifact(logger, "test-mode-sarif", failedSarif);
+  }
+
   return uploadResult
     ? { ...uploadResult.statusReport, sarifID: uploadResult.sarifID }
     : {};
@@ -257,23 +267,34 @@ async function maybeUploadFailedSarifArtifact(
   }
 
   const failedSarif = failedSarifResult.value;
+  return uploadSarifArtifact(logger, "sarif-artifact", failedSarif);
+}
 
-  logger.info(
-    `Uploading failed SARIF file ${failedSarif.sarifFile} as artifact`,
-  );
+/** Uploads a failed SARIF file as workflow artifact. */
+async function uploadSarifArtifact(
+  logger: Logger,
+  prefix: string,
+  failedSarif: FailedSarifInfo,
+): Promise<UploadFailedSarifResult> {
+  logger.startGroup(`Uploading failed SARIF file as artifact`);
+  logger.info(`Uploading '${failedSarif.sarifFile}' as artifact`);
 
-  const gitHubVersion = await getGitHubVersion();
-  const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
+  try {
+    const gitHubVersion = await getGitHubVersion();
+    const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
 
-  const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
-  const name = sanitizeArtifactName(`sarif-artifact-${suffix}`);
-  await client.uploadArtifact(
-    name,
-    [path.normalize(failedSarif.sarifFile)],
-    path.normalize(".."),
-  );
+    const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
+    const name = sanitizeArtifactName(`${prefix}-${suffix}`);
+    await client.uploadArtifact(
+      name,
+      [path.normalize(failedSarif.sarifFile)],
+      path.normalize(path.dirname(failedSarif.sarifFile)),
+    );
 
-  return { sarifID: name };
+    return { sarifID: name };
+  } finally {
+    logger.endGroup();
+  }
 }
 
 /**

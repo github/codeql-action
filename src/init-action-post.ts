@@ -76,6 +76,9 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
     // Try to load the "failed" configuration file instead which may have been written by the `init` step
     // with a minimal configuration for this post-action.
     if (config === undefined) {
+      logger.debug(
+        "Will try to load the configuration file from an aborted 'init' step, since there is no regular one.",
+      );
       config = getAbortedInitConfig(action, tmpDir);
     }
 

@@ -18,10 +18,10 @@ import type { Config } from "./config-utils";
 import {
   EnvVar,
   getRequiredEnvParam,
-  isInTestMode,
   exportEnvVar,
   getEnv,
   type Env,
+  type ReadOnlyEnv,
 } from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
@@ -685,10 +685,29 @@ export function isGoodVersion(versionSpec: string) {
 }
 
 /**
+ * Returns whether we specifically want to skip generating a failed SARIF.
+ */
+export function shouldSkipGenerateFailedSarif(
+  env: ReadOnlyEnv = getEnv(),
+): boolean {
+  const skipGenerateFailedSarif = env.getOptional(
+    EnvVar.SKIP_GENERATE_FAILED_SARIF,
+  );
+  return (
+    skipGenerateFailedSarif !== "false" &&
+    (shouldSkipSarifUpload(env) || skipGenerateFailedSarif === "true")
+  );
+}
+
+/**
  * Returns whether we specifically want to skip uploading SARIF files.
  */
-export function shouldSkipSarifUpload(): boolean {
-  return isInTestMode() || process.env[EnvVar.SKIP_SARIF_UPLOAD] === "true";
+export function shouldSkipSarifUpload(env: ReadOnlyEnv = getEnv()): boolean {
+  const skipSarifUpload = env.getOptional(EnvVar.SKIP_SARIF_UPLOAD);
+  return (
+    skipSarifUpload !== "false" &&
+    (env.isSkippingUploadsInTests() || skipSarifUpload === "true")
+  );
 }
 
 /**

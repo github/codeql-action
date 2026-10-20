@@ -12,7 +12,7 @@ import * as analyses from "./analyses";
 import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
-import { getConfig } from "./config-utils";
+import type { ActionConfig } from "./config/action-config";
 import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
 import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
@@ -94,15 +94,19 @@ async function shouldDisableCombineSarifFiles(
   return true;
 }
 
-// Takes a list of paths to sarif files and combines them together using the
-// CLI `github merge-results` command when all SARIF files are produced by
-// CodeQL. Otherwise, it will fall back to combining the files in the action.
-// Returns the contents of the combined sarif file.
+/**
+ * Takes a list of paths to sarif files and combines them together using the
+ * CLI `github merge-results` command when all SARIF files are produced by
+ * CodeQL. Otherwise, it will fall back to combining the files in the action.
+ *
+ * @returns The contents of the combined sarif file.
+ */
 async function combineSarifFilesUsingCLI(
   sarifFiles: string[],
   gitHubVersion: GitHubVersion,
   features: FeatureEnablement,
   logger: Logger,
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
 ): Promise<Partial<sarif.Log>> {
   const env = util.getEnv();
 
@@ -140,7 +144,6 @@ async function combineSarifFilesUsingCLI(
   let codeQL: CodeQL;
   let tempDir: string = actionsUtil.getTemporaryDirectory();
 
-  const config = await getConfig(tempDir, logger);
   if (config !== undefined) {
     codeQL = await getCodeQL(logger, config.codeQLCmd);
     tempDir = config.tempDir;
@@ -228,6 +231,14 @@ function getAutomationID(
   return api.computeAutomationID(analysis_key, environment);
 }
 
+/** Gets the path to a saved payload file for {@link analysisKind}. */
+export function getSavedPayloadPath(analysisKind: analyses.AnalysisKind) {
+  return path.join(
+    actionsUtil.getTemporaryDirectory(),
+    `payload-${analysisKind}.json`,
+  );
+}
+
 /**
  * Upload the given payload.
  * If the request fails then this will retry a small number of times.
@@ -242,10 +253,7 @@ export async function uploadPayload(
   logger.info("Uploading results");
 
   if (util.shouldSkipSarifUpload()) {
-    const payloadSaveFile = path.join(
-      actionsUtil.getTemporaryDirectory(),
-      `payload-${analysis.kind}.json`,
-    );
+    const payloadSaveFile = getSavedPayloadPath(analysis.kind);
     logger.info(
       `SARIF upload disabled by an environment variable. Saving to ${payloadSaveFile}`,
     );
@@ -599,6 +607,7 @@ export interface PostProcessingResults {
 export async function postProcessSarifFiles(
   logger: Logger,
   features: FeatureEnablement,
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
   checkoutPath: string,
   sarifPaths: string[],
   category: string | undefined,
@@ -623,6 +632,7 @@ export async function postProcessSarifFiles(
       gitHubVersion,
       features,
       logger,
+      config,
     );
   } else {
     const sarifPath = sarifPaths[0];
@@ -683,6 +693,7 @@ export async function writePostProcessedFiles(
  * to.
  */
 export async function uploadFiles(
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
   inputSarifPath: string,
   checkoutPath: string,
   category: string | undefined,
@@ -697,6 +708,7 @@ export async function uploadFiles(
 
   return uploadSpecifiedFiles(
     sarifPaths,
+    config,
     checkoutPath,
     category,
     features,
@@ -710,6 +722,7 @@ export async function uploadFiles(
  */
 async function uploadSpecifiedFiles(
   sarifPaths: string[],
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
   checkoutPath: string,
   category: string | undefined,
   features: FeatureEnablement,
@@ -719,6 +732,7 @@ async function uploadSpecifiedFiles(
   const processingResults: PostProcessingResults = await postProcessSarifFiles(
     logger,
     features,
+    config,
     checkoutPath,
     sarifPaths,
     category,
@@ -857,6 +871,16 @@ export async function waitForProcessing(
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
   try {
+    // If SARIF upload is disabled and we reach this point, then the file was written to disk and
+    // there is nothing to wait for. We still allow ourselves to get to this point so that we can
+    // see in the log that we would have waited for processing to finish if the upload had happened.
+    if (util.shouldSkipSarifUpload()) {
+      logger.info(
+        "Nothing to wait for, because SARIF upload is disabled by an environment variable and the SARIF was saved to disk.",
+      );
+      return;
+    }
+
     const client = api.getApiClient();
 
     // Do an initial wait because processing will always take a minimum of 2-3 seconds

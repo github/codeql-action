@@ -871,7 +871,7 @@ export async function waitForProcessing(
 ): Promise<void> {
   logger.startGroup("Waiting for processing to finish");
   try {
-    // If SARIF uplaod is disabled and we reach this point, then the file was written to disk and
+    // If SARIF upload is disabled and we reach this point, then the file was written to disk and
     // there is nothing to wait for. We still allow ourselves to get to this point so that we can
     // see in the log that we would have waited for processing to finish if the upload had happened.
     if (util.shouldSkipSarifUpload()) {

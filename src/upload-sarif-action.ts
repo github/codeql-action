@@ -93,10 +93,8 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
 
-    // Although we wouldn't typically expect there to be a configuration since we don't expect another
-    // CodeQL Action step to have come before `upload-sarif`, this has previously been the behaviour
-    // when `combineSarifFilesUsingCLI` called `getConfig` directly. Since the only effect of this would
-    // be that an existing CLI that was installed gets re-used, we maintain this behaviour.
+    // Load the configuration from a previous step if there is one. This allows us to reuse the CLI that
+    // may have been installed by a previous step.
     const maybeConfig = await getConfig(tempDir, logger);
     const uploadResults = await postProcessAndUploadSarif(
       logger,

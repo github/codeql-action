@@ -50,7 +50,7 @@ function hasCodeQLInToolcache(expectedNumber?: string) {
   if (allCodeqlVersions.length === 0) {
     throw new Error("CodeQL not found in toolcache");
   }
-  if (expected !== undefined && allCodeqlVersions.length > expected) {
+  if (expected !== undefined && allCodeqlVersions.length !== expected) {
     throw new Error(
       `Expected ${expected} versions of CodeQL in the toolcache, but found ${allCodeqlVersions.length}`,
     );

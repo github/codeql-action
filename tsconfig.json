@@ -3,7 +3,7 @@
     /* Basic Options */
     "lib": ["ES2022"],
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "es2022",
     "moduleResolution": "bundler",
     "outDir": "./build",
     "rootDir": "./src",

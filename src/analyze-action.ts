@@ -434,8 +434,10 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     }
 
     // We don't upload results in test mode, so don't wait for processing
-    if (util.isInTestMode()) {
-      logger.debug("In test mode. Waiting for processing is disabled.");
+    if (util.shouldSkipSarifUpload()) {
+      logger.debug(
+        "SARIF upload is disabled and nothing was uploaded, so we do not need to wait for processing to finish.",
+      );
     } else if (
       uploadResults?.[analyses.AnalysisKind.CodeScanning] !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"

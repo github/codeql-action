@@ -3,12 +3,13 @@
     /* Basic Options */
     "lib": ["ES2022"],
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "es2022",
     "moduleResolution": "bundler",
     "outDir": "./build",
     "rootDir": "./src",
     "sourceMap": true,
     "types": ["node"],
+    "removeComments": true,                   /* Remove all comments. */
 
     /* Strict Type-Checking Options */
     "strict": true,                           /* Enable all strict type-checking options. */

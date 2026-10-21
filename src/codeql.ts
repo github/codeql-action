@@ -927,7 +927,13 @@ async function getCodeQLForCmd(
       let configPath: string | undefined =
         getGeneratedCodeScanningConfigPath(config);
 
-      if (diagnosticDir !== undefined && !fs.existsSync(configPath)) {
+      if (!fs.existsSync(configPath)) {
+        logger.warning(
+          [
+            `Expected a configuration file at '${configPath}', which does not exist.`,
+            "Continuing with diagnostics export anyway, without a configuration file.",
+          ].join(" "),
+        );
         configPath = undefined;
       }
 

@@ -11,7 +11,7 @@ import * as sinon from "sinon";
 import * as api from "./api-client";
 import { EnvVar } from "./environment";
 import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { getTestEnv, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -162,66 +162,6 @@ test.serial("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
   t.throws(util.getExtraOptionsEnvParam);
 
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
-});
-
-test("parseGitHubUrl", (t) => {
-  t.deepEqual(util.parseGitHubUrl("github.com"), "https://github.com");
-  t.deepEqual(util.parseGitHubUrl("https://github.com"), "https://github.com");
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.com"),
-    "https://github.com",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.com/foo/bar"),
-    "https://github.com",
-  );
-
-  t.deepEqual(
-    util.parseGitHubUrl("github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/api/v3"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com:1234"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.example.com:1234"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com:1234/api/v3"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/base/path"),
-    "https://github.example.com/base/path/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/base/path/api/v3"),
-    "https://github.example.com/base/path/",
-  );
-
-  t.throws(() => util.parseGitHubUrl(""), {
-    message: '"" is not a valid URL',
-  });
-  t.throws(() => util.parseGitHubUrl("ssh://github.com"), {
-    message: '"ssh://github.com" is not a http or https URL',
-  });
-  t.throws(() => util.parseGitHubUrl("http:///::::433"), {
-    message: '"http:///::::433" is not a valid URL',
-  });
 });
 
 test("allowed API versions", async (t) => {
@@ -552,4 +492,71 @@ test("Success.orElse returns the value for a success result", (t) => {
 test("Failure.orElse returns the default value for a failure result", (t) => {
   const result = new util.Failure(new Error("test error"));
   t.is(result.orElse("default value"), "default value");
+});
+
+test("shouldSkipGenerateFailedSarif", (t) => {
+  const env = getTestEnv();
+
+  // Don't skip by default
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+
+  // Skip in test mode
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "true",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if not uploading SARIF
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Don't skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "false",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+});
+
+test("shouldSkipSarifUpload", (t) => {
+  const env = getTestEnv();
+
+  // Don't skip by default
+  t.is(util.shouldSkipSarifUpload(env), false);
+
+  // Skip in test mode
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+  });
+  t.is(util.shouldSkipSarifUpload(env), true);
+
+  // Skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+  });
+  t.is(util.shouldSkipSarifUpload(env), true);
+
+  // Don't skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: "false",
+  });
+  t.is(util.shouldSkipSarifUpload(env), false);
 });

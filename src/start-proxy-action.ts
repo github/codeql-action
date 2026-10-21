@@ -109,7 +109,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       getApiDetails(action.env),
     );
     const proxyInfo = await startProxy(
-      proxyBin,
+      proxyBin.path,
       proxyConfig,
       proxyLogFilePath,
       logger,
@@ -125,6 +125,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
         languages: language === undefined ? undefined : [language],
       },
       proxyConfig.all_credentials.map((c) => c.type),
+      { proxy_version: proxyBin.version },
       logger,
     );
   } catch (unwrappedError) {

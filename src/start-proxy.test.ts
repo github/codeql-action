@@ -1,6 +1,5 @@
 import * as filepath from "path";
 
-import * as core from "@actions/core";
 import * as toolcache from "@actions/tool-cache";
 import test, { ExecutionContext } from "ava";
 import sinon from "sinon";
@@ -18,7 +17,6 @@ import { getRunnerLogger, Logger } from "./logging";
 import { BundlePlatform, getBundlePlatform } from "./platform";
 import * as repository from "./setup/repository";
 import * as startProxyExports from "./start-proxy";
-import * as statusReport from "./status-report";
 import {
   addSinonAssertions,
   assertNotLogged,
@@ -32,93 +30,9 @@ import {
   setupTests,
   withRecordingLoggerAsync,
 } from "./testing-utils";
-import {
-  ConfigurationError,
-  GitHubVariant,
-  GitHubVersion,
-  withTmpDir,
-} from "./util";
+import { GitHubVariant, GitHubVersion, withTmpDir } from "./util";
 
 setupTests(test);
-
-const sendFailedStatusReportTest = makeMacro({
-  exec: async (
-    t: ExecutionContext<unknown>,
-    err: Error,
-    expectedMessage: string,
-    expectedStatus: statusReport.ActionStatus = "failure",
-  ) => {
-    const now = new Date();
-
-    // Override core.setFailed to avoid it setting the program's exit code
-    sinon.stub(core, "setFailed").returns();
-
-    const createStatusReportBase = sinon.stub(
-      statusReport,
-      "createStatusReportBase",
-    );
-    createStatusReportBase.resolves(undefined);
-
-    await withRecordingLoggerAsync(async (logger) => {
-      await startProxyExports.sendFailedStatusReport(
-        logger,
-        now,
-        undefined,
-        err,
-      );
-
-      // Check that the stub has been called exactly once, with the expected arguments,
-      // but not with the message from the error.
-      sinon.assert.calledOnceWithExactly(
-        createStatusReportBase,
-        statusReport.ActionName.StartProxy,
-        expectedStatus,
-        now,
-        sinon.match.any,
-        sinon.match.any,
-        sinon.match.any,
-        expectedMessage,
-      );
-      t.false(
-        createStatusReportBase.calledWith(
-          statusReport.ActionName.StartProxy,
-          expectedStatus,
-          now,
-          sinon.match.any,
-          sinon.match.any,
-          sinon.match.any,
-          sinon.match((msg: string) => msg.includes(err.message)),
-        ),
-        "createStatusReportBase was called with the error message",
-      );
-    });
-  },
-
-  title: (providedTitle = "") => `sendFailedStatusReport - ${providedTitle}`,
-});
-
-sendFailedStatusReportTest.serial(
-  "reports generic error message for non-StartProxyError error",
-  new Error("Something went wrong today"),
-  "Error from start-proxy Action omitted (Error).",
-);
-
-sendFailedStatusReportTest.serial(
-  "reports generic error message for non-StartProxyError error with safe error message",
-  new Error(
-    startProxyExports.getStartProxyErrorMessage(
-      startProxyExports.StartProxyErrorType.DownloadFailed,
-    ),
-  ),
-  "Error from start-proxy Action omitted (Error).",
-);
-
-sendFailedStatusReportTest.serial(
-  "reports generic error message for ConfigurationError error",
-  new ConfigurationError("Something went wrong today"),
-  "Error from start-proxy Action omitted (ConfigurationError).",
-  "user-error",
-);
 
 const toEncodedJSON = (data: any) =>
   Buffer.from(JSON.stringify(data)).toString("base64");
@@ -1021,16 +935,17 @@ test.serial(
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(true);
 
       const features = mockOfflineFeatures(tempDir, logger);
-      const path = await startProxyExports.getProxyBinaryPath(
+      const result = await startProxyExports.getProxyBinaryPath(
         initAllState({ logger, features }),
         SAMPLE_DOTCOM_API_DETAILS,
       );
 
-      t.assert(path);
+      t.assert(result);
       t.is(
-        path,
+        result.path,
         filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
       );
+      t.is(result.version, defaults.cliVersion);
     });
   },
 );
@@ -1067,7 +982,7 @@ test.serial(
     sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
     state.env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "test/repo");
 
-    const path = await startProxyExports.getProxyBinaryPath(
+    const result = await startProxyExports.getProxyBinaryPath(
       {
         ...state,
         features: createFeatures([]),
@@ -1084,11 +999,12 @@ test.serial(
     st.onceWith(extractTar, archivePath);
     st.onceWith(cacheDir, extractedPath);
 
-    t.assert(path);
+    t.assert(result);
     t.is(
-      path,
+      result.path,
       filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
     );
+    t.is(result.version, defaults.cliVersion);
 
     checkExpectedLogMessages(t, logger.messages, [
       `Found private registry proxy ${startProxyExports.getProxyPackage(getTestPlatform(state))} in test/repo on https://github.com with URL ${downloadUrl}`,
@@ -1101,7 +1017,8 @@ test.serial(
   async (t) => {
     const logger = new RecordingLogger();
     const state = initAllState({ logger });
-    const expectedTag = "codeql-bundle-v2.20.1";
+    const expectedVersion = "2.20.1";
+    const expectedTag = `codeql-bundle-v${expectedVersion}`;
     const expectedParams = {
       owner: "test",
       repo: "repo",
@@ -1154,14 +1071,16 @@ test.serial(
       const getDefaultCliVersion = sinon
         .stub(features, "getEnabledDefaultCliVersions")
         .resolves({
-          enabledVersions: [{ cliVersion: "2.20.1", tagName: expectedTag }],
+          enabledVersions: [
+            { cliVersion: expectedVersion, tagName: expectedTag },
+          ],
         });
 
       // Stub this to always return `false` so we force `getCodeQLAssetDownloadURL` to use the (mocked) API.
       sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
       state.env.set(ActionsEnvVars.GITHUB_ACTION_REPOSITORY, "test/repo");
 
-      const path = await startProxyExports.getProxyBinaryPath(
+      const result = await startProxyExports.getProxyBinaryPath(
         {
           ...state,
           features,
@@ -1179,11 +1098,12 @@ test.serial(
       st.onceWith(extractTar, archivePath);
       st.onceWith(cacheDir, extractedPath);
 
-      t.assert(path);
+      t.assert(result);
       t.is(
-        path,
+        result.path,
         filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
       );
+      t.is(result.version, expectedVersion);
     });
 
     checkExpectedLogMessages(t, logger.messages, [

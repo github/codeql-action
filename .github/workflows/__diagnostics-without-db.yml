@@ -79,7 +79,9 @@ jobs:
       - name: Analyze
         uses: ./analyze
         # In a real workflow, this step wouldn't run. Since we used `continue-on-error`
-        # above, we manually disable it with an `if` condition.
+        # above, we manually disable it with an `if` condition. Having this step is required
+        # for the init post-action because it checks the workflow definition for e.g. the
+        # `category` input. Without this step, that part of the init post-action would fail.
         if: false
         with:
           category: '/test-codeql-version:${{ matrix.version }}'

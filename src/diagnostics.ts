@@ -148,7 +148,7 @@ export function getDiagnosticsPath(basePath: string, language?: Language) {
   if (language !== undefined) {
     return path.resolve(basePath, language, "diagnostic", "codeql-action");
   }
-  return basePath;
+  return path.resolve(basePath, "diagnostic", "codeql-action");
 }
 
 /**

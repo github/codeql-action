@@ -60,8 +60,8 @@ function hasCodeQLInToolcache(expectedNumber?: string) {
 function main() {
   const { positionals, values } = parseArgs({
     options: {
-      // The *number* of expected versions in the toolcache.
-      expectedVersions: { type: "string", short: "n" },
+      // The number of expected versions in the toolcache.
+      "expected-version-count": { type: "string", short: "n" },
     },
     allowPositionals: true,
   });
@@ -80,7 +80,7 @@ function main() {
       noCodeQLInToolcache();
       return;
     case "installed":
-      hasCodeQLInToolcache(values.expectedVersions);
+      hasCodeQLInToolcache(values["expected-version-count"]);
       return;
     default:
       throw new Error(`Unknown command '${cmd}'.`);

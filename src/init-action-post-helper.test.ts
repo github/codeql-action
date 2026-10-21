@@ -44,7 +44,7 @@ test.serial("generateFailedSarif picks up unwritten diagnostics", async (t) =>
     const logger = new RecordingLogger();
 
     const tempDiagDir = getTempDiagnosticPath(tmpDir);
-    fs.mkdirSync(tempDiagDir);
+    fs.mkdirSync(tempDiagDir, { recursive: true });
 
     const codeqlObject = await codeql.getCodeQLForTesting();
     const diagnosticsExport = sinon

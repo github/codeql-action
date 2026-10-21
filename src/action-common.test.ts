@@ -19,23 +19,25 @@ import { getErrorMessage } from "./util";
 
 setupTests(test);
 
-for (const [key, displayName] of Object.entries(
-  statusReport.ACTION_DISPLAY_NAMES,
-)) {
-  test(`getDisplayActionName - '${displayName}' instead of '${key}'`, (t) => {
+const expectedActionDisplayNames: Record<ActionName, string> = {
+  [ActionName.Analyze]: "analyze action",
+  [ActionName.AnalyzePost]: "analyze post-action",
+  [ActionName.Autobuild]: "autobuild action",
+  [ActionName.Init]: "init action",
+  [ActionName.InitPost]: "init post-action",
+  [ActionName.ResolveEnvironment]: "resolve-environment action",
+  [ActionName.SetupCodeQL]: "setup-codeql action",
+  [ActionName.StartProxy]: "start-proxy action",
+  [ActionName.StartProxyPost]: "start-proxy post-action",
+  [ActionName.UploadSarif]: "upload-sarif action",
+  [ActionName.UploadSarifPost]: "upload-sarif post-action",
+};
+
+for (const [key, displayName] of Object.entries(expectedActionDisplayNames)) {
+  test(`getDisplayActionName - '${displayName}' for '${key}'`, (t) => {
     t.is(statusReport.getDisplayActionName(key as ActionName), displayName);
   });
 }
-
-test("getDisplayActionName - returns action name", (t) => {
-  for (const actionName of Object.values(ActionName)) {
-    if (statusReport.ACTION_DISPLAY_NAMES[actionName]) {
-      continue;
-    }
-
-    t.is(statusReport.getDisplayActionName(actionName), actionName);
-  }
-});
 
 interface RunInActionsTestOpts {
   runFn?: () => Promise<any>;
@@ -109,7 +111,7 @@ const runInActionsMacro = makeMacro({
     if (expectFailure) {
       t.true(
         setFailed.calledOnceWithExactly(
-          `${statusReport.getDisplayActionName(name)} action failed: ${opts?.expectedErrorMessage}`,
+          `${statusReport.getDisplayActionName(name)} failed: ${opts?.expectedErrorMessage}`,
         ),
       );
       t.true(

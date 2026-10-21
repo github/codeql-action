@@ -192,7 +192,7 @@ export async function runInActions(action: Action) {
     await action.run(actionState);
   } catch (error) {
     core.setFailed(
-      `${getDisplayActionName(action.name)} action failed: ${getErrorMessage(error)}`,
+      `${getDisplayActionName(action.name)} failed: ${getErrorMessage(error)}`,
     );
 
     const statusReportError =

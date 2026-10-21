@@ -67,10 +67,10 @@ export enum ActionName {
 /** A partial mapping from `ActionName` to names for actions whose display name is not the `ActionName` value. */
 export const ACTION_DISPLAY_NAMES: Partial<Record<ActionName, string>> = {
   [ActionName.Analyze]: "analyze",
-  [ActionName.AnalyzePost]: "analyze post-action",
-  [ActionName.InitPost]: "init post",
-  [ActionName.StartProxyPost]: "start-proxy post-action",
-  [ActionName.UploadSarifPost]: "upload-sarif post-action",
+  [ActionName.AnalyzePost]: "analyze",
+  [ActionName.InitPost]: "init",
+  [ActionName.StartProxyPost]: "start-proxy",
+  [ActionName.UploadSarifPost]: "upload-sarif",
 };
 
 /** Decides if {@link name} refers to a post-action. */
@@ -83,9 +83,10 @@ export function isPostAction(name: ActionName) {
  * for actions which have a different display name in {@link ACTION_DISPLAY_NAMES}.
  */
 export function getDisplayActionName(actionName: ActionName): string {
+  const suffix = isPostAction(actionName) ? "post-action" : "action";
   const displayName = ACTION_DISPLAY_NAMES[actionName];
 
-  return displayName ?? actionName;
+  return `${displayName ?? actionName} ${suffix}`;
 }
 
 /**

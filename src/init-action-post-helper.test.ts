@@ -56,7 +56,7 @@ test.serial("generateFailedSarif picks up unwritten diagnostics", async (t) =>
     const sarifFile = path.join(tmpDir, "failed.sarif");
     const result = await initActionPostHelper.generateFailedSarif(
       logger,
-      createFeatures([]),
+      createFeatures([Feature.ExportDiagnosticsEnabled]),
       createTestConfig({
         tempDir: tmpDir,
         // Explicitly undefined to ensure we get the "no database" path.

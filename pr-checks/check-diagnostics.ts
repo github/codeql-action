@@ -34,59 +34,66 @@ function checkStatusPageNotification(n: sarif.Notification) {
   }
 }
 
+function checkSarif(sarifFile: string) {
+  core.info(`Checking SARIF file at '${sarifFile}'`);
+
+  const log = JSON.parse(fs.readFileSync(sarifFile, "utf8")) as sarif.Log;
+  const run = log.runs[0];
+
+  if (run.invocations === undefined) {
+    throw new Error("run.invocations is undefined");
+  }
+
+  const toolExecutionNotifications =
+    run.invocations[0].toolExecutionNotifications;
+
+  if (toolExecutionNotifications === undefined) {
+    throw new Error("toolExecutionNotifications is undefined");
+  }
+
+  const statusPageNotifications = toolExecutionNotifications.filter(
+    (n) =>
+      n.descriptor?.id === DIAGNOSTIC_ID &&
+      n.properties?.visibility?.statusPage,
+  );
+  if (statusPageNotifications.length !== 1) {
+    core.setFailed(
+      "Expected exactly one status page reporting descriptor for this diagnostic in the " +
+        `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
+        `${statusPageNotifications.length}. All notification reporting descriptors: ` +
+        `${JSON.stringify(toolExecutionNotifications)}.`,
+    );
+  }
+  checkStatusPageNotification(statusPageNotifications[0]);
+
+  const notifications = run.tool.driver.notifications;
+
+  if (notifications === undefined) {
+    throw new Error("notifications is undefined");
+  }
+
+  const diagnosticNotification = notifications.filter(
+    (n) =>
+      n.id === DIAGNOSTIC_ID &&
+      n.name === DIAGNOSTIC_ID &&
+      n.fullDescription?.text === DIAGNOSTIC_NAME,
+  );
+  if (diagnosticNotification.length !== 1) {
+    core.setFailed(
+      "Expected exactly one notification for this diagnostic in the " +
+        `'runs[].tool.driver.notifications[]' SARIF property, but found ` +
+        `${diagnosticNotification.length}. All notifications: ` +
+        `${JSON.stringify(notifications)}.`,
+    );
+  }
+}
+
 const sarifPath = process.env["SARIF_PATH"];
 
 if (sarifPath === undefined) {
   throw new Error("The path to a SARIF file must be set in 'SARIF_PATH'.");
 }
 
-const log = JSON.parse(fs.readFileSync(sarifPath, "utf8")) as sarif.Log;
-const run = log.runs[0];
-
-if (run.invocations === undefined) {
-  throw new Error("run.invocations is undefined");
-}
-
-const toolExecutionNotifications =
-  run.invocations[0].toolExecutionNotifications;
-
-if (toolExecutionNotifications === undefined) {
-  throw new Error("toolExecutionNotifications is undefined");
-}
-
-const statusPageNotifications = toolExecutionNotifications.filter(
-  (n) =>
-    n.descriptor?.id === DIAGNOSTIC_ID && n.properties?.visibility?.statusPage,
-);
-if (statusPageNotifications.length !== 1) {
-  core.setFailed(
-    "Expected exactly one status page reporting descriptor for this diagnostic in the " +
-      `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
-      `${statusPageNotifications.length}. All notification reporting descriptors: ` +
-      `${JSON.stringify(toolExecutionNotifications)}.`,
-  );
-}
-checkStatusPageNotification(statusPageNotifications[0]);
-
-const notifications = run.tool.driver.notifications;
-
-if (notifications === undefined) {
-  throw new Error("notifications is undefined");
-}
-
-const diagnosticNotification = notifications.filter(
-  (n) =>
-    n.id === DIAGNOSTIC_ID &&
-    n.name === DIAGNOSTIC_ID &&
-    n.fullDescription?.text === DIAGNOSTIC_NAME,
-);
-if (diagnosticNotification.length !== 1) {
-  core.setFailed(
-    "Expected exactly one notification for this diagnostic in the " +
-      `'runs[].tool.driver.notifications[]' SARIF property, but found ` +
-      `${diagnosticNotification.length}. All notifications: ` +
-      `${JSON.stringify(notifications)}.`,
-  );
-}
+checkSarif(sarifPath);
 
 core.info("Finished diagnostic export test");

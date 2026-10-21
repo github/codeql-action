@@ -54,7 +54,7 @@ validationJobs:
 
       - name: Check diagnostics appear in SARIF
         env:
-          SARIF_PATH: "./sarif/codeql-failed-run.sarif"
+          SARIF_PATH: "./sarif/"
           DIAGNOSTIC_ID: "codeql-action/unsupported-traced-analysis-macos"
           DIAGNOSTIC_NAME: "Traced analysis is not supported on this version of macOS"
           EXPECTED_LOCATIONS: "0"

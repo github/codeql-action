@@ -12,11 +12,12 @@ import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
+import { parseGitHubUrl } from "./github";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { RepositoryNwo } from "./repository";
 import * as util from "./util";
-import { asHTTPError, bundleDb, CleanupLevel, parseGitHubUrl } from "./util";
+import { asHTTPError, bundleDb, CleanupLevel } from "./util";
 
 /** Information about a database upload. */
 export interface DatabaseUploadResult {
@@ -258,7 +259,7 @@ async function recordClearCleanupSizes(
  *
  * @returns the duration of the upload in milliseconds
  */
-async function uploadBundledDatabase(
+export async function uploadBundledDatabase(
   repositoryNwo: RepositoryNwo,
   language: string,
   commitOid: string,
@@ -266,7 +267,10 @@ async function uploadBundledDatabase(
   bundledDbSize: number,
   apiDetails: GitHubApiDetails,
 ): Promise<number> {
-  const client = getApiClient();
+  // Ensure that the `apiDetails` that `getApiClient` uses match the ones we were given here,
+  // because we use `apiDetails.auth` below which must be used with the same instance that
+  // `apiDetails` refers to.
+  const client = getApiClient(util.getEnv(), apiDetails);
 
   const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
   uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;
@@ -292,7 +296,6 @@ async function uploadBundledDatabase(
         commit_oid: commitOid,
         data: bundledDbReadStream,
         headers: {
-          authorization: `token ${apiDetails.auth}`,
           "Content-Type": "application/zip",
           "Content-Length": bundledDbSize,
         },

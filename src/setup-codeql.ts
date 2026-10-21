@@ -839,7 +839,7 @@ function getToolcacheDestination(
 }
 
 /**
- * Reclaims disk space by deleting the CodeQL tools from the toolcache, if enabled.
+ * Reclaims disk space by deleting the CodeQL tools from the toolcache on GitHub-hosted runners.
  *
  * On GitHub-hosted runners the toolcache shares a filesystem with the workspace, so tools left in
  * the toolcache take up space that the analysis could use instead. This holds wherever we extract
@@ -847,9 +847,8 @@ function getToolcacheDestination(
  */
 async function tryDeleteToolcacheBundles({
   env,
-  features,
   logger,
-}: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>): Promise<void> {
+}: ActionState<["Logger", "ReadOnlyEnv"]>): Promise<void> {
   // A step that has already set up CodeQL may hand out a path into the toolcache that a later step
   // runs, so only the first step to set it up can know that nothing else relies on the toolcache.
   if (env.getOptional(EnvVar.HAS_SET_UP_CODEQL) !== undefined) {
@@ -860,11 +859,7 @@ async function tryDeleteToolcacheBundles({
     return;
   }
 
-  if (
-    !isGitHubHostedRunner() ||
-    !isToolcacheOnWorkspaceFilesystem(logger) ||
-    !(await features.getValue(Feature.CleanupToolcacheBundles))
-  ) {
+  if (!isGitHubHostedRunner(env) || !isToolcacheOnWorkspaceFilesystem(logger)) {
     return;
   }
 
@@ -983,7 +978,7 @@ export async function setupCodeQLBundle(
       break;
     case "download": {
       const result = await downloadCodeQLBundle(
-        { env: getEnv(), features, logger },
+        { env: getEnv(), logger },
         source,
         apiDetails,
         zstdAvailability.version,
@@ -1019,7 +1014,7 @@ export async function setupCodeQLBundle(
  * @returns The extraction directory and download timings.
  */
 export async function downloadCodeQLBundle(
-  action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
+  action: ActionState<["Logger", "ReadOnlyEnv"]>,
   source: CodeQLDownloadSource,
   apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,

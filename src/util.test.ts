@@ -10,7 +10,7 @@ import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { EnvVar } from "./environment";
-import { RecordingLogger, setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests, getTestEnv } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -491,4 +491,71 @@ test("Success.orElse returns the value for a success result", (t) => {
 test("Failure.orElse returns the default value for a failure result", (t) => {
   const result = new util.Failure(new Error("test error"));
   t.is(result.orElse("default value"), "default value");
+});
+
+test("shouldSkipGenerateFailedSarif", (t) => {
+  const env = getTestEnv();
+
+  // Don't skip by default
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+
+  // Skip in test mode
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "true",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if not uploading SARIF
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Don't skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "false",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+});
+
+test("shouldSkipSarifUpload", (t) => {
+  const env = getTestEnv();
+
+  // Don't skip by default
+  t.is(util.shouldSkipSarifUpload(env), false);
+
+  // Skip in test mode
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+  });
+  t.is(util.shouldSkipSarifUpload(env), true);
+
+  // Skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+  });
+  t.is(util.shouldSkipSarifUpload(env), true);
+
+  // Don't skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: "false",
+  });
+  t.is(util.shouldSkipSarifUpload(env), false);
 });

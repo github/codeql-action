@@ -3,7 +3,6 @@
  */
 
 export enum DocUrl {
-  ASSIGNING_PERMISSIONS_TO_JOBS = "https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs",
   AUTOMATIC_BUILD_FAILED = "https://docs.github.com/en/code-security/code-scanning/troubleshooting-code-scanning/automatic-build-failed",
   CODEQL_BUILD_MODES = "https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#codeql-build-modes",
   DEFINE_ENV_VARIABLES = "https://docs.github.com/en/actions/learn-github-actions/variables#defining-environment-variables-for-a-single-workflow",

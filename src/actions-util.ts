@@ -6,14 +6,15 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as github from "@actions/github";
 import * as io from "@actions/io";
 
-import type { Config } from "./config-utils";
-import { Env, EnvVar, ActionsEnvVars } from "./environment";
+import { hasConfigKey, type Config } from "./config/action-config";
+import { Env, EnvVar, ActionsEnvVars, ReadOnlyEnv } from "./environment";
 import { Logger } from "./logging";
 import {
   doesDirectoryExist,
   getCodeQLDatabasePath,
   ConfigurationError,
   getEnv,
+  getErrorMessage,
 } from "./util";
 
 /**
@@ -29,7 +30,6 @@ declare const __CODEQL_ACTION_VERSION__: string;
 export interface ActionsEnv {
   getRequiredInput: (name: string) => string;
   getOptionalInput: (name: string) => string | undefined;
-  exportVariable: (name: string, value: string) => void;
 }
 
 /**
@@ -39,7 +39,6 @@ export function getActionsEnv(): ActionsEnv {
   return {
     getRequiredInput,
     getOptionalInput,
-    exportVariable: core.exportVariable,
   };
 }
 
@@ -94,7 +93,7 @@ export function getActionVersion(): string {
  *
  * This will be "dynamic" for default setup workflow runs.
  */
-export function getWorkflowEventName(env: Env = getEnv()) {
+export function getWorkflowEventName(env: ReadOnlyEnv = getEnv()) {
   return env.getRequired(ActionsEnvVars.GITHUB_EVENT_NAME);
 }
 
@@ -102,7 +101,7 @@ export function getWorkflowEventName(env: Env = getEnv()) {
  * Returns whether the current workflow is executing a local copy of the Action, e.g. we're running
  * a workflow on the codeql-action repo itself.
  */
-export function isRunningLocalAction(env: Env = getEnv()): boolean {
+export function isRunningLocalAction(env: ReadOnlyEnv = getEnv()): boolean {
   const relativeScriptPath = getRelativeScriptPath(env);
   return (
     relativeScriptPath.startsWith("..") || path.isAbsolute(relativeScriptPath)
@@ -114,14 +113,14 @@ export function isRunningLocalAction(env: Env = getEnv()): boolean {
  *
  * This can be used to get the Action's name or tell if we're running a local Action.
  */
-function getRelativeScriptPath(env: Env): string {
+function getRelativeScriptPath(env: ReadOnlyEnv): string {
   const runnerTemp = env.getRequired(ActionsEnvVars.RUNNER_TEMP);
   const actionsDirectory = path.join(path.dirname(runnerTemp), "_actions");
   return path.relative(actionsDirectory, __filename);
 }
 
 /** Returns the contents of `GITHUB_EVENT_PATH` as a JSON object. */
-export function getWorkflowEvent(env: Env = getEnv()): any {
+export function getWorkflowEvent(env: ReadOnlyEnv = getEnv()): any {
   const eventJsonFile = env.getRequired(ActionsEnvVars.GITHUB_EVENT_PATH);
   try {
     return JSON.parse(fs.readFileSync(eventJsonFile, "utf-8"));
@@ -132,28 +131,38 @@ export function getWorkflowEvent(env: Env = getEnv()): any {
   }
 }
 
-export async function printDebugLogs(config: Config) {
+export async function printDebugLogs(logger: Logger, config: Partial<Config>) {
+  if (
+    !hasConfigKey(config, "languages") ||
+    !hasConfigKey(config, "dbLocation")
+  ) {
+    logger.debug(
+      `Not printing debug logs, because the configuration does not include the 'languages' or 'dbLocation' fields.`,
+    );
+    return;
+  }
+
   for (const language of config.languages) {
     const databaseDirectory = getCodeQLDatabasePath(config, language);
     const logsDirectory = path.join(databaseDirectory, "log");
     if (!doesDirectoryExist(logsDirectory)) {
-      core.info(`Directory ${logsDirectory} does not exist.`);
+      logger.info(`Directory ${logsDirectory} does not exist.`);
       continue; // Skip this language database.
     }
 
     const walkLogFiles = (dir: string) => {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       if (entries.length === 0) {
-        core.info(`No debug logs found at directory ${logsDirectory}.`);
+        logger.info(`No debug logs found at directory ${logsDirectory}.`);
       }
       for (const entry of entries) {
         if (entry.isFile()) {
           const absolutePath = path.resolve(dir, entry.name);
-          core.startGroup(
+          logger.startGroup(
             `CodeQL Debug Logs - ${language} - ${entry.name} from file at path ${absolutePath}`,
           );
-          process.stdout.write(fs.readFileSync(absolutePath));
-          core.endGroup();
+          logger.info(fs.readFileSync(absolutePath, "utf-8"));
+          logger.endGroup();
         } else if (entry.isDirectory()) {
           walkLogFiles(path.resolve(dir, entry.name));
         }
@@ -292,7 +301,7 @@ export function isSelfHostedRunner(env: Env = getEnv()) {
  * that are configured to resemble hosted ones, such as those that mount a persistent volume at
  * `/opt/hostedtoolcache`.
  */
-export function isGitHubHostedRunner(env: Env = getEnv()) {
+export function isGitHubHostedRunner(env: ReadOnlyEnv = getEnv()) {
   return env.getOptional(ActionsEnvVars.RUNNER_ENVIRONMENT) === "github-hosted";
 }
 
@@ -412,14 +421,23 @@ export const persistInputs = function (env: Env = getEnv()) {
 /**
  * Restores all inputs to the action from the persisted state.
  */
-export const restoreInputs = function () {
-  const persistedInputs = core.getState(persistedInputsKey);
-  if (persistedInputs) {
-    for (const [name, value] of JSON.parse(persistedInputs)) {
-      process.env[name] = value;
+export function restoreInputs(logger: Logger) {
+  try {
+    const persistedInputsValue = core.getState(persistedInputsKey);
+    if (persistedInputsValue) {
+      const persistedInputs = JSON.parse(persistedInputsValue);
+
+      for (const [name, value] of persistedInputs) {
+        process.env[name] = value;
+      }
     }
+  } catch (err) {
+    logger.error(`Unable to restore inputs: ${getErrorMessage(err)}`);
+    throw new Error(
+      "Failed to restore inputs from the state set by this action's main execution.",
+    );
   }
-};
+}
 
 export interface PullRequestBranches {
   base: string;

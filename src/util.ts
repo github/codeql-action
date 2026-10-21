@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as os from "os";
 import * as path from "path";
+import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 import * as io from "@actions/io";
@@ -11,15 +12,28 @@ import * as semver from "semver";
 
 import * as apiCompatibility from "./api-compatibility.json";
 import type { CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
 import type { Pack } from "./config/db-config";
 import type { Config } from "./config-utils";
-import { EnvVar, getRequiredEnvParam } from "./environment";
+import {
+  EnvVar,
+  getRequiredEnvParam,
+  exportEnvVar,
+  getEnv,
+  type Env,
+  type ReadOnlyEnv,
+} from "./environment";
 import * as json from "./json";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
-export { getRequiredEnvParam, getOptionalEnvVar, getEnv } from "./environment";
+export {
+  getRequiredEnvParam,
+  getOptionalEnvVar,
+  getEnv,
+  isInTestMode,
+} from "./environment";
 
 /**
  * The name of the file containing the base database OIDs, as stored in the
@@ -33,10 +47,8 @@ const BASE_DATABASE_OIDS_FILE_NAME = "base-database-oids.json";
  */
 const BROKEN_VERSIONS = ["0.0.0-20211207"];
 
-/**
- * The URL for github.com.
- */
-export const GITHUB_DOTCOM_URL = "https://github.com";
+/** A string representing a GitHub instance. */
+export type InstanceURL = string;
 
 /**
  * Default name of the debugging artifact.
@@ -84,9 +96,32 @@ export async function withTmpDir<T>(
   body: (tmpDir: string) => Promise<T>,
 ): Promise<T> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "codeql-action-"));
-  const result = await body(tmpDir);
-  await fs.promises.rm(tmpDir, { force: true, recursive: true });
-  return result;
+  try {
+    return await body(tmpDir);
+  } finally {
+    await fs.promises.rm(tmpDir, { force: true, recursive: true });
+  }
+}
+
+/**
+ * Creates a temporary file with the given contents, runs the given body, and
+ * then deletes the file. Note that, to create a temporary file, we first create
+ * a temporary directory via {@link withTmpDir} and then create the file within
+ * that directory.
+ * @param baseFileName The name to assign the temporary file.
+ * @param contents The contents to write to the temporary file.
+ * @param body The function to execute with the temporary file.
+ */
+export async function withTmpFile<T>(
+  baseFileName: string,
+  contents: string,
+  body: (filePath: string) => Promise<T> | T,
+): Promise<T> {
+  return withTmpDir(async (tmpDir) => {
+    const filePath = path.join(tmpDir, baseFileName);
+    fs.writeFileSync(filePath, contents);
+    return body(filePath);
+  });
 }
 
 /**
@@ -411,7 +446,10 @@ export function getThreadsFlag(
 /**
  * Get the path where the CodeQL database for the given language lives.
  */
-export function getCodeQLDatabasePath(config: Config, language: Language) {
+export function getCodeQLDatabasePath(
+  config: ActionConfig<"dbLocation">,
+  language: Language,
+) {
   return path.resolve(config.dbLocation, language);
 }
 
@@ -425,49 +463,6 @@ export function getGeneratedSuitePath(config: Config, language: Language) {
     "temp",
     "config-queries.qls",
   );
-}
-
-/**
- * Parses user input of a github.com or GHES URL to a canonical form.
- * Removes any API prefix or suffix if one is present.
- */
-export function parseGitHubUrl(inputUrl: string): string {
-  const originalUrl = inputUrl;
-  if (inputUrl.indexOf("://") === -1) {
-    inputUrl = `https://${inputUrl}`;
-  }
-  if (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")) {
-    throw new ConfigurationError(`"${originalUrl}" is not a http or https URL`);
-  }
-
-  let url: URL;
-  try {
-    url = new URL(inputUrl);
-  } catch {
-    throw new ConfigurationError(`"${originalUrl}" is not a valid URL`);
-  }
-
-  // If we detect this is trying to be to github.com
-  // then return with a fixed canonical URL.
-  if (url.hostname === "github.com" || url.hostname === "api.github.com") {
-    return GITHUB_DOTCOM_URL;
-  }
-
-  // Remove the API prefix if it's present
-  if (url.pathname.indexOf("/api/v3") !== -1) {
-    url.pathname = url.pathname.substring(0, url.pathname.indexOf("/api/v3"));
-  }
-  // Also consider subdomain isolation on GHES
-  if (url.hostname.startsWith("api.")) {
-    url.hostname = url.hostname.substring(4);
-  }
-
-  // Normalise path to having a trailing slash for consistency
-  if (!url.pathname.endsWith("/")) {
-    url.pathname = `${url.pathname}/`;
-  }
-
-  return url.toString();
 }
 
 const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
@@ -518,7 +513,7 @@ export function checkGitHubVersionInRange(
     );
   }
   hasBeenWarnedAboutVersion = true;
-  core.exportVariable(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
+  exportEnvVar(CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR, true);
 }
 
 export enum DisallowedAPIVersionReason {
@@ -561,12 +556,12 @@ export function assertNever(value: never): never {
  * Set some initial environment variables that we can set even without
  * knowing what version of CodeQL we're running.
  */
-export function initializeEnvironment(version: string) {
-  core.exportVariable(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  core.exportVariable(EnvVar.FEATURE_SANDWICH, "false");
-  core.exportVariable(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  core.exportVariable(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  core.exportVariable(EnvVar.VERSION, version);
+export function initializeEnvironment(version: string, env: Env = getEnv()) {
+  env.export(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
+  env.export(EnvVar.FEATURE_SANDWICH, "false");
+  env.export(EnvVar.FEATURE_SARIF_COMBINE, "true");
+  env.export(EnvVar.FEATURE_WILL_UPLOAD, "true");
+  env.export(EnvVar.VERSION, version);
 }
 
 export class HTTPError extends Error {
@@ -605,7 +600,9 @@ export async function codeQlVersionAtLeast(
   return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
-export function getBaseDatabaseOidsFilePath(config: Config): string {
+export function getBaseDatabaseOidsFilePath(
+  config: ActionConfig<"dbLocation">,
+): string {
   return path.join(config.dbLocation, BASE_DATABASE_OIDS_FILE_NAME);
 }
 
@@ -617,7 +614,7 @@ export function getBaseDatabaseOidsFilePath(config: Config): string {
  * given `includeDiagnostics` value.
  */
 export async function bundleDb(
-  config: Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   codeql: CodeQL,
   dbName: string,
@@ -658,6 +655,11 @@ export async function bundleDb(
   return databaseBundlePath;
 }
 
+/** Returns the elapsed milliseconds, rounded, since `startTime` was recorded with `performance.now()`. */
+export function durationMsSince(startTime: number): number {
+  return Math.round(performance.now() - startTime);
+}
+
 /**
  * @param milliseconds time to delay
  * @param opts options
@@ -683,19 +685,29 @@ export function isGoodVersion(versionSpec: string) {
 }
 
 /**
- * Returns whether we are in test mode. This is used by CodeQL Action PR checks.
- *
- * In test mode, we skip several uploads (SARIF results, status reports, DBs, ...).
+ * Returns whether we specifically want to skip generating a failed SARIF.
  */
-export function isInTestMode(): boolean {
-  return process.env[EnvVar.TEST_MODE] === "true";
+export function shouldSkipGenerateFailedSarif(
+  env: ReadOnlyEnv = getEnv(),
+): boolean {
+  const skipGenerateFailedSarif = env.getOptional(
+    EnvVar.SKIP_GENERATE_FAILED_SARIF,
+  );
+  return (
+    skipGenerateFailedSarif !== "false" &&
+    (shouldSkipSarifUpload(env) || skipGenerateFailedSarif === "true")
+  );
 }
 
 /**
  * Returns whether we specifically want to skip uploading SARIF files.
  */
-export function shouldSkipSarifUpload(): boolean {
-  return isInTestMode() || process.env[EnvVar.SKIP_SARIF_UPLOAD] === "true";
+export function shouldSkipSarifUpload(env: ReadOnlyEnv = getEnv()): boolean {
+  const skipSarifUpload = env.getOptional(EnvVar.SKIP_SARIF_UPLOAD);
+  return (
+    skipSarifUpload !== "false" &&
+    (env.isSkippingUploadsInTests() || skipSarifUpload === "true")
+  );
 }
 
 /**
@@ -865,7 +877,13 @@ export function parseMatrixInput(
   if (matrixInput === undefined || matrixInput === "null") {
     return undefined;
   }
-  return JSON.parse(matrixInput) as { [key: string]: string };
+  try {
+    return JSON.parse(matrixInput) as { [key: string]: string };
+  } catch (err) {
+    throw new Error(
+      `Failed to parse matrix input '${matrixInput}': ${getErrorMessage(err)}`,
+    );
+  }
 }
 
 export function wrapError(error: unknown): Error {
@@ -913,7 +931,7 @@ export async function checkDiskUsage(
       } else {
         logger.debug(message);
       }
-      core.exportVariable(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
+      exportEnvVar(EnvVar.HAS_WARNED_ABOUT_DISK_SPACE, "true");
     }
     return {
       numAvailableBytes: diskUsage.bavail * blockSizeInBytes,
@@ -962,7 +980,7 @@ export function checkActionVersion(
           "https://github.blog/changelog/2025-10-28-upcoming-deprecation-of-codeql-action-v3/",
       );
       // set LOG_VERSION_DEPRECATION env var to prevent the warning from being logged multiple times
-      core.exportVariable(EnvVar.LOG_VERSION_DEPRECATION, "true");
+      exportEnvVar(EnvVar.LOG_VERSION_DEPRECATION, "true");
     }
   }
 }
@@ -1008,7 +1026,11 @@ export enum BuildMode {
 }
 
 export function cloneObject<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj)) as T;
+  try {
+    return JSON.parse(JSON.stringify(obj)) as T;
+  } catch (err) {
+    throw new Error(`Cloning object failed: ${getErrorMessage(err)}`);
+  }
 }
 
 export async function cleanUpPath(file: string, name: string, logger: Logger) {

@@ -5,10 +5,13 @@ import { performance } from "perf_hooks";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
-import { getTemporaryDirectory, getRequiredInput } from "./actions-util";
+import type { ActionState } from "./action-common";
+import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
+import { defaultSuites } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import {
   getCsharpTempDependencyDir,
@@ -21,6 +24,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
+import { getGitRoot } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
@@ -85,6 +89,58 @@ export interface QueriesStatusReport
   event_reports?: EventReport[];
 }
 
+/**
+ * Determines the path at which the repository being analysed is checked out at.
+ * Returns the value of the required `checkout_path` input and validates that it
+ * refers to the root of a repository.
+ *
+ * @param action The action state.
+ * @param config The CodeQL Action configuration state.
+ */
+export async function determineCheckoutPath(
+  action: ActionState<["Logger", "Actions"]>,
+  config: configUtils.Config,
+) {
+  const checkoutPathInput = action.actions.getRequiredInput("checkout_path");
+
+  // Try to obtain the root path of the repository and validate that it matches the input.
+  const absCheckoutPathInput = path.resolve(checkoutPathInput);
+  const repositoryRoot = await getGitRoot(absCheckoutPathInput);
+
+  if (repositoryRoot === undefined) {
+    action.logger.warning(
+      [
+        `The directory at '${absCheckoutPathInput}' is not in the work tree of a git repository.`,
+        "If the repository being analyzed is checked out elsewhere,",
+        "you must explicitly set the 'checkout_path' input for the 'codeql-action/analyze' step to",
+        "the checkout path.",
+      ].join(" "),
+    );
+  } else if (repositoryRoot !== absCheckoutPathInput) {
+    action.logger.warning(
+      [
+        `The directory at '${absCheckoutPathInput}' is not the root of the repository ('${repositoryRoot}').`,
+        "Set the 'checkout_path' input for the 'codeql-action/analyze' step to the root path of the checkout.",
+      ].join(" "),
+    );
+  } else if (
+    config.repositoryRoot !== undefined &&
+    repositoryRoot !== config.repositoryRoot
+  ) {
+    // The repository root that was persisted by the `init` step doesn't match the one we have found here.
+    action.logger.warning(
+      [
+        `The repository path at '${repositoryRoot}' does not match that found by the 'codeql-action/init' step: '${config.repositoryRoot}'.`,
+        "Ensure that the 'checkout_path' input for the 'codeql-action/analyze' step is set to the path of the same repository that",
+        "the 'codeql-action/init' step determined. This is either the GitHub Actions workspace or the repository root corresponding to",
+        "the 'source-root' input if that was provided.",
+      ].join(" "),
+    );
+  }
+
+  return absCheckoutPathInput;
+}
+
 async function setupPythonExtractor(logger: Logger) {
   const codeqlPython = process.env["CODEQL_PYTHON"];
   if (codeqlPython === undefined || codeqlPython.length === 0) {
@@ -123,7 +179,7 @@ export async function runExtraction(
           language === BuiltInLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
-          await setupCppAutobuild(codeql, logger);
+          await setupCppAutobuild(logger);
         }
 
         // The Java and C# `build-mode: none` extractors place dependencies in the
@@ -170,7 +226,7 @@ async function shouldExtractLanguage(
 }
 
 export function dbIsFinalized(
-  config: configUtils.Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ) {
@@ -233,6 +289,7 @@ async function finalizeDatabaseCreation(
  */
 export async function setupDiffInformedQueryRun(
   logger: Logger,
+  checkoutPath: string,
 ): Promise<string | undefined> {
   return await withGroupAsync(
     "Generating diff range extension pack",
@@ -245,7 +302,6 @@ export async function setupDiffInformedQueryRun(
         return undefined;
       }
 
-      const checkoutPath = getRequiredInput("checkout_path");
       const packDir = writeDiffRangeDataExtensionPack(
         logger,
         diffRanges,
@@ -356,15 +412,6 @@ dataExtensions:
 
   return diffRangeDir;
 }
-
-// A set of default query suite names that are understood by the CLI.
-export const defaultSuites: Set<string> = new Set([
-  "security-experimental",
-  "security-extended",
-  "security-and-quality",
-  "code-quality",
-  "code-scanning",
-]);
 
 /**
  * If `maybeSuite` is the name of a default query suite, it is resolved into the corresponding

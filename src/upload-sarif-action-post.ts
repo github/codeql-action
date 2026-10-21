@@ -17,9 +17,10 @@ export async function runWrapper() {
   // possible, and only use safe functions outside.
 
   try {
-    // Restore inputs from `upload-sarif` Action.
-    actionsUtil.restoreInputs();
     const logger = getActionsLogger();
+
+    // Restore inputs from `upload-sarif` Action.
+    actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
@@ -33,13 +34,7 @@ export async function runWrapper() {
         return;
       }
       await withGroup("Uploading combined SARIF debug artifact", () =>
-        debugArtifacts.uploadCombinedSarifArtifacts(
-          logger,
-          gitHubVersion.type,
-          // The codeqlVersion is not applicable for uploading non-codeql sarif.
-          // We can assume all versions are safe to upload.
-          undefined,
-        ),
+        debugArtifacts.uploadCombinedSarifArtifacts(logger, gitHubVersion.type),
       );
     }
   } catch (error) {

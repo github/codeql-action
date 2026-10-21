@@ -32,6 +32,7 @@ import {
 } from "./feature-flags";
 import { Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
+import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
@@ -162,6 +163,46 @@ export function setupTests(testFn: TestFn<any>) {
   });
 }
 
+export interface AvaSinonAssertions {
+  /**
+   * Asserts that `stub` must have been called once with at least the `expected` arguments.
+   */
+  onceWith: <TArgs extends readonly any[]>(
+    stub: sinon.SinonStub<TArgs>,
+    ...expected: sinon.MatchPartialArguments<TArgs>
+  ) => boolean;
+}
+
+/** Adds additional assertions for use with `sinon` to `t`. */
+export function addSinonAssertions(
+  t: ExecutionContext<unknown>,
+): ExecutionContext<unknown> & AvaSinonAssertions {
+  return {
+    ...t,
+    onceWith: <TArgs extends readonly any[]>(
+      stub: sinon.SinonStub<TArgs>,
+      ...expected: sinon.MatchPartialArguments<TArgs>
+    ) => {
+      // Fail if the stub hasn't been called at all so that we can safely compare
+      // the arguments of the first call in the else branch.
+      if (stub.callCount === 0) {
+        t.fail("The stub wasn't called.");
+      } else {
+        // Reduce the arguments of each to the same number that was provided,
+        // so that extra arguments don't lead to a failure.
+        const actual = stub.args.map<sinon.MatchPartialArguments<TArgs>>(
+          (args: TArgs) =>
+            args.slice(
+              0,
+              expected.length,
+            ) as sinon.MatchPartialArguments<TArgs>,
+        );
+        return t.deepEqual(actual, [expected]);
+      }
+    },
+  };
+}
+
 /**
  * Declare a reusable test implementation, with better type safety than `test.macro`.
  */
@@ -201,10 +242,6 @@ class TestActionsEnv implements ActionsEnv {
   public getOptionalInput(_name: string): string | undefined {
     return undefined;
   }
-
-  public exportVariable(name: string, value: string): void {
-    this.env.set(name, value);
-  }
 }
 
 /**
@@ -233,6 +270,8 @@ export function initAllState(
   return {
     name: ActionName.Init,
     startedAt: new Date(),
+    platform: process.platform,
+    arch: process.arch,
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),
@@ -933,21 +972,14 @@ export function mockBundleDownloadApi({
   platformSpecific?: boolean;
   tagName: string;
 }): string {
-  const platform =
-    process.platform === "win32"
-      ? "win64"
-      : process.platform === "linux"
-        ? process.arch === "arm64"
-          ? "linux-arm64"
-          : "linux64"
-        : "osx64";
+  const platform = platformSpecific ? getBundlePlatform() : undefined;
 
   const baseUrl = apiDetails?.url ?? "https://example.com";
 
   const bundleUrls = ["tar.gz", "tar.zst"].map((extension) => {
     const relativeUrl = apiDetails
       ? `/${repo}/releases/download/${tagName}/codeql-bundle${
-          platformSpecific ? `-${platform}` : ""
+          platform !== undefined ? `-${platform}` : ""
         }.${extension}`
       : `/download/${tagName}/codeql-bundle.${extension}`;
 
@@ -974,6 +1006,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
     {},
     {
       version: getActionVersion(),
+      repositoryRoot: undefined,
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
       buildMode: undefined,

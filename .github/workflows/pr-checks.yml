@@ -2,6 +2,9 @@ name: PR Checks
 
 on:
   push:
+    branches:
+      - "main"
+      - "releases/v*"
   pull_request:
   merge_group:
     types: [checks_requested]
@@ -42,10 +45,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
+
+      # Install a new enough version of `npm` to understand `min-release-age`
+      # that is still compatible with Node 20.
+      - name: Install newer npm
+        if: matrix.node-version == 20
+        run: npm install -g npm@11.19.1
 
       - name: Install dependencies
         run: |
@@ -77,33 +86,6 @@ jobs:
           sarif_file: eslint.sarif
           category: eslint
 
-  changetool-tests:
-    name: changetool unit tests
-    permissions:
-      contents: read
-    runs-on: ubuntu-slim
-    timeout-minutes: 10
-
-    concurrency:
-      cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-      group: pr-checks-changetool-tests-${{ github.ref }}-${{ github.event_name }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run changetool unit tests
-        run: npm --workspace changetool test
-
   # These checks do not need to be run as part of the same matrix that we use for the `unit-tests`
   # job.
   other-checks:
@@ -122,11 +104,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Check for incorrect addresses in package-lock.json
+        run: |
+          if git grep -nE '(pkgs\.visualstudio\.com|pkgs\.dev\.azure\.com|packagefeedproxy\.microsoft\.io)' -- \
+              'package-lock.json'; then
+            echo "::error::package-lock.json contains internal package feed URLs. Replace them with public registry URLs."
+            exit 1
+          fi
+
       - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         id: install-deps
@@ -141,6 +131,10 @@ jobs:
         working-directory: pr-checks
         run: npx tsx --test
 
+      - name: Run `pr-checks/changenotes.ts` to ensure that all unreleased change notes are valid
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
+        run: npx tsx pr-checks/changenotes.ts validate
+
       - name: Verify all Actions use the same Node version
         id: head-version
         run: |
@@ -154,12 +148,11 @@ jobs:
 
       - name: Fetch base commit
         id: fetch-base
-        # Forks and Dependabot PRs don't have permission to write comments, so skip the repo size
-        # check in those cases.
+        # Skip this (and subsequent steps) if the PR originates from a fork, since this workflow
+        # won't have the necessary permissions to post comments on the PR.
         if: >-
           github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.user.login != 'dependabot[bot]'
+          github.event.pull_request.head.repo.full_name == github.repository
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -184,20 +177,20 @@ jobs:
 
       - name: Upload repo size comment
         if: steps.fetch-base.outcome == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: repo-size-comment
           path: ${{ runner.temp }}/repo-size/
           if-no-files-found: error
 
-      - name: 'Backport: Check out base ref'
+      - name: "Backport: Check out base ref"
         id: checkout-base
         if: ${{ startsWith(github.head_ref, 'backport-') }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.base_ref }}
 
-      - name: 'Backport: Verify Node versions unchanged'
+      - name: "Backport: Verify Node versions unchanged"
         if: steps.checkout-base.outcome == 'success'
         env:
           HEAD_VERSION: ${{ steps.head-version.outputs.node_version }}
@@ -218,7 +211,7 @@ jobs:
     if: >-
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.actor != 'dependabot[bot]' &&
       needs.other-checks.result == 'success'
     permissions:
       contents: read
@@ -232,7 +225,7 @@ jobs:
 
     steps:
       - name: Download repo size comment
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: repo-size-comment
           path: repo-size-comment

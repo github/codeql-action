@@ -15,9 +15,10 @@ import * as api from "./api-client";
 import * as outputCache from "./cli/output-cache";
 import type { VersionInfo } from "./cli/types";
 import { CliError, wrapCliConfigurationError } from "./cli-errors";
+import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar, getEnv } from "./environment";
+import { EnvVar, getEnv, exportEnvVar } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -197,7 +198,7 @@ export interface CodeQL {
   diagnosticsExport(
     sarifFile: string,
     automationDetailsId: string | undefined,
-    config: Config,
+    config: ActionConfig<"tempDir">,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -253,22 +254,22 @@ let cachedCodeQL: CodeQL | undefined = undefined;
  * The version flags below can be used to conditionally enable certain features
  * on versions newer than this.
  */
-const CODEQL_MINIMUM_VERSION = "2.19.4";
+const CODEQL_MINIMUM_VERSION = "2.20.7";
 
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.20.7";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.21.3";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.16";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.17";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-07-01";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-09-24";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
@@ -302,6 +303,9 @@ export function isDiskConfigurationError(e: unknown): boolean {
  * @param variant
  * @param defaultCliVersion
  * @param rawLanguages Raw set of languages.
+ * @param otherLanguagePacksReason Why the CodeQL CLI may need packs for languages other than
+ *   `rawLanguages`, or `undefined` if it won't. If defined, the combined bundle is used. See
+ *   `PerLanguageBundleOptions.otherLanguagePacksReason`.
  * @param useOverlayAwareDefaultCliVersion Whether to select an overlay-aware default CLI version.
  * @param features Information about the features that are enabled.
  * @param logger
@@ -316,6 +320,7 @@ export async function setupCodeQL(
   variant: util.GitHubVariant,
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
+  otherLanguagePacksReason: string | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
   features: FeatureEnablement,
   logger: Logger,
@@ -339,6 +344,7 @@ export async function setupCodeQL(
       variant,
       defaultCliVersion,
       rawLanguages,
+      otherLanguagePacksReason,
       useOverlayAwareDefaultCliVersion,
       features,
       logger,
@@ -908,7 +914,7 @@ async function getCodeQLForCmd(
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
-      config: Config,
+      config: ActionConfig<"tempDir">,
     ): Promise<void> {
       const args = [
         "diagnostics",
@@ -937,6 +943,7 @@ async function getCodeQLForCmd(
           "--format=json",
           `--language=${language}`,
           "--extractor-include-aliases",
+          "-J-XX:-UsePerfData",
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
@@ -951,7 +958,13 @@ async function getCodeQLForCmd(
           },
         },
       ).exec();
-      return JSON.parse(extractorPath) as string;
+      try {
+        return JSON.parse(extractorPath) as string;
+      } catch (err) {
+        throw new Error(
+          `Failed to parse extractor path for '${language}' from CLI: ${getErrorMessage(err)}\nOutput was: ${extractorPath}`,
+        );
+      }
     },
     async resolveQueriesStartingPacks(queries: string[]): Promise<string[]> {
       const codeqlArgs = [
@@ -1042,7 +1055,7 @@ async function getCodeQLForCmd(
         }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
-    core.exportVariable(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
+    exportEnvVar(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }
@@ -1212,7 +1225,7 @@ export async function getTrapCachingExtractorConfigArgsForLang(
 ): Promise<string[]> {
   const cacheDir = config.trapCaches[language];
   if (cacheDir === undefined) return [];
-  const write = await isAnalyzingDefaultBranch();
+  const write = await isAnalyzingDefaultBranch(getEnv(), config.repositoryRoot);
   return [
     `-O=${language}.trap.cache.dir=${cacheDir}`,
     `-O=${language}.trap.cache.bound=${TRAP_CACHE_SIZE_MB}`,
@@ -1225,7 +1238,9 @@ export async function getTrapCachingExtractorConfigArgsForLang(
  *
  * This will not exist if the configuration is being parsed in the Action.
  */
-function getGeneratedCodeScanningConfigPath(config: Config): string {
+function getGeneratedCodeScanningConfigPath(
+  config: ActionConfig<"tempDir">,
+): string {
   return path.resolve(config.tempDir, "user-config.yaml");
 }
 

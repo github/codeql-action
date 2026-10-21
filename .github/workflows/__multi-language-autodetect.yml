@@ -60,10 +60,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            version: stable-v2.19.4
-          - os: macos-15-xlarge
-            version: stable-v2.19.4
-          - os: ubuntu-latest
             version: stable-v2.20.7
           - os: macos-15-xlarge
             version: stable-v2.20.7
@@ -83,6 +79,10 @@ jobs:
             version: stable-v2.24.3
           - os: macos-latest-xlarge
             version: stable-v2.24.3
+          - os: ubuntu-latest
+            version: stable-v2.25.6
+          - os: macos-latest-xlarge
+            version: stable-v2.25.6
           - os: ubuntu-latest
             version: default
           - os: macos-latest-xlarge
@@ -123,13 +123,14 @@ jobs:
           version: ${{ matrix.version }}
           use-all-platform-bundle: 'false'
           setup-kotlin: 'true'
-      - name: Install Python 3.13 for older CLI versions
-        # We need Python 3.13 for older CLI versions because they are not compatible with Python 3.14 or newer.
+      - name: Install Python 3.13.15 for older CLI versions
+        # Older CLI versions don't work with Python 3.13.16 or newer because their Python extractor
+        # imports `importlib._bootstrap._ERR_MSG`, which those Python versions no longer define.
         # See https://github.com/github/codeql-action/pull/3212
         if: matrix.version != 'nightly-latest' && matrix.version != 'linked'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.13'
+          python-version: '3.13.15'
 
       - name: Use Xcode 16
         # Only the older CodeQL CLI versions need Xcode 16, and these run on macOS 15.
@@ -198,6 +199,5 @@ jobs:
             exit 1
           fi
     env:
-      CODEQL_ACTION_CLEANUP_TOOLCACHE_BUNDLES: true
       CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
       CODEQL_ACTION_TEST_MODE: true

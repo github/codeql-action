@@ -11,6 +11,10 @@ installDotNet: true
 env:
   CODEQL_ACTION_SKIP_FILE_COVERAGE_ON_PRS: false
   CODEQL_ACTION_SUBLANGUAGE_FILE_COVERAGE: true
+  # To balance speed and coverage, we analyze only a single language (JavaScript), but use the
+  # combined bundle so we can test that baseline information is reported for each language in the
+  # multi-language source directory.
+  CODEQL_ACTION_PER_LANGUAGE_BUNDLES: false
 steps:
   - uses: ./../action/init
     id: init
@@ -23,7 +27,7 @@ steps:
     with:
       output: "${{ runner.temp }}/results"
   - name: Upload SARIF
-    uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+    uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
     with:
       name: with-baseline-information-${{ matrix.os }}-${{ matrix.version }}.sarif.json
       path: "${{ runner.temp }}/results/javascript.sarif"

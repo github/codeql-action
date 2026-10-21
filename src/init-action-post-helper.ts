@@ -8,6 +8,11 @@ import { CodeScanning, RiskAssessment } from "./analyses";
 import { getApiClient, getGitHubVersion } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import {
+  hasConfigKey,
+  type AbortedInitConfig,
+  type ActionConfig,
+} from "./config/action-config";
+import {
   Config,
   isCodeScanningEnabled,
   isRiskAssessmentEnabled,
@@ -16,6 +21,7 @@ import {
   getArtifactSuffix,
   getArtifactUploaderClient,
   sanitizeArtifactName,
+  type UploadDebugArtifactsConfig,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
 import { EnvVar, ReadOnlyEnv } from "./environment";
@@ -38,13 +44,14 @@ import {
   getRequiredEnvParam,
   parseMatrixInput,
   Result,
+  shouldSkipGenerateFailedSarif,
   shouldSkipSarifUpload,
   Success,
   wrapError,
 } from "./util";
 import {
   getCategoryInputOrThrow,
-  getCheckoutPathInputOrThrow,
+  getRepositoryRootOrThrow,
   getUploadInputOrThrow,
   getWorkflow,
 } from "./workflow";
@@ -86,6 +93,11 @@ interface FailedSarifInfo {
   checkoutPath: string;
 }
 
+/** The minimal Action configuration required to prepare and upload a failed SARIF. */
+export type FailedSarifConfig = ActionConfig<
+  "codeQLCmd" | "tempDir" | "analysisKinds" | "languages"
+>;
+
 /**
  * Tries to prepare a SARIF file that contains information about a failed analysis.
  *
@@ -94,7 +106,7 @@ interface FailedSarifInfo {
 async function prepareFailedSarif(
   logger: Logger,
   features: FeatureEnablement,
-  config: Config,
+  config: FailedSarifConfig,
 ): Promise<Result<FailedSarifInfo, UploadFailedSarifResult>> {
   if (!config.codeQLCmd) {
     return new Failure({
@@ -104,7 +116,7 @@ async function prepareFailedSarif(
   const jobName = getRequiredEnvParam("GITHUB_JOB");
   const matrix = parseMatrixInput(actionsUtil.getRequiredInput("matrix"));
 
-  if (shouldSkipSarifUpload()) {
+  if (shouldSkipGenerateFailedSarif()) {
     return new Failure({
       upload_failed_run_skipped_because: "SARIF upload is disabled",
     });
@@ -144,7 +156,15 @@ async function prepareFailedSarif(
       });
     }
     const category = getCategoryInputOrThrow(workflow, jobName, matrix);
-    const checkoutPath = getCheckoutPathInputOrThrow(workflow, jobName, matrix);
+
+    // Try to determine the path at which the repository that we failed to analyse is checked out at.
+    // We need this to relativise the paths in the SARIF.
+    const checkoutPath = getRepositoryRootOrThrow(
+      workflow,
+      jobName,
+      matrix,
+      config,
+    );
 
     const result = await generateFailedSarif(
       logger,
@@ -160,7 +180,7 @@ async function prepareFailedSarif(
 async function generateFailedSarif(
   logger: Logger,
   features: FeatureEnablement,
-  config: Config,
+  config: ActionConfig<"codeQLCmd" | "tempDir">,
   category: string | undefined,
   checkoutPath: string,
   sarifFile?: string,
@@ -192,7 +212,7 @@ async function generateFailedSarif(
  * category for the workflow.
  */
 async function maybeUploadFailedSarif(
-  config: Config,
+  config: FailedSarifConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
@@ -207,6 +227,7 @@ async function maybeUploadFailedSarif(
 
   logger.info(`Uploading failed SARIF file ${failedSarif.sarifFile}`);
   const uploadResult = await uploadLib.uploadFiles(
+    config,
     failedSarif.sarifFile,
     failedSarif.checkoutPath,
     failedSarif.category,
@@ -220,6 +241,14 @@ async function maybeUploadFailedSarif(
     logger,
     { isUnsuccessfulExecution: true },
   );
+
+  // If SARIF upload is disabled for testing, `uploadFiles` will not have uploaded the failed
+  // SARIF file and instead will have written it to disk. Upload it as a workflow artifact so that
+  // we can inspect it in validation jobs.
+  if (uploadResult.sarifID && shouldSkipSarifUpload()) {
+    await uploadSarifArtifact(logger, "test-mode-sarif", failedSarif);
+  }
+
   return uploadResult
     ? { ...uploadResult.statusReport, sarifID: uploadResult.sarifID }
     : {};
@@ -227,7 +256,7 @@ async function maybeUploadFailedSarif(
 
 /** Uploads a failed SARIF file as workflow artifact, if it can be generated. */
 async function maybeUploadFailedSarifArtifact(
-  config: Config,
+  config: FailedSarifConfig,
   features: FeatureEnablement,
   logger: Logger,
 ): Promise<UploadFailedSarifResult> {
@@ -238,23 +267,34 @@ async function maybeUploadFailedSarifArtifact(
   }
 
   const failedSarif = failedSarifResult.value;
+  return uploadSarifArtifact(logger, "sarif-artifact", failedSarif);
+}
 
-  logger.info(
-    `Uploading failed SARIF file ${failedSarif.sarifFile} as artifact`,
-  );
+/** Uploads a failed SARIF file as workflow artifact. */
+async function uploadSarifArtifact(
+  logger: Logger,
+  prefix: string,
+  failedSarif: FailedSarifInfo,
+): Promise<UploadFailedSarifResult> {
+  logger.startGroup(`Uploading failed SARIF file as artifact`);
+  logger.info(`Uploading '${failedSarif.sarifFile}' as artifact`);
 
-  const gitHubVersion = await getGitHubVersion();
-  const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
+  try {
+    const gitHubVersion = await getGitHubVersion();
+    const client = await getArtifactUploaderClient(logger, gitHubVersion.type);
 
-  const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
-  const name = sanitizeArtifactName(`sarif-artifact-${suffix}`);
-  await client.uploadArtifact(
-    name,
-    [path.normalize(failedSarif.sarifFile)],
-    path.normalize(".."),
-  );
+    const suffix = getArtifactSuffix(actionsUtil.getOptionalInput("matrix"));
+    const name = sanitizeArtifactName(`${prefix}-${suffix}`);
+    await client.uploadArtifact(
+      name,
+      [path.normalize(failedSarif.sarifFile)],
+      path.normalize(path.dirname(failedSarif.sarifFile)),
+    );
 
-  return { sarifID: name };
+    return { sarifID: name };
+  } finally {
+    logger.endGroup();
+  }
 }
 
 /**
@@ -267,7 +307,7 @@ async function maybeUploadFailedSarifArtifact(
  * @returns The results of uploading the SARIF file for the failure.
  */
 export async function tryUploadSarifIfRunFailed(
-  config: Config,
+  config: FailedSarifConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   logger: Logger,
@@ -324,13 +364,12 @@ export async function tryUploadSarifIfRunFailed(
 export async function uploadFailureInfo(
   uploadAllAvailableDebugArtifacts: (
     codeql: CodeQL,
-    config: Config,
+    config: UploadDebugArtifactsConfig,
     logger: Logger,
-    codeQlVersion: string,
   ) => Promise<void>,
-  printDebugLogs: (config: Config) => Promise<void>,
+  printDebugLogs: (logger: Logger, config: Partial<Config>) => Promise<void>,
   codeql: CodeQL,
-  config: Config,
+  config: Config | AbortedInitConfig,
   repositoryNwo: RepositoryNwo,
   features: FeatureEnablement,
   jobStatus: string | undefined,
@@ -377,21 +416,15 @@ export async function uploadFailureInfo(
   }
 
   // Upload appropriate Actions artifacts for debugging
-  if (config.debugMode) {
+  if (config.debugMode && hasConfigKey(config, "dbLocation")) {
     logger.info(
       "Debug mode is on. Uploading available database bundles and logs as Actions debugging artifacts...",
     );
-    const version = await codeql.getVersion();
-    await uploadAllAvailableDebugArtifacts(
-      codeql,
-      config,
-      logger,
-      version.version,
-    );
-    await printDebugLogs(config);
+    await uploadAllAvailableDebugArtifacts(codeql, config, logger);
+    await printDebugLogs(logger, config);
   }
 
-  if (actionsUtil.isSelfHostedRunner()) {
+  if (actionsUtil.isSelfHostedRunner() && config.dbLocation) {
     try {
       fs.rmSync(config.dbLocation, {
         recursive: true,
@@ -406,6 +439,10 @@ export async function uploadFailureInfo(
         `Failed to clean up database cluster directory ${config.dbLocation}. Details: ${e}`,
       );
     }
+  } else if (config.dbLocation === undefined) {
+    logger.debug(
+      "Skipping cleanup of database cluster directory since the configuration does not include a database path.",
+    );
   } else {
     logger.debug(
       "Skipping cleanup of database cluster directory since we are running on a GitHub-hosted " +
@@ -454,7 +491,7 @@ function isConclusiveJobStatus(jobStatus: string | undefined): boolean {
  */
 async function recordOverlayStatus(
   codeql: CodeQL,
-  config: Config,
+  config: Partial<Config>,
   features: FeatureEnablement,
   jobStatus: string | undefined,
   env: ReadOnlyEnv,
@@ -465,6 +502,11 @@ async function recordOverlayStatus(
     env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true" ||
     !(await features.getValue(Feature.OverlayAnalysisStatusSave))
   ) {
+    return;
+  } else if (config.languages === undefined) {
+    logger.debug(
+      "Not recording overlay status, because the configuration contains no 'languages'.",
+    );
     return;
   }
 

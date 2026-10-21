@@ -793,6 +793,7 @@ async function testFailedSarifUpload(
     }
     t.true(
       uploadFiles.calledOnceWith(
+        config,
         sinon.match.string,
         sinon.match.string,
         category,

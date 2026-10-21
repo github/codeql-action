@@ -7,6 +7,8 @@ import * as yaml from "yaml";
 
 import { BuiltInLanguage } from "../src/languages";
 
+import { PR_CHECKS_DIR, REPO_ROOT } from "./config";
+
 /**
  * Returns a `uses` value for `action` pinned to a commit SHA, with the
  * human-readable version recorded in a trailing comment.
@@ -79,6 +81,8 @@ interface Specification extends JobSpecification {
   useAllPlatformBundle?: string;
   /** Values for the `analysis-kinds` matrix dimension. */
   analysisKinds?: string[];
+  /** Overrides the generated job matrix using GitHub Actions matrix syntax. */
+  matrix?: Record<string, unknown>;
 
   /** Container image configuration for the job. */
   container?: any;
@@ -132,8 +136,6 @@ type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 // The default set of CodeQL Bundle versions to use for the PR checks.
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-  "stable-v2.19.4",
-  // The last CodeQL release in the 2.20 series.
   "stable-v2.20.7",
   // The last CodeQL release in the 2.21 series.
   "stable-v2.21.4",
@@ -143,6 +145,8 @@ const defaultTestVersions = [
   "stable-v2.23.9",
   // The last CodeQL release in the 2.24 series.
   "stable-v2.24.3",
+  // The last CodeQL release in the 2.25 series.
+  "stable-v2.25.6",
   // The default version of CodeQL for Dotcom, as determined by feature flags.
   "default",
   // The version of CodeQL shipped with the Action in `defaults.json`. During the release process
@@ -211,13 +215,19 @@ const languageSetups: LanguageSetups = {
         name: "Install Node.js",
         uses: pinnedUses(
           "actions/setup-node",
-          "820762786026740c76f36085b0efc47a31fe5020",
-          "v7.0.0",
+          "949feb2413d6458794dcd2491c4babbbce0c15c1",
+          "v7.1.0",
         ),
         with: {
           "node-version": defaultLanguageVersions.javascript,
           cache: "npm",
         },
+      },
+      // Install a new enough version of `npm` to understand `min-release-age`
+      // that is still compatible with Node 20.
+      {
+        name: "Install newer npm",
+        run: "npm install -g npm@11.19.1",
       },
       {
         name: "Install dependencies",
@@ -304,9 +314,8 @@ const languageSetups: LanguageSetups = {
 // See https://github.com/github/codeql-action/pull/3423
 const YQ_VERSION = "v4.50.1";
 
-const THIS_DIR = __dirname;
-const CHECKS_DIR = path.join(THIS_DIR, "checks");
-const OUTPUT_DIR = path.join(THIS_DIR, "..", ".github", "workflows");
+const CHECKS_DIR = path.join(PR_CHECKS_DIR, "checks");
+const OUTPUT_DIR = path.join(REPO_ROOT, ".github", "workflows");
 
 /**
  * Loads and parses a YAML file.
@@ -523,9 +532,6 @@ function generateJob(
   specDocument: yaml.Document,
   checkSpecification: Specification,
 ) {
-  const matrix: Array<Record<string, any>> =
-    generateJobMatrix(checkSpecification);
-
   const useAllPlatformBundle = checkSpecification.useAllPlatformBundle
     ? checkSpecification.useAllPlatformBundle
     : "false";
@@ -578,8 +584,8 @@ function generateJob(
   const checkJob: Record<string, any> = {
     strategy: {
       "fail-fast": false,
-      matrix: {
-        include: matrix,
+      matrix: checkSpecification.matrix ?? {
+        include: generateJobMatrix(checkSpecification),
       },
     },
     name: checkSpecification.name,

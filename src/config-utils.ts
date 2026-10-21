@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { performance } from "perf_hooks";
 
-import * as core from "@actions/core";
 import * as yaml from "js-yaml";
 
 import { ActionState } from "./action-common";
@@ -22,7 +21,11 @@ import {
 import * as api from "./api-client";
 import { getCachingKind } from "./caching-utils";
 import { type CodeQL } from "./codeql";
-import { type Config } from "./config/action-config";
+import {
+  type AbortedInitConfig,
+  type ActionConfig,
+  type Config,
+} from "./config/action-config";
 import {
   calculateAugmentation,
   ExcludeQueryFilter,
@@ -46,7 +49,7 @@ import {
   makeTelemetryDiagnostic,
 } from "./diagnostics";
 import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, exportEnvVar, getEnv } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";
 import {
@@ -72,6 +75,7 @@ import {
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { shouldSkipOverlayAnalysis } from "./overlay/status";
 import { RepositoryNwo } from "./repository";
+import { ActionName } from "./status-report";
 import { ToolsFeature } from "./tools-features";
 import { downloadTrapCaches } from "./trap-caching";
 import {
@@ -337,7 +341,8 @@ export interface InitConfigInputs {
   packsInput: string | undefined;
   configFile: string | undefined;
   dbLocation: string | undefined;
-  configInput: string | undefined;
+  /** The configuration from the `config` input. */
+  configInput: UserConfig | undefined;
   buildModeInput: string | undefined;
   ramInput: string | undefined;
   dependencyCachingEnabled: string | undefined;
@@ -385,6 +390,7 @@ export async function initActionState(
     enableFileCoverageInformation,
   }: InitConfigInputs,
   userConfig: UserConfig,
+  repositoryRoot: string | undefined,
 ): Promise<Config> {
   const languages = await getLanguages(
     codeql,
@@ -436,6 +442,7 @@ export async function initActionState(
 
   return {
     version: getActionVersion(),
+    repositoryRoot,
     analysisKinds,
     languages,
     buildMode,
@@ -465,12 +472,18 @@ async function downloadCacheWithTime(
   codeQL: CodeQL,
   languages: Language[],
   logger: Logger,
+  repositoryRoot: string | undefined,
 ): Promise<{
   trapCaches: { [language: string]: string };
   trapCacheDownloadTime: number;
 }> {
   const start = performance.now();
-  const trapCaches = await downloadTrapCaches(codeQL, languages, logger);
+  const trapCaches = await downloadTrapCaches(
+    codeQL,
+    languages,
+    logger,
+    repositoryRoot,
+  );
   const trapCacheDownloadTime = performance.now() - start;
   return { trapCaches, trapCacheDownloadTime };
 }
@@ -718,6 +731,7 @@ export async function checkOverlayEnablement(
   codeql: CodeQL,
   features: FeatureEnablement,
   languages: Language[],
+  repositoryRoot: string | undefined,
   sourceRoot: string,
   buildMode: BuildMode | undefined,
   ramInput: string | undefined,
@@ -747,6 +761,7 @@ export async function checkOverlayEnablement(
       true,
       codeql,
       languages,
+      repositoryRoot,
       sourceRoot,
       buildMode,
       gitVersion,
@@ -820,7 +835,7 @@ export async function checkOverlayEnablement(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
         "with caching because we are analyzing a pull request.",
     );
-  } else if (await isAnalyzingDefaultBranch()) {
+  } else if (await isAnalyzingDefaultBranch(getEnv(), repositoryRoot)) {
     overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
     logger.info(
       `Setting overlay database mode to ${overlayDatabaseMode} ` +
@@ -836,6 +851,7 @@ export async function checkOverlayEnablement(
     false,
     codeql,
     languages,
+    repositoryRoot,
     sourceRoot,
     buildMode,
     gitVersion,
@@ -855,6 +871,7 @@ async function validateOverlayDatabaseMode(
   overlayModeSetExplicitly: boolean,
   codeql: CodeQL,
   languages: Language[],
+  repositoryRoot: string | undefined,
   sourceRoot: string,
   buildMode: BuildMode | undefined,
   gitVersion: GitVersionInfo | undefined,
@@ -890,8 +907,7 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.IncompatibleCodeQl);
   }
-  const gitRoot = await getGitRoot(sourceRoot);
-  if (gitRoot === undefined) {
+  if (repositoryRoot === undefined) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the source root "${sourceRoot}" is not inside a git repository. ` +
@@ -899,7 +915,7 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.NoGitRoot);
   }
-  if (hasSubmodules(gitRoot)) {
+  if (hasSubmodules(repositoryRoot)) {
     if (gitVersion === undefined) {
       logger.warning(
         `Cannot build an ${overlayDatabaseMode} database because ` +
@@ -928,10 +944,14 @@ async function validateOverlayDatabaseMode(
   });
 }
 
-export async function isTrapCachingEnabled(
-  features: FeatureEnablement,
+/**
+ * Determines whether TRAP caching is enabled for the current run.
+ *
+ * @returns Whether TRAP caches should be downloaded and uploaded.
+ */
+export function isTrapCachingEnabled(
   overlayDatabaseMode: OverlayDatabaseMode,
-): Promise<boolean> {
+): boolean {
   // If the workflow specified something, always respect that.
   const trapCaching = getOptionalInput("trap-caching");
   if (trapCaching !== undefined) return trapCaching === "true";
@@ -939,12 +959,8 @@ export async function isTrapCachingEnabled(
   // On self-hosted runners which may have slow network access, disable TRAP caching by default.
   if (!looksLikeHostedRunner()) return false;
 
-  // If overlay analysis is enabled, then disable TRAP caching since overlay analysis supersedes it.
-  // This change is gated behind a feature flag.
-  if (
-    overlayDatabaseMode !== OverlayDatabaseMode.None &&
-    (await features.getValue(Feature.OverlayAnalysisDisableTrapCaching))
-  ) {
+  // Overlay analysis supersedes TRAP caching, so disable TRAP caching by default when it is active.
+  if (overlayDatabaseMode !== OverlayDatabaseMode.None) {
     return false;
   }
 
@@ -964,10 +980,10 @@ async function setCppTrapCachingEnvironmentVariables(
       );
     } else if (config.trapCaches[BuiltInLanguage.cpp]) {
       logger.info("Enabling TRAP caching for C/C++.");
-      core.exportVariable(envVar, "true");
+      exportEnvVar(envVar, "true");
     } else {
       logger.debug(`Disabling TRAP caching for C/C++.`);
-      core.exportVariable(envVar, "false");
+      exportEnvVar(envVar, "false");
     }
   }
 }
@@ -1057,17 +1073,13 @@ export async function determineUserConfig(
   tempDir: string,
   inputs: InitConfigInputs,
 ): Promise<UserConfig> {
-  const validateConfig = await action.features.getValue(
-    Feature.ValidateDbConfig,
-  );
-
   // We have the following cases:
   // 1. A `config` or `config-file` input is provided, but not both: use the provided one.
   // 2. Both are provided and we are in an advanced workflow: ignore the `config-file` input.
   // 3. Both are provided and we are in Default Setup: the `config` input uses a limited
   //    set of options, which are supported by `mergeDefaultSetupAndUserConfigs`,
   //    and we merge the two configs.
-  if (inputs.configInput) {
+  if (inputs.configInput !== undefined) {
     const computedConfigPath = userConfigFromActionPath(tempDir);
 
     // Get a function which enables us to determine whether the FF that allows us to
@@ -1084,12 +1096,6 @@ export async function determineUserConfig(
     ) {
       // If the FF is enabled and we are in Default Setup, combine the supported
       // configuration file properties and write the result to disk.
-      const fromConfigInput = parseUserConfig(
-        action.logger,
-        "`config` input",
-        inputs.configInput,
-        validateConfig,
-      );
       const fromConfigFile = await loadUserConfig(
         action,
         inputs.configFile,
@@ -1102,7 +1108,7 @@ export async function determineUserConfig(
       // the CLI or other CodeQL Action steps.
       const mergedConfig = mergeDefaultSetupAndUserConfigs(
         action.logger,
-        fromConfigInput,
+        inputs.configInput,
         fromConfigFile,
       );
       fs.writeFileSync(computedConfigPath, yaml.dump(mergedConfig));
@@ -1122,12 +1128,13 @@ export async function determineUserConfig(
         );
       }
 
-      // Write the `config` input straight to disk.
-      fs.writeFileSync(computedConfigPath, inputs.configInput);
+      // Write the `config` input to disk without merging it with a configuration file.
+      fs.writeFileSync(computedConfigPath, yaml.dump(inputs.configInput));
       inputs.configFile = computedConfigPath;
       action.logger.debug(
         `Using config from action input: ${inputs.configFile}`,
       );
+      return inputs.configInput;
     }
   }
 
@@ -1160,9 +1167,11 @@ export async function initConfig(
   const { logger, features } = actionState;
   const { tempDir } = inputs;
 
+  const repositoryRoot = await getGitRoot(inputs.sourceRoot);
+
   const userConfig = await determineUserConfig(actionState, tempDir, inputs);
 
-  const config = await initActionState(inputs, userConfig);
+  const config = await initActionState(inputs, userConfig, repositoryRoot);
 
   // If Code Quality analysis is the only enabled analysis kind, then we will initialise
   // the database for Code Quality. That entails disabling the default queries and only
@@ -1244,6 +1253,7 @@ export async function initConfig(
     inputs.codeql,
     inputs.features,
     config.languages,
+    repositoryRoot,
     inputs.sourceRoot,
     config.buildMode,
     inputs.ramInput,
@@ -1292,11 +1302,12 @@ export async function initConfig(
     logger,
   );
 
-  if (await isTrapCachingEnabled(features, config.overlayDatabaseMode)) {
+  if (isTrapCachingEnabled(config.overlayDatabaseMode)) {
     const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
       inputs.codeql,
       config.languages,
       logger,
+      repositoryRoot,
     );
     config.trapCaches = trapCaches;
     config.trapCacheDownloadTime = trapCacheDownloadTime;
@@ -1388,31 +1399,86 @@ export function getPathToParsedConfigFile(tempDir: string): string {
   return path.join(tempDir, "config");
 }
 
+function getPathToFailedConfigFile(tempDir: string): string {
+  return path.join(tempDir, "failed-config");
+}
+
 /**
- * Store the given config to the path returned from getPathToParsedConfigFile.
+ * Writes {@link config} to {@link configFilePath}.
+ *
+ * This function is not intended to be called, other than by
+ * {@link saveConfig} and {@link saveAbortedInitConfig} below.
  */
-export async function saveConfig(config: Config, logger: Logger) {
+function saveConfigFile(
+  logger: Logger,
+  configFilePath: string,
+  config: Partial<Config>,
+) {
   const configString = JSON.stringify(config);
-  const configFile = getPathToParsedConfigFile(config.tempDir);
-  fs.mkdirSync(path.dirname(configFile), { recursive: true });
-  fs.writeFileSync(configFile, configString, "utf8");
+  fs.mkdirSync(path.dirname(configFilePath), { recursive: true });
+  fs.writeFileSync(configFilePath, configString, "utf8");
   logger.debug("Saved config:");
   logger.debug(configString);
 }
 
 /**
- * Get the config that has been saved to the given temp dir.
- * If the config could not be found then returns undefined.
+ * Store the given config to the path returned from getPathToParsedConfigFile.
  */
-export async function getConfig(
-  tempDir: string,
+export async function saveConfig(config: Config, logger: Logger) {
+  const configFile = getPathToParsedConfigFile(config.tempDir);
+  saveConfigFile(logger, configFile, config);
+}
+
+/**
+ * Store parts of {@link config} as a failed configuration file.
+ *
+ * The file will only contain parts of {@link config} that are relevant to
+ * the `init-post` step in the workflow.
+ */
+export function saveAbortedInitConfig(
+  action: ActionState<["Base", "Logger"]>,
+  config: Config,
+) {
+  // Should only be called by init.
+  if (action.name !== ActionName.Init) {
+    throw new Error(
+      `Internal error: 'saveAbortedInitConfig' should only be called by '${ActionName.Init}', but was called by '${action.name}'.`,
+    );
+  }
+
+  // Create a copy of the input `Config` that only contains the keys we want.
+  const failedConfig: AbortedInitConfig = {
+    version: config.version,
+    tempDir: config.tempDir,
+    codeQLCmd: config.codeQLCmd,
+    debugMode: config.debugMode,
+    gitHubVersion: config.gitHubVersion,
+    languages: config.languages,
+    analysisKinds: config.analysisKinds,
+  };
+
+  action.logger.debug(`Saving config for failed init step.`);
+  saveConfigFile(
+    action.logger,
+    getPathToFailedConfigFile(config.tempDir),
+    failedConfig,
+  );
+}
+
+/**
+ * Attempts to read a {@link Config} from {@link configFilePath}.
+ *
+ * This function is not intended to be called, other than by
+ * {@link getConfig} and {@link getAbortedInitConfig} below.
+ */
+function readConfigFile(
   logger: Logger,
-): Promise<Config | undefined> {
-  const configFile = getPathToParsedConfigFile(tempDir);
-  if (!fs.existsSync(configFile)) {
+  configFilePath: string,
+): Config | undefined {
+  if (!fs.existsSync(configFilePath)) {
     return undefined;
   }
-  const configString = fs.readFileSync(configFile, "utf8");
+  const configString = fs.readFileSync(configFilePath, "utf8");
   logger.debug("Loaded config:");
   logger.debug(configString);
 
@@ -1425,11 +1491,48 @@ export async function getConfig(
   }
   if (config.version !== getActionVersion()) {
     throw new ConfigurationError(
-      `Loaded a configuration file for version '${config.version}', but running version '${getActionVersion()}'`,
+      [
+        `Loaded a configuration file for version '${config.version}', but running version '${getActionVersion()}'.`,
+        "All steps in a workflow that use `github/codeql-action` must use the same version to work correctly.",
+        "If you are using Dependabot to manage dependency updates, you can configure a dependency group to update all `github/codeql-action` steps at the same time.",
+        "For more information, see https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups--",
+      ].join(" "),
     );
   }
 
   return config as Config;
+}
+
+/**
+ * Get the config that has been saved to the given temp dir.
+ * If the config could not be found then returns undefined.
+ */
+export async function getConfig(
+  tempDir: string,
+  logger: Logger,
+): Promise<Config | undefined> {
+  const configFile = getPathToParsedConfigFile(tempDir);
+  return readConfigFile(logger, configFile);
+}
+
+/**
+ * Loads a {@link AbortedInitConfig} from a failed `init` step if it exists.
+ *
+ * The result will only contain parts of a {@link Config} that are relevant to
+ * the `init-post` step in the workflow.
+ */
+export function getAbortedInitConfig(
+  action: ActionState<["Base", "Logger"]>,
+  tempDir: string,
+): AbortedInitConfig | undefined {
+  // Only intended to be called by the `init-post` action.
+  if (action.name !== ActionName.InitPost) {
+    throw new Error(
+      `Internal error: 'getAbortedInitConfig' should only be called by '${ActionName.InitPost}', but was called by '${action.name}'.`,
+    );
+  }
+
+  return readConfigFile(action.logger, getPathToFailedConfigFile(tempDir));
 }
 
 /**
@@ -1622,21 +1725,27 @@ export function appendExtraQueryExclusions(
 /**
  * Returns `true` if Code Scanning analysis is enabled, or `false` if not.
  */
-export function isCodeScanningEnabled(config: Config): boolean {
+export function isCodeScanningEnabled(
+  config: ActionConfig<"analysisKinds">,
+): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeScanning);
 }
 
 /**
  * Returns `true` if Code Quality analysis is enabled, or `false` if not.
  */
-export function isCodeQualityEnabled(config: Config): boolean {
+export function isCodeQualityEnabled(
+  config: ActionConfig<"analysisKinds">,
+): boolean {
   return config.analysisKinds.includes(AnalysisKind.CodeQuality);
 }
 
 /**
  * Returns `true` if Code Scanning Risk Assessment analysis is enabled, or `false` if not.
  */
-export function isRiskAssessmentEnabled(config: Config): boolean {
+export function isRiskAssessmentEnabled(
+  config: ActionConfig<"analysisKinds">,
+): boolean {
   return config.analysisKinds.includes(AnalysisKind.RiskAssessment);
 }
 

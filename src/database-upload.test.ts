@@ -1,4 +1,5 @@
-import * as fs from "fs";
+import fs from "fs";
+import path from "path";
 
 import * as github from "@actions/github";
 import test from "ava";
@@ -10,7 +11,10 @@ import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
 import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { cleanupAndUploadDatabases } from "./database-upload";
+import {
+  cleanupAndUploadDatabases,
+  uploadBundledDatabase,
+} from "./database-upload";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
@@ -20,8 +24,10 @@ import {
   checkExpectedLogMessages,
   createFeatures,
   createTestConfig,
-  getRecordingLogger,
-  LoggedMessage,
+  getTestEnv,
+  initAllState,
+  RecordingLogger,
+  SAMPLE_DOTCOM_API_DETAILS,
   setupActionsVars,
   setupTests,
 } from "./testing-utils";
@@ -90,23 +96,24 @@ test.serial(
   "Abort database upload if 'upload-database' input set to false",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
         .returns("false");
       sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Database upload disabled in workflow. Skipping upload.",
       ]);
     });
@@ -117,7 +124,8 @@ test.serial(
   "Abort database upload if 'analysis-kinds: code-scanning' is not enabled",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -126,8 +134,9 @@ test.serial(
 
       await mockHttpRequests(201);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         {
@@ -135,10 +144,9 @@ test.serial(
           analysisKinds: [AnalysisKind.CodeQuality],
         },
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Not uploading database because 'analysis-kinds: code-scanning' is not enabled.",
       ]);
     });
@@ -147,7 +155,8 @@ test.serial(
 
 test.serial("Abort database upload if running against GHES", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -157,16 +166,16 @@ test.serial("Abort database upload if running against GHES", async (t) => {
     const config = getTestConfig(tmpDir);
     config.gitHubVersion = { type: GitHubVariant.GHES, version: "3.0" };
 
-    const loggedMessages: LoggedMessage[] = [];
+    const logger = new RecordingLogger();
     await cleanupAndUploadDatabases(
+      initAllState({ env, logger }),
       testRepoName,
       getCodeQL(),
       config,
       testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
+      "",
     );
-    checkExpectedLogMessages(t, loggedMessages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Not running against github.com or GHEC-DR. Skipping upload.",
     ]);
   });
@@ -176,23 +185,24 @@ test.serial(
   "Abort database upload if not analyzing default branch",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
         .returns("true");
       sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(false);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Not analyzing default branch. Skipping upload.",
       ]);
     });
@@ -203,7 +213,8 @@ test.serial(
   "Don't crash if uploading a database fails with a non-retryable error",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -212,17 +223,17 @@ test.serial(
 
       const databaseUploadSpy = await mockHttpRequests(422);
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
 
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Failed to upload database for javascript: some error message",
       ]);
 
@@ -236,7 +247,8 @@ test.serial(
   "Don't crash if uploading a database fails with a retryable error",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -251,17 +263,17 @@ test.serial(
         .stub(global, "setTimeout")
         .callsFake((fn: () => void) => originalSetTimeout(fn, 0));
 
-      const loggedMessages: LoggedMessage[] = [];
+      const logger = new RecordingLogger();
       await cleanupAndUploadDatabases(
+        initAllState({ env, logger }),
         testRepoName,
         getCodeQL(),
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
 
-      checkExpectedLogMessages(t, loggedMessages, [
+      checkExpectedLogMessages(t, logger.messages, [
         "Failed to upload database for javascript: some error message",
       ]);
 
@@ -279,7 +291,8 @@ test.serial(
 
 test.serial("Successfully uploading a database to github.com", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -288,16 +301,16 @@ test.serial("Successfully uploading a database to github.com", async (t) => {
 
     await mockHttpRequests(201);
 
-    const loggedMessages: LoggedMessage[] = [];
+    const logger = new RecordingLogger();
     await cleanupAndUploadDatabases(
+      initAllState({ env, logger }),
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
       testApiDetails,
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
+      "",
     );
-    checkExpectedLogMessages(t, loggedMessages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Successfully uploaded database for javascript",
     ]);
   });
@@ -305,7 +318,8 @@ test.serial("Successfully uploading a database to github.com", async (t) => {
 
 test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -314,8 +328,9 @@ test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
 
     const databaseUploadSpy = await mockHttpRequests(201);
 
-    const loggedMessages: LoggedMessage[] = [];
+    const logger = new RecordingLogger();
     await cleanupAndUploadDatabases(
+      initAllState({ env, logger }),
       testRepoName,
       getCodeQL(),
       getTestConfig(tmpDir),
@@ -324,10 +339,9 @@ test.serial("Successfully uploading a database to GHEC-DR", async (t) => {
         url: "https://tenant.ghe.com",
         apiURL: undefined,
       },
-      createFeatures([]),
-      getRecordingLogger(loggedMessages),
+      "",
     );
-    checkExpectedLogMessages(t, loggedMessages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Successfully uploaded database for javascript",
     ]);
     t.assert(
@@ -343,7 +357,8 @@ test.serial(
   "Records overlay and clear cleanup sizes when uploading an overlay-base database",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -375,14 +390,16 @@ test.serial(
       const config = getTestConfig(tmpDir);
       config.overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
 
-      const loggedMessages: LoggedMessage[] = [];
       const results = await cleanupAndUploadDatabases(
+        initAllState({
+          env,
+          features: createFeatures([Feature.UploadOverlayDbToApi]),
+        }),
         testRepoName,
         codeql,
         config,
         testApiDetails,
-        createFeatures([Feature.UploadOverlayDbToApi]),
-        getRecordingLogger(loggedMessages),
+        "",
       );
 
       // The database should be cleaned up at the `overlay` level for the upload
@@ -402,7 +419,8 @@ test.serial(
   "Does not measure clear cleanup size for a regular (non-overlay-base) upload",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -422,12 +440,15 @@ test.serial(
       });
 
       const results = await cleanupAndUploadDatabases(
+        initAllState({
+          env,
+          features: createFeatures([Feature.UploadOverlayDbToApi]),
+        }),
         testRepoName,
         codeql,
         getTestConfig(tmpDir),
         testApiDetails,
-        createFeatures([Feature.UploadOverlayDbToApi]),
-        getRecordingLogger([]),
+        "",
       );
 
       // A regular upload is cleaned only once, at the `clear` level.
@@ -441,7 +462,8 @@ test.serial(
 
 test.serial("Does not measure clear cleanup size in debug mode", async (t) => {
   await withTmpDir(async (tmpDir) => {
-    setupActionsVars(tmpDir, tmpDir);
+    const env = getTestEnv();
+    setupActionsVars(tmpDir, tmpDir, {}, env);
     sinon
       .stub(actionsUtil, "getRequiredInput")
       .withArgs("upload-database")
@@ -465,12 +487,15 @@ test.serial("Does not measure clear cleanup size in debug mode", async (t) => {
     config.debugMode = true;
 
     const results = await cleanupAndUploadDatabases(
+      initAllState({
+        env,
+        features: createFeatures([Feature.UploadOverlayDbToApi]),
+      }),
       testRepoName,
       codeql,
       config,
       testApiDetails,
-      createFeatures([Feature.UploadOverlayDbToApi]),
-      getRecordingLogger([]),
+      "",
     );
 
     // In debug mode we clean up at the `overlay` level for the upload but skip
@@ -486,7 +511,8 @@ test.serial(
   "Does not record a clear cleanup duration when the clear cleanup fails",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      setupActionsVars(tmpDir, tmpDir);
+      const env = getTestEnv();
+      setupActionsVars(tmpDir, tmpDir, {}, env);
       sinon
         .stub(actionsUtil, "getRequiredInput")
         .withArgs("upload-database")
@@ -510,12 +536,15 @@ test.serial(
       config.overlayDatabaseMode = OverlayDatabaseMode.OverlayBase;
 
       const results = await cleanupAndUploadDatabases(
+        initAllState({
+          env,
+          features: createFeatures([Feature.UploadOverlayDbToApi]),
+        }),
         testRepoName,
         codeql,
         config,
         testApiDetails,
-        createFeatures([Feature.UploadOverlayDbToApi]),
-        getRecordingLogger([]),
+        "",
       );
 
       // When the `clear` cleanup fails, no size is measured, so we should not
@@ -525,4 +554,87 @@ test.serial(
       t.is(results[0].clear_cleanup_measurement_duration_ms, undefined);
     });
   },
+);
+
+test.serial(
+  "uploadBundledDatabase provides expected request arguments",
+  async (t) =>
+    withTmpDir(async (tmpDir) => {
+      // Write some file that `uploadBundledDatabase` can use for its `fs.createReadStream(bundledDb)` call
+      // so we don't have to stub that or create a fake `ReadStream`.
+      const dbPath = path.join(tmpDir, "db");
+      const content = JSON.stringify({});
+      fs.writeFileSync(dbPath, content);
+
+      // A simple stub for `fetch` that satisfies Octokit when it inspects the response.
+      const fetchStub = sinon.stub().resolves({
+        status: 200,
+        headers: new Headers(),
+        text: async () => "",
+      });
+
+      // Construct a real `ApiClient`.
+      const client = apiClient.getApiClient(
+        getTestEnv(),
+        SAMPLE_DOTCOM_API_DETAILS,
+      );
+
+      // Then wrap the real `request` method in a stub that calls it with our stubbed `fetch`.
+      // This ensures that we have a real `ApiClient` with a mostly real `request`, but which
+      // does not perform any actual requests.
+      const request = client.request;
+      sinon.stub(client, "request").callsFake(async (route, options) =>
+        request(route, {
+          ...options,
+          request: { ...options?.request, fetch: fetchStub },
+        }),
+      );
+
+      // Stub `getApiClient` to return our modified `ApiClient`.
+      const getApiClient = sinon
+        .stub(apiClient, "getApiClient")
+        .returns(client);
+
+      // Calling `uploadBundledDatabase` shouldn't throw.
+      const nwo: RepositoryNwo = { owner: "test", repo: "foo" };
+      const language: BuiltInLanguage = BuiltInLanguage.java;
+
+      await t.notThrowsAsync(async () => {
+        await uploadBundledDatabase(
+          nwo,
+          language,
+          "123",
+          dbPath,
+          content.length,
+          SAMPLE_DOTCOM_API_DETAILS,
+        );
+      });
+
+      // Check that our stubs were called and that they received the expected arguments.
+      t.is(getApiClient.callCount, 1);
+      t.is(fetchStub.callCount, 1);
+
+      const args = fetchStub.args[0];
+      t.is(args.length, 2);
+
+      const url = args[0];
+      t.is(
+        url,
+        `https://uploads.github.com/repos/${nwo.owner}/${nwo.repo}/code-scanning/codeql/databases/${language}?name=${language}-database&commit_oid=123`,
+      );
+
+      const options = args[1];
+      t.like(options, {
+        // Going via `new Headers` and `Object.fromEntries` ensures we get the same cases
+        // for the header keys as we are given.
+        headers: Object.fromEntries(
+          new Headers({
+            authorization: `token ${SAMPLE_DOTCOM_API_DETAILS.auth}`,
+            "Content-Type": "application/zip",
+            "Content-Length": content.length.toString(),
+          }).entries(),
+        ),
+        method: "POST",
+      } satisfies RequestInit);
+    }),
 );

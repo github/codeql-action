@@ -1,6 +1,11 @@
 import * as core from "@actions/core";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import {
   getActionVersion,
   getOptionalInput,
@@ -15,6 +20,7 @@ import { getRawLanguagesNoAutodetect } from "./config-utils";
 import { EnvVar } from "./environment";
 import { initFeatures } from "./feature-flags";
 import { loadRepositoryProperties } from "./feature-flags/properties";
+import * as github from "./github";
 import { initCodeQL } from "./init";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -22,17 +28,16 @@ import { ToolsSource } from "./setup-codeql";
 import {
   ActionName,
   InitStatusReport,
-  InitToolsDownloadFields,
   createStatusReportBase,
   getActionsStatus,
   sendStatusReport,
 } from "./status-report";
+import { createInitToolsDownloadFields } from "./status-report/tools-download";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
-  getRequiredEnvParam,
   initializeEnvironment,
   ConfigurationError,
   wrapError,
@@ -79,23 +84,10 @@ async function sendCompletedStatusReport(
     initStatusReport.computed_inputs.tools = toolsInput;
   }
 
-  const initToolsDownloadFields: InitToolsDownloadFields = {};
-
-  if (toolsDownloadStatusReport?.downloadDurationMs !== undefined) {
-    initToolsDownloadFields.tools_download_duration_ms =
-      toolsDownloadStatusReport.downloadDurationMs;
-  }
-  if (toolsDownloadStatusReport?.extractionDurationMs !== undefined) {
-    initToolsDownloadFields.tools_extraction_duration_ms =
-      toolsDownloadStatusReport.extractionDurationMs;
-  }
-  if (toolsDownloadStatusReport?.totalDurationMs !== undefined) {
-    initToolsDownloadFields.tools_total_duration_ms =
-      toolsDownloadStatusReport.totalDurationMs;
-  }
-  if (toolsFeatureFlagsValid !== undefined) {
-    initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
-  }
+  const initToolsDownloadFields = createInitToolsDownloadFields(
+    toolsDownloadStatusReport,
+    toolsFeatureFlagsValid,
+  );
 
   await sendStatusReport({ ...initStatusReport, ...initToolsDownloadFields });
 }
@@ -121,8 +113,7 @@ async function run(
     const apiDetails = {
       auth: getRequiredInput("token"),
       externalRepoAuth: getOptionalInput("external-repository-token"),
-      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
-      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+      ...github.getCurrentInstance(actionState.env),
     };
 
     const gitHubVersion = await getGitHubVersion();
@@ -145,7 +136,9 @@ async function run(
     );
     const repositoryProperties = repositoryPropertiesResult.orElse({});
 
-    const actionStateWithFeatures = { ...actionState, features };
+    const actionStateWithFeatures = extendActionState(actionState, {
+      features,
+    });
 
     const statusReportBase = await createStatusReportBase(
       ActionName.SetupCodeQL,
@@ -179,6 +172,12 @@ async function run(
       gitHubVersion.type,
       codeQLDefaultVersionInfo,
       rawLanguages,
+      // CodeQL resolves the dependencies of queries that aren't in compiled packs from the bundle,
+      // so the queries that the workflow runs with this CLI may need library packs for languages
+      // other than those in the `languages` input. That input therefore only informs the choice of
+      // CLI version.
+      "the 'setup-codeql' Action can't tell whether the queries that the workflow runs will need " +
+        "library packs for other languages",
       analysisKinds.length === 1 &&
         analysisKinds[0] === AnalysisKind.CodeScanning,
       features,
@@ -192,7 +191,7 @@ async function run(
     core.setOutput("codeql-path", codeql.getPath());
     core.setOutput("codeql-version", (await codeql.getVersion()).version);
 
-    core.exportVariable(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
+    actionState.env.export(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
   } catch (unwrappedError) {
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);

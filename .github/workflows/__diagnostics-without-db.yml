@@ -45,9 +45,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       # We deliberately need to make this step fail before the database is initialised, but after
-      # some diagnostic has been produced. The simplest way to do that right now is to force the
-      # use of a nightly release and then fail because we are attempting to analyse Swift on
-      # a non-macOS runner.
+      # some diagnostic has been produced. The simplest way to do that right now is to:
+      #
+      # - Produce a diagnostic before the db is initialised by forcing the use of a nightly release
+      #   with the `CODEQL_ACTION_FORCE_NIGHTLY` feature flag.
+      # - Cause `init` to abort because we are attempting to analyse Swift on a non-macOS runner.
+      #
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Node.js

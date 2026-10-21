@@ -28,7 +28,7 @@ function findCodeQL() {
   return toolcache.findAllVersions("CodeQL");
 }
 
-function noCodeQLInToolcache() {
+function checkNoCodeQLInToolcache() {
   const allCodeqlVersions = findCodeQL();
   if (allCodeqlVersions.length !== 0) {
     throw new Error(
@@ -77,7 +77,7 @@ function main() {
       removeCodeQLFromToolcache();
       return;
     case "absent":
-      noCodeQLInToolcache();
+      checkNoCodeQLInToolcache();
       return;
     case "installed":
       hasCodeQLInToolcache(values["expected-version-count"]);

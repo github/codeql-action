@@ -5,6 +5,7 @@ import * as actionsUtil from "./actions-util";
 import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
+import { getConfig } from "./config-utils";
 import { initFeatures } from "./feature-flags";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -67,11 +68,12 @@ async function run(action: ActionState<["Base", "Env", "Logger"]>) {
     // Make inputs accessible in the `post` step.
     actionsUtil.persistInputs();
 
+    const tempDir = getTemporaryDirectory();
     const repositoryNwo = getRepositoryNwo();
     const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
-      getTemporaryDirectory(),
+      tempDir,
       logger,
     );
 
@@ -92,9 +94,13 @@ async function run(action: ActionState<["Base", "Env", "Logger"]>) {
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
 
+    // Load the configuration from a previous step if there is one. This allows us to reuse the CLI that
+    // may have been installed by a previous step.
+    const maybeConfig = await getConfig(tempDir, logger);
     const uploadResults = await postProcessAndUploadSarif(
       logger,
       features,
+      maybeConfig,
       "always",
       checkoutPath,
       sarifPath,

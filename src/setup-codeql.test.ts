@@ -596,7 +596,7 @@ test.serial(
         undefined, // rawLanguages
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
-        createFeatures([Feature.CleanupToolcacheBundles]),
+        createFeatures([]),
         getRunnerLogger(true),
       );
 
@@ -1508,10 +1508,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
           };
         });
       const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
-      const features = createFeatures([
-        Feature.PerLanguageBundles,
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const features = createFeatures([Feature.PerLanguageBundles]);
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
@@ -1882,11 +1879,15 @@ function createToolcacheEntry(
  */
 async function runDownloadCodeQL(
   toolcacheRoot: string,
-  features: Feature[],
   bundleVersion: string | undefined,
-  env = getTestEnv({
-    [ActionsEnvVars.RUNNER_TOOL_CACHE]: toolcacheRoot,
-  }),
+  {
+    env = getTestEnv({
+      [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
+      [ActionsEnvVars.RUNNER_TOOL_CACHE]: toolcacheRoot,
+    }),
+  }: {
+    env?: Env;
+  } = {},
 ): Promise<{
   codeqlFolder: string;
   cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
@@ -1897,7 +1898,6 @@ async function runDownloadCodeQL(
   const { codeqlFolder } = await setupCodeql.downloadCodeQLBundle(
     initAllState({
       env,
-      features: createFeatures(features),
     }),
     {
       bundle: {
@@ -1935,11 +1935,9 @@ async function runDownloadCodeQL(
 async function testToolcacheCleanup(
   t: ExecutionContext<unknown>,
   {
-    features,
     runnerEnvironment,
     setUp,
   }: {
-    features: Feature[];
     runnerEnvironment: string | undefined;
     setUp?: (env: Env) => void;
   },
@@ -1951,12 +1949,8 @@ async function testToolcacheCleanup(
 ) {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
-    if (runnerEnvironment === undefined) {
-      delete process.env[ActionsEnvVars.RUNNER_ENVIRONMENT];
-    } else {
-      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = runnerEnvironment;
-    }
     const env = getTestEnv({
+      [ActionsEnvVars.RUNNER_ENVIRONMENT]: runnerEnvironment,
       [ActionsEnvVars.RUNNER_TOOL_CACHE]: tmpDir,
     });
     setUp?.(env);
@@ -1976,9 +1970,8 @@ async function testToolcacheCleanup(
 
     const { cleanupDiagnostic } = await runDownloadCodeQL(
       tmpDir,
-      features,
       CLEANUP_BUNDLE_VERSION,
-      env,
+      { env },
     );
 
     t.true(
@@ -1991,27 +1984,11 @@ async function testToolcacheCleanup(
 }
 
 test.serial(
-  "downloadCodeQLBundle does not clean up the toolcache when the feature flag is disabled",
-  async (t) => {
-    await testToolcacheCleanup(
-      t,
-      { features: [], runnerEnvironment: "github-hosted" },
-      ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
-        t.true(fs.existsSync(staleDirectory));
-        t.true(fs.existsSync(destinationDirectory));
-        t.is(cleanupDiagnostic, undefined);
-      },
-    );
-  },
-);
-
-test.serial(
   "downloadCodeQLBundle does not clean up the toolcache when the runner is not GitHub-hosted",
   async (t) => {
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "self-hosted",
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -2031,7 +2008,6 @@ test.serial(
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: undefined,
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -2044,12 +2020,11 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQLBundle deletes other CodeQL bundles from the toolcache when enabled on a GitHub-hosted runner",
+  "downloadCodeQLBundle deletes other CodeQL bundles from the toolcache on a GitHub-hosted runner",
   async (t) => {
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "github-hosted",
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -2083,7 +2058,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2113,7 +2087,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2245,7 +2218,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         toolcacheRoot,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2268,7 +2240,6 @@ test.serial(
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "github-hosted",
         setUp: (env) => {
           env.set(EnvVar.HAS_SET_UP_CODEQL, "true");
@@ -2298,9 +2269,13 @@ test.serial(
       );
       const { codeqlFolder, cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
-        getTestEnv({ [EnvVar.HAS_SET_UP_CODEQL]: "true" }),
+        {
+          env: getTestEnv({
+            [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
+            [EnvVar.HAS_SET_UP_CODEQL]: "true",
+          }),
+        },
       );
 
       t.true(fs.existsSync(staleDirectory));
@@ -2368,7 +2343,7 @@ test.serial(
           undefined, // rawLanguages
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
-          createFeatures([Feature.CleanupToolcacheBundles]),
+          createFeatures([]),
           getRunnerLogger(true),
         ),
         { is: error },
@@ -2403,7 +2378,6 @@ test.serial(
 
       const { codeqlFolder, cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         undefined, // bundleVersion
       );
 
@@ -2437,7 +2411,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2473,7 +2446,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2523,7 +2495,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         toolcacheRoot,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 

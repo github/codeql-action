@@ -2,6 +2,16 @@
 
 Change-notes are Markdown files used to document user-facing changes. When making a change that affects users, create a Markdown file here that describes the change. During the next release, the change-note files in `unreleased-change-notes/` will automatically be added to `CHANGELOG.md`.
 
+### What do document
+
+Some guidelines to help you decide whether a change needs a change note:
+
+- New functionality that is gated behind a feature flag should be documented when it is added, highlighting that the feature will only be rolled out later. Ideally, this should also include an estimate for when the feature is expected to become available.
+- When a feature flag is removed and the gated functionality becomes the default behaviour, this does not need to be documented.
+- Changes that may require users to make changes to their workflows must be documented.
+
+If in doubt, see `CHANGELOG.md` for what we have included previously.
+
 ### Change-note file format
 
 Change-note files must follow a certain format so that they can be automatically validated and processed. Failure to follow the format will result in a failed PR check.

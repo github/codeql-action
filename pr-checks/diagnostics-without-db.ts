@@ -6,20 +6,20 @@ import * as core from "@actions/core";
 import type * as diagnostics from "../src/diagnostics";
 
 const DIAGNOSTIC_ID = "codeql-action/forced-nightly-cli";
-const sarifDirectory = process.env["SARIF_PATH"];
+const diagnosticDirectory = process.env["DIAGNOSTICS_DIR"];
 
-if (sarifDirectory === undefined) {
-  throw new Error("SARIF_PATH is undefined.");
+if (diagnosticDirectory === undefined) {
+  throw new Error("DIAGNOSTICS_DIR is undefined.");
 }
 
 const paths = fs
-  .readdirSync(sarifDirectory, {
+  .readdirSync(diagnosticDirectory, {
     recursive: true,
     encoding: "utf-8",
   })
   .filter((p) => p.endsWith(".json"));
 
-core.info(`Found ${paths.length} paths in '${sarifDirectory}'.`);
+core.info(`Found ${paths.length} paths in '${diagnosticDirectory}'.`);
 core.info(`Searching for a diagnostic with id '${DIAGNOSTIC_ID}'...`);
 
 let found = false;
@@ -31,7 +31,7 @@ for (const diagnosticPath of paths) {
   core.info(`Found ${diagnosticPath}.`);
 
   const contents = JSON.parse(
-    fs.readFileSync(path.resolve(sarifDirectory, diagnosticPath), "utf-8"),
+    fs.readFileSync(path.resolve(diagnosticDirectory, diagnosticPath), "utf-8"),
   ) as diagnostics.DiagnosticMessage;
 
   if (contents.source.id === DIAGNOSTIC_ID) {

@@ -74,10 +74,7 @@ export const ACTION_DISPLAY_NAMES: Partial<Record<ActionName, string>> = {
 export function getDisplayActionName(actionName: ActionName): string {
   const displayName = ACTION_DISPLAY_NAMES[actionName];
 
-  if (displayName !== undefined) {
-    return displayName;
-  }
-  return actionName;
+  return displayName ?? actionName;
 }
 
 /**

@@ -45,11 +45,11 @@ function hasCodeQLInToolcache(expectedNumber?: string) {
       : undefined;
 
   const allCodeqlVersions = findCodeQL();
-  core.info(`Found CodeQL versions: ${allCodeqlVersions}`);
-
   if (allCodeqlVersions.length === 0) {
     throw new Error("CodeQL not found in toolcache");
   }
+
+  core.info(`Found CodeQL versions: ${allCodeqlVersions.join(", ")}`);
   if (expected !== undefined && allCodeqlVersions.length !== expected) {
     throw new Error(
       `Expected ${expected} versions of CodeQL in the toolcache, but found ${allCodeqlVersions.length}`,

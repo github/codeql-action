@@ -38,7 +38,7 @@ steps:
 
   - name: Check diagnostics appear on disk
     env:
-      SARIF_PATH: "${{ runner.temp }}/codeql-action-temp-diagnostics/"
+      DIAGNOSTICS_DIR: "${{ runner.temp }}/codeql-action-temp-diagnostics/"
     run: |
       cd ../action
       npx tsx ./pr-checks/diagnostics-without-db.ts

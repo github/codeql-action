@@ -166,8 +166,20 @@ export enum EnvVar {
   SARIF_DUMP_DIR = "CODEQL_ACTION_SARIF_DUMP_DIR",
 
   /**
+   * Whether to skip generating a failed SARIF file. Intended for testing purposes.
+   * This setting is more specific than `CODEQL_ACTION_TEST_MODE` and
+   * `CODEQL_ACTION_SKIP_SARIF_UPLOAD`, which imply this option.
+   *
+   * Setting this to `false` takes precedence over `CODEQL_ACTION_TEST_MODE: true` or
+   * `CODEQL_ACTION_SKIP_SARIF_UPLOAD: true`.
+   */
+  SKIP_GENERATE_FAILED_SARIF = "CODEQL_ACTION_SKIP_GENERATE_FAILED_SARIF",
+
+  /**
    * Whether to skip uploading SARIF results to GitHub. Intended for testing purposes.
    * This setting is more specific than `CODEQL_ACTION_TEST_MODE`, which implies this option.
+   *
+   * Setting this to `false` takes precedence over `CODEQL_ACTION_TEST_MODE: true`.
    */
   SKIP_SARIF_UPLOAD = "CODEQL_ACTION_SKIP_SARIF_UPLOAD",
 

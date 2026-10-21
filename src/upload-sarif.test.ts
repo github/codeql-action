@@ -26,6 +26,7 @@ function mockPostProcessSarifFiles() {
     const analysisConfig = getAnalysisConfig(analysisKind);
     postProcessSarifFiles
       .withArgs(
+        sinon.match.object,
         sinon.match.any,
         sinon.match.any,
         sinon.match.any,
@@ -75,9 +76,11 @@ const postProcessAndUploadSarifMacro = makeMacro({
         fs.writeFileSync(sarifFile, "");
       }
 
+      const config = undefined;
       const actual = await postProcessAndUploadSarif(
         logger,
         features,
+        config,
         "always",
         "",
         testPath,
@@ -94,6 +97,7 @@ const postProcessAndUploadSarifMacro = makeMacro({
             postProcessSarifFiles.calledWith(
               logger,
               features,
+              config,
               sinon.match.any,
               analysisKindResult.expectedFiles?.map(toFullPath) ??
                 fullSarifPaths,
@@ -223,6 +227,7 @@ test.serial(
       const actual = await postProcessAndUploadSarif(
         logger,
         features,
+        undefined,
         "never",
         "",
         tempDir,
@@ -253,6 +258,7 @@ test.serial(
       const actual = await postProcessAndUploadSarif(
         logger,
         features,
+        undefined,
         "never",
         "",
         tempDir,

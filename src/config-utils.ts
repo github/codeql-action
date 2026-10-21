@@ -940,10 +940,14 @@ async function validateOverlayDatabaseMode(
   });
 }
 
-export async function isTrapCachingEnabled(
-  features: FeatureEnablement,
+/**
+ * Determines whether TRAP caching is enabled for the current run.
+ *
+ * @returns Whether TRAP caches should be downloaded and uploaded.
+ */
+export function isTrapCachingEnabled(
   overlayDatabaseMode: OverlayDatabaseMode,
-): Promise<boolean> {
+): boolean {
   // If the workflow specified something, always respect that.
   const trapCaching = getOptionalInput("trap-caching");
   if (trapCaching !== undefined) return trapCaching === "true";
@@ -951,12 +955,8 @@ export async function isTrapCachingEnabled(
   // On self-hosted runners which may have slow network access, disable TRAP caching by default.
   if (!looksLikeHostedRunner()) return false;
 
-  // If overlay analysis is enabled, then disable TRAP caching since overlay analysis supersedes it.
-  // This change is gated behind a feature flag.
-  if (
-    overlayDatabaseMode !== OverlayDatabaseMode.None &&
-    (await features.getValue(Feature.OverlayAnalysisDisableTrapCaching))
-  ) {
+  // Overlay analysis supersedes TRAP caching, so disable TRAP caching by default when it is active.
+  if (overlayDatabaseMode !== OverlayDatabaseMode.None) {
     return false;
   }
 
@@ -1298,7 +1298,7 @@ export async function initConfig(
     logger,
   );
 
-  if (await isTrapCachingEnabled(features, config.overlayDatabaseMode)) {
+  if (isTrapCachingEnabled(config.overlayDatabaseMode)) {
     const { trapCaches, trapCacheDownloadTime } = await downloadCacheWithTime(
       inputs.codeql,
       config.languages,

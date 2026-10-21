@@ -1,6 +1,8 @@
 import fs from "fs";
+import path from "path";
 
 import * as core from "@actions/core";
+import { globSync } from "glob";
 
 import * as sarif from "../src/sarif";
 
@@ -91,9 +93,23 @@ function checkSarif(sarifFile: string) {
 const sarifPath = process.env["SARIF_PATH"];
 
 if (sarifPath === undefined) {
-  throw new Error("The path to a SARIF file must be set in 'SARIF_PATH'.");
+  throw new Error(
+    "The path to a SARIF file or directory must be set in 'SARIF_PATH'.",
+  );
 }
 
-checkSarif(sarifPath);
+if (fs.statSync(sarifPath).isDirectory()) {
+  const sarifFiles = globSync(path.join(sarifPath, "**", "*.sarif"));
+
+  if (sarifFiles.length < 1) {
+    throw new Error(`Unable to find any .sarif files in '${sarifPath}'.`);
+  }
+
+  for (const sarifFile of sarifFiles) {
+    checkSarif(sarifFile);
+  }
+} else {
+  checkSarif(sarifPath);
+}
 
 core.info("Finished diagnostic export test");

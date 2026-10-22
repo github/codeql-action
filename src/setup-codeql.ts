@@ -364,7 +364,7 @@ export async function getCodeQLSource(
       );
     }
     bundle = await getLatestNightlyBundle(
-      { env: getEnv(), features, logger },
+      { env: getEnv(), logger },
       rawLanguages,
       otherLanguagePacksReason,
       variant,
@@ -605,17 +605,14 @@ export async function getCodeQLSource(
 
     const action = { env: getEnv(), logger };
     const platform = getBundlePlatform();
-    const perLanguageBundleLanguage = await getPerLanguageBundleLanguage(
-      { ...action, features },
-      {
-        rawLanguages,
-        otherLanguagePacksReason,
-        cliVersion,
-        compressionMethod,
-        platform,
-        variant,
-      },
-    );
+    const perLanguageBundleLanguage = getPerLanguageBundleLanguage(action, {
+      rawLanguages,
+      otherLanguagePacksReason,
+      cliVersion,
+      compressionMethod,
+      platform,
+      variant,
+    });
 
     // Resolves the combined or per-language bundle URL for the requested release.
     const resolveBundleURL = (language?: BuiltInLanguage) =>
@@ -1043,7 +1040,7 @@ function getTempExtractionDir(tempDir: string) {
  * Records the combined bundle URL from that release for use if the selected asset is missing.
  */
 async function getLatestNightlyBundle(
-  action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
+  action: ActionState<["Logger", "ReadOnlyEnv"]>,
   rawLanguages: string[] | undefined,
   otherLanguagePacksReason: string | undefined,
   variant: util.GitHubVariant,
@@ -1059,7 +1056,7 @@ async function getLatestNightlyBundle(
     : "gzip";
 
   const platform = getBundlePlatform();
-  const language = await getPerLanguageBundleLanguage(action, {
+  const language = getPerLanguageBundleLanguage(action, {
     rawLanguages,
     otherLanguagePacksReason,
     cliVersion: undefined,

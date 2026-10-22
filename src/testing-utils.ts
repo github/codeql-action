@@ -1032,6 +1032,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       overlayModeSetExplicitly: false,
       repositoryProperties: {},
       enableFileCoverageInformation: true,
+      successfullyInitialised: false,
     } satisfies Config,
     overrides,
   );

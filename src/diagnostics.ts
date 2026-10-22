@@ -303,14 +303,23 @@ function writeDiagnostic(
 export function logTemporaryDiagnostics(action: ActionState<["Logger"]>) {
   const num = temporaryDiagnostics.length;
 
-  if (num > 0) {
-    action.logger.warning(
-      `${num} diagnostic(s) could not be written to the database and will not appear on the Tool Status Page.`,
+  if (num > 0 && action.logger.isDebug()) {
+    action.logger.startGroup("Diagnostics in temporary location");
+    action.logger.debug(
+      `${num} diagnostic(s) were not moved to the database and remain in the temporary directory.`,
     );
 
     for (const temporary of temporaryDiagnostics) {
-      action.logger.debug(fs.readFileSync(temporary.path, "utf-8"));
+      try {
+        action.logger.debug(fs.readFileSync(temporary.path, "utf-8"));
+      } catch (err) {
+        action.logger.debug(
+          `Failed to read diagnostics from temporary location at '${temporary.path}': ${getErrorMessage(err)}`,
+        );
+      }
     }
+
+    action.logger.endGroup();
   }
 }
 

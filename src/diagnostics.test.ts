@@ -66,7 +66,7 @@ test("getTempLanguageDiagnosticsPath returns language-specific path if a languag
     );
   }));
 
-test("getDatabaseDiagnosticsPath returns language-specific path if a language is provided", async (t) =>
+test("getDatabaseDiagnosticsPath returns language-specific path", async (t) =>
   withTmpDir(async (tmpDir) => {
     t.is(
       diagnostics.getDatabaseDiagnosticsPath(

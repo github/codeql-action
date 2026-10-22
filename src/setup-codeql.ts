@@ -220,21 +220,19 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
 
 /**
  * Resolves the newest enabled default CLI version that has a cached overlay-base database for the
- * relevant languages, if running a Code Scanning analysis for a pull request with multiple enabled
- * default versions in a supported environment and one exists. Otherwise, falls back to the newest
- * enabled default CLI version.
+ * relevant languages, if this is a Code Scanning analysis of a pull request, multiple default
+ * versions are enabled, and such a version exists. Otherwise, falls back to the newest enabled
+ * default CLI version.
  */
 async function resolveDefaultCliVersion(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
-  variant: util.GitHubVariant,
   logger: Logger,
 ): Promise<CodeQLVersionInfo> {
   if (
     !useOverlayAwareDefaultCliVersion ||
-    (variant !== util.GitHubVariant.DOTCOM &&
-      variant !== util.GitHubVariant.GHEC_DR) ||
+    // Listing the Actions cache can't change which version we use if only one version is enabled.
     defaultCliVersion.enabledVersions.length === 1 ||
     !isAnalyzingPullRequest()
   ) {
@@ -440,7 +438,6 @@ export async function getCodeQLSource(
         defaultCliVersion,
         rawLanguages,
         useOverlayAwareDefaultCliVersion,
-        variant,
         logger,
       );
       cliVersion = version.cliVersion;
@@ -463,7 +460,6 @@ export async function getCodeQLSource(
       defaultCliVersion,
       rawLanguages,
       useOverlayAwareDefaultCliVersion,
-      variant,
       logger,
     );
     cliVersion = version.cliVersion;

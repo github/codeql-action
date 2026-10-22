@@ -19,7 +19,7 @@ steps:
       tools: ${{ steps.prepare-test.outputs.tools-url }}
       # To balance speed and coverage, analyze only JavaScript but use the combined bundle so
       # baseline information is reported for every language in the multi-language repository. A
-      # no-op custom configuration selects that conservative path for custom configurations.
+      # custom configuration prevents per-language bundles from being used.
       config: |
         paths-ignore: []
   - name: Build code

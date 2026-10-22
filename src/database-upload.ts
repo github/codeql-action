@@ -10,6 +10,7 @@ import {
 } from "./api-client";
 import { type CodeQL } from "./codeql";
 import { Config } from "./config-utils";
+import type { ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { parseGitHubUrl } from "./github";
@@ -266,11 +267,12 @@ export async function uploadBundledDatabase(
   bundledDb: string,
   bundledDbSize: number,
   apiDetails: GitHubApiDetails,
+  env: ReadOnlyEnv = util.getEnv(),
 ): Promise<number> {
-  // Ensure that the `apiDetails` that `getApiClient` uses match the ones we were given here,
-  // because we use `apiDetails.auth` below which must be used with the same instance that
-  // `apiDetails` refers to.
-  const client = getApiClient(util.getEnv(), apiDetails);
+  // It is important that the `apiDetails` that `getApiClient` uses match the ones we were given,
+  // because we use `apiDetails.url` below to construct the URL to upload the database to. That
+  // URL will be specific to the GitHub instance given by `apiDetails` and so the client must match it.
+  const client = getApiClient(env, apiDetails);
 
   const uploadsUrl = new URL(parseGitHubUrl(apiDetails.url));
   uploadsUrl.hostname = `uploads.${uploadsUrl.hostname}`;

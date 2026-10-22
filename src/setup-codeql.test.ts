@@ -32,6 +32,7 @@ import {
   getTestEnv,
   initAllState,
   makeMacro,
+  mockApiDetails,
   mockBundleDownloadApi,
   setupActionsVars,
   setupTests,
@@ -155,6 +156,7 @@ test.serial(
         compressionMethod: "gzip",
         sourceType: "download",
         toolsVersion: "1.2.3",
+        apiDetails: SAMPLE_DOTCOM_API_DETAILS,
       } satisfies setupCodeql.CodeQLDownloadSource);
     });
   },
@@ -221,6 +223,7 @@ for (const {
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         const source = await setupCodeql.getCodeQLSource(
           "linked",
           SAMPLE_DEFAULT_CLI_VERSION,
@@ -255,6 +258,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       const source = await setupCodeql.getCodeQLSource(
         "latest",
         SAMPLE_DEFAULT_CLI_VERSION,
@@ -298,6 +302,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       const result = await setupCodeql.setupCodeQLBundle(
         "linked",
         SAMPLE_DOTCOM_API_DETAILS,
@@ -431,6 +436,7 @@ test.serial(
         compressionMethod: "zstd",
         sourceType: "download",
         toolsVersion: expectedVersion,
+        apiDetails: SAMPLE_DOTCOM_API_DETAILS,
       } satisfies setupCodeql.CodeQLToolsSource);
 
       const result = await setupCodeql.setupCodeQLBundle(
@@ -479,6 +485,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
 
       const source = await setupCodeql.getCodeQLSource(
         undefined,
@@ -503,6 +510,7 @@ test.serial(
         compressionMethod: "zstd",
         sourceType: "download",
         toolsVersion: expectedVersion,
+        apiDetails: SAMPLE_DOTCOM_API_DETAILS,
       } satisfies setupCodeql.CodeQLToolsSource);
 
       // Afterwards, ensure that we see the expected messages in the log.
@@ -624,6 +632,7 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         const source = await setupCodeql.getCodeQLSource(
           toolsInput,
           SAMPLE_DEFAULT_CLI_VERSION,
@@ -649,6 +658,7 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
           cliVersion: undefined,
           compressionMethod: "zstd",
           toolsVersion: "0.0.0-30260213",
+          apiDetails: SAMPLE_DOTCOM_API_DETAILS,
         } satisfies setupCodeql.CodeQLDownloadSource);
         t.true(latestNightlyRequest.calledOnce);
       });
@@ -801,6 +811,7 @@ for (const date of ["20200101", "30260213"]) {
             cliVersion: undefined,
             compressionMethod: "zstd",
             toolsVersion: `0.0.0-${date}`,
+            apiDetails: SAMPLE_DOTCOM_API_DETAILS,
           } satisfies setupCodeql.CodeQLDownloadSource);
 
           await t.throwsAsync(
@@ -945,6 +956,7 @@ const toolcacheInputFallbackMacro = makeMacro({
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
 
       for (const [k, v] of Object.entries(environment)) {
         process.env[k] = v;
@@ -1165,6 +1177,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       const source = await setupCodeql.getCodeQLSource(
         undefined,
         PER_LANGUAGE_CLI_VERSION,
@@ -1207,6 +1220,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       for (const { otherLanguagePacksReason, features } of [
         // The per-language feature is disabled.
         { otherLanguagePacksReason: undefined, features: createFeatures([]) },
@@ -1276,7 +1290,14 @@ for (const fallback of [false, true]) {
         request: { fetch: fetchRelease },
       });
       sinon.stub(api, "getApiClient").value(() => client);
-      const authorizationSpy = sinon.spy(api, "getAuthorizationHeaderFor");
+
+      const spyClient = new api.InstanceApiClient(SAMPLE_DOTCOM_API_DETAILS);
+      const authorizationSpy = sinon.spy(
+        spyClient,
+        "getAuthorizationHeaderFor",
+      );
+      sinon.stub(api, "InstanceApiClient").returns(spyClient);
+
       const extractStub = stubDownloadAndExtract();
       if (fallback) {
         extractStub.onFirstCall().rejects(new HTTPError("Not Found", 404));
@@ -1286,6 +1307,7 @@ for (const fallback of [false, true]) {
         setupActionsVars(tmpDir, tmpDir, {
           GITHUB_ACTION_REPOSITORY: "codeql-testing/action-fork",
         });
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         const result = await setupCodeql.setupCodeQLBundle(
           undefined,
           SAMPLE_DOTCOM_API_DETAILS,
@@ -1308,9 +1330,9 @@ for (const fallback of [false, true]) {
         t.is(extractStub.firstCall.args[0], assetURL);
         t.is(extractStub.lastCall.args[0], fallback ? combinedURL : assetURL);
         t.is(authorizationSpy.callCount, extractStub.callCount);
-        t.is(authorizationSpy.firstCall.args[2], assetURL);
+        t.is(authorizationSpy.firstCall.args[1], assetURL);
         t.is(
-          authorizationSpy.lastCall.args[2],
+          authorizationSpy.lastCall.args[1],
           fallback ? combinedURL : assetURL,
         );
         t.is(extractStub.lastCall.args[3], "token token");
@@ -1550,6 +1572,7 @@ for (const error of [
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
+        mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
         await t.throwsAsync(
           setupCodeql.setupCodeQLBundle(
             undefined,
@@ -1853,8 +1876,8 @@ async function runDownloadCodeQL(
       cliVersion: CLEANUP_CLI_VERSION,
       sourceType: "download",
       toolsVersion: CLEANUP_CLI_VERSION,
+      apiDetails: SAMPLE_DOTCOM_API_DETAILS,
     },
-    SAMPLE_DOTCOM_API_DETAILS,
     undefined, // tarVersion
     toolcacheRoot, // tempDir
   );
@@ -2234,6 +2257,7 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       delete process.env[EnvVar.HAS_SET_UP_CODEQL];
 
       stubDownloadAndExtract();
@@ -2269,6 +2293,7 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
+      mockApiDetails(SAMPLE_DOTCOM_API_DETAILS);
       process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = "github-hosted";
       delete process.env[EnvVar.HAS_SET_UP_CODEQL];
       const staleDirectory = createToolcacheEntry(

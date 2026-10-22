@@ -718,6 +718,7 @@ export async function getCodeQLSource(
     compressionMethod,
     sourceType: "download",
     toolsVersion: resolvedVersion ?? "unknown",
+    apiDetails,
   };
 }
 
@@ -746,7 +747,6 @@ async function tryGetFallbackToolcacheVersion(
 // be able to stub this function and have other functions in this file use that stub.
 export const downloadCodeQL = async function (
   source: CodeQLDownloadSource,
-  apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
   logger: Logger,
@@ -767,11 +767,8 @@ export const downloadCodeQL = async function (
   if (searchParams.has("token")) {
     logger.debug("CodeQL tools URL contains an authorization token.");
   } else {
-    authorization = api.getAuthorizationHeaderFor(
-      logger,
-      apiDetails,
-      codeqlURL,
-    );
+    const client = new api.InstanceApiClient(source.apiDetails);
+    authorization = client.getAuthorizationHeaderFor(logger, codeqlURL);
   }
 
   const toolcacheDestination = getToolcacheDestination({ logger }, source);
@@ -980,7 +977,6 @@ export async function setupCodeQLBundle(
       const result = await downloadCodeQLBundle(
         { env: getEnv(), logger },
         source,
-        apiDetails,
         zstdAvailability.version,
         tempDir,
       );
@@ -1016,7 +1012,6 @@ export async function setupCodeQLBundle(
 export async function downloadCodeQLBundle(
   action: ActionState<["Logger", "ReadOnlyEnv"]>,
   source: CodeQLDownloadSource,
-  apiDetails: api.GitHubApiDetails,
   tarVersion: tar.TarVersion | undefined,
   tempDir: string,
 ): Promise<{
@@ -1030,13 +1025,7 @@ export async function downloadCodeQLBundle(
 
   const startTime = performance.now();
   try {
-    return await downloadCodeQL(
-      source,
-      apiDetails,
-      tarVersion,
-      tempDir,
-      logger,
-    );
+    return await downloadCodeQL(source, tarVersion, tempDir, logger);
   } catch (e) {
     if (
       bundle.kind !== "per-language" ||
@@ -1052,7 +1041,6 @@ export async function downloadCodeQLBundle(
         ...source,
         bundle: { kind: "combined", url: bundle.combinedBundleURL },
       },
-      apiDetails,
       tarVersion,
       tempDir,
       logger,

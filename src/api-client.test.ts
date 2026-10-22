@@ -308,70 +308,45 @@ test.serial(
 test("getAuthorizationHeaderFor - returns undefined if there's no token", (t) => {
   const logger = new RecordingLogger();
 
-  t.is(
-    api.getAuthorizationHeaderFor(
-      logger,
-      { ...SAMPLE_DOTCOM_API_DETAILS, auth: undefined },
-      `${GITHUB_DOTCOM_URL}/github`,
-    ),
-    undefined,
-  );
-  t.is(
-    api.getAuthorizationHeaderFor(
-      logger,
-      { ...SAMPLE_DOTCOM_API_DETAILS, auth: "" },
-      `${GITHUB_DOTCOM_URL}/github`,
-    ),
-    undefined,
-  );
-  t.is(
-    api.getAuthorizationHeaderFor(
-      logger,
-      { ...SAMPLE_DOTCOM_API_DETAILS, auth: "    " },
-      `${GITHUB_DOTCOM_URL}/github`,
-    ),
-    undefined,
-  );
+  for (const authValue of [undefined, "", "    "]) {
+    const client = new api.InstanceApiClient({
+      ...SAMPLE_DOTCOM_API_DETAILS,
+      auth: authValue,
+    });
+    t.is(
+      client.getAuthorizationHeaderFor(logger, `${GITHUB_DOTCOM_URL}/github`),
+      undefined,
+    );
+  }
 });
 
 test("getAuthorizationHeaderFor - returns header value with token if url is allowed", (t) => {
   const logger = new RecordingLogger();
+  const client = new api.InstanceApiClient({
+    ...SAMPLE_DOTCOM_API_DETAILS,
+  });
 
-  t.is(
-    api.getAuthorizationHeaderFor(
-      logger,
-      SAMPLE_DOTCOM_API_DETAILS,
-      `${GITHUB_DOTCOM_URL}/github`,
-    ),
-    `token ${SAMPLE_DOTCOM_API_DETAILS.auth}`,
-  );
-  t.is(
-    api.getAuthorizationHeaderFor(
-      logger,
-      SAMPLE_DOTCOM_API_DETAILS,
-      `${GITHUB_DOTCOM_API_URL}/github`,
-    ),
-    `token ${SAMPLE_DOTCOM_API_DETAILS.auth}`,
-  );
+  for (const url of [
+    `${GITHUB_DOTCOM_URL}/github`,
+    `${GITHUB_DOTCOM_API_URL}/github`,
+  ]) {
+    t.is(
+      client.getAuthorizationHeaderFor(logger, url),
+      `token ${SAMPLE_DOTCOM_API_DETAILS.auth}`,
+    );
+  }
 });
 
 test("getAuthorizationHeaderFor - returns undefined if url is not allowed", (t) => {
   const logger = new RecordingLogger();
+  const client = new api.InstanceApiClient({
+    ...SAMPLE_DOTCOM_API_DETAILS,
+  });
 
-  t.is(
-    api.getAuthorizationHeaderFor(
-      logger,
-      SAMPLE_DOTCOM_API_DETAILS,
-      `https://localhost/github`,
-    ),
-    undefined,
-  );
-  t.is(
-    api.getAuthorizationHeaderFor(
-      logger,
-      SAMPLE_DOTCOM_API_DETAILS,
-      `https://api.localhost/github`,
-    ),
-    undefined,
-  );
+  for (const url of [
+    `https://localhost/github`,
+    `https://api.localhost/github`,
+  ]) {
+    t.is(client.getAuthorizationHeaderFor(logger, url), undefined);
+  }
 });

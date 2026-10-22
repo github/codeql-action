@@ -8,7 +8,6 @@ import {
   parseRepositoryNwo,
   type RepositoryNwoStr,
 } from "../repository";
-import { type InstanceURL } from "../util";
 
 /** The NWO of the standard CodeQL Action repository. */
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";
@@ -48,20 +47,14 @@ export function getCodeQLActionRepository(
 }
 
 /**A download source is a pair of strings. */
-export type DownloadSource = [InstanceURL, RepositoryNwoStr];
-
-/** GitHub.com, and the canonical Action. */
-export const DEFAULT_DOWNLOAD_SOURCE: DownloadSource = [
-  GITHUB_DOTCOM_URL,
-  CODEQL_DEFAULT_ACTION_REPOSITORY,
-];
+export type DownloadSource = [api.GitHubApiDetails, RepositoryNwoStr];
 
 /** Decides if the two provided download sources are the same. */
 const isSameDownloadSource = (
-  [srcUrl, srcRepo]: DownloadSource,
-  [otherUrl, otherRepo]: DownloadSource,
+  [srcInstance, srcRepo]: DownloadSource,
+  [otherInstance, otherRepo]: DownloadSource,
 ) => {
-  return srcUrl === otherUrl && srcRepo === otherRepo;
+  return srcInstance.url === otherInstance.url && srcRepo === otherRepo;
 };
 
 /** A download URL is represented as a string. */
@@ -104,13 +97,21 @@ export async function getCodeQLAssetDownloadURL(
 ): Promise<DownloadURL> {
   const codeQLActionRepository = getCodeQLActionRepository(action);
 
+  // We construct the default GitHub.com source here, because `getDotcomApiDetails`
+  // may retrieve the `token` input if we are currently running on GitHub.com and
+  // we want to avoid doing that statically.
+  const defaultDownloadSource: DownloadSource = [
+    api.getDotcomApiDetails(action.env),
+    CODEQL_DEFAULT_ACTION_REPOSITORY,
+  ];
+
   const potentialDownloadSources: DownloadSource[] = [
     // This GitHub instance, and this Action.
-    [apiDetails.url, codeQLActionRepository],
+    [apiDetails, codeQLActionRepository],
     // This GitHub instance, and the canonical Action.
-    [apiDetails.url, CODEQL_DEFAULT_ACTION_REPOSITORY],
+    [apiDetails, CODEQL_DEFAULT_ACTION_REPOSITORY],
     // GitHub.com, and the canonical Action.
-    DEFAULT_DOWNLOAD_SOURCE,
+    defaultDownloadSource,
   ];
 
   // We now filter out any duplicates.
@@ -123,34 +124,34 @@ export async function getCodeQLAssetDownloadURL(
     },
   );
 
-  for (const [instanceURL, repository] of uniqueDownloadSources) {
+  for (const [instance, repository] of uniqueDownloadSources) {
     // If we've reached the final case, short-circuit the API check since we know the asset exists and is public.
-    if (
-      isSameDownloadSource(DEFAULT_DOWNLOAD_SOURCE, [instanceURL, repository])
-    ) {
+    if (isSameDownloadSource(defaultDownloadSource, [instance, repository])) {
       break;
     }
 
     const { owner: repositoryOwner, repo: repositoryName } =
       parseRepositoryNwo(repository);
     try {
-      const release = await api.getApiClient().rest.repos.getReleaseByTag({
-        owner: repositoryOwner,
-        repo: repositoryName,
-        tag: tagName,
-      });
+      const release = await api
+        .getApiClient(action.env, instance)
+        .rest.repos.getReleaseByTag({
+          owner: repositoryOwner,
+          repo: repositoryName,
+          tag: tagName,
+        });
 
       for (const asset of release.data.assets) {
         if (asset.name === assetName) {
           action.logger.info(
-            `Found ${assetKind} ${assetName} in ${repository} on ${instanceURL} with URL ${asset.url}.`,
+            `Found ${assetKind} ${assetName} in ${repository} on ${instance.apiURL} with URL ${asset.url}.`,
           );
           return asset.url;
         }
       }
     } catch (e) {
       action.logger.info(
-        `Looked for ${assetKind} ${assetName} in ${repository} on ${instanceURL} but got error ${e}.`,
+        `Looked for ${assetKind} ${assetName} in ${repository} on ${instance.apiURL} but got error ${e}.`,
       );
     }
   }

@@ -50,9 +50,8 @@ import {
   StatusReportBase,
 } from "./status-report";
 import {
-  cleanupTrapCaches,
-  TrapCacheCleanupStatusReport,
   uploadTrapCaches,
+  warnIfTrapCacheCleanupEnvVarIsSet,
 } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -86,7 +85,6 @@ async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
-  trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   dependencyCacheResults: DependencyCacheUploadStatusReport | undefined,
   databaseUploadResults: DatabaseUploadResult[],
   logger: Logger,
@@ -107,7 +105,6 @@ async function sendStatusReport(
       ...statusReportBase,
       ...(stats || {}),
       ...(dbCreationTimings || {}),
-      ...(trapCacheCleanup || {}),
       dependency_caching_upload_results: dependencyCacheResults,
       database_upload_results: databaseUploadResults,
     };
@@ -229,8 +226,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
-  let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
-    undefined;
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
@@ -277,6 +272,8 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
           "manages database cleanup. This input can safely be removed from your workflow.",
       );
     }
+
+    warnIfTrapCacheCleanupEnvVarIsSet(action);
 
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
@@ -361,6 +358,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       uploadResults = await postProcessAndUploadSarif(
         logger,
         features,
+        config,
         uploadKind,
         checkoutPath,
         outputDir,
@@ -415,13 +413,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
-    // Clean up TRAP caches
-    trapCacheCleanupTelemetry = await cleanupTrapCaches(
-      config,
-      features,
-      logger,
-    );
-
     // Store dependency cache(s) if dependency caching is enabled.
     if (shouldStoreCache(config.dependencyCachingEnabled)) {
       dependencyCacheResults = await uploadDependencyCaches(
@@ -433,8 +424,10 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
     }
 
     // We don't upload results in test mode, so don't wait for processing
-    if (util.isInTestMode()) {
-      logger.debug("In test mode. Waiting for processing is disabled.");
+    if (util.shouldSkipSarifUpload()) {
+      logger.debug(
+        "SARIF upload is disabled and nothing was uploaded, so we do not need to wait for processing to finish.",
+      );
     } else if (
       uploadResults?.[analyses.AnalysisKind.CodeScanning] !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
@@ -471,7 +464,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -494,7 +486,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -508,7 +499,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -522,7 +512,6 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,

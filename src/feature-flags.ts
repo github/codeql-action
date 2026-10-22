@@ -74,7 +74,6 @@ export enum Feature {
   AllowMergeConfigFiles = "allow_merge_config_files",
   /** Controls whether we allow multiple values for the `analysis-kinds` input. */
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
-  CleanupTrapCaches = "cleanup_trap_caches",
   /** Whether to allow the `config-file` input to be specified via a repository property. */
   ConfigFileRepositoryProperty = "config_file_repository_property",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
@@ -103,8 +102,6 @@ export enum Feature {
   OverlayAnalysisCodeScanningRuby = "overlay_analysis_code_scanning_ruby",
   OverlayAnalysisCpp = "overlay_analysis_cpp",
   OverlayAnalysisCsharp = "overlay_analysis_csharp",
-  /** Disable TRAP caching when overlay analysis is enabled. */
-  OverlayAnalysisDisableTrapCaching = "overlay_analysis_disable_trap_caching",
   OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
@@ -209,11 +206,6 @@ export const featureConfig = {
   [Feature.AllowMultipleAnalysisKinds]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
-    minimumVersion: undefined,
-  },
-  [Feature.CleanupTrapCaches]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
     minimumVersion: undefined,
   },
   [Feature.ConfigFileRepositoryProperty]: {
@@ -364,11 +356,6 @@ export const featureConfig = {
     minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_RUBY,
   },
   // Other overlay-related feature flags
-  [Feature.OverlayAnalysisDisableTrapCaching]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_DISABLE_TRAP_CACHING",
-    minimumVersion: undefined,
-  },
   [Feature.OverlayAnalysisMatchCodeqlVersion]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION",

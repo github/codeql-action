@@ -775,6 +775,7 @@ async function run(
     // may have updated the config returned from `initConfig`, e.g. to revert to
     // `OverlayDatabaseMode.None` if we failed to download an overlay-base
     // database.
+    config.successfullyInitialised = true;
     await configUtils.saveConfig(config, logger);
 
     core.setOutput("codeql-path", config.codeQLCmd);

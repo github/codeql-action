@@ -1069,53 +1069,8 @@ async function fakeOverlayBaseCacheKey(
   return `${prefix}${suffix}`;
 }
 
-for (const variant of [GitHubVariant.DOTCOM, GitHubVariant.GHEC_DR]) {
-  test.serial(
-    `getCodeQLSource uses overlay-aware default version for a Code Scanning PR on ${variant}`,
-    async (t) => {
-      await withTmpDir(async (tmpDir) => {
-        setupActionsVars(tmpDir, tmpDir);
-        process.env[EnvVar.CODE_SCANNING_REF] = "refs/heads/feature-branch";
-        process.env[EnvVar.CODE_SCANNING_BASE_BRANCH] = "main";
-
-        sinon.stub(api, "getAutomationID").resolves("test/");
-        const listStub = sinon.stub(api, "listActionsCaches").resolves([
-          {
-            key: await fakeOverlayBaseCacheKey(
-              "javascript",
-              "2.20.1",
-              "abc-1-1",
-            ),
-          },
-        ]);
-        sinon
-          .stub(toolcache, "find")
-          .withArgs("CodeQL", "2.20.1")
-          .returns("/path/to/codeql-2.20.1");
-
-        const source = await setupCodeql.getCodeQLSource(
-          undefined,
-          overlayMatchEnabledVersions,
-          ["javascript"],
-          undefined, // otherLanguagePacksReason
-          true,
-          SAMPLE_DOTCOM_API_DETAILS,
-          variant,
-          false,
-          createFeatures([]),
-          getRunnerLogger(true),
-        );
-
-        t.assert(listStub.calledOnce);
-        t.is(source.sourceType, "toolcache");
-        t.is(source.toolsVersion, "2.20.1");
-      });
-    },
-  );
-}
-
 test.serial(
-  "getCodeQLSource skips overlay-aware default version for a Code Scanning PR on GHES",
+  "getCodeQLSource uses overlay-aware default version for a Code Scanning PR",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1130,8 +1085,8 @@ test.serial(
       ]);
       sinon
         .stub(toolcache, "find")
-        .withArgs("CodeQL", "2.20.2")
-        .returns("/path/to/codeql-2.20.2");
+        .withArgs("CodeQL", "2.20.1")
+        .returns("/path/to/codeql-2.20.1");
 
       const source = await setupCodeql.getCodeQLSource(
         undefined,
@@ -1140,15 +1095,15 @@ test.serial(
         undefined, // otherLanguagePacksReason
         true,
         SAMPLE_DOTCOM_API_DETAILS,
-        GitHubVariant.GHES,
+        GitHubVariant.DOTCOM,
         false,
         createFeatures([]),
         getRunnerLogger(true),
       );
 
-      t.assert(listStub.notCalled);
+      t.assert(listStub.calledOnce);
       t.is(source.sourceType, "toolcache");
-      t.is(source.toolsVersion, "2.20.2");
+      t.is(source.toolsVersion, "2.20.1");
     });
   },
 );

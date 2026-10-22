@@ -120,7 +120,10 @@ export function getJobUUID(action: ActionState<["Logger", "Env", "Actions"]>) {
  * misconfigured workflows are not treated as third party, only the upload-sarif action can return false.
  */
 function isFirstPartyAnalysis(actionName: ActionName): boolean {
-  if (actionName !== ActionName.UploadSarif) {
+  if (
+    actionName !== ActionName.UploadSarif &&
+    actionName !== ActionName.UploadSarifPost
+  ) {
     return true;
   }
   return process.env[EnvVar.INIT_ACTION_HAS_RUN] === "true";

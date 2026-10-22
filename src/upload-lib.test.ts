@@ -10,9 +10,9 @@ import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
 import * as diffUtils from "./diff-informed-analysis-utils";
-import { getRunnerLogger, Logger } from "./logging";
+import { Logger } from "./logging";
 import * as sarif from "./sarif";
-import { setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { UploadPayload } from "./upload-lib/types";
 import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
@@ -29,7 +29,7 @@ test.serial("validateSarifFileSchema - valid", (t) => {
     uploadLib.validateSarifFileSchema(
       uploadLib.readSarifFileOrThrow(inputFile),
       inputFile,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     ),
   );
 });
@@ -40,7 +40,7 @@ test.serial("validateSarifFileSchema - invalid", (t) => {
     uploadLib.validateSarifFileSchema(
       uploadLib.readSarifFileOrThrow(inputFile),
       inputFile,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     ),
   );
 });
@@ -179,7 +179,7 @@ test.serial("finding SARIF files", async (t) => {
     }
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       tmpDir,
     );
 
@@ -200,7 +200,7 @@ test.serial("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -218,7 +218,7 @@ test.serial("getGroupedSarifFilePaths - Code Quality file", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -236,7 +236,7 @@ test.serial("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -254,7 +254,7 @@ test.serial("getGroupedSarifFilePaths - Other file", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -932,7 +932,7 @@ function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
         owner: mockData.owner,
         repo: mockData.repo,
       },
-      getRunnerLogger(true),
+      new RecordingLogger(),
       analysis,
     );
 
@@ -1019,7 +1019,7 @@ function runFilterAlertsByDiffRange(
   diffRanges: diffUtils.DiffThunkRange[],
 ): Partial<sarif.Log> {
   sinon.stub(diffUtils, "readDiffRangesJsonFile").returns(diffRanges);
-  return uploadLib.filterAlertsByDiffRange(getRunnerLogger(true), input);
+  return uploadLib.filterAlertsByDiffRange(new RecordingLogger(), input);
 }
 
 test.serial(

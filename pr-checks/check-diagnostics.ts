@@ -4,16 +4,32 @@ import * as core from "@actions/core";
 
 import * as sarif from "../src/sarif";
 
-function checkStatusPageNotification(n) {
-  const expectedMessage = "Plaintext message";
-  if (n.message.text !== expectedMessage) {
-    core.setFailed(
-      `Expected the status page diagnostic to have the message '${expectedMessage}', but found '${n.message.text}'.`,
-    );
+const DIAGNOSTIC_ID =
+  process.env["DIAGNOSTIC_ID"] ?? "lang/diagnostics/example";
+const DIAGNOSTIC_NAME = process.env["DIAGNOSTIC_NAME"] ?? "Diagnostic name";
+const EXPECTED_MESSAGE = process.env["EXPECTED_MESSAGE"] ?? "Plaintext message";
+const EXPECTED_LOCATIONS = Number.parseInt(
+  process.env["EXPECTED_LOCATIONS"] ?? "1",
+);
+
+function checkStatusPageNotification(n: sarif.Notification) {
+  const expectedMessage = EXPECTED_MESSAGE.trim();
+  if (!n.message.text?.includes(expectedMessage)) {
+    if (n.message.text !== undefined) {
+      core.setFailed(
+        `Expected the status page diagnostic to contain the message '${expectedMessage}', but found '${n.message.text.replaceAll("\n", "\\n")}'.`,
+      );
+    } else {
+      core.setFailed(
+        `Expected the status page diagnostic to contain the message '${expectedMessage}', but found nothing.`,
+      );
+    }
   }
-  if (n.locations.length !== 1) {
+
+  const locationCount = n.locations?.length ?? 0;
+  if (locationCount !== EXPECTED_LOCATIONS) {
     core.setFailed(
-      `Expected the status page diagnostic to have exactly 1 location, but found ${n.locations.length}.`,
+      `Expected the status page diagnostic to have exactly ${EXPECTED_LOCATIONS} location(s), but found ${locationCount}.`,
     );
   }
 }
@@ -40,8 +56,7 @@ if (toolExecutionNotifications === undefined) {
 
 const statusPageNotifications = toolExecutionNotifications.filter(
   (n) =>
-    n.descriptor?.id === "lang/diagnostics/example" &&
-    n.properties?.visibility?.statusPage,
+    n.descriptor?.id === DIAGNOSTIC_ID && n.properties?.visibility?.statusPage,
 );
 if (statusPageNotifications.length !== 1) {
   core.setFailed(
@@ -61,9 +76,9 @@ if (notifications === undefined) {
 
 const diagnosticNotification = notifications.filter(
   (n) =>
-    n.id === "lang/diagnostics/example" &&
-    n.name === "lang/diagnostics/example" &&
-    n.fullDescription?.text === "Diagnostic name",
+    n.id === DIAGNOSTIC_ID &&
+    n.name === DIAGNOSTIC_ID &&
+    n.fullDescription?.text === DIAGNOSTIC_NAME,
 );
 if (diagnosticNotification.length !== 1) {
   core.setFailed(

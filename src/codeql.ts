@@ -26,7 +26,7 @@ import {
 } from "./feature-flags";
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
-import { getRunnerLogger, Logger } from "./logging";
+import type { Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as setupCodeql from "./setup-codeql";
@@ -199,6 +199,7 @@ export interface CodeQL {
     sarifFile: string,
     automationDetailsId: string | undefined,
     config: ActionConfig<"tempDir">,
+    diagnosticDir: string | undefined,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -487,18 +488,6 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
 }
 
 /**
- * Get a real, newly created CodeQL instance for testing. The instance refers to
- * a non-existent placeholder codeql command, so tests that use this function
- * should also stub the toolrunner.ToolRunner constructor.
- */
-export async function getCodeQLForTesting(
-  cmd = "codeql-for-testing",
-  logger: Logger = getRunnerLogger(true),
-): Promise<CodeQL> {
-  return getCodeQLForCmd(logger, cmd, false);
-}
-
-/**
  * Return a CodeQL object for CodeQL CLI access.
  *
  * @param cmd Path to CodeQL CLI
@@ -506,7 +495,7 @@ export async function getCodeQLForTesting(
  *        version requirement. Must be set to true outside tests.
  * @returns A new CodeQL object
  */
-async function getCodeQLForCmd(
+export async function getCodeQLForCmd(
   logger: Logger,
   cmd: string,
   checkVersion: boolean,
@@ -915,15 +904,43 @@ async function getCodeQLForCmd(
       sarifFile: string,
       automationDetailsId: string | undefined,
       config: ActionConfig<"tempDir">,
+      diagnosticDir: string | undefined,
     ): Promise<void> {
+      // We may be exporting diagnostics for a failed SARIF, in which case the configuration
+      // file may not have been written to disk and there may not be a database. The CLI
+      // will produce a SARIF for diagnostics from `diagnosticDir` without it. Therefore,
+      // we check whether `configPath` exists and only provide it to the CLI if it does.
+      // Although not needed, the CLI will produce an error if it
+      // is provided with an argument to `--sarif-codescanning-config` that does not exist.
+      let configPath: string | undefined =
+        getGeneratedCodeScanningConfigPath(config);
+
+      if (!fs.existsSync(configPath)) {
+        // Warn if there is no configuration file, even though `config` claims that `init`
+        // was successful. This shouldn't be happening.
+        if (config.successfullyInitialised) {
+          logger.warning(
+            [
+              `Expected a configuration file at '${configPath}', which does not exist.`,
+              "Continuing with diagnostics export anyway, without a configuration file.",
+            ].join(" "),
+          );
+        }
+
+        configPath = undefined;
+      }
+
       const args = [
         "diagnostics",
         "export",
         "--format=sarif-latest",
         `--output=${sarifFile}`,
-        `--sarif-codescanning-config=${getGeneratedCodeScanningConfigPath(
-          config,
-        )}`,
+        ...(configPath !== undefined
+          ? [`--sarif-codescanning-config=${configPath}`]
+          : []),
+        ...(diagnosticDir !== undefined
+          ? [`--diagnostic-dir=${diagnosticDir}`]
+          : []),
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
       if (automationDetailsId !== undefined) {

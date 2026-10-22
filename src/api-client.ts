@@ -402,21 +402,6 @@ export async function listActionsCaches(
 }
 
 /**
- * Delete an Actions cache item by its ID.
- *
- * See https://docs.github.com/en/rest/actions/cache#delete-a-github-actions-cache-for-a-repository-using-a-cache-id.
- */
-export async function deleteActionsCache(id: number) {
-  const repositoryNwo = getRepositoryNwo();
-
-  await getApiClient().rest.actions.deleteActionsCacheById({
-    owner: repositoryNwo.owner,
-    repo: repositoryNwo.repo,
-    cache_id: id,
-  });
-}
-
-/**
  * Retrieve all custom repository properties.
  *
  * See https://docs.github.com/en/rest/repos/custom-properties#get-all-custom-property-values-for-a-repository.

@@ -74,7 +74,6 @@ export enum Feature {
   AllowMergeConfigFiles = "allow_merge_config_files",
   /** Controls whether we allow multiple values for the `analysis-kinds` input. */
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
-  CleanupTrapCaches = "cleanup_trap_caches",
   /** Whether to allow the `config-file` input to be specified via a repository property. */
   ConfigFileRepositoryProperty = "config_file_repository_property",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
@@ -106,19 +105,6 @@ export enum Feature {
   OverlayAnalysisGo = "overlay_analysis_go",
   OverlayAnalysisJava = "overlay_analysis_java",
   OverlayAnalysisJavascript = "overlay_analysis_javascript",
-  /**
-   * When set, chooses the default CodeQL CLI version as the highest version that is both enabled by
-   * feature flags and present as an overlay-base database in the Actions cache for the configured
-   * languages. Falls back to the highest feature flagged version if no intersecting overlay-base
-   * database exists in the cache.
-   */
-  OverlayAnalysisMatchCodeqlVersion = "overlay_analysis_match_codeql_version",
-  /**
-   * Like `OverlayAnalysisMatchCodeqlVersion`, but only logs a diagnostic with the version that
-   * would have been chosen instead of actually changing the default CodeQL CLI version.
-   * `OverlayAnalysisMatchCodeqlVersion` overrides this flag.
-   */
-  OverlayAnalysisMatchCodeqlVersionDryRun = "overlay_analysis_match_codeql_version_dry_run",
   /**
    * Lowers the overlay minimum available disk space to 8 GB. The lowest enabled limit wins; if
    * none are enabled, the default applies.
@@ -212,11 +198,6 @@ export const featureConfig = {
   [Feature.AllowMultipleAnalysisKinds]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
-    minimumVersion: undefined,
-  },
-  [Feature.CleanupTrapCaches]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
     minimumVersion: undefined,
   },
   [Feature.ConfigFileRepositoryProperty]: {
@@ -367,16 +348,6 @@ export const featureConfig = {
     minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_RUBY,
   },
   // Other overlay-related feature flags
-  [Feature.OverlayAnalysisMatchCodeqlVersion]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisMatchCodeqlVersionDryRun]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION_DRY_RUN",
-    minimumVersion: undefined,
-  },
   [Feature.OverlayAnalysisMinDisk8Gb]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_8_GB",

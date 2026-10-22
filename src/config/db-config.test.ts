@@ -2,15 +2,15 @@ import test, { ExecutionContext } from "ava";
 
 import { RepositoryProperties } from "../feature-flags/properties";
 import { BuiltInLanguage, Language } from "../languages";
-import { getRunnerLogger } from "../logging";
 import {
   checkExpectedLogMessages,
   getRecordingLogger,
   LoggedMessage,
   makeMacro,
   RecordingLogger,
+  setupActionsVars,
 } from "../testing-utils";
-import { ConfigurationError, prettyPrintPack } from "../util";
+import { ConfigurationError, prettyPrintPack, withTmpDir } from "../util";
 
 import * as dbConfig from "./db-config";
 
@@ -384,7 +384,7 @@ calculateAugmentationErrorMacro(
 
 test("parseUserConfig - successfully parses valid YAML", (t) => {
   const result = dbConfig.parseUserConfig(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     "test",
     `
     paths-ignore:
@@ -410,7 +410,7 @@ test("parseUserConfig - throws a ConfigurationError if the file is not valid YAM
   t.throws(
     () =>
       dbConfig.parseUserConfig(
-        getRunnerLogger(true),
+        new RecordingLogger(),
         "test",
         `
         paths-ignore:
@@ -562,74 +562,89 @@ test("mergeDefaultSetupAndUserConfigs - keeps other properties from user-supplie
   t.deepEqual(result, configFile);
 });
 
-test("mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys from Default Setup", async (t) => {
-  const logger = new RecordingLogger();
-  const configFile: dbConfig.UserConfig = {
-    "query-filters": [{ exclude: { a: "b" } }],
-    "paths-ignore": ["path"],
-  };
+test.serial(
+  "mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys from Default Setup",
+  async (t) => {
+    const logger = new RecordingLogger();
+    const configFile: dbConfig.UserConfig = {
+      "query-filters": [{ exclude: { a: "b" } }],
+      "paths-ignore": ["path"],
+    };
 
-  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
-    logger,
-    {
-      "default-setup": {
-        borg: [],
-        org: {
-          unknown: "foo",
-          "model-packs": [],
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+        logger,
+        {
+          "default-setup": {
+            borg: [],
+            org: {
+              unknown: "foo",
+              "model-packs": [],
+            },
+          } as unknown as dbConfig.DefaultSetupConfig,
+          "paths-ignore": ["other-path"],
         },
-      } as unknown as dbConfig.DefaultSetupConfig,
-      "paths-ignore": ["other-path"],
-    },
-    configFile,
-  );
+        configFile,
+      );
 
-  t.deepEqual(result, {
-    ...configFile,
-    "default-setup": { org: { "model-packs": [] } },
-  });
+      t.deepEqual(result, {
+        ...configFile,
+        "default-setup": { org: { "model-packs": [] } },
+      });
 
-  const expectedUnrecognisedKeys = [
-    ".default-setup.org.unknown",
-    ".default-setup.borg",
-    ".paths-ignore",
-  ].join(", ");
-  checkExpectedLogMessages(t, logger.messages, [
-    `Unrecognised keys in Default Setup configuration: ${expectedUnrecognisedKeys}`,
-  ]);
-});
+      const expectedUnrecognisedKeys = [
+        ".default-setup.org.unknown",
+        ".default-setup.borg",
+        ".paths-ignore",
+      ].join(", ");
+      checkExpectedLogMessages(t, logger.messages, [
+        `Unrecognised keys in Default Setup configuration: ${expectedUnrecognisedKeys}`,
+      ]);
+    });
+  },
+);
 
-test("mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Setup", async (t) => {
-  const logger = new RecordingLogger();
-  const configFile: dbConfig.UserConfig = {};
+test.serial(
+  "mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Setup",
+  async (t) => {
+    const logger = new RecordingLogger();
+    const configFile: dbConfig.UserConfig = {};
 
-  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
-    logger,
-    {
-      "default-setup": {
-        org: {
-          "model-packs": [123],
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+        logger,
+        {
+          "default-setup": {
+            org: {
+              "model-packs": [123],
+            },
+          } as unknown as dbConfig.DefaultSetupConfig,
         },
-      } as unknown as dbConfig.DefaultSetupConfig,
-    },
-    configFile,
-  );
+        configFile,
+      );
 
-  t.deepEqual(result, {
-    ...configFile,
-    "default-setup": { org: { "model-packs": [123] } },
-  });
+      t.deepEqual(result, {
+        ...configFile,
+        "default-setup": { org: { "model-packs": [123] } },
+      });
 
-  const expectedInvalidKeys = [".default-setup.org.model-packs[0]"].join(", ");
-  checkExpectedLogMessages(t, logger.messages, [
-    `Invalid keys in Default Setup configuration: ${expectedInvalidKeys}`,
-  ]);
-});
+      const expectedInvalidKeys = [".default-setup.org.model-packs[0]"].join(
+        ", ",
+      );
+      checkExpectedLogMessages(t, logger.messages, [
+        `Invalid keys in Default Setup configuration: ${expectedInvalidKeys}`,
+      ]);
+    });
+  },
+);
 
 /** Parses `contents` as a configuration without validating it. */
 function parseUnvalidatedConfig(contents: string): dbConfig.UserConfig {
   return dbConfig.parseUserConfig(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     "test",
     contents,
     false,

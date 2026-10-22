@@ -15,7 +15,6 @@ import { getTempDiagnosticsRoot } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
-import { getRunnerLogger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
@@ -24,6 +23,7 @@ import {
   createFeatures,
   createTestConfig,
   DEFAULT_ACTIONS_VARS,
+  getCodeQLForTesting,
   getTestEnv,
   makeMacro,
   makeVersionInfo,
@@ -46,7 +46,7 @@ test.serial("generateFailedSarif picks up unwritten diagnostics", async (t) =>
     const tempDiagDir = getTempDiagnosticsRoot(tmpDir);
     fs.mkdirSync(tempDiagDir, { recursive: true });
 
-    const codeqlObject = await codeql.getCodeQLForTesting();
+    const codeqlObject = await getCodeQLForTesting();
     const diagnosticsExport = sinon
       .stub(codeqlObject, "diagnosticsExport")
       .resolves();
@@ -107,7 +107,7 @@ test.serial("init-post action with debug mode off", async (t) => {
       createFeatures([]),
       "success",
       getTestEnv(),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     t.assert(uploadAllAvailableDebugArtifactsSpy.notCalled);
@@ -131,7 +131,7 @@ test.serial("init-post action with debug mode on", async (t) => {
       createFeatures([]),
       "success",
       getTestEnv(),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     t.assert(uploadAllAvailableDebugArtifactsSpy.called);
@@ -428,7 +428,7 @@ test.serial(
         createFeatures([Feature.OverlayAnalysisStatusSave]),
         "success",
         getTestEnv(),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.true(
@@ -498,7 +498,7 @@ test.serial(
         createFeatures([]),
         "success",
         getTestEnv(),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.true(
@@ -542,7 +542,7 @@ test.serial("does not save overlay status when build successful", async (t) => {
       createFeatures([Feature.OverlayAnalysisStatusSave]),
       "success",
       env,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     t.true(
@@ -581,7 +581,7 @@ test.serial(
         createFeatures([]),
         "success",
         getTestEnv(),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.true(
@@ -634,7 +634,7 @@ async function runOverlayPostStep({
       createFeatures([Feature.OverlayAnalysisStatusSave]),
       jobStatus,
       env,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     return { saveOverlayStatusStub };
@@ -782,7 +782,7 @@ async function testFailedSarifUpload(
     .withArgs("matrix")
     .returns(JSON.stringify(matrix));
 
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   const databaseExportDiagnosticsStub = sinon.stub(
@@ -809,7 +809,7 @@ async function testFailedSarifUpload(
     config,
     parseRepositoryNwo("github/codeql-action"),
     createFeatures(features),
-    getRunnerLogger(true),
+    new RecordingLogger(),
   );
   if (expectUpload) {
     t.deepEqual(result, {
@@ -878,7 +878,7 @@ async function mockRiskAssessmentEnv(matrix: string) {
     .stub(apiClient, "getGitHubVersion")
     .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
 
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   const databaseExportDiagnostics = sinon
     .stub(codeqlObject, "databaseExportDiagnostics")
     .resolves();

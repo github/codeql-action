@@ -5,9 +5,8 @@ import * as ava from "ava";
 import test from "ava";
 
 import * as fingerprints from "./fingerprints";
-import { getRunnerLogger } from "./logging";
 import * as sarif from "./sarif";
-import { setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -131,7 +130,7 @@ function testResolveUriToFile(uri: any, index: any, artifactsURIs: any[]) {
     location,
     artifacts,
     process.cwd(),
-    getRunnerLogger(true),
+    new RecordingLogger(),
   );
 }
 
@@ -218,7 +217,7 @@ test("addFingerprints", async (t) => {
     await fingerprints.addFingerprints(
       input,
       sourceRoot,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     ),
     expected,
   );
@@ -246,7 +245,7 @@ test("missingRegions", async (t) => {
     await fingerprints.addFingerprints(
       input,
       sourceRoot,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     ),
     expected,
   );

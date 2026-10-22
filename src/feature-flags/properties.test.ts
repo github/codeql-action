@@ -2,7 +2,6 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as api from "../api-client";
-import { getRunnerLogger } from "../logging";
 import { parseRepositoryNwo } from "../repository";
 import { RecordingLogger, setupTests } from "../testing-utils";
 
@@ -19,7 +18,7 @@ test.serial(
       url: "",
       data: {},
     });
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.throwsAsync(
       properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
@@ -39,7 +38,7 @@ test.serial(
       url: "",
       data: [{}],
     });
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.throwsAsync(
       properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
@@ -63,7 +62,7 @@ test.serial(
         { property_name: "also-not-used-by-us", value: ["A", "B", "C"] },
       ],
     });
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.notThrowsAsync(
       properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
@@ -86,7 +85,7 @@ test.serial("loadPropertiesFromApi loads known properties", async (t) => {
       { property_name: "unknown-property", value: "something" },
     ] satisfies properties.GitHubPropertiesResponse,
   });
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
   const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   const response = await properties.loadPropertiesFromApi(
     logger,
@@ -113,7 +112,7 @@ test.serial("loadPropertiesFromApi parses true boolean property", async (t) => {
       { property_name: "github-codeql-extra-queries", value: "+queries" },
     ] satisfies properties.GitHubPropertiesResponse,
   });
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
   const warningSpy = sinon.spy(logger, "warning");
   const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
   const response = await properties.loadPropertiesFromApi(
@@ -141,7 +140,7 @@ test.serial(
         },
       ] satisfies properties.GitHubPropertiesResponse,
     });
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const warningSpy = sinon.spy(logger, "warning");
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     const response = await properties.loadPropertiesFromApi(
@@ -164,7 +163,7 @@ test.serial(
       url: "",
       data: [{ property_name: "github-codeql-extra-queries", value: 123 }],
     });
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     await t.throwsAsync(
       properties.loadPropertiesFromApi(logger, mockRepositoryNwo),
@@ -190,7 +189,7 @@ test.serial(
         },
       ] satisfies properties.GitHubPropertiesResponse,
     });
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const warningSpy = sinon.spy(logger, "warning");
     const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     const response = await properties.loadPropertiesFromApi(

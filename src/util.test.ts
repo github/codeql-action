@@ -10,8 +10,7 @@ import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { EnvVar } from "./environment";
-import { getRunnerLogger } from "./logging";
-import { getTestEnv, setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests, getTestEnv } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -92,7 +91,7 @@ for (const {
 
 test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   for (const input of ["-1", "hello!"]) {
-    t.throws(() => util.getMemoryFlag(input, getRunnerLogger(true)));
+    t.throws(() => util.getMemoryFlag(input, new RecordingLogger()));
   }
 });
 
@@ -109,13 +108,13 @@ test("getThreadsFlag() should return the correct --threads flag", (t) => {
   ];
 
   for (const [input, expectedFlag] of tests) {
-    const flag = util.getThreadsFlag(input, getRunnerLogger(true));
+    const flag = util.getThreadsFlag(input, new RecordingLogger());
     t.deepEqual(flag, expectedFlag);
   }
 });
 
 test("getThreadsFlag() throws if the threads input is not an integer", (t) => {
-  t.throws(() => util.getThreadsFlag("hello!", getRunnerLogger(true)));
+  t.throws(() => util.getThreadsFlag("hello!", new RecordingLogger()));
 });
 
 test.serial(
@@ -385,7 +384,7 @@ test("getCgroupCpuCountFromCpus calculates the number of CPUs correctly", async 
     const testCpuFile = `${tmpDir}/cpus-file`;
     fs.writeFileSync(testCpuFile, "1, 9-10\n", "utf-8");
     t.deepEqual(
-      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      util.getCgroupCpuCountFromCpus(testCpuFile, new RecordingLogger()),
       3,
     );
   });
@@ -396,7 +395,7 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file doesn't exist"
     const testCpuFile = `${tmpDir}/cpus-file`;
     t.false(fs.existsSync(testCpuFile));
     t.deepEqual(
-      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      util.getCgroupCpuCountFromCpus(testCpuFile, new RecordingLogger()),
       undefined,
     );
   });
@@ -407,7 +406,7 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is 
     const testCpuFile = `${tmpDir}/cpus-file`;
     fs.writeFileSync(testCpuFile, "\n", "utf-8");
     t.deepEqual(
-      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      util.getCgroupCpuCountFromCpus(testCpuFile, new RecordingLogger()),
       undefined,
     );
   });
@@ -417,7 +416,7 @@ test.serial(
   "checkDiskUsage succeeds and produces positive numbers",
   async (t) => {
     process.env["GITHUB_WORKSPACE"] = os.tmpdir();
-    const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
+    const diskUsage = await util.checkDiskUsage(new RecordingLogger());
     if (t.truthy(diskUsage)) {
       t.true(diskUsage.numAvailableBytes > 0);
       t.true(diskUsage.numTotalBytes > 0);

@@ -6,7 +6,6 @@ import * as actionsUtil from "./actions-util";
 import { Config } from "./config-utils";
 import { EnvVar, RegistryProxyVars } from "./environment";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import type { Registry } from "./start-proxy";
 import {
@@ -154,7 +153,7 @@ test.serial("createStatusReportBase", async (t) => {
         languages: [BuiltInLanguage.java, BuiltInLanguage.swift],
       }),
       { numAvailableBytes: 100, numTotalBytes: 500 },
-      getRunnerLogger(false),
+      new RecordingLogger(),
       "failure cause",
       "exception stack trace",
     );
@@ -203,7 +202,7 @@ test.serial("createStatusReportBase - empty configuration", async (t) => {
       new Date("May 19, 2023 05:19:00"),
       {},
       { numAvailableBytes: 100, numTotalBytes: 500 },
-      getRunnerLogger(false),
+      new RecordingLogger(),
     );
 
     if (t.truthy(statusReport)) {
@@ -225,7 +224,7 @@ test.serial("createStatusReportBase - partial configuration", async (t) => {
         languages: ["go"],
       },
       { numAvailableBytes: 100, numTotalBytes: 500 },
-      getRunnerLogger(false),
+      new RecordingLogger(),
     );
 
     if (t.truthy(statusReport)) {
@@ -248,7 +247,7 @@ test.serial("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
-          getRunnerLogger(false),
+          new RecordingLogger(),
           "failure cause",
           "exception stack trace",
         )
@@ -264,7 +263,7 @@ test.serial("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
-          getRunnerLogger(false),
+          new RecordingLogger(),
           "failure cause",
           "exception stack trace",
         )
@@ -281,7 +280,7 @@ test.serial("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
-          getRunnerLogger(false),
+          new RecordingLogger(),
           "failure cause",
           "exception stack trace",
         )
@@ -297,7 +296,7 @@ test.serial("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
-          getRunnerLogger(false),
+          new RecordingLogger(),
           "failure cause",
           "exception stack trace",
         )
@@ -314,7 +313,7 @@ test.serial("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
-          getRunnerLogger(false),
+          new RecordingLogger(),
           "failure cause",
           "exception stack trace",
         )
@@ -330,7 +329,7 @@ test.serial("createStatusReportBase_firstParty", async (t) => {
           new Date("May 19, 2023 05:19:00"),
           createTestConfig({}),
           { numAvailableBytes: 100, numTotalBytes: 500 },
-          getRunnerLogger(false),
+          new RecordingLogger(),
           "failure cause",
           "exception stack trace",
         )
@@ -411,7 +410,7 @@ const testCreateInitWithConfigStatusReport = makeMacro({
         new Date("May 19, 2023 05:19:00"),
         config,
         { numAvailableBytes: 100, numTotalBytes: 500 },
-        getRunnerLogger(false),
+        new RecordingLogger(),
         "failure cause",
         "exception stack trace",
       );

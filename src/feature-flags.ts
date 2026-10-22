@@ -74,7 +74,6 @@ export enum Feature {
   AllowMergeConfigFiles = "allow_merge_config_files",
   /** Controls whether we allow multiple values for the `analysis-kinds` input. */
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
-  CleanupTrapCaches = "cleanup_trap_caches",
   /** Whether to allow the `config-file` input to be specified via a repository property. */
   ConfigFileRepositoryProperty = "config_file_repository_property",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
@@ -199,11 +198,6 @@ export const featureConfig = {
   [Feature.AllowMultipleAnalysisKinds]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
-    minimumVersion: undefined,
-  },
-  [Feature.CleanupTrapCaches]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
     minimumVersion: undefined,
   },
   [Feature.ConfigFileRepositoryProperty]: {

@@ -10,7 +10,6 @@ import {
   exportedForTesting,
 } from "./diff-informed-analysis-utils";
 import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import { getRunnerLogger } from "./logging";
 import { parseRepositoryNwo } from "./repository";
 import {
   setupTests,
@@ -19,6 +18,7 @@ import {
   mockFeatureFlagApiEndpoint,
   setupActionsVars,
   makeMacro,
+  RecordingLogger,
 } from "./testing-utils";
 import { GitHubVariant, withTmpDir } from "./util";
 import type { GitHubVersion } from "./util";
@@ -55,7 +55,7 @@ const testShouldPerformDiffInformedAnalysis = makeMacro({
       setupActionsVars(tmpDir, tmpDir);
 
       const testCase = { ...defaultTestCase, ...partialTestCase };
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const codeql = mockCodeQLVersion(testCase.codeQLVersion);
 
       if (testCase.diffInformedQueriesEnvVar !== undefined) {
@@ -182,7 +182,7 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const codeql = mockCodeQLVersion("2.21.0");
       const features = createFeatures([Feature.DiffInformedQueries]);
 
@@ -207,7 +207,7 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const codeql = mockCodeQLVersion("2.21.0");
       // A features implementation whose getValue rejects, simulating an
       // unexpected failure when determining whether diff-informed analysis
@@ -237,7 +237,7 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const codeql = mockCodeQLVersion("2.21.0");
       const features = createFeatures([Feature.DiffInformedQueries]);
 
@@ -274,7 +274,7 @@ test.serial(
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const codeql = mockCodeQLVersion("2.21.0");
       const features = createFeatures([Feature.DiffInformedQueries]);
 
@@ -313,7 +313,7 @@ function runGetDiffRanges(changes: number, patch: string[] | undefined): any {
       changes,
       patch: patch?.join("\n"),
     },
-    getRunnerLogger(true),
+    new RecordingLogger(),
   );
 }
 

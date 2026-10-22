@@ -2,7 +2,6 @@ import test, { ExecutionContext } from "ava";
 
 import { RepositoryProperties } from "../feature-flags/properties";
 import { BuiltInLanguage, Language } from "../languages";
-import { getRunnerLogger } from "../logging";
 import {
   checkExpectedLogMessages,
   getRecordingLogger,
@@ -385,7 +384,7 @@ calculateAugmentationErrorMacro(
 
 test("parseUserConfig - successfully parses valid YAML", (t) => {
   const result = dbConfig.parseUserConfig(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     "test",
     `
     paths-ignore:
@@ -411,7 +410,7 @@ test("parseUserConfig - throws a ConfigurationError if the file is not valid YAM
   t.throws(
     () =>
       dbConfig.parseUserConfig(
-        getRunnerLogger(true),
+        new RecordingLogger(),
         "test",
         `
         paths-ignore:
@@ -645,7 +644,7 @@ test.serial(
 /** Parses `contents` as a configuration without validating it. */
 function parseUnvalidatedConfig(contents: string): dbConfig.UserConfig {
   return dbConfig.parseUserConfig(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     "test",
     contents,
     false,

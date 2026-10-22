@@ -1714,15 +1714,19 @@ test.serial(
       },
     ]);
 
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      new RecordingLogger(),
-    );
-    t.deepEqual(result, [
-      { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
-      { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
-    ]);
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result =
+        await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+          overlayMatchEnabledVersions,
+          ["javascript"],
+          new RecordingLogger(),
+        );
+      t.deepEqual(result, [
+        { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
+        { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
+      ]);
+    });
   },
 );
 

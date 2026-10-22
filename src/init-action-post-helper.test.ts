@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import * as core from "@actions/core";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
@@ -8,6 +11,7 @@ import * as apiClient from "./api-client";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
+import { getTempDiagnosticsRoot } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -34,6 +38,47 @@ import * as workflow from "./workflow";
 const NUM_BYTES_PER_GIB = 1024 * 1024 * 1024;
 
 setupTests(test);
+
+test.serial("generateFailedSarif picks up unwritten diagnostics", async (t) =>
+  util.withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+
+    const tempDiagDir = getTempDiagnosticsRoot(tmpDir);
+    fs.mkdirSync(tempDiagDir, { recursive: true });
+
+    const codeqlObject = await getCodeQLForTesting();
+    const diagnosticsExport = sinon
+      .stub(codeqlObject, "diagnosticsExport")
+      .resolves();
+
+    sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+
+    const sarifFile = path.join(tmpDir, "failed.sarif");
+    const result = await initActionPostHelper.generateFailedSarif(
+      logger,
+      createFeatures([Feature.ExportDiagnosticsEnabled]),
+      createTestConfig({
+        tempDir: tmpDir,
+        // Explicitly undefined to ensure we get the "no database" path.
+        dbLocation: undefined,
+      }),
+      "category",
+      "",
+      sarifFile,
+    );
+
+    t.truthy(result);
+    t.is(diagnosticsExport.callCount, 1);
+    t.true(
+      diagnosticsExport.calledOnceWith(
+        sarifFile,
+        "category",
+        sinon.match.any,
+        tempDiagDir,
+      ),
+    );
+  }),
+);
 
 test.serial("init-post action with debug mode off", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {

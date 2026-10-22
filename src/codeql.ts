@@ -909,8 +909,8 @@ export async function getCodeQLForCmd(
       // We may be exporting diagnostics for a failed SARIF, in which case the configuration
       // file may not have been written to disk and there may not be a database. The CLI
       // will produce a SARIF for diagnostics from `diagnosticDir` without it. Therefore,
-      // if `diagnosticDir` is set, we check whether `configPath` exists and only provide
-      // it to the CLI if it does. Although not needed, the CLI will produce an error if it
+      // we check whether `configPath` exists and only provide it to the CLI if it does.
+      // Although not needed, the CLI will produce an error if it
       // is provided with an argument to `--sarif-codescanning-config` that does not exist.
       let configPath: string | undefined =
         getGeneratedCodeScanningConfigPath(config);

@@ -137,7 +137,7 @@ export function makeDiagnostic(
 }
 
 /**
- * Gets a path relative to {@link basePath} where diagnostics for to {@link language} should be stored at.
+ * Gets a path relative to {@link basePath} where diagnostics for {@link language} should be stored at.
  */
 export function getLanguageDiagnosticsPath(
   basePath: string,
@@ -200,7 +200,7 @@ export function addDiagnostic(
     : config.dbLocation;
 
   // Check that the database exists before writing to it. If the database does not yet exist,
-  // store the diagnostic in memory and write it later.
+  // store the diagnostic in a temporary location and move it to the database later.
   if (fs.existsSync(databasePath)) {
     writeDiagnostic({ logger }, config, language, diagnostic);
   } else {

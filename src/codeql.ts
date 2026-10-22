@@ -928,12 +928,17 @@ async function getCodeQLForCmd(
         getGeneratedCodeScanningConfigPath(config);
 
       if (!fs.existsSync(configPath)) {
-        logger.warning(
-          [
-            `Expected a configuration file at '${configPath}', which does not exist.`,
-            "Continuing with diagnostics export anyway, without a configuration file.",
-          ].join(" "),
-        );
+        // Warn if there is no configuration file, even though `config` claims that `init`
+        // was successful. This shouldn't be happening.
+        if (config.successfullyInitialised) {
+          logger.warning(
+            [
+              `Expected a configuration file at '${configPath}', which does not exist.`,
+              "Continuing with diagnostics export anyway, without a configuration file.",
+            ].join(" "),
+          );
+        }
+
         configPath = undefined;
       }
 

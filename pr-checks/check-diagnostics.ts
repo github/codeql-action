@@ -99,7 +99,10 @@ if (sarifPath === undefined) {
 }
 
 if (fs.statSync(sarifPath).isDirectory()) {
-  const sarifFiles = globSync(path.join(sarifPath, "**", "*.sarif"));
+  const sarifFiles = globSync("**/*.sarif", {
+    cwd: path.resolve(sarifPath),
+    absolute: true,
+  });
 
   if (sarifFiles.length < 1) {
     throw new Error(`Unable to find any .sarif files in '${sarifPath}'.`);

@@ -130,6 +130,9 @@ export interface Config {
    * Whether to enable file coverage information.
    */
   enableFileCoverageInformation: boolean;
+
+  /** Whether the analysis was successfully initialised using the configuration. */
+  successfullyInitialised: boolean;
 }
 
 /** Properties available in `Config`. */

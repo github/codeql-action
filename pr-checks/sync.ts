@@ -90,7 +90,7 @@ interface Specification extends JobSpecification {
   services?: any;
 
   /** Additional jobs to run after the main PR check job. */
-  validationJobs?: Record<string, JobSpecification>;
+  validationJobs?: Record<string, ValidationJobSpecification>;
 
   /** If set, this check is part of a named collection that gets its own caller workflow. */
   collection?: string;
@@ -121,6 +121,10 @@ interface JobSpecification {
   installDotNet?: boolean;
   installYq?: boolean;
 }
+
+type ValidationJobSpecification = JobSpecification & {
+  checkout?: boolean;
+};
 
 /** Describes language/framework-specific steps and inputs. */
 interface LanguageSetup {
@@ -463,6 +467,20 @@ function generateJobMatrix(
 }
 
 /**
+ * Gets the `actions/checkout` step.
+ */
+function getCheckoutStep(): Step {
+  return {
+    name: "Check out repository",
+    uses: pinnedUses(
+      "actions/checkout",
+      "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "v7.0.1",
+    ),
+  };
+}
+
+/**
  * Retrieves setup steps and additional input definitions based on specific languages or frameworks
  * that are requested by the `checkSpecification`.
  *
@@ -531,14 +549,7 @@ function generateJob(
 
   // Construct the workflow steps needed for this check.
   const steps: Step[] = [
-    {
-      name: "Check out repository",
-      uses: pinnedUses(
-        "actions/checkout",
-        "3d3c42e5aac5ba805825da76410c181273ba90b1",
-        "v7.0.1",
-      ),
-    },
+    getCheckoutStep(),
     ...setupInfo.steps,
     {
       name: "Prepare test",
@@ -609,12 +620,15 @@ function generateJob(
 /** Generates a validation job. */
 function generateValidationJob(
   specDocument: yaml.Document,
-  jobSpecification: JobSpecification,
+  jobSpecification: ValidationJobSpecification,
   checkName: string,
   name: string,
 ) {
   // Determine which languages or frameworks have to be installed.
   const { inputs, steps } = getSetupSteps(jobSpecification);
+
+  // Construct a checkout step if requested.
+  const checkoutStep = jobSpecification.checkout ? [getCheckoutStep()] : [];
 
   // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
   const specSteps = specDocument.getIn([
@@ -624,7 +638,7 @@ function generateValidationJob(
   ]) as yaml.YAMLSeq;
 
   // Add the generated steps in front of the ones from the specification.
-  specSteps.items.unshift(...steps);
+  specSteps.items.unshift(...checkoutStep, ...steps);
 
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
@@ -635,7 +649,7 @@ function generateValidationJob(
       "security-events": "read",
     },
     "timeout-minutes": 5,
-    "runs-on": "ubuntu-slim",
+    "runs-on": "ubuntu-latest",
     steps: specSteps,
   };
 

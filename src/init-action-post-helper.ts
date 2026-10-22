@@ -24,6 +24,7 @@ import {
   type UploadDebugArtifactsConfig,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
+import { getTempDiagnosticsRoot } from "./diagnostics";
 import { EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
@@ -177,7 +178,16 @@ async function prepareFailedSarif(
   }
 }
 
-async function generateFailedSarif(
+/**
+ * Generates a SARIF file for a failed run, i.e. an analysis where no SARIF was produced as a result of the analysis.
+ *
+ * Not intended to be called directly, other than by `prepareFailedSarif`.
+ *
+ * @param category The analysis category to include in the SARIF.
+ * @param checkoutPath The path where the repository was checked out at.
+ * @param sarifFile The SARIF file to produce.
+ */
+export async function generateFailedSarif(
   logger: Logger,
   features: FeatureEnablement,
   config: ActionConfig<"codeQLCmd" | "tempDir">,
@@ -194,11 +204,26 @@ async function generateFailedSarif(
   }
 
   // If there is no database or the feature flag is off, we run 'export diagnostics'
-  if (
-    databasePath === undefined ||
-    !(await features.getValue(Feature.ExportDiagnosticsEnabled, codeql))
-  ) {
-    await codeql.diagnosticsExport(sarifFile, category, config);
+  const exportDiagnosticsEnabled = await features.getValue(
+    Feature.ExportDiagnosticsEnabled,
+    codeql,
+  );
+  if (databasePath === undefined || !exportDiagnosticsEnabled) {
+    // If we don't have a database path, then we may have diagnostics that were written to a
+    // temporary location. Get the path that they would have been written to and check whether
+    // it exists. If so, pass it on to the CLI. The CLI will not complain if we give it a
+    // path that doesn't exist, so we are just being extra defensive here.
+    // We also don't pass the path to the CLI if `exportDiagnosticsEnabled` is not enabled, to preserve
+    // its intended behaviour of controlling whether diagnostics are included in the SARIF or not.
+    let diagnosticDir: string | undefined = getTempDiagnosticsRoot(
+      config.tempDir,
+    );
+
+    if (!exportDiagnosticsEnabled || !fs.existsSync(diagnosticDir)) {
+      diagnosticDir = undefined;
+    }
+
+    await codeql.diagnosticsExport(sarifFile, category, config, diagnosticDir);
   } else {
     // We call 'database export-diagnostics' to find any per-database diagnostics.
     await codeql.databaseExportDiagnostics(databasePath, sarifFile, category);

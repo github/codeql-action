@@ -17,12 +17,12 @@ import { defaultSuites } from "./config/db-config";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import {
   setupTests,
   setupActionsVars,
   createFeatures,
   createTestConfig,
+  RecordingLogger,
   callee,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
@@ -195,7 +195,7 @@ test.serial("status report fields", async (t) => {
         undefined,
         codeql,
         config,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         createFeatures([Feature.QaTelemetryEnabled]),
       );
       t.deepEqual(Object.keys(statusReport).sort(), [

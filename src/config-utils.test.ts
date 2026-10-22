@@ -21,7 +21,6 @@ import { RepositoryProperties } from "./feature-flags/properties";
 import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import * as overlayDiagnostics from "./overlay/diagnostics";
 import { OverlayDisabledReason } from "./overlay/diagnostics";
@@ -42,6 +41,7 @@ import {
   callee,
   SAMPLE_DOTCOM_API_DETAILS,
   AssertableTarget,
+  RecordingLogger,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -102,7 +102,7 @@ function createTestInitConfigInputs(
       features: createFeatures([]),
       repositoryProperties: {},
       enableFileCoverageInformation: true,
-      logger: getRunnerLogger(true),
+      logger: new RecordingLogger(),
     } satisfies configUtils.InitConfigInputs,
     overrides,
   );
@@ -150,7 +150,7 @@ function mockListLanguages(languages: string[]) {
 
 test.serial("load empty config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const languages = "javascript,python";
 
     setupActionsVars(tempDir, tempDir);
@@ -196,7 +196,7 @@ test.serial("load empty config", async (t) => {
 
 test.serial("load code quality config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const languages = "actions";
 
     setupActionsVars(tempDir, tempDir);
@@ -252,7 +252,7 @@ test.serial(
   "initActionState doesn't throw if there are queries configured in the repository properties",
   async (t) => {
     return await withTmpDir(async (tempDir) => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const languages = "javascript";
 
       setupActionsVars(tempDir, tempDir);
@@ -315,7 +315,7 @@ test.serial(
 
 test.serial("loading a saved config produces the same config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -363,7 +363,7 @@ test.serial("loading a saved config produces the same config", async (t) => {
 
 test.serial("loading config with version mismatch throws", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -788,12 +788,12 @@ test.serial("Unknown languages", async (t) => {
   });
 });
 
-const mockLogger = getRunnerLogger(true);
+const mockLogger = new RecordingLogger();
 
 test.serial("no generateRegistries when registries is undefined", async (t) => {
   return await withTmpDir(async (tmpDir) => {
     const registriesInput = undefined;
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const { registriesAuthTokens, qlconfigFile } =
       await configUtils.generateRegistries(registriesInput, tmpDir, logger);
 
@@ -814,7 +814,7 @@ test.serial(
           token: "not-a-token",
         },
       ]);
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const { registriesAuthTokens, qlconfigFile } =
         await configUtils.generateRegistries(registriesInput, tmpDir, logger);
 
@@ -2126,7 +2126,7 @@ test.serial("getPrimaryAnalysisConfig - Code Scanning + Code Quality", (t) => {
 });
 
 test.serial(
-  "isTrapCachingEnabled: explicit input true is respected",
+  "isTrapCachingEnabled: explicit true input overrides self-hosted default",
   async (t) => {
     return await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -2134,12 +2134,40 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns("true");
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      t.true(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: explicit true input overrides overlay defaults",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, path.join(tmpDir, "hostedtoolcache"));
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns("true");
+      for (const overlayDatabaseMode of [
+        OverlayDatabaseMode.Overlay,
+        OverlayDatabaseMode.OverlayBase,
+      ]) {
+        t.true(configUtils.isTrapCachingEnabled(overlayDatabaseMode));
+      }
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: explicit false input overrides hosted default",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, path.join(tmpDir, "hostedtoolcache"));
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns("false");
+      t.false(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
     });
   },
 );
@@ -2153,18 +2181,13 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns(undefined);
-      t.false(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      t.false(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
     });
   },
 );
 
 test.serial(
-  "isTrapCachingEnabled: enabled on hosted runner by default",
+  "isTrapCachingEnabled: enabled on hosted runner without overlay analysis",
   async (t) => {
     return await withTmpDir(async (tmpDir) => {
       const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
@@ -2173,18 +2196,13 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns(undefined);
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      t.true(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
     });
   },
 );
 
 test.serial(
-  "isTrapCachingEnabled: enabled on hosted runner when overlay enabled but feature flag off",
+  "isTrapCachingEnabled: disabled on hosted runner with overlay analysis",
   async (t) => {
     return await withTmpDir(async (tmpDir) => {
       const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
@@ -2193,52 +2211,12 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns(undefined);
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.Overlay,
-        ),
-      );
-    });
-  },
-);
-
-test.serial(
-  "isTrapCachingEnabled: disabled on hosted runner when overlay enabled and feature flag on",
-  async (t) => {
-    return await withTmpDir(async (tmpDir) => {
-      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
-      setupActionsVars(tmpDir, hostedToolCache);
-      sinon
-        .stub(actionsUtil, "getOptionalInput")
-        .withArgs("trap-caching")
-        .returns(undefined);
-      t.false(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([Feature.OverlayAnalysisDisableTrapCaching]),
-          OverlayDatabaseMode.Overlay,
-        ),
-      );
-    });
-  },
-);
-
-test.serial(
-  "isTrapCachingEnabled: enabled on hosted runner when overlay is None even with feature flag on",
-  async (t) => {
-    return await withTmpDir(async (tmpDir) => {
-      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
-      setupActionsVars(tmpDir, hostedToolCache);
-      sinon
-        .stub(actionsUtil, "getOptionalInput")
-        .withArgs("trap-caching")
-        .returns(undefined);
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([Feature.OverlayAnalysisDisableTrapCaching]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      for (const overlayDatabaseMode of [
+        OverlayDatabaseMode.Overlay,
+        OverlayDatabaseMode.OverlayBase,
+      ]) {
+        t.false(configUtils.isTrapCachingEnabled(overlayDatabaseMode));
+      }
     });
   },
 );
@@ -2247,7 +2225,7 @@ test("applyIncrementalAnalysisSettings: no-op when mode is not Overlay and diff 
   const config = createTestConfig({});
   config.overlayDatabaseMode = OverlayDatabaseMode.None;
   const codeql = createStubCodeQL({});
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
 
   await configUtils.applyIncrementalAnalysisSettings(
     config,
@@ -2265,7 +2243,7 @@ test("applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions w
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
   });
   const codeql = createStubCodeQL({});
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
 
   await configUtils.applyIncrementalAnalysisSettings(
     config,
@@ -2288,7 +2266,7 @@ test.serial(
     });
     config.useOverlayDatabaseCaching = true;
     const codeql = createStubCodeQL({});
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const addDiagnosticsStub = sinon
       .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
       .resolves();
@@ -2320,7 +2298,7 @@ test.serial(
     config.useOverlayDatabaseCaching = false;
     config.overlayModeSetExplicitly = true;
     const codeql = createStubCodeQL({});
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const addDiagnosticsStub = sinon
       .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
       .resolves();
@@ -2343,7 +2321,7 @@ test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only r
   const config = createTestConfig({});
   config.overlayDatabaseMode = OverlayDatabaseMode.None;
   const codeql = createStubCodeQL({});
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
 
   await configUtils.applyIncrementalAnalysisSettings(
     config,
@@ -2557,7 +2535,7 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
     // also check whether loading the configuration from disk that was written
     // by `determineUserConfig` matches our expectations.
     const loadedFromDisk = configUtils.getLocalConfig(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       expectedConfigPath,
       false,
     );

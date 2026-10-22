@@ -139,7 +139,7 @@ export interface PerLanguageBundleOptions {
 
 /** Returns the eligible bundle language, or undefined for the combined bundle. */
 export function getPerLanguageBundleLanguage(
-  { env, logger }: ActionState<["Logger", "ReadOnlyEnv"]>,
+  action: ActionState<["Logger", "ReadOnlyEnv"]>,
   options: PerLanguageBundleOptions,
 ): BuiltInLanguage | undefined {
   const {
@@ -153,7 +153,9 @@ export function getPerLanguageBundleLanguage(
   } = options;
 
   const explain = (reason: string) => {
-    logger.debug(`Not using a per-language CodeQL bundle since ${reason}.`);
+    action.logger.debug(
+      `Not using a per-language CodeQL bundle since ${reason}.`,
+    );
     return undefined;
   };
 
@@ -188,7 +190,7 @@ export function getPerLanguageBundleLanguage(
     return explain(`we are running against ${variant}`);
   }
 
-  if (!isGitHubHostedRunner(env)) {
+  if (!isGitHubHostedRunner(action.env)) {
     // Per-language installs stay out of the toolcache; self-hosted runners should retain
     // the reusable combined bundle instead.
     return explain("the job is not running on a GitHub-hosted runner");

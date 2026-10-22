@@ -24,7 +24,7 @@ import {
   type UploadDebugArtifactsConfig,
 } from "./debug-artifacts";
 import * as dependencyCaching from "./dependency-caching";
-import { getTempDiagnosticPath } from "./diagnostics";
+import { getTempDiagnosticsRoot } from "./diagnostics";
 import { EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature, FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
@@ -215,7 +215,7 @@ export async function generateFailedSarif(
     // path that doesn't exist, so we are just being extra defensive here.
     // We also don't pass the path to the CLI if `exportDiagnosticsEnabled` is not enabled, to preserve
     // its intended behaviour of controlling whether diagnostics are included in the SARIF or not.
-    let diagnosticDir: string | undefined = getTempDiagnosticPath(
+    let diagnosticDir: string | undefined = getTempDiagnosticsRoot(
       config.tempDir,
     );
 

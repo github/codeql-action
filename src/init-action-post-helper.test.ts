@@ -11,7 +11,7 @@ import * as apiClient from "./api-client";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
-import { getTempDiagnosticPath } from "./diagnostics";
+import { getTempDiagnosticsRoot } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
@@ -43,7 +43,7 @@ test.serial("generateFailedSarif picks up unwritten diagnostics", async (t) =>
   util.withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
 
-    const tempDiagDir = getTempDiagnosticPath(tmpDir);
+    const tempDiagDir = getTempDiagnosticsRoot(tmpDir);
     fs.mkdirSync(tempDiagDir, { recursive: true });
 
     const codeqlObject = await codeql.getCodeQLForTesting();

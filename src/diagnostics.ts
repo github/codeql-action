@@ -12,6 +12,14 @@ import {
   isErrnoException,
 } from "./util";
 
+/** The name of the directory we use to temporarily store diagnostics. */
+export const TEMP_DIAGNOSTIC_DIR_NAME = "codeql-action-temp-diagnostics";
+
+export const CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS = [
+  "diagnostic",
+  "codeql-action",
+];
+
 /**
  * Known tags for diagnostics. There is currently only "internal-error",
  * but others may be added in the future.
@@ -129,26 +137,48 @@ export function makeDiagnostic(
 }
 
 /**
- * Gets a path relative to {@link tmpDir} where diagnostics for {@link language}
- * can temporarily be stored at before the database is initialised. If {@link language}
- * is `undefined`, then the common base path for all languages relative to {@link tmpDir}
- * is returned.
+ * Gets a path relative to {@link basePath} where diagnostics for to {@link language} should be stored at.
  */
-export function getTempDiagnosticPath(tmpDir: string, language?: Language) {
-  const root = path.join(tmpDir, "codeql-action-temp-diagnostics");
-  return getDiagnosticsPath(root, language);
+export function getLanguageDiagnosticsPath(
+  basePath: string,
+  language: Language,
+) {
+  return path.resolve(
+    basePath,
+    language,
+    ...CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS,
+  );
 }
 
 /**
- * Gets a path relative to {@link basePath} where diagnostics for {@link language}
- * should be stored at. If {@link language} is `undefined`, then {@link basePath}
- * is returned instead.
+ * Gets a path relative to {@link tmpDir} where diagnostics should temporarily be stored
+ * until they can be moved to the database.
  */
-export function getDiagnosticsPath(basePath: string, language?: Language) {
+export function getTempDiagnosticsRoot(tmpDir: string): string {
+  return path.resolve(tmpDir, TEMP_DIAGNOSTIC_DIR_NAME);
+}
+
+/**
+ * Gets a path relative to {@link tmpDir} where diagnostics for {@link language}
+ * can temporarily be stored at before the database is initialised. If {@link language}
+ * is `undefined`, then a non-language-specific path is returned.
+ */
+export function getTempLanguageDiagnosticsPath(
+  tmpDir: string,
+  language?: Language,
+) {
+  const root = getTempDiagnosticsRoot(tmpDir);
+
   if (language !== undefined) {
-    return path.resolve(basePath, language, "diagnostic", "codeql-action");
+    return getLanguageDiagnosticsPath(root, language);
   }
-  return path.resolve(basePath, "diagnostic", "codeql-action");
+
+  return path.resolve(root, ...CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS);
+}
+
+/** Gets the path where diagnostics for {@link language} should be stored in the database. */
+export function getDatabaseDiagnosticsPath(config: Config, language: Language) {
+  return getLanguageDiagnosticsPath(config.dbLocation, language);
 }
 
 /**
@@ -222,7 +252,7 @@ function writeTemporaryDiagnosticFile(
   language: Language | undefined,
   diagnostic: DiagnosticMessage,
 ) {
-  const tempDiagnosticsPath = getTempDiagnosticPath(tempDir, language);
+  const tempDiagnosticsPath = getTempLanguageDiagnosticsPath(tempDir, language);
 
   try {
     // Write the diagnostic to a temporary location.
@@ -266,14 +296,6 @@ function writeDiagnosticFile(
   return jsonPath;
 }
 
-/** Gets the path where diagnostics for {@link language} should be stored in the database. */
-export function getDatabaseDiagnosticsPath(
-  config: Config,
-  language: Language | undefined,
-) {
-  return getDiagnosticsPath(config.dbLocation, language);
-}
-
 /**
  * Writes the given diagnostic to the database.
  *
@@ -284,7 +306,7 @@ export function getDatabaseDiagnosticsPath(
 function writeDiagnostic(
   action: ActionState<["Logger"]>,
   config: Config,
-  language: Language | undefined,
+  language: Language,
   diagnostic: DiagnosticMessage,
 ) {
   const diagnosticsPath = getDatabaseDiagnosticsPath(config, language);

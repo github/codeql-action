@@ -27,6 +27,60 @@ test("makeDiagnostic - adds expected properties", (t) => {
   t.is(diagnostic.source.name, name);
 });
 
+test("getLanguageDiagnosticsPath gets language-specific path", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    for (const language of Object.values(BuiltInLanguage)) {
+      t.is(
+        diagnostics.getLanguageDiagnosticsPath(tmpDir, language),
+        path.resolve(
+          tmpDir,
+          language,
+          ...diagnostics.CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS,
+        ),
+      );
+    }
+  }));
+
+test("getTempLanguageDiagnosticsPath returns path without language", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    t.is(
+      diagnostics.getTempLanguageDiagnosticsPath(tmpDir),
+      path.resolve(
+        tmpDir,
+        diagnostics.TEMP_DIAGNOSTIC_DIR_NAME,
+        ...diagnostics.CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS,
+      ),
+    );
+  }));
+
+test("getTempLanguageDiagnosticsPath returns language-specific path if a language is provided", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    t.is(
+      diagnostics.getTempLanguageDiagnosticsPath(tmpDir, BuiltInLanguage.swift),
+      path.resolve(
+        tmpDir,
+        diagnostics.TEMP_DIAGNOSTIC_DIR_NAME,
+        BuiltInLanguage.swift,
+        ...diagnostics.CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS,
+      ),
+    );
+  }));
+
+test("getDatabaseDiagnosticsPath returns language-specific path if a language is provided", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    t.is(
+      diagnostics.getDatabaseDiagnosticsPath(
+        createTestConfig({ dbLocation: tmpDir }),
+        BuiltInLanguage.swift,
+      ),
+      path.resolve(
+        tmpDir,
+        BuiltInLanguage.swift,
+        ...diagnostics.CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS,
+      ),
+    );
+  }));
+
 /**
  * Diagnostic files that are written to disk don't have deterministic names.
  * This function recursively finds all `.json` files at {@link rootPath},

@@ -1,19 +1,13 @@
 import * as core from "@actions/core";
 
-import {
-  getActionVersion,
-  getOptionalInput,
-  getRequiredInput,
-  getTemporaryDirectory,
-} from "./actions-util";
+import { runInActions, type Action, type ActionState } from "./action-common";
+import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import { getGitHubVersion } from "./api-client";
 import { CliError } from "./cli-errors";
 import { Config, getConfig } from "./config-utils";
-import { getActionsLogger } from "./logging";
 import { runResolveBuildEnvironment } from "./resolve-environment";
 import {
   sendStatusReport,
-  sendUnhandledErrorStatusReport,
   createStatusReportBase,
   getActionsStatus,
   ActionName,
@@ -24,25 +18,28 @@ import {
   checkForTimeout,
   checkGitHubVersionInRange,
   ConfigurationError,
-  getErrorMessage,
   wrapError,
 } from "./util";
 
 const ENVIRONMENT_OUTPUT_NAME = "environment";
 
-async function run(startedAt: Date) {
+/**
+ * The main functionality of the `resolve-environment` action is implemented by this function.
+ * This is called once by {@link runInActions} after it is called in {@link runWrapper}.
+ */
+async function run(action: ActionState<["Base", "Logger", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
 
-  const logger = getActionsLogger();
+  const logger = action.logger;
 
   let config: Config | undefined;
 
   try {
     const statusReportBase = await createStatusReportBase(
-      ActionName.ResolveEnvironment,
+      action.name,
       "starting",
-      startedAt,
+      action.startedAt,
       config,
       await checkDiskUsage(logger),
       logger,
@@ -62,12 +59,13 @@ async function run(startedAt: Date) {
       );
     }
 
-    const workingDirectory = getOptionalInput("working-directory");
+    const workingDirectory =
+      action.actions.getOptionalInput("working-directory");
     const result = await runResolveBuildEnvironment(
       config.codeQLCmd,
       logger,
       workingDirectory,
-      getRequiredInput("language"),
+      action.actions.getRequiredInput("language"),
     );
     core.setOutput(ENVIRONMENT_OUTPUT_NAME, result);
   } catch (unwrappedError) {
@@ -82,14 +80,14 @@ async function run(startedAt: Date) {
       );
     } else {
       // For any other error types, something has more seriously gone wrong and we fail.
-      core.setFailed(
+      action.actions.setFailed(
         `Failed to resolve a build environment suitable for automatically building your code. ${error.message}`,
       );
 
       const statusReportBase = await createStatusReportBase(
-        ActionName.ResolveEnvironment,
+        action.name,
         getActionsStatus(error),
-        startedAt,
+        action.startedAt,
         config,
         await checkDiskUsage(logger),
         logger,
@@ -105,9 +103,9 @@ async function run(startedAt: Date) {
   }
 
   const statusReportBase = await createStatusReportBase(
-    ActionName.ResolveEnvironment,
+    action.name,
     "success",
-    startedAt,
+    action.startedAt,
     config,
     await checkDiskUsage(logger),
     logger,
@@ -117,23 +115,14 @@ async function run(startedAt: Date) {
   }
 }
 
+/** Defines the `resolve-environment` action. */
+const resolveEnvironmentAction: Action = {
+  name: ActionName.ResolveEnvironment,
+  run,
+};
+
+/** The main entry point for the `resolve-environment` action. */
 export async function runWrapper() {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(
-      `${ActionName.ResolveEnvironment} action failed: ${getErrorMessage(
-        error,
-      )}`,
-    );
-    await sendUnhandledErrorStatusReport(
-      ActionName.ResolveEnvironment,
-      startedAt,
-      error,
-      logger,
-    );
-  }
+  await runInActions(resolveEnvironmentAction);
   await checkForTimeout();
 }

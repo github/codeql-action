@@ -227,8 +227,13 @@ export function getTestEnv(testEnv: NodeJS.ProcessEnv = {}): Env {
   return getEnv(testEnv);
 }
 
-/** An implementation of `ActionsEnv` for use in tests. */
+/**
+ * An implementation of {@link ActionsEnv} for use in tests.
+ * The methods of instances of this class are intended to be stubbed.
+ */
 class TestActionsEnv implements ActionsEnv {
+  private failed: boolean = false;
+
   constructor(private readonly env: Env) {}
 
   public clone(env: Env): this {
@@ -241,6 +246,18 @@ class TestActionsEnv implements ActionsEnv {
 
   public getOptionalInput(_name: string): string | undefined {
     return undefined;
+  }
+
+  public setFailed(_message: string) {
+    this.failed = true;
+  }
+
+  get hasFailed() {
+    return this.failed;
+  }
+
+  public getState(name: string): string {
+    throw new Error(`State '${name}' requested but not set.`);
   }
 }
 

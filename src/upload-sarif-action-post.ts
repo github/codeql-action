@@ -3,32 +3,36 @@
  * It will run after the all steps in this job, in reverse order in relation to
  * other `post:` hooks.
  */
-import * as core from "@actions/core";
-
-import * as actionsUtil from "./actions-util";
+import {
+  ActionName,
+  runInActions,
+  type Action,
+  type ActionState,
+} from "./action-common";
 import { getGitHubVersion } from "./api-client";
 import * as debugArtifacts from "./debug-artifacts";
 import { EnvVar } from "./environment";
-import { getActionsLogger, withGroup } from "./logging";
+import { withGroup } from "./logging";
 import { checkGitHubVersionInRange, getErrorMessage } from "./util";
 
-export async function runWrapper() {
+/**
+ * The main functionality of the `upload-sarif` post-action is implemented by this function.
+ * This is called once by {@link runInActions} after it is called in {@link runWrapper}.
+ */
+export async function run(action: ActionState<["Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const logger = action.logger;
 
   try {
-    const logger = getActionsLogger();
-
-    // Restore inputs from `upload-sarif` Action.
-    actionsUtil.restoreInputs(logger);
     const gitHubVersion = await getGitHubVersion();
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     // Upload SARIF artifacts if we determine that this is a third-party analysis run.
     // For first-party runs, this artifact will be uploaded in the `analyze-post` step.
-    if (process.env[EnvVar.INIT_ACTION_HAS_RUN] !== "true") {
+    if (action.env.getOptional(EnvVar.INIT_ACTION_HAS_RUN) !== "true") {
       if (gitHubVersion.type === undefined) {
-        core.warning(
+        logger.warning(
           `Did not upload debug artifacts because cannot determine the GitHub variant running.`,
         );
         return;
@@ -38,8 +42,19 @@ export async function runWrapper() {
       );
     }
   } catch (error) {
-    core.setFailed(
+    action.actions.setFailed(
       `upload-sarif post-action step failed: ${getErrorMessage(error)}`,
     );
   }
+}
+
+/** Defines the `upload-sarif` post-action. */
+const uploadSarifPostAction: Action = {
+  name: ActionName.UploadSarifPost,
+  run,
+};
+
+/** The main entry point for the `upload-sarif` post-action. */
+export async function runWrapper() {
+  await runInActions(uploadSarifPostAction);
 }

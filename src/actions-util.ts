@@ -6,6 +6,7 @@ import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as github from "@actions/github";
 import * as io from "@actions/io";
 
+import type { ActionState } from "./action-common";
 import { hasConfigKey, type Config } from "./config/action-config";
 import { Env, EnvVar, ActionsEnvVars, ReadOnlyEnv } from "./environment";
 import { Logger } from "./logging";
@@ -30,6 +31,8 @@ declare const __CODEQL_ACTION_VERSION__: string;
 export interface ActionsEnv {
   getRequiredInput: (name: string) => string;
   getOptionalInput: (name: string) => string | undefined;
+  setFailed: (message: string) => void;
+  getState: (name: string) => string;
 }
 
 /**
@@ -39,6 +42,8 @@ export function getActionsEnv(): ActionsEnv {
   return {
     getRequiredInput,
     getOptionalInput,
+    setFailed: core.setFailed,
+    getState: core.getState,
   };
 }
 
@@ -403,6 +408,7 @@ export async function runTool(
   return stdout;
 }
 
+type PersistedInputs = Array<[string, string | undefined]>;
 const persistedInputsKey = "persisted_inputs";
 
 /**
@@ -412,7 +418,7 @@ const persistedInputsKey = "persisted_inputs";
  */
 export const persistInputs = function (env: Env = getEnv()) {
   const entries = env.entries();
-  const inputEnvironmentVariables = entries.filter(([name]) =>
+  const inputEnvironmentVariables: PersistedInputs = entries.filter(([name]) =>
     name.startsWith("INPUT_"),
   );
   core.saveState(persistedInputsKey, JSON.stringify(inputEnvironmentVariables));
@@ -421,18 +427,26 @@ export const persistInputs = function (env: Env = getEnv()) {
 /**
  * Restores all inputs to the action from the persisted state.
  */
-export function restoreInputs(logger: Logger) {
+export function restoreInputs(
+  action: ActionState<["Env", "Logger", "Actions"]>,
+) {
   try {
-    const persistedInputsValue = core.getState(persistedInputsKey);
+    const persistedInputsValue = action.actions.getState(persistedInputsKey);
     if (persistedInputsValue) {
-      const persistedInputs = JSON.parse(persistedInputsValue);
+      const persistedInputs = JSON.parse(
+        persistedInputsValue,
+      ) as PersistedInputs;
+
+      if (!Array.isArray(persistedInputs)) {
+        throw new Error("Restored value is not an array.");
+      }
 
       for (const [name, value] of persistedInputs) {
-        process.env[name] = value;
+        action.env.set(name, value);
       }
     }
   } catch (err) {
-    logger.error(`Unable to restore inputs: ${getErrorMessage(err)}`);
+    action.logger.error(`Unable to restore inputs: ${getErrorMessage(err)}`);
     throw new Error(
       "Failed to restore inputs from the state set by this action's main execution.",
     );

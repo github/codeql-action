@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 
-import { ActionsEnv, getActionsEnv } from "./actions-util";
+import { ActionsEnv, getActionsEnv, restoreInputs } from "./actions-util";
 import type { ApiClient } from "./api-client";
 import { Env, ReadOnlyEnv } from "./environment";
 import type { FeatureEnablement } from "./feature-flags";
@@ -9,9 +9,12 @@ import {
   ActionName,
   getDisplayActionName,
   getJobUUID,
+  isPostAction,
   sendUnhandledErrorStatusReport,
 } from "./status-report";
 import { getEnv, getErrorMessage, wrapError } from "./util";
+
+export { ActionName } from "./status-report";
 
 /** Base state that is available to an Action on startup. */
 export interface BaseState {
@@ -178,13 +181,18 @@ export async function runInActions(action: Action) {
       actions: actionsEnv,
     };
 
+    // If this is a post-action, restore inputs from the main action.
+    if (isPostAction(action.name)) {
+      restoreInputs(actionState);
+    }
+
     // Create a unique identifier for this run.
     getJobUUID(actionState);
 
     await action.run(actionState);
   } catch (error) {
     core.setFailed(
-      `${getDisplayActionName(action.name)} action failed: ${getErrorMessage(error)}`,
+      `${getDisplayActionName(action.name)} failed: ${getErrorMessage(error)}`,
     );
 
     const statusReportError =

@@ -4,15 +4,8 @@
  * other `post:` hooks.
  */
 
-import * as core from "@actions/core";
-
 import { runInActions, type Action, type ActionState } from "./action-common";
-import {
-  restoreInputs,
-  getOptionalInput,
-  getTemporaryDirectory,
-  printDebugLogs,
-} from "./actions-util";
+import { getTemporaryDirectory, printDebugLogs } from "./actions-util";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { getCodeQL } from "./codeql";
@@ -49,7 +42,11 @@ interface InitPostStatusReport
     initActionPostHelper.JobStatusReport,
     initActionPostHelper.DependencyCachingUsageReport {}
 
-async function run(action: ActionState<["Base", "Logger", "Env"]>) {
+/**
+ * The main functionality of the `init` post-action is implemented by this function.
+ * This is called once by {@link runInActions} after it is called in {@link runWrapper}.
+ */
+async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
   const logger = action.logger;
@@ -64,10 +61,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
     // Read the job status before restoring inputs, since it is provided by the Actions runtime
     // environment for this step and would otherwise be overwritten by the value that the `init`
     // Action saw, which is always a success.
-    const jobStatus = getOptionalInput("job-status");
-
-    // Restore inputs from `init` Action.
-    restoreInputs(logger);
+    const jobStatus = action.actions.getOptionalInput("job-status");
 
     const tmpDir = getTemporaryDirectory();
     config = await getConfig(tmpDir, logger);
@@ -89,7 +83,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
     const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
-      getTemporaryDirectory(),
+      config?.tempDir ?? tmpDir,
       logger,
     );
 
@@ -129,7 +123,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
     }
   } catch (unwrappedError) {
     const error = wrapApiConfigurationError(wrapError(unwrappedError));
-    core.setFailed(error.message);
+    action.actions.setFailed(error.message);
 
     const statusReportBase = await createStatusReportBase(
       action.name,

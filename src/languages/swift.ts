@@ -13,7 +13,7 @@ import { BuiltInLanguage } from ".";
  * @throws {ConfigurationError} If Swift analysis is not possible on the current runner.
  * @returns True if we can run a Swift analysis.
  */
-export function isSwiftCompatible(
+export function checkSwiftCompatibility(
   action: ActionState<["Base"]>,
   config: Config,
 ) {

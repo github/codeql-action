@@ -62,7 +62,7 @@ import {
   runDatabaseInitCluster,
 } from "./init";
 import { JavaEnvVars, BuiltInLanguage } from "./languages";
-import { isSwiftCompatible } from "./languages/swift";
+import { checkSwiftCompatibility } from "./languages/swift";
 import { Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -419,7 +419,7 @@ async function run(
       logger,
     });
 
-    isSwiftCompatible(actionState, config);
+    checkSwiftCompatibility(actionState, config);
 
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(

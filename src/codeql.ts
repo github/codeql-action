@@ -18,7 +18,7 @@ import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar, getEnv, exportEnvVar, Env, ReadOnlyEnv } from "./environment";
+import { EnvVar, getEnv, Env, ReadOnlyEnv } from "./environment";
 import {
   CodeQLDefaultVersionInfo,
   Feature,
@@ -1076,7 +1076,7 @@ export async function getCodeQLForCmd(
         }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
-    exportEnvVar(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
+    env.export(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }

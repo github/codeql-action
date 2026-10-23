@@ -10,7 +10,7 @@ import {
   makeVersionInfo,
   RecordingLogger,
 } from "../testing-utils";
-import { withTmpDir } from "../util";
+import { ConfigurationError, withTmpDir } from "../util";
 
 import { checkSwiftCompatibility } from "./swift";
 
@@ -54,11 +54,17 @@ test("checkSwiftCompatibility doesn't throw for Swift on darwin", async (t) =>
 const nonDarwinPlatforms: NodeJS.Platform[] = ["linux", "win32"];
 for (const nonDarwinPlatform of nonDarwinPlatforms) {
   test(`checkSwiftCompatibility throws for Swift on ${nonDarwinPlatform}`, (t) => {
-    t.throws(() => {
-      checkSwiftCompatibility(
-        initAllState({ platform: nonDarwinPlatform }),
-        createTestConfig({ languages: [BuiltInLanguage.swift] }),
-      );
-    });
+    t.throws(
+      () => {
+        checkSwiftCompatibility(
+          initAllState({ platform: nonDarwinPlatform }),
+          createTestConfig({ languages: [BuiltInLanguage.swift] }),
+        );
+      },
+      {
+        instanceOf: ConfigurationError,
+        message: /^Swift analysis is only supported on macOS runner images/,
+      },
+    );
   });
 }

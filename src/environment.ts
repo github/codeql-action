@@ -306,6 +306,20 @@ export class ReadOnlyEnv {
     return { ...this.vars };
   }
 
+  /** Gets a copy of the underlying environment, where the values are not `undefined`. */
+  public getDefined(): Record<string, string> {
+    const result: Record<string, string> = {};
+
+    for (const [key, val] of Object.entries(this.vars)) {
+      if (val === undefined) {
+        continue;
+      }
+      result[key] = val;
+    }
+
+    return result;
+  }
+
   /** Tries to get the value for `name` and throws if there isn't one. */
   public getRequired(name: string): string {
     return getRequiredEnvVar(this.vars, name);

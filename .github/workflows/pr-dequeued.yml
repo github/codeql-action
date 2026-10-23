@@ -21,8 +21,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REASON: ${{ github.event.reason }}
-          SENDER: ${{ github.event.sender.login }}
+          USER: ${{ github.event.pull_request.user.login }}
         run: |
-          echo "@$SENDER The pull request was removed from the merge queue (\`$REASON\`)." \
+          echo "@$USER The pull request was removed from the merge queue (\`$REASON\`)." \
             "Please resolve any issues if required and enqueue the PR again." |
             gh pr comment --body-file - --repo github/codeql-action "$PR_NUMBER"

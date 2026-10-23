@@ -1,0 +1,28 @@
+name: PR dequeued
+
+on:
+  pull_request:
+    types:
+      - dequeued
+
+jobs:
+  notify:
+    name: Notify
+    runs-on: ubuntu-slim
+
+    if: github.event.pull_request.merged != true
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Notify that the PR was removed from the merge queue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REASON: ${{ github.event.reason }}
+          USER: ${{ github.event.pull_request.user.login }}
+        run: |
+          echo "@$USER The pull request was removed from the merge queue (\`$REASON\`)." \
+            "Please resolve any issues if required and enqueue the PR again." |
+            gh pr comment --body-file - --repo github/codeql-action "$PR_NUMBER"

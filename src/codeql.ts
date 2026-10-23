@@ -514,6 +514,7 @@ export async function getCodeQLForCmd(
       );
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
+          env,
           cmd,
           ["version", "--format=json"],
           {
@@ -597,6 +598,7 @@ export async function getCodeQLForCmd(
         : ["--no-calculate-baseline"];
 
       await runCli(
+        env,
         cmd,
         [
           "database",
@@ -663,10 +665,10 @@ export async function getCodeQLForCmd(
       // When `DYLD_INSERT_LIBRARIES` is set in the environment for a step,
       // the Actions runtime introduces its own workaround for SIP
       // (https://github.com/actions/runner/pull/416).
-      await runCli(autobuildCmd);
+      await runCli(env, autobuildCmd);
     },
     async extractScannedLanguage(config: Config, language: Language) {
-      await runCli(cmd, [
+      await runCli(env, cmd, [
         "database",
         "trace-command",
         "--index-traceless-dbs",
@@ -681,7 +683,7 @@ export async function getCodeQLForCmd(
         applyAutobuildAzurePipelinesTimeoutFix(env);
       }
       try {
-        await runCli(cmd, [
+        await runCli(env, cmd, [
           "database",
           "trace-command",
           "--use-build-mode",
@@ -720,7 +722,7 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
-      await runCli(cmd, args);
+      await runCli(env, cmd, args);
     },
     async resolveLanguages(
       {
@@ -729,7 +731,7 @@ export async function getCodeQLForCmd(
         filterToLanguagesWithQueries: boolean;
       } = { filterToLanguagesWithQueries: false },
     ) {
-      return runCliJson<ResolveLanguagesOutput>(cmd, [
+      return runCliJson<ResolveLanguagesOutput>(env, cmd, [
         "resolve",
         "languages",
         "--format=betterjson",
@@ -758,7 +760,11 @@ export async function getCodeQLForCmd(
       if (workingDir !== undefined) {
         codeqlArgs.push("--working-dir", workingDir);
       }
-      return await runCliJson<ResolveBuildEnvironmentOutput>(cmd, codeqlArgs);
+      return await runCliJson<ResolveBuildEnvironmentOutput>(
+        env,
+        cmd,
+        codeqlArgs,
+      );
     },
     async databaseRunQueries(
       databasePath: string,
@@ -777,7 +783,7 @@ export async function getCodeQLForCmd(
           ignoringOptions: ["--expect-discarded-cache"],
         }),
       ];
-      await runCli(cmd, codeqlArgs);
+      await runCli(env, cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
@@ -830,7 +836,7 @@ export async function getCodeQLForCmd(
       }
       // Capture the stdout, which contains the analysis summary. Don't stream it to the Actions
       // logs to avoid printing it twice.
-      return await runCli(cmd, codeqlArgs, {
+      return await runCli(env, cmd, codeqlArgs, {
         noStreamStdout: true,
       });
     },
@@ -847,7 +853,7 @@ export async function getCodeQLForCmd(
           `--cache-cleanup=${cleanupLevel}`,
           ...getExtraOptionsFromEnv(["database", "cleanup"]),
         ];
-        await runCli(cmd, codeqlArgs);
+        await runCli(env, cmd, codeqlArgs);
       }
     },
     async databaseBundle(
@@ -995,7 +1001,7 @@ export async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
         ...queries,
       ];
-      return await runCliJson<string[]>(cmd, codeqlArgs, {
+      return await runCliJson<string[]>(env, cmd, codeqlArgs, {
         noStreamStdout: true,
       });
     },
@@ -1009,7 +1015,7 @@ export async function getCodeQLForCmd(
         "--format=json",
         ...getExtraOptionsFromEnv(["resolve", "database"]),
       ];
-      return await runCliJson<ResolveDatabaseOutput>(cmd, codeqlArgs, {
+      return await runCliJson<ResolveDatabaseOutput>(env, cmd, codeqlArgs, {
         noStreamStdout: true,
       });
     },
@@ -1036,7 +1042,7 @@ export async function getCodeQLForCmd(
         args.push("--sarif-merge-runs-from-equal-category");
       }
 
-      await runCli(cmd, args);
+      await runCli(env, cmd, args);
     },
   };
   // To ensure that status reports include the CodeQL CLI version wherever
@@ -1153,12 +1159,13 @@ export function getExtraOptions(
 }
 
 async function runCli(
+  env: Env,
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},
 ): Promise<string> {
   try {
-    return await runTool(cmd, args, opts);
+    return await runTool(env, cmd, args, opts);
   } catch (e) {
     if (e instanceof CommandInvocationError) {
       throw wrapCliConfigurationError(new CliError(e));
@@ -1169,6 +1176,8 @@ async function runCli(
 
 /**
  * Wraps the command executor {@link runCli} and tries to parse the output as JSON.
+ *
+ * @param env The environment variables.
  * @param cmd The command to run.
  * @param args The arguments to pass to the command.
  * @param opts The options for running the command.
@@ -1177,11 +1186,12 @@ async function runCli(
  * @returns The parsed JSON output from the command.
  */
 async function runCliJson<T>(
+  env: Env,
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},
 ): Promise<T> {
-  const output = await runCli(cmd, args, opts);
+  const output = await runCli(env, cmd, args, opts);
   try {
     return JSON.parse(output) as T;
   } catch (e) {

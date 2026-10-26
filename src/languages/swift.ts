@@ -11,7 +11,6 @@ import { BuiltInLanguage } from ".";
  * @param config The Action configuration.
  *
  * @throws {ConfigurationError} If Swift analysis is not possible on the current runner.
- * @returns True if we can run a Swift analysis.
  */
 export function checkSwiftCompatibility(
   action: ActionState<["Base"]>,

@@ -6,11 +6,11 @@ inputs:
     required: true
   use-all-platform-bundle:
     description: "If true, we output a tools URL with codeql-bundle.tar.gz file rather than platform-specific URL"
-    default: 'false'
+    default: "false"
     required: false
   setup-kotlin:
     description: "If true, we setup kotlin"
-    default: 'true'
+    default: "true"
     required: true
 outputs:
   tools-url:
@@ -73,7 +73,7 @@ runs:
           exit 1
         fi
 
-    - uses: fwilhe2/setup-kotlin@9c245a6425255f5e98ba1ce6c15d31fce7eca9da
+    - uses: fwilhe2/setup-kotlin@b325539ca8f6e1d9ee04efed06f49bdbf5426dbb # v2.1
       if: ${{ inputs.setup-kotlin == 'true' }}
       with:
         version: 1.8.21

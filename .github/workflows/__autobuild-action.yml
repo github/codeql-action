@@ -25,6 +25,11 @@ on:
         description: The version of .NET to install
         required: false
         default: 9.x
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
   workflow_call:
     inputs:
       dotnet-version:
@@ -32,12 +37,17 @@ on:
         description: The version of .NET to install
         required: false
         default: 9.x
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: autobuild-action-${{github.ref}}-${{inputs.dotnet-version}}
+  group: autobuild-action-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.java-version}}
 jobs:
   autobuild-action:
     strategy:
@@ -64,6 +74,11 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

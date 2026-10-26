@@ -543,8 +543,12 @@ function generateJob(
     ? checkSpecification.useAllPlatformBundle
     : "false";
 
-  // Determine which languages or frameworks have to be installed.
-  const setupInfo = getSetupSteps(checkSpecification);
+  // Kotlin requires a compatible JDK rather than the runner image's default.
+  const setupInfo = getSetupSteps({
+    ...checkSpecification,
+    installJava:
+      checkSpecification.installJava ?? !("container" in checkSpecification),
+  });
   const workflowInputs = setupInfo.inputs;
 
   // Construct the workflow steps needed for this check.

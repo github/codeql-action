@@ -20,6 +20,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 jobs:
   go-custom-queries:
     name: 'Go: Custom queries'
@@ -30,6 +35,7 @@ jobs:
     with:
       dotnet-version: ${{ inputs.dotnet-version }}
       go-version: ${{ inputs.go-version }}
+      java-version: ${{ inputs.java-version }}
   go-indirect-tracing-workaround-diagnostic:
     name: 'Go: diagnostic when Go is changed after init step'
     permissions:
@@ -38,6 +44,7 @@ jobs:
     uses: ./.github/workflows/__go-indirect-tracing-workaround-diagnostic.yml
     with:
       go-version: ${{ inputs.go-version }}
+      java-version: ${{ inputs.java-version }}
   go-indirect-tracing-workaround-no-file-program:
     name: 'Go: diagnostic when `file` is not installed'
     permissions:
@@ -46,6 +53,7 @@ jobs:
     uses: ./.github/workflows/__go-indirect-tracing-workaround-no-file-program.yml
     with:
       go-version: ${{ inputs.go-version }}
+      java-version: ${{ inputs.java-version }}
   go-indirect-tracing-workaround:
     name: 'Go: workaround for indirect tracing'
     permissions:
@@ -54,6 +62,7 @@ jobs:
     uses: ./.github/workflows/__go-indirect-tracing-workaround.yml
     with:
       go-version: ${{ inputs.go-version }}
+      java-version: ${{ inputs.java-version }}
   go-tracing-autobuilder:
     name: 'Go: tracing with autobuilder step'
     permissions:
@@ -62,6 +71,7 @@ jobs:
     uses: ./.github/workflows/__go-tracing-autobuilder.yml
     with:
       go-version: ${{ inputs.go-version }}
+      java-version: ${{ inputs.java-version }}
   go-tracing-custom-build-steps:
     name: 'Go: tracing with custom build steps'
     permissions:
@@ -70,6 +80,7 @@ jobs:
     uses: ./.github/workflows/__go-tracing-custom-build-steps.yml
     with:
       go-version: ${{ inputs.go-version }}
+      java-version: ${{ inputs.java-version }}
   go-tracing-legacy-workflow:
     name: 'Go: tracing with legacy workflow'
     permissions:
@@ -78,3 +89,4 @@ jobs:
     uses: ./.github/workflows/__go-tracing-legacy-workflow.yml
     with:
       go-version: ${{ inputs.go-version }}
+      java-version: ${{ inputs.java-version }}

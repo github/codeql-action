@@ -30,6 +30,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
   workflow_call:
     inputs:
       dotnet-version:
@@ -42,12 +47,17 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: packaging-config-inputs-js-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
+  group: packaging-config-inputs-js-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}-${{inputs.java-version}}
 jobs:
   packaging-config-inputs-js:
     strategy:
@@ -79,6 +89,11 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
+      - name: Install Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
       - name: Install Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:

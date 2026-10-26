@@ -19,15 +19,25 @@ on:
   schedule:
     - cron: '0 5 * * *'
   workflow_dispatch:
-    inputs: {}
+    inputs:
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
   workflow_call:
-    inputs: {}
+    inputs:
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: cpp-deptrace-enabled-on-macos-${{github.ref}}
+  group: cpp-deptrace-enabled-on-macos-${{github.ref}}-${{inputs.java-version}}
 jobs:
   cpp-deptrace-enabled-on-macos:
     strategy:
@@ -48,6 +58,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

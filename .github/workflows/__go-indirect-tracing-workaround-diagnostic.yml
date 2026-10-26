@@ -25,6 +25,11 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
   workflow_call:
     inputs:
       go-version:
@@ -32,12 +37,17 @@ on:
         description: The version of Go to install
         required: false
         default: '>=1.21.0'
+      java-version:
+        type: string
+        description: The version of Java to install
+        required: false
+        default: '17'
 defaults:
   run:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: go-indirect-tracing-workaround-diagnostic-${{github.ref}}-${{inputs.go-version}}
+  group: go-indirect-tracing-workaround-diagnostic-${{github.ref}}-${{inputs.go-version}}-${{inputs.java-version}}
 jobs:
   go-indirect-tracing-workaround-diagnostic:
     strategy:
@@ -61,6 +71,11 @@ jobs:
         with:
           go-version: ${{ inputs.go-version || '>=1.21.0' }}
           cache: false
+      - name: Install Java
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: ${{ inputs.java-version || '17' }}
+          distribution: temurin
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test

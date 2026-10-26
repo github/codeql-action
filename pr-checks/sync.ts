@@ -137,6 +137,14 @@ interface LanguageSetup {
 /** Describes partial mappings from built-in languages to their specific setup information. */
 type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 
+// A type representing version identifiers.
+type Version =
+  | "default"
+  | "linked"
+  | "nightly-latest"
+  // This is an approximation, but sufficient validation for our needs here.
+  | `stable-v${number}.${number}.${number}`;
+
 // The default set of CodeQL Bundle versions to use for the PR checks.
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
@@ -159,7 +167,10 @@ const defaultTestVersions = [
   "linked",
   // A nightly build directly from the our private repo, built in the last 24 hours.
   "nightly-latest",
-];
+] as const satisfies Version[];
+
+/** A type representing the default test versions. */
+type DefaultTestVersion = (typeof defaultTestVersions)[number];
 
 /** The default versions we use for languages / frameworks, if not specified as a workflow input. */
 const defaultLanguageVersions = {
@@ -445,7 +456,13 @@ function generateJobMatrix(
         // stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest`.
         // We could install that older version on the newer runners, or use the older runner.
         // We do the latter here. This can be removed once we stop supporting `v2.20.7`.
-        if (runnerImage === "ubuntu-latest" && version === "stable-v2.20.7") {
+        // Since this is typed as `DefaultTestVersion`, it will become an error once `stable-v2.20.7`
+        // is removed from `defaultTestVersions`.
+        const requiresOlderRunnerImage: DefaultTestVersion = "stable-v2.20.7";
+        if (
+          runnerImage === "ubuntu-latest" &&
+          version === requiresOlderRunnerImage
+        ) {
           matrix.push({ os: "ubuntu-24.04", version });
         } else {
           matrix.push({

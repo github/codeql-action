@@ -442,10 +442,14 @@ function generateJobMatrix(
           : [operatingSystemConfig["runner-image"]];
 
       for (const runnerImage of runnerImagesForOs) {
-        matrix.push({
-          os: runnerImage,
-          version,
-        });
+        if (runnerImage === "ubuntu-latest" && version === "stable-v2.20.7") {
+          matrix.push({ os: "ubuntu-24.04", version });
+        } else {
+          matrix.push({
+            os: runnerImage,
+            version,
+          });
+        }
       }
     }
   }

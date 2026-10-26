@@ -442,6 +442,9 @@ function generateJobMatrix(
           : [operatingSystemConfig["runner-image"]];
 
       for (const runnerImage of runnerImagesForOs) {
+        // stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest`.
+        // We could install that older version on the newer runners, or use the older runner.
+        // We do the latter here. This can be removed once we stop supporting `v2.20.7`.
         if (runnerImage === "ubuntu-latest" && version === "stable-v2.20.7") {
           matrix.push({ os: "ubuntu-24.04", version });
         } else {

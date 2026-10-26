@@ -6,13 +6,13 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
   merge_group:
     types: [checks_requested]
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -30,10 +30,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-        - stable-v2.20.7
-        - default
-        - linked
-        - nightly-latest
+          - stable-v2.20.7
+          - default
+          - linked
+          - nightly-latest
     name: Upload debug artifacts after failure in analyze
     continue-on-error: true
     env:
@@ -43,7 +43,7 @@ jobs:
       # We currently need `security-events: read` to access feature flags.
       security-events: read
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+    runs-on: ${{ case(matrix.version == 'stable-v2.20.7', 'ubuntu-24.04', 'ubuntu-latest') }}
     steps:
       - name: Dump GitHub event
         run: cat "${GITHUB_EVENT_PATH}"
@@ -60,7 +60,7 @@ jobs:
       - name: Install .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: '9.x'
+          dotnet-version: "9.x"
       - name: Assert best-effort artifact scan completed
         uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init

@@ -76,4 +76,4 @@ runs:
     - uses: fwilhe2/setup-kotlin@b325539ca8f6e1d9ee04efed06f49bdbf5426dbb # v2.1
       if: ${{ inputs.setup-kotlin == 'true' }}
       with:
-        version: 1.8.21
+        version: 2.1.20

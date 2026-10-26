@@ -10,15 +10,18 @@ steps:
       ruby-version: 3.4
 
   - name: Install Code Scanning integration
-    run: bundle add code-scanning-rubocop --version 0.3.0 --skip-install
+    run: bundle add code-scanning-rubocop --version 0.6.1 --skip-install
+
   - name: Install dependencies
     run: bundle install
+
   - name: RuboCop run
     run: |
       bash -c "
         bundle exec rubocop --require code_scanning --format CodeScanning::SarifFormatter -o rubocop.sarif
         [[ $? -ne 2 ]]
       "
+
   - uses: ./../action/upload-sarif
     with:
       sarif_file: rubocop.sarif

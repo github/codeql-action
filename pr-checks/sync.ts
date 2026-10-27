@@ -137,7 +137,15 @@ interface LanguageSetup {
 /** Describes partial mappings from built-in languages to their specific setup information. */
 type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 
-// The default set of CodeQL Bundle versions to use for the PR checks.
+/** A type representing version identifiers. */
+type Version =
+  | "default"
+  | "linked"
+  | "nightly-latest"
+  // This is an approximation, but sufficient validation for our needs here.
+  | `stable-v${number}.${number}.${number}`;
+
+/** The default set of CodeQL Bundle versions to use for the PR checks. */
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
   "stable-v2.20.7",
@@ -159,7 +167,10 @@ const defaultTestVersions = [
   "linked",
   // A nightly build directly from the our private repo, built in the last 24 hours.
   "nightly-latest",
-];
+] as const satisfies Version[];
+
+/** A type representing the default test versions. */
+type DefaultTestVersion = (typeof defaultTestVersions)[number];
 
 /** The default versions we use for languages / frameworks, if not specified as a workflow input. */
 const defaultLanguageVersions = {
@@ -313,9 +324,11 @@ const languageSetups: LanguageSetups = {
   },
 };
 
-// This is essentially an arbitrary version of `yq`, which happened to be the one that
-// `choco` fetched when we moved away from using that here.
-// See https://github.com/github/codeql-action/pull/3423
+/**
+ * This is essentially an arbitrary version of `yq`, which happened to be the one that
+ * `choco` fetched when we moved away from using that here.
+ * See https://github.com/github/codeql-action/pull/3423
+ */
 const YQ_VERSION = "v4.50.1";
 
 const CHECKS_DIR = path.join(PR_CHECKS_DIR, "checks");
@@ -442,10 +455,23 @@ function generateJobMatrix(
           : [operatingSystemConfig["runner-image"]];
 
       for (const runnerImage of runnerImagesForOs) {
-        matrix.push({
-          os: runnerImage,
-          version,
-        });
+        // stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest`.
+        // We could install that older version on the newer runners, or use the older runner.
+        // We do the latter here. This can be removed once we stop supporting `v2.20.7`.
+        // Since this is typed as `DefaultTestVersion`, it will become an error once `stable-v2.20.7`
+        // is removed from `defaultTestVersions`.
+        const requiresOlderRunnerImage: DefaultTestVersion = "stable-v2.20.7";
+        if (
+          runnerImage === "ubuntu-latest" &&
+          version === requiresOlderRunnerImage
+        ) {
+          matrix.push({ os: "ubuntu-24.04", version });
+        } else {
+          matrix.push({
+            os: runnerImage,
+            version,
+          });
+        }
       }
     }
   }

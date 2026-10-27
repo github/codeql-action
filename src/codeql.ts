@@ -260,17 +260,17 @@ const CODEQL_MINIMUM_VERSION = "2.20.7";
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.21.3";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.22.4";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.17";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.18";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-09-24";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-10-16";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";

@@ -2,6 +2,11 @@
   "private": true,
   "description": "Dependencies for codeql-action scripts",
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "npx tsx --test",
+    "checks": "npm run typecheck && npm run test"
+  },
   "dependencies": {
     "@actions/core": "^2.0.3",
     "@actions/github": "^8.0.1",

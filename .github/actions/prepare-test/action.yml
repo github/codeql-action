@@ -76,4 +76,7 @@ runs:
     - uses: fwilhe2/setup-kotlin@b325539ca8f6e1d9ee04efed06f49bdbf5426dbb # v2.1
       if: ${{ inputs.setup-kotlin == 'true' }}
       with:
+        # Kotlin is installed on the runners by default, but the version that is pre-installed is too new
+        # to be supported by CodeQL. This Kotlin version is selected to be compatible with both the default Java
+        # version on the `ubuntu-latest` runners and CodeQL.
         version: 2.1.20

@@ -21,8 +21,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REASON: ${{ github.event.reason }}
-          USER: ${{ github.event.pull_request.user.login }}
         run: |
-          echo "@$USER The pull request was removed from the merge queue (\`$REASON\`)." \
+          # Mention whoever added the PR to the merge queue rather than the PR author, who may be a
+          # bot such as Dependabot. The `dequeued` event payload doesn't identify the enqueuer, so
+          # look them up in the most recent `AddedToMergeQueueEvent` on the PR's timeline.
+          enqueuer=$(gh api graphql \
+            -F number="$PR_NUMBER" \
+            -f query='
+              query($number: Int!) {
+                repository(owner: "github", name: "codeql-action") {
+                  pullRequest(number: $number) {
+                    timelineItems(itemTypes: [ADDED_TO_MERGE_QUEUE_EVENT], last: 1) {
+                      nodes { ... on AddedToMergeQueueEvent { enqueuer { login } } }
+                    }
+                  }
+                }
+              }' \
+            --jq '.data.repository.pullRequest.timelineItems.nodes[0].enqueuer.login')
+          echo "@$enqueuer The pull request was removed from the merge queue (\`$REASON\`)." \
             "Please resolve any issues if required and enqueue the PR again." |
             gh pr comment --body-file - --repo github/codeql-action "$PR_NUMBER"

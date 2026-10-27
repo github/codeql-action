@@ -137,7 +137,7 @@ interface LanguageSetup {
 /** Describes partial mappings from built-in languages to their specific setup information. */
 type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 
-// A type representing version identifiers.
+/** A type representing version identifiers. */
 type Version =
   | "default"
   | "linked"
@@ -145,7 +145,7 @@ type Version =
   // This is an approximation, but sufficient validation for our needs here.
   | `stable-v${number}.${number}.${number}`;
 
-// The default set of CodeQL Bundle versions to use for the PR checks.
+/** The default set of CodeQL Bundle versions to use for the PR checks. */
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
   "stable-v2.20.7",
@@ -324,9 +324,11 @@ const languageSetups: LanguageSetups = {
   },
 };
 
-// This is essentially an arbitrary version of `yq`, which happened to be the one that
-// `choco` fetched when we moved away from using that here.
-// See https://github.com/github/codeql-action/pull/3423
+/**
+ * This is essentially an arbitrary version of `yq`, which happened to be the one that
+ * `choco` fetched when we moved away from using that here.
+ * See https://github.com/github/codeql-action/pull/3423
+ */
 const YQ_VERSION = "v4.50.1";
 
 const CHECKS_DIR = path.join(PR_CHECKS_DIR, "checks");

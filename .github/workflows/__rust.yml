@@ -34,7 +34,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             version: stable-v2.20.7
           - os: ubuntu-latest
             version: stable-v2.22.1

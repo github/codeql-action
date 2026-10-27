@@ -41,7 +41,12 @@ jobs:
       contents: read
       # We currently need `security-events: read` to access feature flags.
       security-events: read
+
+    # stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest` (`ubuntu-26.04`).
+    # We could install that older version on the newer runners, or use the older runner.
+    # We do the latter here. This can be removed once we stop supporting `v2.20.7`.
     runs-on: ${{ case(matrix.version == 'stable-v2.20.7', 'ubuntu-24.04', 'ubuntu-latest') }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

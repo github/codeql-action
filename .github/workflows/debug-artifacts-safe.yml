@@ -5,13 +5,13 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
   merge_group:
     types: [checks_requested]
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -29,10 +29,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-        - stable-v2.20.7
-        - default
-        - linked
-        - nightly-latest
+          - stable-v2.20.7
+          - default
+          - linked
+          - nightly-latest
     name: Upload debug artifacts
     env:
       CODEQL_ACTION_TEST_MODE: true
@@ -41,7 +41,12 @@ jobs:
       contents: read
       # We currently need `security-events: read` to access feature flags.
       security-events: read
-    runs-on: ubuntu-latest
+
+    # stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest` (`ubuntu-26.04`).
+    # We could install that older version on the newer runners, or use the older runner.
+    # We do the latter here. This can be removed once we stop supporting `v2.20.7`.
+    runs-on: ${{ case(matrix.version == 'stable-v2.20.7', 'ubuntu-24.04', 'ubuntu-latest') }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,7 +61,7 @@ jobs:
       - name: Install .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: '9.x'
+          dotnet-version: "9.x"
       - name: Assert best-effort artifact scan completed
         uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init

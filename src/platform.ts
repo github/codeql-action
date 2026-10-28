@@ -63,7 +63,7 @@ export const XCODE_SELECT_LINK_PATH = "/private/var/db/xcode_select_link";
 
 /** The pattern we expect to find in the Xcode path. */
 export const XCODE_APP_FILENAME_PATTERN = new RegExp(
-  /(?<filename>Xcode_(?<majorMinor>\d+(\.\d+)?)\.app)/,
+  /(?<filename>Xcode_(?<majorMinor>\d+(\.\d+)?).*\.app)/,
 );
 
 /**

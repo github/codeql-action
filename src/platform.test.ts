@@ -251,3 +251,32 @@ test.serial("xcodeVersion returns major version from resolved path", (t) => {
   t.is(readlinkSync.callCount, 1);
   t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 });
+
+test.serial(
+  "xcodeVersion allows more version components in resolved path",
+  (t) => {
+    const logger = new RecordingLogger();
+
+    const lstatSync = sinon
+      .stub(fs, "lstatSync")
+      .returns({ isSymbolicLink: () => true } as fs.Stats);
+    const readlinkSync = sinon
+      .stub(fs, "readlinkSync")
+      .returns("/Applications/Xcode_16.5.9.app/Contents/Developer");
+
+    const result = xcodeVersion(logger);
+
+    if (t.truthy(result)) {
+      t.is(result.major, 16);
+      t.is(result.minor, 5);
+    }
+
+    t.is(lstatSync.callCount, 1);
+    t.deepEqual(lstatSync.args[0], [
+      XCODE_SELECT_LINK_PATH,
+      { throwIfNoEntry: false },
+    ]);
+    t.is(readlinkSync.callCount, 1);
+    t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+  },
+);

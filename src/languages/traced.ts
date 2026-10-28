@@ -24,13 +24,15 @@ export const UNSUPPORTED_XCODE_FOR_TRACED = 27;
  *
  * @param logger The logger to use.
  * @param config The CodeQL Action configuration.
+ * @param tracedLanguages Traced languages that are configured for analysis.
  * @param skipUnsupportedTracedAnalysis Whether this is a fatal error.
  * @param product The product that the version is unsupported of.
  * @param version The unsupported version.
  */
 function handleUnsupportedVersion(
   logger: Logger,
-  config: ActionConfig<"languages" | "dbLocation" | "tempDir">,
+  config: ActionConfig<"dbLocation" | "tempDir">,
+  tracedLanguages: string[],
   skipUnsupportedTracedAnalysis: boolean,
   product: "macOS" | "Xcode",
   version: semver.SemVer,
@@ -44,7 +46,7 @@ function handleUnsupportedVersion(
   const attributeName = product === "macOS" ? "darwinVersion" : "xcodeVersion";
 
   // Create a diagnostic that will show up on the TSP.
-  for (const language of config.languages) {
+  for (const language of tracedLanguages) {
     addDiagnostic(
       config,
       language,
@@ -89,20 +91,22 @@ function handleUnsupportedVersion(
 }
 
 /**
- * Decides whether {@link config} has any traced languages by looking for tracer
+ * Returns traced languages from {@link config} by looking for tracer
  * configurations in the {@link codeql} CLI installation.
  */
 export async function hasTracedLanguages(
   config: ActionConfig<"languages">,
   codeql: CodeQL,
-): Promise<boolean> {
+): Promise<string[]> {
+  const tracedLanguages: string[] = [];
+
   for (const language of config.languages) {
     if (await codeql.isTracedLanguage(language)) {
-      return true;
+      tracedLanguages.push(language);
     }
   }
 
-  return false;
+  return tracedLanguages;
 }
 
 /**
@@ -127,7 +131,8 @@ export async function checkRunnerSupportsTracedAnalysis(
   }
 
   // If none of the languages are traced, then we can skip the compatibility checks below as well.
-  if (!(await hasTracedLanguages(config, codeql))) {
+  const tracedLanguages = await hasTracedLanguages(config, codeql);
+  if (tracedLanguages.length === 0) {
     return;
   }
 
@@ -146,6 +151,7 @@ export async function checkRunnerSupportsTracedAnalysis(
     handleUnsupportedVersion(
       action.logger,
       config,
+      tracedLanguages,
       skipUnsupportedTracedAnalysis,
       "macOS",
       version,
@@ -163,6 +169,7 @@ export async function checkRunnerSupportsTracedAnalysis(
     handleUnsupportedVersion(
       action.logger,
       config,
+      tracedLanguages,
       skipUnsupportedTracedAnalysis,
       "Xcode",
       xcodeVer,

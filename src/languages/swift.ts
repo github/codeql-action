@@ -12,14 +12,14 @@ import { BuiltInLanguage } from ".";
  *
  * @param config The Action configuration.
  * @param codeql The {@link CodeQL} CLI instance.
- * @param macosVersion The version of macOS, if any.
+ * @param darwinVersion The version of the Darwin kernel on macOS, if any.
  *
  * @throws {ConfigurationError} If Swift analysis is not possible on the current runner.
  */
 export async function checkSwiftCompatibility(
   config: ActionConfig<"languages">,
   codeql: CodeQL,
-  macosVersion: SemVer | string | undefined,
+  darwinVersion: SemVer | string | undefined,
 ) {
   // The checks are not relevant if we are not trying to analyse Swift.
   if (!config.languages.includes(BuiltInLanguage.swift)) {
@@ -33,8 +33,8 @@ export async function checkSwiftCompatibility(
     return;
   }
 
-  // If `macosVersion` is undefined, then we are not on macOS and Swift analysis is unsupported.
-  if (macosVersion === undefined) {
+  // If `darwinVersion` is undefined, then we are not on macOS and Swift analysis is unsupported.
+  if (darwinVersion === undefined) {
     throw new ConfigurationError(
       `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
     );

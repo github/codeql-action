@@ -209,7 +209,7 @@ test.serial(
         {
           attributes: {
             languages: [BuiltInLanguage.swift],
-            macOSVersion: "27.0.0",
+            darwinVersion: "27.0.0",
           },
           severity: "warning",
           source: {
@@ -268,7 +268,7 @@ test.serial(
         {
           attributes: {
             languages: [BuiltInLanguage.swift],
-            macOSVersion: "27.0.0",
+            darwinVersion: "27.0.0",
           },
           severity: "error",
           source: {

@@ -33,13 +33,14 @@ export function getBundlePlatform(
 }
 
 /**
- * Tries to determine the version of macOS.
+ * Tries to determine the version of the kernel on macOS. We approximate this based on the
+ * Darwin kernel version so that we don't have to launch an external process.
  *
  * @returns
  *  The version as either a semantic version object, the raw version string
  *  if it is not a semantic version, or `undefined` if we are not on macOS.
  */
-export function macOSVersion(
+export function darwinVersion(
   action: ActionState<["Base"]>,
 ): semver.SemVer | string | undefined {
   // Skip if we are not running on macOS.
@@ -47,7 +48,7 @@ export function macOSVersion(
     return undefined;
   }
 
-  // Try to parse the OS version string.
+  // Try to parse the kernel version string.
   const version = semver.parse(action.osRelease);
 
   if (version === null) {

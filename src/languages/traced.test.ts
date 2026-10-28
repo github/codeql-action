@@ -139,11 +139,12 @@ for (const nonTracedLanguage of nonTracedLanguages) {
     }));
 }
 
-test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver", async (t) =>
+test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enabled", async (t) =>
   withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
     const env = getTestEnv();
     env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+    const features = createFeatures([]);
 
     const codeql = await getCodeQLWithTracedStub(
       "codeql-for-testing",
@@ -158,6 +159,38 @@ test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver"
         platform: "darwin",
         osRelease: "unexpected",
         env,
+        features,
+      }),
+      createTestConfig({ languages: [BuiltInLanguage.go] }),
+      codeql,
+    );
+
+    checkUnexpectedLogMessages(t, logger.messages, [
+      "Unable to determine version of macOS, got: unexpected",
+    ]);
+  }));
+
+test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
+
+    const codeql = await getCodeQLWithTracedStub(
+      "codeql-for-testing",
+      logger,
+      env,
+    );
+    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+    await checkRunnerSupportsTracedAnalysis(
+      initAllState({
+        logger,
+        platform: "darwin",
+        osRelease: "unexpected",
+        env,
+        features,
       }),
       createTestConfig({ languages: [BuiltInLanguage.go] }),
       codeql,
@@ -174,6 +207,7 @@ test.serial(
   async (t) =>
     withTmpDir(async (tmpDir) => {
       const logger = new RecordingLogger();
+      const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
@@ -193,6 +227,7 @@ test.serial(
           platform: "darwin",
           osRelease: "27.0.0",
           env,
+          features,
         }),
         config,
         codeql,
@@ -235,7 +270,10 @@ test.serial(
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const features = createFeatures([Feature.SkipUnsupportedTracedAnalysis]);
+      const features = createFeatures([
+        Feature.CheckUnsupportedTracedAnalysis,
+        Feature.SkipUnsupportedTracedAnalysis,
+      ]);
 
       const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
@@ -293,6 +331,7 @@ test.serial(
       const logger = new RecordingLogger();
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+      const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
 
       const lstatSync = sinon
         .stub(fs, "lstatSync")
@@ -317,6 +356,7 @@ test.serial(
           platform: "darwin",
           osRelease: "26.0.0",
           env,
+          features,
         }),
         config,
         codeql,
@@ -346,6 +386,7 @@ test.serial(
       const logger = new RecordingLogger();
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+      const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
 
       const lstatSync = sinon
         .stub(fs, "lstatSync")
@@ -370,6 +411,7 @@ test.serial(
           platform: "darwin",
           osRelease: "26.0.0",
           env,
+          features,
         }),
         config,
         codeql,
@@ -427,7 +469,10 @@ test.serial(
         .stub(fs, "readlinkSync")
         .returns("/Applications/Xcode_27.0.app/Contents/Developer");
 
-      const features = createFeatures([Feature.SkipUnsupportedTracedAnalysis]);
+      const features = createFeatures([
+        Feature.CheckUnsupportedTracedAnalysis,
+        Feature.SkipUnsupportedTracedAnalysis,
+      ]);
 
       const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",

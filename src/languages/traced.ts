@@ -156,6 +156,10 @@ export async function checkRunnerSupportsTracedAnalysis(
       "macOS",
       version,
     );
+
+    // Return early so that we don't end up producing more-or-less the same log message/diagnostic
+    // twice. The ones for macOS already comment on the Xcode requirement.
+    return;
   }
 
   // Determining whether the Xcode version is supported only makes sense on macOS, so we only do it

@@ -46,25 +46,25 @@ jobs:
         include:
           - os: ubuntu-24.04
             version: stable-v2.20.7
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.21.4
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.22.4
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.23.9
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.24.3
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.25.6
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: default
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
-          - os: macos-latest
+          - os: macos-26
             version: linked
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
-          - os: macos-latest
+          - os: macos-26
             version: nightly-latest
     name: 'Go: tracing with custom build steps'
     if: github.triggering_actor != 'dependabot[bot]'

@@ -45,9 +45,9 @@ type OperatingSystemIdentifier = "ubuntu" | "macos" | "windows";
 
 /** Mapping from {@link OperatingSystemIdentifier} to default runner image labels. */
 const DEFAULT_RUNNER_IMAGES: Record<OperatingSystemIdentifier, string> = {
-  ubuntu: "ubuntu-latest",
-  macos: "macos-latest",
-  windows: "windows-latest",
+  ubuntu: "ubuntu-26.04",
+  macos: "macos-26",
+  windows: "windows-2025",
 };
 
 /**

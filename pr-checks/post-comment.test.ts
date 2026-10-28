@@ -69,13 +69,6 @@ describe("parseOptions", async () => {
     assert.equal(options.actionCondition, false);
   });
 
-  await it("rejects a missing --body", () => {
-    assert.throws(
-      () => parseOptions(withoutFlag("--body")),
-      /Missing required flag --body/,
-    );
-  });
-
   await it("rejects a missing --marker", () => {
     assert.throws(
       () => parseOptions(withoutFlag("--marker")),
@@ -97,53 +90,16 @@ describe("parseOptions", async () => {
     );
   });
 
-  await it("rejects an invalid --action-condition value", () => {
-    assert.throws(
-      () => parseOptions(withFlag("--action-condition", "yes")),
-      /Invalid value 'yes' for --action-condition/,
-    );
+  await it("rejects unknown flags using parseArgs", () => {
+    assert.throws(() => parseOptions([...validFlags, "--unknown", "value"]), {
+      code: "ERR_PARSE_ARGS_UNKNOWN_OPTION",
+    });
   });
 
-  await it("rejects an invalid --action-if-true value", () => {
-    assert.throws(
-      () => parseOptions(withFlag("--action-if-true", "bogus")),
-      /Invalid value 'bogus' for --action-if-true/,
-    );
-  });
-
-  await it("rejects an invalid --action-if-false value", () => {
-    assert.throws(
-      () => parseOptions(withFlag("--action-if-false", "bogus")),
-      /Invalid value 'bogus' for --action-if-false/,
-    );
-  });
-
-  await it("rejects a missing --issue-id", () => {
-    assert.throws(
-      () => parseOptions(withoutFlag("--issue-id")),
-      /Missing required flag --issue-id/,
-    );
-  });
-
-  await it("rejects a non-numeric --issue-id", () => {
-    assert.throws(
-      () => parseOptions(withFlag("--issue-id", "not-a-number")),
-      /Invalid value 'not-a-number' for --issue-id/,
-    );
-  });
-
-  await it("rejects a missing --repository", () => {
-    assert.throws(
-      () => parseOptions(withoutFlag("--repository")),
-      /Missing required flag --repository/,
-    );
-  });
-
-  await it("rejects a --repository that isn't in the form 'owner/repo'", () => {
-    assert.throws(
-      () => parseOptions(withFlag("--repository", "not-a-slug")),
-      /Invalid value 'not-a-slug' for --repository/,
-    );
+  await it("rejects flags without a value using parseArgs", () => {
+    assert.throws(() => parseOptions([...validFlags, "--body"]), {
+      code: "ERR_PARSE_ARGS_INVALID_OPTION_VALUE",
+    });
   });
 });
 

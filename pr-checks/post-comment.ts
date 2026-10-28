@@ -15,6 +15,7 @@ The `.github/actions/post-comment` action requires callers to supply this value 
 `marker` input.
 */
 
+import assert from "node:assert/strict";
 import { parseArgs } from "node:util";
 
 import { type ApiClient, getApiClient } from "./api-client";
@@ -42,72 +43,7 @@ export interface Options {
   repository: { owner: string; repo: string };
 }
 
-/**
- * Validates and parses a required CLI flag's raw string `value`, delegating the actual
- * value-specific validation/conversion to `parse`.
- */
-function parseFlag<T>(
-  flag: string,
-  value: string | undefined,
-  parse: (value: string) => T,
-): T {
-  if (value === undefined) {
-    throw new Error(`Missing required flag --${flag}.`);
-  }
-  try {
-    return parse(value);
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(`Invalid value '${value}' for --${flag}. ${reason}`);
-  }
-}
-
-/** Parses and validates `value` as an `Action`. */
-function parseAction(flag: string, value: string | undefined): Action {
-  return parseFlag(flag, value, (raw) => {
-    if (!(ACTIONS as readonly string[]).includes(raw)) {
-      throw new Error(`Must be one of: ${ACTIONS.join(", ")}.`);
-    }
-    return raw as Action;
-  });
-}
-
-/** Parses and validates `value` as a boolean. */
-function parseBoolean(flag: string, value: string | undefined): boolean {
-  return parseFlag(flag, value, (raw) => {
-    if (raw !== "true" && raw !== "false") {
-      throw new Error("Must be 'true' or 'false'.");
-    }
-    return raw === "true";
-  });
-}
-
-/** Parses and validates `value` as an issue/pull request number. */
-function parseIssueId(value: string | undefined): number {
-  return parseFlag("issue-id", value, (raw) => {
-    const parsed = Number(raw);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      throw new Error("Must be a positive integer.");
-    }
-    return parsed;
-  });
-}
-
-/** Parses and validates `value` as an `owner/repo` repository reference. */
-function parseRepository(value: string | undefined): {
-  owner: string;
-  repo: string;
-} {
-  return parseFlag("repository", value, (raw) => {
-    const [owner, repo, ...rest] = raw.split("/");
-    if (!owner || !repo || rest.length > 0) {
-      throw new Error("Must be in the form 'owner/repo'.");
-    }
-    return { owner, repo };
-  });
-}
-
-/** Parses the command-line arguments into `Options`. */
+/** Parses CLI arguments supplied by the composite action into `Options`. */
 export function parseOptions(argv?: string[]): Options {
   const { values } = parseArgs({
     args: argv,
@@ -123,24 +59,17 @@ export function parseOptions(argv?: string[]): Options {
     strict: true,
   });
 
-  if (values.body === undefined) {
-    throw new Error("Missing required flag --body.");
-  }
-  if (values.marker === undefined || values.marker.trim() === "") {
-    throw new Error("Missing required flag --marker.");
-  }
+  assert(values.marker?.trim(), "Missing required flag --marker.");
+  const [owner, repo] = values.repository!.split("/");
 
   return {
-    body: values.body,
-    marker: values.marker,
-    actionCondition: parseBoolean(
-      "action-condition",
-      values["action-condition"],
-    ),
-    actionIfTrue: parseAction("action-if-true", values["action-if-true"]),
-    actionIfFalse: parseAction("action-if-false", values["action-if-false"]),
-    issueId: parseIssueId(values["issue-id"]),
-    repository: parseRepository(values.repository),
+    body: values.body!,
+    marker: values.marker!,
+    actionCondition: values["action-condition"] === "true",
+    actionIfTrue: values["action-if-true"] as Action,
+    actionIfFalse: values["action-if-false"] as Action,
+    issueId: Number(values["issue-id"]),
+    repository: { owner, repo },
   };
 }
 

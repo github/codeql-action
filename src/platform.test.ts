@@ -6,7 +6,7 @@ import * as sinon from "sinon";
 import {
   BundlePlatform,
   getBundlePlatform,
-  macOSVersion,
+  darwinVersion,
   XCODE_SELECT_LINK_PATH,
   xcodeVersion,
 } from "./platform";
@@ -36,25 +36,25 @@ for (const [platform, arch, expected] of [
 
 const platforms: NodeJS.Platform[] = ["linux", "win32", "freebsd"];
 for (const platform of platforms) {
-  test(`macOSVersion returns undefined on ${platform}`, (t) => {
-    t.is(macOSVersion(initAllState({ platform })), undefined);
+  test(`darwinVersion returns undefined on ${platform}`, (t) => {
+    t.is(darwinVersion(initAllState({ platform })), undefined);
   });
 }
 
-test("macOSVersion returns raw string if semver parsing fails", (t) => {
+test("darwinVersion returns raw string if semver parsing fails", (t) => {
   const invalidSemVer = "sealOS-2026";
   t.is(
-    macOSVersion(
+    darwinVersion(
       initAllState({ platform: "darwin", osRelease: invalidSemVer }),
     ),
     invalidSemVer,
   );
 });
 
-test("macOSVersion returns semver if parsing succeeds", (t) => {
+test("darwinVersion returns semver if parsing succeeds", (t) => {
   const validSemVer = "27.0.1";
 
-  const version = macOSVersion(
+  const version = darwinVersion(
     initAllState({ platform: "darwin", osRelease: validSemVer }),
   );
 

@@ -6,13 +6,13 @@ import type { ActionConfig } from "../config/action-config";
 import { addDiagnostic, makeDiagnostic } from "../diagnostics";
 import { DocUrl } from "../doc-url";
 import { Feature } from "../feature-flags";
-import { macOSVersion, xcodeVersion } from "../platform";
+import { darwinVersion, xcodeVersion } from "../platform";
 import { ConfigurationError } from "../util";
 
 import { checkSwiftCompatibility } from "./swift";
 
 /** macOS 27 and above do not support traced extraction. */
-export const UNSUPPORTED_MACOS_FOR_TRACED = 27;
+export const UNSUPPORTED_DARWIN_FOR_TRACED = 27;
 
 /** Xcode 27 and above do not support traced extraction. */
 export const UNSUPPORTED_XCODE_FOR_TRACED = 27;
@@ -36,12 +36,12 @@ function handleUnsupportedVersion(
   version: semver.SemVer,
 ) {
   const baseMessage = [
-    `Traced analysis is not supported on ${product} ${UNSUPPORTED_MACOS_FOR_TRACED} or above.`,
-    `Configure your analysis to run on macOS ${UNSUPPORTED_MACOS_FOR_TRACED - 1} or below`,
+    `Traced analysis is not supported on ${product} ${UNSUPPORTED_DARWIN_FOR_TRACED} or above.`,
+    `Configure your analysis to run on macOS ${UNSUPPORTED_DARWIN_FOR_TRACED - 1} or below`,
     `and XCode ${UNSUPPORTED_XCODE_FOR_TRACED - 1} or below.`,
   ].join(" ");
 
-  const attributeName = product === "macOS" ? "macOSVersion" : "xcodeVersion";
+  const attributeName = product === "macOS" ? "darwinVersion" : "xcodeVersion";
 
   // Create a diagnostic that will show up on the TSP.
   for (const language of config.languages) {
@@ -115,8 +115,8 @@ export async function checkRunnerSupportsTracedAnalysis(
   config: ActionConfig<"languages" | "dbLocation" | "tempDir">,
   codeql: CodeQL,
 ) {
-  // Try to get the macOS version.
-  const version = macOSVersion(action);
+  // Try to get the Darwin version on macOS.
+  const version = darwinVersion(action);
 
   // Perform some initial, Swift-specific checks.
   await checkSwiftCompatibility(config, codeql, version);
@@ -141,7 +141,7 @@ export async function checkRunnerSupportsTracedAnalysis(
     );
   } else if (
     version !== undefined &&
-    version.major >= UNSUPPORTED_MACOS_FOR_TRACED
+    version.major >= UNSUPPORTED_DARWIN_FOR_TRACED
   ) {
     handleUnsupportedVersion(
       action.logger,

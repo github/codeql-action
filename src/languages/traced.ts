@@ -125,6 +125,13 @@ export async function checkRunnerSupportsTracedAnalysis(
   // Perform some initial, Swift-specific checks.
   await checkSwiftCompatibility(config, codeql, version);
 
+  // Skip the checks for unsupported traced analysis if the FF is not enabled.
+  if (
+    !(await action.features.getValue(Feature.CheckUnsupportedTracedAnalysis))
+  ) {
+    return;
+  }
+
   // `build-mode: none` doesn't use the tracer, so it is always supported.
   if (config.buildMode !== undefined && config.buildMode === "none") {
     return;

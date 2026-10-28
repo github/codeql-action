@@ -12,8 +12,8 @@ import {
   findExistingComment,
   type Options,
   parseOptions,
-  performAction,
   resolveToken,
+  setComment,
 } from "./post-comment";
 
 /** A baseline set of valid CLI flags, as an array, for use in parseOptions tests. */
@@ -22,8 +22,6 @@ const validFlags = [
   "hello",
   "--marker",
   "<!-- marker -->",
-  "--action",
-  "insert",
   "--issue-id",
   "42",
   "--repository",
@@ -52,20 +50,9 @@ describe("parseOptions", async () => {
     assert.deepEqual(options, {
       body: "hello",
       marker: "<!-- marker -->",
-      action: "insert",
       issueId: 42,
       repository: { owner: "github", repo: "codeql-action" },
     });
-  });
-
-  await it("parses a delete action without a body", () => {
-    const options = parseOptions([
-      ...withoutFlag("--body"),
-      "--action",
-      "delete",
-    ]);
-    assert.equal(options.action, "delete");
-    assert.equal(options.body, "");
   });
 
   await it("rejects a missing --marker", () => {
@@ -124,8 +111,7 @@ function fakeClient(existingComments: Array<{ id: number; body?: string }>) {
   const calls: {
     createComment: unknown[];
     updateComment: unknown[];
-    deleteComment: unknown[];
-  } = { createComment: [], updateComment: [], deleteComment: [] };
+  } = { createComment: [], updateComment: [] };
 
   const client = {
     paginate: async () => existingComments,
@@ -137,9 +123,6 @@ function fakeClient(existingComments: Array<{ id: number; body?: string }>) {
         },
         updateComment: async (params: unknown) => {
           calls.updateComment.push(params);
-        },
-        deleteComment: async (params: unknown) => {
-          calls.deleteComment.push(params);
         },
       },
     },
@@ -176,56 +159,38 @@ describe("findExistingComment", async () => {
   });
 });
 
-/** A baseline set of `Options`, for use in `performAction` tests. */
+/** A baseline set of `Options`, for use in `setComment` tests. */
 const baseOptions: Options = {
   body: "hello",
   marker: "<!-- marker -->",
-  action: "insert",
   issueId: 42,
   repository: { owner: "owner", repo: "repo" },
 };
 
-describe("performAction", async () => {
-  for (const action of ["upsert", "delete"] as const) {
-    await it(`uses the supplied marker for '${action}' without affecting other comments`, async () => {
-      const marker = "<!-- custom-warning -->";
-      const { client, calls } = fakeClient([
-        { id: 1, body: "<!-- marker -->\nunrelated warning" },
-        { id: 2, body: `${marker}\nold warning` },
-      ]);
-      const options = parseOptions(withFlag("--marker", marker));
-      await performAction(client, action, options);
-      assert.deepEqual(calls, {
-        createComment: [],
-        updateComment:
-          action === "upsert"
-            ? [
-                {
-                  ...options.repository,
-                  comment_id: 2,
-                  body: `${marker}\nhello`,
-                },
-              ]
-            : [],
-        deleteComment:
-          action === "delete" ? [{ ...options.repository, comment_id: 2 }] : [],
-      });
-    });
-  }
-
-  await it("does nothing for 'none'", async () => {
-    const { client, calls } = fakeClient([]);
-    await performAction(client, "none", baseOptions);
+describe("setComment", async () => {
+  await it("uses the supplied marker without affecting other comments", async () => {
+    const marker = "<!-- custom-warning -->";
+    const { client, calls } = fakeClient([
+      { id: 1, body: "<!-- marker -->\nunrelated warning" },
+      { id: 2, body: `${marker}\nold warning` },
+    ]);
+    const options = parseOptions(withFlag("--marker", marker));
+    await setComment(client, options);
     assert.deepEqual(calls, {
       createComment: [],
-      updateComment: [],
-      deleteComment: [],
+      updateComment: [
+        {
+          ...options.repository,
+          comment_id: 2,
+          body: `${marker}\nhello`,
+        },
+      ],
     });
   });
 
-  await it("creates a new comment for 'insert', with the marker prepended", async () => {
+  await it("creates a new comment with the marker prepended", async () => {
     const { client, calls } = fakeClient([]);
-    await performAction(client, "insert", baseOptions);
+    await setComment(client, baseOptions);
     assert.deepEqual(calls.createComment, [
       {
         owner: "owner",
@@ -235,12 +200,11 @@ describe("performAction", async () => {
       },
     ]);
     assert.deepEqual(calls.updateComment, []);
-    assert.deepEqual(calls.deleteComment, []);
   });
 
-  await it("creates a new comment for 'upsert' when no existing comment is found", async () => {
+  await it("creates a new comment when no existing comment matches", async () => {
     const { client, calls } = fakeClient([{ id: 1, body: "unrelated" }]);
-    await performAction(client, "upsert", baseOptions);
+    await setComment(client, baseOptions);
     assert.deepEqual(calls.createComment, [
       {
         owner: "owner",
@@ -252,11 +216,11 @@ describe("performAction", async () => {
     assert.deepEqual(calls.updateComment, []);
   });
 
-  await it("updates the existing comment for 'upsert' when one is found", async () => {
+  await it("updates the existing comment when one is found", async () => {
     const { client, calls } = fakeClient([
       { id: 7, body: "<!-- marker -->\nold" },
     ]);
-    await performAction(client, "upsert", baseOptions);
+    await setComment(client, baseOptions);
     assert.deepEqual(calls.updateComment, [
       {
         owner: "owner",
@@ -268,24 +232,20 @@ describe("performAction", async () => {
     assert.deepEqual(calls.createComment, []);
   });
 
-  await it("does nothing for 'delete' when no existing comment is found", async () => {
-    const { client, calls } = fakeClient([{ id: 1, body: "unrelated" }]);
-    await performAction(client, "delete", baseOptions);
-    assert.deepEqual(calls.deleteComment, []);
-  });
-
-  await it("deletes the existing comment for 'delete' when one is found", async () => {
+  await it("replaces a warning with the resolved state using the same marker", async () => {
     const { client, calls } = fakeClient([
       { id: 9, body: "<!-- marker -->\nold" },
     ]);
-    const options = parseOptions([
-      ...withoutFlag("--body"),
-      "--action",
-      "delete",
+    const body =
+      "`CHANGELOG.md` is not modified in this PR. No changelog action is needed.";
+    await setComment(client, { ...baseOptions, body });
+    assert.deepEqual(calls.updateComment, [
+      {
+        ...baseOptions.repository,
+        comment_id: 9,
+        body: `${baseOptions.marker}\n${body}`,
+      },
     ]);
-    await performAction(client, options.action, options);
-    assert.deepEqual(calls.deleteComment, [
-      { owner: "github", repo: "codeql-action", comment_id: 9 },
-    ]);
+    assert.deepEqual(calls.createComment, []);
   });
 });

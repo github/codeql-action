@@ -1,17 +1,14 @@
 name: "Post comment"
-description: "Create, update, or delete a sticky PR comment identified by a caller-provided marker."
+description: "Create or update a sticky PR comment identified by a caller-provided marker."
 inputs:
   marker:
     description: "Non-empty marker identifying the comment. Use a unique, stable HTML comment for each distinct comment."
     required: true
   body:
-    description: "Full comment markdown. Not needed when deleting a comment."
-    required: false
-  action:
-    description: "Action to perform. One of: none, insert, upsert, delete."
+    description: "Full comment markdown."
     required: true
   issue-id:
-    description: "The issue or pull request number to post/update/delete the comment on. Defaults to the current pull request if not provided."
+    description: "The issue or pull request number to post/update the comment on. Defaults to the current pull request if not provided."
     required: false
   token:
     description: "The GitHub token to authenticate with."
@@ -26,11 +23,9 @@ runs:
         MARKER: ${{ inputs.marker }}
         GH_TOKEN: ${{ inputs.token }}
         ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
-        ACTION: ${{ inputs.action }}
       run: |
         npx tsx ./pr-checks/post-comment.ts \
           --body "$BODY" \
           --marker "$MARKER" \
-          --action "$ACTION" \
           --issue-id "$ISSUE_ID" \
           --repository "$GITHUB_REPOSITORY"

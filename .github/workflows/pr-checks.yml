@@ -305,11 +305,10 @@ jobs:
             Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`
             file will be automatically generated from those change-notes.
             See [`unreleased-change-notes/README.md`](https://github.com/github/codeql-action/blob/main/unreleased-change-notes/README.md) for more information.
-          action: upsert
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Delete the warning about modifying CHANGELOG.md
-        id: delete-changelog-warning
+      - name: Mark the CHANGELOG.md concern as resolved
+        id: resolve-changelog-warning
         if: >-
           needs.other-checks.outputs.changelog-changed != 'true' &&
           !startsWith(github.event.pull_request.head.ref, 'update-v') &&
@@ -319,5 +318,11 @@ jobs:
         uses: ./.github/actions/post-comment
         with:
           marker: "<!-- post-comment:CHANGELOG.md -->"
-          action: delete
+          body: |
+            ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
+            Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`
+            file will be automatically generated from those change-notes.
+            See [`unreleased-change-notes/README.md`](https://github.com/github/codeql-action/blob/main/unreleased-change-notes/README.md) for more information.
+
+            **Edit:** `CHANGELOG.md` is no longer modified in this PR. This concern is resolved.
           token: ${{ secrets.GITHUB_TOKEN }}

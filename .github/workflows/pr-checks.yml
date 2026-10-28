@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      changelog-changed: ${{ steps.changelog-check.outputs.changed }}
+      changelog-modified: ${{ steps.changelog-check.outputs.modified }}
 
     concurrency:
       cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
@@ -192,9 +192,9 @@ jobs:
         run: |
           if ! git diff --exit-code --quiet "$BASE_SHA" "$HEAD_SHA" -- CHANGELOG.md; then
             echo "CHANGELOG.md was modified in this PR."
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "modified=true" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "modified=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: "Backport: Check out base ref"
@@ -292,7 +292,7 @@ jobs:
         # Release, backport, mergeback, and bundle-update PRs deliberately modify CHANGELOG.md,
         # so skip comment management entirely for these automation flows.
         if: >-
-          needs.other-checks.outputs.changelog-changed == 'true' &&
+          needs.other-checks.outputs.changelog-modified == 'true' &&
           !startsWith(github.event.pull_request.head.ref, 'update-v') &&
           !startsWith(github.event.pull_request.head.ref, 'backport-v') &&
           !startsWith(github.event.pull_request.head.ref, 'mergeback/') &&
@@ -310,7 +310,7 @@ jobs:
       - name: Mark the CHANGELOG.md concern as resolved
         id: resolve-changelog-warning
         if: >-
-          needs.other-checks.outputs.changelog-changed != 'true' &&
+          needs.other-checks.outputs.changelog-modified != 'true' &&
           !startsWith(github.event.pull_request.head.ref, 'update-v') &&
           !startsWith(github.event.pull_request.head.ref, 'backport-v') &&
           !startsWith(github.event.pull_request.head.ref, 'mergeback/') &&

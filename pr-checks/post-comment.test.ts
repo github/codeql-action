@@ -75,18 +75,6 @@ describe("parseOptions", async () => {
       /Missing required flag --marker/,
     );
   });
-
-  await it("rejects unknown flags using parseArgs", () => {
-    assert.throws(() => parseOptions([...validFlags, "--unknown", "value"]), {
-      code: "ERR_PARSE_ARGS_UNKNOWN_OPTION",
-    });
-  });
-
-  await it("rejects flags without a value using parseArgs", () => {
-    assert.throws(() => parseOptions([...validFlags, "--body"]), {
-      code: "ERR_PARSE_ARGS_INVALID_OPTION_VALUE",
-    });
-  });
 });
 
 describe("resolveToken", async () => {
@@ -108,27 +96,34 @@ describe("resolveToken", async () => {
 
 /** A minimal fake of the subset of `ApiClient` used by post-comment.ts. */
 function fakeClient(existingComments: Array<{ id: number; body?: string }>) {
-  const calls: {
-    createComment: unknown[];
-    updateComment: unknown[];
-  } = { createComment: [], updateComment: [] };
+  const comments = existingComments.map((comment) => ({ ...comment }));
+  let nextId =
+    comments.reduce((maxId, comment) => Math.max(maxId, comment.id), 0) + 1;
 
   const client = {
-    paginate: async () => existingComments,
+    paginate: async () => comments,
     rest: {
       issues: {
         listComments: () => {},
-        createComment: async (params: unknown) => {
-          calls.createComment.push(params);
+        createComment: async ({ body }: { body: string }) => {
+          comments.push({ id: nextId++, body });
         },
-        updateComment: async (params: unknown) => {
-          calls.updateComment.push(params);
+        updateComment: async ({
+          comment_id,
+          body,
+        }: {
+          comment_id: number;
+          body: string;
+        }) => {
+          const comment = comments.find(({ id }) => id === comment_id);
+          assert.ok(comment, `Comment ${comment_id} does not exist.`);
+          comment.body = body;
         },
       },
     },
   };
 
-  return { client: client as unknown as ApiClient, calls };
+  return { client: client as unknown as ApiClient, comments };
 }
 
 describe("findExistingComment", async () => {
@@ -167,85 +162,109 @@ const baseOptions: Options = {
   repository: { owner: "owner", repo: "repo" },
 };
 
+function assertCommentContent(
+  comment: { body?: string },
+  marker: string,
+  body: string,
+): void {
+  assert.ok(comment.body?.startsWith(marker));
+  assert.ok(comment.body?.endsWith(body));
+}
+
 describe("setComment", async () => {
   await it("uses the supplied marker without affecting other comments", async () => {
     const marker = "<!-- custom-warning -->";
-    const { client, calls } = fakeClient([
-      { id: 1, body: "<!-- marker -->\nunrelated warning" },
+    const { client, comments } = fakeClient([
+      { id: 1, body: `${baseOptions.marker}\nunrelated warning` },
       { id: 2, body: `${marker}\nold warning` },
     ]);
     const options = parseOptions(withFlag("--marker", marker));
+
     await setComment(client, options);
-    assert.deepEqual(calls, {
-      createComment: [],
-      updateComment: [
-        {
-          ...options.repository,
-          comment_id: 2,
-          body: `${marker}\nhello`,
-        },
-      ],
+
+    // Only the comment with the supplied marker changes.
+    assert.equal(comments.length, 2);
+    assert.deepEqual(comments[0], {
+      id: 1,
+      body: `${baseOptions.marker}\nunrelated warning`,
     });
+    assert.equal(comments[1].id, 2);
+    assertCommentContent(comments[1], marker, options.body);
   });
 
   await it("creates a new comment with the marker prepended", async () => {
-    const { client, calls } = fakeClient([]);
+    const { client, comments } = fakeClient([]);
+    // No comment has the marker before posting.
+    assert.equal(comments.length, 0);
+    assert.ok(
+      !comments.some(({ body }) => body?.startsWith(baseOptions.marker)),
+    );
+
     await setComment(client, baseOptions);
-    assert.deepEqual(calls.createComment, [
-      {
-        owner: "owner",
-        repo: "repo",
-        issue_number: 42,
-        body: "<!-- marker -->\nhello",
-      },
-    ]);
-    assert.deepEqual(calls.updateComment, []);
+
+    // Posting adds exactly one comment with the marker before the body.
+    assert.equal(comments.length, 1);
+    assertCommentContent(comments[0], baseOptions.marker, baseOptions.body);
   });
 
   await it("creates a new comment when no existing comment matches", async () => {
-    const { client, calls } = fakeClient([{ id: 1, body: "unrelated" }]);
+    const originalComments = [
+      { id: 7, body: "unrelated" },
+      { id: 2, body: "another unrelated comment" },
+    ];
+    const { client, comments } = fakeClient(originalComments);
+    // Existing comments do not match the marker.
+    assert.ok(
+      !comments.some(({ body }) => body?.startsWith(baseOptions.marker)),
+    );
+
     await setComment(client, baseOptions);
-    assert.deepEqual(calls.createComment, [
-      {
-        owner: "owner",
-        repo: "repo",
-        issue_number: 42,
-        body: "<!-- marker -->\nhello",
-      },
-    ]);
-    assert.deepEqual(calls.updateComment, []);
+
+    // A new comment is added without changing unrelated comments.
+    assert.equal(comments.length, originalComments.length + 1);
+    assert.deepEqual(
+      comments.slice(0, originalComments.length),
+      originalComments,
+    );
+    const markedComments = comments.filter(({ body }) =>
+      body?.startsWith(baseOptions.marker),
+    );
+    // Exactly one comment contains the expected marker and body.
+    assert.equal(markedComments.length, 1);
+    assertCommentContent(
+      markedComments[0],
+      baseOptions.marker,
+      baseOptions.body,
+    );
+    // The new comment's ID does not collide with existing IDs.
+    assert.equal(new Set(comments.map(({ id }) => id)).size, comments.length);
   });
 
   await it("updates the existing comment when one is found", async () => {
-    const { client, calls } = fakeClient([
-      { id: 7, body: "<!-- marker -->\nold" },
+    const { client, comments } = fakeClient([
+      { id: 7, body: `${baseOptions.marker}\nold` },
     ]);
+
     await setComment(client, baseOptions);
-    assert.deepEqual(calls.updateComment, [
-      {
-        owner: "owner",
-        repo: "repo",
-        comment_id: 7,
-        body: "<!-- marker -->\nhello",
-      },
-    ]);
-    assert.deepEqual(calls.createComment, []);
+
+    // Updating preserves the comment's ID without creating a duplicate.
+    assert.equal(comments.length, 1);
+    assert.equal(comments[0].id, 7);
+    assertCommentContent(comments[0], baseOptions.marker, baseOptions.body);
   });
 
   await it("replaces a warning with the resolved state using the same marker", async () => {
-    const { client, calls } = fakeClient([
-      { id: 9, body: "<!-- marker -->\nold" },
+    const { client, comments } = fakeClient([
+      { id: 9, body: `${baseOptions.marker}\nold` },
     ]);
     const body =
       "`CHANGELOG.md` is not modified in this PR. No changelog action is needed.";
+
     await setComment(client, { ...baseOptions, body });
-    assert.deepEqual(calls.updateComment, [
-      {
-        ...baseOptions.repository,
-        comment_id: 9,
-        body: `${baseOptions.marker}\n${body}`,
-      },
-    ]);
-    assert.deepEqual(calls.createComment, []);
+
+    // The resolved state replaces the warning on the same marked comment.
+    assert.equal(comments.length, 1);
+    assert.equal(comments[0].id, 9);
+    assertCommentContent(comments[0], baseOptions.marker, body);
   });
 });

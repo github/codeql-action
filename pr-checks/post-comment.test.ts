@@ -90,6 +90,13 @@ describe("parseOptions", async () => {
     );
   });
 
+  await it("rejects a whitespace-only --marker", () => {
+    assert.throws(
+      () => parseOptions(withFlag("--marker", " \t\n")),
+      /Missing required flag --marker/,
+    );
+  });
+
   await it("rejects an invalid --action-condition value", () => {
     assert.throws(
       () => parseOptions(withFlag("--action-condition", "yes")),
@@ -226,6 +233,33 @@ const baseOptions: Options = {
 };
 
 describe("performAction", async () => {
+  for (const action of ["upsert", "delete"] as const) {
+    await it(`uses the supplied marker for '${action}' without affecting other comments`, async () => {
+      const marker = "<!-- custom-warning -->";
+      const { client, calls } = fakeClient([
+        { id: 1, body: "<!-- marker -->\nunrelated warning" },
+        { id: 2, body: `${marker}\nold warning` },
+      ]);
+      const options = parseOptions(withFlag("--marker", marker));
+      await performAction(client, action, options);
+      assert.deepEqual(calls, {
+        createComment: [],
+        updateComment:
+          action === "upsert"
+            ? [
+                {
+                  ...options.repository,
+                  comment_id: 2,
+                  body: `${marker}\nhello`,
+                },
+              ]
+            : [],
+        deleteComment:
+          action === "delete" ? [{ ...options.repository, comment_id: 2 }] : [],
+      });
+    });
+  }
+
   await it("does nothing for 'none'", async () => {
     const { client, calls } = fakeClient([]);
     await performAction(client, "none", baseOptions);

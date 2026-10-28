@@ -1,6 +1,9 @@
 name: "Post comment"
-description: "Create, update, or delete a sticky PR comment identified by an automatically-derived HTML-comment marker. If this action is used more than once within the same job, give each step an explicit 'id:' so the derived marker stays unique."
+description: "Create, update, or delete a sticky PR comment identified by a caller-provided marker."
 inputs:
+  marker:
+    description: "Non-empty marker identifying the comment. Use a unique, stable HTML comment for each distinct comment."
+    required: true
   body:
     description: "Full comment markdown."
     required: true
@@ -26,10 +29,7 @@ runs:
       shell: bash
       env:
         BODY: ${{ inputs.body }}
-        # Derived from the workflow name, job id, and step id/sequence-number so that repeated
-        # runs of the same step find the same comment (for upsert/delete), while distinct steps
-        # (even within the same job) get distinct markers.
-        MARKER: <!-- post-comment:${{ github.workflow }}:${{ github.job }}:${{ github.action }} -->
+        MARKER: ${{ inputs.marker }}
         GH_TOKEN: ${{ inputs.token }}
         ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
         ACTION_CONDITION: ${{ inputs.action-condition }}

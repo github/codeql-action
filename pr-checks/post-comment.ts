@@ -10,9 +10,9 @@ The marker is passed explicitly via `--marker` and can be any non-empty string, 
 HTML comment (e.g. `<!-- my-bot -->`) is recommended so it doesn't render visibly. It is used
 both to find a pre-existing comment on the pull request so that
 `upsert`/`delete` actions know which comment to operate on, and is automatically prepended to
-`--body` when posting or updating a comment so that future invocations can find it again. Callers
-typically derive this value automatically (see `.github/actions/post-comment`) rather than
-hand-authoring it.
+`--body` when posting or updating a comment so that future invocations can find it again.
+The `.github/actions/post-comment` action requires callers to supply this value via its
+`marker` input.
 */
 
 import { parseArgs } from "node:util";

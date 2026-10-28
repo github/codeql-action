@@ -463,7 +463,7 @@ function generateJobMatrix(
         // is removed from `defaultTestVersions`.
         const requiresOlderRunnerImage: DefaultTestVersion = "stable-v2.20.7";
         if (
-          runnerImage === "ubuntu-latest" &&
+          runnerImage === DEFAULT_RUNNER_IMAGES["ubuntu"] &&
           version === requiresOlderRunnerImage
         ) {
           matrix.push({ os: "ubuntu-24.04", version });
@@ -676,7 +676,7 @@ function generateValidationJob(
       "security-events": "read",
     },
     "timeout-minutes": 5,
-    "runs-on": "ubuntu-latest",
+    "runs-on": DEFAULT_RUNNER_IMAGES["ubuntu"],
     steps: specSteps,
   };
 

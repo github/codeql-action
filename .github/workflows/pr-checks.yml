@@ -292,6 +292,7 @@ jobs:
         # Release, backport, mergeback, and bundle-update PRs deliberately modify CHANGELOG.md,
         # so skip comment management entirely for these automation flows.
         if: >-
+          needs.other-checks.outputs.changelog-changed == 'true' &&
           !startsWith(github.event.pull_request.head.ref, 'update-v') &&
           !startsWith(github.event.pull_request.head.ref, 'backport-v') &&
           !startsWith(github.event.pull_request.head.ref, 'mergeback/') &&
@@ -304,7 +305,19 @@ jobs:
             Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`
             file will be automatically generated from those change-notes.
             See [`unreleased-change-notes/README.md`](https://github.com/github/codeql-action/blob/main/unreleased-change-notes/README.md) for more information.
-          action-condition: ${{ needs.other-checks.outputs.changelog-changed }}
-          action-if-true: upsert
-          action-if-false: delete
+          action: upsert
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete the warning about modifying CHANGELOG.md
+        id: delete-changelog-warning
+        if: >-
+          needs.other-checks.outputs.changelog-changed != 'true' &&
+          !startsWith(github.event.pull_request.head.ref, 'update-v') &&
+          !startsWith(github.event.pull_request.head.ref, 'backport-v') &&
+          !startsWith(github.event.pull_request.head.ref, 'mergeback/') &&
+          !startsWith(github.event.pull_request.head.ref, 'update-bundle/')
+        uses: ./.github/actions/post-comment
+        with:
+          marker: "<!-- post-comment:CHANGELOG.md -->"
+          action: delete
           token: ${{ secrets.GITHUB_TOKEN }}

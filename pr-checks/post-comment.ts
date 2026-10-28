@@ -31,12 +31,8 @@ export interface Options {
   body: string;
   /** The hidden HTML-comment marker used to find a pre-existing comment. */
   marker: string;
-  /** The condition that selects which action to perform. */
-  actionCondition: boolean;
-  /** The action to perform when `actionCondition` is `true`. */
-  actionIfTrue: Action;
-  /** The action to perform when `actionCondition` is `false`. */
-  actionIfFalse: Action;
+  /** The action to perform. */
+  action: Action;
   /** The issue/pull request number to post/update/delete the comment on. */
   issueId: number;
   /** The repository to operate on. */
@@ -48,11 +44,9 @@ export function parseOptions(argv?: string[]): Options {
   const { values } = parseArgs({
     args: argv,
     options: {
-      body: { type: "string" },
+      body: { type: "string", default: "" },
       marker: { type: "string" },
-      "action-condition": { type: "string" },
-      "action-if-true": { type: "string" },
-      "action-if-false": { type: "string" },
+      action: { type: "string" },
       "issue-id": { type: "string" },
       repository: { type: "string" },
     },
@@ -63,11 +57,9 @@ export function parseOptions(argv?: string[]): Options {
   const [owner, repo] = values.repository!.split("/");
 
   return {
-    body: values.body!,
+    body: values.body,
     marker: values.marker!,
-    actionCondition: values["action-condition"] === "true",
-    actionIfTrue: values["action-if-true"] as Action,
-    actionIfFalse: values["action-if-false"] as Action,
+    action: values.action as Action,
     issueId: Number(values["issue-id"]),
     repository: { owner, repo },
   };
@@ -102,7 +94,7 @@ export async function findExistingComment(
 }
 
 /**
- * Performs the resolved `action` against a (possibly pre-existing) marked comment, using
+ * Performs the supplied `action` against a (possibly pre-existing) marked comment, using
  * `client` to talk to the GitHub API. This is the core dispatch logic of this script, extracted
  * from `main` so it can be unit-tested with an injected (fake) `client`.
  */
@@ -169,15 +161,12 @@ export async function performAction(
 
 async function main(): Promise<number> {
   const options = parseOptions();
-  const action = options.actionCondition
-    ? options.actionIfTrue
-    : options.actionIfFalse;
-  console.info(`Resolved action: ${action}`);
+  console.info(`Action: ${options.action}`);
 
   const token = resolveToken(process.env);
   const client = getApiClient(token);
 
-  await performAction(client, action, options);
+  await performAction(client, options.action, options);
 
   return 0;
 }

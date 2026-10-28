@@ -130,6 +130,11 @@ export async function checkRunnerSupportsTracedAnalysis(
     return;
   }
 
+  // These checks don't apply if we are not on macOS.
+  if (version === undefined) {
+    return;
+  }
+
   // If none of the languages are traced, then we can skip the compatibility checks below as well.
   const tracedLanguages = await hasTracedLanguages(config, codeql);
   if (tracedLanguages.length === 0) {
@@ -144,10 +149,7 @@ export async function checkRunnerSupportsTracedAnalysis(
     action.logger.warning(
       `Unable to determine version of macOS, got: ${version}`,
     );
-  } else if (
-    version !== undefined &&
-    version.major >= UNSUPPORTED_DARWIN_FOR_TRACED
-  ) {
+  } else if (version.major >= UNSUPPORTED_DARWIN_FOR_TRACED) {
     handleUnsupportedVersion(
       action.logger,
       config,

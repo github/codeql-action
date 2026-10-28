@@ -364,7 +364,7 @@ const MAX_STDERR_BUFFER_SIZE = 20000;
  * @throws A {@link CommandInvocationError} if the tool exits with a non-zero status code.
  */
 export async function runTool(
-  env: Env,
+  env: ReadOnlyEnv,
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},

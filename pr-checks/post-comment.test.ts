@@ -22,12 +22,8 @@ const validFlags = [
   "hello",
   "--marker",
   "<!-- marker -->",
-  "--action-condition",
-  "true",
-  "--action-if-true",
+  "--action",
   "insert",
-  "--action-if-false",
-  "delete",
   "--issue-id",
   "42",
   "--repository",
@@ -56,17 +52,20 @@ describe("parseOptions", async () => {
     assert.deepEqual(options, {
       body: "hello",
       marker: "<!-- marker -->",
-      actionCondition: true,
-      actionIfTrue: "insert",
-      actionIfFalse: "delete",
+      action: "insert",
       issueId: 42,
       repository: { owner: "github", repo: "codeql-action" },
     });
   });
 
-  await it("parses action-condition=false", () => {
-    const options = parseOptions(withFlag("--action-condition", "false"));
-    assert.equal(options.actionCondition, false);
+  await it("parses a delete action without a body", () => {
+    const options = parseOptions([
+      ...withoutFlag("--body"),
+      "--action",
+      "delete",
+    ]);
+    assert.equal(options.action, "delete");
+    assert.equal(options.body, "");
   });
 
   await it("rejects a missing --marker", () => {
@@ -181,9 +180,7 @@ describe("findExistingComment", async () => {
 const baseOptions: Options = {
   body: "hello",
   marker: "<!-- marker -->",
-  actionCondition: true,
-  actionIfTrue: "insert",
-  actionIfFalse: "delete",
+  action: "insert",
   issueId: 42,
   repository: { owner: "owner", repo: "repo" },
 };
@@ -281,9 +278,14 @@ describe("performAction", async () => {
     const { client, calls } = fakeClient([
       { id: 9, body: "<!-- marker -->\nold" },
     ]);
-    await performAction(client, "delete", baseOptions);
+    const options = parseOptions([
+      ...withoutFlag("--body"),
+      "--action",
+      "delete",
+    ]);
+    await performAction(client, options.action, options);
     assert.deepEqual(calls.deleteComment, [
-      { owner: "owner", repo: "repo", comment_id: 9 },
+      { owner: "github", repo: "codeql-action", comment_id: 9 },
     ]);
   });
 });

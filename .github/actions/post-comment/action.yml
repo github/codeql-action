@@ -5,16 +5,10 @@ inputs:
     description: "Non-empty marker identifying the comment. Use a unique, stable HTML comment for each distinct comment."
     required: true
   body:
-    description: "Full comment markdown."
-    required: true
-  action-condition:
-    description: "The business condition ('true' or 'false') that selects which action to perform."
-    required: true
-  action-if-true:
-    description: "Action to perform when action-condition is 'true'. One of: none, insert, upsert, delete."
-    required: true
-  action-if-false:
-    description: "Action to perform when action-condition is 'false'. One of: none, insert, upsert, delete."
+    description: "Full comment markdown. Not needed when deleting a comment."
+    required: false
+  action:
+    description: "Action to perform. One of: none, insert, upsert, delete."
     required: true
   issue-id:
     description: "The issue or pull request number to post/update/delete the comment on. Defaults to the current pull request if not provided."
@@ -32,15 +26,11 @@ runs:
         MARKER: ${{ inputs.marker }}
         GH_TOKEN: ${{ inputs.token }}
         ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
-        ACTION_CONDITION: ${{ inputs.action-condition }}
-        ACTION_IF_TRUE: ${{ inputs.action-if-true }}
-        ACTION_IF_FALSE: ${{ inputs.action-if-false }}
+        ACTION: ${{ inputs.action }}
       run: |
         npx tsx ./pr-checks/post-comment.ts \
           --body "$BODY" \
           --marker "$MARKER" \
-          --action-condition "$ACTION_CONDITION" \
-          --action-if-true "$ACTION_IF_TRUE" \
-          --action-if-false "$ACTION_IF_FALSE" \
+          --action "$ACTION" \
           --issue-id "$ISSUE_ID" \
           --repository "$GITHUB_REPOSITORY"

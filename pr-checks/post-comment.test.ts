@@ -49,9 +49,15 @@ describe("parseOptions", async () => {
     assert.deepEqual(options, {
       body: "hello",
       marker: "marker",
+      createIfMissing: false,
       issueId: 42,
       repository: { owner: "github", repo: "codeql-action" },
     });
+  });
+
+  await it("enables creation when --create-if-missing is supplied", () => {
+    const options = parseOptions([...validFlags, "--create-if-missing"]);
+    assert.equal(options.createIfMissing, true);
   });
 
   await it("rejects a missing --body", () => {
@@ -206,6 +212,7 @@ describe("findExistingComment", async () => {
 const baseOptions: Options = {
   body: "hello",
   marker: "marker",
+  createIfMissing: true,
   issueId: 42,
   repository: { owner: "owner", repo: "repo" },
 };
@@ -220,6 +227,25 @@ function assertCommentContent(
 }
 
 describe("setComment", async () => {
+  await it("does not create a resolved comment when no comments exist", async () => {
+    const { client, comments } = fakeClient([]);
+
+    await setComment(client, { ...baseOptions, createIfMissing: false });
+
+    // Resolution does not introduce a warning that was never posted.
+    assert.deepEqual(comments, []);
+  });
+
+  await it("leaves unrelated comments unchanged when creation is disabled", async () => {
+    const originalComments = [{ id: 7, body: "unrelated" }];
+    const { client, comments } = fakeClient(originalComments);
+
+    await setComment(client, { ...baseOptions, createIfMissing: false });
+
+    // Unrelated comments neither trigger resolution nor get overwritten.
+    assert.deepEqual(comments, originalComments);
+  });
+
   await it("uses the supplied marker without affecting other comments", async () => {
     const marker = "custom-warning";
     const { client, comments } = fakeClient([
@@ -308,7 +334,7 @@ describe("setComment", async () => {
     const body =
       "`CHANGELOG.md` is not modified in this PR. No changelog action is needed.";
 
-    await setComment(client, { ...baseOptions, body });
+    await setComment(client, { ...baseOptions, body, createIfMissing: false });
 
     // The resolved state replaces the warning on the same marked comment.
     assert.equal(comments.length, 1);

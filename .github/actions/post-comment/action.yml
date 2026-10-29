@@ -9,6 +9,10 @@ inputs:
   body:
     description: "Full comment markdown."
     required: true
+  create-if-missing:
+    description: "Create a comment if no matching marker exists. Set to 'false' to update existing comments only."
+    required: false
+    default: "true"
   issue-id:
     description: >
       The issue or pull request number to post/update the comment on.
@@ -25,11 +29,13 @@ runs:
       env:
         BODY: ${{ inputs.body }}
         MARKER: ${{ inputs.marker }}
+        CREATE_IF_MISSING: ${{ inputs.create-if-missing != 'false' && '--create-if-missing' || '' }}
         GH_TOKEN: ${{ inputs.token }}
         ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
       run: |
         npx tsx ./pr-checks/post-comment.ts \
           --body "$BODY" \
           --marker "$MARKER" \
+          $CREATE_IF_MISSING \
           --issue-id "$ISSUE_ID" \
           --repository "$GITHUB_REPOSITORY"

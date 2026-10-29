@@ -17,6 +17,8 @@ The `.github/actions/post-comment` action requires callers to supply this value 
 import assert from "node:assert/strict";
 import { parseArgs } from "node:util";
 
+import { RepositoryNwo } from "../src/repository";
+
 import { type ApiClient, getApiClient, resolveToken } from "./api-client";
 
 /** Represents the command-line options. */
@@ -28,7 +30,7 @@ export interface Options {
   /** The issue/pull request number to post/update the comment on. */
   issueId: number;
   /** The repository to operate on. */
-  repository: { owner: string; repo: string };
+  repository: RepositoryNwo;
 }
 
 /** Parses CLI arguments supplied by the composite action into `Options`. */
@@ -60,7 +62,7 @@ export function parseOptions(argv?: string[]): Options {
  */
 export async function findExistingComment(
   client: ApiClient,
-  repository: { owner: string; repo: string },
+  repository: RepositoryNwo,
   issueNumber: number,
   marker: string,
 ): Promise<number | undefined> {

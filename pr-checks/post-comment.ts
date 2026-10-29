@@ -17,7 +17,7 @@ The `.github/actions/post-comment` action requires callers to supply this value 
 import assert from "node:assert/strict";
 import { parseArgs } from "node:util";
 
-import { type ApiClient, getApiClient } from "./api-client";
+import { type ApiClient, getApiClient, resolveToken } from "./api-client";
 
 /** Represents the command-line options. */
 export interface Options {
@@ -53,17 +53,6 @@ export function parseOptions(argv?: string[]): Options {
     issueId: Number(values["issue-id"]),
     repository: { owner, repo },
   };
-}
-
-/** Resolves the GitHub API token to use, from `GH_TOKEN` or `GITHUB_TOKEN`. */
-export function resolveToken(env: NodeJS.ProcessEnv): string {
-  const token = env.GH_TOKEN?.trim() || env.GITHUB_TOKEN?.trim();
-  if (!token) {
-    throw new Error(
-      "Missing authentication token. Set GH_TOKEN or GITHUB_TOKEN.",
-    );
-  }
-  return token;
 }
 
 /**

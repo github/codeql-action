@@ -1,5 +1,7 @@
 import fs from "fs";
 
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
 import * as semver from "semver";
 
 import type { ActionState, Logger } from "./action-common";
@@ -114,11 +116,69 @@ export function xcodeVersionFromLink(
 }
 
 /**
+ * Tries to determine the version of Xcode that is installed by running `xcrun --sdk macosx --show-sdk-version`.
+ *
+ * @param logger The logger to use.
+ * @returns The Xcode version or `undefined` if it couldn't be determined.
+ */
+export async function xcodeVersionFromSdk(
+  logger: Logger,
+): Promise<semver.SemVer | undefined> {
+  try {
+    const xcrun = await io.which("xcrun", true);
+    let stdout = "";
+    let stderr = "";
+
+    const exitCode = await new toolrunner.ToolRunner(
+      xcrun,
+      ["--sdk", "macosx", "--show-sdk-version"],
+      {
+        silent: true,
+        ignoreReturnCode: true,
+        listeners: {
+          stdout: (data: Buffer) => {
+            stdout += data.toString("utf-8");
+          },
+          stderr: (data: Buffer) => {
+            stderr += data.toString("utf-8");
+          },
+        },
+      },
+    ).exec();
+
+    if (exitCode !== 0) {
+      logger.debug(`xcrun returned exit code ${exitCode}`);
+      logger.debug(`stdout:\n${stdout}`);
+      logger.debug(`stderr:\n${stderr}`);
+      return undefined;
+    }
+
+    // We expect the output to only be a version string. Try to parse it into a semver.
+    const version = semver.coerce(stdout.trim());
+
+    if (version === null) {
+      logger.debug(
+        `xcrun's output couldn't be parsed as a version:\n${stdout}`,
+      );
+      logger.debug(`stderr:\n${stderr}`);
+      return undefined;
+    }
+
+    return version;
+  } catch (err) {
+    logger.debug(`Unable to determine Xcode version: ${getErrorMessage(err)}`);
+    return undefined;
+  }
+}
+
+/**
  * Tries to determine the version of Xcode that is installed.
  *
  * @param logger The logger to use.
  * @returns The Xcode version or `undefined` if it couldn't be determined.
  */
-export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
-  return xcodeVersionFromLink(logger);
+export async function xcodeVersion(
+  logger: Logger,
+): Promise<semver.SemVer | undefined> {
+  return xcodeVersionFromLink(logger) ?? (await xcodeVersionFromSdk(logger));
 }

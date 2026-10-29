@@ -1,5 +1,8 @@
 import fs from "fs";
 
+import type { ExecOptions } from "@actions/exec/lib/interfaces";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -9,6 +12,8 @@ import {
   darwinVersion,
   XCODE_SELECT_LINK_PATH,
   xcodeVersionFromLink,
+  xcodeVersion,
+  xcodeVersionFromSdk,
 } from "./platform";
 import {
   checkExpectedLogMessages,
@@ -220,3 +225,94 @@ test.serial(
     t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
   },
 );
+
+test.serial(
+  "xcodeVersionFromSdk returns undefined for non-zero exit code",
+  async (t) => {
+    const logger = new RecordingLogger();
+
+    const which = sinon.stub(io, "which").resolves("/path/to/xcrun");
+    const exec = sinon.stub<[], Promise<number>>().resolves(1);
+    const runner = sinon.createStubInstance(toolrunner.ToolRunner, { exec });
+    const toolrunnerStub = sinon.stub(toolrunner, "ToolRunner").returns(runner);
+
+    await t.notThrowsAsync(async () => {
+      const result = await xcodeVersionFromSdk(logger);
+
+      t.is(result, undefined);
+
+      t.is(which.callCount, 1);
+      t.deepEqual(which.args[0], ["xcrun", true]);
+
+      t.is(toolrunnerStub.callCount, 1);
+      t.is(exec.callCount, 1);
+
+      checkExpectedLogMessages(t, logger.messages, [
+        "xcrun returned exit code 1",
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "xcodeVersionFromSdk extracts version from xcrun stdout",
+  async (t) => {
+    const logger = new RecordingLogger();
+
+    const which = sinon.stub(io, "which").resolves("/path/to/xcrun");
+
+    let stdoutListener: ((data: Buffer) => void) | undefined = undefined;
+    const exec = sinon.stub<[], Promise<number>>().callsFake(async () => {
+      if (stdoutListener !== undefined) {
+        stdoutListener(Buffer.from("26.5"));
+      }
+      return 0;
+    });
+    const runner = sinon.createStubInstance(toolrunner.ToolRunner, { exec });
+
+    const toolrunnerStub = sinon
+      .stub(toolrunner, "ToolRunner")
+      .callsFake((_cmd, _args, opts: ExecOptions) => {
+        stdoutListener = opts.listeners?.stdout;
+        return runner;
+      });
+
+    await t.notThrowsAsync(async () => {
+      const result = await xcodeVersionFromSdk(logger);
+
+      t.not(result, undefined);
+      t.is(result?.major, 26);
+      t.is(result?.minor, 5);
+
+      t.is(which.callCount, 1);
+      t.deepEqual(which.args[0], ["xcrun", true]);
+
+      t.is(toolrunnerStub.callCount, 1);
+      t.is(exec.callCount, 1);
+    });
+  },
+);
+
+test.serial("xcodeVersion falls back to xcodeVersionFromSdk", async (t) => {
+  const logger = new RecordingLogger();
+
+  const readlinkSync = sinon
+    .stub(fs, "readlinkSync")
+    .throws(new Error("ENOENT: no such file or directory"));
+  const which = sinon.stub(io, "which").throws(new Error("No such tool"));
+
+  await t.notThrowsAsync(async () => {
+    const result = await xcodeVersion(logger);
+
+    t.is(result, undefined);
+
+    t.is(readlinkSync.callCount, 1);
+    t.is(which.callCount, 1);
+    t.deepEqual(which.args[0], ["xcrun", true]);
+
+    checkExpectedLogMessages(t, logger.messages, [
+      "Unable to determine Xcode version: ENOENT: no such file or directory",
+      "Unable to determine Xcode version: No such tool",
+    ]);
+  });
+});

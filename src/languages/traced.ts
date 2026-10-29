@@ -193,5 +193,9 @@ export async function checkRunnerSupportsTracedAnalysis(
       "Xcode",
       xcodeVer,
     );
+  } else if (xcodeVer === undefined) {
+    action.logger.info(
+      "Unable to determine Xcode version. Assuming it is not installed.",
+    );
   }
 }

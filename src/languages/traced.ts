@@ -1,6 +1,7 @@
 import * as semver from "semver";
 
 import type { ActionState, Logger } from "../action-common";
+import { isSelfHostedRunner } from "../actions-util";
 import type { CodeQL } from "../codeql";
 import type { ActionConfig } from "../config/action-config";
 import { addDiagnostic, makeDiagnostic } from "../diagnostics";
@@ -115,7 +116,7 @@ export async function hasTracedLanguages(
  * @throws {ConfigurationError} If traced analysis is not possible on the current runner.
  */
 export async function checkRunnerSupportsTracedAnalysis(
-  action: ActionState<["Base", "Logger", "FeatureFlags"]>,
+  action: ActionState<["Base", "Env", "Logger", "FeatureFlags"]>,
   config: ActionConfig<"languages" | "dbLocation" | "tempDir">,
   codeql: CodeQL,
 ) {
@@ -129,6 +130,11 @@ export async function checkRunnerSupportsTracedAnalysis(
   if (
     !(await action.features.getValue(Feature.CheckUnsupportedTracedAnalysis))
   ) {
+    return;
+  }
+
+  // Skip if we are on a self-hosted runner.
+  if (isSelfHostedRunner(action.env)) {
     return;
   }
 

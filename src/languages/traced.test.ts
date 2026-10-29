@@ -170,6 +170,38 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
     ]);
   }));
 
+test("checkRunnerSupportsTracedAnalysis doesn't perform checks on self-hosted runners", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+    env.set(ActionsEnvVars.RUNNER_ENVIRONMENT, "self-hosted");
+    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
+
+    const codeql = await getCodeQLWithTracedStub(
+      "codeql-for-testing",
+      logger,
+      env,
+    );
+    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+    await checkRunnerSupportsTracedAnalysis(
+      initAllState({
+        logger,
+        platform: "darwin",
+        osRelease: "unexpected",
+        env,
+        features,
+      }),
+      createTestConfig({ languages: [BuiltInLanguage.go] }),
+      codeql,
+    );
+
+    checkUnexpectedLogMessages(t, logger.messages, [
+      "Unable to determine version of macOS, got: unexpected",
+    ]);
+  }));
+
 test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver", async (t) =>
   withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();

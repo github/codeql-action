@@ -68,12 +68,15 @@ export const XCODE_APP_FILENAME_PATTERN = new RegExp(
 );
 
 /**
- * Tries to determine the version of Xcode that is installed.
+ * Tries to determine the version of Xcode that is installed from the resolved symbolic link
+ * at {@link XCODE_SELECT_LINK_PATH}.
  *
  * @param logger The logger to use.
  * @returns The Xcode version or `undefined` if it couldn't be determined.
  */
-export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
+export function xcodeVersionFromLink(
+  logger: Logger,
+): semver.SemVer | undefined {
   try {
     // Read what the symbolic link points to. This will throw if `XCODE_SELECT_LINK_PATH` does not
     // exist (`ENOENT`) or is not a symbolic link (`EINVAL`).
@@ -108,4 +111,14 @@ export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
     logger.debug(`Unable to determine Xcode version: ${getErrorMessage(err)}`);
     return undefined;
   }
+}
+
+/**
+ * Tries to determine the version of Xcode that is installed.
+ *
+ * @param logger The logger to use.
+ * @returns The Xcode version or `undefined` if it couldn't be determined.
+ */
+export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
+  return xcodeVersionFromLink(logger);
 }

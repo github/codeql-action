@@ -8,7 +8,7 @@ import {
   getBundlePlatform,
   darwinVersion,
   XCODE_SELECT_LINK_PATH,
-  xcodeVersion,
+  xcodeVersionFromLink,
 } from "./platform";
 import {
   checkExpectedLogMessages,
@@ -71,21 +71,24 @@ test("darwinVersion returns semver if parsing succeeds", (t) => {
   }
 });
 
-test.serial("xcodeVersion returns undefined if symlink doesn't exist", (t) => {
-  const logger = new RecordingLogger();
+test.serial(
+  "xcodeVersionFromLink returns undefined if symlink doesn't exist",
+  (t) => {
+    const logger = new RecordingLogger();
 
-  const readlinkSync = sinon
-    .stub(fs, "readlinkSync")
-    .throws(new Error("ENOENT: no such file or directory"));
+    const readlinkSync = sinon
+      .stub(fs, "readlinkSync")
+      .throws(new Error("ENOENT: no such file or directory"));
 
-  t.is(xcodeVersion(logger), undefined);
-  t.is(readlinkSync.callCount, 1);
-  t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+    t.is(xcodeVersionFromLink(logger), undefined);
+    t.is(readlinkSync.callCount, 1);
+    t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
-  checkExpectedLogMessages(t, logger.messages, [
-    "Unable to determine Xcode version: ENOENT: no such file or directory",
-  ]);
-});
+    checkExpectedLogMessages(t, logger.messages, [
+      "Unable to determine Xcode version: ENOENT: no such file or directory",
+    ]);
+  },
+);
 
 test.serial("xcodeVersion returns undefined if file is not a symlink", (t) => {
   const logger = new RecordingLogger();
@@ -94,7 +97,7 @@ test.serial("xcodeVersion returns undefined if file is not a symlink", (t) => {
     .stub(fs, "readlinkSync")
     .throws(new Error("EINVAL: invalid argument"));
 
-  t.is(xcodeVersion(logger), undefined);
+  t.is(xcodeVersionFromLink(logger), undefined);
   t.is(readlinkSync.callCount, 1);
   t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -104,13 +107,13 @@ test.serial("xcodeVersion returns undefined if file is not a symlink", (t) => {
 });
 
 test.serial(
-  "xcodeVersion returns undefined if resolving the symlink returns nothing",
+  "xcodeVersionFromLink returns undefined if resolving the symlink returns nothing",
   (t) => {
     const logger = new RecordingLogger();
 
     const readlinkSync = sinon.stub(fs, "readlinkSync").returns("");
 
-    t.is(xcodeVersion(logger), undefined);
+    t.is(xcodeVersionFromLink(logger), undefined);
     t.is(readlinkSync.callCount, 1);
     t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -121,7 +124,7 @@ test.serial(
 );
 
 test.serial(
-  "xcodeVersion returns undefined if resolved path doesn't include pattern",
+  "xcodeVersionFromLink returns undefined if resolved path doesn't include pattern",
   (t) => {
     const logger = new RecordingLogger();
 
@@ -129,7 +132,7 @@ test.serial(
       .stub(fs, "readlinkSync")
       .returns("/Applications/Xcode.app/Contents/Developer");
 
-    t.is(xcodeVersion(logger), undefined);
+    t.is(xcodeVersionFromLink(logger), undefined);
     t.is(readlinkSync.callCount, 1);
     t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -139,30 +142,33 @@ test.serial(
   },
 );
 
-test.serial("xcodeVersion returns undefined if match can't be parsed", (t) => {
-  const logger = new RecordingLogger();
+test.serial(
+  "xcodeVersionFromLink returns undefined if match can't be parsed",
+  (t) => {
+    const logger = new RecordingLogger();
 
-  const readlinkSync = sinon
-    .stub(fs, "readlinkSync")
-    .returns("/Applications/Xcode_00.0.app/Contents/Developer");
+    const readlinkSync = sinon
+      .stub(fs, "readlinkSync")
+      .returns("/Applications/Xcode_00.0.app/Contents/Developer");
 
-  t.is(xcodeVersion(logger), undefined);
-  t.is(readlinkSync.callCount, 1);
-  t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+    t.is(xcodeVersionFromLink(logger), undefined);
+    t.is(readlinkSync.callCount, 1);
+    t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
-  checkExpectedLogMessages(t, logger.messages, [
-    "Couldn't parse '00.0' as a semantic version.",
-  ]);
-});
+    checkExpectedLogMessages(t, logger.messages, [
+      "Couldn't parse '00.0' as a semantic version.",
+    ]);
+  },
+);
 
-test.serial("xcodeVersion returns version from resolved path", (t) => {
+test.serial("xcodeVersionFromLink returns version from resolved path", (t) => {
   const logger = new RecordingLogger();
 
   const readlinkSync = sinon
     .stub(fs, "readlinkSync")
     .returns("/Applications/Xcode_16.4.app/Contents/Developer");
 
-  const result = xcodeVersion(logger);
+  const result = xcodeVersionFromLink(logger);
 
   if (t.truthy(result)) {
     t.is(result.major, 16);
@@ -173,26 +179,29 @@ test.serial("xcodeVersion returns version from resolved path", (t) => {
   t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 });
 
-test.serial("xcodeVersion returns major version from resolved path", (t) => {
-  const logger = new RecordingLogger();
+test.serial(
+  "xcodeVersionFromLink returns major version from resolved path",
+  (t) => {
+    const logger = new RecordingLogger();
 
-  const readlinkSync = sinon
-    .stub(fs, "readlinkSync")
-    .returns("/Applications/Xcode_16.app/Contents/Developer");
+    const readlinkSync = sinon
+      .stub(fs, "readlinkSync")
+      .returns("/Applications/Xcode_16.app/Contents/Developer");
 
-  const result = xcodeVersion(logger);
+    const result = xcodeVersionFromLink(logger);
 
-  if (t.truthy(result)) {
-    t.is(result.major, 16);
-    t.is(result.minor, 0);
-  }
+    if (t.truthy(result)) {
+      t.is(result.major, 16);
+      t.is(result.minor, 0);
+    }
 
-  t.is(readlinkSync.callCount, 1);
-  t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
-});
+    t.is(readlinkSync.callCount, 1);
+    t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+  },
+);
 
 test.serial(
-  "xcodeVersion allows more version components in resolved path",
+  "xcodeVersionFromLink allows more version components in resolved path",
   (t) => {
     const logger = new RecordingLogger();
 
@@ -200,7 +209,7 @@ test.serial(
       .stub(fs, "readlinkSync")
       .returns("/Applications/Xcode_16.5.9.app/Contents/Developer");
 
-    const result = xcodeVersion(logger);
+    const result = xcodeVersionFromLink(logger);
 
     if (t.truthy(result)) {
       t.is(result.major, 16);

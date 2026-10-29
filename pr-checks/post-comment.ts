@@ -108,7 +108,7 @@ export async function findExistingComment(
   if (markedComments.length > 1) {
     console.warn(
       `Found ${markedComments.length} comments with marker "${formattedMarker}". ` +
-        "Updating the first one and leaving the others unchanged." +
+        "Updating the first one and leaving the others unchanged. " +
         "Use a unique marker for each distinct managed comment to avoid this situation.",
     );
   }

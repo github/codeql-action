@@ -64,14 +64,14 @@ describe("parseOptions", async () => {
   await it("rejects an empty --marker", () => {
     assert.throws(
       () => parseOptions(withFlag("--marker", "")),
-      /Missing required flag --marker/,
+      /The value for --marker cannot be empty/,
     );
   });
 
   await it("rejects a whitespace-only --marker", () => {
     assert.throws(
       () => parseOptions(withFlag("--marker", " \t\n")),
-      /Missing required flag --marker/,
+      /The value for --marker cannot be empty/,
     );
   });
 });

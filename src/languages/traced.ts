@@ -130,27 +130,42 @@ export async function checkRunnerSupportsTracedAnalysis(
   if (
     !(await action.features.getValue(Feature.CheckUnsupportedTracedAnalysis))
   ) {
+    action.logger.debug(
+      "Skipping traced analysis compatibility checks because the feature is not enabled.",
+    );
     return;
   }
 
   // Skip if we are on a self-hosted runner.
   if (isSelfHostedRunner(action.env)) {
+    action.logger.debug(
+      "Skipping traced analysis compatibility checks because we are on a self-hosted runner.",
+    );
     return;
   }
 
   // `build-mode: none` doesn't use the tracer, so it is always supported.
   if (config.buildMode !== undefined && config.buildMode === "none") {
+    action.logger.debug(
+      "Skipping traced analysis compatibility checks because the build mode is 'none'.",
+    );
     return;
   }
 
   // These checks don't apply if we are not on macOS.
   if (version === undefined) {
+    action.logger.debug(
+      "Skipping traced analysis compatibility checks because we are not on macOS.",
+    );
     return;
   }
 
   // If none of the languages are traced, then we can skip the compatibility checks below as well.
   const tracedLanguages = await hasTracedLanguages(config, codeql);
   if (tracedLanguages.length === 0) {
+    action.logger.debug(
+      "Skipping traced analysis compatibility checks because no traced languages are being analyzed.",
+    );
     return;
   }
 

@@ -52,15 +52,29 @@ export function parseOptions(argv?: string[]): Options {
     strict: true,
   });
 
+  assert(values.body !== undefined, "Missing required flag --body.");
+  assert(values.body.trim() !== "", "The value for --body cannot be empty.");
   assert(values.marker !== undefined, "Missing required flag --marker.");
   assert(
     values.marker.trim() !== "",
     "The value for --marker cannot be empty.",
   );
-  const [owner, repo] = values.repository!.split("/");
+  assert(
+    values.repository !== undefined,
+    "Missing required flag --repository.",
+  );
+  assert(
+    values.repository.trim() !== "",
+    "The value for --repository cannot be empty.",
+  );
+  assert(
+    /^[\w.-]+\/[\w.-]+$/.test(values.repository),
+    "Invalid --repository value.",
+  );
 
+  const [owner, repo] = values.repository.split("/");
   return {
-    body: values.body!,
+    body: values.body,
     marker: values.marker,
     issueId: Number(values["issue-id"]),
     repository: { owner, repo },

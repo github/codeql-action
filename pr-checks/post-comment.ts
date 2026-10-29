@@ -1,17 +1,19 @@
 #!/usr/bin/env npx tsx
 
 /*
-Generic CLI for creating or updating a "sticky" PR comment identified by a hidden
-HTML-comment marker. This centralizes the gh api logic previously duplicated across PR-check
-workflow steps that each managed their own marked comment (e.g. a CHANGELOG.md modification
-warning).
+Creates or updates a pull request comment identified by a marker. The marker
+is supplied via `--marker` (or the `.github/actions/post-comment` action's `marker` input)
+and must be non-empty. The marker is prepended to `--body` and used to find
+the comment on later runs.
 
-The marker is passed explicitly via `--marker` and can be any non-empty string, though an
-HTML comment (e.g. `<!-- my-bot -->`) is recommended so it doesn't render visibly. It is used
-both to find a pre-existing comment on the pull request to update, and is automatically prepended to
-`--body` when posting or updating a comment so that future invocations can find it again.
-The `.github/actions/post-comment` action requires callers to supply this value via its
-`marker` input.
+Example:
+```sh
+GH_TOKEN=<token> npx tsx ./pr-checks/post-comment.ts \
+  --body "The changelog needs updating." \
+  --marker "<!-- my-bot -->" \
+  --issue-id 123 \
+  --repository github/codeql-action
+```
 */
 
 import assert from "node:assert/strict";

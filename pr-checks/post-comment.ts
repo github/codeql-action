@@ -46,12 +46,16 @@ export function parseOptions(argv?: string[]): Options {
     strict: true,
   });
 
-  assert(values.marker?.trim(), "Missing required flag --marker.");
+  assert(values.marker !== undefined, "Missing required flag --marker.");
+  assert(
+    values.marker.trim() !== "",
+    "The value for --marker cannot be empty.",
+  );
   const [owner, repo] = values.repository!.split("/");
 
   return {
     body: values.body!,
-    marker: values.marker!,
+    marker: values.marker,
     issueId: Number(values["issue-id"]),
     repository: { owner, repo },
   };

@@ -75,7 +75,17 @@ export async function findExistingComment(
     issue_number: issueNumber,
     per_page: 100,
   });
-  return comments.find((comment) => comment.body?.startsWith(marker))?.id;
+  const markedComments = comments.filter((comment) =>
+    comment.body?.startsWith(marker),
+  );
+  if (markedComments.length > 1) {
+    console.warn(
+      `Found ${markedComments.length} comments with marker "${marker}". ` +
+        "Updating the first one and leaving the others unchanged." +
+        "Use a unique marker for each distinct managed comment to avoid this situation.",
+    );
+  }
+  return markedComments[0]?.id;
 }
 
 /**

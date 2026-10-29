@@ -313,6 +313,7 @@ jobs:
         uses: ./.github/actions/post-comment
         with:
           marker: "post-comment:CHANGELOG.md"
+          create-if-missing: "false"
           body: |
             ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
             Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`

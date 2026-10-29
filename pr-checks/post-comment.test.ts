@@ -7,12 +7,11 @@ Tests for post-comment.ts.
 import * as assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { type ApiClient } from "./api-client";
+import { type ApiClient, resolveToken } from "./api-client";
 import {
   findExistingComment,
   type Options,
   parseOptions,
-  resolveToken,
   setComment,
 } from "./post-comment";
 

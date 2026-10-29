@@ -244,9 +244,6 @@ jobs:
           # Check out main, not the PR's head, since this job runs with
           # `pull-requests: write` permissions and must not execute untrusted code from the PR.
           ref: main
-          sparse-checkout: |
-            pr-checks
-            .github/actions/post-comment
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

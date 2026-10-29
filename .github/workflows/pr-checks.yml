@@ -241,9 +241,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Check out the base ref, not the PR's head, since this job runs with
+          # Check out main, not the PR's head, since this job runs with
           # `pull-requests: write` permissions and must not execute untrusted code from the PR.
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: main
           sparse-checkout: |
             pr-checks
             .github/actions/post-comment

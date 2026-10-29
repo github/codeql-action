@@ -20,7 +20,7 @@ const validFlags = [
   "--body",
   "hello",
   "--marker",
-  "<!-- marker -->",
+  "marker",
   "--issue-id",
   "42",
   "--repository",
@@ -48,7 +48,7 @@ describe("parseOptions", async () => {
     const options = parseOptions(validFlags);
     assert.deepEqual(options, {
       body: "hello",
-      marker: "<!-- marker -->",
+      marker: "marker",
       issueId: 42,
       repository: { owner: "github", repo: "codeql-action" },
     });
@@ -136,7 +136,7 @@ describe("findExistingComment", async () => {
       client,
       { owner: "owner", repo: "repo" },
       1,
-      "<!-- marker -->",
+      "marker",
     );
     assert.equal(id, 2);
   });
@@ -147,7 +147,7 @@ describe("findExistingComment", async () => {
       client,
       { owner: "owner", repo: "repo" },
       1,
-      "<!-- marker -->",
+      "marker",
     );
     assert.equal(id, undefined);
   });
@@ -156,7 +156,7 @@ describe("findExistingComment", async () => {
 /** A baseline set of `Options`, for use in `setComment` tests. */
 const baseOptions: Options = {
   body: "hello",
-  marker: "<!-- marker -->",
+  marker: "marker",
   issueId: 42,
   repository: { owner: "owner", repo: "repo" },
 };
@@ -166,16 +166,16 @@ function assertCommentContent(
   marker: string,
   body: string,
 ): void {
-  assert.ok(comment.body?.startsWith(marker));
+  assert.ok(comment.body?.startsWith(`<!-- ${marker} -->`));
   assert.ok(comment.body?.endsWith(body));
 }
 
 describe("setComment", async () => {
   await it("uses the supplied marker without affecting other comments", async () => {
-    const marker = "<!-- custom-warning -->";
+    const marker = "custom-warning";
     const { client, comments } = fakeClient([
-      { id: 1, body: `${baseOptions.marker}\nunrelated warning` },
-      { id: 2, body: `${marker}\nold warning` },
+      { id: 1, body: "<!-- marker -->\nunrelated warning" },
+      { id: 2, body: "<!-- custom-warning -->\nold warning" },
     ]);
     const options = parseOptions(withFlag("--marker", marker));
 
@@ -185,7 +185,7 @@ describe("setComment", async () => {
     assert.equal(comments.length, 2);
     assert.deepEqual(comments[0], {
       id: 1,
-      body: `${baseOptions.marker}\nunrelated warning`,
+      body: "<!-- marker -->\nunrelated warning",
     });
     assert.equal(comments[1].id, 2);
     assertCommentContent(comments[1], marker, options.body);
@@ -196,7 +196,7 @@ describe("setComment", async () => {
     // No comment has the marker before posting.
     assert.equal(comments.length, 0);
     assert.ok(
-      !comments.some(({ body }) => body?.startsWith(baseOptions.marker)),
+      !comments.some(({ body }) => body?.startsWith("<!-- marker -->")),
     );
 
     await setComment(client, baseOptions);
@@ -214,7 +214,7 @@ describe("setComment", async () => {
     const { client, comments } = fakeClient(originalComments);
     // Existing comments do not match the marker.
     assert.ok(
-      !comments.some(({ body }) => body?.startsWith(baseOptions.marker)),
+      !comments.some(({ body }) => body?.startsWith("<!-- marker -->")),
     );
 
     await setComment(client, baseOptions);
@@ -226,7 +226,7 @@ describe("setComment", async () => {
       originalComments,
     );
     const markedComments = comments.filter(({ body }) =>
-      body?.startsWith(baseOptions.marker),
+      body?.startsWith("<!-- marker -->"),
     );
     // Exactly one comment contains the expected marker and body.
     assert.equal(markedComments.length, 1);
@@ -241,7 +241,7 @@ describe("setComment", async () => {
 
   await it("updates the existing comment when one is found", async () => {
     const { client, comments } = fakeClient([
-      { id: 7, body: `${baseOptions.marker}\nold` },
+      { id: 7, body: "<!-- marker -->\nold" },
     ]);
 
     await setComment(client, baseOptions);
@@ -254,7 +254,7 @@ describe("setComment", async () => {
 
   await it("replaces a warning with the resolved state using the same marker", async () => {
     const { client, comments } = fakeClient([
-      { id: 9, body: `${baseOptions.marker}\nold` },
+      { id: 9, body: "<!-- marker -->\nold" },
     ]);
     const body =
       "`CHANGELOG.md` is not modified in this PR. No changelog action is needed.";

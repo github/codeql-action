@@ -3,14 +3,14 @@
 /*
 Creates or updates a pull request comment identified by a marker. The marker
 is supplied via `--marker` (or the `.github/actions/post-comment` action's `marker` input)
-and must be non-empty. The marker is prepended to `--body` and used to find
-the comment on later runs.
+and must be non-empty. Supply a plain-text identifier; the CLI wraps it in a
+hidden HTML comment, prepends it to `--body`, and uses it to find the comment on later runs.
 
 Example:
 ```sh
 GH_TOKEN=<token> npx tsx ./pr-checks/post-comment.ts \
   --body "The changelog needs updating." \
-  --marker "<!-- my-bot -->" \
+  --marker "my-bot" \
   --issue-id 123 \
   --repository github/codeql-action
 ```
@@ -27,12 +27,16 @@ import { type ApiClient, getApiClient, resolveToken } from "./api-client";
 export interface Options {
   /** The full comment body. */
   body: string;
-  /** The hidden HTML-comment marker used to find a pre-existing comment. */
+  /** Plain-text identifier wrapped in a hidden HTML comment. */
   marker: string;
   /** The issue/pull request number to post/update the comment on. */
   issueId: number;
   /** The repository to operate on. */
   repository: RepositoryNwo;
+}
+
+function hiddenMarker(marker: string): string {
+  return `<!-- ${marker} -->`;
 }
 
 /** Parses CLI arguments supplied by the composite action into `Options`. */
@@ -72,17 +76,18 @@ export async function findExistingComment(
   issueNumber: number,
   marker: string,
 ): Promise<number | undefined> {
+  const formattedMarker = hiddenMarker(marker);
   const comments = await client.paginate(client.rest.issues.listComments, {
     ...repository,
     issue_number: issueNumber,
     per_page: 100,
   });
   const markedComments = comments.filter((comment) =>
-    comment.body?.startsWith(marker),
+    comment.body?.startsWith(formattedMarker),
   );
   if (markedComments.length > 1) {
     console.warn(
-      `Found ${markedComments.length} comments with marker "${marker}". ` +
+      `Found ${markedComments.length} comments with marker "${formattedMarker}". ` +
         "Updating the first one and leaving the others unchanged." +
         "Use a unique marker for each distinct managed comment to avoid this situation.",
     );
@@ -98,7 +103,7 @@ export async function setComment(
   options: Options,
 ): Promise<void> {
   const { issueId, marker, repository } = options;
-  const body = `${marker}\n${options.body}`;
+  const body = `${hiddenMarker(marker)}\n${options.body}`;
 
   const existingCommentId = await findExistingComment(
     client,

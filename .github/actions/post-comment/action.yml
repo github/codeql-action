@@ -3,8 +3,8 @@ description: "Create or update a sticky PR comment identified by a caller-provid
 inputs:
   marker:
     description: >
-      Non-empty marker identifying the comment. Use a unique,
-      stable HTML comment for each distinct comment.
+      Non-empty plain-text identifier for the comment. Use a unique, stable value
+      for each distinct comment; it is automatically wrapped in a hidden HTML comment.
     required: true
   body:
     description: "Full comment markdown."

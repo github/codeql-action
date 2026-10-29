@@ -295,7 +295,7 @@ jobs:
           !startsWith(github.event.pull_request.head.ref, 'update-bundle/')
         uses: ./.github/actions/post-comment
         with:
-          marker: "<!-- post-comment:CHANGELOG.md -->"
+          marker: "post-comment:CHANGELOG.md"
           body: |
             ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
             Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`
@@ -312,7 +312,7 @@ jobs:
           !startsWith(github.event.pull_request.head.ref, 'update-bundle/')
         uses: ./.github/actions/post-comment
         with:
-          marker: "<!-- post-comment:CHANGELOG.md -->"
+          marker: "post-comment:CHANGELOG.md"
           body: |
             ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
             Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`

@@ -2,13 +2,17 @@ name: "Post comment"
 description: "Create or update a sticky PR comment identified by a caller-provided marker."
 inputs:
   marker:
-    description: "Non-empty marker identifying the comment. Use a unique, stable HTML comment for each distinct comment."
+    description: >
+      Non-empty marker identifying the comment. Use a unique,
+      stable HTML comment for each distinct comment.
     required: true
   body:
     description: "Full comment markdown."
     required: true
   issue-id:
-    description: "The issue or pull request number to post/update the comment on. Defaults to the current pull request if not provided."
+    description: >
+      The issue or pull request number to post/update the comment on.
+      Defaults to the current pull request if not provided.
     required: false
   token:
     description: "The GitHub token to authenticate with."

@@ -82,13 +82,11 @@ export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
     });
 
     if (stats === undefined) {
-      logger.debug(
-        `'${XCODE_SELECT_LINK_PATH}' does not exist. Xcode is probably not installed.`,
-      );
+      logger.debug(`'${XCODE_SELECT_LINK_PATH}' does not exist.`);
       return undefined;
     }
     if (!stats.isSymbolicLink()) {
-      logger.warning(
+      logger.debug(
         `${XCODE_SELECT_LINK_PATH} exists, but is not a symbolic link.`,
       );
       return undefined;
@@ -98,7 +96,7 @@ export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
     const xcodePath = fs.readlinkSync(XCODE_SELECT_LINK_PATH);
 
     if (xcodePath === "") {
-      logger.warning(
+      logger.debug(
         `Resolving ${XCODE_SELECT_LINK_PATH} unexpectedly returned nothing.`,
       );
       return undefined;
@@ -108,7 +106,7 @@ export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
     const matchResult = xcodePath.match(XCODE_APP_FILENAME_PATTERN);
 
     if (matchResult?.groups === undefined) {
-      logger.warning(
+      logger.debug(
         `Xcode path '${xcodePath}' does not contain expected pattern.`,
       );
       return undefined;
@@ -118,14 +116,12 @@ export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
     const version = semver.coerce(majorMinor);
 
     if (version === null) {
-      logger.warning(`Couldn't parse '${majorMinor}' as a semantic version.`);
+      logger.debug(`Couldn't parse '${majorMinor}' as a semantic version.`);
       return undefined;
     }
     return version;
   } catch (err) {
-    logger.warning(
-      `Unable to determine Xcode version: ${getErrorMessage(err)}`,
-    );
+    logger.debug(`Unable to determine Xcode version: ${getErrorMessage(err)}`);
     return undefined;
   }
 }

@@ -84,7 +84,7 @@ test.serial("xcodeVersion returns undefined if symlink doesn't exist", (t) => {
   ]);
 
   checkExpectedLogMessages(t, logger.messages, [
-    "Xcode is probably not installed.",
+    "'/private/var/db/xcode_select_link' does not exist",
   ]);
 });
 

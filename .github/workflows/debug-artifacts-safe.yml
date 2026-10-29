@@ -45,7 +45,7 @@ jobs:
     # stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest` (`ubuntu-26.04`).
     # We could install that older version on the newer runners, or use the older runner.
     # We do the latter here. This can be removed once we stop supporting `v2.20.7`.
-    runs-on: ${{ case(matrix.version == 'stable-v2.20.7', 'ubuntu-24.04', 'ubuntu-latest') }}
+    runs-on: ${{ case(matrix.version == 'stable-v2.20.7', 'ubuntu-24.04', 'ubuntu-26.04') }}
 
     steps:
       - name: Check out repository
@@ -84,7 +84,7 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

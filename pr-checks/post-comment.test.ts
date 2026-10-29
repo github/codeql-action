@@ -54,6 +54,27 @@ describe("parseOptions", async () => {
     });
   });
 
+  await it("rejects a missing --body", () => {
+    assert.throws(
+      () => parseOptions(withoutFlag("--body")),
+      /Missing required flag --body/,
+    );
+  });
+
+  await it("rejects an empty --body", () => {
+    assert.throws(
+      () => parseOptions(withFlag("--body", "")),
+      /The value for --body cannot be empty/,
+    );
+  });
+
+  await it("rejects a whitespace-only --body", () => {
+    assert.throws(
+      () => parseOptions(withFlag("--body", " \t\n")),
+      /The value for --body cannot be empty/,
+    );
+  });
+
   await it("rejects a missing --marker", () => {
     assert.throws(
       () => parseOptions(withoutFlag("--marker")),
@@ -72,6 +93,34 @@ describe("parseOptions", async () => {
     assert.throws(
       () => parseOptions(withFlag("--marker", " \t\n")),
       /The value for --marker cannot be empty/,
+    );
+  });
+
+  await it("rejects a missing --repository", () => {
+    assert.throws(
+      () => parseOptions(withoutFlag("--repository")),
+      /Missing required flag --repository/,
+    );
+  });
+
+  await it("rejects an empty --repository", () => {
+    assert.throws(
+      () => parseOptions(withFlag("--repository", "")),
+      /The value for --repository cannot be empty/,
+    );
+  });
+
+  await it("rejects a whitespace-only --repository", () => {
+    assert.throws(
+      () => parseOptions(withFlag("--repository", " \t\n")),
+      /The value for --repository cannot be empty/,
+    );
+  });
+
+  await it("rejects an invalid --repository value", () => {
+    assert.throws(
+      () => parseOptions(withFlag("--repository", "github/codeql/action")),
+      /Invalid --repository value/,
     );
   });
 });

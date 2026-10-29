@@ -197,7 +197,7 @@ export async function checkRunnerSupportsTracedAnalysis(
 
   // Determining whether the Xcode version is supported only makes sense on macOS, so we only do it
   // after determining that we are running on macOS.
-  const xcodeVer = xcodeVersion(action.logger);
+  const xcodeVer = await xcodeVersion(action.logger);
 
   if (
     xcodeVer !== undefined &&

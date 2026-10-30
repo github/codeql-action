@@ -86,6 +86,7 @@ test(`checkRunnerSupportsTracedAnalysis doesn't throw for BMN`, async (t) =>
     const logger = new RecordingLogger();
     const env = getTestEnv();
     env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
 
     const codeql = await getCodeQLWithTracedStub(
       "codeql-for-testing",
@@ -101,11 +102,16 @@ test(`checkRunnerSupportsTracedAnalysis doesn't throw for BMN`, async (t) =>
           osRelease: "27.0.0",
           env,
           logger,
+          features,
         }),
         createTestConfig({ tempDir: tmpDir, buildMode: BuildMode.None }),
         codeql,
       ),
     );
+
+    checkExpectedLogMessages(t, logger.messages, [
+      "Skipping traced analysis compatibility checks because the build mode is 'none'.",
+    ]);
   }));
 
 // Some languages not in `TEST_DEFAULT_TRACED_LANGUAGES`.
@@ -119,6 +125,7 @@ for (const nonTracedLanguage of nonTracedLanguages) {
       const logger = new RecordingLogger();
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+      const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
 
       const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
@@ -134,11 +141,16 @@ for (const nonTracedLanguage of nonTracedLanguages) {
             osRelease: "27.0.0",
             env,
             logger,
+            features,
           }),
           createTestConfig({ tempDir: tmpDir, languages: [nonTracedLanguage] }),
           codeql,
         ),
       );
+
+      checkExpectedLogMessages(t, logger.messages, [
+        "Skipping traced analysis compatibility checks because no traced languages are being analyzed.",
+      ]);
     }));
 }
 
@@ -147,7 +159,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
     const logger = new RecordingLogger();
     const env = getTestEnv();
     env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-    const features = createFeatures([]);
+    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
 
     const codeql = await getCodeQLWithTracedStub(
       "codeql-for-testing",
@@ -169,7 +181,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
     );
 
     checkUnexpectedLogMessages(t, logger.messages, [
-      "Unable to parse Darwin kernel version, got: unexpected",
+      "Skipping traced analysis compatibility checks because the feature is not enabled.",
     ]);
   }));
 

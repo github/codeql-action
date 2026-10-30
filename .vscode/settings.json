@@ -29,5 +29,6 @@
   "[yaml]": {
     "editor.tabSize": 2,
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "prettier.prettierPath": "./node_modules/prettier"
 }

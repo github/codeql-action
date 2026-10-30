@@ -6,6 +6,7 @@
   "scripts": {
     "_build_comment": "echo 'Run the full build so we typecheck the project and can reuse the transpiled files in npm test'",
     "build": "./scripts/check-node-modules.sh && npm run transpile && node build.mjs",
+    "format-yaml": "prettier --write --parser yaml '**/*.{yml,yaml}'",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 .",
     "lint-ci": "SARIF_ESLINT_IGNORE_SUPPRESSED=true eslint --report-unused-disable-directives --max-warnings=0 . --format @microsoft/eslint-formatter-sarif --output-file=eslint.sarif",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
@@ -70,6 +71,7 @@
     "glob": "^13.0.6",
     "globals": "^17.13.0",
     "nock": "^14.0.17",
+    "prettier": "^3.9.10",
     "sinon": "^22.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0"

@@ -498,7 +498,7 @@ test.serial(
       checkExpectedLogMessages(t, logger.messages, [
         "Unable to determine Xcode version: Not found",
         "Unable to determine Xcode version from xcodebuild: Error to force next fallback",
-        "Unable to determine Xcode version: Error to force next fallback",
+        "Unable to determine Xcode SDK version: Error to force next fallback",
       ]);
       checkUnexpectedLogMessages(t, logger.messages, [
         "Traced analysis is not supported on Xcode 27",

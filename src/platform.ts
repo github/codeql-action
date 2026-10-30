@@ -186,12 +186,13 @@ export async function xcodeVersionFromXcodeBuild(
 }
 
 /**
- * Tries to determine the version of Xcode that is installed by running `xcrun --sdk macosx --show-sdk-version`.
+ * Tries to determine the version of the Xcode SDK that is installed by running
+ * `xcrun --sdk macosx --show-sdk-version`.
  *
  * @param logger The logger to use.
- * @returns The Xcode version or `undefined` if it couldn't be determined.
+ * @returns The Xcode SDK version or `undefined` if it couldn't be determined.
  */
-export async function xcodeVersionFromSdk(
+export async function xcodeSdkVersion(
   logger: Logger,
 ): Promise<semver.SemVer | undefined> {
   try {
@@ -236,7 +237,9 @@ export async function xcodeVersionFromSdk(
 
     return version;
   } catch (err) {
-    logger.debug(`Unable to determine Xcode version: ${getErrorMessage(err)}`);
+    logger.debug(
+      `Unable to determine Xcode SDK version: ${getErrorMessage(err)}`,
+    );
     return undefined;
   }
 }

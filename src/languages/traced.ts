@@ -19,7 +19,7 @@ export const UNSUPPORTED_DARWIN_FOR_TRACED = 27;
 export const UNSUPPORTED_XCODE_FOR_TRACED = 27;
 
 /**
- * Creates a diagnostic indicating that `version` of `product` is unsupported for traced  analysis.
+ * Creates a diagnostic indicating that `version` of `product` is unsupported for traced analysis.
  * Depending on `skipUnsupportedTracedAnalysis`, this function then either throws a {@link ConfigurationError}
  * or logs the problem as a warning.
  *
@@ -41,7 +41,7 @@ function handleUnsupportedVersion(
   const baseMessage = [
     `Traced analysis is not supported on ${product} ${UNSUPPORTED_DARWIN_FOR_TRACED} or above.`,
     `Configure your analysis to run on macOS ${UNSUPPORTED_DARWIN_FOR_TRACED - 1} or below`,
-    `and XCode ${UNSUPPORTED_XCODE_FOR_TRACED - 1} or below.`,
+    `and Xcode ${UNSUPPORTED_XCODE_FOR_TRACED - 1} or below.`,
   ].join(" ");
 
   const attributeName = product === "macOS" ? "darwinVersion" : "xcodeVersion";
@@ -82,8 +82,6 @@ function handleUnsupportedVersion(
 
   // Throw an error to abort the analysis if the FF is enabled or log the message.
   if (skipUnsupportedTracedAnalysis) {
-    // ConfigurationErrors are converted to the "aborted" status by the exception handler
-    // in `init-action.ts` that guards the call to `checkRunnerSupportsTracedAnalysis`.
     throw new ConfigurationError(logMessage);
   } else {
     // This will also show up as a workflow annotation.
@@ -136,7 +134,8 @@ export async function checkRunnerSupportsTracedAnalysis(
     return;
   }
 
-  // Skip if we are on a self-hosted runner.
+  // Skip if we are on a self-hosted runner since the current Xcode version detection
+  // is only validated on hosted runners.
   if (isSelfHostedRunner(action.env)) {
     action.logger.debug(
       "Skipping traced analysis compatibility checks because we are on a self-hosted runner.",
@@ -175,7 +174,7 @@ export async function checkRunnerSupportsTracedAnalysis(
   if (typeof version === "string") {
     // If we got a string, we are on macOS but couldn't parse the version string.
     action.logger.warning(
-      `Unable to determine version of macOS, got: ${version}`,
+      `Unable to parse Darwin kernel version, got: ${version}. Skipping macOS compatibility check.`,
     );
   } else if (version.major >= UNSUPPORTED_DARWIN_FOR_TRACED) {
     handleUnsupportedVersion(
@@ -210,7 +209,7 @@ export async function checkRunnerSupportsTracedAnalysis(
     );
   } else if (xcodeVer === undefined) {
     action.logger.info(
-      "Unable to determine Xcode version. Assuming it is not installed.",
+      "Unable to determine Xcode version. Skipping Xcode compatibility check.",
     );
   }
 }

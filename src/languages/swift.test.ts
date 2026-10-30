@@ -30,7 +30,7 @@ test("checkSwiftCompatibility doesn't throw for non-Swift languages", async (t) 
       checkSwiftCompatibility(
         createTestConfig({ languages: [language] }),
         codeql,
-        // A value of `undefined` should make `isSwiftCompatible` throw for Swift by default
+        // A value of `undefined` should make `checkSwiftCompatibility` throw for Swift by default
         // since it means we are on a platform other than macOS
         undefined,
       ),
@@ -54,7 +54,7 @@ test("checkSwiftCompatibility doesn't throw for Swift if CLI supports swiftSuppo
       checkSwiftCompatibility(
         createTestConfig({ languages: [BuiltInLanguage.swift] }),
         codeql,
-        // A value of `undefined` should make `isSwiftCompatible` throw for Swift by default
+        // A value of `undefined` should make `checkSwiftCompatibility` throw for Swift by default
         // since it means we are on a platform other than macOS
         undefined,
       ),

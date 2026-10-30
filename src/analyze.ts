@@ -54,7 +54,9 @@ type RunQueriesDurationStatusReport = {
    * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
    * taken to run _all_ the queries.
    */
-  [L in BuiltInLanguageKey as `analyze_builtin_queries_${L}_duration_ms`]?: number;
+  [
+    L in BuiltInLanguageKey as `analyze_builtin_queries_${L}_duration_ms`
+  ]?: number;
 };
 
 type InterpretResultsDurationStatusReport = {
@@ -63,8 +65,7 @@ type InterpretResultsDurationStatusReport = {
 };
 
 export interface QueriesStatusReport
-  extends RunQueriesDurationStatusReport,
-    InterpretResultsDurationStatusReport {
+  extends RunQueriesDurationStatusReport, InterpretResultsDurationStatusReport {
   /**
    * Whether the analysis is diff-informed (in the sense that the action generates a diff-range data
    * extension for the analysis, regardless of whether the data extension is actually used by queries).

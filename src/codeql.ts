@@ -1166,7 +1166,7 @@ export function getExtraOptions(
 }
 
 async function runCli(
-  env: Env,
+  env: ReadOnlyEnv,
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},
@@ -1193,7 +1193,7 @@ async function runCli(
  * @returns The parsed JSON output from the command.
  */
 async function runCliJson<T>(
-  env: Env,
+  env: ReadOnlyEnv,
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},

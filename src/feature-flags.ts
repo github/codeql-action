@@ -74,6 +74,11 @@ export enum Feature {
   AllowMergeConfigFiles = "allow_merge_config_files",
   /** Controls whether we allow multiple values for the `analysis-kinds` input. */
   AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
+  /**
+   * Whether to check for unsupported traced analysis. Primarily intended as an override to disable
+   * the check if it causes problems somehow.
+   */
+  CheckUnsupportedTracedAnalysis = "check_unsupported_traced_analysis",
   /** Whether to allow the `config-file` input to be specified via a repository property. */
   ConfigFileRepositoryProperty = "config_file_repository_property",
   CppDependencyInstallation = "cpp_dependency_installation_enabled",
@@ -144,6 +149,8 @@ export enum Feature {
   /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   QaTelemetryEnabled = "qa_telemetry_enabled",
+  /** Whether we should fail early if we detect that traced analysis is unsupported. */
+  AbortUnsupportedTracedAnalysis = "abort_unsupported_traced_analysis",
   /** Routes (some) API requests through the registry proxy. */
   ProxyApiRequests = "proxy_api_requests",
   /** Note that this currently only disables baseline file coverage information. */
@@ -193,6 +200,11 @@ export const featureConfig = {
   [Feature.AllowMultipleAnalysisKinds]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
+    minimumVersion: undefined,
+  },
+  [Feature.CheckUnsupportedTracedAnalysis]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_CHECK_UNSUPPORTED_TRACED_ANALYSIS",
     minimumVersion: undefined,
   },
   [Feature.ConfigFileRepositoryProperty]: {
@@ -408,6 +420,11 @@ export const featureConfig = {
   [Feature.StartProxyUseFeaturesRelease]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_START_PROXY_USE_FEATURES_RELEASE",
+    minimumVersion: undefined,
+  },
+  [Feature.AbortUnsupportedTracedAnalysis]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ABORT_UNSUPPORTED_TRACED_ANALYSIS",
     minimumVersion: undefined,
   },
   [Feature.ToolsRepositoryProperty]: {

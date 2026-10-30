@@ -12,4 +12,6 @@ export enum DocUrl {
   SPECIFY_BUILD_STEPS_MANUALLY = "https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages#about-specifying-build-steps-manually",
   SYSTEM_REQUIREMENTS = "https://codeql.github.com/docs/codeql-overview/system-requirements/",
   TRACK_CODE_SCANNING_ALERTS_ACROSS_RUNS = "https://docs.github.com/en/code-security/reference/code-scanning/sarif-support-for-code-scanning#data-for-preventing-duplicated-alerts",
+  /** Blog post about traced analysis being unsupported on macOS 27 and with Xcode 27. */
+  UNSUPPORTED_TRACED_ANALYSIS_MACOS27 = "https://github.blog/changelog/2026-10-19-codeql-changes-for-macos-27-xcode-27-and-swift-6-4/",
 }

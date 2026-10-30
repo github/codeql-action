@@ -666,9 +666,11 @@ function generateValidationJob(
   // Add the generated steps in front of the ones from the specification.
   specSteps.items.unshift(...checkoutStep, ...steps);
 
+  const baseCondition = "github.triggering_actor != 'dependabot[bot]'";
+
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
-    if: "github.triggering_actor != 'dependabot[bot]'",
+    if: baseCondition,
     needs: [checkName],
     permissions: {
       contents: "read",

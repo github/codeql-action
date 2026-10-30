@@ -54,13 +54,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: default
             analysis-kinds: code-scanning
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: default
             analysis-kinds: code-quality
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: default
             analysis-kinds: code-scanning,code-quality
     name: Test different uses of `upload-sarif`

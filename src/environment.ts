@@ -293,8 +293,8 @@ export function getOptionalEnvVar(paramName: string): string | undefined {
  * in tests, while clearly signalling in regular code that the consumer of the `ReadOnlyEnv` instance
  * will only read from it.
  */
-export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
-  constructor(protected readonly vars: Record<string, T>) {}
+export class ReadOnlyEnv {
+  constructor(protected readonly vars: Record<string, string | undefined>) {}
 
   /** Clones the object while detaching the underlying environment from the original. */
   public clone(): this {
@@ -302,8 +302,22 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
   }
 
   /** Gets a copy of the underlying environment. */
-  public get(): Record<string, T> {
+  public get(): Record<string, string | undefined> {
     return { ...this.vars };
+  }
+
+  /** Gets a copy of the underlying environment, where the values are not `undefined`. */
+  public getDefined(): Record<string, string> {
+    const result: Record<string, string> = {};
+
+    for (const [key, val] of Object.entries(this.vars)) {
+      if (val === undefined) {
+        continue;
+      }
+      result[key] = val;
+    }
+
+    return result;
   }
 
   /** Tries to get the value for `name` and throws if there isn't one. */
@@ -317,7 +331,7 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
   }
 
   /** Gets the entries of the underlying `ProcessEnv`. */
-  public entries(): Array<[string, T]> {
+  public entries(): Array<[string, string | undefined]> {
     return Object.entries(this.vars);
   }
 
@@ -347,19 +361,17 @@ export class ReadOnlyEnv<T extends string | undefined = string | undefined> {
  * Use `ReadOnlyEnv` instead if you only plan to read from the environment.
  * This type allows writing to the environment.
  */
-export class Env<
-  T extends string | undefined = string | undefined,
-> extends ReadOnlyEnv<T> {
+export class Env extends ReadOnlyEnv {
   private changed: boolean = false;
 
   /** Sets an environment variable. */
-  public set(name: string, value: T): void {
+  public set(name: string, value: string | undefined): void {
     this.vars[name] = value;
     this.changed = true;
   }
 
   /** Sets all environment variables given by `vars`. */
-  public setAll(vars: Record<string, T>): void {
+  public setAll(vars: Record<string, string | undefined>): void {
     for (const [key, val] of Object.entries(vars)) {
       this.set(key, val);
     }
@@ -373,7 +385,7 @@ export class Env<
    * @param name The name of the environment variable to set and export.
    * @param val The value to set and export for the environment variable.
    */
-  public export(name: string, val: T): void {
+  public export(name: string, val: string): void {
     // Setting the environment variable for this instance is always OK, including
     // in tests, since we use fresh `Env` instances whenever needed. This allows
     // tests to pass that rely on that part of the `core.exportVariable` behaviour.

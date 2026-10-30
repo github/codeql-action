@@ -170,38 +170,6 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
     ]);
   }));
 
-test("checkRunnerSupportsTracedAnalysis doesn't perform checks on self-hosted runners", async (t) =>
-  withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger();
-    const env = getTestEnv();
-    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-    env.set(ActionsEnvVars.RUNNER_ENVIRONMENT, "self-hosted");
-    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
-
-    const codeql = await getCodeQLWithTracedStub(
-      "codeql-for-testing",
-      logger,
-      env,
-    );
-    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
-
-    await checkRunnerSupportsTracedAnalysis(
-      initAllState({
-        logger,
-        platform: "darwin",
-        osRelease: "unexpected",
-        env,
-        features,
-      }),
-      createTestConfig({ languages: [BuiltInLanguage.go] }),
-      codeql,
-    );
-
-    checkUnexpectedLogMessages(t, logger.messages, [
-      "Unable to parse Darwin kernel version, got: unexpected",
-    ]);
-  }));
-
 test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver", async (t) =>
   withTmpDir(async (tmpDir) => {
     const logger = new RecordingLogger();
@@ -354,6 +322,38 @@ test.serial(
       ]);
     }),
 );
+
+test("checkRunnerSupportsTracedAnalysis doesn't perform Xcode check on self-hosted runners", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+    env.set(ActionsEnvVars.RUNNER_ENVIRONMENT, "self-hosted");
+    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
+
+    const codeql = await getCodeQLWithTracedStub(
+      "codeql-for-testing",
+      logger,
+      env,
+    );
+    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+    await checkRunnerSupportsTracedAnalysis(
+      initAllState({
+        logger,
+        platform: "darwin",
+        osRelease: "27.0.0",
+        env,
+        features,
+      }),
+      createTestConfig({ languages: [BuiltInLanguage.go] }),
+      codeql,
+    );
+
+    checkUnexpectedLogMessages(t, logger.messages, [
+      "Skipping traced analysis compatibility check for Xcode because we are on a self-hosted runner.",
+    ]);
+  }));
 
 // `addDiagnostic` changes global state and we must stub it, so this test must be serial.
 test.serial(

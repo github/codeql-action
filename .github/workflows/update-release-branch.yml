@@ -38,43 +38,43 @@ jobs:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull request
     steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        fetch-depth: 0  # Need full history for calculation of diffs
-    - uses: ./.github/actions/release-initialise
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # Need full history for calculation of diffs
+      - uses: ./.github/actions/release-initialise
 
-    # when the workflow has been manually triggered on main,
-    # we know that we definitely want the release branch to exist
-    - name: Ensure release branch exists
-      run: |
-        echo "MAJOR_VERSION ${MAJOR_VERSION}"
-        RELEASE_BRANCH=releases/${MAJOR_VERSION}
-        if git checkout $RELEASE_BRANCH > /dev/null 2>&1; then
-            echo "Branch $RELEASE_BRANCH already exists"
-            echo ""
-        else
-            echo "Creating $RELEASE_BRANCH branch"
-            git checkout -b ${RELEASE_BRANCH} ${LATEST_TAG}
-            git push --set-upstream origin ${RELEASE_BRANCH}
-            git branch --show-current
-            echo ""
-        fi
-        echo "Returning to branch: ${REF_NAME}"
-        git checkout ${REF_NAME}
+      # when the workflow has been manually triggered on main,
+      # we know that we definitely want the release branch to exist
+      - name: Ensure release branch exists
+        run: |
+          echo "MAJOR_VERSION ${MAJOR_VERSION}"
+          RELEASE_BRANCH=releases/${MAJOR_VERSION}
+          if git checkout $RELEASE_BRANCH > /dev/null 2>&1; then
+              echo "Branch $RELEASE_BRANCH already exists"
+              echo ""
+          else
+              echo "Creating $RELEASE_BRANCH branch"
+              git checkout -b ${RELEASE_BRANCH} ${LATEST_TAG}
+              git push --set-upstream origin ${RELEASE_BRANCH}
+              git branch --show-current
+              echo ""
+          fi
+          echo "Returning to branch: ${REF_NAME}"
+          git checkout ${REF_NAME}
 
-    - name: Update current release branch
-      if: github.event_name == 'workflow_dispatch'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        echo SOURCE_BRANCH=${REF_NAME}
-        echo TARGET_BRANCH=releases/${MAJOR_VERSION}
-        npx tsx ./pr-checks/update-release-branch.ts \
-          --repository-nwo ${{ github.repository }} \
-          --source-branch '${{ env.REF_NAME }}' \
-          --target-branch 'releases/${{ env.MAJOR_VERSION }}' \
-          --is-primary-release \
-          --conductor ${GITHUB_ACTOR}
+      - name: Update current release branch
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo SOURCE_BRANCH=${REF_NAME}
+          echo TARGET_BRANCH=releases/${MAJOR_VERSION}
+          npx tsx ./pr-checks/update-release-branch.ts \
+            --repository-nwo ${{ github.repository }} \
+            --source-branch '${{ env.REF_NAME }}' \
+            --target-branch 'releases/${{ env.MAJOR_VERSION }}' \
+            --is-primary-release \
+            --conductor ${GITHUB_ACTOR}
 
   backport:
     name: "Create backport"
@@ -94,28 +94,28 @@ jobs:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull request
     steps:
-    - name: Generate token
-      uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-      id: app-token
-      with:
-        app-id: ${{ vars.AUTOMATION_APP_ID }}
-        private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
+      - name: Generate token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ vars.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
 
-    - name: Checkout
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        fetch-depth: 0  # Need full history for calculation of diffs
-        token: ${{ steps.app-token.outputs.token }}
-    - uses: ./.github/actions/release-initialise
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # Need full history for calculation of diffs
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: ./.github/actions/release-initialise
 
-    - name: Update older release branch
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        echo SOURCE_BRANCH=${SOURCE_BRANCH}
-        echo TARGET_BRANCH=${TARGET_BRANCH}
-        npx tsx ./pr-checks/update-release-branch.ts \
-          --repository-nwo ${{ github.repository }} \
-          --source-branch ${SOURCE_BRANCH} \
-          --target-branch ${TARGET_BRANCH} \
-          --conductor ${GITHUB_ACTOR}
+      - name: Update older release branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo SOURCE_BRANCH=${SOURCE_BRANCH}
+          echo TARGET_BRANCH=${TARGET_BRANCH}
+          npx tsx ./pr-checks/update-release-branch.ts \
+            --repository-nwo ${{ github.repository }} \
+            --source-branch ${SOURCE_BRANCH} \
+            --target-branch ${TARGET_BRANCH} \
+            --conductor ${GITHUB_ACTOR}

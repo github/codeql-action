@@ -19,8 +19,8 @@ steps:
   # Generate some SARIF we can upload with the upload-sarif step
   - uses: ./../action/analyze
     with:
-      ref: 'refs/heads/main'
-      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+      ref: "refs/heads/main"
+      sha: "5e235361806c361d4d3f8859e3c897658025a9a2"
       upload: never
       output: ${{ runner.temp }}/results
 
@@ -29,8 +29,8 @@ steps:
     uses: ./../action/upload-sarif
     id: upload-sarif
     with:
-      ref: 'refs/heads/main'
-      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+      ref: "refs/heads/main"
+      sha: "5e235361806c361d4d3f8859e3c897658025a9a2"
       sarif_file: ${{ runner.temp }}/results
       category: |
         ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:all-files/
@@ -46,8 +46,8 @@ steps:
     id: upload-single-sarif-code-scanning
     if: contains(matrix.analysis-kinds, 'code-scanning')
     with:
-      ref: 'refs/heads/main'
-      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+      ref: "refs/heads/main"
+      sha: "5e235361806c361d4d3f8859e3c897658025a9a2"
       sarif_file: ${{ runner.temp }}/results/javascript.sarif
       category: |
         ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-scanning/
@@ -59,8 +59,8 @@ steps:
     id: upload-single-sarif-code-quality
     if: contains(matrix.analysis-kinds, 'code-quality')
     with:
-      ref: 'refs/heads/main'
-      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+      ref: "refs/heads/main"
+      sha: "5e235361806c361d4d3f8859e3c897658025a9a2"
       sarif_file: ${{ runner.temp }}/results/javascript.quality.sarif
       category: |
         ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:single-code-quality/
@@ -76,8 +76,8 @@ steps:
     id: upload-single-non-sarif
     if: contains(matrix.analysis-kinds, 'code-scanning')
     with:
-      ref: 'refs/heads/main'
-      sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+      ref: "refs/heads/main"
+      sha: "5e235361806c361d4d3f8859e3c897658025a9a2"
       sarif_file: ${{ runner.temp }}/results/javascript.sarif.json
       category: |
         ${{ github.workflow }}:upload-sarif/analysis-kinds:${{ matrix.analysis-kinds }}/os:${{ matrix.os }}/version:${{ matrix.version }}/test:non-sarif/

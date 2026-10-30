@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dotnet-version:
@@ -69,8 +69,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: ./../action/init
         with:
           languages: csharp
@@ -78,12 +78,12 @@ jobs:
       - uses: ./../action/autobuild
         env:
           # Explicitly disable the CLR tracer.
-          COR_ENABLE_PROFILING: ''
-          COR_PROFILER: ''
-          COR_PROFILER_PATH_64: ''
-          CORECLR_ENABLE_PROFILING: ''
-          CORECLR_PROFILER: ''
-          CORECLR_PROFILER_PATH_64: ''
+          COR_ENABLE_PROFILING: ""
+          COR_PROFILER: ""
+          COR_PROFILER_PATH_64: ""
+          CORECLR_ENABLE_PROFILING: ""
+          CORECLR_PROFILER: ""
+          CORECLR_PROFILER_PATH_64: ""
       - uses: ./../action/analyze
       - name: Check database
         run: |

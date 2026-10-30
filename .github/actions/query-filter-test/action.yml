@@ -54,7 +54,7 @@ runs:
     - name: Check SARIF
       uses: ./../action/.github/actions/check-sarif
       with:
-        sarif-file:  ${{ inputs.sarif-file }}
+        sarif-file: ${{ inputs.sarif-file }}
         queries-run: ${{ inputs.queries-run}}
         queries-not-run: ${{ inputs.queries-not-run}}
     - name: Cleanup after test

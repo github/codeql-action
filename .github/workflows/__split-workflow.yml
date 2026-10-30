@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dotnet-version:
@@ -29,7 +29,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
   workflow_call:
     inputs:
       dotnet-version:
@@ -41,7 +41,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
 defaults:
   run:
     shell: bash
@@ -90,11 +90,11 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: ./../action/init
         with:
-          config-file: '.github/codeql/codeql-config-packaging3.yml'
+          config-file: ".github/codeql/codeql-config-packaging3.yml"
           packs: +codeql-testing/codeql-pack1@1.0.0
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -103,7 +103,7 @@ jobs:
       - uses: ./../action/analyze
         with:
           skip-queries: true
-          output: '${{ runner.temp }}/results'
+          output: "${{ runner.temp }}/results"
           upload-database: false
 
       - name: Assert No Results
@@ -114,7 +114,7 @@ jobs:
           fi
       - uses: ./../action/analyze
         with:
-          output: '${{ runner.temp }}/results'
+          output: "${{ runner.temp }}/results"
           upload-database: false
       - name: Assert Results
         run: |

@@ -7,7 +7,11 @@ import type { ActionConfig } from "../config/action-config";
 import { addDiagnostic, makeDiagnostic } from "../diagnostics";
 import { DocUrl } from "../doc-url";
 import { Feature } from "../feature-flags";
-import { darwinVersion, xcodeVersion } from "../platform";
+import {
+  darwinVersion,
+  xcodeVersionFromLink,
+  xcodeVersionFromSdk,
+} from "../platform";
 import { ConfigurationError } from "../util";
 
 import { checkSwiftCompatibility } from "./swift";
@@ -196,8 +200,12 @@ export async function checkRunnerSupportsTracedAnalysis(
   }
 
   // Determining whether the Xcode version is supported only makes sense on macOS, so we only do it
-  // after determining that we are running on macOS.
-  const xcodeVer = await xcodeVersion(action.logger);
+  // after determining that we are running on macOS. We first try to obtain the version of Xcode itself
+  // starting with the cheapest approach. If that doesn't work, we obtain the version from the SDK instead.
+  // Since either Xcode or the SDK at version 27 or above is incompatible, the major version of either is fine.
+  const xcodeVer =
+    xcodeVersionFromLink(action.logger) ??
+    (await xcodeVersionFromSdk(action.logger));
 
   if (
     xcodeVer !== undefined &&

@@ -126,10 +126,15 @@ jobs:
         if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
         run: .github/workflows/script/verify-pr-checks.sh
 
-      - name: Run pr-checks checks
+      - name: Typecheck pr-checks scripts
         if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
         working-directory: pr-checks
-        run: npm run checks
+        run: npm run typecheck
+
+      - name: Run pr-checks tests
+        if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}
+        working-directory: pr-checks
+        run: npm run test
 
       - name: Run `pr-checks/changenotes.ts` to ensure that all unreleased change notes are valid
         if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}

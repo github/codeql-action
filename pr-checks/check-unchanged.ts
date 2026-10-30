@@ -41,7 +41,7 @@ function checkUnchanged(body: () => void): boolean {
   } else {
     // If we get a fail here then this workflow needs attention...
     console.error("The repository contains uncomitted changes!");
-    return -1;
+    return false;
   }
 
   body();

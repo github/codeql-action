@@ -75,28 +75,11 @@ export const XCODE_APP_FILENAME_PATTERN = new RegExp(
  */
 export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
   try {
-    // Stat the expected symbolic link to check that it exists and is a symbolic link.
-    // The `readlinkSync` call below returns an empty string in either case and so
-    // this check allows us to distinguish between the two cases.
-    const stats = fs.lstatSync(XCODE_SELECT_LINK_PATH, {
-      throwIfNoEntry: false,
-    });
-
-    if (stats === undefined) {
-      logger.debug(`'${XCODE_SELECT_LINK_PATH}' does not exist.`);
-      return undefined;
-    }
-    if (!stats.isSymbolicLink()) {
-      logger.debug(
-        `${XCODE_SELECT_LINK_PATH} exists, but is not a symbolic link.`,
-      );
-      return undefined;
-    }
-
-    // Read what the symbolic link points to.
+    // Read what the symbolic link points to. This will throw if `XCODE_SELECT_LINK_PATH` does not
+    // exist (`ENOENT`) or is not a symbolic link (`EINVAL`).
     const xcodePath = fs.readlinkSync(XCODE_SELECT_LINK_PATH);
 
-    if (xcodePath === "") {
+    if (xcodePath.trim() === "") {
       logger.debug(
         `Resolving ${XCODE_SELECT_LINK_PATH} unexpectedly returned nothing.`,
       );

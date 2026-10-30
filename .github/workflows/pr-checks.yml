@@ -307,7 +307,7 @@ jobs:
 
       - name: Mark the CHANGELOG.md concern as resolved
         if: >-
-          needs.other-checks.outputs.changelog-modified != 'true' &&
+          needs.other-checks.outputs.changelog-modified == 'false' &&
           !startsWith(github.event.pull_request.head.ref, 'update-v') &&
           !startsWith(github.event.pull_request.head.ref, 'backport-v') &&
           !startsWith(github.event.pull_request.head.ref, 'mergeback/') &&
@@ -315,7 +315,7 @@ jobs:
         uses: ./.github/actions/post-comment
         with:
           marker: "post-comment:CHANGELOG.md"
-          create-if-missing: "false"
+          update-only: true
           body: |
             ⚠️ `CHANGELOG.md` has been modified in this PR. Please do not modify `CHANGELOG.md` directly.
             Instead, create a change-note file in `unreleased-change-notes/`. The `CHANGELOG.md`

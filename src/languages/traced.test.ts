@@ -1,5 +1,6 @@
 import fs from "fs";
 
+import * as toolrunner from "@actions/exec/lib/toolrunner";
 import * as io from "@actions/io";
 import test from "ava";
 import * as sinon from "sinon";
@@ -428,7 +429,7 @@ test.serial(
 );
 
 test.serial(
-  "checkRunnerSupportsTracedAnalysis uses Xcode SDK version as fallback",
+  "checkRunnerSupportsTracedAnalysis attempts fallbacks if needed",
   async (t) =>
     withTmpDir(async (tmpDir) => {
       const logger = new RecordingLogger();
@@ -439,7 +440,16 @@ test.serial(
       const readlinkSync = sinon
         .stub(fs, "readlinkSync")
         .throws(new Error("Not found"));
-      const which = sinon.stub(io, "which").throws(new Error("Tool not found"));
+      const which = sinon.stub(io, "which").resolves("/path/to/xcrun");
+      const exec = sinon.stub<[], Promise<number>>().callsFake(async () => {
+        throw new Error("Error to force next fallback");
+      });
+      const runner = sinon.createStubInstance(toolrunner.ToolRunner, { exec });
+      const toolrunnerStub = sinon
+        .stub(toolrunner, "ToolRunner")
+        .callsFake(() => {
+          return runner;
+        });
 
       const codeql = await getCodeQLWithTracedStub(
         "codeql-for-testing",
@@ -468,11 +478,27 @@ test.serial(
 
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
-      t.is(which.callCount, 1);
+      t.is(which.callCount, 2);
       t.deepEqual(which.args[0], ["xcrun", true]);
+      t.deepEqual(which.args[1], ["xcrun", true]);
+
+      t.is(toolrunnerStub.callCount, 2);
+      t.is(exec.callCount, 2);
+
+      t.is(toolrunnerStub.args[0][0], "/path/to/xcrun");
+      t.deepEqual(toolrunnerStub.args[0][1], ["xcodebuild", "-version"]);
+
+      t.is(toolrunnerStub.args[1][0], "/path/to/xcrun");
+      t.deepEqual(toolrunnerStub.args[1][1], [
+        "--sdk",
+        "macosx",
+        "--show-sdk-version",
+      ]);
 
       checkExpectedLogMessages(t, logger.messages, [
-        "Unable to determine Xcode version: Tool not found",
+        "Unable to determine Xcode version: Not found",
+        "Unable to determine Xcode version from xcodebuild: Error to force next fallback",
+        "Unable to determine Xcode version: Error to force next fallback",
       ]);
       checkUnexpectedLogMessages(t, logger.messages, [
         "Traced analysis is not supported on Xcode 27",

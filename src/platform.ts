@@ -170,15 +170,3 @@ export async function xcodeVersionFromSdk(
     return undefined;
   }
 }
-
-/**
- * Tries to determine the version of Xcode that is installed.
- *
- * @param logger The logger to use.
- * @returns The Xcode version or `undefined` if it couldn't be determined.
- */
-export async function xcodeVersion(
-  logger: Logger,
-): Promise<semver.SemVer | undefined> {
-  return xcodeVersionFromLink(logger) ?? (await xcodeVersionFromSdk(logger));
-}

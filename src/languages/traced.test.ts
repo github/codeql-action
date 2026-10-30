@@ -1,5 +1,6 @@
 import fs from "fs";
 
+import * as io from "@actions/io";
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -418,6 +419,61 @@ test.serial(
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
+      checkUnexpectedLogMessages(t, logger.messages, [
+        "Traced analysis is not supported on Xcode 27",
+      ]);
+
+      t.is(addDiagnostic.callCount, 0);
+    }),
+);
+
+test.serial(
+  "checkRunnerSupportsTracedAnalysis uses Xcode SDK version as fallback",
+  async (t) =>
+    withTmpDir(async (tmpDir) => {
+      const logger = new RecordingLogger();
+      const env = getTestEnv();
+      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+      const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
+
+      const readlinkSync = sinon
+        .stub(fs, "readlinkSync")
+        .throws(new Error("Not found"));
+      const which = sinon.stub(io, "which").throws(new Error("Tool not found"));
+
+      const codeql = await getCodeQLWithTracedStub(
+        "codeql-for-testing",
+        logger,
+        env,
+      );
+      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+      const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
+
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
+      await checkRunnerSupportsTracedAnalysis(
+        initAllState({
+          logger,
+          platform: "darwin",
+          osRelease: "26.0.0",
+          env,
+          features,
+        }),
+        config,
+        codeql,
+      );
+
+      t.is(readlinkSync.callCount, 1);
+      t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+      t.is(which.callCount, 1);
+      t.deepEqual(which.args[0], ["xcrun", true]);
+
+      checkExpectedLogMessages(t, logger.messages, [
+        "Unable to determine Xcode version: Tool not found",
+      ]);
       checkUnexpectedLogMessages(t, logger.messages, [
         "Traced analysis is not supported on Xcode 27",
       ]);

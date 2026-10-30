@@ -12,7 +12,6 @@ import {
   darwinVersion,
   XCODE_SELECT_LINK_PATH,
   xcodeVersionFromLink,
-  xcodeVersion,
   xcodeVersionFromSdk,
 } from "./platform";
 import {
@@ -295,27 +294,3 @@ test.serial(
     });
   },
 );
-
-test.serial("xcodeVersion falls back to xcodeVersionFromSdk", async (t) => {
-  const logger = new RecordingLogger();
-
-  const readlinkSync = sinon
-    .stub(fs, "readlinkSync")
-    .throws(new Error("ENOENT: no such file or directory"));
-  const which = sinon.stub(io, "which").throws(new Error("No such tool"));
-
-  await t.notThrowsAsync(async () => {
-    const result = await xcodeVersion(logger);
-
-    t.is(result, undefined);
-
-    t.is(readlinkSync.callCount, 1);
-    t.is(which.callCount, 1);
-    t.deepEqual(which.args[0], ["xcrun", true]);
-
-    checkExpectedLogMessages(t, logger.messages, [
-      "Unable to determine Xcode version: ENOENT: no such file or directory",
-      "Unable to determine Xcode version: No such tool",
-    ]);
-  });
-});

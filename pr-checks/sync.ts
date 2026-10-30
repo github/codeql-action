@@ -370,7 +370,7 @@ function writeYaml(filePath: string, workflow: any): void {
   });
   const yamlStr = yaml.stringify(workflowDoc, {
     aliasDuplicateObjects: false,
-    singleQuote: true,
+    singleQuote: false,
     lineWidth: 0,
   });
   fs.writeFileSync(filePath, stripTrailingWhitespace(header + yamlStr), "utf8");
@@ -595,16 +595,6 @@ function generateJob(
   // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
   const specSteps = specDocument.get("steps") as yaml.YAMLSeq;
 
-  // A handful of workflow specifications use double quotes for values, while we generally use single quotes.
-  // This replaces double quotes with single quotes for consistency.
-  yaml.visit(specSteps, {
-    Scalar(_key, node) {
-      if (node.type === "QUOTE_DOUBLE") {
-        node.type = "QUOTE_SINGLE";
-      }
-    },
-  });
-
   // Add the generated steps in front of the ones from the specification.
   specSteps.items.unshift(...steps);
 
@@ -802,7 +792,7 @@ function main(): void {
     }
 
     const cron = new yaml.Scalar("0 5 * * *");
-    cron.type = yaml.Scalar.QUOTE_SINGLE;
+    cron.type = yaml.Scalar.QUOTE_DOUBLE;
 
     const workflow = {
       name: `PR Check - ${checkSpecification.name}`,

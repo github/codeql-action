@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dotnet-version:
@@ -29,7 +29,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
   workflow_call:
     inputs:
       dotnet-version:
@@ -41,7 +41,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
 defaults:
   run:
     shell: bash
@@ -80,13 +80,13 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: ./../action/init
         id: init
         with:
           build-mode: manual
-          db-location: '${{ runner.temp }}/customDbLocation'
+          db-location: "${{ runner.temp }}/customDbLocation"
           languages: java
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 

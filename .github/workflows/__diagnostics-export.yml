@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs: {}
   workflow_call:
@@ -62,8 +62,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: ./../action/init
         id: init
         with:
@@ -82,18 +82,18 @@ jobs:
             --ready-for-status-page
       - uses: ./../action/analyze
         with:
-          output: '${{ runner.temp }}/results'
+          output: "${{ runner.temp }}/results"
           upload-database: false
       - name: Upload SARIF
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
-          path: '${{ runner.temp }}/results/javascript.sarif'
+          path: "${{ runner.temp }}/results/javascript.sarif"
           retention-days: 7
 
       - name: Check diagnostics appear in SARIF
         env:
-          SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'
+          SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
         run: |
           cd ../action
           npx tsx ./pr-checks/check-diagnostics.ts

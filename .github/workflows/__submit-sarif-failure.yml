@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs: {}
   workflow_call:
@@ -55,8 +55,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./init
         with:
@@ -76,7 +76,7 @@ jobs:
         # `category` input. Without this step, that part of the init post-action would fail.
         if: false
         with:
-          category: '/test-codeql-version:${{ matrix.version }}'
+          category: "/test-codeql-version:${{ matrix.version }}"
     env:
       CODEQL_ACTION_EXPECT_UPLOAD_FAILED_SARIF: true
       CODEQL_ACTION_UPLOAD_FAILED_SARIF: true

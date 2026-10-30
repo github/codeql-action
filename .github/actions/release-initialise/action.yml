@@ -1,17 +1,16 @@
-name: 'Prepare release job'
-description: 'Prepare for updating a release branch'
+name: "Prepare release job"
+description: "Prepare for updating a release branch"
 
 runs:
   using: "composite"
   steps:
-
     - name: Dump environment
       run: env
       shell: bash
 
     - name: Dump GitHub context
       env:
-        GITHUB_CONTEXT: '${{ toJson(github) }}'
+        GITHUB_CONTEXT: "${{ toJson(github) }}"
       run: echo "$GITHUB_CONTEXT"
       shell: bash
 
@@ -19,7 +18,7 @@ runs:
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: 24
-        cache: 'npm'
+        cache: "npm"
 
     - name: Install JavaScript dependencies
       shell: bash

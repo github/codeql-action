@@ -8,7 +8,7 @@ on:
     types: [checks_requested]
   schedule:
     # Weekly on Monday.
-    - cron: '0 0 * * 1'
+    - cron: "0 0 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -32,22 +32,22 @@ jobs:
     runs-on: windows-2025
 
     steps:
-    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-      with:
-        python-version: 3.12
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.12
 
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-    - name: Prepare test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: default
+      - name: Prepare test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: default
 
-    - name: Initialize CodeQL
-      uses: ./../action/init
-      with:
-        tools: linked
-        languages: python
+      - name: Initialize CodeQL
+        uses: ./../action/init
+        with:
+          tools: linked
+          languages: python
 
-    - name: Analyze
-      uses: ./../action/analyze
+      - name: Analyze
+        uses: ./../action/analyze

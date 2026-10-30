@@ -2,6 +2,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseArgs } from "node:util";
 
 import * as core from "@actions/core";
 
@@ -100,21 +101,50 @@ function rebuildJavaScript() {
   runCommand("npm", ["run", "build"], { execOptions: { shell: true } });
 }
 
+/**
+ * Formats YAML files with `npm run format-yaml`.
+ */
+function formatYAML() {
+  runCommand("npm", ["run", "format-yaml"], { execOptions: { shell: true } });
+}
+
 function main() {
-  if (!checkUnchanged(rebuildJavaScript)) {
-    // If we get a fail here then the PR needs attention
-    console.error("Failed: JavaScript files are not up to date.");
-    console.error("Run 'rm -rf lib && npm run build' to update.");
+  const { values: options } = parseArgs({
+    options: { language: { type: "string", default: "javascript" } },
+  });
+  console.info(`Checking that ${options.language} files are unchanged.`);
 
-    addDiffToSummary("Transpiled JS diff");
+  if (options.language === "javascript") {
+    if (!checkUnchanged(rebuildJavaScript)) {
+      // If we get a fail here then the PR needs attention
+      console.error("Failed: JavaScript files are not up to date.");
+      console.error("Run 'rm -rf lib && npm run build' to update.");
 
-    // Reset bundled files to allow other checks to test for changes
-    runCommand("git", ["checkout", "lib"]);
+      addDiffToSummary("Transpiled JS diff");
 
-    return 1;
+      // Reset bundled files to allow other checks to test for changes
+      runCommand("git", ["checkout", "lib"]);
+
+      return 1;
+    }
+
+    console.info("Success: JavaScript files are up to date");
+  } else if (options.language === "yaml") {
+    if (!checkUnchanged(formatYAML)) {
+      // If we get a fail here then the PR needs attention
+      console.error("Failed: YAML files are not correctly formatted.");
+      console.error("Run 'npm run format-yaml' to format them.");
+
+      addDiffToSummary("YAML formatting changes");
+
+      return 1;
+    }
+
+    console.info("Success: YAML files are correctly formatted");
+  } else {
+    console.error(`Unknown language: ${options.language}`);
   }
 
-  console.info("Success: JavaScript files are up to date");
   return 0;
 }
 

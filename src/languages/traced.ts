@@ -1,7 +1,6 @@
 import * as semver from "semver";
 
 import type { ActionState, Logger } from "../action-common";
-import { isSelfHostedRunner } from "../actions-util";
 import type { CodeQL } from "../codeql";
 import type { ActionConfig } from "../config/action-config";
 import { addDiagnostic, makeDiagnostic } from "../diagnostics";
@@ -188,15 +187,6 @@ export async function checkRunnerSupportsTracedAnalysis(
 
     // Return early so that we don't end up producing more-or-less the same log message/diagnostic
     // twice. The ones for macOS already comment on the Xcode requirement.
-    return;
-  }
-
-  // Skip if we are on a self-hosted runner since the current Xcode version detection
-  // is only validated on hosted runners.
-  if (isSelfHostedRunner(action.env)) {
-    action.logger.debug(
-      "Skipping traced analysis compatibility check for Xcode because we are on a self-hosted runner.",
-    );
     return;
   }
 

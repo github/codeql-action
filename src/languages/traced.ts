@@ -83,7 +83,7 @@ function handleUnsupportedVersion(
       config,
       language,
       makeDiagnostic(
-        `codeql-action/unsupported-traced-analysis-${product.toLowerCase()}`,
+        `codeql-action/unsupported-traced-analysis-${product.toLowerCase().replaceAll(" ", "-")}`,
         `Traced analysis is not supported on this version of ${product}`,
         {
           attributes: {

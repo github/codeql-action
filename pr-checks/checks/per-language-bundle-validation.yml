@@ -37,7 +37,7 @@ matrix:
       os: ubuntu-26.04
       version: linked
     - language: swift
-      os: macos-latest-xlarge
+      os: macos-26-xlarge
       version: linked
       build-mode: autobuild
 installNode: true

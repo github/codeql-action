@@ -67,7 +67,10 @@ for (const nonDarwinPlatform of nonDarwinPlatforms) {
       await t.throwsAsync(
         checkRunnerSupportsTracedAnalysis(
           initAllState({ platform: nonDarwinPlatform, env, logger }),
-          createTestConfig({ languages: [BuiltInLanguage.swift] }),
+          createTestConfig({
+            tempDir: tmpDir,
+            languages: [BuiltInLanguage.swift],
+          }),
           codeql,
         ),
         {
@@ -99,7 +102,7 @@ test(`checkRunnerSupportsTracedAnalysis doesn't throw for BMN`, async (t) =>
           env,
           logger,
         }),
-        createTestConfig({ buildMode: BuildMode.None }),
+        createTestConfig({ tempDir: tmpDir, buildMode: BuildMode.None }),
         codeql,
       ),
     );
@@ -132,7 +135,7 @@ for (const nonTracedLanguage of nonTracedLanguages) {
             env,
             logger,
           }),
-          createTestConfig({ languages: [nonTracedLanguage] }),
+          createTestConfig({ tempDir: tmpDir, languages: [nonTracedLanguage] }),
           codeql,
         ),
       );
@@ -161,7 +164,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
         env,
         features,
       }),
-      createTestConfig({ languages: [BuiltInLanguage.go] }),
+      createTestConfig({ tempDir: tmpDir, languages: [BuiltInLanguage.go] }),
       codeql,
     );
 
@@ -192,7 +195,7 @@ test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver"
         env,
         features,
       }),
-      createTestConfig({ languages: [BuiltInLanguage.go] }),
+      createTestConfig({ tempDir: tmpDir, languages: [BuiltInLanguage.go] }),
       codeql,
     );
 
@@ -220,7 +223,10 @@ test.serial(
 
       const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
 
-      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
       await checkRunnerSupportsTracedAnalysis(
         initAllState({
           logger,
@@ -284,7 +290,10 @@ test.serial(
 
       const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
 
-      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
       await t.throwsAsync(
         checkRunnerSupportsTracedAnalysis(
           initAllState({
@@ -346,7 +355,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform Xcode check on self-host
         env,
         features,
       }),
-      createTestConfig({ languages: [BuiltInLanguage.go] }),
+      createTestConfig({ tempDir: tmpDir, languages: [BuiltInLanguage.go] }),
       codeql,
     );
 
@@ -381,7 +390,10 @@ test.serial(
 
       const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
 
-      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
       await checkRunnerSupportsTracedAnalysis(
         initAllState({
           logger,
@@ -436,7 +448,10 @@ test.serial(
 
       const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
 
-      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
       await checkRunnerSupportsTracedAnalysis(
         initAllState({
           logger,
@@ -515,7 +530,10 @@ test.serial(
 
       const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
 
-      const config = createTestConfig({ languages: [BuiltInLanguage.swift] });
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
       await t.throwsAsync(
         checkRunnerSupportsTracedAnalysis(
           initAllState({

@@ -134,15 +134,6 @@ export async function checkRunnerSupportsTracedAnalysis(
     return;
   }
 
-  // Skip if we are on a self-hosted runner since the current Xcode version detection
-  // is only validated on hosted runners.
-  if (isSelfHostedRunner(action.env)) {
-    action.logger.debug(
-      "Skipping traced analysis compatibility checks because we are on a self-hosted runner.",
-    );
-    return;
-  }
-
   // `build-mode: none` doesn't use the tracer, so it is always supported.
   if (config.buildMode !== undefined && config.buildMode === "none") {
     action.logger.debug(
@@ -188,6 +179,15 @@ export async function checkRunnerSupportsTracedAnalysis(
 
     // Return early so that we don't end up producing more-or-less the same log message/diagnostic
     // twice. The ones for macOS already comment on the Xcode requirement.
+    return;
+  }
+
+  // Skip if we are on a self-hosted runner since the current Xcode version detection
+  // is only validated on hosted runners.
+  if (isSelfHostedRunner(action.env)) {
+    action.logger.debug(
+      "Skipping traced analysis compatibility check for Xcode because we are on a self-hosted runner.",
+    );
     return;
   }
 

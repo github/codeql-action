@@ -60,7 +60,7 @@ function checkUnchanged(body: () => void): boolean {
  * Produces a full diff for the repository and adds it to the workflow job summary
  * under the {@link summaryHeader} header.
  */
-function addDiffToSummary(summaryHeader: string) {
+async function addDiffToSummary(summaryHeader: string) {
   const diffFile = path.join(
     process.env["RUNNER_TEMP"] ?? PR_CHECKS_DIR,
     "summary.diff",
@@ -74,6 +74,7 @@ function addDiffToSummary(summaryHeader: string) {
 
     core.summary.addHeading(summaryHeader, 3);
     core.summary.addCodeBlock(fs.readFileSync(diffFile, "utf-8"), "diff");
+    await core.summary.write();
 
     try {
       fs.rmSync(diffFile);
@@ -108,7 +109,7 @@ function formatYAML() {
   runCommand("npm", ["run", "format-yaml"], { execOptions: { shell: true } });
 }
 
-function main() {
+async function main() {
   const { values: options } = parseArgs({
     options: { language: { type: "string", default: "javascript" } },
   });
@@ -120,7 +121,7 @@ function main() {
       console.error("Failed: JavaScript files are not up to date.");
       console.error("Run 'rm -rf lib && npm run build' to update.");
 
-      addDiffToSummary("Transpiled JS diff");
+      await addDiffToSummary("Transpiled JS diff");
 
       // Reset bundled files to allow other checks to test for changes
       runCommand("git", ["checkout", "lib"]);
@@ -135,7 +136,7 @@ function main() {
       console.error("Failed: YAML files are not correctly formatted.");
       console.error("Run 'npm run format-yaml' to format them.");
 
-      addDiffToSummary("YAML formatting changes");
+      await addDiffToSummary("YAML formatting changes");
 
       return 1;
     }
@@ -149,5 +150,5 @@ function main() {
 }
 
 if (import.meta.main) {
-  process.exit(main());
+  process.exit(await main());
 }

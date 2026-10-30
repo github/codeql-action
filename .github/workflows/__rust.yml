@@ -34,15 +34,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             version: stable-v2.20.7
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.22.1
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: default
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
     name: Rust analysis
     if: github.triggering_actor != 'dependabot[bot]'

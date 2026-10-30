@@ -19,7 +19,7 @@ import { CliError, wrapCliConfigurationError } from "./cli-errors";
 import type { ActionConfig } from "./config/action-config";
 import { appendExtraQueryExclusions, type Config } from "./config-utils";
 import { DocUrl } from "./doc-url";
-import { EnvVar, getEnv, exportEnvVar } from "./environment";
+import { EnvVar, getEnv, Env, ReadOnlyEnv } from "./environment";
 import { getErrorMessage, isDiskConfigurationError } from "./errors";
 import {
   CodeQLDefaultVersionInfo,
@@ -28,7 +28,7 @@ import {
 } from "./feature-flags";
 import { isAnalyzingDefaultBranch } from "./git-utils";
 import { Language } from "./languages";
-import { getRunnerLogger, Logger } from "./logging";
+import type { Logger } from "./logging";
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from "./overlay";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as setupCodeql from "./setup-codeql";
@@ -208,6 +208,7 @@ export interface CodeQL {
     sarifFile: string,
     automationDetailsId: string | undefined,
     config: ActionConfig<"tempDir">,
+    diagnosticDir: string | undefined,
   ): Promise<void>;
   /** Get the location of an extractor for the specified language. */
   resolveExtractor(language: Language): Promise<string>;
@@ -268,17 +269,17 @@ const CODEQL_MINIMUM_VERSION = "2.20.7";
 /**
  * This version will shortly become the oldest version of CodeQL that the Action will run with.
  */
-const CODEQL_NEXT_MINIMUM_VERSION = "2.21.3";
+const CODEQL_NEXT_MINIMUM_VERSION = "2.22.4";
 
 /**
  * This is the version of GHES that was most recently deprecated.
  */
-const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.17";
+const GHES_VERSION_MOST_RECENTLY_DEPRECATED = "3.18";
 
 /**
  * This is the deprecation date for the version of GHES that was most recently deprecated.
  */
-const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-09-24";
+const GHES_MOST_RECENT_DEPRECATION_DATE = "2026-10-16";
 
 /** The CLI verbosity level to use for extraction in debug mode. */
 const EXTRACTION_DEBUG_MODE_VERBOSITY = "progress++";
@@ -489,18 +490,6 @@ export function createStubCodeQL(partialCodeql: Partial<CodeQL>): CodeQL {
 }
 
 /**
- * Get a real, newly created CodeQL instance for testing. The instance refers to
- * a non-existent placeholder codeql command, so tests that use this function
- * should also stub the toolrunner.ToolRunner constructor.
- */
-export async function getCodeQLForTesting(
-  cmd = "codeql-for-testing",
-  logger: Logger = getRunnerLogger(true),
-): Promise<CodeQL> {
-  return getCodeQLForCmd(logger, cmd, false);
-}
-
-/**
  * Return a CodeQL object for CodeQL CLI access.
  *
  * @param cmd Path to CodeQL CLI
@@ -508,17 +497,18 @@ export async function getCodeQLForTesting(
  *        version requirement. Must be set to true outside tests.
  * @returns A new CodeQL object
  */
-async function getCodeQLForCmd(
+export async function getCodeQLForCmd(
   logger: Logger,
   cmd: string,
   checkVersion: boolean,
+  env: Env = getEnv(),
 ): Promise<CodeQL> {
   const codeql: CodeQL = {
     getPath() {
       return cmd;
     },
     async getVersion() {
-      const cacheFilePath = outputCache.getCommandCacheFilePath(getEnv());
+      const cacheFilePath = outputCache.getCommandCacheFilePath(env);
       let result = outputCache.getCachedCodeQlVersion(
         logger,
         cacheFilePath,
@@ -526,6 +516,7 @@ async function getCodeQLForCmd(
       );
       if (result === undefined) {
         result = await runCliJson<VersionInfo>(
+          env,
           cmd,
           ["version", "--format=json"],
           {
@@ -612,6 +603,7 @@ async function getCodeQLForCmd(
         : ["--no-calculate-baseline"];
 
       await runCli(
+        env,
         cmd,
         [
           "database",
@@ -647,7 +639,7 @@ async function getCodeQLForCmd(
       }
     },
     async runAutobuild(config: Config, language: Language) {
-      applyAutobuildAzurePipelinesTimeoutFix();
+      applyAutobuildAzurePipelinesTimeoutFix(env);
 
       const autobuildCmd = path.join(
         await this.resolveExtractor(language),
@@ -657,8 +649,11 @@ async function getCodeQLForCmd(
 
       // Bump the verbosity of the autobuild command if we're in debug mode
       if (config.debugMode) {
-        process.env[EnvVar.CLI_VERBOSITY] =
-          process.env[EnvVar.CLI_VERBOSITY] || EXTRACTION_DEBUG_MODE_VERBOSITY;
+        env.set(
+          EnvVar.CLI_VERBOSITY,
+          env.getOptional(EnvVar.CLI_VERBOSITY) ??
+            EXTRACTION_DEBUG_MODE_VERBOSITY,
+        );
       }
 
       // On macOS, System Integrity Protection (SIP) typically interferes with
@@ -675,10 +670,10 @@ async function getCodeQLForCmd(
       // When `DYLD_INSERT_LIBRARIES` is set in the environment for a step,
       // the Actions runtime introduces its own workaround for SIP
       // (https://github.com/actions/runner/pull/416).
-      await runCli(autobuildCmd);
+      await runCli(env, autobuildCmd);
     },
     async extractScannedLanguage(config: Config, language: Language) {
-      await runCli(cmd, [
+      await runCli(env, cmd, [
         "database",
         "trace-command",
         "--index-traceless-dbs",
@@ -690,10 +685,10 @@ async function getCodeQLForCmd(
     },
     async extractUsingBuildMode(config: Config, language: Language) {
       if (config.buildMode === BuildMode.Autobuild) {
-        applyAutobuildAzurePipelinesTimeoutFix();
+        applyAutobuildAzurePipelinesTimeoutFix(env);
       }
       try {
-        await runCli(cmd, [
+        await runCli(env, cmd, [
           "database",
           "trace-command",
           "--use-build-mode",
@@ -732,7 +727,7 @@ async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["database", "finalize"]),
         databasePath,
       ];
-      await runCli(cmd, args);
+      await runCli(env, cmd, args);
     },
     async resolveLanguages(
       {
@@ -741,7 +736,7 @@ async function getCodeQLForCmd(
         filterToLanguagesWithQueries: boolean;
       } = { filterToLanguagesWithQueries: false },
     ) {
-      return runCliJson<ResolveLanguagesOutput>(cmd, [
+      return runCliJson<ResolveLanguagesOutput>(env, cmd, [
         "resolve",
         "languages",
         "--format=betterjson",
@@ -770,7 +765,11 @@ async function getCodeQLForCmd(
       if (workingDir !== undefined) {
         codeqlArgs.push("--working-dir", workingDir);
       }
-      return await runCliJson<ResolveBuildEnvironmentOutput>(cmd, codeqlArgs);
+      return await runCliJson<ResolveBuildEnvironmentOutput>(
+        env,
+        cmd,
+        codeqlArgs,
+      );
     },
     async databaseRunQueries(
       databasePath: string,
@@ -789,7 +788,7 @@ async function getCodeQLForCmd(
           ignoringOptions: ["--expect-discarded-cache"],
         }),
       ];
-      await runCli(cmd, codeqlArgs);
+      await runCli(env, cmd, codeqlArgs);
     },
     async databaseInterpretResults(
       databasePath: string,
@@ -822,7 +821,7 @@ async function getCodeQLForCmd(
         "--sarif-group-rules-by-pack",
         "--sarif-include-query-help=always",
         "--sublanguage-file-coverage",
-        ...(await getJobRunUuidSarifOptions()),
+        ...(await getJobRunUuidSarifOptions(env)),
         ...getExtraOptionsFromEnv(["database", "interpret-results"]),
       ];
       if (sarifRunPropertyFlag !== undefined) {
@@ -842,7 +841,7 @@ async function getCodeQLForCmd(
       }
       // Capture the stdout, which contains the analysis summary. Don't stream it to the Actions
       // logs to avoid printing it twice.
-      return await runCli(cmd, codeqlArgs, {
+      return await runCli(env, cmd, codeqlArgs, {
         noStreamStdout: true,
       });
     },
@@ -859,7 +858,7 @@ async function getCodeQLForCmd(
           `--cache-cleanup=${cleanupLevel}`,
           ...getExtraOptionsFromEnv(["database", "cleanup"]),
         ];
-        await runCli(cmd, codeqlArgs);
+        await runCli(env, cmd, codeqlArgs);
       }
     },
     async databaseBundle(
@@ -893,7 +892,9 @@ async function getCodeQLForCmd(
           ]),
         );
       }
-      await new toolrunner.ToolRunner(cmd, args).exec();
+      await new toolrunner.ToolRunner(cmd, args, {
+        env: env.getDefined(),
+      }).exec();
     },
     async databaseExportDiagnostics(
       databasePath: string,
@@ -914,27 +915,59 @@ async function getCodeQLForCmd(
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
-      await new toolrunner.ToolRunner(cmd, args).exec();
+      await new toolrunner.ToolRunner(cmd, args, {
+        env: env.getDefined(),
+      }).exec();
     },
     async diagnosticsExport(
       sarifFile: string,
       automationDetailsId: string | undefined,
       config: ActionConfig<"tempDir">,
+      diagnosticDir: string | undefined,
     ): Promise<void> {
+      // We may be exporting diagnostics for a failed SARIF, in which case the configuration
+      // file may not have been written to disk and there may not be a database. The CLI
+      // will produce a SARIF for diagnostics from `diagnosticDir` without it. Therefore,
+      // we check whether `configPath` exists and only provide it to the CLI if it does.
+      // Although not needed, the CLI will produce an error if it
+      // is provided with an argument to `--sarif-codescanning-config` that does not exist.
+      let configPath: string | undefined =
+        getGeneratedCodeScanningConfigPath(config);
+
+      if (!fs.existsSync(configPath)) {
+        // Warn if there is no configuration file, even though `config` claims that `init`
+        // was successful. This shouldn't be happening.
+        if (config.successfullyInitialised) {
+          logger.warning(
+            [
+              `Expected a configuration file at '${configPath}', which does not exist.`,
+              "Continuing with diagnostics export anyway, without a configuration file.",
+            ].join(" "),
+          );
+        }
+
+        configPath = undefined;
+      }
+
       const args = [
         "diagnostics",
         "export",
         "--format=sarif-latest",
         `--output=${sarifFile}`,
-        `--sarif-codescanning-config=${getGeneratedCodeScanningConfigPath(
-          config,
-        )}`,
+        ...(configPath !== undefined
+          ? [`--sarif-codescanning-config=${configPath}`]
+          : []),
+        ...(diagnosticDir !== undefined
+          ? [`--diagnostic-dir=${diagnosticDir}`]
+          : []),
         ...getExtraOptionsFromEnv(["diagnostics", "export"]),
       ];
       if (automationDetailsId !== undefined) {
         args.push("--sarif-category", automationDetailsId);
       }
-      await new toolrunner.ToolRunner(cmd, args).exec();
+      await new toolrunner.ToolRunner(cmd, args, {
+        env: env.getDefined(),
+      }).exec();
     },
     async resolveExtractor(language: Language): Promise<string> {
       // Request it using `format=json` so we don't need to strip the trailing new line generated by
@@ -952,6 +985,7 @@ async function getCodeQLForCmd(
           ...getExtraOptionsFromEnv(["resolve", "extractor"]),
         ],
         {
+          env: env.getDefined(),
           silent: true,
           listeners: {
             stdout: (data) => {
@@ -979,7 +1013,7 @@ async function getCodeQLForCmd(
         ...getExtraOptionsFromEnv(["resolve", "queries"]),
         ...queries,
       ];
-      return await runCliJson<string[]>(cmd, codeqlArgs, {
+      return await runCliJson<string[]>(env, cmd, codeqlArgs, {
         noStreamStdout: true,
       });
     },
@@ -993,7 +1027,7 @@ async function getCodeQLForCmd(
         "--format=json",
         ...getExtraOptionsFromEnv(["resolve", "database"]),
       ];
-      return await runCliJson<ResolveDatabaseOutput>(cmd, codeqlArgs, {
+      return await runCliJson<ResolveDatabaseOutput>(env, cmd, codeqlArgs, {
         noStreamStdout: true,
       });
     },
@@ -1020,7 +1054,7 @@ async function getCodeQLForCmd(
         args.push("--sarif-merge-runs-from-equal-category");
       }
 
-      await runCli(cmd, args);
+      await runCli(env, cmd, args);
     },
   };
   // To ensure that status reports include the CodeQL CLI version wherever
@@ -1042,7 +1076,7 @@ async function getCodeQLForCmd(
     );
   } else if (
     checkVersion &&
-    process.env[EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING] !== "true" &&
+    env.getOptional(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING) !== "true" &&
     !(await codeql.isVersionAtLeast(CODEQL_NEXT_MINIMUM_VERSION))
   ) {
     const result = await codeql.getVersion();
@@ -1060,7 +1094,7 @@ async function getCodeQLForCmd(
         }' by 'github/codeql-action/*@v${getActionVersion()}' in your code scanning workflow to ` +
         "continue using this version of the CodeQL Action.",
     );
-    exportEnvVar(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
+    env.export(EnvVar.SUPPRESS_DEPRECATED_SOON_WARNING, "true");
   }
   return codeql;
 }
@@ -1137,12 +1171,13 @@ export function getExtraOptions(
 }
 
 async function runCli(
+  env: ReadOnlyEnv,
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},
 ): Promise<string> {
   try {
-    return await runTool(cmd, args, opts);
+    return await runTool(env, cmd, args, opts);
   } catch (e) {
     if (e instanceof CommandInvocationError) {
       throw wrapCliConfigurationError(new CliError(e));
@@ -1153,6 +1188,8 @@ async function runCli(
 
 /**
  * Wraps the command executor {@link runCli} and tries to parse the output as JSON.
+ *
+ * @param env The environment variables.
  * @param cmd The command to run.
  * @param args The arguments to pass to the command.
  * @param opts The options for running the command.
@@ -1161,11 +1198,12 @@ async function runCli(
  * @returns The parsed JSON output from the command.
  */
 async function runCliJson<T>(
+  env: ReadOnlyEnv,
   cmd: string,
   args: string[] = [],
   opts: { stdin?: string; noStreamStdout?: boolean } = {},
 ): Promise<T> {
-  const output = await runCli(cmd, args, opts);
+  const output = await runCli(env, cmd, args, opts);
   try {
     return JSON.parse(output) as T;
   } catch (e) {
@@ -1264,17 +1302,20 @@ function getExtractionVerbosityArguments(
  * Without the fix, long build processes will timeout when pulling down Java packages
  * https://developercommunity.visualstudio.com/content/problem/292284/maven-hosted-agent-connection-timeout.html
  */
-function applyAutobuildAzurePipelinesTimeoutFix() {
-  const javaToolOptions = process.env["JAVA_TOOL_OPTIONS"] || "";
-  process.env["JAVA_TOOL_OPTIONS"] = [
-    ...javaToolOptions.split(/\s+/),
-    "-Dhttp.keepAlive=false",
-    "-Dmaven.wagon.http.pool=false",
-  ].join(" ");
+function applyAutobuildAzurePipelinesTimeoutFix(env: Env) {
+  const javaToolOptions = env.getOptional("JAVA_TOOL_OPTIONS") ?? "";
+  env.set(
+    "JAVA_TOOL_OPTIONS",
+    [
+      ...javaToolOptions.split(/\s+/),
+      "-Dhttp.keepAlive=false",
+      "-Dmaven.wagon.http.pool=false",
+    ].join(" "),
+  );
 }
 
-async function getJobRunUuidSarifOptions() {
-  const jobRunUuid = process.env[EnvVar.JOB_RUN_UUID];
+async function getJobRunUuidSarifOptions(env: ReadOnlyEnv) {
+  const jobRunUuid = env.getOptional(EnvVar.JOB_RUN_UUID);
 
   return jobRunUuid ? [`--sarif-run-property=jobRunUuid=${jobRunUuid}`] : [];
 }

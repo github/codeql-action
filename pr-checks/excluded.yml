@@ -20,3 +20,7 @@ is:
   - "Release info"
   - "Upload results"
   - "Update release branch"
+  # These checks are known not to run on every PR (for example, some release
+  # PRs), so requiring them would block the PRs they don't run on.
+  - "github-advanced-security"
+  - "License compliance check"

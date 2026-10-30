@@ -54,11 +54,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
-          - os: macos-latest-xlarge
+          - os: macos-26-xlarge
             version: nightly-latest
-          - os: windows-latest
+          - os: windows-2025
             version: nightly-latest
     name: All-platform bundle
     if: github.triggering_actor != 'dependabot[bot]'

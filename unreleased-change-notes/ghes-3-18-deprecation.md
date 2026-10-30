@@ -1,0 +1,1 @@
+- _Upcoming breaking change_: CodeQL version 2.22.3 and earlier were discontinued on 16 October 2026 alongside GitHub Enterprise Server 3.18, and will be unsupported by the next minor release of the CodeQL Action. Added a deprecation warning for customers using these versions of CodeQL. [#4266](https://github.com/github/codeql-action/pull/4266)

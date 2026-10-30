@@ -11,7 +11,6 @@ import {
 } from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
-import { getRunnerLogger } from "./logging";
 import { getTestEnv, RecordingLogger, setupTests } from "./testing-utils";
 import { withTmpDir } from "./util";
 
@@ -239,7 +238,7 @@ test.serial("fixCodeQualityCategory", (t) => {
       GITHUB_EVENT_NAME: "dynamic",
     },
     () => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
 
       // Categories that should get adjusted.
       t.is(fixCodeQualityCategory(logger, "/language:c#"), "/language:csharp");

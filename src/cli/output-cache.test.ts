@@ -3,15 +3,14 @@ import path from "path";
 
 import test from "ava";
 
-import { getRunnerLogger } from "../logging";
-import { setupTests } from "../testing-utils";
+import { RecordingLogger, setupTests } from "../testing-utils";
 import * as util from "../util";
 
 import { getCachedCodeQlVersion } from "./output-cache";
 
 setupTests(test);
 
-const logger = getRunnerLogger(true);
+const logger = new RecordingLogger();
 
 test.serial(
   "getCachedCodeQlVersion reuses a version persisted by an earlier step",

@@ -34,9 +34,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-26
             version: linked
-          - os: macos-latest
+          - os: macos-26
             version: nightly-latest
     name: 'C/C++: autoinstalling dependencies is skipped (macOS)'
     if: github.triggering_actor != 'dependabot[bot]'

@@ -54,41 +54,41 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             version: stable-v2.20.7
           - os: macos-15-xlarge
             version: stable-v2.20.7
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.21.4
           - os: macos-15-xlarge
             version: stable-v2.21.4
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.22.4
           - os: macos-15-xlarge
             version: stable-v2.22.4
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.23.9
-          - os: macos-latest-xlarge
+          - os: macos-26-xlarge
             version: stable-v2.23.9
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.24.3
-          - os: macos-latest-xlarge
+          - os: macos-26-xlarge
             version: stable-v2.24.3
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: stable-v2.25.6
-          - os: macos-latest-xlarge
+          - os: macos-26-xlarge
             version: stable-v2.25.6
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: default
-          - os: macos-latest-xlarge
+          - os: macos-26-xlarge
             version: default
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
-          - os: macos-latest-xlarge
+          - os: macos-26-xlarge
             version: linked
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
-          - os: macos-latest-xlarge
+          - os: macos-26-xlarge
             version: nightly-latest
     name: Multi-language repository
     if: github.triggering_actor != 'dependabot[bot]'
@@ -121,7 +121,7 @@ jobs:
         # imports `importlib._bootstrap._ERR_MSG`, which those Python versions no longer define.
         # See https://github.com/github/codeql-action/pull/3212
         if: matrix.version != 'nightly-latest' && matrix.version != 'linked'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13.15'
 

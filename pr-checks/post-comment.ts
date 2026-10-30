@@ -132,7 +132,9 @@ export async function setComment(
   );
   if (existingCommentId === undefined) {
     if (!options.createIfMissing) {
-      console.info("No existing comment found; skipping creation.");
+      console.info(
+        "No existing comment found; skipping creation because --create-if-missing wasn't specified.",
+      );
       return;
     }
     console.info("No existing comment found; creating a new comment.");

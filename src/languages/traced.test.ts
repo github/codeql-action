@@ -278,7 +278,7 @@ test.serial(
 
       const features = createFeatures([
         Feature.CheckUnsupportedTracedAnalysis,
-        Feature.SkipUnsupportedTracedAnalysis,
+        Feature.AbortUnsupportedTracedAnalysis,
       ]);
 
       const codeql = await getCodeQLWithTracedStub(
@@ -518,7 +518,7 @@ test.serial(
 
       const features = createFeatures([
         Feature.CheckUnsupportedTracedAnalysis,
-        Feature.SkipUnsupportedTracedAnalysis,
+        Feature.AbortUnsupportedTracedAnalysis,
       ]);
 
       const codeql = await getCodeQLWithTracedStub(

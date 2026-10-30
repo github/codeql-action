@@ -28,7 +28,7 @@ steps:
     continue-on-error: true
     env:
       CODEQL_ACTION_CHECK_UNSUPPORTED_TRACED_ANALYSIS: true
-      CODEQL_ACTION_SKIP_UNSUPPORTED_TRACED_ANALYSIS: true
+      CODEQL_ACTION_ABORT_UNSUPPORTED_TRACED_ANALYSIS: true
     with:
       languages: swift
       tools: ${{ steps.prepare-test.outputs.tools-url }}

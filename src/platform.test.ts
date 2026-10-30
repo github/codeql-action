@@ -95,21 +95,24 @@ test.serial(
   },
 );
 
-test.serial("xcodeVersion returns undefined if file is not a symlink", (t) => {
-  const logger = new RecordingLogger();
+test.serial(
+  "xcodeVersionFromLink returns undefined if file is not a symlink",
+  (t) => {
+    const logger = new RecordingLogger();
 
-  const readlinkSync = sinon
-    .stub(fs, "readlinkSync")
-    .throws(new Error("EINVAL: invalid argument"));
+    const readlinkSync = sinon
+      .stub(fs, "readlinkSync")
+      .throws(new Error("EINVAL: invalid argument"));
 
-  t.is(xcodeVersionFromLink(logger), undefined);
-  t.is(readlinkSync.callCount, 1);
-  t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+    t.is(xcodeVersionFromLink(logger), undefined);
+    t.is(readlinkSync.callCount, 1);
+    t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
-  checkExpectedLogMessages(t, logger.messages, [
-    "Unable to determine Xcode version: EINVAL: invalid argument",
-  ]);
-});
+    checkExpectedLogMessages(t, logger.messages, [
+      "Unable to determine Xcode version: EINVAL: invalid argument",
+    ]);
+  },
+);
 
 test.serial(
   "xcodeVersionFromLink returns undefined if resolving the symlink returns nothing",

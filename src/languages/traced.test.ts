@@ -166,7 +166,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
     );
 
     checkUnexpectedLogMessages(t, logger.messages, [
-      "Unable to determine version of macOS, got: unexpected",
+      "Unable to parse Darwin kernel version, got: unexpected",
     ]);
   }));
 
@@ -198,7 +198,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks on self-hosted ru
     );
 
     checkUnexpectedLogMessages(t, logger.messages, [
-      "Unable to determine version of macOS, got: unexpected",
+      "Unable to parse Darwin kernel version, got: unexpected",
     ]);
   }));
 
@@ -229,7 +229,7 @@ test("checkRunnerSupportsTracedAnalysis warns if version string is not a semver"
     );
 
     checkExpectedLogMessages(t, logger.messages, [
-      "Unable to determine version of macOS, got: unexpected",
+      "Unable to parse Darwin kernel version, got: unexpected",
     ]);
   }));
 

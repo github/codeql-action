@@ -33,8 +33,9 @@ export function getBundlePlatform(
 }
 
 /**
- * Tries to determine the version of the kernel on macOS. We approximate this based on the
- * Darwin kernel version so that we don't have to launch an external process.
+ * Tries to determine the version of the Darwin kernel. We use this to approximate the macOS version based
+ * on the Darwin kernel version so that we don't have to launch an external process. Note that the Darwin
+ * kernel major version does not correspond perfectly to the macOS major version.
  *
  * @returns
  *  The version as either a semantic version object, the raw version string

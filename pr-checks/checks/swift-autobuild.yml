@@ -4,7 +4,7 @@ versions:
   - nightly-latest
 operatingSystems:
   - os: macos
-    runner-image: macos-latest-xlarge
+    runner-image: macos-26-xlarge
 steps:
   - uses: ./../action/init
     id: init

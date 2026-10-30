@@ -10,7 +10,7 @@ import { Feature } from "../feature-flags";
 import {
   darwinVersion,
   xcodeVersionFromLink,
-  xcodeVersionFromSdk,
+  xcodeSdkVersion,
   xcodeVersionFromXcodeBuild,
 } from "../platform";
 import { ConfigurationError } from "../util";
@@ -208,7 +208,7 @@ export async function checkRunnerSupportsTracedAnalysis(
   const xcodeVer =
     xcodeVersionFromLink(action.logger) ??
     (await xcodeVersionFromXcodeBuild(action.logger)) ??
-    (await xcodeVersionFromSdk(action.logger));
+    (await xcodeSdkVersion(action.logger));
 
   if (
     xcodeVer !== undefined &&

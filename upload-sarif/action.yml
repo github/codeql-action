@@ -1,6 +1,6 @@
-name: 'Code Scanning : Upload SARIF'
-description: 'Upload the analysis results'
-author: 'GitHub'
+name: "Code Scanning : Upload SARIF"
+description: "Upload the analysis results"
+author: "GitHub"
 inputs:
   sarif_file:
     description: |
@@ -8,7 +8,7 @@ inputs:
       See https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/uploading-a-sarif-file-to-github#uploading-a-code-scanning-analysis-with-github-actions
       for information on the maximum number of results and maximum file size supported by code scanning.
     required: false
-    default: '../results'
+    default: "../results"
   checkout_path:
     description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
     required: false
@@ -42,5 +42,5 @@ outputs:
       { "code-scanning": "some-id", "code-quality": "some-other-id" }
 runs:
   using: node24
-  main: '../lib/upload-sarif-entry.js'
-  post: '../lib/upload-sarif-post-entry.js'
+  main: "../lib/upload-sarif-entry.js"
+  post: "../lib/upload-sarif-post-entry.js"

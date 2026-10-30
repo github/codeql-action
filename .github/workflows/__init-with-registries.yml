@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: 'PR Check - Packaging: Download using registries'
+name: "PR Check - Packaging: Download using registries"
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs: {}
   workflow_call:
@@ -40,7 +40,7 @@ jobs:
             version: linked
           - os: ubuntu-26.04
             version: nightly-latest
-    name: 'Packaging: Download using registries'
+    name: "Packaging: Download using registries"
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
@@ -55,12 +55,12 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - name: Init with registries
         uses: ./../action/init
         with:
-          db-location: '${{ runner.temp }}/customDbLocation'
+          db-location: "${{ runner.temp }}/customDbLocation"
           tools: ${{ steps.prepare-test.outputs.tools-url }}
           config-file: ./.github/codeql/codeql-config-registries.yml
           languages: javascript

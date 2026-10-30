@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: 'PR Check - Packaging: Config and input'
+name: "PR Check - Packaging: Config and input"
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dotnet-version:
@@ -29,7 +29,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
   workflow_call:
     inputs:
       dotnet-version:
@@ -41,7 +41,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
 defaults:
   run:
     shell: bash
@@ -60,7 +60,7 @@ jobs:
             version: default
           - os: ubuntu-26.04
             version: nightly-latest
-    name: 'Packaging: Config and input'
+    name: "Packaging: Config and input"
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
@@ -93,11 +93,11 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: ./../action/init
         with:
-          config-file: '.github/codeql/codeql-config-packaging3.yml'
+          config-file: ".github/codeql/codeql-config-packaging3.yml"
           packs: +codeql-testing/codeql-pack1@1.0.0
           languages: javascript
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -105,7 +105,7 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         with:
-          output: '${{ runner.temp }}/results'
+          output: "${{ runner.temp }}/results"
           upload-database: false
 
       - name: Check results

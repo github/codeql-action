@@ -19,10 +19,10 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
 jobs:
   go-custom-queries:
-    name: 'Go: Custom queries'
+    name: "Go: Custom queries"
     permissions:
       contents: read
       security-events: read
@@ -31,7 +31,7 @@ jobs:
       dotnet-version: ${{ inputs.dotnet-version }}
       go-version: ${{ inputs.go-version }}
   go-indirect-tracing-workaround-diagnostic:
-    name: 'Go: diagnostic when Go is changed after init step'
+    name: "Go: diagnostic when Go is changed after init step"
     permissions:
       contents: read
       security-events: read
@@ -39,7 +39,7 @@ jobs:
     with:
       go-version: ${{ inputs.go-version }}
   go-indirect-tracing-workaround-no-file-program:
-    name: 'Go: diagnostic when `file` is not installed'
+    name: "Go: diagnostic when `file` is not installed"
     permissions:
       contents: read
       security-events: read
@@ -47,7 +47,7 @@ jobs:
     with:
       go-version: ${{ inputs.go-version }}
   go-indirect-tracing-workaround:
-    name: 'Go: workaround for indirect tracing'
+    name: "Go: workaround for indirect tracing"
     permissions:
       contents: read
       security-events: read
@@ -55,7 +55,7 @@ jobs:
     with:
       go-version: ${{ inputs.go-version }}
   go-tracing-autobuilder:
-    name: 'Go: tracing with autobuilder step'
+    name: "Go: tracing with autobuilder step"
     permissions:
       contents: read
       security-events: read
@@ -63,7 +63,7 @@ jobs:
     with:
       go-version: ${{ inputs.go-version }}
   go-tracing-custom-build-steps:
-    name: 'Go: tracing with custom build steps'
+    name: "Go: tracing with custom build steps"
     permissions:
       contents: read
       security-events: read
@@ -71,7 +71,7 @@ jobs:
     with:
       go-version: ${{ inputs.go-version }}
   go-tracing-legacy-workflow:
-    name: 'Go: tracing with legacy workflow'
+    name: "Go: tracing with legacy workflow"
     permissions:
       contents: read
       security-events: read

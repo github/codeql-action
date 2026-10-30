@@ -1,5 +1,8 @@
 import fs from "fs";
 
+import type { ExecOptions } from "@actions/exec";
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
 import test from "ava";
 import * as sinon from "sinon";
 
@@ -344,38 +347,6 @@ test.serial(
     }),
 );
 
-test("checkRunnerSupportsTracedAnalysis doesn't perform Xcode check on self-hosted runners", async (t) =>
-  withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger();
-    const env = getTestEnv();
-    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-    env.set(ActionsEnvVars.RUNNER_ENVIRONMENT, "self-hosted");
-    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
-
-    const codeql = await getCodeQLWithTracedStub(
-      "codeql-for-testing",
-      logger,
-      env,
-    );
-    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
-
-    await checkRunnerSupportsTracedAnalysis(
-      initAllState({
-        logger,
-        platform: "darwin",
-        osRelease: "26.0.0",
-        env,
-        features,
-      }),
-      createTestConfig({ tempDir: tmpDir, languages: [BuiltInLanguage.go] }),
-      codeql,
-    );
-
-    checkExpectedLogMessages(t, logger.messages, [
-      "Skipping traced analysis compatibility check for Xcode because we are on a self-hosted runner.",
-    ]);
-  }));
-
 // `addDiagnostic` changes global state and we must stub it, so this test must be serial.
 test.serial(
   "checkRunnerSupportsTracedAnalysis doesn't add a diagnostic if Xcode version is supported",
@@ -418,6 +389,86 @@ test.serial(
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
+      checkUnexpectedLogMessages(t, logger.messages, [
+        "Traced analysis is not supported on Xcode 27",
+      ]);
+
+      t.is(addDiagnostic.callCount, 0);
+    }),
+);
+
+test.serial(
+  "checkRunnerSupportsTracedAnalysis attempts fallbacks if needed",
+  async (t) =>
+    withTmpDir(async (tmpDir) => {
+      const logger = new RecordingLogger();
+      const env = getTestEnv();
+      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+      const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
+
+      const readlinkSync = sinon
+        .stub(fs, "readlinkSync")
+        .throws(new Error("Not found"));
+      const which = sinon.stub(io, "which").resolves("/path/to/xcrun");
+      const exec = sinon.stub<[], Promise<number>>().callsFake(async () => {
+        throw new Error("Error to force next fallback");
+      });
+      const runner = sinon.createStubInstance(toolrunner.ToolRunner, { exec });
+      const toolrunnerStub = sinon
+        .stub(toolrunner, "ToolRunner")
+        .callsFake(() => {
+          return runner;
+        });
+
+      const codeql = await getCodeQLWithTracedStub(
+        "codeql-for-testing",
+        logger,
+        env,
+      );
+      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+      const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
+
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
+      await checkRunnerSupportsTracedAnalysis(
+        initAllState({
+          logger,
+          platform: "darwin",
+          osRelease: "26.0.0",
+          env,
+          features,
+        }),
+        config,
+        codeql,
+      );
+
+      t.is(readlinkSync.callCount, 1);
+      t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+      t.is(which.callCount, 2);
+      t.deepEqual(which.args[0], ["xcrun", true]);
+      t.deepEqual(which.args[1], ["xcrun", true]);
+
+      t.is(toolrunnerStub.callCount, 2);
+      t.is(exec.callCount, 2);
+
+      t.is(toolrunnerStub.args[0][0], "/path/to/xcrun");
+      t.deepEqual(toolrunnerStub.args[0][1], ["xcodebuild", "-version"]);
+
+      t.is(toolrunnerStub.args[1][0], "/path/to/xcrun");
+      t.deepEqual(toolrunnerStub.args[1][1], [
+        "--sdk",
+        "macosx",
+        "--show-sdk-version",
+      ]);
+
+      checkExpectedLogMessages(t, logger.messages, [
+        "Unable to determine Xcode version: Not found",
+        "Unable to determine Xcode version from xcodebuild: Error to force next fallback",
+        "Unable to determine Xcode SDK version: Error to force next fallback",
+      ]);
       checkUnexpectedLogMessages(t, logger.messages, [
         "Traced analysis is not supported on Xcode 27",
       ]);
@@ -485,6 +536,104 @@ test.serial(
           source: {
             id: "codeql-action/unsupported-traced-analysis-xcode",
             name: "Traced analysis is not supported on this version of Xcode",
+          },
+          visibility: {
+            cliSummaryTable: true,
+            statusPage: true,
+            telemetry: true,
+          },
+        } satisfies Partial<diagnostics.DiagnosticMessage>,
+      ]);
+    }),
+);
+
+// `addDiagnostic` changes global state and we must stub it, so this test must be serial.
+test.serial(
+  "checkRunnerSupportsTracedAnalysis logs and adds diagnostic if Xcode SDK version is unsupported",
+  async (t) =>
+    withTmpDir(async (tmpDir) => {
+      const logger = new RecordingLogger();
+      const env = getTestEnv();
+      env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+      const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
+
+      const readlinkSync = sinon
+        .stub(fs, "readlinkSync")
+        .throws(new Error("Not found"));
+      const which = sinon.stub(io, "which").resolves("/path/to/xcrun");
+
+      let stdoutListener: ((data: Buffer) => void) | undefined = undefined;
+      const exec = sinon.stub<[], Promise<number>>().callsFake(async () => {
+        if (stdoutListener !== undefined) {
+          stdoutListener(Buffer.from("Xcode 27.5"));
+          stdoutListener(Buffer.from("Build version 27F9"));
+          return 0;
+        } else {
+          throw new Error("Error to force next fallback");
+        }
+      });
+      const runner = sinon.createStubInstance(toolrunner.ToolRunner, {
+        exec,
+      });
+      const toolrunnerStub = sinon
+        .stub(toolrunner, "ToolRunner")
+        .callsFake((_cmd, args: string[], opts: ExecOptions) => {
+          if (args[0] !== "xcodebuild") {
+            stdoutListener = opts.listeners?.stdout;
+          }
+          return runner;
+        });
+
+      const codeql = await getCodeQLWithTracedStub(
+        "codeql-for-testing",
+        logger,
+        env,
+      );
+      sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
+
+      const addDiagnostic = sinon.stub(diagnostics, "addDiagnostic");
+
+      const config = createTestConfig({
+        tempDir: tmpDir,
+        languages: [BuiltInLanguage.swift],
+      });
+      await checkRunnerSupportsTracedAnalysis(
+        initAllState({
+          logger,
+          platform: "darwin",
+          osRelease: "26.0.0",
+          env,
+          features,
+        }),
+        config,
+        codeql,
+      );
+
+      t.is(readlinkSync.callCount, 1);
+      t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+
+      t.is(which.callCount, 2);
+      t.is(toolrunnerStub.callCount, 2);
+      t.is(exec.callCount, 2);
+
+      checkExpectedLogMessages(t, logger.messages, [
+        "Unable to determine Xcode version from xcodebuild",
+        "Traced analysis is not supported on Xcode SDK 27",
+      ]);
+
+      t.is(addDiagnostic.callCount, 1);
+      t.like(addDiagnostic.args[0], [
+        config,
+        BuiltInLanguage.swift,
+        {
+          attributes: {
+            languages: [BuiltInLanguage.swift],
+            xcodeSdkVersion: "27.5.0",
+          },
+          severity: "warning",
+          source: {
+            id: "codeql-action/unsupported-traced-analysis-xcode-sdk",
+            name: "Traced analysis is not supported on this version of Xcode SDK",
           },
           visibility: {
             cliSummaryTable: true,

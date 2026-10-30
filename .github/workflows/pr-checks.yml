@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-26.04, macos-26, windows-2025]
         node-version: [20, 24]
     permissions:
       contents: read
@@ -71,7 +71,7 @@ jobs:
         run: npm test
 
       - name: Lint
-        if: always() && matrix.os != 'windows-latest'
+        if: always() && matrix.os != 'windows-2025'
         run: npm run lint-ci
 
       - name: Upload sarif
@@ -81,7 +81,7 @@ jobs:
         # paired `push` run that the queue branch creates use that ref, so gate on the ref itself
         # rather than the event. The same results are uploaded by the `pull_request` run and again
         # by the `push` run on `main`.
-        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 24 && !startsWith(github.ref, 'refs/heads/gh-readonly-queue/')
+        if: matrix.os == 'ubuntu-26.04' && matrix.node-version == 24 && !startsWith(github.ref, 'refs/heads/gh-readonly-queue/')
         with:
           sarif_file: eslint.sarif
           category: eslint
@@ -93,7 +93,7 @@ jobs:
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
 
     concurrency:

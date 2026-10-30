@@ -464,6 +464,8 @@ export async function initActionState(
     overlayModeSetExplicitly: false,
     repositoryProperties,
     enableFileCoverageInformation,
+    // We don't set this to `true` until `init` is successful.
+    successfullyInitialised: false,
   };
 }
 

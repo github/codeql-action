@@ -11,9 +11,8 @@ import nock from "nock";
 import * as sinon from "sinon";
 
 import * as errors from "./errors";
-import { getRunnerLogger } from "./logging";
 import * as tar from "./tar";
-import { setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests } from "./testing-utils";
 import { downloadAndExtract } from "./tools-download";
 import * as util from "./util";
 
@@ -35,7 +34,7 @@ test.serial(
         undefined,
         {},
         undefined,
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
@@ -73,7 +72,7 @@ test.serial(
         undefined,
         {},
         { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
@@ -106,7 +105,7 @@ test.serial(
           undefined,
           {},
           { type: "gnu", version: "1.34" },
-          getRunnerLogger(true),
+          new RecordingLogger(),
         ),
         {
           instanceOf: util.HTTPError,
@@ -150,7 +149,7 @@ test.serial(
         undefined,
         {},
         { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
@@ -190,7 +189,7 @@ test.serial(
         undefined,
         {},
         { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.is(
@@ -238,7 +237,7 @@ test.serial(
         undefined,
         {},
         { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.totalDurationMs));

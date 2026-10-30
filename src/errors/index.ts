@@ -19,6 +19,21 @@ export function getErrorMessage(error: unknown): string {
 }
 
 /**
+ * Approximates whether {@link error} is like a {@link NodeJS.ErrnoException}.
+ * We only typically care about the `code` property, so that's what we check for here.
+ */
+export function isErrnoException(
+  error: unknown,
+): error is NodeJS.ErrnoException {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+  );
+}
+
+/**
  * Decides whether `e` is a disk-related error outside of our control
  * that should be classified as a `ConfigurationError`.
  *

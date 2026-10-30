@@ -1,10 +1,24 @@
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import * as fs from "fs";
 import path from "path";
 
-import type { Config } from "./config-utils";
+import type { ActionState } from "./action-common";
+import { getTemporaryDirectory } from "./actions-util";
+import type { ActionConfig } from "./config/action-config";
 import { Language } from "./languages";
-import { getActionsLogger } from "./logging";
-import { getCodeQLDatabasePath } from "./util";
+import { getActionsLogger, type Logger } from "./logging";
+import {
+  getCodeQLDatabasePath,
+  getErrorMessage,
+  isErrnoException,
+} from "./util";
+
+/** The name of the directory we use to temporarily store diagnostics. */
+export const TEMP_DIAGNOSTIC_DIR_NAME = "codeql-action-temp-diagnostics";
+
+export const CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS = [
+  "diagnostic",
+  "codeql-action",
+];
 
 /**
  * Known tags for diagnostics. There is currently only "internal-error",
@@ -84,22 +98,16 @@ export type DiagnosticMessage = DiagnosticMessageOptions & {
   source: DiagnosticSource;
 };
 
-/** Represents a diagnostic message that has not yet been written to the database. */
-interface UnwrittenDiagnostic {
-  /** The diagnostic message that has not yet been written. */
-  diagnostic: DiagnosticMessage;
-  /** The language the diagnostic is for. */
-  language: Language;
+/** Represents a diagnostic message that has not yet been saved to the database. */
+interface TemporaryDiagnostic {
+  /** The path to which the diagnostic has temporarily been written to. */
+  path: string;
+  /** The language the diagnostic is for, if any. */
+  language?: Language;
 }
 
-/** A list of diagnostics which have not yet been written to disk. */
-let unwrittenDiagnostics: UnwrittenDiagnostic[] = [];
-
-/**
- * A list of diagnostics which have not yet been written to disk,
- * and where the language does not matter.
- */
-let unwrittenDefaultLanguageDiagnostics: DiagnosticMessage[] = [];
+/** A list of diagnostics which have not yet been saved to the database. */
+let temporaryDiagnostics: TemporaryDiagnostic[] = [];
 
 /**
  * Counter used to generate a unique suffix for each diagnostic filename, so that
@@ -129,6 +137,54 @@ export function makeDiagnostic(
 }
 
 /**
+ * Gets a path relative to {@link basePath} where diagnostics for {@link language} should be stored at.
+ */
+export function getLanguageDiagnosticsPath(
+  basePath: string,
+  language: Language,
+) {
+  return path.resolve(
+    basePath,
+    language,
+    ...CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS,
+  );
+}
+
+/**
+ * Gets a path relative to {@link tmpDir} where diagnostics should temporarily be stored
+ * until they can be moved to the database.
+ */
+export function getTempDiagnosticsRoot(tmpDir: string): string {
+  return path.resolve(tmpDir, TEMP_DIAGNOSTIC_DIR_NAME);
+}
+
+/**
+ * Gets a path relative to {@link tmpDir} where diagnostics for {@link language}
+ * can temporarily be stored at before the database is initialised. If {@link language}
+ * is `undefined`, then a non-language-specific path is returned.
+ */
+export function getTempLanguageDiagnosticsPath(
+  tmpDir: string,
+  language?: Language,
+) {
+  const root = getTempDiagnosticsRoot(tmpDir);
+
+  if (language !== undefined) {
+    return getLanguageDiagnosticsPath(root, language);
+  }
+
+  return path.resolve(root, ...CODEQL_ACTION_DIAGNOSTIC_SUBDIR_PARTS);
+}
+
+/** Gets the path where diagnostics for {@link language} should be stored in the database. */
+export function getDatabaseDiagnosticsPath(
+  config: ActionConfig<"dbLocation">,
+  language: Language,
+) {
+  return getLanguageDiagnosticsPath(config.dbLocation, language);
+}
+
+/**
  * Adds the given diagnostic to the database. If the database does not yet exist,
  * the diagnostic will be written to it once it has been created.
  *
@@ -137,32 +193,34 @@ export function makeDiagnostic(
  * @param diagnostic The diagnostic message to add to the database.
  */
 export function addDiagnostic(
-  config: Config,
+  config: ActionConfig<"dbLocation" | "tempDir">,
   language: Language,
   diagnostic: DiagnosticMessage,
+  logger: Logger = getActionsLogger(),
 ) {
-  const logger = getActionsLogger();
   const databasePath = language
     ? getCodeQLDatabasePath(config, language)
     : config.dbLocation;
 
   // Check that the database exists before writing to it. If the database does not yet exist,
-  // store the diagnostic in memory and write it later.
-  if (existsSync(databasePath)) {
-    writeDiagnostic(config, language, diagnostic);
+  // store the diagnostic in a temporary location and move it to the database later.
+  if (fs.existsSync(databasePath)) {
+    writeDiagnostic({ logger }, config, language, diagnostic);
   } else {
     logger.debug(
       `Writing a diagnostic for ${language}, but the database at ${databasePath} does not exist yet.`,
     );
 
-    unwrittenDiagnostics.push({ diagnostic, language });
+    // Write the diagnostic to a temporary location.
+    writeTemporaryDiagnosticFile(logger, config.tempDir, language, diagnostic);
   }
 }
 
 /** Adds a diagnostic that is not specific to any language. */
 export function addNoLanguageDiagnostic(
-  config: Config | undefined,
+  config: ActionConfig<"dbLocation" | "languages" | "tempDir"> | undefined,
   diagnostic: DiagnosticMessage,
+  logger: Logger = getActionsLogger(),
 ) {
   if (config !== undefined) {
     addDiagnostic(
@@ -173,8 +231,72 @@ export function addNoLanguageDiagnostic(
       diagnostic,
     );
   } else {
-    unwrittenDefaultLanguageDiagnostics.push(diagnostic);
+    logger.debug(
+      `Writing a diagnostic not associated with any language, but we have no configuration to tell us where the database is yet.`,
+    );
+
+    // Write the diagnostic to a temporary location.
+    writeTemporaryDiagnosticFile(
+      logger,
+      getTemporaryDirectory(),
+      undefined,
+      diagnostic,
+    );
   }
+}
+
+/**
+ * Writes {@link diagnostic} for an optional {@link language} to a subdirectory of {@link tempDir}
+ * and tracks it as a diagnostic that was written to a temporary location.
+ */
+function writeTemporaryDiagnosticFile(
+  logger: Logger,
+  tempDir: string,
+  language: Language | undefined,
+  diagnostic: DiagnosticMessage,
+) {
+  const tempDiagnosticsPath = getTempLanguageDiagnosticsPath(tempDir, language);
+
+  try {
+    // Write the diagnostic to a temporary location.
+    const diagnosticPath = writeDiagnosticFile(tempDiagnosticsPath, diagnostic);
+
+    // Track the temporary file.
+    temporaryDiagnostics.push({ path: diagnosticPath, language });
+  } catch (err) {
+    logger.warning(
+      `Unable to write temporary diagnostic to '${tempDiagnosticsPath}': ${getErrorMessage(err)}\n\n${JSON.stringify(diagnostic)}`,
+    );
+  }
+}
+
+/**
+ * Writes {@link diagnostic} to a file in {@link diagnosticsPath}.
+ */
+function writeDiagnosticFile(
+  diagnosticsPath: string,
+  diagnostic: DiagnosticMessage,
+): string {
+  // Create the directory if it doesn't exist yet.
+  fs.mkdirSync(diagnosticsPath, { recursive: true });
+
+  // Include a monotonically increasing suffix to avoid filename collisions
+  // between diagnostics produced within the same millisecond.
+  const uniqueSuffix = (diagnosticCounter++).toString();
+  // We should only need to remove colons, but to be defensive, only allow a restricted set of
+  // characters.
+  const sanitizedTimestamp = diagnostic.timestamp.replace(
+    /[^a-zA-Z0-9.-]/g,
+    "",
+  );
+  const jsonPath = path.resolve(
+    diagnosticsPath,
+    `codeql-action-${sanitizedTimestamp}-${uniqueSuffix}.json`,
+  );
+
+  fs.writeFileSync(jsonPath, JSON.stringify(diagnostic));
+
+  return jsonPath;
 }
 
 /**
@@ -185,78 +307,94 @@ export function addNoLanguageDiagnostic(
  * @param diagnostic The diagnostic message to add to the database.
  */
 function writeDiagnostic(
-  config: Config,
-  language: Language | undefined,
+  action: ActionState<["Logger"]>,
+  config: ActionConfig<"dbLocation">,
+  language: Language,
   diagnostic: DiagnosticMessage,
 ) {
-  const logger = getActionsLogger();
-  const databasePath = language
-    ? getCodeQLDatabasePath(config, language)
-    : config.dbLocation;
-  const diagnosticsPath = path.resolve(
-    databasePath,
-    "diagnostic",
-    "codeql-action",
-  );
+  const diagnosticsPath = getDatabaseDiagnosticsPath(config, language);
 
   try {
-    // Create the directory if it doesn't exist yet.
-    mkdirSync(diagnosticsPath, { recursive: true });
-
-    // Include a monotonically increasing suffix to avoid filename collisions
-    // between diagnostics produced within the same millisecond.
-    const uniqueSuffix = (diagnosticCounter++).toString();
-    // We should only need to remove colons, but to be defensive, only allow a restricted set of
-    // characters.
-    const sanitizedTimestamp = diagnostic.timestamp.replace(
-      /[^a-zA-Z0-9.-]/g,
-      "",
-    );
-    const jsonPath = path.resolve(
-      diagnosticsPath,
-      `codeql-action-${sanitizedTimestamp}-${uniqueSuffix}.json`,
-    );
-
-    writeFileSync(jsonPath, JSON.stringify(diagnostic));
+    writeDiagnosticFile(diagnosticsPath, diagnostic);
   } catch (err) {
-    logger.warning(`Unable to write diagnostic message to database: ${err}`);
-    logger.debug(JSON.stringify(diagnostic));
+    action.logger.warning(
+      `Unable to write diagnostic message to database: ${err}`,
+    );
+    action.logger.debug(JSON.stringify(diagnostic));
   }
 }
 
-/** Report if there are unwritten diagnostics and write them to the log. */
-export function logUnwrittenDiagnostics() {
-  const logger = getActionsLogger();
-  const num = unwrittenDiagnostics.length;
-  if (num > 0) {
-    logger.warning(
-      `${num} diagnostic(s) could not be written to the database and will not appear on the Tool Status Page.`,
+/** Report if there are temporary diagnostics and write them to the log. */
+export function logTemporaryDiagnostics(action: ActionState<["Logger"]>) {
+  const num = temporaryDiagnostics.length;
+
+  if (num > 0 && action.logger.isDebug()) {
+    action.logger.startGroup("Diagnostics in temporary location");
+    action.logger.debug(
+      `${num} diagnostic(s) were not moved to the database and remain in the temporary directory.`,
     );
 
-    for (const unwritten of unwrittenDiagnostics) {
-      logger.debug(JSON.stringify(unwritten.diagnostic));
+    for (const temporary of temporaryDiagnostics) {
+      try {
+        action.logger.debug(fs.readFileSync(temporary.path, "utf-8"));
+      } catch (err) {
+        action.logger.debug(
+          `Failed to read diagnostics from temporary location at '${temporary.path}': ${getErrorMessage(err)}`,
+        );
+      }
+    }
+
+    action.logger.endGroup();
+  }
+}
+
+/** Relocates all temporary diagnostics to the respective databases. */
+export function flushDiagnostics(
+  action: ActionState<["Logger"]>,
+  config: ActionConfig<"dbLocation" | "languages">,
+) {
+  const diagnosticsCount = temporaryDiagnostics.length;
+  action.logger.debug(
+    `Moving ${diagnosticsCount} diagnostic(s) to their respective databases.`,
+  );
+
+  const failedFlushDiagnostics: TemporaryDiagnostic[] = [];
+  for (const temporary of temporaryDiagnostics) {
+    // If `temporary.language` is `undefined`, then we didn't have a `config` at the time that
+    // `addNoLanguageDiagnostic` was called. In that case, we arbitrarily choose the first
+    // configured language here like we would have done in `addNoLanguageDiagnostic`.
+    const directory = getDatabaseDiagnosticsPath(
+      config,
+      temporary.language ?? config.languages[0],
+    );
+    const filename = path.basename(temporary.path);
+    const destination = path.join(directory, filename);
+
+    try {
+      fs.mkdirSync(directory, { recursive: true });
+      try {
+        fs.renameSync(temporary.path, destination);
+      } catch (renameErr: unknown) {
+        // Rethrow the error if it isn't an EXDEV one.
+        if (!isErrnoException(renameErr) || renameErr.code !== "EXDEV") {
+          throw renameErr;
+        }
+
+        // The error was an EXDEV one: try to copy the file and delete the temporary one.
+        fs.copyFileSync(temporary.path, destination);
+        fs.unlinkSync(temporary.path);
+      }
+    } catch (err) {
+      action.logger.warning(
+        `Failed to relocate '${temporary.path}' to '${destination}': ${getErrorMessage(err)}`,
+      );
+
+      failedFlushDiagnostics.push(temporary);
     }
   }
-}
 
-/** Writes all unwritten diagnostics to disk. */
-export function flushDiagnostics(config: Config) {
-  const logger = getActionsLogger();
-
-  const diagnosticsCount =
-    unwrittenDiagnostics.length + unwrittenDefaultLanguageDiagnostics.length;
-  logger.debug(`Writing ${diagnosticsCount} diagnostic(s) to database.`);
-
-  for (const unwritten of unwrittenDiagnostics) {
-    writeDiagnostic(config, unwritten.language, unwritten.diagnostic);
-  }
-  for (const unwritten of unwrittenDefaultLanguageDiagnostics) {
-    addNoLanguageDiagnostic(config, unwritten);
-  }
-
-  // Reset the unwritten diagnostics arrays.
-  unwrittenDiagnostics = [];
-  unwrittenDefaultLanguageDiagnostics = [];
+  // Reset the temporary diagnostics arrays.
+  temporaryDiagnostics = failedFlushDiagnostics;
 }
 
 /**

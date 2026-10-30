@@ -10,7 +10,9 @@ inputs:
     description: "Full comment markdown."
     required: true
   create-if-missing:
-    description: "Create a comment if no matching marker exists. Set to 'false' to update existing comments only."
+    description: >
+      Create a comment if no matching marker exists.
+      Set to 'false' to update existing comments only.
     required: false
     default: "true"
   issue-id:

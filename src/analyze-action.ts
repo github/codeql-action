@@ -59,13 +59,10 @@ import { postProcessAndUploadSarif } from "./upload-sarif";
 import * as util from "./util";
 
 interface AnalysisStatusReport
-  extends uploadLib.UploadStatusReport,
-    QueriesStatusReport {}
+  extends uploadLib.UploadStatusReport, QueriesStatusReport {}
 
 interface FinishStatusReport
-  extends StatusReportBase,
-    DatabaseCreationTimings,
-    AnalysisStatusReport {
+  extends StatusReportBase, DatabaseCreationTimings, AnalysisStatusReport {
   dependency_caching_upload_results?: DependencyCacheUploadStatusReport;
   database_upload_results: DatabaseUploadResult[];
 }
@@ -222,8 +219,8 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
   const logger = action.logger;
 
   let uploadResults:
-    | Partial<Record<analyses.AnalysisKind, UploadResult>>
-    | undefined = undefined;
+    Partial<Record<analyses.AnalysisKind, UploadResult>> | undefined =
+    undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
   let trapCacheUploadTime: number | undefined = undefined;

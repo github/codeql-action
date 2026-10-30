@@ -1869,8 +1869,7 @@ async function runDownloadCodeQL(
   return {
     codeqlFolder,
     cleanupDiagnostic: diagnostic?.attributes as
-      | toolsDownload.ToolcacheCleanupResult
-      | undefined,
+      toolsDownload.ToolcacheCleanupResult | undefined,
   };
 }
 

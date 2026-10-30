@@ -21,7 +21,7 @@ GH_TOKEN=<token> npx tsx ./pr-checks/post-comment.ts \
 import assert from "node:assert/strict";
 import { parseArgs } from "node:util";
 
-import { RepositoryNwo } from "../src/repository";
+import type { RepositoryNwo } from "../src/repository";
 
 import { type ApiClient, getApiClient, resolveToken } from "./api-client";
 

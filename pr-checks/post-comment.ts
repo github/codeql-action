@@ -21,7 +21,7 @@ GH_TOKEN=<token> npx tsx ./pr-checks/post-comment.ts \
 import assert from "node:assert/strict";
 import { parseArgs } from "node:util";
 
-import type { RepositoryNwo } from "../src/repository";
+import { parseRepositoryNwo, type RepositoryNwo } from "../src/repository";
 
 import { type ApiClient, getApiClient, resolveToken } from "./api-client";
 
@@ -77,13 +77,12 @@ export function parseOptions(argv?: string[]): Options {
     "Invalid --repository value.",
   );
 
-  const [owner, repo] = values.repository.split("/");
   return {
     body: values.body,
     marker: values.marker,
     createIfMissing: values["create-if-missing"],
     issueId: Number(values["issue-id"]),
-    repository: { owner, repo },
+    repository: parseRepositoryNwo(values.repository),
   };
 }
 

@@ -7,6 +7,7 @@ import * as core from "@actions/core";
 
 import { runCommand, runGit } from "./command";
 import { LIB_ROOT, PR_CHECKS_DIR, REPO_ROOT } from "./config";
+import { getErrorMessage } from "./util";
 
 /**
  * Checks whether the repo is clean by running `git status --porcelain`.
@@ -25,7 +26,14 @@ function isRepoClean(): boolean {
   return false;
 }
 
-function main() {
+/**
+ * Checks whether the repository is clean to begin with, then runs {@link body}, and finally
+ * checks if the repository is still clean.
+ *
+ * @param body The function to run.
+ * @returns `true` if the repo is clean or `false` otherwise.
+ */
+function checkUnchanged(body: () => void): boolean {
   // Sanity check that repo is clean to start with
   if (isRepoClean()) {
     console.info("Repository is clean.");
@@ -35,34 +43,70 @@ function main() {
     return -1;
   }
 
+  body();
+
+  // Check that repo is still clean
+  const result = isRepoClean();
+  if (result) {
+    console.info("Repository is still clean.");
+  } else {
+    console.info("Repository is now dirty.");
+  }
+  return result;
+}
+
+/**
+ * Produces a full diff for the repository and adds it to the workflow job summary
+ * under the {@link summaryHeader} header.
+ */
+function addDiffToSummary(summaryHeader: string) {
+  const diffFile = path.join(
+    process.env["RUNNER_TEMP"] ?? PR_CHECKS_DIR,
+    "summary.diff",
+  );
+
+  try {
+    runCommand("git", ["status"]);
+    runCommand("git", ["diff", `--output=${diffFile}`], {
+      execOptions: { cwd: REPO_ROOT },
+    });
+
+    core.summary.addHeading(summaryHeader, 3);
+    core.summary.addCodeBlock(fs.readFileSync(diffFile, "utf-8"), "diff");
+
+    try {
+      fs.rmSync(diffFile);
+    } catch (err) {
+      console.warn(
+        `Failed to remove temporary diff file from '${diffFile}': ${getErrorMessage(err)}`,
+      );
+    }
+  } catch (err) {
+    console.error(
+      `Failed to add full diff to summary for '${summaryHeader}': ${getErrorMessage(err)}`,
+    );
+  }
+}
+
+/**
+ * Rebuilds the JavaScript by cleaning up and running `npm run build`.
+ */
+function rebuildJavaScript() {
   // Wipe the lib directory in case there are extra unnecessary files in there
   console.info(`Removing ${LIB_ROOT}...`);
   fs.rmSync(LIB_ROOT, { recursive: true, force: true });
 
   // Generate the JavaScript files
   runCommand("npm", ["run", "build"], { execOptions: { shell: true } });
+}
 
-  // Check that repo is still clean
-  if (isRepoClean()) {
-    console.info("Repository is clean.");
-  } else {
+function main() {
+  if (!checkUnchanged(rebuildJavaScript)) {
     // If we get a fail here then the PR needs attention
     console.error("Failed: JavaScript files are not up to date.");
     console.error("Run 'rm -rf lib && npm run build' to update.");
 
-    const diffFile = path.join(
-      process.env["RUNNER_TEMP"] ?? PR_CHECKS_DIR,
-      "js.diff",
-    );
-    runCommand("git", ["status"]);
-    runCommand("git", ["diff", `--output=${diffFile}`], {
-      execOptions: { cwd: REPO_ROOT },
-    });
-
-    core.summary.addHeading("Transpiled JS diff", 3);
-    core.summary.addCodeBlock(fs.readFileSync(diffFile, "utf-8"), "diff");
-
-    fs.rmSync(diffFile);
+    addDiffToSummary("Transpiled JS diff");
 
     // Reset bundled files to allow other checks to test for changes
     runCommand("git", ["checkout", "lib"]);

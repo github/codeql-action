@@ -1099,8 +1099,20 @@ export function filterAlertsByDiffRange(
         return locations.some((physicalLocation) => {
           const locationUri = physicalLocation?.artifactLocation?.uri;
           const locationStartLine = physicalLocation?.region?.startLine;
-          if (!locationUri || locationStartLine === undefined) {
+          if (
+            typeof locationUri !== "string" ||
+            !locationUri ||
+            locationStartLine === undefined
+          ) {
             return false;
+          }
+          let locationPath = locationUri;
+          try {
+            locationPath = decodeURIComponent(locationUri);
+          } catch {
+            logger.debug(
+              `Failed to decode location URI "${locationUri}", comparing it as a raw path`,
+            );
           }
           // Alert filtering here replicates the same behavior as the restrictAlertsTo
           // extensible predicate in CodeQL. See the restrictAlertsTo documentation
@@ -1109,7 +1121,7 @@ export function filterAlertsByDiffRange(
           // of an alert location.
           return diffRanges.some(
             (range) =>
-              range.path === locationUri &&
+              range.path === locationPath &&
               ((range.startLine <= locationStartLine &&
                 range.endLine >= locationStartLine) ||
                 (range.startLine === 0 && range.endLine === 0)),

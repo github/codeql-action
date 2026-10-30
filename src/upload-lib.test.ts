@@ -1043,3 +1043,61 @@ test.serial(
     t.deepEqual(actualOutput, expectedOutput);
   },
 );
+
+for (const [filePath, uri] of [
+  ["src/with space.js", "src/with%20space.js"],
+  ["src/caf\u00e9.js", "src/caf%C3%A9.js"],
+  ["src/caf\u00e9.js", "src/caf%c3%a9.js"],
+  ["src/!()'*.js", "src/%21%28%29%27%2A.js"],
+  ["src/literal%20.js", "src/literal%2520.js"],
+]) {
+  test.serial(`filterAlertsByDiffRange decodes URI ${uri}`, (t) => {
+    const input = sarif.readSarifFile(
+      `${__dirname}/../src/testdata/valid-sarif.sarif`,
+    );
+    input.runs![0].results![0].locations![0].physicalLocation!.artifactLocation!.uri =
+      uri;
+
+    const actualOutput = runFilterAlertsByDiffRange(input, [
+      { path: filePath, startLine: 1, endLine: 3 },
+    ]);
+
+    t.is(actualOutput.runs?.[0].results?.length, 1);
+  });
+}
+
+for (const uri of ["src/bad%.js", "src/bad%GG.js", "src/bad%C3%28.js"]) {
+  test.serial(
+    `filterAlertsByDiffRange falls back for malformed URI ${uri}`,
+    (t) => {
+      const input = sarif.readSarifFile(
+        `${__dirname}/../src/testdata/valid-sarif.sarif`,
+      );
+      input.runs![0].results![0].locations![0].physicalLocation!.artifactLocation!.uri =
+        uri;
+
+      const actualOutput = runFilterAlertsByDiffRange(input, [
+        { path: uri, startLine: 0, endLine: 0 },
+      ]);
+
+      t.is(actualOutput.runs?.[0].results?.length, 1);
+    },
+  );
+}
+
+test.serial(
+  "filterAlertsByDiffRange filters malformed URI without a matching raw path",
+  (t) => {
+    const input = sarif.readSarifFile(
+      `${__dirname}/../src/testdata/valid-sarif.sarif`,
+    );
+    input.runs![0].results![0].locations![0].physicalLocation!.artifactLocation!.uri =
+      "src/bad%GG.js";
+
+    const actualOutput = runFilterAlertsByDiffRange(input, [
+      { path: "src/different.js", startLine: 0, endLine: 0 },
+    ]);
+
+    t.is(actualOutput.runs?.[0].results?.length, 0);
+  },
+);

@@ -68,7 +68,7 @@ jobs:
             os: ubuntu-26.04
             version: linked
           - language: swift
-            os: macos-latest-xlarge
+            os: macos-26-xlarge
             version: linked
             build-mode: autobuild
     name: Per-language bundles

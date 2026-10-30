@@ -43,6 +43,13 @@ type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 /** An operating system identifier. */
 type OperatingSystemIdentifier = "ubuntu" | "macos" | "windows";
 
+/** Mapping from {@link OperatingSystemIdentifier} to default runner image labels. */
+const DEFAULT_RUNNER_IMAGES: Record<OperatingSystemIdentifier, string> = {
+  ubuntu: "ubuntu-26.04",
+  macos: "macos-26",
+  windows: "windows-2025",
+};
+
 /**
  * Represents an operating system matrix entry for a generated PR check workflow.
  *
@@ -296,8 +303,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "5fda3b95a4ea91299a34e894583c3862153e4b97",
-          "v7.0.0",
+          "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "v7.1.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
@@ -414,12 +421,6 @@ function generateJobMatrix(
       );
     }
 
-    const defaultRunnerImages = [
-      "ubuntu-latest",
-      "macos-latest",
-      "windows-latest",
-    ];
-
     for (const operatingSystemConfig of operatingSystems) {
       const operatingSystem =
         typeof operatingSystemConfig === "string"
@@ -449,7 +450,7 @@ function generateJobMatrix(
       const runnerImagesForOs =
         typeof operatingSystemConfig === "string" ||
         operatingSystemConfig["runner-image"] === undefined
-          ? defaultRunnerImages.filter((image) =>
+          ? Object.values(DEFAULT_RUNNER_IMAGES).filter((image) =>
               image.startsWith(operatingSystem),
             )
           : [operatingSystemConfig["runner-image"]];
@@ -462,7 +463,7 @@ function generateJobMatrix(
         // is removed from `defaultTestVersions`.
         const requiresOlderRunnerImage: DefaultTestVersion = "stable-v2.20.7";
         if (
-          runnerImage === "ubuntu-latest" &&
+          runnerImage === DEFAULT_RUNNER_IMAGES["ubuntu"] &&
           version === requiresOlderRunnerImage
         ) {
           matrix.push({ os: "ubuntu-24.04", version });
@@ -666,16 +667,18 @@ function generateValidationJob(
   // Add the generated steps in front of the ones from the specification.
   specSteps.items.unshift(...checkoutStep, ...steps);
 
+  const baseCondition = "github.triggering_actor != 'dependabot[bot]'";
+
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
-    if: "github.triggering_actor != 'dependabot[bot]'",
+    if: baseCondition,
     needs: [checkName],
     permissions: {
       contents: "read",
       "security-events": "read",
     },
     "timeout-minutes": 5,
-    "runs-on": "ubuntu-latest",
+    "runs-on": DEFAULT_RUNNER_IMAGES["ubuntu"],
     steps: specSteps,
   };
 

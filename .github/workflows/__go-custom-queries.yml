@@ -54,9 +54,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
     name: 'Go: Custom queries'
     if: github.triggering_actor != 'dependabot[bot]'

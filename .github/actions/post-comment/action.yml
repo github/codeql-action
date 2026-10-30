@@ -29,7 +29,7 @@ runs:
       env:
         BODY: ${{ inputs.body }}
         MARKER: ${{ inputs.marker }}
-        CREATE_IF_MISSING: ${{ inputs.create-if-missing != 'false' && '--create-if-missing' || '' }}
+        CREATE_IF_MISSING: ${{ inputs.create-if-missing == 'true' && '--create-if-missing' || '' }}
         GH_TOKEN: ${{ inputs.token }}
         ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
       run: |

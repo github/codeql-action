@@ -35,40 +35,40 @@ jobs:
       matrix:
         include:
           - language: actions
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
             expected-extractors: actions javascript
           - language: cpp
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
             build-mode: manual
             build-command: gcc -o main main.c
           - language: csharp
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
             build-mode: none
           - language: go
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
             build-mode: autobuild
           - language: java
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
             build-mode: none
           - language: javascript
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
           - language: python
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
           - language: ruby
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
           - language: rust
-            os: ubuntu-latest
+            os: ubuntu-26.04
             version: linked
           - language: swift
-            os: macos-latest-xlarge
+            os: macos-26-xlarge
             version: linked
             build-mode: autobuild
     name: Per-language bundles

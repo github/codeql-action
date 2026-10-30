@@ -26,7 +26,7 @@ jobs:
   update:
     name: "Update release branch"
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: github.event_name == 'workflow_dispatch'
     needs: [prepare]
     env:
@@ -79,7 +79,7 @@ jobs:
   backport:
     name: "Create backport"
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment: Automation
     needs: [prepare]
     if: ${{ (github.event_name == 'push') && needs.prepare.outputs.backport_target_branches != '[]' }}

@@ -11,6 +11,7 @@ import {
   darwinVersion,
   xcodeVersionFromLink,
   xcodeVersionFromSdk,
+  xcodeVersionFromXcodeBuild,
 } from "../platform";
 import { ConfigurationError } from "../util";
 
@@ -201,10 +202,12 @@ export async function checkRunnerSupportsTracedAnalysis(
 
   // Determining whether the Xcode version is supported only makes sense on macOS, so we only do it
   // after determining that we are running on macOS. We first try to obtain the version of Xcode itself
-  // starting with the cheapest approach. If that doesn't work, we obtain the version from the SDK instead.
-  // Since either Xcode or the SDK at version 27 or above is incompatible, the major version of either is fine.
+  // starting with the cheapest approach and then call out to an external program. If neither works, we try
+  // to obtain the version from the SDK instead. Since either Xcode or the SDK at version 27 or above is
+  // incompatible, either is fine as we only check the major version below.
   const xcodeVer =
     xcodeVersionFromLink(action.logger) ??
+    (await xcodeVersionFromXcodeBuild(action.logger)) ??
     (await xcodeVersionFromSdk(action.logger));
 
   if (

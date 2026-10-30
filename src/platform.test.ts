@@ -13,6 +13,7 @@ import {
   XCODE_SELECT_LINK_PATH,
   xcodeVersionFromLink,
   xcodeVersionFromSdk,
+  xcodeVersionFromXcodeBuild,
 } from "./platform";
 import {
   checkExpectedLogMessages,
@@ -225,6 +226,74 @@ test.serial(
 
     t.is(readlinkSync.callCount, 1);
     t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
+  },
+);
+
+test.serial(
+  "xcodeVersionFromXcodeBuild returns undefined for non-zero exit code",
+  async (t) => {
+    const logger = new RecordingLogger();
+
+    const which = sinon.stub(io, "which").resolves("/path/to/xcrun");
+    const exec = sinon.stub<[], Promise<number>>().resolves(1);
+    const runner = sinon.createStubInstance(toolrunner.ToolRunner, { exec });
+    const toolrunnerStub = sinon.stub(toolrunner, "ToolRunner").returns(runner);
+
+    await t.notThrowsAsync(async () => {
+      const result = await xcodeVersionFromXcodeBuild(logger);
+
+      t.is(result, undefined);
+
+      t.is(which.callCount, 1);
+      t.deepEqual(which.args[0], ["xcrun", true]);
+
+      t.is(toolrunnerStub.callCount, 1);
+      t.is(exec.callCount, 1);
+
+      checkExpectedLogMessages(t, logger.messages, [
+        "xcodebuild returned exit code 1",
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "xcodeVersionFromXcodeBuild extracts version from xcrun stdout",
+  async (t) => {
+    const logger = new RecordingLogger();
+
+    const which = sinon.stub(io, "which").resolves("/path/to/xcrun");
+
+    let stdoutListener: ((data: Buffer) => void) | undefined = undefined;
+    const exec = sinon.stub<[], Promise<number>>().callsFake(async () => {
+      if (stdoutListener !== undefined) {
+        stdoutListener(Buffer.from("Xcode 26.5"));
+        stdoutListener(Buffer.from("Build version 26F9"));
+      }
+      return 0;
+    });
+    const runner = sinon.createStubInstance(toolrunner.ToolRunner, { exec });
+
+    const toolrunnerStub = sinon
+      .stub(toolrunner, "ToolRunner")
+      .callsFake((_cmd, _args, opts: ExecOptions) => {
+        stdoutListener = opts.listeners?.stdout;
+        return runner;
+      });
+
+    await t.notThrowsAsync(async () => {
+      const result = await xcodeVersionFromXcodeBuild(logger);
+
+      t.not(result, undefined);
+      t.is(result?.major, 26);
+      t.is(result?.minor, 5);
+
+      t.is(which.callCount, 1);
+      t.deepEqual(which.args[0], ["xcrun", true]);
+
+      t.is(toolrunnerStub.callCount, 1);
+      t.is(exec.callCount, 1);
+    });
   },
 );
 

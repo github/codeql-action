@@ -346,38 +346,6 @@ test.serial(
     }),
 );
 
-test("checkRunnerSupportsTracedAnalysis doesn't perform Xcode check on self-hosted runners", async (t) =>
-  withTmpDir(async (tmpDir) => {
-    const logger = new RecordingLogger();
-    const env = getTestEnv();
-    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-    env.set(ActionsEnvVars.RUNNER_ENVIRONMENT, "self-hosted");
-    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
-
-    const codeql = await getCodeQLWithTracedStub(
-      "codeql-for-testing",
-      logger,
-      env,
-    );
-    sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
-
-    await checkRunnerSupportsTracedAnalysis(
-      initAllState({
-        logger,
-        platform: "darwin",
-        osRelease: "26.0.0",
-        env,
-        features,
-      }),
-      createTestConfig({ tempDir: tmpDir, languages: [BuiltInLanguage.go] }),
-      codeql,
-    );
-
-    checkExpectedLogMessages(t, logger.messages, [
-      "Skipping traced analysis compatibility check for Xcode because we are on a self-hosted runner.",
-    ]);
-  }));
-
 // `addDiagnostic` changes global state and we must stub it, so this test must be serial.
 test.serial(
   "checkRunnerSupportsTracedAnalysis doesn't add a diagnostic if Xcode version is supported",

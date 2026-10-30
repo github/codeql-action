@@ -6,30 +6,65 @@ import {
   createTestConfig,
   getCodeQLForTesting,
   getTestEnv,
-  initAllState,
   makeVersionInfo,
   RecordingLogger,
+  setupTests,
 } from "../testing-utils";
-import { ConfigurationError, withTmpDir } from "../util";
+import { ToolsFeature } from "../tools-features";
+import { withTmpDir } from "../util";
 
 import { checkSwiftCompatibility } from "./swift";
 
 import { BuiltInLanguage } from ".";
 
-test("checkSwiftCompatibility doesn't throw for non-Swift languages", (t) => {
+setupTests(test);
+
+test("checkSwiftCompatibility doesn't throw for non-Swift languages", async (t) => {
   for (const language of Object.values(BuiltInLanguage)) {
     if (language === BuiltInLanguage.swift) {
       continue;
     }
 
-    t.notThrows(() =>
+    const codeql = await getCodeQLForTesting();
+    await t.notThrowsAsync(
       checkSwiftCompatibility(
-        initAllState(),
         createTestConfig({ languages: [language] }),
+        codeql,
+        // A value of `undefined` should make `checkSwiftCompatibility` throw for Swift by default
+        // since it means we are on a platform other than macOS
+        undefined,
       ),
     );
   }
 });
+
+test("checkSwiftCompatibility doesn't throw for Swift if CLI supports swiftSupportsAllPlatforms", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    const env = getTestEnv();
+    env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
+
+    const codeql = await getCodeQLForTesting("codeql-for-testing", logger, env);
+    const supportsFeature = sinon
+      .stub(codeql, "supportsFeature")
+      .withArgs(ToolsFeature.SwiftSupportsAllPlatforms)
+      .resolves(true);
+
+    await t.notThrowsAsync(
+      checkSwiftCompatibility(
+        createTestConfig({ languages: [BuiltInLanguage.swift] }),
+        codeql,
+        // A value of `undefined` should make `checkSwiftCompatibility` throw for Swift by default
+        // since it means we are on a platform other than macOS
+        undefined,
+      ),
+    );
+
+    t.is(supportsFeature.callCount, 1);
+    t.deepEqual(supportsFeature.args[0], [
+      ToolsFeature.SwiftSupportsAllPlatforms,
+    ]);
+  }));
 
 test("checkSwiftCompatibility doesn't throw for Swift on darwin", async (t) =>
   withTmpDir(async (tmpDir) => {
@@ -40,31 +75,15 @@ test("checkSwiftCompatibility doesn't throw for Swift on darwin", async (t) =>
     const codeql = await getCodeQLForTesting("codeql-for-testing", logger, env);
     sinon.stub(codeql, "getVersion").resolves(makeVersionInfo("2.27.0"));
 
-    t.notThrows(() =>
+    await t.notThrowsAsync(
       checkSwiftCompatibility(
-        initAllState({ platform: "darwin", env, logger }),
         createTestConfig({
           tempDir: tmpDir,
           languages: [BuiltInLanguage.swift],
         }),
+        codeql,
+        // A value other than `undefined` means we are on macOS.
+        "some-macos-version",
       ),
     );
   }));
-
-const nonDarwinPlatforms: NodeJS.Platform[] = ["linux", "win32"];
-for (const nonDarwinPlatform of nonDarwinPlatforms) {
-  test(`checkSwiftCompatibility throws for Swift on ${nonDarwinPlatform}`, (t) => {
-    t.throws(
-      () => {
-        checkSwiftCompatibility(
-          initAllState({ platform: nonDarwinPlatform }),
-          createTestConfig({ languages: [BuiltInLanguage.swift] }),
-        );
-      },
-      {
-        instanceOf: ConfigurationError,
-        message: /^Swift analysis is only supported on macOS runner images/,
-      },
-    );
-  });
-}

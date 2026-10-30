@@ -1,0 +1,41 @@
+name: "Post comment"
+description: "Create or update a sticky PR comment identified by a caller-provided marker."
+inputs:
+  marker:
+    description: >
+      Non-empty plain-text identifier for the comment. Use a unique, stable value
+      for each distinct comment; it is automatically wrapped in a hidden HTML comment.
+    required: true
+  body:
+    description: "Full comment markdown."
+    required: true
+  update-only:
+    description: Do nothing if no comment with the specified marker exists.
+    required: false
+    default: "false"
+  issue-id:
+    description: >
+      The issue or pull request number to post/update the comment on.
+      Defaults to the current pull request if not provided.
+    required: false
+  token:
+    description: "The GitHub token to authenticate with."
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Post comment
+      shell: bash
+      env:
+        BODY: ${{ inputs.body }}
+        MARKER: ${{ inputs.marker }}
+        UPDATE_ONLY: ${{ (inputs.update-only == 'true' && '--update-only') || '' }}
+        GH_TOKEN: ${{ inputs.token }}
+        ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
+      run: |
+        npx tsx ./pr-checks/post-comment.ts \
+          --body "$BODY" \
+          --marker "$MARKER" \
+          $UPDATE_ONLY \
+          --issue-id "$ISSUE_ID" \
+          --repository "$GITHUB_REPOSITORY"

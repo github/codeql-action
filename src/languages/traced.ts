@@ -22,11 +22,26 @@ export const UNSUPPORTED_DARWIN_FOR_TRACED = 27;
 /** Xcode 27 and above do not support traced extraction. */
 export const UNSUPPORTED_XCODE_FOR_TRACED = 27;
 
+/** Names of products that we check the versions of here. */
+type ProductName = "macOS" | "Xcode" | "Xcode SDK";
+
 /** A version along with the product it relates to. */
 type ProductVersion = {
-  product: "macOS" | "Xcode";
+  product: ProductName;
   version: semver.SemVer;
 };
+
+/** Gets the appropriate attribute name for the diagnostic based on {@link product}. */
+function diagnosticAttributeName(product: ProductName): string {
+  switch (product) {
+    case "macOS":
+      return "darwinVersion";
+    case "Xcode":
+      return "xcodeVersion";
+    case "Xcode SDK":
+      return "xcodeSdkVersion";
+  }
+}
 
 /**
  * Creates a diagnostic indicating that `version` of `product` is unsupported for traced analysis.
@@ -50,14 +65,17 @@ function handleUnsupportedVersion(
   const unsupportedVersion =
     product === "macOS"
       ? UNSUPPORTED_DARWIN_FOR_TRACED
-      : UNSUPPORTED_XCODE_FOR_TRACED;
+      : // We use the same constant for both Xcode and the Xcode SDK since we treat them
+        // as equivalent indicators for whether traced analysis is unsupported.
+        UNSUPPORTED_XCODE_FOR_TRACED;
+
   const baseMessage = [
     `Traced analysis is not supported on ${product} ${unsupportedVersion} or above.`,
     `Configure your analysis to run on macOS ${UNSUPPORTED_DARWIN_FOR_TRACED - 1} or below`,
     `and Xcode ${UNSUPPORTED_XCODE_FOR_TRACED - 1} or below.`,
   ].join(" ");
 
-  const attributeName = product === "macOS" ? "darwinVersion" : "xcodeVersion";
+  const attributeName = diagnosticAttributeName(product);
 
   // Create a diagnostic that will show up on the TSP.
   for (const language of tracedLanguages) {
@@ -201,19 +219,30 @@ export async function checkRunnerSupportsTracedAnalysis(
   // incompatible, either is fine as we only check the major version below.
   const xcodeVer =
     xcodeVersionFromLink(action.logger) ??
-    (await xcodeVersionFromXcodeBuild(action.logger)) ??
-    (await xcodeSdkVersion(action.logger));
+    (await xcodeVersionFromXcodeBuild(action.logger));
+  let xcodeProduct: ProductVersion | undefined = undefined;
+
+  if (xcodeVer !== undefined) {
+    xcodeProduct = { product: "Xcode", version: xcodeVer };
+  } else {
+    // Fallback to checking the SDK version, which may be available even if a full Xcode installation is not.
+    const xcodeSdkVer = await xcodeSdkVersion(action.logger);
+    xcodeProduct =
+      xcodeSdkVer !== undefined
+        ? { product: "Xcode SDK", version: xcodeSdkVer }
+        : undefined;
+  }
 
   if (
-    xcodeVer !== undefined &&
-    xcodeVer.major >= UNSUPPORTED_XCODE_FOR_TRACED
+    xcodeProduct !== undefined &&
+    xcodeProduct.version.major >= UNSUPPORTED_XCODE_FOR_TRACED
   ) {
     handleUnsupportedVersion(
       action.logger,
       config,
       tracedLanguages,
       abortUnsupportedTracedAnalysis,
-      { product: "Xcode", version: xcodeVer },
+      xcodeProduct,
     );
   } else if (xcodeVer === undefined) {
     action.logger.info(

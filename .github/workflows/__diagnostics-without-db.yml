@@ -1,0 +1,143 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: PR Check - Diagnostic export without database
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request: {}
+  merge_group:
+    types:
+      - checks_requested
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs: {}
+  workflow_call:
+    inputs: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: diagnostics-without-db-${{github.ref}}
+jobs:
+  diagnostics-without-db:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: linked
+    name: Diagnostic export without database
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      # We deliberately need to make this step fail before the database is initialised, but after
+      # some diagnostic has been produced. The simplest way to do that right now is to:
+      #
+      # - Produce a diagnostic before the db is initialised by forcing the use of a nightly release
+      #   with the `CODEQL_ACTION_FORCE_NIGHTLY` feature flag.
+      # - Cause `init` to abort because we are attempting to analyse Swift on a non-macOS runner.
+      #
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Initialise failing analysis
+        id: init
+        uses: ./../action/init
+        continue-on-error: true
+        env:
+          CODEQL_ACTION_FORCE_NIGHTLY: true
+        with:
+          languages: swift
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Analyze
+        uses: ./analyze
+        # In a real workflow, this step wouldn't run. Since we used `continue-on-error`
+        # above, we manually disable it with an `if` condition. Having this step is required
+        # for the init post-action because it checks the workflow definition for e.g. the
+        # `category` input. Without this step, that part of the init post-action would fail.
+        if: false
+        with:
+          category: '/test-codeql-version:${{ matrix.version }}'
+
+      - name: Check diagnostics appear on disk
+        env:
+          DIAGNOSTICS_DIR: '${{ runner.temp }}/codeql-action-temp-diagnostics/'
+        run: |
+          cd ../action
+          npx tsx ./pr-checks/diagnostics-without-db.ts
+    env:
+      CODEQL_ACTION_SKIP_GENERATE_FAILED_SARIF: false
+      CODEQL_ACTION_SKIP_SARIF_UPLOAD: true
+      CODEQL_ACTION_TESTING_ENVIRONMENT: codeql-action-pr-checks
+      CODEQL_ACTION_TEST_MODE: true
+  diagnostics-without-db-validation:
+    if: github.triggering_actor != 'dependabot[bot]'
+    needs:
+      - diagnostics-without-db
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20.x
+          cache: npm
+      - name: Install newer npm
+        run: npm install -g npm@11.19.1
+      - name: Install dependencies
+        run: npm ci
+      - name: Download workflow artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: test-mode-sarif-*
+          path: sarif
+
+      - name: List artifact contents
+        run: ls -laR ./sarif
+
+      - name: Check diagnostics appear in SARIF
+        env:
+          SARIF_PATH: "./sarif/codeql-failed-run.sarif"
+          DIAGNOSTIC_ID: "codeql-action/forced-nightly-cli"
+          DIAGNOSTIC_NAME: "A nightly release of CodeQL was used"
+          EXPECTED_LOCATIONS: "0"
+          EXPECTED_MESSAGE: |
+            GitHub configured this analysis to use a nightly release of CodeQL to allow you to preview changes from an upcoming release.
+        run: npx tsx ./pr-checks/check-diagnostics.ts
+    env:
+      CODEQL_ACTION_TEST_MODE: true

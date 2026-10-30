@@ -6,13 +6,13 @@ env:
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
   merge_group:
     types: [checks_requested]
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -30,10 +30,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-        - stable-v2.20.3
-        - default
-        - linked
-        - nightly-latest
+          - stable-v2.20.7
+          - default
+          - linked
+          - nightly-latest
     name: Upload debug artifacts after failure in analyze
     continue-on-error: true
     env:
@@ -43,7 +43,12 @@ jobs:
       # We currently need `security-events: read` to access feature flags.
       security-events: read
     timeout-minutes: 45
-    runs-on: ubuntu-latest
+
+    # stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest` (`ubuntu-26.04`).
+    # We could install that older version on the newer runners, or use the older runner.
+    # We do the latter here. This can be removed once we stop supporting `v2.20.7`.
+    runs-on: ${{ case(matrix.version == 'stable-v2.20.7', 'ubuntu-24.04', 'ubuntu-latest') }}
+
     steps:
       - name: Dump GitHub event
         run: cat "${GITHUB_EVENT_PATH}"
@@ -60,7 +65,7 @@ jobs:
       - name: Install .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: '9.x'
+          dotnet-version: "9.x"
       - name: Assert best-effort artifact scan completed
         uses: ./../action/.github/actions/verify-debug-artifact-scan-completed
       - uses: ./../action/init
@@ -89,9 +94,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       - name: Check expected artifacts exist
         run: |
+          VERSIONS="stable-v2.20.7 default linked nightly-latest"
           LANGUAGES="cpp csharp go java javascript python"
           for version in $VERSIONS; do
             echo "Artifacts from version $version:"

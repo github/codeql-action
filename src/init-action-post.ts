@@ -6,6 +6,7 @@
 
 import * as core from "@actions/core";
 
+import { runInActions, type Action, type ActionState } from "./action-common";
 import {
   restoreInputs,
   getOptionalInput,
@@ -15,22 +16,25 @@ import {
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CachingKind } from "./caching-utils";
 import { getCodeQL } from "./codeql";
-import { type Config, getConfig } from "./config-utils";
+import {
+  hasConfigKey,
+  type AbortedInitConfig,
+  type Config,
+} from "./config/action-config";
+import { getAbortedInitConfig, getConfig } from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
 import {
   DependencyCachingUsageReport,
   getDependencyCacheUsage,
 } from "./dependency-caching";
-import { EnvVar, getEnv } from "./environment";
+import { EnvVar, type ReadOnlyEnv } from "./environment";
 import { initFeatures } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import * as initActionPostHelper from "./init-action-post-helper";
-import { getActionsLogger } from "./logging";
 import { getRepositoryNwo } from "./repository";
 import {
   StatusReportBase,
   sendStatusReport,
-  sendUnhandledErrorStatusReport,
   createStatusReportBase,
   getActionsStatus,
   ActionName,
@@ -45,16 +49,17 @@ interface InitPostStatusReport
     initActionPostHelper.JobStatusReport,
     initActionPostHelper.DependencyCachingUsageReport {}
 
-async function run(startedAt: Date) {
+async function run(action: ActionState<["Base", "Logger", "Env"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const logger = action.logger;
 
-  const logger = getActionsLogger();
-  let config: Config | undefined;
+  let config: Config | AbortedInitConfig | undefined;
   let uploadFailedSarifResult:
     | initActionPostHelper.UploadFailedSarifResult
     | undefined;
   let dependencyCachingUsage: DependencyCachingUsageReport | undefined;
+
   try {
     // Read the job status before restoring inputs, since it is provided by the Actions runtime
     // environment for this step and would otherwise be overwritten by the value that the `init`
@@ -64,7 +69,18 @@ async function run(startedAt: Date) {
     // Restore inputs from `init` Action.
     restoreInputs(logger);
 
-    config = await getConfig(getTemporaryDirectory(), logger);
+    const tmpDir = getTemporaryDirectory();
+    config = await getConfig(tmpDir, logger);
+
+    // If we weren't able to read the normal configuration file, the `init` step failed before it could write it.
+    // Try to load the "failed" configuration file instead which may have been written by the `init` step
+    // with a minimal configuration for this post-action.
+    if (config === undefined) {
+      logger.debug(
+        "Will try to load the configuration file from an aborted 'init' step, since there is no regular one.",
+      );
+      config = getAbortedInitConfig(action, tmpDir);
+    }
 
     const gitHubVersion = config?.gitHubVersion ?? (await getGitHubVersion());
     checkGitHubVersionInRange(gitHubVersion, logger);
@@ -92,7 +108,7 @@ async function run(startedAt: Date) {
         repositoryNwo,
         features,
         jobStatus,
-        getEnv(),
+        action.env,
         logger,
       );
 
@@ -101,7 +117,11 @@ async function run(startedAt: Date) {
       // do this under these circumstances to avoid slowing down analyses for PRs
       // and where caching may not be enabled.
       if (
-        (await gitUtils.isAnalyzingDefaultBranch()) &&
+        (await gitUtils.isAnalyzingDefaultBranch(
+          action.env,
+          config.repositoryRoot,
+        )) &&
+        hasConfigKey(config, "dependencyCachingEnabled") &&
         config.dependencyCachingEnabled !== CachingKind.None
       ) {
         dependencyCachingUsage = await getDependencyCacheUsage(logger);
@@ -112,9 +132,9 @@ async function run(startedAt: Date) {
     core.setFailed(error.message);
 
     const statusReportBase = await createStatusReportBase(
-      ActionName.InitPost,
+      action.name,
       getActionsStatus(error),
-      startedAt,
+      action.startedAt,
       config,
       await checkDiskUsage(logger),
       logger,
@@ -126,13 +146,13 @@ async function run(startedAt: Date) {
     }
     return;
   }
-  const jobStatus = getFinalJobStatus(config);
+  const jobStatus = getFinalJobStatus(action, config);
   logger.info(`CodeQL job status was ${getJobStatusDisplayName(jobStatus)}.`);
 
   const statusReportBase = await createStatusReportBase(
-    ActionName.InitPost,
+    action.name,
     "success",
-    startedAt,
+    action.startedAt,
     config,
     await checkDiskUsage(logger),
     logger,
@@ -157,16 +177,21 @@ async function run(startedAt: Date) {
  * Otherwise, we determine the job status based on whether the analyze step
  * completed successfully and whether we have a valid CodeQL config.
  */
-function getFinalJobStatus(config: Config | undefined): JobStatus {
-  const existingJobStatus = getJobStatusFromEnvironment();
+function getFinalJobStatus(
+  action: ActionState<["Env"]>,
+  config: Partial<Config> | undefined,
+): JobStatus {
+  const existingJobStatus = getJobStatusFromEnvironment(action.env);
   if (existingJobStatus !== undefined) {
     return existingJobStatus;
   }
 
   let jobStatus: JobStatus;
 
-  if (process.env[EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY] === "true") {
-    core.exportVariable(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
+  if (
+    action.env.getOptional(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY) === "true"
+  ) {
+    action.env.export(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
     jobStatus = JobStatus.SuccessStatus;
   } else if (config !== undefined) {
     // - We have computed a CodeQL config
@@ -191,7 +216,7 @@ function getFinalJobStatus(config: Config | undefined): JobStatus {
 
   // This shouldn't be necessary, but in the odd case that we run more than one
   // `init` post step, ensure the job status is consistent between them.
-  core.exportVariable(EnvVar.JOB_STATUS, jobStatus);
+  action.env.export(EnvVar.JOB_STATUS, jobStatus);
   return jobStatus;
 }
 
@@ -200,8 +225,8 @@ function getFinalJobStatus(config: Config | undefined): JobStatus {
  *
  * If the job status is invalid, return `UnknownStatus`.
  */
-function getJobStatusFromEnvironment(): JobStatus | undefined {
-  const jobStatusFromEnvironment = process.env[EnvVar.JOB_STATUS];
+function getJobStatusFromEnvironment(env: ReadOnlyEnv): JobStatus | undefined {
+  const jobStatusFromEnvironment = env.getOptional(EnvVar.JOB_STATUS);
 
   if (jobStatusFromEnvironment !== undefined) {
     // Validate the job status from the environment. If it is invalid, return unknown.
@@ -216,18 +241,11 @@ function getJobStatusFromEnvironment(): JobStatus | undefined {
   return undefined;
 }
 
+const initPost: Action = {
+  name: ActionName.InitPost,
+  run,
+};
+
 export async function runWrapper() {
-  const startedAt = new Date();
-  const logger = getActionsLogger();
-  try {
-    await run(startedAt);
-  } catch (error) {
-    core.setFailed(`init post action failed: ${wrapError(error).message}`);
-    await sendUnhandledErrorStatusReport(
-      ActionName.InitPost,
-      startedAt,
-      error,
-      logger,
-    );
-  }
+  return await runInActions(initPost);
 }

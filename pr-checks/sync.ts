@@ -90,7 +90,7 @@ interface Specification extends JobSpecification {
   services?: any;
 
   /** Additional jobs to run after the main PR check job. */
-  validationJobs?: Record<string, JobSpecification>;
+  validationJobs?: Record<string, ValidationJobSpecification>;
 
   /** If set, this check is part of a named collection that gets its own caller workflow. */
   collection?: string;
@@ -122,6 +122,10 @@ interface JobSpecification {
   installYq?: boolean;
 }
 
+type ValidationJobSpecification = JobSpecification & {
+  checkout?: boolean;
+};
+
 /** Describes language/framework-specific steps and inputs. */
 interface LanguageSetup {
   specProperty: keyof JobSpecification;
@@ -133,11 +137,17 @@ interface LanguageSetup {
 /** Describes partial mappings from built-in languages to their specific setup information. */
 type LanguageSetups = Partial<Record<BuiltInLanguage, LanguageSetup>>;
 
-// The default set of CodeQL Bundle versions to use for the PR checks.
+/** A type representing version identifiers. */
+type Version =
+  | "default"
+  | "linked"
+  | "nightly-latest"
+  // This is an approximation, but sufficient validation for our needs here.
+  | `stable-v${number}.${number}.${number}`;
+
+/** The default set of CodeQL Bundle versions to use for the PR checks. */
 const defaultTestVersions = [
   // The oldest supported CodeQL version. If bumping, update `CODEQL_MINIMUM_VERSION` in `codeql.ts`
-  "stable-v2.19.4",
-  // The last CodeQL release in the 2.20 series.
   "stable-v2.20.7",
   // The last CodeQL release in the 2.21 series.
   "stable-v2.21.4",
@@ -147,6 +157,8 @@ const defaultTestVersions = [
   "stable-v2.23.9",
   // The last CodeQL release in the 2.24 series.
   "stable-v2.24.3",
+  // The last CodeQL release in the 2.25 series.
+  "stable-v2.25.6",
   // The default version of CodeQL for Dotcom, as determined by feature flags.
   "default",
   // The version of CodeQL shipped with the Action in `defaults.json`. During the release process
@@ -155,7 +167,10 @@ const defaultTestVersions = [
   "linked",
   // A nightly build directly from the our private repo, built in the last 24 hours.
   "nightly-latest",
-];
+] as const satisfies Version[];
+
+/** A type representing the default test versions. */
+type DefaultTestVersion = (typeof defaultTestVersions)[number];
 
 /** The default versions we use for languages / frameworks, if not specified as a workflow input. */
 const defaultLanguageVersions = {
@@ -215,8 +230,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Node.js",
         uses: pinnedUses(
           "actions/setup-node",
-          "820762786026740c76f36085b0efc47a31fe5020",
-          "v7.0.0",
+          "949feb2413d6458794dcd2491c4babbbce0c15c1",
+          "v7.1.0",
         ),
         with: {
           "node-version": defaultLanguageVersions.javascript,
@@ -263,8 +278,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "de7274f081f381c8f8158605e0321c36c376e2e6",
-          "v6.0.1",
+          "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
+          "v6.1.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -281,8 +296,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "5fda3b95a4ea91299a34e894583c3862153e4b97",
-          "v7.0.0",
+          "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "v7.1.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
@@ -309,9 +324,11 @@ const languageSetups: LanguageSetups = {
   },
 };
 
-// This is essentially an arbitrary version of `yq`, which happened to be the one that
-// `choco` fetched when we moved away from using that here.
-// See https://github.com/github/codeql-action/pull/3423
+/**
+ * This is essentially an arbitrary version of `yq`, which happened to be the one that
+ * `choco` fetched when we moved away from using that here.
+ * See https://github.com/github/codeql-action/pull/3423
+ */
 const YQ_VERSION = "v4.50.1";
 
 const CHECKS_DIR = path.join(PR_CHECKS_DIR, "checks");
@@ -438,10 +455,23 @@ function generateJobMatrix(
           : [operatingSystemConfig["runner-image"]];
 
       for (const runnerImage of runnerImagesForOs) {
-        matrix.push({
-          os: runnerImage,
-          version,
-        });
+        // stable-v2.20.7 requires an older version of Java than the default on `ubuntu-latest`.
+        // We could install that older version on the newer runners, or use the older runner.
+        // We do the latter here. This can be removed once we stop supporting `v2.20.7`.
+        // Since this is typed as `DefaultTestVersion`, it will become an error once `stable-v2.20.7`
+        // is removed from `defaultTestVersions`.
+        const requiresOlderRunnerImage: DefaultTestVersion = "stable-v2.20.7";
+        if (
+          runnerImage === "ubuntu-latest" &&
+          version === requiresOlderRunnerImage
+        ) {
+          matrix.push({ os: "ubuntu-24.04", version });
+        } else {
+          matrix.push({
+            os: runnerImage,
+            version,
+          });
+        }
       }
     }
   }
@@ -460,6 +490,20 @@ function generateJobMatrix(
   }
 
   return matrix;
+}
+
+/**
+ * Gets the `actions/checkout` step.
+ */
+function getCheckoutStep(): Step {
+  return {
+    name: "Check out repository",
+    uses: pinnedUses(
+      "actions/checkout",
+      "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "v7.0.1",
+    ),
+  };
 }
 
 /**
@@ -531,14 +575,7 @@ function generateJob(
 
   // Construct the workflow steps needed for this check.
   const steps: Step[] = [
-    {
-      name: "Check out repository",
-      uses: pinnedUses(
-        "actions/checkout",
-        "3d3c42e5aac5ba805825da76410c181273ba90b1",
-        "v7.0.1",
-      ),
-    },
+    getCheckoutStep(),
     ...setupInfo.steps,
     {
       name: "Prepare test",
@@ -609,12 +646,15 @@ function generateJob(
 /** Generates a validation job. */
 function generateValidationJob(
   specDocument: yaml.Document,
-  jobSpecification: JobSpecification,
+  jobSpecification: ValidationJobSpecification,
   checkName: string,
   name: string,
 ) {
   // Determine which languages or frameworks have to be installed.
   const { inputs, steps } = getSetupSteps(jobSpecification);
+
+  // Construct a checkout step if requested.
+  const checkoutStep = jobSpecification.checkout ? [getCheckoutStep()] : [];
 
   // Extract the sequence of steps from the YAML document to persist as much formatting as possible.
   const specSteps = specDocument.getIn([
@@ -624,18 +664,20 @@ function generateValidationJob(
   ]) as yaml.YAMLSeq;
 
   // Add the generated steps in front of the ones from the specification.
-  specSteps.items.unshift(...steps);
+  specSteps.items.unshift(...checkoutStep, ...steps);
+
+  const baseCondition = "github.triggering_actor != 'dependabot[bot]'";
 
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
-    if: "github.triggering_actor != 'dependabot[bot]'",
+    if: baseCondition,
     needs: [checkName],
     permissions: {
       contents: "read",
       "security-events": "read",
     },
     "timeout-minutes": 5,
-    "runs-on": "ubuntu-slim",
+    "runs-on": "ubuntu-latest",
     steps: specSteps,
   };
 

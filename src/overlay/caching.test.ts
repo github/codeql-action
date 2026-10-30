@@ -8,13 +8,14 @@ import * as sinon from "sinon";
 import * as actionsUtil from "../actions-util";
 import * as apiClient from "../api-client";
 import type { ResolveDatabaseOutput } from "../codeql";
+import * as environment from "../environment";
 import * as gitUtils from "../git-utils";
 import { BuiltInLanguage } from "../languages";
-import { getRunnerLogger } from "../logging";
 import {
   createTestConfig,
   makeMacro,
   mockCodeQLVersion,
+  RecordingLogger,
   setupTests,
 } from "../testing-utils";
 import * as utils from "../util";
@@ -62,7 +63,7 @@ const testDownloadOverlayBaseDatabaseFromCache = makeMacro({
       const dbLocation = path.join(tmpDir, "db");
       await fs.promises.mkdir(dbLocation, { recursive: true });
 
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const testCase = { ...defaultDownloadTestCase, ...partialTestCase };
       const config = createTestConfig({
         dbLocation,
@@ -82,7 +83,7 @@ const testDownloadOverlayBaseDatabaseFromCache = makeMacro({
 
       sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
 
-      sinon.stub(utils, "isInTestMode").returns(testCase.isInTestMode);
+      sinon.stub(environment, "isInTestMode").returns(testCase.isInTestMode);
 
       if (testCase.restoreCacheResult instanceof Error) {
         sinon
@@ -213,7 +214,7 @@ testDownloadOverlayBaseDatabaseFromCache.serial(
 );
 
 test.serial("overlay-base database cache keys remain stable", async (t) => {
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
   const config = createTestConfig({ languages: ["python", "javascript"] });
   const codeQlVersion = "2.23.0";
   const commitOid = "abc123def456";
@@ -260,7 +261,7 @@ test.serial("overlay-base database cache keys remain stable", async (t) => {
 test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases returns unique versions sorted latest first",
   async (t) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
     sinon.stub(apiClient, "listActionsCaches").resolves([
@@ -286,7 +287,7 @@ test.serial(
 test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases returns empty list when no caches exist",
   async (t) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
     sinon.stub(apiClient, "listActionsCaches").resolves([]);
@@ -302,7 +303,7 @@ test.serial(
 test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases returns empty list when cache keys are unparseable",
   async (t) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
     sinon.stub(apiClient, "listActionsCaches").resolves([
@@ -323,7 +324,7 @@ test.serial(
 test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases returns the single version when only one cache exists",
   async (t) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
     sinon.stub(apiClient, "listActionsCaches").resolves([
@@ -343,7 +344,7 @@ test.serial(
 test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases resolves language aliases",
   async (t) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     // The alias `c++` should be resolved to "cpp" and match cache entries keyed with "cpp"
 
     sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
@@ -364,7 +365,7 @@ test.serial(
 test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases de-duplicates resolved language aliases",
   async (t) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
     const listActionsCachesStub = sinon
@@ -390,7 +391,7 @@ test.serial(
 test.serial(
   "getCodeQlVersionsForOverlayBaseDatabases ignores nightly versions with build metadata",
   async (t) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     sinon.stub(apiClient, "getAutomationID").resolves("test-automation-id/");
     sinon.stub(apiClient, "listActionsCaches").resolves([

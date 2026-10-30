@@ -14,7 +14,6 @@ import * as diagnostics from "./diagnostics";
 import { ActionsEnvVars, Env, EnvVar, ReadOnlyEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
 import { MIN_PER_LANGUAGE_BUNDLE_CLI_VERSION } from "./per-language-bundles";
 import * as setupCodeql from "./setup-codeql";
@@ -22,6 +21,7 @@ import * as tar from "./tar";
 import {
   LINKED_CLI_VERSION,
   LoggedMessage,
+  RecordingLogger,
   SAMPLE_DEFAULT_CLI_VERSION,
   SAMPLE_DOTCOM_API_DETAILS,
   checkExpectedLogMessages,
@@ -117,31 +117,13 @@ test.serial("convert to semver", (t) => {
     try {
       const parsedVersion = setupCodeql.convertToSemVer(
         version,
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
       t.deepEqual(parsedVersion, expectedVersion);
     } catch (e) {
       t.fail(getErrorMessage(e));
     }
   }
-});
-
-test.serial("getCodeQLActionRepository", (t) => {
-  const logger = getRunnerLogger(true);
-
-  initializeEnvironment("1.2.3");
-
-  // isRunningLocalAction() === true
-  delete process.env["GITHUB_ACTION_REPOSITORY"];
-  process.env["RUNNER_TEMP"] = path.dirname(__dirname);
-  const repoLocalRunner = setupCodeql.getCodeQLActionRepository(logger);
-  t.deepEqual(repoLocalRunner, "github/codeql-action");
-
-  // isRunningLocalAction() === false
-  sinon.stub(actionsUtil, "isRunningLocalAction").returns(false);
-  process.env["GITHUB_ACTION_REPOSITORY"] = "xxx/yyy";
-  const repoEnv = setupCodeql.getCodeQLActionRepository(logger);
-  t.deepEqual(repoEnv, "xxx/yyy");
 });
 
 test.serial(
@@ -163,7 +145,7 @@ test.serial(
         GitHubVariant.DOTCOM,
         false,
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.deepEqual(source, {
@@ -249,7 +231,7 @@ for (const {
           GitHubVariant.DOTCOM,
           tarSupportsZstd,
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
         );
 
         t.is(source.toolsVersion, LINKED_CLI_VERSION.cliVersion);
@@ -457,7 +439,7 @@ test.serial(
         tmpDir,
         GitHubVariant.DOTCOM,
         SAMPLE_DEFAULT_CLI_VERSION,
-        ["javascript"],
+        undefined, // rawLanguages
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
@@ -614,8 +596,8 @@ test.serial(
         undefined, // rawLanguages
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
-        createFeatures([Feature.CleanupToolcacheBundles]),
-        getRunnerLogger(true),
+        createFeatures([]),
+        new RecordingLogger(),
       );
 
       t.is(result.toolsVersion, "local");
@@ -651,8 +633,8 @@ for (const toolsInput of ["nightly", "nightly-latest"]) {
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
           true, // tarSupportsZstd
-          createFeatures([Feature.PerLanguageBundles]),
-          getRunnerLogger(true),
+          createFeatures([]),
+          new RecordingLogger(),
         );
 
         t.deepEqual(source, {
@@ -682,24 +664,16 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      for (const { languages, otherLanguagePacksReason, features } of [
-        // The per-language feature is disabled.
-        {
-          languages: ["java"],
-          otherLanguagePacksReason: undefined,
-          features: createFeatures([]),
-        },
+      for (const { languages, otherLanguagePacksReason } of [
         // More than one language requires a combined bundle.
         {
           languages: ["java", "python"],
           otherLanguagePacksReason: undefined,
-          features: createFeatures([Feature.PerLanguageBundles]),
         },
         // The configured queries may need library packs for other languages.
         {
           languages: ["java"],
           otherLanguagePacksReason: "an example reason",
-          features: createFeatures([Feature.PerLanguageBundles]),
         },
       ]) {
         const source = await setupCodeql.getCodeQLSource(
@@ -711,8 +685,8 @@ test.serial(
           SAMPLE_DOTCOM_API_DETAILS,
           GitHubVariant.DOTCOM,
           true, // tarSupportsZstd
-          features,
-          getRunnerLogger(true),
+          createFeatures([]),
+          new RecordingLogger(),
         );
 
         t.is(source.sourceType, "download");
@@ -727,58 +701,48 @@ test.serial(
   },
 );
 
-for (const perLanguageBundles of [false, true]) {
-  test.serial(
-    `getCodeQLSource uses the latest ${perLanguageBundles ? "per-language" : "combined"} bundle for a forced nightly`,
-    async (t) => {
-      const expectedTag = "codeql-bundle-30260213";
-      const baseURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}`;
-      const latestNightlyRequest = stubHostedNightly(expectedTag);
+test.serial(
+  "getCodeQLSource uses the latest per-language bundle for a forced nightly",
+  async (t) => {
+    const expectedTag = "codeql-bundle-30260213";
+    const baseURL = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/${expectedTag}`;
+    const latestNightlyRequest = stubHostedNightly(expectedTag);
 
-      await withTmpDir(async (tmpDir) => {
-        setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
-        const source = await setupCodeql.getCodeQLSource(
-          undefined, // toolsInput: the nightly is selected by ForceNightly
-          SAMPLE_DEFAULT_CLI_VERSION,
-          ["java"],
-          undefined, // otherLanguagePacksReason
-          false, // useOverlayAwareDefaultCliVersion
-          SAMPLE_DOTCOM_API_DETAILS,
-          GitHubVariant.DOTCOM,
-          true, // tarSupportsZstd
-          createFeatures(
-            perLanguageBundles
-              ? [Feature.ForceNightly, Feature.PerLanguageBundles]
-              : [Feature.ForceNightly],
-          ),
-          getRunnerLogger(true),
-        );
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir, { GITHUB_EVENT_NAME: "dynamic" });
+      const source = await setupCodeql.getCodeQLSource(
+        undefined, // toolsInput: the nightly is selected by ForceNightly
+        SAMPLE_DEFAULT_CLI_VERSION,
+        ["java"],
+        undefined, // otherLanguagePacksReason
+        false, // useOverlayAwareDefaultCliVersion
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        true, // tarSupportsZstd
+        createFeatures([Feature.ForceNightly]),
+        new RecordingLogger(),
+      );
 
-        t.is(source.sourceType, "download");
-        t.true(latestNightlyRequest.calledOnce);
-        if (source.sourceType === "download") {
-          const combinedURL = `${baseURL}/codeql-bundle-linux64.tar.zst`;
-          t.deepEqual(
-            source.bundle,
-            perLanguageBundles
-              ? {
-                  kind: "per-language",
-                  language: BuiltInLanguage.java,
-                  url: `${baseURL}/codeql-bundle-java-linux64.tar.zst`,
-                  combinedBundleURL: combinedURL,
-                }
-              : { kind: "combined", url: combinedURL },
-          );
-        }
-      });
-    },
-  );
-}
+      t.is(source.sourceType, "download");
+      t.true(latestNightlyRequest.calledOnce);
+      if (source.sourceType === "download") {
+        t.deepEqual(source.bundle, {
+          kind: "per-language",
+          language: BuiltInLanguage.java,
+          url: `${baseURL}/codeql-bundle-java-linux64.tar.zst`,
+          combinedBundleURL: `${baseURL}/codeql-bundle-linux64.tar.zst`,
+        });
+      }
+    });
+  },
+);
 
 for (const date of ["20200101", "30260213"]) {
   for (const bundle of ["combined", "per-language"] as const) {
     test.serial(
-      `getCodeQLSource preserves an explicit ${bundle} nightly URL for ${date}`,
+      `getCodeQLSource preserves an explicit ${bundle} nightly URL for ${date}${
+        bundle === "per-language" ? " on GHES" : ""
+      }`,
       async (t) => {
         const latestNightlyRequest = stubHostedNightly(
           "codeql-bundle-30260213",
@@ -788,7 +752,9 @@ for (const date of ["20200101", "30260213"]) {
             ? "codeql-bundle-linux64.tar.zst"
             : "codeql-bundle-java-linux64.tar.zst";
         const url = `https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-${date}/${asset}`;
-        const features = createFeatures([Feature.PerLanguageBundles]);
+        const features = createFeatures([]);
+        const variant =
+          bundle === "per-language" ? GitHubVariant.GHES : GitHubVariant.DOTCOM;
         const logger = getRecordingLogger([], { logToConsole: false });
         const error = new HTTPError("Not Found", 404);
         const extractStub = sinon
@@ -804,7 +770,7 @@ for (const date of ["20200101", "30260213"]) {
             undefined, // otherLanguagePacksReason
             false,
             SAMPLE_DOTCOM_API_DETAILS,
-            GitHubVariant.DOTCOM,
+            variant,
             true,
             features,
             logger,
@@ -826,7 +792,7 @@ for (const date of ["20200101", "30260213"]) {
               url,
               SAMPLE_DOTCOM_API_DETAILS,
               tmpDir,
-              GitHubVariant.DOTCOM,
+              variant,
               SAMPLE_DEFAULT_CLI_VERSION,
               ["java"],
               undefined, // otherLanguagePacksReason
@@ -866,7 +832,7 @@ test.serial(
           GitHubVariant.DOTCOM,
           true,
           createFeatures([]),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         ),
         {
           message:
@@ -1038,7 +1004,7 @@ test.serial(
     t.is(
       setupCodeql.tryGetTagNameFromUrl(
         "https://github.com/org/codeql-bundle-testing/releases/download/codeql-bundle-v2.19.0/codeql-bundle-linux64.tar.zst",
-        getRunnerLogger(true),
+        new RecordingLogger(),
       ),
       "codeql-bundle-v2.19.0",
     );
@@ -1050,7 +1016,7 @@ test.serial(
   (t) => {
     sinon.stub(toolcache, "findAllVersions").returns([]);
     t.is(
-      setupCodeql.getLatestToolcacheVersion(getRunnerLogger(true)),
+      setupCodeql.getLatestToolcacheVersion(new RecordingLogger()),
       undefined,
     );
   },
@@ -1062,7 +1028,7 @@ test.serial(
     const testVersions = ["2.3.1", "3.2.1", "1.2.3"];
     sinon.stub(toolcache, "findAllVersions").returns(testVersions);
 
-    t.is(setupCodeql.getLatestToolcacheVersion(getRunnerLogger(true)), "3.2.1");
+    t.is(setupCodeql.getLatestToolcacheVersion(new RecordingLogger()), "3.2.1");
   },
 );
 
@@ -1088,7 +1054,7 @@ async function fakeOverlayBaseCacheKey(
 }
 
 test.serial(
-  "getCodeQLSource uses overlay-aware default version when requested for a PR",
+  "getCodeQLSource uses overlay-aware default version for a Code Scanning PR",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1115,8 +1081,8 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
-        createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-        getRunnerLogger(true),
+        createFeatures([]),
+        new RecordingLogger(),
       );
 
       t.assert(listStub.calledOnce);
@@ -1127,7 +1093,95 @@ test.serial(
 );
 
 test.serial(
-  "getCodeQLSource skips overlay-aware default version when not requested",
+  "getCodeQLSource skips the Actions cache when only one default version is enabled",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      process.env[EnvVar.CODE_SCANNING_REF] = "refs/heads/feature-branch";
+      process.env[EnvVar.CODE_SCANNING_BASE_BRANCH] = "main";
+
+      sinon.stub(api, "getAutomationID").resolves("test/");
+      const listStub = sinon.stub(api, "listActionsCaches").resolves([
+        {
+          key: await fakeOverlayBaseCacheKey(
+            "javascript",
+            SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+            "abc-1-1",
+          ),
+        },
+      ]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs(
+          "CodeQL",
+          SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+        )
+        .returns("/path/to/codeql");
+
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        SAMPLE_DEFAULT_CLI_VERSION,
+        ["javascript"],
+        undefined, // otherLanguagePacksReason
+        true,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        createFeatures([]),
+        new RecordingLogger(),
+      );
+
+      t.assert(listStub.notCalled);
+      t.is(source.sourceType, "toolcache");
+      t.is(
+        source.toolsVersion,
+        SAMPLE_DEFAULT_CLI_VERSION.enabledVersions[0].cliVersion,
+      );
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource skips overlay-aware default version outside pull request analysis",
+  async (t) => {
+    sinon.stub(actionsUtil, "isAnalyzingPullRequest").returns(false);
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      sinon.stub(api, "getAutomationID").resolves("test/");
+      const listStub = sinon.stub(api, "listActionsCaches").resolves([
+        {
+          key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
+        },
+      ]);
+      sinon
+        .stub(toolcache, "find")
+        .withArgs("CodeQL", "2.20.2")
+        .returns("/path/to/codeql-2.20.2");
+
+      const source = await setupCodeql.getCodeQLSource(
+        undefined,
+        overlayMatchEnabledVersions,
+        ["javascript"],
+        undefined, // otherLanguagePacksReason
+        true,
+        SAMPLE_DOTCOM_API_DETAILS,
+        GitHubVariant.DOTCOM,
+        false,
+        createFeatures([]),
+        new RecordingLogger(),
+      );
+
+      t.assert(listStub.notCalled);
+      t.is(source.sourceType, "toolcache");
+      t.is(source.toolsVersion, "2.20.2");
+    });
+  },
+);
+
+test.serial(
+  "getCodeQLSource skips overlay-aware default version when not requested for Code Scanning",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -1154,8 +1208,8 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         false,
-        createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-        getRunnerLogger(true),
+        createFeatures([]),
+        new RecordingLogger(),
       );
 
       t.assert(listStub.notCalled);
@@ -1192,8 +1246,8 @@ test.serial(
         SAMPLE_DOTCOM_API_DETAILS,
         GitHubVariant.DOTCOM,
         true, // tarSupportsZstd
-        createFeatures([Feature.PerLanguageBundles]),
-        getRunnerLogger(true),
+        createFeatures([]),
+        new RecordingLogger(),
       );
 
       t.is(source.sourceType, "download");
@@ -1225,13 +1279,16 @@ test.serial(
 
     await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
-      for (const { otherLanguagePacksReason, features } of [
-        // The per-language feature is disabled.
-        { otherLanguagePacksReason: undefined, features: createFeatures([]) },
+      for (const { otherLanguagePacksReason, variant } of [
+        // Automatic per-language selection is limited to GitHub.com.
+        {
+          otherLanguagePacksReason: undefined,
+          variant: GitHubVariant.GHES,
+        },
         // The configured queries may need library packs for other languages.
         {
           otherLanguagePacksReason: "an example reason",
-          features: createFeatures([Feature.PerLanguageBundles]),
+          variant: GitHubVariant.DOTCOM,
         },
       ]) {
         const source = await setupCodeql.getCodeQLSource(
@@ -1241,10 +1298,10 @@ test.serial(
           otherLanguagePacksReason,
           false, // useOverlayAwareDefaultCliVersion
           SAMPLE_DOTCOM_API_DETAILS,
-          GitHubVariant.DOTCOM,
+          variant,
           true, // tarSupportsZstd
-          features,
-          getRunnerLogger(true),
+          createFeatures([]),
+          new RecordingLogger(),
         );
 
         t.is(source.sourceType, "download");
@@ -1313,8 +1370,8 @@ for (const fallback of [false, true]) {
           ["java"],
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
-          createFeatures([Feature.PerLanguageBundles]),
-          getRunnerLogger(true),
+          createFeatures([]),
+          new RecordingLogger(),
         );
 
         t.true(fetchRelease.calledTwice);
@@ -1393,10 +1450,7 @@ for (const bundle of ["per-language", "combined", "fallback"] as const) {
           };
         });
       const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
-      const features = createFeatures([
-        Feature.PerLanguageBundles,
-        Feature.CleanupToolcacheBundles,
-      ]);
+      const features = createFeatures([]);
 
       await withTmpDir(async (tmpDir) => {
         setupActionsVars(tmpDir, tmpDir);
@@ -1581,8 +1635,8 @@ for (const error of [
             ["java"],
             undefined, // otherLanguagePacksReason
             false, // useOverlayAwareDefaultCliVersion
-            createFeatures([Feature.PerLanguageBundles]),
-            getRunnerLogger(true),
+            createFeatures([]),
+            new RecordingLogger(),
           ),
           { is: error },
         );
@@ -1618,7 +1672,7 @@ test.serial(
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           createFeatures([]),
-          getRunnerLogger(true),
+          new RecordingLogger(),
         ),
         { is: error },
       );
@@ -1629,7 +1683,7 @@ test.serial(
 );
 
 test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases returns flag-enabled versions present in cache, sorted desc",
+  "getEnabledVersionsWithOverlayBaseDatabases returns enabled versions present in cache, sorted desc",
   async (t) => {
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
@@ -1647,21 +1701,24 @@ test.serial(
       },
     ]);
 
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, [
-      { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
-      { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
-    ]);
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result =
+        await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
+          overlayMatchEnabledVersions,
+          ["javascript"],
+          new RecordingLogger(),
+        );
+      t.deepEqual(result, [
+        { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
+        { cliVersion: "2.20.0", tagName: "codeql-bundle-v2.20.0" },
+      ]);
+    });
   },
 );
 
 test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases returns empty when no cached version is flag-enabled",
+  "getEnabledVersionsWithOverlayBaseDatabases returns empty when no cached version is enabled",
   async (t) => {
     sinon.stub(api, "getAutomationID").resolves("test/");
     sinon.stub(api, "listActionsCaches").resolves([
@@ -1673,8 +1730,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, []);
   },
@@ -1690,8 +1746,7 @@ const noLanguagesMacro = makeMacro({
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       rawLanguages,
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, []);
     t.assert(
@@ -1715,8 +1770,7 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, []);
   },
@@ -1735,83 +1789,10 @@ test.serial(
     const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
       overlayMatchEnabledVersions,
       ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersion]),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
     t.deepEqual(result, [
       { cliVersion: "2.20.2", tagName: "codeql-bundle-v2.20.2" },
-    ]);
-  },
-);
-
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases does not list caches when both gates are off",
-  async (t) => {
-    const listStub = sinon.stub(api, "listActionsCaches").resolves([]);
-
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, []);
-    t.assert(
-      listStub.notCalled,
-      "Should not list Actions caches when both gating feature flags are off.",
-    );
-  },
-);
-
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases dry-run returns empty but lists caches",
-  async (t) => {
-    sinon.stub(api, "getAutomationID").resolves("test/");
-    const listStub = sinon.stub(api, "listActionsCaches").resolves([
-      {
-        key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
-      },
-    ]);
-
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([Feature.OverlayAnalysisMatchCodeqlVersionDryRun]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(
-      result,
-      [],
-      "Dry-run should return an empty list so the caller falls back.",
-    );
-    t.assert(
-      listStub.calledOnce,
-      "Dry-run should still list Actions caches to populate the diagnostic.",
-    );
-  },
-);
-
-test.serial(
-  "getEnabledVersionsWithOverlayBaseDatabases match flag wins over dry-run",
-  async (t) => {
-    sinon.stub(api, "getAutomationID").resolves("test/");
-    sinon.stub(api, "listActionsCaches").resolves([
-      {
-        key: await fakeOverlayBaseCacheKey("javascript", "2.20.1", "abc-1-1"),
-      },
-    ]);
-
-    const result = await setupCodeql.getEnabledVersionsWithOverlayBaseDatabases(
-      overlayMatchEnabledVersions,
-      ["javascript"],
-      createFeatures([
-        Feature.OverlayAnalysisMatchCodeqlVersion,
-        Feature.OverlayAnalysisMatchCodeqlVersionDryRun,
-      ]),
-      getRunnerLogger(true),
-    );
-    t.deepEqual(result, [
-      { cliVersion: "2.20.1", tagName: "codeql-bundle-v2.20.1" },
     ]);
   },
 );
@@ -1844,11 +1825,15 @@ function createToolcacheEntry(
  */
 async function runDownloadCodeQL(
   toolcacheRoot: string,
-  features: Feature[],
   bundleVersion: string | undefined,
-  env = getTestEnv({
-    [ActionsEnvVars.RUNNER_TOOL_CACHE]: toolcacheRoot,
-  }),
+  {
+    env = getTestEnv({
+      [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
+      [ActionsEnvVars.RUNNER_TOOL_CACHE]: toolcacheRoot,
+    }),
+  }: {
+    env?: Env;
+  } = {},
 ): Promise<{
   codeqlFolder: string;
   cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
@@ -1859,7 +1844,6 @@ async function runDownloadCodeQL(
   const { codeqlFolder } = await setupCodeql.downloadCodeQLBundle(
     initAllState({
       env,
-      features: createFeatures(features),
     }),
     {
       bundle: {
@@ -1897,11 +1881,9 @@ async function runDownloadCodeQL(
 async function testToolcacheCleanup(
   t: ExecutionContext<unknown>,
   {
-    features,
     runnerEnvironment,
     setUp,
   }: {
-    features: Feature[];
     runnerEnvironment: string | undefined;
     setUp?: (env: Env) => void;
   },
@@ -1913,12 +1895,8 @@ async function testToolcacheCleanup(
 ) {
   await withTmpDir(async (tmpDir) => {
     setupActionsVars(tmpDir, tmpDir);
-    if (runnerEnvironment === undefined) {
-      delete process.env[ActionsEnvVars.RUNNER_ENVIRONMENT];
-    } else {
-      process.env[ActionsEnvVars.RUNNER_ENVIRONMENT] = runnerEnvironment;
-    }
     const env = getTestEnv({
+      [ActionsEnvVars.RUNNER_ENVIRONMENT]: runnerEnvironment,
       [ActionsEnvVars.RUNNER_TOOL_CACHE]: tmpDir,
     });
     setUp?.(env);
@@ -1938,9 +1916,8 @@ async function testToolcacheCleanup(
 
     const { cleanupDiagnostic } = await runDownloadCodeQL(
       tmpDir,
-      features,
       CLEANUP_BUNDLE_VERSION,
-      env,
+      { env },
     );
 
     t.true(
@@ -1953,27 +1930,11 @@ async function testToolcacheCleanup(
 }
 
 test.serial(
-  "downloadCodeQLBundle does not clean up the toolcache when the feature flag is disabled",
-  async (t) => {
-    await testToolcacheCleanup(
-      t,
-      { features: [], runnerEnvironment: "github-hosted" },
-      ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
-        t.true(fs.existsSync(staleDirectory));
-        t.true(fs.existsSync(destinationDirectory));
-        t.is(cleanupDiagnostic, undefined);
-      },
-    );
-  },
-);
-
-test.serial(
   "downloadCodeQLBundle does not clean up the toolcache when the runner is not GitHub-hosted",
   async (t) => {
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "self-hosted",
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -1993,7 +1954,6 @@ test.serial(
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: undefined,
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -2006,12 +1966,11 @@ test.serial(
 );
 
 test.serial(
-  "downloadCodeQLBundle deletes other CodeQL bundles from the toolcache when enabled on a GitHub-hosted runner",
+  "downloadCodeQLBundle deletes other CodeQL bundles from the toolcache on a GitHub-hosted runner",
   async (t) => {
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "github-hosted",
       },
       ({ cleanupDiagnostic, destinationDirectory, staleDirectory }) => {
@@ -2045,7 +2004,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2075,7 +2033,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2138,7 +2095,7 @@ test.serial(
         env: new ReadOnlyEnv({
           [ActionsEnvVars.RUNNER_TOOL_CACHE]: injectedRoot,
         }),
-        logger: getRunnerLogger(true),
+        logger: new RecordingLogger(),
       });
 
       t.deepEqual(result, {
@@ -2207,7 +2164,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         toolcacheRoot,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2230,7 +2186,6 @@ test.serial(
     await testToolcacheCleanup(
       t,
       {
-        features: [Feature.CleanupToolcacheBundles],
         runnerEnvironment: "github-hosted",
         setUp: (env) => {
           env.set(EnvVar.HAS_SET_UP_CODEQL, "true");
@@ -2260,9 +2215,13 @@ test.serial(
       );
       const { codeqlFolder, cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
-        getTestEnv({ [EnvVar.HAS_SET_UP_CODEQL]: "true" }),
+        {
+          env: getTestEnv({
+            [ActionsEnvVars.RUNNER_ENVIRONMENT]: "github-hosted",
+            [EnvVar.HAS_SET_UP_CODEQL]: "true",
+          }),
+        },
       );
 
       t.true(fs.existsSync(staleDirectory));
@@ -2291,7 +2250,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         createFeatures([]),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.is(
@@ -2330,8 +2289,8 @@ test.serial(
           undefined, // rawLanguages
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
-          createFeatures([Feature.CleanupToolcacheBundles]),
-          getRunnerLogger(true),
+          createFeatures([]),
+          new RecordingLogger(),
         ),
         { is: error },
       );
@@ -2365,7 +2324,6 @@ test.serial(
 
       const { codeqlFolder, cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         undefined, // bundleVersion
       );
 
@@ -2399,7 +2357,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2435,7 +2392,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         tmpDir,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 
@@ -2449,7 +2405,7 @@ test.serial(
   "isToolcacheOnWorkspaceFilesystem assumes a different filesystem when it cannot tell",
   async (t) => {
     await withTmpDir(async (tmpDir) => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
 
       setupActionsVars(tmpDir, tmpDir);
       t.true(toolsDownload.isToolcacheOnWorkspaceFilesystem(logger));
@@ -2485,7 +2441,6 @@ test.serial(
 
       const { cleanupDiagnostic } = await runDownloadCodeQL(
         toolcacheRoot,
-        [Feature.CleanupToolcacheBundles],
         CLEANUP_BUNDLE_VERSION,
       );
 

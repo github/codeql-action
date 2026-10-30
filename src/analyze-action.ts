@@ -4,12 +4,18 @@ import { performance } from "perf_hooks";
 
 import * as core from "@actions/core";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import {
   CodeQLAnalysisError,
   dbIsFinalized,
+  determineCheckoutPath,
   QueriesStatusReport,
   runFinalize,
   runQueries,
@@ -44,9 +50,8 @@ import {
   StatusReportBase,
 } from "./status-report";
 import {
-  cleanupTrapCaches,
-  TrapCacheCleanupStatusReport,
   uploadTrapCaches,
+  warnIfTrapCacheCleanupEnvVarIsSet,
 } from "./trap-caching";
 import * as uploadLib from "./upload-lib";
 import { UploadResult } from "./upload-lib";
@@ -80,7 +85,6 @@ async function sendStatusReport(
   trapCacheUploadTime: number | undefined,
   dbCreationTimings: DatabaseCreationTimings | undefined,
   didUploadTrapCaches: boolean,
-  trapCacheCleanup: TrapCacheCleanupStatusReport | undefined,
   dependencyCacheResults: DependencyCacheUploadStatusReport | undefined,
   databaseUploadResults: DatabaseUploadResult[],
   logger: Logger,
@@ -101,7 +105,6 @@ async function sendStatusReport(
       ...statusReportBase,
       ...(stats || {}),
       ...(dbCreationTimings || {}),
-      ...(trapCacheCleanup || {}),
       dependency_caching_upload_results: dependencyCacheResults,
       database_upload_results: databaseUploadResults,
     };
@@ -212,21 +215,17 @@ async function runAutobuildIfLegacyGoWorkflow(config: Config, logger: Logger) {
   await runAutobuild(config, BuiltInLanguage.go, logger);
 }
 
-async function run({
-  startedAt,
-  logger,
-  actions,
-}: ActionState<["Base", "Logger", "Actions"]>) {
+async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const startedAt = action.startedAt;
+  const logger = action.logger;
 
   let uploadResults:
     | Partial<Record<analyses.AnalysisKind, UploadResult>>
     | undefined = undefined;
   let runStats: QueriesStatusReport | undefined = undefined;
   let config: Config | undefined = undefined;
-  let trapCacheCleanupTelemetry: TrapCacheCleanupStatusReport | undefined =
-    undefined;
   let trapCacheUploadTime: number | undefined = undefined;
   let dbCreationTimings: DatabaseCreationTimings | undefined = undefined;
   let didUploadTrapCaches = false;
@@ -267,17 +266,6 @@ async function run({
       );
     }
 
-    // Unset the CODEQL_PROXY_* environment variables when using older CodeQL
-    // CLIs, as they are not needed and can cause issues.
-    if (
-      process.env.CODEQL_PROXY_HOST === "" &&
-      !(await util.codeQlVersionAtLeast(codeql, "2.20.7"))
-    ) {
-      delete process.env.CODEQL_PROXY_HOST;
-      delete process.env.CODEQL_PROXY_PORT;
-      delete process.env.CODEQL_PROXY_CA_CERTIFICATE;
-    }
-
     if (actionsUtil.getOptionalInput("cleanup-level")) {
       logger.info(
         "The 'cleanup-level' input is ignored since the CodeQL Action now automatically " +
@@ -285,9 +273,11 @@ async function run({
       );
     }
 
+    warnIfTrapCacheCleanupEnvVarIsSet(action);
+
     const apiDetails = getApiDetails();
     const outputDir = actionsUtil.getRequiredInput("output");
-    core.exportVariable(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
+    action.env.export(EnvVar.SARIF_RESULTS_OUTPUT_DIR, outputDir);
     const threads = util.getThreadsFlag(
       actionsUtil.getOptionalInput("threads") || process.env["CODEQL_THREADS"],
       logger,
@@ -311,7 +301,7 @@ async function run({
       logger,
     );
 
-    const checkoutPath = actions.getRequiredInput("checkout_path");
+    const checkoutPath = await determineCheckoutPath(action, config);
 
     // Setup diff informed analysis if needed (based on whether init created the file)
     const diffRangePackDir = await setupDiffInformedQueryRun(
@@ -368,6 +358,7 @@ async function run({
       uploadResults = await postProcessAndUploadSarif(
         logger,
         features,
+        config,
         uploadKind,
         checkoutPath,
         outputDir,
@@ -403,11 +394,13 @@ async function run({
       checkoutPath,
     );
 
+    const actionWithFeatures = extendActionState(action, { features });
+
     // Possibly upload the database bundles for remote queries.
     // Note: Take care with the ordering of this call since databases may be cleaned up
     // at the `overlay` or `clear` level.
     databaseUploadResults = await cleanupAndUploadDatabases(
-      { logger, features },
+      actionWithFeatures,
       repositoryNwo,
       codeql,
       config,
@@ -420,13 +413,6 @@ async function run({
     didUploadTrapCaches = await uploadTrapCaches(codeql, config, logger);
     trapCacheUploadTime = performance.now() - trapCacheUploadStartTime;
 
-    // Clean up TRAP caches
-    trapCacheCleanupTelemetry = await cleanupTrapCaches(
-      config,
-      features,
-      logger,
-    );
-
     // Store dependency cache(s) if dependency caching is enabled.
     if (shouldStoreCache(config.dependencyCachingEnabled)) {
       dependencyCacheResults = await uploadDependencyCaches(
@@ -438,8 +424,10 @@ async function run({
     }
 
     // We don't upload results in test mode, so don't wait for processing
-    if (util.isInTestMode()) {
-      logger.debug("In test mode. Waiting for processing is disabled.");
+    if (util.shouldSkipSarifUpload()) {
+      logger.debug(
+        "SARIF upload is disabled and nothing was uploaded, so we do not need to wait for processing to finish.",
+      );
     } else if (
       uploadResults?.[analyses.AnalysisKind.CodeScanning] !== undefined &&
       actionsUtil.getRequiredInput("wait-for-processing") === "true"
@@ -456,7 +444,7 @@ async function run({
         `expect-error input was set to true but no error was thrown.`,
       );
     }
-    core.exportVariable(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
+    action.env.export(EnvVar.ANALYZE_DID_COMPLETE_SUCCESSFULLY, "true");
   } catch (unwrappedError) {
     const error = util.wrapError(unwrappedError);
     if (
@@ -476,7 +464,6 @@ async function run({
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -499,7 +486,6 @@ async function run({
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -513,7 +499,6 @@ async function run({
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,
@@ -527,7 +512,6 @@ async function run({
       trapCacheUploadTime,
       dbCreationTimings,
       didUploadTrapCaches,
-      trapCacheCleanupTelemetry,
       dependencyCacheResults,
       databaseUploadResults,
       logger,

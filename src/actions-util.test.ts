@@ -7,12 +7,12 @@ import {
   isAnalyzingPullRequest,
   isDefaultSetup,
   isDynamicWorkflow,
+  printDebugLogs,
 } from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
-import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
-import { initializeEnvironment } from "./util";
+import { RecordingLogger, setupTests } from "./testing-utils";
+import { initializeEnvironment, withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -99,6 +99,21 @@ test("computeAutomationID()", async (t) => {
     ".github/workflows/codeql-analysis.yml:analyze/",
   );
 });
+
+test("printDebugLogs - doesn't throw when config doesn't have needed properties", async (t) => {
+  const logger = new RecordingLogger();
+  await t.notThrowsAsync(printDebugLogs(logger, {}));
+  await t.notThrowsAsync(printDebugLogs(logger, { languages: [] }));
+  await t.notThrowsAsync(printDebugLogs(logger, { dbLocation: "nowhere" }));
+});
+
+test("printDebugLogs - doesn't throw when language db doesn't exist", async (t) =>
+  withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+    await t.notThrowsAsync(
+      printDebugLogs(logger, { dbLocation: tmpDir, languages: ["javascript"] }),
+    );
+  }));
 
 test.serial("getPullRequestBranches() with pull request context", (t) => {
   withMockedContext(
@@ -222,7 +237,7 @@ test.serial("fixCodeQualityCategory", (t) => {
       GITHUB_EVENT_NAME: "dynamic",
     },
     () => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
 
       // Categories that should get adjusted.
       t.is(fixCodeQualityCategory(logger, "/language:c#"), "/language:csharp");

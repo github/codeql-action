@@ -10,22 +10,110 @@ import {
   resolveQuerySuiteAlias,
   addSarifExtension,
   diffRangeExtensionPackContents,
+  determineCheckoutPath,
 } from "./analyze";
 import { createStubCodeQL } from "./codeql";
 import { defaultSuites } from "./config/db-config";
 import { Feature } from "./feature-flags";
+import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import {
   setupTests,
   setupActionsVars,
   createFeatures,
   createTestConfig,
+  RecordingLogger,
+  callee,
 } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import * as util from "./util";
 
 setupTests(test);
+
+test.serial(
+  "determineCheckoutPath - logs when checkout_path is not in a work tree",
+  async (t) => {
+    const expectedPath = path.resolve("/checkout/path");
+    const target = callee(determineCheckoutPath)
+      .withActions((actions) => {
+        sinon
+          .stub(actions, "getRequiredInput")
+          .withArgs("checkout_path")
+          .returns(expectedPath);
+      })
+      .withArgs(createTestConfig({}));
+    sinon.stub(gitUtils, "getGitRoot").resolves(undefined);
+
+    await target
+      .logs(t, "is not in the work tree of a git repository")
+      .passes(t.is, expectedPath);
+  },
+);
+
+test.serial(
+  "determineCheckoutPath - logs when checkout_path is not a repo root",
+  async (t) => {
+    const expectedPath = path.resolve("/checkout/path");
+    const target = callee(determineCheckoutPath)
+      .withActions((actions) => {
+        sinon
+          .stub(actions, "getRequiredInput")
+          .withArgs("checkout_path")
+          .returns(expectedPath);
+      })
+      .withArgs(createTestConfig({}));
+    sinon.stub(gitUtils, "getGitRoot").resolves("/checkout");
+
+    await target
+      .logs(t, "is not the root of the repository")
+      .passes(t.is, expectedPath);
+  },
+);
+
+test.serial(
+  "determineCheckoutPath - logs when checkout_path is not the same as repo root in config",
+  async (t) => {
+    const expectedPath = path.resolve("/checkout/path");
+    const target = callee(determineCheckoutPath)
+      .withActions((actions) => {
+        sinon
+          .stub(actions, "getRequiredInput")
+          .withArgs("checkout_path")
+          .returns(expectedPath);
+      })
+      .withArgs(createTestConfig({ repositoryRoot: "/some/other/path" }));
+    sinon.stub(gitUtils, "getGitRoot").resolves(expectedPath);
+
+    await target
+      .logs(t, "does not match that found by the 'codeql-action/init' step")
+      .passes(t.is, expectedPath);
+  },
+);
+
+test.serial(
+  "determineCheckoutPath - doesn't log any of the messages when all is as expected",
+  async (t) => {
+    const expectedPath = path.resolve("/checkout/path");
+    const target = callee(determineCheckoutPath)
+      .withActions((actions) => {
+        sinon
+          .stub(actions, "getRequiredInput")
+          .withArgs("checkout_path")
+          .returns(expectedPath);
+      })
+      .withArgs(createTestConfig({ repositoryRoot: expectedPath }));
+    sinon.stub(gitUtils, "getGitRoot").resolves(expectedPath);
+
+    await target
+      .notLogs(
+        t,
+        "is not in the work tree of a git repository",
+        "is not the root of the repository",
+        "does not match that found by the 'codeql-action/init' step",
+      )
+      .passes(t.is, expectedPath);
+  },
+);
 
 /**
  * Checks the status report produced by the analyze Action.
@@ -107,7 +195,7 @@ test.serial("status report fields", async (t) => {
         undefined,
         codeql,
         config,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         createFeatures([Feature.QaTelemetryEnabled]),
       );
       t.deepEqual(Object.keys(statusReport).sort(), [

@@ -5,7 +5,12 @@ import * as core from "@actions/core";
 import * as io from "@actions/io";
 import * as semver from "semver";
 
-import { Action, ActionState, runInActions } from "./action-common";
+import {
+  Action,
+  ActionState,
+  extendActionState,
+  runInActions,
+} from "./action-common";
 import {
   FileCmdNotFoundError,
   getActionVersion,
@@ -35,7 +40,7 @@ import {
   addDiagnostic,
   addNoLanguageDiagnostic,
   flushDiagnostics,
-  logUnwrittenDiagnostics,
+  logTemporaryDiagnostics,
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
@@ -45,6 +50,7 @@ import {
   loadRepositoryProperties,
   RepositoryPropertyName,
 } from "./feature-flags/properties";
+import * as github from "./github";
 import {
   checkInstallPython311,
   checkPacksForOverlayCompatibility,
@@ -56,6 +62,7 @@ import {
   runDatabaseInitCluster,
 } from "./init";
 import { JavaEnvVars, BuiltInLanguage } from "./languages";
+import { checkRunnerSupportsTracedAnalysis } from "./languages/traced";
 import { Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -93,7 +100,6 @@ import {
   checkActionVersion,
   getErrorMessage,
   BuildMode,
-  getOptionalEnvVar,
 } from "./util";
 import { checkWorkflow } from "./workflow";
 
@@ -229,8 +235,7 @@ async function run(
     apiDetails = {
       auth: getRequiredInput("token"),
       externalRepoAuth: getOptionalInput("external-repository-token"),
-      url: actionState.env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
-      apiURL: actionState.env.getRequired(ActionsEnvVars.GITHUB_API_URL),
+      ...github.getCurrentInstance(actionState.env),
     };
 
     const gitHubVersion = await getGitHubVersion();
@@ -253,7 +258,7 @@ async function run(
     );
     const repositoryProperties = repositoryPropertiesResult.orElse({});
 
-    core.exportVariable(EnvVar.INIT_ACTION_HAS_RUN, "true");
+    actionState.env.export(EnvVar.INIT_ACTION_HAS_RUN, "true");
 
     // path.resolve() respects the intended semantics of source-root. If
     // source-root is relative, it is relative to the GITHUB_WORKSPACE. If
@@ -278,7 +283,9 @@ async function run(
     }
 
     // Compute the value of the `config-file` input.
-    const actionStateWithFeatures = { ...actionState, features };
+    const actionStateWithFeatures = extendActionState(actionState, {
+      features,
+    });
     configFile = await getConfigFileInput(
       actionStateWithFeatures,
       repositoryProperties,
@@ -349,7 +356,7 @@ async function run(
     // to the workflow log. No exceptions are thrown.
     await checkWorkflow(logger, codeql);
 
-    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if between 2.19.3 (included) and 2.22.1 (excluded)
+    // Set CODEQL_ENABLE_EXPERIMENTAL_FEATURES for Rust if the CLI is older than 2.22.1.
     // We need to set this environment variable before initializing the config, otherwise Rust
     // analysis will not be enabled (experimental language packs are only active with that environment
     // variable set to `true`).
@@ -360,16 +367,10 @@ async function run(
         .getRawLanguagesNoAutodetect(getOptionalInput("languages"))
         .includes(BuiltInLanguage.rust)
     ) {
-      const experimental = "2.19.3";
       const publicPreview = "2.22.1";
       const actualVer = (await codeql.getVersion()).version;
-      if (semver.lt(actualVer, experimental)) {
-        throw new ConfigurationError(
-          `Rust analysis is supported by CodeQL CLI version ${experimental} or higher, but found version ${actualVer}`,
-        );
-      }
       if (semver.lt(actualVer, publicPreview)) {
-        core.exportVariable(EnvVar.EXPERIMENTAL_FEATURES, "true");
+        actionState.env.export(EnvVar.EXPERIMENTAL_FEATURES, "true");
         logger.info("Experimental Rust analysis enabled");
       }
     }
@@ -418,14 +419,11 @@ async function run(
       logger,
     });
 
-    if (
-      config.languages.includes(BuiltInLanguage.swift) &&
-      process.platform !== "darwin"
-    ) {
-      throw new ConfigurationError(
-        `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
-      );
-    }
+    await checkRunnerSupportsTracedAnalysis(
+      actionStateWithFeatures,
+      config,
+      codeql,
+    );
 
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(
@@ -457,6 +455,18 @@ async function run(
 
     await checkInstallPython311(config.languages, codeql);
   } catch (unwrappedError) {
+    // If we have initialised the Action state, then try to save a subset of it for use by the `init-post` action
+    // so that it can try to create and upload additional diagnostic information.
+    if (config !== undefined) {
+      try {
+        configUtils.saveAbortedInitConfig(actionState, config);
+      } catch (configSaveError) {
+        logger.warning(
+          `Unable to save configuration for '${ActionName.InitPost}' step: ${getErrorMessage(configSaveError)}`,
+        );
+      }
+    }
+
     const error = wrapError(unwrappedError);
     core.setFailed(error.message);
     const statusReportBase = await createStatusReportBase(
@@ -472,6 +482,7 @@ async function run(
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
+    logTemporaryDiagnostics(actionState);
     return;
   }
 
@@ -517,9 +528,9 @@ async function run(
     }
 
     // Forward Go flags
-    const goFlags = process.env["GOFLAGS"];
+    const goFlags = actionState.env.getOptional("GOFLAGS");
     if (goFlags) {
-      core.exportVariable("GOFLAGS", goFlags);
+      actionState.env.export("GOFLAGS", goFlags);
       core.warning(
         "Passing the GOFLAGS env parameter to the init action is deprecated. Please move this to the analyze action.",
       );
@@ -565,7 +576,7 @@ async function run(
 
             // Store the original location of our wrapper script somewhere where we can
             // later retrieve it from and cross-check that it hasn't been changed.
-            core.exportVariable(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
+            actionState.env.export(EnvVar.GO_BINARY_LOCATION, goWrapperPath);
           } catch (e) {
             logger.warning(
               `Analyzing Go on Linux, but failed to install wrapper script. Tracing custom builds may fail: ${e}`,
@@ -574,7 +585,7 @@ async function run(
         } else {
           // Store the location of the original Go binary, so we can check that no setup tasks were performed after the
           // `init` Action ran.
-          core.exportVariable(EnvVar.GO_BINARY_LOCATION, goBinaryPath);
+          actionState.env.export(EnvVar.GO_BINARY_LOCATION, goBinaryPath);
         }
       } catch (e) {
         logger.warning(
@@ -609,12 +620,12 @@ async function run(
     // threads it would ask extractors to use. See help text for the "--ram" and "--threads"
     // options at https://codeql.github.com/docs/codeql-cli/manual/database-trace-command/
     // for details.
-    core.exportVariable(
+    actionState.env.export(
       "CODEQL_RAM",
       process.env["CODEQL_RAM"] ||
         getCodeQLMemoryLimit(getOptionalInput("ram"), logger).toString(),
     );
-    core.exportVariable(
+    actionState.env.export(
       "CODEQL_THREADS",
       process.env["CODEQL_THREADS"] ||
         getThreadsFlagValue(getOptionalInput("threads"), logger).toString(),
@@ -622,21 +633,15 @@ async function run(
 
     // Disable Kotlin extractor if feature flag set
     if (await features.getValue(Feature.DisableKotlinAnalysisEnabled)) {
-      core.exportVariable("CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN", "true");
+      actionState.env.export(
+        "CODEQL_EXTRACTOR_JAVA_AGENT_DISABLE_KOTLIN",
+        "true",
+      );
     }
 
     // Emergency override to force the CodeQL CLI back to the JGit-based Git backend.
     if (await features.getValue(Feature.ForceJGit)) {
-      core.exportVariable("CODEQL_GIT_BACKEND", "jgit");
-    }
-
-    const kotlinLimitVar =
-      "CODEQL_EXTRACTOR_KOTLIN_OVERRIDE_MAXIMUM_VERSION_LIMIT";
-    if (
-      (await codeQlVersionAtLeast(codeql, "2.20.3")) &&
-      !(await codeQlVersionAtLeast(codeql, "2.20.4"))
-    ) {
-      core.exportVariable(kotlinLimitVar, "2.1.20");
+      actionState.env.export("CODEQL_GIT_BACKEND", "jgit");
     }
 
     // Restore dependency cache(s), if they exist.
@@ -685,7 +690,7 @@ async function run(
       config.buildMode === BuildMode.None &&
       config.languages.includes(BuiltInLanguage.java)
     ) {
-      core.exportVariable(
+      actionState.env.export(
         EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS,
         "true",
       );
@@ -743,7 +748,7 @@ async function run(
     const tracerConfig = await getCombinedTracerConfig(logger, codeql, config);
     if (tracerConfig !== undefined) {
       for (const [key, value] of Object.entries(tracerConfig.env)) {
-        core.exportVariable(key, value);
+        actionState.env.export(key, value);
       }
     }
 
@@ -751,23 +756,24 @@ async function run(
     if (await features.getValue(Feature.JavaNetworkDebugging)) {
       // Get the existing value of `JAVA_TOOL_OPTIONS`, if any.
       const existingJavaToolOptions =
-        getOptionalEnvVar(JavaEnvVars.JAVA_TOOL_OPTIONS) || "";
+        actionState.env.getOptional(JavaEnvVars.JAVA_TOOL_OPTIONS) ?? "";
 
       // Add the network debugging options.
-      core.exportVariable(
+      actionState.env.export(
         JavaEnvVars.JAVA_TOOL_OPTIONS,
         `${existingJavaToolOptions} -Djavax.net.debug=all`,
       );
     }
 
-    // Write diagnostics to the database that we previously stored in memory because the database
-    // did not exist until now.
-    flushDiagnostics(config);
+    // Move diagnostics to the database that we previously kept in a temporary location
+    // because the database did not exist until now
+    flushDiagnostics(actionState, config);
 
     // We save the config here instead of at the end of `initConfig` because we
     // may have updated the config returned from `initConfig`, e.g. to revert to
     // `OverlayDatabaseMode.None` if we failed to download an overlay-base
     // database.
+    config.successfullyInitialised = true;
     await configUtils.saveConfig(config, logger);
 
     core.setOutput("codeql-path", config.codeQLCmd);
@@ -791,7 +797,7 @@ async function run(
     );
     return;
   } finally {
-    logUnwrittenDiagnostics();
+    logTemporaryDiagnostics(actionState);
   }
   await sendCompletedStatusReport(
     startedAt,

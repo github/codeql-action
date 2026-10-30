@@ -150,7 +150,7 @@ export enum Feature {
   OverlayAnalysisStatusSave = "overlay_analysis_status_save",
   QaTelemetryEnabled = "qa_telemetry_enabled",
   /** Whether we should fail early if we detect that traced analysis is unsupported. */
-  SkipUnsupportedTracedAnalysis = "skip_unsupported_traced_analysis",
+  AbortUnsupportedTracedAnalysis = "abort_unsupported_traced_analysis",
   /** Routes (some) API requests through the registry proxy. */
   ProxyApiRequests = "proxy_api_requests",
   /** Note that this currently only disables baseline file coverage information. */
@@ -422,9 +422,9 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_START_PROXY_USE_FEATURES_RELEASE",
     minimumVersion: undefined,
   },
-  [Feature.SkipUnsupportedTracedAnalysis]: {
+  [Feature.AbortUnsupportedTracedAnalysis]: {
     defaultValue: false,
-    envVar: "CODEQL_ACTION_SKIP_UNSUPPORTED_TRACED_ANALYSIS",
+    envVar: "CODEQL_ACTION_ABORT_UNSUPPORTED_TRACED_ANALYSIS",
     minimumVersion: undefined,
   },
   [Feature.ToolsRepositoryProperty]: {

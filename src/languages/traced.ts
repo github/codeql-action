@@ -26,7 +26,7 @@ export const UNSUPPORTED_XCODE_FOR_TRACED = 27;
  * @param logger The logger to use.
  * @param config The CodeQL Action configuration.
  * @param tracedLanguages Traced languages that are configured for analysis.
- * @param skipUnsupportedTracedAnalysis Whether this is a fatal error.
+ * @param abortUnsupportedTracedAnalysis Whether this is a fatal error.
  * @param product The product that the version is unsupported of.
  * @param version The unsupported version.
  */
@@ -34,7 +34,7 @@ function handleUnsupportedVersion(
   logger: Logger,
   config: ActionConfig<"dbLocation" | "tempDir">,
   tracedLanguages: string[],
-  skipUnsupportedTracedAnalysis: boolean,
+  abortUnsupportedTracedAnalysis: boolean,
   product: "macOS" | "Xcode",
   version: semver.SemVer,
 ) {
@@ -63,7 +63,7 @@ function handleUnsupportedVersion(
             baseMessage,
             `For more information, see [this announcement](${DocUrl.UNSUPPORTED_TRACED_ANALYSIS_MACOS27}).`,
           ].join(" "),
-          severity: skipUnsupportedTracedAnalysis ? "error" : "warning",
+          severity: abortUnsupportedTracedAnalysis ? "error" : "warning",
           visibility: {
             cliSummaryTable: true,
             statusPage: true,
@@ -81,7 +81,7 @@ function handleUnsupportedVersion(
   ].join(" ");
 
   // Throw an error to abort the analysis if the FF is enabled or log the message.
-  if (skipUnsupportedTracedAnalysis) {
+  if (abortUnsupportedTracedAnalysis) {
     throw new ConfigurationError(logMessage);
   } else {
     // This will also show up as a workflow annotation.
@@ -159,8 +159,8 @@ export async function checkRunnerSupportsTracedAnalysis(
     return;
   }
 
-  const skipUnsupportedTracedAnalysis = await action.features.getValue(
-    Feature.SkipUnsupportedTracedAnalysis,
+  const abortUnsupportedTracedAnalysis = await action.features.getValue(
+    Feature.AbortUnsupportedTracedAnalysis,
   );
   if (typeof version === "string") {
     // If we got a string, we are on macOS but couldn't parse the version string.
@@ -172,7 +172,7 @@ export async function checkRunnerSupportsTracedAnalysis(
       action.logger,
       config,
       tracedLanguages,
-      skipUnsupportedTracedAnalysis,
+      abortUnsupportedTracedAnalysis,
       "macOS",
       version,
     );
@@ -203,7 +203,7 @@ export async function checkRunnerSupportsTracedAnalysis(
       action.logger,
       config,
       tracedLanguages,
-      skipUnsupportedTracedAnalysis,
+      abortUnsupportedTracedAnalysis,
       "Xcode",
       xcodeVer,
     );

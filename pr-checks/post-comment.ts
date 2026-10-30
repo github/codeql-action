@@ -112,7 +112,7 @@ export async function findExistingComment(
         "Use a unique marker for each distinct managed comment to avoid this situation.",
     );
   }
-  return markedComments[0]?.id;
+  return markedComments.at(-1)?.id;
 }
 
 /**

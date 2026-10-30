@@ -193,7 +193,7 @@ describe("findExistingComment", async () => {
       1,
       "marker",
     );
-    assert.equal(id, 2);
+    assert.equal(id, 3);
   });
 
   await it("returns undefined when no comment matches", async () => {

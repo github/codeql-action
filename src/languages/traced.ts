@@ -244,7 +244,7 @@ export async function checkRunnerSupportsTracedAnalysis(
       abortUnsupportedTracedAnalysis,
       xcodeProduct,
     );
-  } else if (xcodeVer === undefined) {
+  } else if (xcodeProduct === undefined) {
     action.logger.info(
       "Unable to determine Xcode version. Skipping Xcode compatibility check.",
     );

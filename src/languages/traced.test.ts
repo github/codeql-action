@@ -159,7 +159,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
     const logger = new RecordingLogger();
     const env = getTestEnv();
     env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
-    const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
+    const features = createFeatures([]);
 
     const codeql = await getCodeQLWithTracedStub(
       "codeql-for-testing",
@@ -180,7 +180,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform checks if FF is not enab
       codeql,
     );
 
-    checkUnexpectedLogMessages(t, logger.messages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Skipping traced analysis compatibility checks because the feature is not enabled.",
     ]);
   }));

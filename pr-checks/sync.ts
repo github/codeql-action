@@ -43,6 +43,13 @@ type WorkflowInputs = Partial<Record<KnownInputName, WorkflowInput>>;
 /** An operating system identifier. */
 type OperatingSystemIdentifier = "ubuntu" | "macos" | "windows";
 
+/** Mapping from {@link OperatingSystemIdentifier} to default runner image labels. */
+const DEFAULT_RUNNER_IMAGES: Record<OperatingSystemIdentifier, string> = {
+  ubuntu: "ubuntu-26.04",
+  macos: "macos-26",
+  windows: "windows-2025",
+};
+
 /**
  * Represents an operating system matrix entry for a generated PR check workflow.
  *
@@ -414,12 +421,6 @@ function generateJobMatrix(
       );
     }
 
-    const defaultRunnerImages = [
-      "ubuntu-latest",
-      "macos-latest",
-      "windows-latest",
-    ];
-
     for (const operatingSystemConfig of operatingSystems) {
       const operatingSystem =
         typeof operatingSystemConfig === "string"
@@ -449,7 +450,7 @@ function generateJobMatrix(
       const runnerImagesForOs =
         typeof operatingSystemConfig === "string" ||
         operatingSystemConfig["runner-image"] === undefined
-          ? defaultRunnerImages.filter((image) =>
+          ? Object.values(DEFAULT_RUNNER_IMAGES).filter((image) =>
               image.startsWith(operatingSystem),
             )
           : [operatingSystemConfig["runner-image"]];
@@ -462,7 +463,7 @@ function generateJobMatrix(
         // is removed from `defaultTestVersions`.
         const requiresOlderRunnerImage: DefaultTestVersion = "stable-v2.20.7";
         if (
-          runnerImage === "ubuntu-latest" &&
+          runnerImage === DEFAULT_RUNNER_IMAGES["ubuntu"] &&
           version === requiresOlderRunnerImage
         ) {
           matrix.push({ os: "ubuntu-24.04", version });
@@ -677,7 +678,7 @@ function generateValidationJob(
       "security-events": "read",
     },
     "timeout-minutes": 5,
-    "runs-on": "ubuntu-latest",
+    "runs-on": DEFAULT_RUNNER_IMAGES["ubuntu"],
     steps: specSteps,
   };
 

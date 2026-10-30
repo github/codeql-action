@@ -215,8 +215,8 @@ export async function extractTarZst(
               tarVersion.path,
               args,
               code ?? undefined,
-              stdout,
               stderr,
+              stdout,
             ),
           );
         }

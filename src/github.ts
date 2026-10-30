@@ -1,5 +1,19 @@
 import { ActionsEnvVars, type ReadOnlyEnv } from "./environment";
-import { ConfigurationError } from "./util";
+import { ConfigurationError } from "./errors";
+
+export enum GitHubVariant {
+  /** [GitHub.com](https://github.com) */
+  DOTCOM = "GitHub.com",
+  /** [GitHub Enterprise Server](https://docs.github.com/en/enterprise-server@latest/admin/overview/about-github-enterprise-server) */
+  GHES = "GitHub Enterprise Server",
+  /** [GitHub Enterprise Cloud with data residency](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency) */
+  GHEC_DR = "GitHub Enterprise Cloud with data residency",
+}
+
+export type GitHubVersion =
+  | { type: GitHubVariant.DOTCOM }
+  | { type: GitHubVariant.GHEC_DR }
+  | { type: GitHubVariant.GHES; version: string };
 
 /** A string representing a GitHub instance address. */
 export type InstanceURL = string;

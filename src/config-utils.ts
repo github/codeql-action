@@ -82,7 +82,6 @@ import {
   GitHubVersion,
   ConfigurationError,
   BuildMode,
-  codeQlVersionAtLeast,
   cloneObject,
   isDefined,
   checkDiskUsage,
@@ -654,10 +653,7 @@ async function runnerHasSufficientMemory(
   logger: Logger,
 ): Promise<boolean> {
   if (
-    await codeQlVersionAtLeast(
-      codeql,
-      CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE,
-    )
+    await codeql.isVersionAtLeast(CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE)
   ) {
     logger.debug(
       `Skipping memory check for overlay analysis because CodeQL version is at least ${CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE}.`,
@@ -901,7 +897,7 @@ async function validateOverlayDatabaseMode(
     );
     return new Failure(OverlayDisabledReason.IncompatibleBuildMode);
   }
-  if (!(await codeQlVersionAtLeast(codeql, CODEQL_OVERLAY_MINIMUM_VERSION))) {
+  if (!(await codeql.isVersionAtLeast(CODEQL_OVERLAY_MINIMUM_VERSION))) {
     logger.warning(
       `Cannot build an ${overlayDatabaseMode} database because ` +
         `the CodeQL CLI is older than ${CODEQL_OVERLAY_MINIMUM_VERSION}. ` +

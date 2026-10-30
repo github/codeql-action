@@ -303,8 +303,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Python",
         uses: pinnedUses(
           "actions/setup-python",
-          "5fda3b95a4ea91299a34e894583c3862153e4b97",
-          "v7.0.0",
+          "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "v7.1.0",
         ),
         with: {
           "python-version": `\${{ inputs.python-version || '${defaultLanguageVersions.python}' }}`,
@@ -667,9 +667,11 @@ function generateValidationJob(
   // Add the generated steps in front of the ones from the specification.
   specSteps.items.unshift(...checkoutStep, ...steps);
 
+  const baseCondition = "github.triggering_actor != 'dependabot[bot]'";
+
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
-    if: "github.triggering_actor != 'dependabot[bot]'",
+    if: baseCondition,
     needs: [checkName],
     permissions: {
       contents: "read",

@@ -10,8 +10,7 @@ import * as sinon from "sinon";
 
 import * as api from "./api-client";
 import { EnvVar } from "./environment";
-import { getRunnerLogger } from "./logging";
-import { setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests, getTestEnv } from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -92,7 +91,7 @@ for (const {
 
 test("getMemoryFlag() throws if the ram input is < 0 or NaN", async (t) => {
   for (const input of ["-1", "hello!"]) {
-    t.throws(() => util.getMemoryFlag(input, getRunnerLogger(true)));
+    t.throws(() => util.getMemoryFlag(input, new RecordingLogger()));
   }
 });
 
@@ -109,13 +108,13 @@ test("getThreadsFlag() should return the correct --threads flag", (t) => {
   ];
 
   for (const [input, expectedFlag] of tests) {
-    const flag = util.getThreadsFlag(input, getRunnerLogger(true));
+    const flag = util.getThreadsFlag(input, new RecordingLogger());
     t.deepEqual(flag, expectedFlag);
   }
 });
 
 test("getThreadsFlag() throws if the threads input is not an integer", (t) => {
-  t.throws(() => util.getThreadsFlag("hello!", getRunnerLogger(true)));
+  t.throws(() => util.getThreadsFlag("hello!", new RecordingLogger()));
 });
 
 test.serial(
@@ -162,66 +161,6 @@ test.serial("getExtraOptionsEnvParam() fails on invalid JSON", (t) => {
   t.throws(util.getExtraOptionsEnvParam);
 
   process.env.CODEQL_ACTION_EXTRA_OPTIONS = origExtraOptions;
-});
-
-test("parseGitHubUrl", (t) => {
-  t.deepEqual(util.parseGitHubUrl("github.com"), "https://github.com");
-  t.deepEqual(util.parseGitHubUrl("https://github.com"), "https://github.com");
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.com"),
-    "https://github.com",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.com/foo/bar"),
-    "https://github.com",
-  );
-
-  t.deepEqual(
-    util.parseGitHubUrl("github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.example.com"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/api/v3"),
-    "https://github.example.com/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com:1234"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://api.github.example.com:1234"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com:1234/api/v3"),
-    "https://github.example.com:1234/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/base/path"),
-    "https://github.example.com/base/path/",
-  );
-  t.deepEqual(
-    util.parseGitHubUrl("https://github.example.com/base/path/api/v3"),
-    "https://github.example.com/base/path/",
-  );
-
-  t.throws(() => util.parseGitHubUrl(""), {
-    message: '"" is not a valid URL',
-  });
-  t.throws(() => util.parseGitHubUrl("ssh://github.com"), {
-    message: '"ssh://github.com" is not a http or https URL',
-  });
-  t.throws(() => util.parseGitHubUrl("http:///::::433"), {
-    message: '"http:///::::433" is not a valid URL',
-  });
 });
 
 test("allowed API versions", async (t) => {
@@ -445,7 +384,7 @@ test("getCgroupCpuCountFromCpus calculates the number of CPUs correctly", async 
     const testCpuFile = `${tmpDir}/cpus-file`;
     fs.writeFileSync(testCpuFile, "1, 9-10\n", "utf-8");
     t.deepEqual(
-      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      util.getCgroupCpuCountFromCpus(testCpuFile, new RecordingLogger()),
       3,
     );
   });
@@ -456,7 +395,7 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file doesn't exist"
     const testCpuFile = `${tmpDir}/cpus-file`;
     t.false(fs.existsSync(testCpuFile));
     t.deepEqual(
-      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      util.getCgroupCpuCountFromCpus(testCpuFile, new RecordingLogger()),
       undefined,
     );
   });
@@ -467,7 +406,7 @@ test("getCgroupCpuCountFromCpus returns undefined if the CPU file exists but is 
     const testCpuFile = `${tmpDir}/cpus-file`;
     fs.writeFileSync(testCpuFile, "\n", "utf-8");
     t.deepEqual(
-      util.getCgroupCpuCountFromCpus(testCpuFile, getRunnerLogger(true)),
+      util.getCgroupCpuCountFromCpus(testCpuFile, new RecordingLogger()),
       undefined,
     );
   });
@@ -477,7 +416,7 @@ test.serial(
   "checkDiskUsage succeeds and produces positive numbers",
   async (t) => {
     process.env["GITHUB_WORKSPACE"] = os.tmpdir();
-    const diskUsage = await util.checkDiskUsage(getRunnerLogger(true));
+    const diskUsage = await util.checkDiskUsage(new RecordingLogger());
     if (t.truthy(diskUsage)) {
       t.true(diskUsage.numAvailableBytes > 0);
       t.true(diskUsage.numTotalBytes > 0);
@@ -552,4 +491,71 @@ test("Success.orElse returns the value for a success result", (t) => {
 test("Failure.orElse returns the default value for a failure result", (t) => {
   const result = new util.Failure(new Error("test error"));
   t.is(result.orElse("default value"), "default value");
+});
+
+test("shouldSkipGenerateFailedSarif", (t) => {
+  const env = getTestEnv();
+
+  // Don't skip by default
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+
+  // Skip in test mode
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "true",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Skip if not uploading SARIF
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: undefined,
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), true);
+
+  // Don't skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+    [EnvVar.SKIP_GENERATE_FAILED_SARIF]: "false",
+  });
+  t.is(util.shouldSkipGenerateFailedSarif(env), false);
+});
+
+test("shouldSkipSarifUpload", (t) => {
+  const env = getTestEnv();
+
+  // Don't skip by default
+  t.is(util.shouldSkipSarifUpload(env), false);
+
+  // Skip in test mode
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: undefined,
+  });
+  t.is(util.shouldSkipSarifUpload(env), true);
+
+  // Skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: undefined,
+    [EnvVar.SKIP_SARIF_UPLOAD]: "true",
+  });
+  t.is(util.shouldSkipSarifUpload(env), true);
+
+  // Don't skip if explicitly requested
+  env.setAll({
+    [EnvVar.TEST_MODE]: "true",
+    [EnvVar.SKIP_SARIF_UPLOAD]: "false",
+  });
+  t.is(util.shouldSkipSarifUpload(env), false);
 });

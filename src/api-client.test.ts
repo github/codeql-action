@@ -8,7 +8,14 @@ import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import { DO_NOT_RETRY_STATUSES } from "./api-client";
 import { ActionsEnvVars, RegistryProxyVars } from "./environment";
-import { callee, getTestEnv, setupTests } from "./testing-utils";
+import { GITHUB_DOTCOM_API_URL, GITHUB_DOTCOM_URL } from "./github";
+import {
+  callee,
+  getTestEnv,
+  RecordingLogger,
+  SAMPLE_DOTCOM_API_DETAILS,
+  setupTests,
+} from "./testing-utils";
 import * as util from "./util";
 
 setupTests(test);
@@ -282,5 +289,89 @@ test("makeProxyRequestOptions - returns fetch with custom proxy", async (t) => {
   t.deepEqual(
     { ...opts, fetch: githubUtils.defaults.request?.fetch },
     githubUtils.defaults.request,
+  );
+});
+
+test.serial(
+  "getApiClientWithExternalAuth constructs clients with or without tokens",
+  (t) => {
+    t.notThrows(() => {
+      api.getApiClientWithExternalAuth(SAMPLE_DOTCOM_API_DETAILS);
+      api.getApiClientWithExternalAuth({
+        ...SAMPLE_DOTCOM_API_DETAILS,
+        auth: undefined,
+      });
+    });
+  },
+);
+
+test("getAuthorizationHeaderFor - returns undefined if there's no token", (t) => {
+  const logger = new RecordingLogger();
+
+  t.is(
+    api.getAuthorizationHeaderFor(
+      logger,
+      { ...SAMPLE_DOTCOM_API_DETAILS, auth: undefined },
+      `${GITHUB_DOTCOM_URL}/github`,
+    ),
+    undefined,
+  );
+  t.is(
+    api.getAuthorizationHeaderFor(
+      logger,
+      { ...SAMPLE_DOTCOM_API_DETAILS, auth: "" },
+      `${GITHUB_DOTCOM_URL}/github`,
+    ),
+    undefined,
+  );
+  t.is(
+    api.getAuthorizationHeaderFor(
+      logger,
+      { ...SAMPLE_DOTCOM_API_DETAILS, auth: "    " },
+      `${GITHUB_DOTCOM_URL}/github`,
+    ),
+    undefined,
+  );
+});
+
+test("getAuthorizationHeaderFor - returns header value with token if url is allowed", (t) => {
+  const logger = new RecordingLogger();
+
+  t.is(
+    api.getAuthorizationHeaderFor(
+      logger,
+      SAMPLE_DOTCOM_API_DETAILS,
+      `${GITHUB_DOTCOM_URL}/github`,
+    ),
+    `token ${SAMPLE_DOTCOM_API_DETAILS.auth}`,
+  );
+  t.is(
+    api.getAuthorizationHeaderFor(
+      logger,
+      SAMPLE_DOTCOM_API_DETAILS,
+      `${GITHUB_DOTCOM_API_URL}/github`,
+    ),
+    `token ${SAMPLE_DOTCOM_API_DETAILS.auth}`,
+  );
+});
+
+test("getAuthorizationHeaderFor - returns undefined if url is not allowed", (t) => {
+  const logger = new RecordingLogger();
+
+  t.is(
+    api.getAuthorizationHeaderFor(
+      logger,
+      SAMPLE_DOTCOM_API_DETAILS,
+      `https://localhost/github`,
+    ),
+    undefined,
+  );
+  t.is(
+    api.getAuthorizationHeaderFor(
+      logger,
+      SAMPLE_DOTCOM_API_DETAILS,
+      `https://api.localhost/github`,
+    ),
+    undefined,
   );
 });

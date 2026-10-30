@@ -1,4 +1,5 @@
-import * as fs from "fs";
+import fs from "fs";
+import path from "path";
 
 import * as github from "@actions/github";
 import test from "ava";
@@ -10,7 +11,10 @@ import { GitHubApiDetails } from "./api-client";
 import * as apiClient from "./api-client";
 import { createStubCodeQL } from "./codeql";
 import { Config } from "./config-utils";
-import { cleanupAndUploadDatabases } from "./database-upload";
+import {
+  cleanupAndUploadDatabases,
+  uploadBundledDatabase,
+} from "./database-upload";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
@@ -23,6 +27,7 @@ import {
   getTestEnv,
   initAllState,
   RecordingLogger,
+  SAMPLE_DOTCOM_API_DETAILS,
   setupActionsVars,
   setupTests,
 } from "./testing-utils";
@@ -549,4 +554,87 @@ test.serial(
       t.is(results[0].clear_cleanup_measurement_duration_ms, undefined);
     });
   },
+);
+
+test.serial(
+  "uploadBundledDatabase provides expected request arguments",
+  async (t) =>
+    withTmpDir(async (tmpDir) => {
+      // Write some file that `uploadBundledDatabase` can use for its `fs.createReadStream(bundledDb)` call
+      // so we don't have to stub that or create a fake `ReadStream`.
+      const dbPath = path.join(tmpDir, "db");
+      const content = JSON.stringify({});
+      fs.writeFileSync(dbPath, content);
+
+      // A simple stub for `fetch` that satisfies Octokit when it inspects the response.
+      const fetchStub = sinon.stub().resolves({
+        status: 200,
+        headers: new Headers(),
+        text: async () => "",
+      });
+
+      // Construct a real `ApiClient`.
+      const client = apiClient.getApiClient(
+        getTestEnv(),
+        SAMPLE_DOTCOM_API_DETAILS,
+      );
+
+      // Then wrap the real `request` method in a stub that calls it with our stubbed `fetch`.
+      // This ensures that we have a real `ApiClient` with a mostly real `request`, but which
+      // does not perform any actual requests.
+      const request = client.request;
+      sinon.stub(client, "request").callsFake(async (route, options) =>
+        request(route, {
+          ...options,
+          request: { ...options?.request, fetch: fetchStub },
+        }),
+      );
+
+      // Stub `getApiClient` to return our modified `ApiClient`.
+      const getApiClient = sinon
+        .stub(apiClient, "getApiClient")
+        .returns(client);
+
+      // Calling `uploadBundledDatabase` shouldn't throw.
+      const nwo: RepositoryNwo = { owner: "test", repo: "foo" };
+      const language: BuiltInLanguage = BuiltInLanguage.java;
+
+      await t.notThrowsAsync(async () => {
+        await uploadBundledDatabase(
+          nwo,
+          language,
+          "123",
+          dbPath,
+          content.length,
+          SAMPLE_DOTCOM_API_DETAILS,
+        );
+      });
+
+      // Check that our stubs were called and that they received the expected arguments.
+      t.is(getApiClient.callCount, 1);
+      t.is(fetchStub.callCount, 1);
+
+      const args = fetchStub.args[0];
+      t.is(args.length, 2);
+
+      const url = args[0];
+      t.is(
+        url,
+        `https://uploads.github.com/repos/${nwo.owner}/${nwo.repo}/code-scanning/codeql/databases/${language}?name=${language}-database&commit_oid=123`,
+      );
+
+      const options = args[1];
+      t.like(options, {
+        // Going via `new Headers` and `Object.fromEntries` ensures we get the same cases
+        // for the header keys as we are given.
+        headers: Object.fromEntries(
+          new Headers({
+            authorization: `token ${SAMPLE_DOTCOM_API_DETAILS.auth}`,
+            "Content-Type": "application/zip",
+            "Content-Length": content.length.toString(),
+          }).entries(),
+        ),
+        method: "POST",
+      } satisfies RequestInit);
+    }),
 );

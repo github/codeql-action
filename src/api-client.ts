@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import * as githubUtils from "@actions/github/lib/utils";
+import type { OctokitOptions } from "@octokit/core";
 import * as retry from "@octokit/plugin-retry";
 import { RequestRequestOptions } from "@octokit/types";
 import {
@@ -12,24 +13,31 @@ import {
 import type { ActionState } from "./action-common";
 import { getActionVersion, getRequiredInput } from "./actions-util";
 import {
-  ActionsEnvVars,
   EnvVar,
   ReadOnlyEnv,
   RegistryProxyVars,
   getEnv,
+  exportEnvVar,
 } from "./environment";
+import {
+  getCurrentInstance,
+  GITHUB_DOTCOM_URL,
+  parseGitHubUrl,
+  type GitHubApiCombinedDetails,
+  type GitHubApiDetails,
+} from "./github";
 import { Logger } from "./logging";
 import { getRepositoryNwo, RepositoryNwo } from "./repository";
 import {
   asHTTPError,
   ConfigurationError,
   getRequiredEnvParam,
-  GITHUB_DOTCOM_URL,
   GitHubVariant,
   GitHubVersion,
-  parseGitHubUrl,
   parseMatrixInput,
 } from "./util";
+
+export type { GitHubApiDetails, GitHubApiCombinedDetails } from "./github";
 
 const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
 
@@ -41,21 +49,6 @@ const GITHUB_ENTERPRISE_VERSION_HEADER = "x-github-enterprise-version";
  * from the default list to ensure that these errors are retried.
  */
 export const DO_NOT_RETRY_STATUSES = [400, 410, 422, 451];
-
-export type GitHubApiCombinedDetails = GitHubApiDetails &
-  GitHubApiExternalRepoDetails;
-
-export interface GitHubApiDetails {
-  auth: string;
-  url: string;
-  apiURL: string | undefined;
-}
-
-export interface GitHubApiExternalRepoDetails {
-  externalRepoAuth?: string;
-  url: string;
-  apiURL: string | undefined;
-}
 
 /**
  * Gets the configuration for the private registry authentication proxy,
@@ -138,37 +131,60 @@ function createApiClientWithDetails(
   { allowExternal = false, proxy = undefined }: CreateApiClientOptions = {},
 ): ApiClient {
   const auth =
-    (allowExternal && apiDetails.externalRepoAuth) || apiDetails.auth;
+    allowExternal && apiDetails.externalRepoAuth !== undefined
+      ? apiDetails.externalRepoAuth
+      : apiDetails.auth;
   const retryingOctokit = githubUtils.GitHub.plugin(retry.retry);
   const requestOptions = makeProxyRequestOptions(proxy);
-  return new retryingOctokit(
-    githubUtils.getOctokitOptions(auth, {
-      baseUrl: apiDetails.apiURL,
-      userAgent: `CodeQL-Action/${getActionVersion()}`,
-      log: {
-        debug: core.debug,
-        info: core.info,
-        warn: core.warning,
-        error: core.error,
-      },
-      request: requestOptions,
-      retry: {
-        doNotRetry: DO_NOT_RETRY_STATUSES,
-      },
-    }),
-  );
+
+  const opts: OctokitOptions = {
+    auth:
+      auth !== undefined && auth.trim() !== "" ? `token ${auth}` : undefined,
+    baseUrl: apiDetails.apiURL,
+    userAgent: `CodeQL-Action/${getActionVersion()}`,
+    log: {
+      debug: core.debug,
+      info: core.info,
+      warn: core.warning,
+      error: core.error,
+    },
+    request: requestOptions,
+    retry: {
+      doNotRetry: DO_NOT_RETRY_STATUSES,
+    },
+  };
+
+  return new retryingOctokit(opts);
 }
 
+/**
+ * Gets a `GitHubApiDetails` object describing the GitHub instance we are currently running on.
+ *
+ * @param env The environment variables to read.
+ */
 export function getApiDetails(env: ReadOnlyEnv = getEnv()): GitHubApiDetails {
   return {
     auth: getRequiredInput("token"),
-    url: env.getRequired(ActionsEnvVars.GITHUB_SERVER_URL),
-    apiURL: env.getRequired(ActionsEnvVars.GITHUB_API_URL),
+    ...getCurrentInstance(env),
   };
 }
 
-export function getApiClient(env: ReadOnlyEnv = getEnv()) {
-  return createApiClientWithDetails(getApiDetails(env));
+/**
+ * Constructs an {@link ApiClient} using {@link apiDetails}.
+ *
+ * If {@link apiDetails} is not specified, then the GitHub instance URLs and auth token
+ * are taken from {@link env}.
+ *
+ * If {@link env} is not specified, then the process environment is used.
+ *
+ * @param env The environment to obtain the GitHub instance URLs from.
+ * @param apiDetails The {@link GitHubApiDetails} to construct the {@link ApiClient} for.
+ */
+export function getApiClient(
+  env: ReadOnlyEnv = getEnv(),
+  apiDetails?: GitHubApiDetails,
+) {
+  return createApiClientWithDetails(apiDetails ?? getApiDetails(env));
 }
 
 export function getApiClientWithExternalAuth(
@@ -193,6 +209,12 @@ export function getAuthorizationHeaderFor(
   apiDetails: GitHubApiDetails,
   url: string,
 ): string | undefined {
+  // We don't have to check the `url` if we don't have a token to begin with.
+  const token = apiDetails.auth?.trim();
+  if (token === undefined || token === "") {
+    return undefined;
+  }
+
   // We only want to provide an authorization header if we are downloading
   // from the same GitHub instance the Action is running on.
   // This avoids leaking Enterprise tokens to dotcom.
@@ -201,7 +223,7 @@ export function getAuthorizationHeaderFor(
     (apiDetails.apiURL && url.startsWith(`${apiDetails.apiURL}/`))
   ) {
     logger.debug(`Providing an authorization token.`);
-    return `token ${apiDetails.auth}`;
+    return `token ${token}`;
   }
 
   logger.debug(`Not using an authorization token.`);
@@ -316,7 +338,7 @@ export async function getAnalysisKey(): Promise<string> {
   const jobName = getRequiredEnvParam("GITHUB_JOB");
 
   analysisKey = `${workflowPath}:${jobName}`;
-  core.exportVariable(EnvVar.ANALYSIS_KEY, analysisKey);
+  exportEnvVar(EnvVar.ANALYSIS_KEY, analysisKey);
   return analysisKey;
 }
 
@@ -377,21 +399,6 @@ export async function listActionsCaches(
       ref,
     },
   );
-}
-
-/**
- * Delete an Actions cache item by its ID.
- *
- * See https://docs.github.com/en/rest/actions/cache#delete-a-github-actions-cache-for-a-repository-using-a-cache-id.
- */
-export async function deleteActionsCache(id: number) {
-  const repositoryNwo = getRepositoryNwo();
-
-  await getApiClient().rest.actions.deleteActionsCacheById({
-    owner: repositoryNwo.owner,
-    repo: repositoryNwo.repo,
-    cache_id: id,
-  });
 }
 
 /**

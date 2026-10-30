@@ -22,7 +22,6 @@ import type { Config } from "./config-utils";
 import * as defaults from "./defaults.json";
 import { DocUrl } from "./doc-url";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { ToolsSource } from "./setup-codeql";
 import {
   setupTests,
@@ -34,6 +33,8 @@ import {
   makeVersionInfo,
   createTestConfig,
   makeMacro,
+  getCodeQLForTesting,
+  RecordingLogger,
 } from "./testing-utils";
 import { ToolsDownloadStatusReport } from "./tools-download";
 import * as util from "./util";
@@ -102,7 +103,7 @@ async function installIntoToolcache({
     undefined, // otherLanguagePacksReason
     false, // useOverlayAwareDefaultCliVersion
     createFeatures([]),
-    getRunnerLogger(true),
+    new RecordingLogger(),
     false,
   );
 }
@@ -126,7 +127,7 @@ function mockReleaseApi({
     });
 }
 
-function mockApiDetails(apiDetails: GitHubApiDetails) {
+function mockApiDetails(apiDetails: Required<GitHubApiDetails>) {
   // This is a workaround to mock `api.getApiDetails()` since it doesn't seem to be possible to
   // mock this directly. The difficulty is that `getApiDetails()` is called locally in
   // `api-client.ts`, but `sinon.stub(api, "getApiDetails")` only affects calls to
@@ -140,7 +141,7 @@ function mockApiDetails(apiDetails: GitHubApiDetails) {
 }
 
 async function stubCodeql(): Promise<codeql.CodeQL> {
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon
     .stub(codeqlObject, "isTracedLanguage")
@@ -176,7 +177,7 @@ test.serial(
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
           false,
         );
 
@@ -212,7 +213,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
 
@@ -252,7 +253,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.assert(toolcache.find("CodeQL", "0.0.0-20200610"));
@@ -362,7 +363,7 @@ for (const {
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
           false,
         );
         t.assert(toolcache.find("CodeQL", expectedToolcacheVersion));
@@ -405,7 +406,7 @@ for (const toolcacheVersion of [
           undefined, // otherLanguagePacksReason
           false, // useOverlayAwareDefaultCliVersion
           features,
-          getRunnerLogger(true),
+          new RecordingLogger(),
           false,
         );
         t.is(
@@ -450,7 +451,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.deepEqual(result.toolsVersion, "0.0.0-20200601");
@@ -497,7 +498,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -537,7 +538,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
       t.deepEqual(result.toolsVersion, defaults.cliVersion);
@@ -579,7 +580,7 @@ test.serial(
         undefined, // otherLanguagePacksReason
         false, // useOverlayAwareDefaultCliVersion
         features,
-        getRunnerLogger(true),
+        new RecordingLogger(),
         false,
       );
 
@@ -664,7 +665,7 @@ const injectedConfigMacro = makeMacro({
         tempDir,
       };
       thisStubConfig.computedConfig = generateCodeScanningConfig(
-        getRunnerLogger(true),
+        new RecordingLogger(),
         thisStubConfig.originalUserInput,
         augmentationProperties,
       );
@@ -1039,7 +1040,7 @@ test.serial("runTool summarizes autobuilder errors", async (t) => {
     [2019-09-18 12:00:01] [autobuild] A non-error message
   `;
   stubToolRunnerConstructor(1, stderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // io throws because of the test CodeQL object.
@@ -1095,7 +1096,7 @@ test.serial("runTool recognizes fatal internal errors", async (t) => {
     com.semmle.util.exception.CatastrophicError: An error occurred while evaluating ControlFlowGraph::ControlFlow::Root.isRootOf/1#dispred#f610e6ed/2@86282cc8
     Severe disk cache trouble (corruption or out of space) at /home/runner/work/_temp/codeql_databases/go/db-go/default/cache/pages/28/33.pack: Failed to write item to disk`;
   stubToolRunnerConstructor(1, stderr);
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   sinon.stub(codeqlObject, "resolveExtractor").resolves("/path/to/extractor");
   // io throws because of the test CodeQL object.

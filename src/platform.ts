@@ -1,3 +1,10 @@
+import fs from "fs";
+
+import * as semver from "semver";
+
+import type { ActionState, Logger } from "./action-common";
+import { getErrorMessage } from "./util";
+
 /** Platform identifiers used in CodeQL bundle asset names. */
 export enum BundlePlatform {
   Linux64 = "linux64",
@@ -22,5 +29,83 @@ export function getBundlePlatform(
       return BundlePlatform.Osx64;
     default:
       return undefined;
+  }
+}
+
+/**
+ * Tries to determine the version of the Darwin kernel. We use this to approximate the macOS version based
+ * on the Darwin kernel version so that we don't have to launch an external process. Note that the Darwin
+ * kernel major version does not correspond perfectly to the macOS major version.
+ *
+ * @returns
+ *  The version as either a semantic version object, the raw version string
+ *  if it is not a semantic version, or `undefined` if we are not on macOS.
+ */
+export function darwinVersion(
+  action: ActionState<["Base"]>,
+): semver.SemVer | string | undefined {
+  // Skip if we are not running on macOS.
+  if (action.platform !== "darwin") {
+    return undefined;
+  }
+
+  // Try to parse the kernel version string.
+  const version = semver.parse(action.osRelease);
+
+  if (version === null) {
+    return action.osRelease;
+  }
+
+  return version;
+}
+
+/** The static path we check for a symbolic link to the (dynamic) Xcode location. */
+export const XCODE_SELECT_LINK_PATH = "/private/var/db/xcode_select_link";
+
+/** The pattern we expect to find in the Xcode path. */
+export const XCODE_APP_FILENAME_PATTERN = new RegExp(
+  /(?<filename>Xcode_(?<majorMinor>\d+(\.\d+)?).*\.app)/,
+);
+
+/**
+ * Tries to determine the version of Xcode that is installed.
+ *
+ * @param logger The logger to use.
+ * @returns The Xcode version or `undefined` if it couldn't be determined.
+ */
+export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
+  try {
+    // Read what the symbolic link points to. This will throw if `XCODE_SELECT_LINK_PATH` does not
+    // exist (`ENOENT`) or is not a symbolic link (`EINVAL`).
+    const xcodePath = fs.readlinkSync(XCODE_SELECT_LINK_PATH);
+
+    if (xcodePath.trim() === "") {
+      logger.debug(
+        `Resolving ${XCODE_SELECT_LINK_PATH} unexpectedly returned nothing.`,
+      );
+      return undefined;
+    }
+
+    // Try to extract the version from the path.
+    const matchResult = xcodePath.match(XCODE_APP_FILENAME_PATTERN);
+
+    if (matchResult?.groups === undefined) {
+      logger.debug(
+        `Xcode path '${xcodePath}' does not contain expected pattern.`,
+      );
+      return undefined;
+    }
+
+    const majorMinor = matchResult.groups["majorMinor"];
+    const version = semver.coerce(majorMinor);
+
+    if (version === null) {
+      logger.debug(`Couldn't parse '${majorMinor}' as a semantic version.`);
+      return undefined;
+    }
+    return version;
+  } catch (err) {
+    logger.debug(`Unable to determine Xcode version: ${getErrorMessage(err)}`);
+    return undefined;
   }
 }

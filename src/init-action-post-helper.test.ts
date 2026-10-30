@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import * as core from "@actions/core";
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
@@ -8,10 +11,10 @@ import * as apiClient from "./api-client";
 import * as codeql from "./codeql";
 import * as configUtils from "./config-utils";
 import * as debugArtifacts from "./debug-artifacts";
+import { getTempDiagnosticsRoot } from "./diagnostics";
 import { EnvVar } from "./environment";
 import { Feature } from "./feature-flags";
 import * as initActionPostHelper from "./init-action-post-helper";
-import { getRunnerLogger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import * as overlayStatus from "./overlay/status";
 import { parseRepositoryNwo } from "./repository";
@@ -20,6 +23,7 @@ import {
   createFeatures,
   createTestConfig,
   DEFAULT_ACTIONS_VARS,
+  getCodeQLForTesting,
   getTestEnv,
   makeMacro,
   makeVersionInfo,
@@ -34,6 +38,47 @@ import * as workflow from "./workflow";
 const NUM_BYTES_PER_GIB = 1024 * 1024 * 1024;
 
 setupTests(test);
+
+test.serial("generateFailedSarif picks up unwritten diagnostics", async (t) =>
+  util.withTmpDir(async (tmpDir) => {
+    const logger = new RecordingLogger();
+
+    const tempDiagDir = getTempDiagnosticsRoot(tmpDir);
+    fs.mkdirSync(tempDiagDir, { recursive: true });
+
+    const codeqlObject = await getCodeQLForTesting();
+    const diagnosticsExport = sinon
+      .stub(codeqlObject, "diagnosticsExport")
+      .resolves();
+
+    sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
+
+    const sarifFile = path.join(tmpDir, "failed.sarif");
+    const result = await initActionPostHelper.generateFailedSarif(
+      logger,
+      createFeatures([Feature.ExportDiagnosticsEnabled]),
+      createTestConfig({
+        tempDir: tmpDir,
+        // Explicitly undefined to ensure we get the "no database" path.
+        dbLocation: undefined,
+      }),
+      "category",
+      "",
+      sarifFile,
+    );
+
+    t.truthy(result);
+    t.is(diagnosticsExport.callCount, 1);
+    t.true(
+      diagnosticsExport.calledOnceWith(
+        sarifFile,
+        "category",
+        sinon.match.any,
+        tempDiagDir,
+      ),
+    );
+  }),
+);
 
 test.serial("init-post action with debug mode off", async (t) => {
   return await util.withTmpDir(async (tmpDir) => {
@@ -62,7 +107,7 @@ test.serial("init-post action with debug mode off", async (t) => {
       createFeatures([]),
       "success",
       getTestEnv(),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     t.assert(uploadAllAvailableDebugArtifactsSpy.notCalled);
@@ -86,7 +131,7 @@ test.serial("init-post action with debug mode on", async (t) => {
       createFeatures([]),
       "success",
       getTestEnv(),
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     t.assert(uploadAllAvailableDebugArtifactsSpy.called);
@@ -383,7 +428,7 @@ test.serial(
         createFeatures([Feature.OverlayAnalysisStatusSave]),
         "success",
         getTestEnv(),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.true(
@@ -453,7 +498,7 @@ test.serial(
         createFeatures([]),
         "success",
         getTestEnv(),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.true(
@@ -497,7 +542,7 @@ test.serial("does not save overlay status when build successful", async (t) => {
       createFeatures([Feature.OverlayAnalysisStatusSave]),
       "success",
       env,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     t.true(
@@ -536,7 +581,7 @@ test.serial(
         createFeatures([]),
         "success",
         getTestEnv(),
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.true(
@@ -589,7 +634,7 @@ async function runOverlayPostStep({
       createFeatures([Feature.OverlayAnalysisStatusSave]),
       jobStatus,
       env,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     );
 
     return { saveOverlayStatusStub };
@@ -737,7 +782,7 @@ async function testFailedSarifUpload(
     .withArgs("matrix")
     .returns(JSON.stringify(matrix));
 
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   sinon.stub(codeql, "getCodeQL").resolves(codeqlObject);
   sinon.stub(codeqlObject, "getVersion").resolves(makeVersionInfo("2.17.6"));
   const databaseExportDiagnosticsStub = sinon.stub(
@@ -764,7 +809,7 @@ async function testFailedSarifUpload(
     config,
     parseRepositoryNwo("github/codeql-action"),
     createFeatures(features),
-    getRunnerLogger(true),
+    new RecordingLogger(),
   );
   if (expectUpload) {
     t.deepEqual(result, {
@@ -793,6 +838,7 @@ async function testFailedSarifUpload(
     }
     t.true(
       uploadFiles.calledOnceWith(
+        config,
         sinon.match.string,
         sinon.match.string,
         category,
@@ -832,7 +878,7 @@ async function mockRiskAssessmentEnv(matrix: string) {
     .stub(apiClient, "getGitHubVersion")
     .resolves({ type: util.GitHubVariant.GHES, version: "3.0.0" });
 
-  const codeqlObject = await codeql.getCodeQLForTesting();
+  const codeqlObject = await getCodeQLForTesting();
   const databaseExportDiagnostics = sinon
     .stub(codeqlObject, "databaseExportDiagnostics")
     .resolves();

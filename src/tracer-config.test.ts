@@ -4,11 +4,12 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import { CodeQL, getCodeQLForTesting } from "./codeql";
+import type { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { BuiltInLanguage } from "./languages";
 import {
   createTestConfig,
+  getCodeQLForTesting,
   makeVersionInfo,
   RecordingLogger,
   setupTests,

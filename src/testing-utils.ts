@@ -1,4 +1,5 @@
 import { TextDecoder } from "node:util";
+import * as os from "os";
 import path from "path";
 
 import * as github from "@actions/github";
@@ -30,10 +31,11 @@ import {
   featureConfig,
   FeatureEnablement,
 } from "./feature-flags";
-import { Logger } from "./logging";
+import { joinMessageStrings, Loggable, LoggableError, Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
+import { ToolsFeature } from "./tools-features";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -163,6 +165,46 @@ export function setupTests(testFn: TestFn<any>) {
   });
 }
 
+export interface AvaSinonAssertions {
+  /**
+   * Asserts that `stub` must have been called once with at least the `expected` arguments.
+   */
+  onceWith: <TArgs extends readonly any[]>(
+    stub: sinon.SinonStub<TArgs>,
+    ...expected: sinon.MatchPartialArguments<TArgs>
+  ) => boolean;
+}
+
+/** Adds additional assertions for use with `sinon` to `t`. */
+export function addSinonAssertions(
+  t: ExecutionContext<unknown>,
+): ExecutionContext<unknown> & AvaSinonAssertions {
+  return {
+    ...t,
+    onceWith: <TArgs extends readonly any[]>(
+      stub: sinon.SinonStub<TArgs>,
+      ...expected: sinon.MatchPartialArguments<TArgs>
+    ) => {
+      // Fail if the stub hasn't been called at all so that we can safely compare
+      // the arguments of the first call in the else branch.
+      if (stub.callCount === 0) {
+        t.fail("The stub wasn't called.");
+      } else {
+        // Reduce the arguments of each to the same number that was provided,
+        // so that extra arguments don't lead to a failure.
+        const actual = stub.args.map<sinon.MatchPartialArguments<TArgs>>(
+          (args: TArgs) =>
+            args.slice(
+              0,
+              expected.length,
+            ) as sinon.MatchPartialArguments<TArgs>,
+        );
+        return t.deepEqual(actual, [expected]);
+      }
+    },
+  };
+}
+
 /**
  * Declare a reusable test implementation, with better type safety than `test.macro`.
  */
@@ -202,10 +244,6 @@ class TestActionsEnv implements ActionsEnv {
   public getOptionalInput(_name: string): string | undefined {
     return undefined;
   }
-
-  public exportVariable(name: string, value: string): void {
-    this.env.set(name, value);
-  }
 }
 
 /**
@@ -236,6 +274,7 @@ export function initAllState(
     startedAt: new Date(),
     platform: process.platform,
     arch: process.arch,
+    osRelease: os.release(),
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),
@@ -622,12 +661,13 @@ export class RecordingLogger implements Logger {
 
   constructor(private readonly logToConsole: boolean = true) {}
 
-  private addMessage(level: LogLevel, message: string | Error): void {
-    this.messages.push({ type: level, message });
+  private addMessage(level: LogLevel, message: LoggableError): void {
+    const joinedMessage = joinMessageStrings(message);
+    this.messages.push({ type: level, message: joinedMessage });
 
     if (this.logToConsole) {
       // eslint-disable-next-line no-console
-      console.debug(message);
+      console.debug(joinedMessage);
     }
   }
 
@@ -648,19 +688,19 @@ export class RecordingLogger implements Logger {
     return true;
   }
 
-  debug(message: string) {
+  debug(message: Loggable) {
     this.addMessage("debug", message);
   }
 
-  info(message: string) {
+  info(message: Loggable) {
     this.addMessage("info", message);
   }
 
-  warning(message: string | Error) {
+  warning(message: LoggableError) {
     this.addMessage("warning", message);
   }
 
-  error(message: string | Error) {
+  error(message: LoggableError) {
     this.addMessage("error", message);
   }
 
@@ -874,7 +914,7 @@ export function mockLanguagesInRepo(languages: string[]) {
  */
 export const makeVersionInfo = (
   version: string,
-  features?: { [name: string]: boolean },
+  features?: { [key in ToolsFeature]?: boolean },
   overlayVersion?: number,
 ): VersionInfo => ({
   version,
@@ -970,6 +1010,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
     {},
     {
       version: getActionVersion(),
+      repositoryRoot: undefined,
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
       buildMode: undefined,
@@ -994,6 +1035,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       overlayModeSetExplicitly: false,
       repositoryProperties: {},
       enableFileCoverageInformation: true,
+      successfullyInitialised: false,
     } satisfies Config,
     overrides,
   );
@@ -1003,4 +1045,17 @@ export function makeTestToken(length: number = 36) {
   const chars =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   return chars.repeat(Math.ceil(length / chars.length)).slice(0, length);
+}
+
+/**
+ * Get a real, newly created CodeQL instance for testing. The instance refers to
+ * a non-existent placeholder codeql command, so tests that use this function
+ * should also stub the toolrunner.ToolRunner constructor.
+ */
+export async function getCodeQLForTesting(
+  cmd = "codeql-for-testing",
+  logger: Logger = new RecordingLogger(),
+  env: Env = getEnv(),
+): Promise<codeql.CodeQL> {
+  return codeql.getCodeQLForCmd(logger, cmd, false, env);
 }

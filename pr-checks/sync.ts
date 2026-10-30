@@ -124,8 +124,6 @@ interface JobSpecification {
 
 type ValidationJobSpecification = JobSpecification & {
   checkout?: boolean;
-  /** Optional condition for the validation job. */
-  if?: string;
 };
 
 /** Describes language/framework-specific steps and inputs. */
@@ -672,10 +670,7 @@ function generateValidationJob(
 
   const validationJob: Record<string, any> = {
     name: jobSpecification.name,
-    if:
-      jobSpecification.if !== undefined
-        ? `${baseCondition} && ${jobSpecification.if}`
-        : baseCondition,
+    if: baseCondition,
     needs: [checkName],
     permissions: {
       contents: "read",

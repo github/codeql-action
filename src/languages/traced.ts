@@ -38,8 +38,12 @@ function handleUnsupportedVersion(
   product: "macOS" | "Xcode",
   version: semver.SemVer,
 ) {
+  const unsupportedVersion =
+    product === "macOS"
+      ? UNSUPPORTED_DARWIN_FOR_TRACED
+      : UNSUPPORTED_XCODE_FOR_TRACED;
   const baseMessage = [
-    `Traced analysis is not supported on ${product} ${UNSUPPORTED_DARWIN_FOR_TRACED} or above.`,
+    `Traced analysis is not supported on ${product} ${unsupportedVersion} or above.`,
     `Configure your analysis to run on macOS ${UNSUPPORTED_DARWIN_FOR_TRACED - 1} or below`,
     `and Xcode ${UNSUPPORTED_XCODE_FOR_TRACED - 1} or below.`,
   ].join(" ");

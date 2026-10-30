@@ -1,4 +1,5 @@
 import { TextDecoder } from "node:util";
+import * as os from "os";
 import path from "path";
 
 import * as github from "@actions/github";
@@ -34,6 +35,7 @@ import { joinMessageStrings, Loggable, LoggableError, Logger } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
 import { getBundlePlatform } from "./platform";
 import { ActionName } from "./status-report";
+import { ToolsFeature } from "./tools-features";
 import {
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
@@ -272,6 +274,7 @@ export function initAllState(
     startedAt: new Date(),
     platform: process.platform,
     arch: process.arch,
+    osRelease: os.release(),
     logger: new RecordingLogger(),
     env,
     actions: getTestActionsEnv(env),
@@ -911,7 +914,7 @@ export function mockLanguagesInRepo(languages: string[]) {
  */
 export const makeVersionInfo = (
   version: string,
-  features?: { [name: string]: boolean },
+  features?: { [key in ToolsFeature]?: boolean },
   overlayVersion?: number,
 ): VersionInfo => ({
   version,

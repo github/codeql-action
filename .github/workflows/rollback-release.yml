@@ -34,7 +34,7 @@ jobs:
   rollback:
     name: "Create rollback release"
     if: github.repository == 'github/codeql-action'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
 
     # Don't set the deployment environment for test runs

@@ -44,13 +44,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
-          - os: windows-latest
+          - os: windows-2025
             version: linked
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
-          - os: windows-latest
+          - os: windows-2025
             version: nightly-latest
     name: Autobuild direct tracing (custom working directory)
     if: github.triggering_actor != 'dependabot[bot]'

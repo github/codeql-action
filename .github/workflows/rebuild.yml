@@ -12,7 +12,7 @@ defaults:
 jobs:
   rebuild:
     name: Rebuild Action
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: github.event.label.name == 'Rebuild' || github.event_name == 'workflow_dispatch'
 
     env:
@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          cache: 'npm'
+          cache: "npm"
 
       - name: Remove label
         if: github.event_name == 'pull_request'

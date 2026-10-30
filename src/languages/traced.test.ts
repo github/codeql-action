@@ -363,7 +363,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform Xcode check on self-host
       initAllState({
         logger,
         platform: "darwin",
-        osRelease: "27.0.0",
+        osRelease: "26.0.0",
         env,
         features,
       }),
@@ -371,7 +371,7 @@ test("checkRunnerSupportsTracedAnalysis doesn't perform Xcode check on self-host
       codeql,
     );
 
-    checkUnexpectedLogMessages(t, logger.messages, [
+    checkExpectedLogMessages(t, logger.messages, [
       "Skipping traced analysis compatibility check for Xcode because we are on a self-hosted runner.",
     ]);
   }));

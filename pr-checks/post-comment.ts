@@ -5,12 +5,11 @@ Creates or updates a pull request comment identified by a marker. The marker
 is supplied via `--marker` (or the `.github/actions/post-comment` action's `marker` input)
 and must be non-empty. Supply a plain-text identifier; the CLI wraps it in a
 hidden HTML comment, prepends it to `--body`, and uses it to find the comment on later runs.
-Supply `--create-if-missing` to allow creation; omit it to update existing comments only.
+Supply `--update-only` to suppress creation; omit it to update or create comments.
 
 Example:
 ```sh
 GH_TOKEN=<token> npx tsx ./pr-checks/post-comment.ts \
-  --create-if-missing \
   --body "The changelog needs updating." \
   --marker "my-bot" \
   --issue-id 123 \
@@ -31,8 +30,8 @@ export interface Options {
   body: string;
   /** Plain-text identifier wrapped in a hidden HTML comment. */
   marker: string;
-  /** Whether to create a comment when no matching marker exists. */
-  createIfMissing: boolean;
+  /** Whether to only update a comment if a matching marker exists. */
+  updateOnly: boolean;
   /** The issue/pull request number to post/update the comment on. */
   issueId: number;
   /** The repository to operate on. */
@@ -50,7 +49,7 @@ export function parseOptions(argv?: string[]): Options {
     options: {
       body: { type: "string" },
       marker: { type: "string" },
-      "create-if-missing": { type: "boolean", default: false },
+      "update-only": { type: "boolean", default: false },
       "issue-id": { type: "string" },
       repository: { type: "string" },
     },
@@ -80,7 +79,7 @@ export function parseOptions(argv?: string[]): Options {
   return {
     body: values.body,
     marker: values.marker,
-    createIfMissing: values["create-if-missing"],
+    updateOnly: values["update-only"],
     issueId: Number(values["issue-id"]),
     repository: parseRepositoryNwo(values.repository),
   };
@@ -131,9 +130,9 @@ export async function setComment(
     marker,
   );
   if (existingCommentId === undefined) {
-    if (!options.createIfMissing) {
+    if (options.updateOnly) {
       console.info(
-        "No existing comment found; skipping creation because --create-if-missing wasn't specified.",
+        "No existing comment found; skipping creation because --update-only was specified.",
       );
       return;
     }

@@ -49,15 +49,15 @@ describe("parseOptions", async () => {
     assert.deepEqual(options, {
       body: "hello",
       marker: "marker",
-      createIfMissing: false,
+      updateOnly: false,
       issueId: 42,
       repository: { owner: "github", repo: "codeql-action" },
     });
   });
 
-  await it("enables creation when --create-if-missing is supplied", () => {
-    const options = parseOptions([...validFlags, "--create-if-missing"]);
-    assert.equal(options.createIfMissing, true);
+  await it("enables update-only mode when --update-only is supplied", () => {
+    const options = parseOptions([...validFlags, "--update-only"]);
+    assert.equal(options.updateOnly, true);
   });
 
   await it("rejects a missing --body", () => {
@@ -212,7 +212,7 @@ describe("findExistingComment", async () => {
 const baseOptions: Options = {
   body: "hello",
   marker: "marker",
-  createIfMissing: true,
+  updateOnly: false,
   issueId: 42,
   repository: { owner: "owner", repo: "repo" },
 };
@@ -227,20 +227,20 @@ function assertCommentContent(
 }
 
 describe("setComment", async () => {
-  await it("does not create a resolved comment when no comments exist", async () => {
+  await it("does not create a comment in update-only mode when none exists", async () => {
     const { client, comments } = fakeClient([]);
 
-    await setComment(client, { ...baseOptions, createIfMissing: false });
+    await setComment(client, { ...baseOptions, updateOnly: true });
 
     // Resolution does not introduce a warning that was never posted.
     assert.deepEqual(comments, []);
   });
 
-  await it("leaves unrelated comments unchanged when creation is disabled", async () => {
+  await it("leaves unrelated comments unchanged in update-only mode", async () => {
     const originalComments = [{ id: 7, body: "unrelated" }];
     const { client, comments } = fakeClient(originalComments);
 
-    await setComment(client, { ...baseOptions, createIfMissing: false });
+    await setComment(client, { ...baseOptions, updateOnly: true });
 
     // Unrelated comments neither trigger resolution nor get overwritten.
     assert.deepEqual(comments, originalComments);
@@ -334,7 +334,7 @@ describe("setComment", async () => {
     const body =
       "`CHANGELOG.md` is not modified in this PR. No changelog action is needed.";
 
-    await setComment(client, { ...baseOptions, body, createIfMissing: false });
+    await setComment(client, { ...baseOptions, body, updateOnly: true });
 
     // The resolved state replaces the warning on the same marked comment.
     assert.equal(comments.length, 1);

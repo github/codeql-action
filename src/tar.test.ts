@@ -15,7 +15,7 @@ test("extractTarZst rejects if the input stream errors", async (t) => {
     const promise = extractTarZst(
       archive,
       path.join(tmpDir, "dest"),
-      { type: "gnu", version: "1.34" },
+      { type: "gnu", version: "1.34", path: "tar" },
       new RecordingLogger(),
     );
 

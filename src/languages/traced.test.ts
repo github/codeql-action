@@ -386,9 +386,6 @@ test.serial(
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
       const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
 
-      const lstatSync = sinon
-        .stub(fs, "lstatSync")
-        .returns({ isSymbolicLink: () => true } as fs.Stats);
       const readlinkSync = sinon
         .stub(fs, "readlinkSync")
         .returns("/Applications/Xcode_26.0.app/Contents/Developer");
@@ -418,11 +415,6 @@ test.serial(
         codeql,
       );
 
-      t.is(lstatSync.callCount, 1);
-      t.deepEqual(lstatSync.args[0], [
-        XCODE_SELECT_LINK_PATH,
-        { throwIfNoEntry: false },
-      ]);
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -444,9 +436,6 @@ test.serial(
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
       const features = createFeatures([Feature.CheckUnsupportedTracedAnalysis]);
 
-      const lstatSync = sinon
-        .stub(fs, "lstatSync")
-        .returns({ isSymbolicLink: () => true } as fs.Stats);
       const readlinkSync = sinon
         .stub(fs, "readlinkSync")
         .returns("/Applications/Xcode_27.0.app/Contents/Developer");
@@ -476,11 +465,6 @@ test.serial(
         codeql,
       );
 
-      t.is(lstatSync.callCount, 1);
-      t.deepEqual(lstatSync.args[0], [
-        XCODE_SELECT_LINK_PATH,
-        { throwIfNoEntry: false },
-      ]);
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 
@@ -521,9 +505,6 @@ test.serial(
       const env = getTestEnv();
       env.set(ActionsEnvVars.RUNNER_TEMP, tmpDir);
 
-      const lstatSync = sinon
-        .stub(fs, "lstatSync")
-        .returns({ isSymbolicLink: () => true } as fs.Stats);
       const readlinkSync = sinon
         .stub(fs, "readlinkSync")
         .returns("/Applications/Xcode_27.0.app/Contents/Developer");
@@ -560,11 +541,6 @@ test.serial(
         ),
       );
 
-      t.is(lstatSync.callCount, 1);
-      t.deepEqual(lstatSync.args[0], [
-        XCODE_SELECT_LINK_PATH,
-        { throwIfNoEntry: false },
-      ]);
       t.is(readlinkSync.callCount, 1);
       t.deepEqual(readlinkSync.args[0], [XCODE_SELECT_LINK_PATH]);
 

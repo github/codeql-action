@@ -1,11 +1,14 @@
 #!/usr/bin/env npx tsx
 
 /*
-Creates or updates a pull request comment identified by a marker. The marker
-is supplied via `--marker` (or the `.github/actions/post-comment` action's `marker` input)
-and must be non-empty. Supply a plain-text identifier; the CLI wraps it in a
-hidden HTML comment, prepends it to `--body`, and uses it to find the comment on later runs.
-Supply `--update-only` to suppress creation; omit it to update or create comments.
+Creates or updates a pull-request comment identified by a marker.
+
+The marker is supplied via `--marker` and must be a non-empty plain-text identifier.
+The CLI wraps the marker in a hidden HTML comment, prepends it to `--body`,
+and uses it to find the comment on later runs.
+
+Supply `--update-only` to suppress creation of comment; omit it
+to update or create comments.
 
 Example:
 ```sh

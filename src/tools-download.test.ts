@@ -71,7 +71,7 @@ test.serial(
         destination,
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
+        { type: "gnu", version: "1.34", path: "tar" },
         new RecordingLogger(),
       );
 
@@ -104,7 +104,7 @@ test.serial(
           destination,
           undefined,
           {},
-          { type: "gnu", version: "1.34" },
+          { type: "gnu", version: "1.34", path: "tar" },
           new RecordingLogger(),
         ),
         {
@@ -148,7 +148,7 @@ test.serial(
         destination,
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
+        { type: "gnu", version: "1.34", path: "tar" },
         new RecordingLogger(),
       );
 
@@ -188,7 +188,7 @@ test.serial(
         destination,
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
+        { type: "gnu", version: "1.34", path: "tar" },
         new RecordingLogger(),
       );
 
@@ -236,7 +236,7 @@ test.serial(
         path.join(tmpDir, "codeql"),
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
+        { type: "gnu", version: "1.34", path: "tar" },
         new RecordingLogger(),
       );
 

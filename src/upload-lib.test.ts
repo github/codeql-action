@@ -10,17 +10,18 @@ import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
 import * as diffUtils from "./diff-informed-analysis-utils";
+import { getEnv } from "./environment";
 import { Logger } from "./logging";
 import * as sarif from "./sarif";
 import { RecordingLogger, setupTests } from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { UploadPayload } from "./upload-lib/types";
-import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
+import { GitHubVariant, withTmpDir } from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment("1.2.3");
+  getEnv().initialise("1.2.3");
 });
 
 test.serial("validateSarifFileSchema - valid", (t) => {

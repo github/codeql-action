@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 
 import {
   CLI_VERSION_ENV_VAR,
+  getChangenote,
   getCLIVersion,
   getPRNumber,
   getPRUrl,
@@ -21,6 +22,7 @@ import {
   NO_CHANGES_STR,
   UNRELEASED_PLACEHOLDER,
 } from "./changelog";
+import { isValidChangenoteContent } from "./changelog/validate";
 
 let testDir: string;
 
@@ -138,5 +140,18 @@ describe("updateChangelog", async () => {
       "- Update default CodeQL bundle version to",
     );
     assert.deepEqual(result, expectedChangelog);
+  });
+});
+
+describe("getChangenote", async () => {
+  await it("returns a note linking to the bundle release and the PR", async () => {
+    assert.equal(
+      getChangenote("1.2.3", testPrUrl),
+      "- Update default CodeQL bundle version to [1.2.3](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v1.2.3). [#42](https://github.com/github/codeql-action/pulls/42)\n",
+    );
+  });
+
+  await it("returns valid changenote content", async () => {
+    assert.ok(isValidChangenoteContent(getChangenote("1.2.3", testPrUrl)));
   });
 });

@@ -565,8 +565,7 @@ test.serial(
       let stdoutListener: ((data: Buffer) => void) | undefined = undefined;
       const exec = sinon.stub<[], Promise<number>>().callsFake(async () => {
         if (stdoutListener !== undefined) {
-          stdoutListener(Buffer.from("Xcode 27.5"));
-          stdoutListener(Buffer.from("Build version 27F9"));
+          stdoutListener(Buffer.from("27.5"));
           return 0;
         } else {
           throw new Error("Error to force next fallback");

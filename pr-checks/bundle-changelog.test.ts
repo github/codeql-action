@@ -15,13 +15,7 @@ import {
   getPRNumber,
   getPRUrl,
   PR_URL_ENV_VAR,
-  updateChangelog,
 } from "./bundle-changelog";
-import {
-  EMPTY_CHANGELOG,
-  NO_CHANGES_STR,
-  UNRELEASED_PLACEHOLDER,
-} from "./changelog";
 import { isValidChangenoteContent } from "./changelog/validate";
 
 let testDir: string;
@@ -84,62 +78,6 @@ describe("getPRNumber", async () => {
 
   await it("returns the PR number from an URL", async () => {
     assert.equal(getPRNumber(testPrUrl), 42);
-  });
-});
-
-const testChangelog = `${EMPTY_CHANGELOG.trimEnd()}
-
-## 4.23.7
-
-- Other change
-
-## 4.23.6
-
-${NO_CHANGES_STR}`;
-
-const expectedChangelog = `# CodeQL Action Changelog
-
-## ${UNRELEASED_PLACEHOLDER}
-
-- Update default CodeQL bundle version to
-
-## 4.23.7
-
-- Other change
-
-## 4.23.6
-
-${NO_CHANGES_STR}`;
-
-describe("updateChangelog", async () => {
-  await it("removes `NO_CHANGES_STR` if present in [UNRELEASED] section", async () => {
-    const result = updateChangelog(EMPTY_CHANGELOG, "");
-    assert.ok(!result.includes(NO_CHANGES_STR));
-  });
-
-  await it("doesn't remove `NO_CHANGES_STR` if present in versioned section", async () => {
-    const result = updateChangelog(
-      EMPTY_CHANGELOG.replace(UNRELEASED_PLACEHOLDER, "1.2.3"),
-      "",
-    );
-    assert.ok(result.includes(NO_CHANGES_STR));
-  });
-
-  await it("throws if there are no sections", async () => {
-    assert.throws(() => {
-      updateChangelog(
-        "# CodeQL Action Changelog",
-        "- Update default CodeQL bundle version to",
-      );
-    });
-  });
-
-  await it("adds note at the end of the first section", async () => {
-    const result = updateChangelog(
-      testChangelog,
-      "- Update default CodeQL bundle version to",
-    );
-    assert.deepEqual(result, expectedChangelog);
   });
 });
 

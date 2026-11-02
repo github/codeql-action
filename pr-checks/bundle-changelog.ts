@@ -7,11 +7,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import {
-  parseChangelog,
-  renderChangelog,
-  UNRELEASED_PLACEHOLDER,
-} from "./changelog";
 import { CHANGENOTES_DIR, CLI_BUNDLE_RELEASE_URL_PREFIX } from "./config";
 import { getErrorMessage } from "./util";
 
@@ -56,45 +51,6 @@ export function getPRNumber(prUrl: string) {
   }
 
   return prNumber;
-}
-
-/**
- * Updates `changelog` by adding `changelogNote` to the first section.
- *
- * @param contents The existing changelog contents.
- * @param changelogNote The note to add to the first section.
- */
-export function updateChangelog(contents: string, changelogNote: string) {
-  // If the "[UNRELEASED]" section starts with "no user facing changes", remove that line.
-  contents = contents.replace(
-    `## ${UNRELEASED_PLACEHOLDER}\n\nNo user facing changes.`,
-    `## ${UNRELEASED_PLACEHOLDER}\n`,
-  );
-
-  const changelog = parseChangelog(contents);
-
-  if (changelog.sections.length === 0) {
-    throw new Error("The changelog contains no existing sections.");
-  }
-
-  // Add the changelog note to the bottom of the first section.
-  const firstSection = changelog.sections[0];
-  const lastLine = firstSection.bodyLines.pop();
-
-  if (lastLine !== undefined && lastLine.trim() !== "") {
-    // We expect the last line to be empty. If it isn't for some reason,
-    // add it back.
-    firstSection.bodyLines.push(lastLine);
-  }
-
-  firstSection.bodyLines.push(changelogNote);
-
-  // If the last line is empty as expected, then add it back in after the new note.
-  if (lastLine?.trim() === "") {
-    firstSection.bodyLines.push(lastLine);
-  }
-
-  return renderChangelog(changelog);
 }
 
 /**

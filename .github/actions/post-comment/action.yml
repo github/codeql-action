@@ -29,7 +29,7 @@ runs:
       env:
         BODY: ${{ inputs.body }}
         MARKER: ${{ inputs.marker }}
-        UPDATE_ONLY: ${{ (inputs.update-only == 'true' && '--update-only') || '' }}
+        UPDATE_ONLY: ${{ case(inputs.update-only == 'true', '--update-only', '') }}
         GH_TOKEN: ${{ inputs.token }}
         ISSUE_ID: ${{ inputs.issue-id || github.event.pull_request.number }}
       run: |

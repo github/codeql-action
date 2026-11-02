@@ -233,7 +233,7 @@ async function run(action: ActionState<["Base", "Logger", "Env", "Actions"]>) {
   let databaseUploadResults: DatabaseUploadResult[] = [];
 
   try {
-    util.initializeEnvironment(actionsUtil.getActionVersion());
+    action.env.initialise(actionsUtil.getActionVersion());
 
     // Make inputs accessible in the `post` step, details at
     // https://github.com/github/codeql-action/issues/2553

@@ -1,17 +1,18 @@
 #!/usr/bin/env npx tsx
 
 /**
- * Updates the changelog with a change note for an updated CodeQL CLI bundle.
+ * Creates a changenote file for an update to the default CodeQL CLI bundle.
  */
 
 import * as fs from "node:fs";
+import * as path from "node:path";
 
 import {
   parseChangelog,
   renderChangelog,
   UNRELEASED_PLACEHOLDER,
 } from "./changelog";
-import { CHANGELOG_FILE, CLI_BUNDLE_RELEASE_URL_PREFIX } from "./config";
+import { CHANGENOTES_DIR, CLI_BUNDLE_RELEASE_URL_PREFIX } from "./config";
 import { getErrorMessage } from "./util";
 
 export const CLI_VERSION_ENV_VAR = "CLI_VERSION";
@@ -96,27 +97,40 @@ export function updateChangelog(contents: string, changelogNote: string) {
   return renderChangelog(changelog);
 }
 
+/**
+ * Returns the contents of the changenote file for an update to the default
+ * CodeQL CLI bundle.
+ *
+ * @param cliVersion The CodeQL CLI version of the new default bundle.
+ * @param prUrl The URL of the PR that updates the default bundle.
+ * @throws If the PR number can't be determined from `prUrl`.
+ */
+export function getChangenote(cliVersion: string, prUrl: string): string {
+  // The GitHub Release for the new bundle version.
+  const bundleReleaseUrl = `${CLI_BUNDLE_RELEASE_URL_PREFIX}${cliVersion}`;
+
+  const prNumber = getPRNumber(prUrl);
+  return `- Update default CodeQL bundle version to [${cliVersion}](${bundleReleaseUrl}). [#${prNumber}](${prUrl})\n`;
+}
+
 function main() {
   try {
     const cliVersion = getCLIVersion();
     const prUrl = getPRUrl();
 
-    // The GitHub Release for the new bundle version.
-    const bundleReleaseUrl = `${CLI_BUNDLE_RELEASE_URL_PREFIX}${cliVersion}`;
-
-    // Get the PR number from the PR URL.
-    const prNumber = getPRNumber(prUrl);
-    const changelogNote = `- Update default CodeQL bundle version to [${cliVersion}](${bundleReleaseUrl}). [#${prNumber}](${prUrl})`;
-
-    let changelog = fs.readFileSync(CHANGELOG_FILE, "utf-8");
-
-    changelog = updateChangelog(changelog, changelogNote);
-
-    fs.writeFileSync(CHANGELOG_FILE, changelog);
+    // Include the CLI version in the file name so that changenotes for
+    // different bundle updates don't conflict.
+    const changenotePath = path.join(
+      CHANGENOTES_DIR,
+      `update-bundle-${cliVersion}.md`,
+    );
+    fs.writeFileSync(changenotePath, getChangenote(cliVersion, prUrl));
 
     return 0;
   } catch (err) {
-    console.error(`Failed to bundle changelog: ${getErrorMessage(err)}`);
+    console.error(
+      `Failed to create changenote for bundle update: ${getErrorMessage(err)}`,
+    );
     return -1;
   }
 }

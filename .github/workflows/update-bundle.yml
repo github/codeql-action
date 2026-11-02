@@ -113,11 +113,12 @@ jobs:
           echo "CLI_VERSION=$cli_version" | tee -a "$GITHUB_ENV"
           echo "PR_URL=$pr_url" | tee -a "$GITHUB_ENV"
 
-      - name: Create changelog note
+      - name: Create changenote
         run: |
           npx tsx pr-checks/bundle-changelog.ts
 
-      - name: Push changelog note
+      - name: Push changenote
         run: |
-          git commit -am "Add changelog note"
+          git add unreleased-change-notes
+          git commit -m "Add changenote"
           git push

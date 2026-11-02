@@ -11,8 +11,8 @@ import {
 } from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
-import { RecordingLogger, setupTests } from "./testing-utils";
-import { initializeEnvironment, withTmpDir } from "./util";
+import { getTestEnv, RecordingLogger, setupTests } from "./testing-utils";
+import { withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -227,8 +227,9 @@ test.serial(
 );
 
 test.serial("initializeEnvironment", (t) => {
-  initializeEnvironment("1.2.3");
-  t.deepEqual(process.env[EnvVar.VERSION], "1.2.3");
+  const env = getTestEnv();
+  env.initialise("1.2.3");
+  t.deepEqual(env.getOptional(EnvVar.VERSION), "1.2.3");
 });
 
 test.serial("fixCodeQualityCategory", (t) => {

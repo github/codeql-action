@@ -27,16 +27,39 @@ const CHECKS_DIR = path.join(PR_CHECKS_DIR, "checks");
 const WORKFLOW_DIR = path.join(REPO_ROOT, ".github", "workflows");
 const SYNC_TS_PATH = path.join(PR_CHECKS_DIR, "sync.ts");
 
+/** Type alias for action names. */
+type ActionName = string;
+
+/** Type alias for action versions. May include a comment. */
+type ActionVersion = string;
+
+/** Mappings of {@link ActionName}s to {@link ActionVersion}s. */
+type ActionVersions = Record<ActionName, ActionVersion>;
+
+/** Mappings of workflow names to {@link ActionVersions}. */
+type ActionVersionsByWorkflow = Record<string, ActionVersions>;
+
+/** The result of {@link scanGeneratedWorkflows}. */
+type ScanWorkflowResult = {
+  /** A mapping of {@link ActionName}s to all encountered {@link ActionVersion}s. */
+  actionVersions: Record<ActionName, Set<ActionVersion>>;
+
+  /** A mapping of workflow names to {@link ActionVersions}. */
+  actionVersionsByWorkflow: ActionVersionsByWorkflow;
+};
+
 /**
  * Scan generated workflow files to extract the latest action versions.
  *
  * @param workflowDir - Path to .github/workflows directory
- * @returns Map from action names to their latest versions (including comments)
+ *
+ * @returns A {@link ScanWorkflowResult} object containing information about the extracted action versions.
  */
 export function scanGeneratedWorkflows(
   workflowDir: string,
-): Record<string, string> {
-  const actionVersions: Record<string, string> = {};
+): ScanWorkflowResult {
+  const actionVersionsByWorkflow: ActionVersionsByWorkflow = {};
+  const actionVersions: Record<ActionName, Set<ActionVersion>> = {};
 
   const generatedFiles = fs
     .readdirSync(workflowDir)
@@ -45,6 +68,10 @@ export function scanGeneratedWorkflows(
 
   for (const filePath of generatedFiles) {
     const content = fs.readFileSync(filePath, "utf8");
+
+    // Get the basename of the workflow and drop the leading `__` from it.
+    const workflowName = path.basename(filePath).slice(2);
+    actionVersionsByWorkflow[workflowName] = {};
 
     // Find all action uses in the file, including potential comments
     // This pattern captures: action_name@version_with_possible_comment
@@ -57,13 +84,26 @@ export function scanGeneratedWorkflows(
 
       // Only track non-local actions (those with / but not starting with ./)
       if (!actionName.startsWith("./")) {
-        // Assume that version numbers are consistent (this should be the case on a Dependabot update PR)
-        actionVersions[actionName] = versionWithComment;
+        // Record the version of the action for this workflow.
+        actionVersionsByWorkflow[workflowName][actionName] = versionWithComment;
+
+        // Record this version for the action so that we can write it to `sync.ts` if needed.
+        // Usually we'd expect there to be exactly one version per action across all workflows,
+        // but sometimes these can go out-of-sync if e.g. a workflow is added in a branch and a
+        // Dependabot PR is merged in the meantime that changes the version of an action that is
+        // used in the new workflow. Different versions of the same action across different
+        // workflows is not fundamentally a problem, but we may need to pick one for `sync.ts`
+        // so we warn there if we have multiple versions of an action.
+        if (actionVersions[actionName] === undefined) {
+          actionVersions[actionName] = new Set([versionWithComment]);
+        } else if (!actionVersions[actionName].has(versionWithComment)) {
+          actionVersions[actionName].add(versionWithComment);
+        }
       }
     }
   }
 
-  return actionVersions;
+  return { actionVersions, actionVersionsByWorkflow };
 }
 
 /**
@@ -79,7 +119,7 @@ export function scanGeneratedWorkflows(
  */
 export function updateSyncTs(
   syncTsPath: string,
-  actionVersions: Record<string, string>,
+  actionVersions: Record<ActionName, Set<ActionVersion>>,
 ): boolean {
   if (!fs.existsSync(syncTsPath)) {
     throw new Error(`Could not find ${syncTsPath}`);
@@ -89,9 +129,18 @@ export function updateSyncTs(
   const originalContent = content;
 
   // Update hardcoded action versions
-  for (const [actionName, versionWithComment] of Object.entries(
+  for (const [actionName, versionsWithComments] of Object.entries(
     actionVersions,
   )) {
+    // We usually expect `versionsWithComments` to contain one version. If there are multiple,
+    // we arbitrarily pick one and warn about it.
+    const versionsWithCommentsArray = Array.from(versionsWithComments);
+    const versionWithComment = versionsWithCommentsArray[0];
+    if (versionsWithComments.size > 1) {
+      console.warn(
+        `Inconsistent versions for ${actionName}. Arbitrarily picking '${versionWithComment}'. All found: ${versionsWithCommentsArray.join(", ")}`,
+      );
+    }
     // Split the scanned value into the ref (e.g. a commit SHA) and the optional
     // trailing version comment (e.g. `v6.0.3`).
     const ref = versionWithComment.includes("#")
@@ -138,12 +187,12 @@ export function updateSyncTs(
  * Update action versions in template files in pr-checks/checks/
  *
  * @param checksDir - Path to pr-checks/checks directory
- * @param actionVersions - Map of action names to versions (may include comments)
+ * @param actionVersionsByWorkflow - Map of workflows to maps of action names to versions (may include comments)
  * @returns List of files that were modified
  */
 export function updateTemplateFiles(
   checksDir: string,
-  actionVersions: Record<string, string>,
+  actionVersionsByWorkflow: ActionVersionsByWorkflow,
 ): string[] {
   const modifiedFiles: string[] = [];
 
@@ -155,6 +204,16 @@ export function updateTemplateFiles(
   for (const filePath of templateFiles) {
     let content = fs.readFileSync(filePath, "utf8");
     const originalContent = content;
+
+    const workflowName = path.basename(filePath);
+    const actionVersions = actionVersionsByWorkflow[workflowName];
+
+    if (actionVersions === undefined) {
+      console.info(
+        `Found no action versions for workflow template '${filePath}'.`,
+      );
+      continue;
+    }
 
     // Update action versions
     for (const [actionName, versionWithComment] of Object.entries(
@@ -191,12 +250,15 @@ function main(): number {
   const verbose = values.verbose ?? false;
 
   console.info("Scanning generated workflows for latest action versions...");
-  const actionVersions = scanGeneratedWorkflows(WORKFLOW_DIR);
+  const { actionVersions, actionVersionsByWorkflow } =
+    scanGeneratedWorkflows(WORKFLOW_DIR);
 
   if (verbose) {
     console.info("Found action versions:");
-    for (const [action, version] of Object.entries(actionVersions)) {
-      console.info(`  ${action}@${version}`);
+    for (const [action, versions] of Object.entries(actionVersions)) {
+      for (const version of versions) {
+        console.info(`  ${action}@${version}`);
+      }
     }
   }
 
@@ -215,7 +277,10 @@ function main(): number {
   }
 
   // Update template files
-  const templateModified = updateTemplateFiles(CHECKS_DIR, actionVersions);
+  const templateModified = updateTemplateFiles(
+    CHECKS_DIR,
+    actionVersionsByWorkflow,
+  );
   modifiedFiles.push(...templateModified);
 
   if (modifiedFiles.length > 0) {

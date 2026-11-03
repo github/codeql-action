@@ -501,6 +501,7 @@ async function downloadCacheWithTime(
  */
 export async function loadUserConfig(
   actionState: ActionState<["Logger", "Env", "FeatureFlags"]>,
+  analysisKinds: AnalysisKind[],
   configFile: string,
   workspacePath: string,
   apiDetails: api.GitHubApiCombinedDetails,
@@ -528,7 +529,12 @@ export async function loadUserConfig(
     if (isExplicitRemotePath(configFile)) {
       configFile = configFile.substring(REMOTE_PATH_PREFIX.length);
     }
-    return await getRemoteConfig(actionState, configFile, apiDetails);
+    return await getRemoteConfig(
+      actionState,
+      analysisKinds,
+      configFile,
+      apiDetails,
+    );
   }
 }
 
@@ -1096,6 +1102,7 @@ export async function determineUserConfig(
       // configuration file properties and write the result to disk.
       const fromConfigFile = await loadUserConfig(
         action,
+        inputs.analysisKinds,
         inputs.configFile,
         inputs.workspacePath,
         inputs.apiDetails,
@@ -1144,6 +1151,7 @@ export async function determineUserConfig(
     action.logger.debug(`Using configuration file: ${inputs.configFile}`);
     return await loadUserConfig(
       action,
+      inputs.analysisKinds,
       inputs.configFile,
       inputs.workspacePath,
       inputs.apiDetails,

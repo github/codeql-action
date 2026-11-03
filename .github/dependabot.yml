@@ -16,6 +16,14 @@ updates:
       # This might be fixed when we move to eslint v9.
       - dependency-name: "eslint-plugin-import"
         versions: [">=2.30.0"]
+
+      # Some of our dependencies are lagging behind with support for new versions of
+      # `undici` which is why we have to override it in `package.json`. Dependabot
+      # workflows fail when they try to update a dependency that is explicitly
+      # overriden. Since this happens somewhat routinely at the moment, we are
+      # excluding `undici` here and have to manually update it when needed.
+      - dependency-name: "undici"
+        versions: [">=7.30.1"]
     groups:
       npm-minor:
         patterns:
@@ -26,7 +34,7 @@ updates:
   - package-ecosystem: github-actions
     directories:
       - "/.github/workflows"
-      - "/.github/actions"
+      - "/.github/actions/*/"
     schedule:
       interval: weekly
     cooldown:

@@ -13,7 +13,7 @@ import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
 import { UnvalidatedObject, validateSchema } from "./json";
 import { makeFromSchema } from "./json/testing-util";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger, Logger } from "./logging";
+import { Logger } from "./logging";
 import { BundlePlatform, getBundlePlatform } from "./platform";
 import * as repository from "./setup/repository";
 import * as startProxyExports from "./start-proxy";
@@ -67,7 +67,7 @@ test("getCredentials prefers registriesCredentials over registrySecrets", async 
   ]);
 
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     registrySecrets,
     registryCredentials,
     undefined,
@@ -84,7 +84,7 @@ test("getCredentials throws an error when configurations are not an array", asyn
   t.throws(
     () =>
       startProxyExports.getCredentials(
-        getRunnerLogger(true),
+        new RecordingLogger(),
         undefined,
         registryCredentials,
         undefined,
@@ -103,7 +103,7 @@ test("getCredentials throws error when credential is not an object", async (t) =
     t.throws(
       () =>
         startProxyExports.getCredentials(
-          getRunnerLogger(true),
+          new RecordingLogger(),
           undefined,
           testCredential,
           undefined,
@@ -124,7 +124,7 @@ test("getCredentials throws error when credential is missing type", async (t) =>
     t.throws(
       () =>
         startProxyExports.getCredentials(
-          getRunnerLogger(true),
+          new RecordingLogger(),
           undefined,
           testCredential,
           undefined,
@@ -147,7 +147,7 @@ test("getCredentials throws error when credential missing host and url", async (
     t.throws(
       () =>
         startProxyExports.getCredentials(
-          getRunnerLogger(true),
+          new RecordingLogger(),
           undefined,
           testCredential,
           undefined,
@@ -161,7 +161,7 @@ test("getCredentials throws error when credential missing host and url", async (
 
 test("getCredentials filters by language when specified", async (t) => {
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     toEncodedJSON(mixedCredentials),
     BuiltInLanguage.java,
@@ -172,7 +172,7 @@ test("getCredentials filters by language when specified", async (t) => {
 
 test("getCredentials returns all for a language when specified", async (t) => {
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     toEncodedJSON([...mixedCredentials, gitSourceCredential]),
     BuiltInLanguage.go,
@@ -192,7 +192,7 @@ test("getCredentials returns all goproxy_servers for Go when specified", async (
   ];
 
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     toEncodedJSON(multipleGoproxyServers),
     BuiltInLanguage.go,
@@ -221,7 +221,7 @@ test("getCredentials returns all maven_repositories for Java when specified", as
   ];
 
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     toEncodedJSON(multipleMavenRepositories),
     BuiltInLanguage.java,
@@ -239,7 +239,7 @@ test("getCredentials returns all credentials when no language specified", async 
   const credentialsInput = toEncodedJSON(mixedCredentials);
 
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     credentialsInput,
     undefined,
@@ -269,7 +269,7 @@ test("getCredentials throws an error when non-printable characters are used", as
     t.throws(
       () =>
         startProxyExports.getCredentials(
-          getRunnerLogger(true),
+          new RecordingLogger(),
           undefined,
           credentialsInput,
           undefined,
@@ -300,7 +300,7 @@ for (const oidcSchemaInfo of startProxyExports.oidcSchemas) {
       t.throws(
         () =>
           startProxyExports.getCredentials(
-            getRunnerLogger(true),
+            new RecordingLogger(),
             undefined,
             credentialsInput,
             undefined,
@@ -324,7 +324,7 @@ test("getCredentials accepts OIDC configurations", (t) => {
   );
 
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     toEncodedJSON(oidcConfigurations),
     BuiltInLanguage.csharp,
@@ -514,7 +514,7 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
   ]);
 
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     credentialsInput,
     BuiltInLanguage.java,
@@ -533,7 +533,7 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
   };
   t.throws(() =>
     startProxyExports.getCredentials(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       undefined,
       toEncodedJSON([{ ...baseInvalid, "replaces-base": null }]),
       BuiltInLanguage.java,
@@ -541,7 +541,7 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
   );
   t.throws(() =>
     startProxyExports.getCredentials(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       undefined,
       toEncodedJSON([{ ...baseInvalid, "replaces-base": 123 }]),
       BuiltInLanguage.java,
@@ -549,7 +549,7 @@ test("getCredentials validates 'replaces-base' correctly", async (t) => {
   );
   t.throws(() =>
     startProxyExports.getCredentials(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       undefined,
       toEncodedJSON([{ ...baseInvalid, "replaces-base": "true" }]),
       BuiltInLanguage.java,
@@ -565,7 +565,7 @@ test("getCredentials returns only ALWAYS_ENABLED_REGISTRY_TYPE credentials for A
   ]);
 
   const credentials = startProxyExports.getCredentials(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     undefined,
     credentialsInput,
     BuiltInLanguage.actions,
@@ -597,7 +597,7 @@ test("getCredentials always returns ALWAYS_ENABLED_REGISTRY_TYPE credentials for
   // Test all languages.
   for (const language of Object.values(BuiltInLanguage)) {
     const credentials = startProxyExports.getCredentials(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       undefined,
       credentialsInput,
       language,

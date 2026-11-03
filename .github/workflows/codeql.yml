@@ -22,7 +22,7 @@ jobs:
   # Identify the CodeQL tool versions to use in the analysis job.
   check-codeql-versions:
     if: github.triggering_actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       versions: ${{ steps.compare.outputs.versions }}
 
@@ -106,7 +106,7 @@ jobs:
 
   analyze-other:
     if: github.triggering_actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     strategy:
       fail-fast: false

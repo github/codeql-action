@@ -40,7 +40,7 @@ import {
   addDiagnostic,
   addNoLanguageDiagnostic,
   flushDiagnostics,
-  logUnwrittenDiagnostics,
+  logTemporaryDiagnostics,
   makeDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
@@ -62,6 +62,7 @@ import {
   runDatabaseInitCluster,
 } from "./init";
 import { JavaEnvVars, BuiltInLanguage } from "./languages";
+import { checkRunnerSupportsTracedAnalysis } from "./languages/traced";
 import { Logger, withGroupAsync } from "./logging";
 import {
   downloadOverlayBaseDatabaseFromCache,
@@ -88,12 +89,10 @@ import {
   checkDiskUsage,
   checkForTimeout,
   checkGitHubVersionInRange,
-  codeQlVersionAtLeast,
   DEFAULT_DEBUG_ARTIFACT_NAME,
   DEFAULT_DEBUG_DATABASE_NAME,
   getCodeQLMemoryLimit,
   getThreadsFlagValue,
-  initializeEnvironment,
   ConfigurationError,
   wrapError,
   checkActionVersion,
@@ -226,7 +225,7 @@ async function run(
   let toolsVersion: string;
 
   try {
-    initializeEnvironment(getActionVersion());
+    actionState.env.initialise(getActionVersion());
 
     // Make inputs accessible in the `post` step.
     persistInputs();
@@ -418,14 +417,11 @@ async function run(
       logger,
     });
 
-    if (
-      config.languages.includes(BuiltInLanguage.swift) &&
-      process.platform !== "darwin"
-    ) {
-      throw new ConfigurationError(
-        `Swift analysis is only supported on macOS runner images. Please migrate to a macOS runner.`,
-      );
-    }
+    await checkRunnerSupportsTracedAnalysis(
+      actionStateWithFeatures,
+      config,
+      codeql,
+    );
 
     if (repositoryPropertiesResult.isFailure()) {
       addNoLanguageDiagnostic(
@@ -484,6 +480,7 @@ async function run(
     if (statusReportBase !== undefined) {
       await sendStatusReport(statusReportBase);
     }
+    logTemporaryDiagnostics(actionState);
     return;
   }
 
@@ -686,7 +683,7 @@ async function run(
         `${EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS} is already set to '${process.env[EnvVar.JAVA_EXTRACTOR_MINIMIZE_DEPENDENCY_JARS]}', so the Action will not override it.`,
       );
     } else if (
-      (await codeQlVersionAtLeast(codeql, CODEQL_VERSION_JAR_MINIMIZATION)) &&
+      (await codeql.isVersionAtLeast(CODEQL_VERSION_JAR_MINIMIZATION)) &&
       config.dependencyCachingEnabled &&
       config.buildMode === BuildMode.None &&
       config.languages.includes(BuiltInLanguage.java)
@@ -766,14 +763,15 @@ async function run(
       );
     }
 
-    // Write diagnostics to the database that we previously stored in memory because the database
-    // did not exist until now.
-    flushDiagnostics(config);
+    // Move diagnostics to the database that we previously kept in a temporary location
+    // because the database did not exist until now
+    flushDiagnostics(actionState, config);
 
     // We save the config here instead of at the end of `initConfig` because we
     // may have updated the config returned from `initConfig`, e.g. to revert to
     // `OverlayDatabaseMode.None` if we failed to download an overlay-base
     // database.
+    config.successfullyInitialised = true;
     await configUtils.saveConfig(config, logger);
 
     core.setOutput("codeql-path", config.codeQLCmd);
@@ -797,7 +795,7 @@ async function run(
     );
     return;
   } finally {
-    logUnwrittenDiagnostics();
+    logTemporaryDiagnostics(actionState);
   }
   await sendCompletedStatusReport(
     startedAt,

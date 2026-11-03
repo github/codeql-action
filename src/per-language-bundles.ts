@@ -9,7 +9,6 @@ import {
   QuerySpec,
   UserConfig,
 } from "./config/db-config";
-import { Feature } from "./feature-flags";
 import { RepositoryPropertyName } from "./feature-flags/properties";
 import { BuiltInLanguage, parseBuiltInLanguage } from "./languages";
 import { BundlePlatform } from "./platform";
@@ -139,14 +138,10 @@ export interface PerLanguageBundleOptions {
 }
 
 /** Returns the eligible bundle language, or undefined for the combined bundle. */
-export async function getPerLanguageBundleLanguage(
-  {
-    env,
-    features,
-    logger,
-  }: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
+export function getPerLanguageBundleLanguage(
+  action: ActionState<["Logger", "ReadOnlyEnv"]>,
   options: PerLanguageBundleOptions,
-): Promise<BuiltInLanguage | undefined> {
+): BuiltInLanguage | undefined {
   const {
     rawLanguages,
     otherLanguagePacksReason,
@@ -158,13 +153,11 @@ export async function getPerLanguageBundleLanguage(
   } = options;
 
   const explain = (reason: string) => {
-    logger.debug(`Not using a per-language CodeQL bundle since ${reason}.`);
+    action.logger.debug(
+      `Not using a per-language CodeQL bundle since ${reason}.`,
+    );
     return undefined;
   };
-
-  if (!(await features.getValue(Feature.PerLanguageBundles))) {
-    return explain("the feature is disabled");
-  }
 
   // A defined reason means the CodeQL CLI may need packs for other languages, for example because
   // of the configured queries. That applies whichever languages were requested, so check it first
@@ -197,7 +190,7 @@ export async function getPerLanguageBundleLanguage(
     return explain(`we are running against ${variant}`);
   }
 
-  if (!isGitHubHostedRunner(env)) {
+  if (!isGitHubHostedRunner(action.env)) {
     // Per-language installs stay out of the toolcache; self-hosted runners should retain
     // the reusable combined bundle instead.
     return explain("the job is not running on a GitHub-hosted runner");

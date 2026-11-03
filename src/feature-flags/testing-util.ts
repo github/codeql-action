@@ -8,11 +8,12 @@ import {
   FeatureWithoutCLI,
   initFeatures,
 } from "../feature-flags";
-import { getRunnerLogger } from "../logging";
+import type { Logger } from "../logging";
 import { parseRepositoryNwo } from "../repository";
 import {
   LoggedMessage,
   mockCodeQLVersion,
+  RecordingLogger,
   setupActionsVars,
 } from "../testing-utils";
 import { ToolsFeature } from "../tools-features";
@@ -51,7 +52,7 @@ export function assertAllFeaturesUndefinedInApi(
 
 export function setUpFeatureFlagTests(
   tmpDir: string,
-  logger = getRunnerLogger(true),
+  logger: Logger = new RecordingLogger(),
   gitHubVersion = { type: GitHubVariant.DOTCOM } as util.GitHubVersion,
 ): FeatureEnablement {
   setupActionsVars(tmpDir, tmpDir);

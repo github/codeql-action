@@ -4,7 +4,14 @@ See the [releases page](https://github.com/github/codeql-action/releases) for th
 
 ## [UNRELEASED]
 
+No user facing changes.
+
+## 4.39.2 - 03 Nov 2026
+
 - Update default CodeQL bundle version to [2.27.4](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.27.4). [#4284](https://github.com/github/codeql-action/pull/4284)
+- _Upcoming breaking change_: CodeQL version 2.22.3 and earlier were discontinued on 16 October 2026 alongside GitHub Enterprise Server 3.18, and will be unsupported by the next minor release of the CodeQL Action. Added a deprecation warning for customers using these versions of CodeQL. [#4266](https://github.com/github/codeql-action/pull/4266)
+- Starting with macOS 27 and Xcode 27, traced analyses are unsupported. See [this blog post for more information](https://github.blog/changelog/2026-10-19-codeql-changes-for-macos-27-xcode-27-and-swift-6-4/). The CodeQL Action will now try to identify if a workflow is about to perform a traced analysis on version 27 or above of macOS or Xcode. If so, the CodeQL Action will emit a corresponding warning that will also be visible on the [Tool Status Page](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/use-the-tools-status-page-for-code-scanning). This check will be rolled out following this release of the CodeQL Action. [#4221](https://github.com/github/codeql-action/pull/4221)
+- The undocumented TRAP cache cleanup feature that could be enabled using the `CODEQL_ACTION_CLEANUP_TRAP_CACHES` environment variable has been removed, as announced in the release notes for CodeQL Action 4.35.2. The `analyze` Action now warns if this environment variable is set. If you used TRAP cache cleanup to limit Actions cache usage, we recommend disabling TRAP caching by passing the `trap-caching: false` input to the `init` Action. [#4243](https://github.com/github/codeql-action/pull/4243)
 
 ## 4.39.1 - 21 Oct 2026
 

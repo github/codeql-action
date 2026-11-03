@@ -11,9 +11,8 @@ import {
 } from "./actions-util";
 import { computeAutomationID } from "./api-client";
 import { EnvVar } from "./environment";
-import { getRunnerLogger } from "./logging";
-import { RecordingLogger, setupTests } from "./testing-utils";
-import { initializeEnvironment, withTmpDir } from "./util";
+import { getTestEnv, RecordingLogger, setupTests } from "./testing-utils";
+import { withTmpDir } from "./util";
 
 setupTests(test);
 
@@ -228,8 +227,9 @@ test.serial(
 );
 
 test.serial("initializeEnvironment", (t) => {
-  initializeEnvironment("1.2.3");
-  t.deepEqual(process.env[EnvVar.VERSION], "1.2.3");
+  const env = getTestEnv();
+  env.initialise("1.2.3");
+  t.deepEqual(env.getOptional(EnvVar.VERSION), "1.2.3");
 });
 
 test.serial("fixCodeQualityCategory", (t) => {
@@ -238,7 +238,7 @@ test.serial("fixCodeQualityCategory", (t) => {
       GITHUB_EVENT_NAME: "dynamic",
     },
     () => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
 
       // Categories that should get adjusted.
       t.is(fixCodeQualityCategory(logger, "/language:c#"), "/language:csharp");

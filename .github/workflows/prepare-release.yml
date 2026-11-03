@@ -29,7 +29,7 @@ defaults:
 jobs:
   prepare:
     name: "Release info"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: github.repository == 'github/codeql-action'
 
     permissions:

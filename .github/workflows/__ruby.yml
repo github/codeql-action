@@ -34,17 +34,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
-          - os: macos-latest
+          - os: macos-26
             version: linked
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: default
-          - os: macos-latest
+          - os: macos-26
             version: default
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
-          - os: macos-latest
+          - os: macos-26
             version: nightly-latest
     name: Ruby analysis
     if: github.triggering_actor != 'dependabot[bot]'

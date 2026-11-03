@@ -20,20 +20,22 @@ import {
   getRequiredEnvParam,
   exportEnvVar,
   getEnv,
-  type Env,
   type ReadOnlyEnv,
 } from "./environment";
-import * as json from "./json";
-import { Language } from "./languages";
-import { Logger } from "./logging";
+import { ConfigurationError, getErrorMessage, wrapError } from "./errors";
+import { GitHubVariant, type GitHubVersion } from "./github";
+import type { Language } from "./languages";
+import type { Logger } from "./logging";
 
 // Re-export for backwards compatibility to avoid updating a lot of imports elsewhere.
+export * from "./errors";
 export {
   getRequiredEnvParam,
   getOptionalEnvVar,
   getEnv,
   isInTestMode,
 } from "./environment";
+export { GitHubVariant, type GitHubVersion } from "./github";
 
 /**
  * The name of the file containing the base database OIDs, as stored in the
@@ -46,9 +48,6 @@ const BASE_DATABASE_OIDS_FILE_NAME = "base-database-oids.json";
  * and will not be used if found in the toolcache.
  */
 const BROKEN_VERSIONS = ["0.0.0-20211207"];
-
-/** A string representing a GitHub instance. */
-export type InstanceURL = string;
 
 /**
  * Default name of the debugging artifact.
@@ -470,20 +469,6 @@ const CODEQL_ACTION_WARNED_ABOUT_VERSION_ENV_VAR =
 
 let hasBeenWarnedAboutVersion = false;
 
-export enum GitHubVariant {
-  /** [GitHub.com](https://github.com) */
-  DOTCOM = "GitHub.com",
-  /** [GitHub Enterprise Server](https://docs.github.com/en/enterprise-server@latest/admin/overview/about-github-enterprise-server) */
-  GHES = "GitHub Enterprise Server",
-  /** [GitHub Enterprise Cloud with data residency](https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency) */
-  GHEC_DR = "GitHub Enterprise Cloud with data residency",
-}
-
-export type GitHubVersion =
-  | { type: GitHubVariant.DOTCOM }
-  | { type: GitHubVariant.GHEC_DR }
-  | { type: GitHubVariant.GHES; version: string };
-
 export function checkGitHubVersionInRange(
   version: GitHubVersion,
   logger: Logger,
@@ -550,54 +535,6 @@ class ExhaustivityCheckingError extends Error {
  */
 export function assertNever(value: never): never {
   throw new ExhaustivityCheckingError(value);
-}
-
-/**
- * Set some initial environment variables that we can set even without
- * knowing what version of CodeQL we're running.
- */
-export function initializeEnvironment(version: string, env: Env = getEnv()) {
-  env.export(EnvVar.FEATURE_MULTI_LANGUAGE, "false");
-  env.export(EnvVar.FEATURE_SANDWICH, "false");
-  env.export(EnvVar.FEATURE_SARIF_COMBINE, "true");
-  env.export(EnvVar.FEATURE_WILL_UPLOAD, "true");
-  env.export(EnvVar.VERSION, version);
-}
-
-export class HTTPError extends Error {
-  public status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
-
-/**
- * An Error class that indicates an error that occurred due to
- * a misconfiguration of the action or the CodeQL CLI.
- */
-export class ConfigurationError extends Error {}
-
-export function asHTTPError(arg: any): HTTPError | undefined {
-  if (!json.isObject<any>(arg) || !json.isString(arg.message)) {
-    return undefined;
-  }
-  if (Number.isInteger(arg.status)) {
-    return new HTTPError(arg.message, arg.status as number);
-  }
-  // See https://github.com/actions/toolkit/blob/acb230b99a46ed33a3f04a758cd68b47b9a82908/packages/tool-cache/src/tool-cache.ts#L19
-  if (Number.isInteger(arg.httpStatusCode)) {
-    return new HTTPError(arg.message, arg.httpStatusCode as number);
-  }
-  return undefined;
-}
-
-export async function codeQlVersionAtLeast(
-  codeql: CodeQL,
-  requiredVersion: string,
-): Promise<boolean> {
-  return semver.gte((await codeql.getVersion()).version, requiredVersion);
 }
 
 export function getBaseDatabaseOidsFilePath(
@@ -884,20 +821,6 @@ export function parseMatrixInput(
       `Failed to parse matrix input '${matrixInput}': ${getErrorMessage(err)}`,
     );
   }
-}
-
-export function wrapError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
-}
-
-/**
- * Returns an appropriate message for the error.
- *
- * If the error is an `Error` instance, this returns the error message without
- * an `Error: ` prefix.
- */
-export function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function prettyPrintPack(pack: Pack) {

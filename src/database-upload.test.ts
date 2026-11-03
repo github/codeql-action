@@ -15,6 +15,7 @@ import {
   cleanupAndUploadDatabases,
   uploadBundledDatabase,
 } from "./database-upload";
+import { getEnv } from "./environment";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
@@ -31,18 +32,12 @@ import {
   setupActionsVars,
   setupTests,
 } from "./testing-utils";
-import {
-  CleanupLevel,
-  GitHubVariant,
-  HTTPError,
-  initializeEnvironment,
-  withTmpDir,
-} from "./util";
+import { CleanupLevel, GitHubVariant, HTTPError, withTmpDir } from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment("1.2.3");
+  getEnv().initialise("1.2.3");
 });
 
 const testRepoName: RepositoryNwo = { owner: "github", repo: "example" };

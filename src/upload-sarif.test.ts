@@ -5,8 +5,12 @@ import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
 import { AnalysisKind, getAnalysisConfig } from "./analyses";
-import { getRunnerLogger } from "./logging";
-import { createFeatures, makeMacro, setupTests } from "./testing-utils";
+import {
+  createFeatures,
+  makeMacro,
+  RecordingLogger,
+  setupTests,
+} from "./testing-utils";
 import { UploadResult } from "./upload-lib";
 import * as uploadLib from "./upload-lib";
 import { postProcessAndUploadSarif } from "./upload-sarif";
@@ -52,7 +56,7 @@ const postProcessAndUploadSarifMacro = makeMacro({
     expectedResult: Partial<Record<AnalysisKind, UploadSarifExpectedResult>>,
   ) => {
     await util.withTmpDir(async (tempDir) => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const testPath = sarifPath(tempDir);
       const features = createFeatures([]);
 
@@ -210,7 +214,7 @@ test.serial(
   "postProcessAndUploadSarif doesn't upload if upload is disabled",
   async (t) => {
     await util.withTmpDir(async (tempDir) => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const features = createFeatures([]);
 
       const toFullPath = (filename: string) => path.join(tempDir, filename);
@@ -244,7 +248,7 @@ test.serial(
   "postProcessAndUploadSarif writes post-processed SARIF files if output directory is provided",
   async (t) => {
     await util.withTmpDir(async (tempDir) => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const features = createFeatures([]);
 
       const toFullPath = (filename: string) => path.join(tempDir, filename);

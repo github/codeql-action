@@ -6,6 +6,7 @@ import { HTTPError } from "@actions/tool-cache";
 import test from "ava";
 import * as sinon from "sinon";
 
+import * as actionsUtil from "./actions-util";
 import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
@@ -1074,6 +1075,7 @@ function runFilterAlertsByDiffRange(
   logger: Logger = new RecordingLogger(),
 ): Partial<sarif.Log> {
   sinon.stub(diffUtils, "readDiffRangesJsonFile").returns(diffRanges);
+  sinon.stub(actionsUtil, "getDiffRangesJsonFilePath").returns("");
   return uploadLib.filterAlertsByDiffRange(logger, input);
 }
 

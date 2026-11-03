@@ -1079,7 +1079,10 @@ export function filterAlertsByDiffRange(
   logger: Logger,
   sarifLog: Partial<sarif.Log>,
 ): Partial<sarif.Log> {
-  const diffRanges = readDiffRangesJsonFile(logger);
+  const diffRanges = readDiffRangesJsonFile(
+    logger,
+    actionsUtil.getDiffRangesJsonFilePath(),
+  );
   if (!diffRanges?.length) {
     return sarifLog;
   }

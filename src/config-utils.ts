@@ -7,6 +7,7 @@ import * as yaml from "js-yaml";
 import { ActionState } from "./action-common";
 import {
   getActionVersion,
+  getDiffRangesJsonFilePath,
   getOptionalInput,
   isAnalyzingPullRequest,
   isDefaultSetup,
@@ -1288,9 +1289,10 @@ export async function initConfig(
   }
 
   const hasDiffRanges = await prepareDiffInformedAnalysis(
-    inputs.codeql,
-    inputs.features,
     logger,
+    inputs.features,
+    inputs.codeql,
+    getDiffRangesJsonFilePath(actionState.env),
   );
 
   await applyIncrementalAnalysisSettings(

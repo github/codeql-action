@@ -67,9 +67,10 @@ export async function getDiffInformedAnalysisBranches(
  *   and are therefore available for use, `false` otherwise.
  */
 export async function prepareDiffInformedAnalysis(
-  codeql: CodeQL,
-  features: FeatureEnablement,
   logger: Logger,
+  features: FeatureEnablement,
+  codeql: CodeQL,
+  jsonFilePath: string,
 ): Promise<boolean> {
   let branches: PullRequestBranches | undefined;
   try {
@@ -88,7 +89,7 @@ export async function prepareDiffInformedAnalysis(
   }
 
   try {
-    return await computeAndPersistDiffRanges(branches, logger);
+    return await computeAndPersistDiffRanges(logger, jsonFilePath, branches);
   } catch (e) {
     logger.warning(
       `Failed to compute diff-informed analysis ranges: ${getErrorMessage(e)}`,
@@ -108,18 +109,18 @@ export interface DiffThunkRange {
 }
 
 /**
- * Writes an array of {@link DiffThunkRange} objects to the file given by
- * {@link actionsUtil.getDiffRangesJsonFilePath}.
+ * Writes an array of {@link DiffThunkRange} objects to the file given by {@link jsonFilePath}.
  *
  * @param logger The logger to use.
+ * @param jsonFilePath The path of the file to write.
  * @param ranges The changed line ranges to write.
  */
 export function writeDiffRangesJsonFile(
   logger: Logger,
+  jsonFilePath: string,
   ranges: DiffThunkRange[],
 ): void {
   const jsonContents = JSON.stringify(ranges, null, 2);
-  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
   fs.writeFileSync(jsonFilePath, jsonContents);
   logger.debug(
     `Wrote pr-diff-range JSON file to ${jsonFilePath}:\n${jsonContents}`,
@@ -127,16 +128,15 @@ export function writeDiffRangesJsonFile(
 }
 
 /**
- * Reads an array of {@link DiffThunkRange} objects from the file given by
- * {@link actionsUtil.getDiffRangesJsonFilePath}.
+ * Reads an array of {@link DiffThunkRange} objects from the file given by {@link jsonFilePath}.
  *
  * @param logger The logger to use.
  * @returns The array of {@link DiffThunkRange} objects or `undefined` if the file couldn't be read.
  */
 export function readDiffRangesJsonFile(
   logger: Logger,
+  jsonFilePath: string,
 ): DiffThunkRange[] | undefined {
-  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
   if (!fs.existsSync(jsonFilePath)) {
     logger.debug(`Diff ranges JSON file does not exist at ${jsonFilePath}`);
     return undefined;
@@ -201,23 +201,25 @@ export async function getPullRequestEditedDiffRanges(
  * diff from the GitHub API and writes it to the diff ranges JSON file so that
  * CodeQL can use it for diff-informed analysis.
  *
+ * @param logger The logger to use.
+ * @param jsonFilePath The path of the JSON file to write.
  * @param branches The base and head branches of the pull request, as returned
  *   by `getDiffInformedAnalysisBranches`.
- * @param logger The logger to use.
  *
  * @returns `true` if the diff ranges were successfully computed and persisted,
  *   otherwise `false`.
  */
 export async function computeAndPersistDiffRanges(
-  branches: PullRequestBranches,
   logger: Logger,
+  jsonFilePath: string,
+  branches: PullRequestBranches,
 ): Promise<boolean> {
   logger.info("Computing PR diff ranges...");
   const ranges = await getPullRequestEditedDiffRanges(branches, logger);
   if (ranges === undefined) {
     return false;
   }
-  writeDiffRangesJsonFile(logger, ranges);
+  writeDiffRangesJsonFile(logger, jsonFilePath, ranges);
   const distinctFiles = new Set(ranges.map((r) => r.path)).size;
   logger.info(
     `Persisted ${ranges.length} diff range(s) across ${distinctFiles} file(s).`,

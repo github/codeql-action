@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as actionsUtil from "../actions-util";
 import type { PullRequestBranches } from "../actions-util";
 import * as apiClient from "../api-client";
+import { getEnv } from "../environment";
 import { Feature, FeatureEnablement, initFeatures } from "../feature-flags";
 import { parseRepositoryNwo } from "../repository";
 import {
@@ -193,9 +194,10 @@ test.serial(
         .resolves({ type: GitHubVariant.DOTCOM });
 
       const result = await prepareDiffInformedAnalysis(
-        codeql,
-        features,
         logger,
+        features,
+        codeql,
+        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.false(result);
@@ -223,9 +225,10 @@ test.serial(
       };
 
       const result = await prepareDiffInformedAnalysis(
-        codeql,
-        features,
         logger,
+        features,
+        codeql,
+        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.false(result);
@@ -260,9 +263,10 @@ test.serial(
       } as any);
 
       const result = await prepareDiffInformedAnalysis(
-        codeql,
-        features,
         logger,
+        features,
+        codeql,
+        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.true(result);
@@ -297,9 +301,10 @@ test.serial(
       } as any);
 
       const result = await prepareDiffInformedAnalysis(
-        codeql,
-        features,
         logger,
+        features,
+        codeql,
+        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.false(result);

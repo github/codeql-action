@@ -6,7 +6,10 @@ import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
 import type { ActionState } from "./action-common";
-import { getTemporaryDirectory } from "./actions-util";
+import {
+  getDiffRangesJsonFilePath,
+  getTemporaryDirectory,
+} from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -292,7 +295,10 @@ export async function setupDiffInformedQueryRun(
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {
-      const diffRanges = readDiffRangesJsonFile(logger);
+      const diffRanges = readDiffRangesJsonFile(
+        logger,
+        getDiffRangesJsonFilePath(),
+      );
       if (diffRanges === undefined) {
         logger.info(
           "No precomputed diff ranges found; skipping diff-informed analysis stage.",

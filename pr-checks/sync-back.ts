@@ -52,7 +52,8 @@ type ScanWorkflowResult = {
  * Scan generated workflow files to extract the latest action versions.
  *
  * @param workflowDir - Path to .github/workflows directory
- * @returns Map from action names to their latest versions (including comments)
+ *
+ * @returns A {@link ScanWorkflowResult} object containing information about the extracted action versions.
  */
 export function scanGeneratedWorkflows(
   workflowDir: string,

@@ -10,12 +10,12 @@ import {
   scanArtifactsForTokens,
   TokenType,
 } from "./artifact-scanner";
-import { getRunnerLogger } from "./logging";
 import {
   checkExpectedLogMessages,
   getRecordingLogger,
   LoggedMessage,
   makeTestToken,
+  RecordingLogger,
 } from "./testing-utils";
 
 test("makeTestToken", (t) => {
@@ -121,7 +121,7 @@ for (const { type, value, checkPattern } of testTokens) {
 }
 
 test("scanArtifactsForTokens handles files without tokens", async (t) => {
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "scanner-test-"));
 
   try {

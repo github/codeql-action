@@ -6,8 +6,11 @@ import * as sinon from "sinon";
 
 import * as actionsUtil from "../actions-util";
 import * as gitUtils from "../git-utils";
-import { getRunnerLogger } from "../logging";
-import { createTestConfig, setupTests } from "../testing-utils";
+import {
+  createTestConfig,
+  RecordingLogger,
+  setupTests,
+} from "../testing-utils";
 import { withTmpDir } from "../util";
 
 import { writeBaseDatabaseOidsFile, writeOverlayChangesFile } from ".";
@@ -27,7 +30,7 @@ test.serial(
         ),
       );
 
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const config = createTestConfig({ dbLocation });
 
       // Mock the getFileOidsUnderPath function to return base OIDs
@@ -91,7 +94,7 @@ test.serial(
         ),
       );
 
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const config = createTestConfig({ dbLocation });
 
       // Mock the getFileOidsUnderPath function to return base OIDs
@@ -169,7 +172,7 @@ test.serial(
         ),
       );
 
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const config = createTestConfig({ dbLocation });
 
       // Mock the getFileOidsUnderPath function to return base OIDs
@@ -232,7 +235,7 @@ test.serial(
         ),
       );
 
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const config = createTestConfig({ dbLocation });
 
       // Base OIDs (sourceRoot-relative paths)

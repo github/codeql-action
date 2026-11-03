@@ -48,7 +48,7 @@ import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import { prepareDiffInformedAnalysis } from "./diff-informed";
 import { EnvVar, exportEnvVar, getEnv } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";

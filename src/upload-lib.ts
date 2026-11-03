@@ -13,7 +13,7 @@ import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import type { ActionConfig } from "./config/action-config";
-import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
+import { readDiffRangesJsonFile } from "./diff-informed";
 import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";

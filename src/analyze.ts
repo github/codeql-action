@@ -18,10 +18,7 @@ import {
   getJavaTempDependencyDir,
 } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
-import {
-  DiffThunkRange,
-  readDiffRangesJsonFile,
-} from "./diff-informed-analysis-utils";
+import { type DiffThunkRange, readDiffRangesJsonFile } from "./diff-informed";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { getGitRoot } from "./git-utils";

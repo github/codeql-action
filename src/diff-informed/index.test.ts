@@ -1,16 +1,11 @@
 import test, { ExecutionContext } from "ava";
 import * as sinon from "sinon";
 
-import * as actionsUtil from "./actions-util";
-import type { PullRequestBranches } from "./actions-util";
-import * as apiClient from "./api-client";
-import {
-  getDiffInformedAnalysisBranches,
-  prepareDiffInformedAnalysis,
-  exportedForTesting,
-} from "./diff-informed-analysis-utils";
-import { Feature, FeatureEnablement, initFeatures } from "./feature-flags";
-import { parseRepositoryNwo } from "./repository";
+import * as actionsUtil from "../actions-util";
+import type { PullRequestBranches } from "../actions-util";
+import * as apiClient from "../api-client";
+import { Feature, FeatureEnablement, initFeatures } from "../feature-flags";
+import { parseRepositoryNwo } from "../repository";
 import {
   setupTests,
   createFeatures,
@@ -19,9 +14,15 @@ import {
   setupActionsVars,
   makeMacro,
   RecordingLogger,
-} from "./testing-utils";
-import { GitHubVariant, withTmpDir } from "./util";
-import type { GitHubVersion } from "./util";
+} from "../testing-utils";
+import { GitHubVariant, withTmpDir } from "../util";
+import type { GitHubVersion } from "../util";
+
+import {
+  getDiffInformedAnalysisBranches,
+  prepareDiffInformedAnalysis,
+  exportedForTesting,
+} from ".";
 
 setupTests(test);
 

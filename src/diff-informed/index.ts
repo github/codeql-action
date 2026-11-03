@@ -13,11 +13,15 @@ import { getErrorMessage, GitHubVariant, satisfiesGHESVersion } from "../util";
  * This interface is an abbreviated version of the file diff object returned by
  * the GitHub API.
  */
-interface FileDiff {
+export interface FileDiff {
+  /** The name of the file that has changed. */
   filename: string;
+  /** The number of changes. */
   changes: number;
-  // A patch may be absent if the file is binary, if the file diff is too large,
-  // or if the file is unchanged.
+  /**
+   * The diff, if available. It may be absent if the file is binary, if the file diff is too large,
+   * or if the file is unchanged.
+   */
   patch?: string | undefined;
 }
 
@@ -93,13 +97,23 @@ export async function prepareDiffInformedAnalysis(
   }
 }
 
+/** Describes a changed line range in a file. */
 export interface DiffThunkRange {
   /** Relative path from the repository root, using forward slashes as separators. */
   path: string;
+  /** The starting line of the change (1-based and inclusive). */
   startLine: number;
+  /** The last line of the change (1-based and inclusive). */
   endLine: number;
 }
 
+/**
+ * Writes an array of {@link DiffThunkRange} objects to the file given by
+ * {@link actionsUtil.getDiffRangesJsonFilePath}.
+ *
+ * @param logger The logger to use.
+ * @param ranges The changed line ranges to write.
+ */
 export function writeDiffRangesJsonFile(
   logger: Logger,
   ranges: DiffThunkRange[],
@@ -112,6 +126,13 @@ export function writeDiffRangesJsonFile(
   );
 }
 
+/**
+ * Reads an array of {@link DiffThunkRange} objects from the file given by
+ * {@link actionsUtil.getDiffRangesJsonFilePath}.
+ *
+ * @param logger The logger to use.
+ * @returns The array of {@link DiffThunkRange} objects or `undefined` if the file couldn't be read.
+ */
 export function readDiffRangesJsonFile(
   logger: Logger,
 ): DiffThunkRange[] | undefined {
@@ -138,12 +159,12 @@ export function readDiffRangesJsonFile(
  * Return the file line ranges that were added or modified in the pull request.
  *
  * @param branches The base and head branches of the pull request.
- * @param logger
- * @returns An array of tuples, where each tuple contains the relative path of a
- * file (relative to the repository root, as returned by the GitHub compare API),
- * the start line and the end line (both 1-based and inclusive) of an
- * added or modified range in that file. Returns `undefined` if the action was
- * not triggered by a pull request or if there was an error.
+ * @param logger The logger to use.
+ *
+ * @returns
+ *  An array of {@link DiffThunkRange} objects, where each describes a line range in a file
+ *  that was changed in the pull request described by {@link branches} or `undefined` if
+ *  we were unable to compute them.
  */
 export async function getPullRequestEditedDiffRanges(
   branches: PullRequestBranches,
@@ -182,7 +203,8 @@ export async function getPullRequestEditedDiffRanges(
  *
  * @param branches The base and head branches of the pull request, as returned
  *   by `getDiffInformedAnalysisBranches`.
- * @param logger
+ * @param logger The logger to use.
+ *
  * @returns `true` if the diff ranges were successfully computed and persisted,
  *   otherwise `false`.
  */
@@ -203,6 +225,19 @@ export async function computeAndPersistDiffRanges(
   return true;
 }
 
+/**
+ * Fetch an array of {@link FileDiff} objects using the GitHub API describing the changed files
+ * in the pull request with the base and head refs given by {@link branches}.
+ *
+ * @param branches The pull request branch refs.
+ * @param logger The logger to use.
+ *
+ * @throws Non-HTTP errors that occur while fetching the file diffs.
+ *
+ * @returns
+ *  An array of {@link FileDiff} objects describing the changed files in the PR, or
+ *  `undefined` if we couldn't obtain the changed files from the API.
+ */
 async function getFileDiffsWithBasehead(
   branches: PullRequestBranches,
   logger: Logger,
@@ -243,6 +278,16 @@ async function getFileDiffsWithBasehead(
   }
 }
 
+/**
+ * Extracts an array of {@link DiffThunkRange} objects from {@link fileDiff}.
+ *
+ * @param fileDiff The {@link FileDiff} object describing changes to a particular file.
+ * @param logger The logger to use.
+ *
+ * @returns
+ *  The {@link DiffThunkRange} objects extracted from {@link fileDiff},
+ *  or `undefined` if there are none that could be extracted.
+ */
 function getDiffRanges(
   fileDiff: FileDiff,
   logger: Logger,

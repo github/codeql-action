@@ -11,7 +11,13 @@ import * as sinon from "sinon";
 import * as actionsUtil from "./actions-util";
 import * as api from "./api-client";
 import * as diagnostics from "./diagnostics";
-import { ActionsEnvVars, Env, EnvVar, ReadOnlyEnv } from "./environment";
+import {
+  ActionsEnvVars,
+  Env,
+  EnvVar,
+  getEnv,
+  ReadOnlyEnv,
+} from "./environment";
 import { Feature } from "./feature-flags";
 import { BuiltInLanguage } from "./languages";
 import { getCacheRestoreKeyPrefix } from "./overlay/caching";
@@ -37,18 +43,12 @@ import {
   setupTests,
 } from "./testing-utils";
 import * as toolsDownload from "./tools-download";
-import {
-  getErrorMessage,
-  GitHubVariant,
-  HTTPError,
-  initializeEnvironment,
-  withTmpDir,
-} from "./util";
+import { getErrorMessage, GitHubVariant, HTTPError, withTmpDir } from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment("1.2.3");
+  getEnv().initialise("1.2.3");
 });
 
 function stubDownloadAndExtract() {

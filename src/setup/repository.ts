@@ -2,13 +2,12 @@ import { ActionState } from "../action-common";
 import { isRunningLocalAction } from "../actions-util";
 import * as api from "../api-client";
 import { ActionsEnvVars } from "../environment";
-import { GITHUB_DOTCOM_URL } from "../github";
+import { GITHUB_DOTCOM_URL, type InstanceURL } from "../github";
 import {
   isRepositoryNwoStr,
   parseRepositoryNwo,
   type RepositoryNwoStr,
 } from "../repository";
-import { type InstanceURL } from "../util";
 
 /** The NWO of the standard CodeQL Action repository. */
 export const CODEQL_DEFAULT_ACTION_REPOSITORY = "github/codeql-action";

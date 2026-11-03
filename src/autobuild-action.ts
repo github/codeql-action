@@ -10,7 +10,7 @@ import { getGitHubVersion } from "./api-client";
 import { determineAutobuildLanguages, runAutobuild } from "./autobuild";
 import { getCodeQL } from "./codeql";
 import { Config, getConfig } from "./config-utils";
-import { EnvVar } from "./environment";
+import { EnvVar, type Env } from "./environment";
 import { Language } from "./languages";
 import { Logger } from "./logging";
 import {
@@ -26,7 +26,6 @@ import {
   checkDiskUsage,
   checkGitHubVersionInRange,
   ConfigurationError,
-  initializeEnvironment,
   wrapError,
 } from "./util";
 
@@ -38,6 +37,7 @@ interface AutobuildStatusReport extends StatusReportBase {
 }
 
 async function sendCompletedStatusReport(
+  env: Env,
   config: Config | undefined,
   logger: Logger,
   startedAt: Date,
@@ -45,7 +45,7 @@ async function sendCompletedStatusReport(
   failingLanguage?: string,
   cause?: Error,
 ) {
-  initializeEnvironment(getActionVersion());
+  env.initialise(getActionVersion());
 
   const status = getActionsStatus(cause, failingLanguage);
   const statusReportBase = await createStatusReportBase(
@@ -129,6 +129,7 @@ async function run({
       `We were unable to automatically build your code. Please replace the call to the autobuild action with your custom build steps. ${error.message}`,
     );
     await sendCompletedStatusReport(
+      env,
       config,
       logger,
       startedAt,
@@ -141,7 +142,13 @@ async function run({
 
   env.export(EnvVar.AUTOBUILD_DID_COMPLETE_SUCCESSFULLY, "true");
 
-  await sendCompletedStatusReport(config, logger, startedAt, languages ?? []);
+  await sendCompletedStatusReport(
+    env,
+    config,
+    logger,
+    startedAt,
+    languages ?? [],
+  );
 }
 
 /** Defines the `autobuild` Action. */

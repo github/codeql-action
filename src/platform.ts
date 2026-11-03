@@ -1,5 +1,7 @@
 import fs from "fs";
 
+import * as toolrunner from "@actions/exec/lib/toolrunner";
+import * as io from "@actions/io";
 import * as semver from "semver";
 
 import type { ActionState, Logger } from "./action-common";
@@ -68,12 +70,15 @@ export const XCODE_APP_FILENAME_PATTERN = new RegExp(
 );
 
 /**
- * Tries to determine the version of Xcode that is installed.
+ * Tries to determine the version of Xcode that is installed from the resolved symbolic link
+ * at {@link XCODE_SELECT_LINK_PATH}.
  *
  * @param logger The logger to use.
  * @returns The Xcode version or `undefined` if it couldn't be determined.
  */
-export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
+export function xcodeVersionFromLink(
+  logger: Logger,
+): semver.SemVer | undefined {
   try {
     // Read what the symbolic link points to. This will throw if `XCODE_SELECT_LINK_PATH` does not
     // exist (`ENOENT`) or is not a symbolic link (`EINVAL`).
@@ -106,6 +111,135 @@ export function xcodeVersion(logger: Logger): semver.SemVer | undefined {
     return version;
   } catch (err) {
     logger.debug(`Unable to determine Xcode version: ${getErrorMessage(err)}`);
+    return undefined;
+  }
+}
+
+/**
+ * Tries to determine the version of Xcode that is installed by running `xcrun xcodebuild -version`.
+ *
+ * @param logger The logger to use.
+ * @returns The Xcode version or `undefined` if it couldn't be determined.
+ */
+export async function xcodeVersionFromXcodeBuild(
+  logger: Logger,
+): Promise<semver.SemVer | undefined> {
+  try {
+    const xcrun = await io.which("xcrun", true);
+    let stdout = "";
+    let stderr = "";
+
+    const exitCode = await new toolrunner.ToolRunner(
+      xcrun,
+      ["xcodebuild", "-version"],
+      {
+        silent: true,
+        ignoreReturnCode: true,
+        listeners: {
+          stdout: (data: Buffer) => {
+            stdout += data.toString("utf-8");
+          },
+          stderr: (data: Buffer) => {
+            stderr += data.toString("utf-8");
+          },
+        },
+      },
+    ).exec();
+
+    if (exitCode !== 0) {
+      logger.debug(`xcodebuild returned exit code ${exitCode}`);
+      logger.debug(`stdout:\n${stdout}`);
+      logger.debug(`stderr:\n${stderr}`);
+      return undefined;
+    }
+
+    // The output contains a couple of lines, but we only care about the product version.
+    const match = stdout.match(/^Xcode (\d+(\.\d+)?)/);
+
+    if (match === null) {
+      logger.debug(
+        `Output doesn't appear to contain the Xcode product version.`,
+      );
+      logger.debug(`stdout:\n${stdout}`);
+      logger.debug(`stderr:\n${stderr}`);
+      return undefined;
+    }
+
+    // We expect the output to only be a version string. Try to parse it into a semver.
+    const version = semver.coerce(match[1].trim());
+
+    if (version === null) {
+      logger.debug(
+        `xcodebuild's output couldn't be parsed as a version:\n${stdout}`,
+      );
+      logger.debug(`stderr:\n${stderr}`);
+      return undefined;
+    }
+
+    return version;
+  } catch (err) {
+    logger.debug(
+      `Unable to determine Xcode version from xcodebuild: ${getErrorMessage(err)}`,
+    );
+    return undefined;
+  }
+}
+
+/**
+ * Tries to determine the version of the Xcode SDK that is installed by running
+ * `xcrun --sdk macosx --show-sdk-version`.
+ *
+ * @param logger The logger to use.
+ * @returns The Xcode SDK version or `undefined` if it couldn't be determined.
+ */
+export async function xcodeSdkVersion(
+  logger: Logger,
+): Promise<semver.SemVer | undefined> {
+  try {
+    const xcrun = await io.which("xcrun", true);
+    let stdout = "";
+    let stderr = "";
+
+    const exitCode = await new toolrunner.ToolRunner(
+      xcrun,
+      ["--sdk", "macosx", "--show-sdk-version"],
+      {
+        silent: true,
+        ignoreReturnCode: true,
+        listeners: {
+          stdout: (data: Buffer) => {
+            stdout += data.toString("utf-8");
+          },
+          stderr: (data: Buffer) => {
+            stderr += data.toString("utf-8");
+          },
+        },
+      },
+    ).exec();
+
+    if (exitCode !== 0) {
+      logger.debug(`xcrun returned exit code ${exitCode}`);
+      logger.debug(`stdout:\n${stdout}`);
+      logger.debug(`stderr:\n${stderr}`);
+      return undefined;
+    }
+
+    // We expect the output to only be a version string. Try to parse it into a semver.
+    const version = semver.coerce(stdout.trim());
+
+    if (version === null) {
+      logger.debug(
+        `xcrun's output couldn't be parsed as a version:\n${stdout}`,
+      );
+      logger.debug(`stderr:\n${stderr}`);
+      return undefined;
+    }
+
+    return version;
+  } catch (err) {
+    logger.debug(
+      `Unable to determine Xcode SDK version: ${getErrorMessage(err)}`,
+    );
     return undefined;
   }
 }

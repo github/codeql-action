@@ -34,28 +34,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
             analysis-kinds: code-scanning
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
             analysis-kinds: code-quality
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
             analysis-kinds: code-scanning,code-quality
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
             analysis-kinds: risk-assessment
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
             analysis-kinds: code-scanning
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
             analysis-kinds: code-quality
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
             analysis-kinds: code-scanning,code-quality
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: nightly-latest
             analysis-kinds: risk-assessment
     name: Analysis kinds

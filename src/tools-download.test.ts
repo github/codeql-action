@@ -10,9 +10,9 @@ import { https } from "follow-redirects";
 import nock from "nock";
 import * as sinon from "sinon";
 
-import { getRunnerLogger } from "./logging";
+import * as errors from "./errors";
 import * as tar from "./tar";
-import { setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests } from "./testing-utils";
 import { downloadAndExtract } from "./tools-download";
 import * as util from "./util";
 
@@ -34,7 +34,7 @@ test.serial(
         undefined,
         {},
         undefined,
-        getRunnerLogger(true),
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
@@ -71,8 +71,8 @@ test.serial(
         destination,
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        { type: "gnu", version: "1.34", path: "tar" },
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
@@ -104,8 +104,8 @@ test.serial(
           destination,
           undefined,
           {},
-          { type: "gnu", version: "1.34" },
-          getRunnerLogger(true),
+          { type: "gnu", version: "1.34", path: "tar" },
+          new RecordingLogger(),
         ),
         {
           instanceOf: util.HTTPError,
@@ -148,8 +148,8 @@ test.serial(
         destination,
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        { type: "gnu", version: "1.34", path: "tar" },
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.downloadDurationMs));
@@ -164,7 +164,7 @@ test.serial(
 test.serial(
   "downloadAndExtract handles an unknown status as a non-HTTP error",
   async (t) => {
-    const asHTTPError = sinon.spy(util, "asHTTPError");
+    const asHTTPError = sinon.spy(errors, "asHTTPError");
     await util.withTmpDir(async (tmpDir) => {
       sinon.stub(process, "platform").value("linux");
       const archivePath = path.join(tmpDir, "codeql-bundle.tar.zst");
@@ -188,8 +188,8 @@ test.serial(
         destination,
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        { type: "gnu", version: "1.34", path: "tar" },
+        new RecordingLogger(),
       );
 
       t.is(
@@ -236,8 +236,8 @@ test.serial(
         path.join(tmpDir, "codeql"),
         undefined,
         {},
-        { type: "gnu", version: "1.34" },
-        getRunnerLogger(true),
+        { type: "gnu", version: "1.34", path: "tar" },
+        new RecordingLogger(),
       );
 
       t.assert(Number.isInteger(statusReport.totalDurationMs));

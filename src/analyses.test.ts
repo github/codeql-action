@@ -15,7 +15,6 @@ import {
   supportedAnalysisKinds,
 } from "./analyses";
 import { EnvVar } from "./environment";
-import { getRunnerLogger } from "./logging";
 import {
   createFeatures,
   RecordingLogger,
@@ -65,7 +64,7 @@ test.serial(
       .withArgs("analysis-kinds")
       .returns("code-scanning,code-quality");
     const result = await getAnalysisKinds(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       features,
       true,
     );
@@ -139,7 +138,7 @@ test.serial(
     const optionalInputStub = sinon.stub(actionsUtil, "getOptionalInput");
     optionalInputStub.withArgs("quality-queries").returns("code-quality");
     const result = await getAnalysisKinds(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       features,
       true,
     );
@@ -155,7 +154,7 @@ test.serial(
     const requiredInputStub = sinon.stub(actionsUtil, "getRequiredInput");
     requiredInputStub.withArgs("analysis-kinds").returns("no-such-thing");
     await t.throwsAsync(
-      getAnalysisKinds(getRunnerLogger(true), features, true),
+      getAnalysisKinds(new RecordingLogger(), features, true),
     );
   },
 );
@@ -181,7 +180,7 @@ for (let i = 0; i < analysisKinds.length; i++) {
             .withArgs("analysis-kinds")
             .returns([analysisKind, otherAnalysis].join(","));
           const result = await getAnalysisKinds(
-            getRunnerLogger(true),
+            new RecordingLogger(),
             features,
             true,
           );
@@ -199,7 +198,7 @@ for (let i = 0; i < analysisKinds.length; i++) {
             .withArgs("analysis-kinds")
             .returns([analysisKind, otherAnalysis].join(","));
           await t.throwsAsync(
-            getAnalysisKinds(getRunnerLogger(true), features, true),
+            getAnalysisKinds(new RecordingLogger(), features, true),
             {
               instanceOf: ConfigurationError,
               message: `${analysisKind} and ${otherAnalysis} cannot be enabled at the same time`,

@@ -60,7 +60,6 @@ on:
       - "PR Check - Proxy test"
       - "PR Check - Remote config file"
       - "PR Check - Resolve environment"
-      - "PR Check - RuboCop multi-language"
       - "PR Check - Ruby analysis"
       - "PR Check - Rust analysis"
       - "PR Check - Split workflow"

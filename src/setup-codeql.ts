@@ -183,27 +183,14 @@ async function findOverridingToolsInCache(
 
 /**
  * Returns the sorted set of enabled versions that have cached overlay-base databases for the
- * given languages, or an empty list if neither the `OverlayAnalysisMatchCodeqlVersion` nor the
- * `OverlayAnalysisMatchCodeqlVersionDryRun` feature flag is enabled. When only the dry-run flag
- * is enabled, this performs the lookup and emits a telemetry diagnostic with the version that
- * would have been chosen, but still returns an empty list so the caller falls back.
+ * given languages.
  */
 export async function getEnabledVersionsWithOverlayBaseDatabases(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLVersionInfo[]> {
   if (rawLanguages === undefined || rawLanguages.length === 0) {
-    return [];
-  }
-  const isEnabled = await features.getValue(
-    Feature.OverlayAnalysisMatchCodeqlVersion,
-  );
-  const isDryRun =
-    !isEnabled &&
-    (await features.getValue(Feature.OverlayAnalysisMatchCodeqlVersionDryRun));
-  if (!isEnabled && !isDryRun) {
     return [];
   }
 
@@ -226,66 +213,35 @@ export async function getEnabledVersionsWithOverlayBaseDatabases(
   }
 
   const cachedVersionsSet = new Set(cachedVersions);
-  const overlayVersions = defaultCliVersion.enabledVersions.filter((v) =>
+  return defaultCliVersion.enabledVersions.filter((v) =>
     cachedVersionsSet.has(v.cliVersion),
   );
-
-  if (overlayVersions.length === 0) {
-    return [];
-  }
-
-  const isCachedVersionDifferent =
-    overlayVersions[0].cliVersion !==
-    defaultCliVersion.enabledVersions[0].cliVersion;
-
-  if (isCachedVersionDifferent) {
-    addNoLanguageDiagnostic(
-      undefined,
-      makeTelemetryDiagnostic(
-        "codeql-action/overlay-aware-default-codeql-version",
-        "Overlay-aware default CodeQL version selection",
-        {
-          cachedVersions,
-          enabledVersions: defaultCliVersion.enabledVersions.map(
-            (v) => v.cliVersion,
-          ),
-          isDryRun,
-          overlayAwareVersion: overlayVersions[0].cliVersion,
-        },
-      ),
-    );
-  }
-
-  if (isDryRun) {
-    logger.debug(
-      `Overlay-aware default CodeQL version selection is running in dry-run mode. Would have used version ${overlayVersions[0].cliVersion}.`,
-    );
-    return [];
-  }
-
-  return overlayVersions;
 }
 
 /**
  * Resolves the newest enabled default CLI version that has a cached overlay-base database for the
- * relevant languages, if running a Code Scanning analysis for a pull request and one exists.
- * Otherwise, falls back to the newest enabled default CLI version.
+ * relevant languages, if this is a Code Scanning analysis of a pull request, multiple default
+ * versions are enabled, and such a version exists. Otherwise, falls back to the newest enabled
+ * default CLI version.
  */
 async function resolveDefaultCliVersion(
   defaultCliVersion: CodeQLDefaultVersionInfo,
   rawLanguages: string[] | undefined,
   useOverlayAwareDefaultCliVersion: boolean,
-  features: FeatureEnablement,
   logger: Logger,
 ): Promise<CodeQLVersionInfo> {
-  if (!useOverlayAwareDefaultCliVersion || !isAnalyzingPullRequest()) {
+  if (
+    !useOverlayAwareDefaultCliVersion ||
+    // Listing the Actions cache can't change which version we use if only one version is enabled.
+    defaultCliVersion.enabledVersions.length === 1 ||
+    !isAnalyzingPullRequest()
+  ) {
     return defaultCliVersion.enabledVersions[0];
   }
 
   const overlayVersions = await getEnabledVersionsWithOverlayBaseDatabases(
     defaultCliVersion,
     rawLanguages,
-    features,
     logger,
   );
   if (overlayVersions.length > 0) {
@@ -408,7 +364,7 @@ export async function getCodeQLSource(
       );
     }
     bundle = await getLatestNightlyBundle(
-      { env: getEnv(), features, logger },
+      { env: getEnv(), logger },
       rawLanguages,
       otherLanguagePacksReason,
       variant,
@@ -482,7 +438,6 @@ export async function getCodeQLSource(
         defaultCliVersion,
         rawLanguages,
         useOverlayAwareDefaultCliVersion,
-        features,
         logger,
       );
       cliVersion = version.cliVersion;
@@ -505,7 +460,6 @@ export async function getCodeQLSource(
       defaultCliVersion,
       rawLanguages,
       useOverlayAwareDefaultCliVersion,
-      features,
       logger,
     );
     cliVersion = version.cliVersion;
@@ -651,17 +605,14 @@ export async function getCodeQLSource(
 
     const action = { env: getEnv(), logger };
     const platform = getBundlePlatform();
-    const perLanguageBundleLanguage = await getPerLanguageBundleLanguage(
-      { ...action, features },
-      {
-        rawLanguages,
-        otherLanguagePacksReason,
-        cliVersion,
-        compressionMethod,
-        platform,
-        variant,
-      },
-    );
+    const perLanguageBundleLanguage = getPerLanguageBundleLanguage(action, {
+      rawLanguages,
+      otherLanguagePacksReason,
+      cliVersion,
+      compressionMethod,
+      platform,
+      variant,
+    });
 
     // Resolves the combined or per-language bundle URL for the requested release.
     const resolveBundleURL = (language?: BuiltInLanguage) =>
@@ -1089,7 +1040,7 @@ function getTempExtractionDir(tempDir: string) {
  * Records the combined bundle URL from that release for use if the selected asset is missing.
  */
 async function getLatestNightlyBundle(
-  action: ActionState<["Logger", "ReadOnlyEnv", "FeatureFlags"]>,
+  action: ActionState<["Logger", "ReadOnlyEnv"]>,
   rawLanguages: string[] | undefined,
   otherLanguagePacksReason: string | undefined,
   variant: util.GitHubVariant,
@@ -1105,7 +1056,7 @@ async function getLatestNightlyBundle(
     : "gzip";
 
   const platform = getBundlePlatform();
-  const language = await getPerLanguageBundleLanguage(action, {
+  const language = getPerLanguageBundleLanguage(action, {
     rawLanguages,
     otherLanguagePacksReason,
     cliVersion: undefined,

@@ -24,7 +24,6 @@ import {
   ConfigurationError,
   checkActionVersion,
   checkDiskUsage,
-  initializeEnvironment,
   shouldSkipSarifUpload,
   wrapError,
 } from "./util";
@@ -55,11 +54,13 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
+async function run(action: ActionState<["Base", "Env", "Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const logger = action.logger;
+
   try {
-    initializeEnvironment(getActionVersion());
+    action.env.initialise(getActionVersion());
 
     const gitHubVersion = await getGitHubVersion();
     checkActionVersion(getActionVersion(), gitHubVersion);
@@ -79,7 +80,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     const startingStatusReportBase = await createStatusReportBase(
       ActionName.UploadSarif,
       "starting",
-      startedAt,
+      action.startedAt,
       undefined,
       await checkDiskUsage(logger),
       logger,
@@ -137,7 +138,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       // so we can't wait for that here.
     }
     await sendSuccessStatusReport(
-      startedAt,
+      action.startedAt,
       codeScanningResult?.statusReport || {},
       logger,
     );
@@ -153,7 +154,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     const errorStatusReportBase = await createStatusReportBase(
       ActionName.UploadSarif,
       getActionsStatus(error),
-      startedAt,
+      action.startedAt,
       undefined,
       await checkDiskUsage(logger),
       logger,

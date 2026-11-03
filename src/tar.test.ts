@@ -3,9 +3,8 @@ import * as stream from "stream";
 
 import test from "ava";
 
-import { getRunnerLogger } from "./logging";
 import { extractTarZst } from "./tar";
-import { setupTests } from "./testing-utils";
+import { RecordingLogger, setupTests } from "./testing-utils";
 import { withTmpDir } from "./util";
 
 setupTests(test);
@@ -16,8 +15,8 @@ test("extractTarZst rejects if the input stream errors", async (t) => {
     const promise = extractTarZst(
       archive,
       path.join(tmpDir, "dest"),
-      { type: "gnu", version: "1.34" },
-      getRunnerLogger(true),
+      { type: "gnu", version: "1.34", path: "tar" },
+      new RecordingLogger(),
     );
 
     archive.destroy(

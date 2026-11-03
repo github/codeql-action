@@ -34,11 +34,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             version: linked
-          - os: macos-latest
+          - os: macos-26
             version: linked
-          - os: windows-latest
+          - os: windows-2025
             version: linked
     name: Start proxy
     if: github.triggering_actor != 'dependabot[bot]'

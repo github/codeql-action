@@ -276,9 +276,7 @@ export function getArtifactSuffix(matrix: string | undefined): string {
 
 // Enumerates different, possible outcomes for artifact uploads.
 export type UploadArtifactsResult =
-  | "no-artifacts-to-upload"
-  | "upload-successful"
-  | "upload-failed";
+  "no-artifacts-to-upload" | "upload-successful" | "upload-failed";
 
 /**
  * Uploads the specified files as a single workflow artifact.

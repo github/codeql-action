@@ -1,6 +1,6 @@
-name: 'CodeQL: Setup'
-description: 'Installs the CodeQL CLI'
-author: 'GitHub'
+name: "CodeQL: Setup"
+description: "Installs the CodeQL CLI"
+author: "GitHub"
 inputs:
   tools:
     description: >-
@@ -33,7 +33,7 @@ inputs:
       suited to those analysis kinds.
 
       Available options are the same as for the `analysis-kinds` input on the `init` Action.
-    default: 'code-scanning'
+    default: "code-scanning"
     required: true
   token:
     description: GitHub token to use for authenticating with this instance of GitHub.
@@ -51,5 +51,10 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary that was installed.
 runs:
+<<<<<<< HEAD
   using: node20
   main: '../lib/setup-codeql-entry.js'
+=======
+  using: node24
+  main: "../lib/setup-codeql-entry.js"
+>>>>>>> origin/releases/v4

@@ -488,10 +488,10 @@ export interface AssertableTarget<R> {
 }
 
 class CallableEnvBuilder<
-    Args extends readonly any[],
-    R,
-    Fs extends ReadonlyArray<AllState[number]>,
-  >
+  Args extends readonly any[],
+  R,
+  Fs extends ReadonlyArray<AllState[number]>,
+>
   extends BaseEnvBuilder<Args, R, Fs>
   implements AssertableTarget<R>
 {

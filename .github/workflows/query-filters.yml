@@ -3,13 +3,13 @@ name: Query filters tests
 on:
   push:
     branches:
-    - main
-    - releases/v*
+      - main
+      - releases/v*
   pull_request:
   merge_group:
     types: [checks_requested]
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -29,47 +29,47 @@ jobs:
     permissions:
       contents: read # This permission is needed to allow the GitHub Actions workflow to read the contents of the repository.
     steps:
-    - name: Check out repository
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-    - name: Install Node.js
-      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-      with:
-        node-version: 24
-        cache: npm
+      - name: Install Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Prepare test
-      id: prepare-test
-      uses: ./.github/actions/prepare-test
-      with:
-        version: linked
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: linked
 
-    - name: Check SARIF for default queries with Single include, Single exclude
-      uses: ./../action/.github/actions/query-filter-test
-      with:
-        sarif-file:  ${{ runner.temp }}/results/javascript.sarif
-        queries-run: js/zipslip
-        queries-not-run: js/path-injection
-        config-file: ./.github/codeql/codeql-config-query-filters1.yml
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check SARIF for default queries with Single include, Single exclude
+        uses: ./../action/.github/actions/query-filter-test
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: js/zipslip
+          queries-not-run: js/path-injection
+          config-file: ./.github/codeql/codeql-config-query-filters1.yml
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-    - name: Check SARIF for query packs with Single include, Single exclude
-      uses: ./../action/.github/actions/query-filter-test
-      with:
-        sarif-file:  ${{ runner.temp }}/results/javascript.sarif
-        queries-run: js/zipslip,javascript/example/empty-or-one-block
-        queries-not-run: js/path-injection
-        config-file: ./.github/codeql/codeql-config-query-filters2.yml
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check SARIF for query packs with Single include, Single exclude
+        uses: ./../action/.github/actions/query-filter-test
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: js/zipslip,javascript/example/empty-or-one-block
+          queries-not-run: js/path-injection
+          config-file: ./.github/codeql/codeql-config-query-filters2.yml
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
 
-    - name: Check SARIF for query packs and local queries with Single include, Single exclude
-      uses: ./../action/.github/actions/query-filter-test
-      with:
-        sarif-file:  ${{ runner.temp }}/results/javascript.sarif
-        queries-run: js/zipslip,javascript/example/empty-or-one-block,inrepo-javascript-querypack/show-ifs
-        queries-not-run: js/path-injection,complex-python-querypack/show-ifs,complex-python-querypack/foo/bar/show-ifs
-        config-file: ./.github/codeql/codeql-config-query-filters3.yml
-        tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check SARIF for query packs and local queries with Single include, Single exclude
+        uses: ./../action/.github/actions/query-filter-test
+        with:
+          sarif-file: ${{ runner.temp }}/results/javascript.sarif
+          queries-run: js/zipslip,javascript/example/empty-or-one-block,inrepo-javascript-querypack/show-ifs
+          queries-not-run: js/path-injection,complex-python-querypack/show-ifs,complex-python-querypack/foo/bar/show-ifs
+          config-file: ./.github/codeql/codeql-config-query-filters3.yml
+          tools: ${{ steps.prepare-test.outputs.tools-url }}

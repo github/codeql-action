@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs: {}
   workflow_call:
@@ -73,8 +73,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: ./../action/init
         with:
           languages: javascript
@@ -82,16 +82,16 @@ jobs:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
       - uses: ./../action/analyze
         with:
-          output: '${{ runner.temp }}/results'
+          output: "${{ runner.temp }}/results"
           upload-database: false
-          post-processed-sarif-path: '${{ runner.temp }}/post-processed'
+          post-processed-sarif-path: "${{ runner.temp }}/post-processed"
 
       - name: Upload SARIF files
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: |
             analysis-kinds-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}
-          path: '${{ runner.temp }}/results/*.sarif'
+          path: "${{ runner.temp }}/results/*.sarif"
           retention-days: 7
 
       - name: Upload post-processed SARIF
@@ -99,7 +99,7 @@ jobs:
         with:
           name: |
             post-processed-${{ matrix.os }}-${{ matrix.version }}-${{ matrix.analysis-kinds }}
-          path: '${{ runner.temp }}/post-processed'
+          path: "${{ runner.temp }}/post-processed"
           retention-days: 7
           if-no-files-found: error
 
@@ -107,16 +107,16 @@ jobs:
         if: contains(matrix.analysis-kinds, 'code-scanning')
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         env:
-          SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'
-          EXPECT_PRESENT: 'false'
+          SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
+          EXPECT_PRESENT: "false"
         with:
           script: ${{ env.CHECK_SCRIPT }}
       - name: Check quality query appears in quality SARIF
         if: contains(matrix.analysis-kinds, 'code-quality')
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
         env:
-          SARIF_PATH: '${{ runner.temp }}/results/javascript.quality.sarif'
-          EXPECT_PRESENT: 'true'
+          SARIF_PATH: "${{ runner.temp }}/results/javascript.quality.sarif"
+          EXPECT_PRESENT: "true"
         with:
           script: ${{ env.CHECK_SCRIPT }}
     env:

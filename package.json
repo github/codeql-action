@@ -1,11 +1,12 @@
 {
   "name": "codeql",
-  "version": "3.39.2",
+  "version": "3.39.3",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
     "_build_comment": "echo 'Run the full build so we typecheck the project and can reuse the transpiled files in npm test'",
     "build": "./scripts/check-node-modules.sh && npm run transpile && node build.mjs",
+    "format-yaml": "prettier --write --parser yaml '**/*.{yml,yaml}'",
     "lint": "eslint --report-unused-disable-directives --max-warnings=0 .",
     "lint-ci": "SARIF_ESLINT_IGNORE_SUPPRESSED=true eslint --report-unused-disable-directives --max-warnings=0 . --format @microsoft/eslint-formatter-sarif --output-file=eslint.sarif",
     "lint-fix": "eslint --report-unused-disable-directives --max-warnings=0 . --fix",
@@ -42,7 +43,7 @@
     "js-yaml": "^5.5.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
-    "node-forge": "^1.4.0",
+    "node-forge": "^1.4.1",
     "semver": "^7.8.5",
     "undici": "^7.30.1",
     "uuid": "^14.0.3"
@@ -68,9 +69,10 @@
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-jsdoc": "^65.4.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "glob": "^13.0.6",
+    "glob": "^14.0.3",
     "globals": "^17.13.0",
     "nock": "^14.0.17",
+    "prettier": "^3.9.10",
     "sinon": "^22.1.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0"
@@ -94,7 +96,7 @@
     "eslint-plugin-jsx-a11y": {
       "semver": ">=6.3.1"
     },
-    "glob": "^13.0.6",
+    "glob": "^14.0.3",
     "undici": "^7.30.1"
   }
 }

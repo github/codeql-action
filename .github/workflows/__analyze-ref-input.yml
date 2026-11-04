@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dotnet-version:
@@ -29,7 +29,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
   workflow_call:
     inputs:
       dotnet-version:
@@ -41,7 +41,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
 defaults:
   run:
     shell: bash
@@ -80,8 +80,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - uses: ./../action/init
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
@@ -91,7 +91,7 @@ jobs:
         run: ./build.sh
       - uses: ./../action/analyze
         with:
-          ref: 'refs/heads/main'
-          sha: '5e235361806c361d4d3f8859e3c897658025a9a2'
+          ref: "refs/heads/main"
+          sha: "5e235361806c361d4d3f8859e3c897658025a9a2"
     env:
       CODEQL_ACTION_TEST_MODE: true

@@ -1,11 +1,11 @@
-name: 'Release branches'
-description: 'Determine branches for release & backport'
+name: "Release branches"
+description: "Determine branches for release & backport"
 inputs:
   major_version:
-    description: 'The version as extracted from the package.json file'
+    description: "The version as extracted from the package.json file"
     required: true
   latest_tag:
-    description: 'The most recent tag published to the repository'
+    description: "The most recent tag published to the repository"
     required: true
 outputs:
   backport_source_branch:

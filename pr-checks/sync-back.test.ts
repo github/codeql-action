@@ -56,9 +56,18 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
-    assert.equal(result["actions/setup-node"], "v5");
-    assert.equal(result["actions/setup-go"], "v6");
+    assert.deepEqual(
+      result.actionVersions["actions/checkout"],
+      new Set(["v4"]),
+    );
+    assert.deepEqual(
+      result.actionVersions["actions/setup-node"],
+      new Set(["v5"]),
+    );
+    assert.deepEqual(
+      result.actionVersions["actions/setup-go"],
+      new Set(["v6"]),
+    );
   });
 
   await it("scanning workflows with version comments", () => {
@@ -78,12 +87,18 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
-    assert.equal(
-      result["ruby/setup-ruby"],
-      "44511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
+    assert.deepEqual(
+      result.actionVersions["actions/checkout"],
+      new Set(["v4"]),
     );
-    assert.equal(result["actions/setup-python"], "v6 # Latest Python");
+    assert.deepEqual(
+      result.actionVersions["ruby/setup-ruby"],
+      new Set(["44511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0"]),
+    );
+    assert.deepEqual(
+      result.actionVersions["actions/setup-python"],
+      new Set(["v6 # Latest Python"]),
+    );
   });
 
   await it("ignores local actions", () => {
@@ -103,9 +118,15 @@ jobs:
 
     const result = scanGeneratedWorkflows(workflowDir);
 
-    assert.equal(result["actions/checkout"], "v4");
-    assert.equal("./.github/actions/local-action" in result, false);
-    assert.equal("./another-local-action" in result, false);
+    assert.deepEqual(
+      result.actionVersions["actions/checkout"],
+      new Set(["v4"]),
+    );
+    assert.equal(
+      "./.github/actions/local-action" in result.actionVersions,
+      false,
+    );
+    assert.equal("./another-local-action" in result.actionVersions, false);
   });
 });
 
@@ -128,8 +149,8 @@ const steps = [
     fs.writeFileSync(syncTsPath, syncTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5",
-      "actions/setup-go": "v6",
+      "actions/setup-node": new Set(["v5"]),
+      "actions/setup-go": new Set(["v6"]),
     };
 
     const result = updateSyncTs(syncTsPath, actionVersions);
@@ -155,7 +176,7 @@ const steps = [
     fs.writeFileSync(syncTsPath, syncTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5 # Latest version",
+      "actions/setup-node": new Set(["v5 # Latest version"]),
     };
 
     const result = updateSyncTs(syncTsPath, actionVersions);
@@ -182,7 +203,7 @@ const steps = [
     fs.writeFileSync(syncTsPath, syncTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "v5",
+      "actions/setup-node": new Set(["v5"]),
     };
 
     const result = updateSyncTs(syncTsPath, actionVersions);
@@ -206,7 +227,9 @@ const steps = [
     fs.writeFileSync(syncTsPath, syncTsContent);
 
     const actionVersions = {
-      "actions/setup-node": "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0",
+      "actions/setup-node": new Set([
+        "48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0",
+      ]),
     };
 
     const result = updateSyncTs(syncTsPath, actionVersions);
@@ -244,8 +267,9 @@ steps:
       "actions/checkout": "v4",
       "actions/setup-node": "v5 # Latest",
     };
+    const byWorkflow = { ["test.yml"]: actionVersions };
 
-    const result = updateTemplateFiles(checksDir, actionVersions);
+    const result = updateTemplateFiles(checksDir, byWorkflow);
     assert.equal(result.length, 1);
     assert.ok(result.includes(templatePath));
 
@@ -269,8 +293,9 @@ steps:
     const actionVersions = {
       "ruby/setup-ruby": "55511735964dcb71245e7e55f72539531f7bc0eb # v1.257.0",
     };
+    const byWorkflow = { ["test.yml"]: actionVersions };
 
-    const result = updateTemplateFiles(checksDir, actionVersions);
+    const result = updateTemplateFiles(checksDir, byWorkflow);
     assert.equal(result.length, 1);
 
     const updatedContent = fs.readFileSync(templatePath, "utf8");

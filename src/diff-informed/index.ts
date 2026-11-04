@@ -1,13 +1,29 @@
 import * as fs from "fs";
+import path from "path";
 
 import * as actionsUtil from "../actions-util";
 import type { PullRequestBranches } from "../actions-util";
 import { getApiClient, getGitHubVersion } from "../api-client";
 import type { CodeQL } from "../codeql";
-import { Feature, FeatureEnablement } from "../feature-flags";
+import { type Env, getEnv } from "../environment";
+import type { FeatureEnablement } from "../feature-flags";
+import { Feature } from "../feature-flags/features";
 import { Logger } from "../logging";
 import { getRepositoryNwoFromEnv } from "../repository";
 import { getErrorMessage, GitHubVariant, satisfiesGHESVersion } from "../util";
+
+/** The filename used to persist PR diff ranges. */
+const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";
+
+/**
+ * Gets the full path of the file used to persist PR diff ranges.
+ */
+export function getDiffRangesJsonFilePath(env: Env = getEnv()): string {
+  return path.join(
+    actionsUtil.getTemporaryDirectory(env),
+    PR_DIFF_RANGE_JSON_FILENAME,
+  );
+}
 
 /**
  * This interface is an abbreviated version of the file diff object returned by

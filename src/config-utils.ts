@@ -7,7 +7,6 @@ import * as yaml from "js-yaml";
 import { ActionState } from "./action-common";
 import {
   getActionVersion,
-  getDiffRangesJsonFilePath,
   getOptionalInput,
   isAnalyzingPullRequest,
   isDefaultSetup,
@@ -49,7 +48,10 @@ import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { prepareDiffInformedAnalysis } from "./diff-informed";
+import {
+  getDiffRangesJsonFilePath,
+  prepareDiffInformedAnalysis,
+} from "./diff-informed";
 import { EnvVar, exportEnvVar, getEnv } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";

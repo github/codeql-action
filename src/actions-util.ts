@@ -78,16 +78,6 @@ export function getTemporaryDirectory(env: ReadOnlyEnv = getEnv()): string {
   );
 }
 
-/** The filename used to persist PR diff ranges. */
-const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";
-
-/**
- * Gets the full path of the file used to persist PR diff ranges.
- */
-export function getDiffRangesJsonFilePath(env: Env = getEnv()): string {
-  return path.join(getTemporaryDirectory(env), PR_DIFF_RANGE_JSON_FILENAME);
-}
-
 export function getActionVersion(): string {
   return __CODEQL_ACTION_VERSION__;
 }

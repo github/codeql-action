@@ -23,6 +23,7 @@ import {
   getDiffInformedAnalysisBranches,
   prepareDiffInformedAnalysis,
   exportedForTesting,
+  getDiffRangesJsonFilePath,
 } from ".";
 
 setupTests(test);
@@ -197,7 +198,7 @@ test.serial(
         logger,
         features,
         codeql,
-        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
+        getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.false(result);
@@ -228,7 +229,7 @@ test.serial(
         logger,
         features,
         codeql,
-        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
+        getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.false(result);
@@ -266,7 +267,7 @@ test.serial(
         logger,
         features,
         codeql,
-        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
+        getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.true(result);
@@ -304,7 +305,7 @@ test.serial(
         logger,
         features,
         codeql,
-        actionsUtil.getDiffRangesJsonFilePath(getEnv()),
+        getDiffRangesJsonFilePath(getEnv()),
       );
 
       t.false(result);

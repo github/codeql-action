@@ -6,10 +6,7 @@ import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
 import type { ActionState } from "./action-common";
-import {
-  getDiffRangesJsonFilePath,
-  getTemporaryDirectory,
-} from "./actions-util";
+import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
@@ -21,7 +18,11 @@ import {
   getJavaTempDependencyDir,
 } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
-import { type DiffThunkRange, readDiffRangesJsonFile } from "./diff-informed";
+import {
+  type DiffThunkRange,
+  getDiffRangesJsonFilePath,
+  readDiffRangesJsonFile,
+} from "./diff-informed";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { getGitRoot } from "./git-utils";

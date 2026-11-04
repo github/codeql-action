@@ -29,8 +29,7 @@ import {
 } from "./util";
 
 interface UploadSarifStatusReport
-  extends StatusReportBase,
-    upload_lib.UploadStatusReport {}
+  extends StatusReportBase, upload_lib.UploadStatusReport {}
 
 async function sendSuccessStatusReport(
   startedAt: Date,

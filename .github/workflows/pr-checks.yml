@@ -64,7 +64,7 @@ jobs:
           npm ci
 
       - name: Verify compiled JS up to date
-        run: .github/workflows/script/check-js.sh
+        run: npx tsx pr-checks/check-unchanged.ts --language javascript
 
       - name: Run unit tests
         if: always()
@@ -121,6 +121,9 @@ jobs:
       - name: Install dependencies
         id: install-deps
         run: npm ci
+
+      - name: Verify YAML is correctly formatted
+        run: npx tsx pr-checks/check-unchanged.ts --language yaml
 
       - name: Verify PR checks up to date
         if: ${{ !cancelled() && steps.install-deps.outcome == 'success' }}

@@ -342,13 +342,16 @@ export async function deleteToolcacheBundles({
       const versionDirectory = path.join(toolDirectory, entry.name);
 
       try {
+        const deletionStart = performance.now();
         await fs.promises.rm(versionDirectory, {
           force: true,
           recursive: true,
         });
         deletedVersions.push(entry.name);
         logger.info(
-          `Deleted the CodeQL tools at '${versionDirectory}' from the toolcache to free up disk space.`,
+          `Deleted the CodeQL tools at '${versionDirectory}' from the toolcache to free up disk space (${formatDuration(
+            durationMsSince(deletionStart),
+          )}).`,
         );
       } catch (e) {
         failed = true;

@@ -43,6 +43,7 @@
     "js-yaml": "^5.5.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
+    "minimatch": "^11.0.2",
     "node-forge": "^1.4.1",
     "semver": "^7.8.5",
     "undici": "^7.30.1",

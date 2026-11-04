@@ -44,7 +44,8 @@ import {
 import { checkDiskUsage, checkGitHubVersionInRange, wrapError } from "./util";
 
 interface InitPostStatusReport
-  extends StatusReportBase,
+  extends
+    StatusReportBase,
     initActionPostHelper.UploadFailedSarifResult,
     initActionPostHelper.JobStatusReport,
     initActionPostHelper.DependencyCachingUsageReport {}
@@ -56,8 +57,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
 
   let config: Config | AbortedInitConfig | undefined;
   let uploadFailedSarifResult:
-    | initActionPostHelper.UploadFailedSarifResult
-    | undefined;
+    initActionPostHelper.UploadFailedSarifResult | undefined;
   let dependencyCachingUsage: DependencyCachingUsageReport | undefined;
 
   try {

@@ -1,6 +1,6 @@
-name: 'CodeQL: Init'
-description: 'Set up CodeQL'
-author: 'GitHub'
+name: "CodeQL: Init"
+description: "Set up CodeQL"
+author: "GitHub"
 inputs:
   tools:
     description: >-
@@ -56,7 +56,7 @@ inputs:
       - `code-scanning`: The default, security-focused analysis.
       - `code-quality`: Analysis focused on code quality. This must be enabled in conjunction
                         with `code-scanning`.
-    default: 'code-scanning'
+    default: "code-scanning"
     required: true
   token:
     description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
@@ -100,7 +100,7 @@ inputs:
     description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
     required: false
   quality-queries:
-    description: '[Internal] DEPRECATED. Comma-separated list of code quality queries to run.'
+    description: "[Internal] DEPRECATED. Comma-separated list of code quality queries to run."
     required: false
   packs:
     description: >-
@@ -140,7 +140,7 @@ inputs:
       This will result in more output being produced which may be useful when debugging certain issues.
       Debugging mode is enabled automatically when step debug logging is turned on.
     required: false
-    default: 'false'
+    default: "false"
   debug-artifact-name:
     description: >-
       The name of the artifact to store debugging information in.
@@ -181,5 +181,5 @@ outputs:
     description: The version of the CodeQL binary used for analysis
 runs:
   using: node24
-  main: '../lib/init-entry.js'
-  post: '../lib/init-post-entry.js'
+  main: "../lib/init-entry.js"
+  post: "../lib/init-post-entry.js"

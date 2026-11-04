@@ -15,6 +15,7 @@ import { createStubCodeQL } from "./codeql";
 import { UserConfig } from "./config/db-config";
 import * as file from "./config/file";
 import * as configUtils from "./config-utils";
+import { ActionsEnvVars } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature } from "./feature-flags";
 import { RepositoryProperties } from "./feature-flags/properties";
@@ -42,6 +43,7 @@ import {
   SAMPLE_DOTCOM_API_DETAILS,
   AssertableTarget,
   RecordingLogger,
+  getTestEnv,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -151,9 +153,11 @@ function mockListLanguages(languages: string[]) {
 test.serial("load empty config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = new RecordingLogger();
+    const state = initAllState({ logger });
+
     const languages = "javascript,python";
 
-    setupActionsVars(tempDir, tempDir);
+    setupActionsVars(tempDir, tempDir, {}, state.env);
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -166,7 +170,6 @@ test.serial("load empty config", async (t) => {
       },
     });
 
-    const state = initAllState({ logger });
     const config = await configUtils.initConfig(
       state,
       createTestInitConfigInputs({
@@ -197,9 +200,10 @@ test.serial("load empty config", async (t) => {
 test.serial("load code quality config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = new RecordingLogger();
+    const state = initAllState({ logger });
     const languages = "actions";
 
-    setupActionsVars(tempDir, tempDir);
+    setupActionsVars(tempDir, tempDir, {}, state.env);
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -211,7 +215,6 @@ test.serial("load code quality config", async (t) => {
       },
     });
 
-    const state = initAllState({ logger });
     const config = await configUtils.initConfig(
       state,
       createTestInitConfigInputs({
@@ -253,9 +256,10 @@ test.serial(
   async (t) => {
     return await withTmpDir(async (tempDir) => {
       const logger = new RecordingLogger();
+      const state = initAllState({ logger });
       const languages = "javascript";
 
-      setupActionsVars(tempDir, tempDir);
+      setupActionsVars(tempDir, tempDir, {}, state.env);
 
       const codeql = createStubCodeQL({
         async resolveLanguages() {
@@ -291,7 +295,6 @@ test.serial(
         repositoryProperties,
       });
 
-      const state = initAllState({ logger });
       await t.notThrowsAsync(async () => {
         const config = await configUtils.initConfig(
           state,
@@ -316,6 +319,8 @@ test.serial(
 test.serial("loading a saved config produces the same config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = new RecordingLogger();
+    const state = initAllState({ logger });
+    setupActionsVars(tempDir, tempDir, {}, state.env);
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -334,7 +339,6 @@ test.serial("loading a saved config produces the same config", async (t) => {
     // Sanity check that getConfig returns undefined before we have called initConfig
     t.deepEqual(await configUtils.getConfig(tempDir, logger), undefined);
 
-    const state = initAllState({ logger });
     const config1 = await configUtils.initConfig(
       state,
       createTestInitConfigInputs({
@@ -364,6 +368,8 @@ test.serial("loading a saved config produces the same config", async (t) => {
 test.serial("loading config with version mismatch throws", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const logger = new RecordingLogger();
+    const state = initAllState({ logger });
+    setupActionsVars(tempDir, tempDir, {}, state.env);
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -387,7 +393,6 @@ test.serial("loading config with version mismatch throws", async (t) => {
       .stub(actionsUtil, "getActionVersion")
       .returns("does-not-exist");
 
-    const state = initAllState({ logger });
     const config = await configUtils.initConfig(
       state,
       createTestInitConfigInputs({
@@ -497,7 +502,8 @@ const otherConfigFileContents = `
 
 test.serial("load non-empty input", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    setupActionsVars(tempDir, tempDir);
+    const state = initAllState();
+    setupActionsVars(tempDir, tempDir, {}, state.env);
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -538,7 +544,6 @@ test.serial("load non-empty input", async (t) => {
     const languagesInput = "javascript";
     const configFilePath = createConfigFile(otherConfigFileContents, tempDir);
 
-    const state = initAllState();
     const actualConfig = await configUtils.initConfig(
       state,
       createTestInitConfigInputs({
@@ -657,7 +662,9 @@ test.serial("API client used when reading remote config", async (t) => {
     const configFile = "octo-org/codeql-config/config.yaml@main";
     const languagesInput = "javascript";
 
-    const state = initAllState();
+    const state = initAllState({
+      env: getTestEnv({ [ActionsEnvVars.RUNNER_TEMP]: tempDir }),
+    });
     await configUtils.initConfig(
       state,
       createTestInitConfigInputs({

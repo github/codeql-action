@@ -78,12 +78,6 @@ export function getTemporaryDirectory(env: ReadOnlyEnv = getEnv()): string {
   );
 }
 
-const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";
-
-export function getDiffRangesJsonFilePath(env: Env = getEnv()): string {
-  return path.join(getTemporaryDirectory(env), PR_DIFF_RANGE_JSON_FILENAME);
-}
-
 export function getActionVersion(): string {
   return __CODEQL_ACTION_VERSION__;
 }

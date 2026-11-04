@@ -5,6 +5,7 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "../actions-util";
+import * as diffInformed from "../diff-informed";
 import * as gitUtils from "../git-utils";
 import {
   createTestConfig,
@@ -60,7 +61,7 @@ test.serial(
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
       sinon
-        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .stub(diffInformed, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
       sinon.stub(gitUtils, "getGitRoot").resolves(sourceRoot);
       const changesFilePath = await writeOverlayChangesFile(
@@ -126,7 +127,7 @@ test.serial(
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
       sinon
-        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .stub(diffInformed, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
       sinon.stub(gitUtils, "getGitRoot").resolves(sourceRoot);
 
@@ -196,7 +197,7 @@ test.serial(
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
       sinon
-        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .stub(diffInformed, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
       sinon.stub(gitUtils, "getGitRoot").resolves(sourceRoot);
 
@@ -259,7 +260,7 @@ test.serial(
       const diffRangeFilePath = path.join(tempDir, "pr-diff-range.json");
       sinon.stub(actionsUtil, "getTemporaryDirectory").returns(tempDir);
       sinon
-        .stub(actionsUtil, "getDiffRangesJsonFilePath")
+        .stub(diffInformed, "getDiffRangesJsonFilePath")
         .returns(diffRangeFilePath);
       // getGitRoot returns the repo root (parent of sourceRoot)
       sinon.stub(gitUtils, "getGitRoot").resolves(repoRoot);

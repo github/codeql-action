@@ -144,6 +144,7 @@ async function main() {
     console.info("Success: YAML files are correctly formatted");
   } else {
     console.error(`Unknown language: ${options.language}`);
+    return 1;
   }
 
   return 0;

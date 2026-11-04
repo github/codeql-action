@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dotnet-version:
@@ -29,7 +29,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
   workflow_call:
     inputs:
       dotnet-version:
@@ -41,7 +41,7 @@ on:
         type: string
         description: The version of Go to install
         required: false
-        default: '>=1.21.0'
+        default: ">=1.21.0"
 defaults:
   run:
     shell: bash
@@ -114,8 +114,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - name: Install Python 3.13.15 for older CLI versions
         # Older CLI versions don't work with Python 3.13.16 or newer because their Python extractor
         # imports `importlib._bootstrap._ERR_MSG`, which those Python versions no longer define.
@@ -123,7 +123,7 @@ jobs:
         if: matrix.version != 'nightly-latest' && matrix.version != 'linked'
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.13.15'
+          python-version: "3.13.15"
 
       - name: Use Xcode 16
         # Only the older CodeQL CLI versions need Xcode 16, and these run on macOS 15.
@@ -133,7 +133,7 @@ jobs:
       - uses: ./../action/init
         id: init
         with:
-          db-location: '${{ runner.temp }}/customDbLocation'
+          db-location: "${{ runner.temp }}/customDbLocation"
           languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
           tools: ${{ steps.prepare-test.outputs.tools-url }}
 

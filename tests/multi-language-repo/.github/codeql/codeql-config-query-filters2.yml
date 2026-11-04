@@ -8,17 +8,17 @@ packs:
     - codeql-testing/codeql-pack1@1.0.0
 
 query-filters:
-# This should run js/path-injection and js/zipslip
-- include:
-    tags contain:
+  # This should run js/path-injection and js/zipslip
+  - include:
+      tags contain:
         - external/cwe/cwe-022
 
-# Removes js/path-injection
-- exclude:
-    id:
+  # Removes js/path-injection
+  - exclude:
+      id:
         - js/path-injection
 
-# Query from extra pack
-- include:
-    id:
+  # Query from extra pack
+  - include:
+      id:
         - javascript/example/empty-or-one-block

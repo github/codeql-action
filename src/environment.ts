@@ -240,10 +240,7 @@ export enum SystemEnvVar {
 
 /** A type representing all known environment variables. */
 export type KnownEnvVar =
-  | EnvVar
-  | ActionsEnvVars
-  | RegistryProxyVars
-  | SystemEnvVar;
+  EnvVar | ActionsEnvVars | RegistryProxyVars | SystemEnvVar;
 
 /**
  * Gets an environment variable, but throws an error if it is not set.

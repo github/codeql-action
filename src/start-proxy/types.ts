@@ -175,11 +175,7 @@ export const oidcSchemas = [
 
 /** Represents all supported OIDC configurations. */
 export type OIDC =
-  | AzureConfig
-  | AWSConfig
-  | JFrogConfig
-  | CloudsmithConfig
-  | GCPConfig;
+  AzureConfig | AWSConfig | JFrogConfig | CloudsmithConfig | GCPConfig;
 
 /** All authentication-related fields. */
 export type AuthConfig = UsernamePassword | Token | OIDC;

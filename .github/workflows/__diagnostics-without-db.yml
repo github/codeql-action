@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs: {}
   workflow_call:
@@ -67,8 +67,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - name: Initialise failing analysis
         id: init
         uses: ./../action/init
@@ -87,11 +87,11 @@ jobs:
         # `category` input. Without this step, that part of the init post-action would fail.
         if: false
         with:
-          category: '/test-codeql-version:${{ matrix.version }}'
+          category: "/test-codeql-version:${{ matrix.version }}"
 
       - name: Check diagnostics appear on disk
         env:
-          DIAGNOSTICS_DIR: '${{ runner.temp }}/codeql-action-temp-diagnostics/'
+          DIAGNOSTICS_DIR: "${{ runner.temp }}/codeql-action-temp-diagnostics/"
         run: |
           cd ../action
           npx tsx ./pr-checks/diagnostics-without-db.ts

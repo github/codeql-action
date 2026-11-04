@@ -41,12 +41,6 @@ outputs:
 
       { "code-scanning": "some-id", "code-quality": "some-other-id" }
 runs:
-<<<<<<< HEAD
   using: node20
-  main: '../lib/upload-sarif-entry.js'
-  post: '../lib/upload-sarif-post-entry.js'
-=======
-  using: node24
   main: "../lib/upload-sarif-entry.js"
   post: "../lib/upload-sarif-post-entry.js"
->>>>>>> origin/releases/v4

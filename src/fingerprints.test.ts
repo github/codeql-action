@@ -223,6 +223,55 @@ test("addFingerprints", async (t) => {
   );
 });
 
+test("addFingerprints dispatches to every result on the matching line", async (t) => {
+  await util.withTmpDir(async (tmpDir) => {
+    const filepath = path.join(tmpDir, "source.c");
+    fs.writeFileSync(filepath, "first\nsecond\nthird\n");
+    const hashes = new Map<number, string>();
+    await fingerprints.hash((line, hash) => hashes.set(line, hash), filepath);
+    const lines = [1, 2, 2, 3, 999];
+    const results: sarif.Result[] = lines.map((startLine) => ({
+      message: { text: "Finding" },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: { uri: "source.c" },
+            region: { startLine },
+          },
+        },
+      ],
+    }));
+    results[0].partialFingerprints = {
+      primaryLocationLineHash: "existing-fingerprint",
+    };
+    const logger = new RecordingLogger();
+    await fingerprints.addFingerprints(
+      {
+        runs: [{ tool: { driver: { name: "test" } }, results }],
+      },
+      tmpDir,
+      logger,
+    );
+
+    t.is(
+      results[0].partialFingerprints?.primaryLocationLineHash,
+      "existing-fingerprint",
+    );
+    t.true(
+      logger.hasMessage(
+        "existing inconsistent fingerprint value existing-fingerprint",
+      ),
+    );
+    for (const index of [1, 2, 3]) {
+      t.is(
+        results[index].partialFingerprints?.primaryLocationLineHash,
+        hashes.get(lines[index]),
+      );
+    }
+    t.is(results[4].partialFingerprints, undefined);
+  });
+});
+
 test("missingRegions", async (t) => {
   // Run an end-to-end test on a test file
   const input = JSON.parse(

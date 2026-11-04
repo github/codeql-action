@@ -37,13 +37,13 @@
     "@octokit/plugin-rest-endpoint-methods": "^18.0.0",
     "@octokit/plugin-retry": "^8.1.1",
     "archiver": "^8.0.0",
-    "follow-redirects": "^1.16.1",
+    "follow-redirects": "^1.16.2",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
     "js-yaml": "^5.5.0",
     "jsonschema": "1.5.0",
     "long": "^5.3.2",
-    "node-forge": "^1.4.1",
+    "node-forge": "^1.4.2",
     "semver": "^7.8.5",
     "undici": "^7.30.1",
     "uuid": "^14.0.3"
@@ -60,14 +60,14 @@
     "@types/node-forge": "^1.3.14",
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.8.0",
-    "@types/sinon": "^22.0.1",
+    "@types/sinon": "^22.0.2",
     "ava": "^6.4.1",
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-github": "^6.1.2",
     "eslint-plugin-import-x": "^4.17.1",
-    "eslint-plugin-jsdoc": "^65.4.0",
+    "eslint-plugin-jsdoc": "^65.4.2",
     "eslint-plugin-no-async-foreach": "^0.1.1",
     "glob": "^14.0.3",
     "globals": "^17.13.0",
@@ -75,7 +75,7 @@
     "prettier": "^3.9.10",
     "sinon": "^22.1.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.1"
   },
   "overrides": {
     "@actions/tool-cache": {

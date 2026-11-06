@@ -3,14 +3,13 @@ name: "Check SARIF for query packs and local queries with Single include, Single
 disable-default-queries: true
 
 queries:
-# Local query
+  # Local query
   - name: Run an extra local query
     uses: ./codeql-qlpacks/javascript-qlpack/show_ifs.ql
 
-# These queries are ignored
+  # These queries are ignored
   - name: Ignored queries
     uses: ./codeql-qlpacks/complex-python-qlpack/rootAndBar.qls
-
 
 packs:
   javascript:
@@ -18,22 +17,22 @@ packs:
     - codeql-testing/codeql-pack1@1.0.0
 
 query-filters:
-# This should run js/path-injection and js/zipslip
-- include:
-    tags contain:
-      - external/cwe/cwe-022
+  # This should run js/path-injection and js/zipslip
+  - include:
+      tags contain:
+        - external/cwe/cwe-022
 
-# Removes js/path-injection
-- exclude:
-    id:
-      - js/path-injection
+  # Removes js/path-injection
+  - exclude:
+      id:
+        - js/path-injection
 
-# Query from extra pack
-- include:
-    id:
-      - javascript/example/empty-or-one-block
+  # Query from extra pack
+  - include:
+      id:
+        - javascript/example/empty-or-one-block
 
-# Local query
-- include:
-    id:
-      - inrepo-javascript-querypack/show-ifs
+  # Local query
+  - include:
+      id:
+        - inrepo-javascript-querypack/show-ifs

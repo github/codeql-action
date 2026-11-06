@@ -17,7 +17,7 @@ on:
     types:
       - checks_requested
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs: {}
   workflow_call:
@@ -62,8 +62,8 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: "false"
+          setup-kotlin: "true"
       - name: Check xcode_select_link
         run: |
           readlink /private/var/db/xcode_select_link
@@ -86,7 +86,7 @@ jobs:
         if: false
         uses: ./analyze
         with:
-          category: '/test-codeql-version:${{ matrix.version }}'
+          category: "/test-codeql-version:${{ matrix.version }}"
     env:
       CODEQL_ACTION_SKIP_GENERATE_FAILED_SARIF: false
       CODEQL_ACTION_SKIP_SARIF_UPLOAD: true

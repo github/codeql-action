@@ -1,4 +1,4 @@
-name: "Linux Arm64"
+name: "Runner images"
 description: "An end-to-end integration test running on a Linux Arm64 runner, checking that the native linux-arm64 CodeQL bundle is downloaded and can analyze interpreted and compiled code"
 operatingSystems:
   - os: ubuntu

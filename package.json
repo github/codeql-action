@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "4.39.3",
+  "version": "4.39.4",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -69,7 +69,7 @@
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-jsdoc": "^65.4.0",
     "eslint-plugin-no-async-foreach": "^0.1.1",
-    "glob": "^13.0.6",
+    "glob": "^14.0.3",
     "globals": "^17.13.0",
     "nock": "^14.0.17",
     "prettier": "^3.9.10",
@@ -96,7 +96,7 @@
     "eslint-plugin-jsx-a11y": {
       "semver": ">=6.3.1"
     },
-    "glob": "^13.0.6",
+    "glob": "^14.0.3",
     "undici": "^7.30.1"
   }
 }

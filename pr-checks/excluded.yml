@@ -24,3 +24,5 @@ is:
   # PRs), so requiring them would block the PRs they don't run on.
   - "github-advanced-security"
   - "License compliance check"
+  # Only runs when a PR is removed from the merge queue.
+  - "Notify"

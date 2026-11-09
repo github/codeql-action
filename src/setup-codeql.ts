@@ -814,6 +814,7 @@ async function tryDeleteToolcacheBundles({
     return;
   }
 
+  const startTime = performance.now();
   const result = await deleteToolcacheBundles({ env, logger });
 
   addNoLanguageDiagnostic(
@@ -821,7 +822,7 @@ async function tryDeleteToolcacheBundles({
     makeTelemetryDiagnostic(
       "codeql-action/toolcache-bundle-cleanup",
       "Toolcache CodeQL bundle cleanup",
-      { ...result },
+      { ...result, durationMs: util.durationMsSince(startTime) },
     ),
   );
 }

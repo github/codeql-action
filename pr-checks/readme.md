@@ -6,7 +6,7 @@ to one of the files in this directory.
 
 ## Updating workflows
 
-Run `./sync.sh` to invoke the workflow generator and re-generate the workflow files in `.github/workflows/` based on the templates in `pr-checks/checks/`.
+Run `./sync.sh` to invoke the workflow generator and re-generate the workflow files in `.github/workflows/` based on the templates in `pr-checks/checks/`. This also updates the list of workflows whose failed jobs `.github/workflows/deflake.yml` reruns.
 
 Alternatively, you can use `just`:
 

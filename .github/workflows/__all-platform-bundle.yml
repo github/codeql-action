@@ -92,6 +92,18 @@ jobs:
           # Swift is not supported on Ubuntu so we manually exclude it from the list here
           languages: cpp,csharp,go,java,javascript,python,ruby
           tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Check that the bundle contains tools for all platforms
+        env:
+          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+        run: |
+          # Platform-specific bundles only contain the tools for their own platform.
+          tools_dir="$(dirname "$CODEQL_PATH")/tools"
+          for platform in linux64 osx64 win64; do
+            if [[ ! -d "$tools_dir/$platform" ]]; then
+              echo "::error::Expected an all-platform CodeQL bundle, but '$tools_dir' does not contain a '$platform' directory."
+              exit 1
+            fi
+          done
       - name: Build code
         run: ./build.sh
       - uses: ./../action/analyze

@@ -36,7 +36,14 @@ runs:
         set -e # Fail this Action if `gh release list` fails.
 
         if [[ "$VERSION" == "nightly" || "$VERSION" == "nightly-latest" ]]; then
-          echo "tools-url=nightly" >> "$GITHUB_OUTPUT"
+          if [[ "$USE_ALL_PLATFORM_BUNDLE" == "true" ]]; then
+            # With `tools: nightly`, the Action downloads the bundle for the runner's platform, so look
+            # up the latest nightly release here to get its all-platform bundle instead.
+            tag=$(gh release list --repo dsp-testing/codeql-cli-nightlies --limit 1 --json tagName --jq '.[0].tagName')
+            echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$tag/codeql-bundle.tar.gz" >> "$GITHUB_OUTPUT"
+          else
+            echo "tools-url=nightly" >> "$GITHUB_OUTPUT"
+          fi
           exit 0
         elif [[ "$VERSION" == "linked" ]]; then
           echo "tools-url=linked" >> "$GITHUB_OUTPUT"

@@ -3,7 +3,7 @@
 #     pr-checks/sync.sh
 # to regenerate this file.
 
-name: PR Check - Linux Arm64
+name: PR Check - Runner images
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GO111MODULE: auto
@@ -47,16 +47,16 @@ defaults:
     shell: bash
 concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
-  group: linux-arm64-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
+  group: runner-images-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
 jobs:
-  linux-arm64:
+  runner-images:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-24.04-arm
             version: nightly-latest
-    name: Linux Arm64
+    name: Runner images
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
       contents: read

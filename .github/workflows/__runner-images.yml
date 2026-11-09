@@ -54,8 +54,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: ubuntu-22.04
+            version: linked
+          - os: ubuntu-22.04-arm
+            version: linked
+          - os: ubuntu-24.04
+            version: linked
           - os: ubuntu-24.04-arm
-            version: nightly-latest
+            version: linked
+          - os: ubuntu-26.04
+            version: linked
+          - os: ubuntu-26.04-arm
+            version: linked
+          - os: windows-2022
+            version: linked
+          - os: windows-2025
+            version: linked
+          - os: macos-15-large
+            version: linked
+          - os: macos-15-xlarge
+            version: linked
+          - os: macos-26-large
+            version: linked
+          - os: macos-26-xlarge
+            version: linked
     name: Runner images
     if: github.triggering_actor != 'dependabot[bot]'
     permissions:
@@ -102,5 +124,5 @@ jobs:
             echo "Found database for $lang"
           done
     env:
-      LANGUAGES: cpp,csharp,go,java,javascript,python,ruby
+      LANGUAGES: cpp,csharp,go,java,javascript,python,ruby${{ startsWith(matrix.os, 'macos') && ',swift' || '' }}
       CODEQL_ACTION_TEST_MODE: true

@@ -26,7 +26,6 @@ on:
       - "PR Check - Bundle: Caching checks"
       - "PR Check - Bundle: From nightly"
       - "PR Check - Bundle: From toolcache"
-      - "PR Check - Bundle: Zstandard checks"
       - "PR Check - C/C\\+\\+: autoinstalling dependencies (Linux)"
       - "PR Check - C/C\\+\\+: autoinstalling dependencies is skipped (macOS)"
       - "PR Check - C/C\\+\\+: disabling autoinstalling dependencies (Linux)"
@@ -37,6 +36,7 @@ on:
       - "PR Check - Debug artifact upload"
       - "PR Check - Debug artifacts after failure"
       - "PR Check - Diagnostic export"
+      - "PR Check - Diagnostic export without database"
       - "PR Check - Export file baseline information"
       - "PR Check - Extractor ram and threads options test"
       - "PR Check - Go: Custom queries"
@@ -56,6 +56,7 @@ on:
       - "PR Check - Packaging: Config and input passed to the CLI"
       - "PR Check - Packaging: Config file"
       - "PR Check - Packaging: Download using registries"
+      - "PR Check - Per-language bundles"
       - "PR Check - Proxy test"
       - "PR Check - Remote config file"
       - "PR Check - Resolve environment"
@@ -69,7 +70,8 @@ on:
       - "PR Check - Swift analysis using autobuild"
       - "PR Check - Test different uses of `upload-sarif`"
       - "PR Check - Test unsetting environment variables"
-      - "PR Check - Upload-sarif: ref and sha from inputs"
+      - "PR Check - Unsupported macOS"
+      - "PR Check - Upload-sarif: 'ref' and 'sha' from inputs"
       - "PR Check - Use a custom `checkout_path`"
       - PR Checks
       - Query filters tests

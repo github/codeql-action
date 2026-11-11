@@ -588,6 +588,7 @@ export function generateCodeScanningConfig(
   logger: Logger,
   originalUserInput: UserConfig,
   augmentationProperties: AugmentationProperties,
+  languages: Language[],
 ): UserConfig {
   // make a copy so we can modify it
   const augmentedConfig = cloneObject(originalUserInput);
@@ -616,12 +617,10 @@ export function generateCodeScanningConfig(
       } else if (!augmentedConfig.packs) {
         augmentedConfig.packs = augmentationProperties.packsInput;
       } else {
-        // At this point, we know there is only one language.
-        // If there were more than one language, an error would already have been thrown.
-        const language = Object.keys(augmentedConfig.packs)[0];
-        augmentedConfig.packs[language] = augmentedConfig.packs[
-          language
-        ].concat(augmentationProperties.packsInput);
+        const language = languages[0];
+        augmentedConfig.packs[language] = (
+          augmentedConfig.packs[language] ?? []
+        ).concat(augmentationProperties.packsInput);
       }
     } else {
       augmentedConfig.packs = augmentationProperties.packsInput;

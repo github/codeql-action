@@ -1,0 +1,1 @@
+- Fixed additive `packs` inputs being applied to the wrong language when a shared configuration file lists packs for multiple languages.

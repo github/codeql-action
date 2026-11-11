@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import * as actionsUtil from "../actions-util";
 import { getOptionalInput, getTemporaryDirectory } from "../actions-util";
 import { type Config } from "../config-utils";
+import { getDiffRangesJsonFilePath } from "../diff-informed";
 import { getFileOidsUnderPath, getGitRoot } from "../git-utils";
 import { Logger } from "../logging";
 import { getBaseDatabaseOidsFilePath } from "../util";
@@ -135,7 +135,7 @@ async function getDiffRangeFilePaths(
   sourceRoot: string,
   logger: Logger,
 ): Promise<string[]> {
-  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
+  const jsonFilePath = getDiffRangesJsonFilePath();
 
   if (!fs.existsSync(jsonFilePath)) {
     logger.debug(

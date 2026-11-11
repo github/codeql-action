@@ -9,7 +9,7 @@ import * as sinon from "sinon";
 import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
-import * as diffUtils from "./diff-informed-analysis-utils";
+import * as diffUtils from "./diff-informed";
 import { getEnv } from "./environment";
 import { Logger } from "./logging";
 import * as sarif from "./sarif";
@@ -1074,6 +1074,7 @@ function runFilterAlertsByDiffRange(
   logger: Logger = new RecordingLogger(),
 ): Partial<sarif.Log> {
   sinon.stub(diffUtils, "readDiffRangesJsonFile").returns(diffRanges);
+  sinon.stub(diffUtils, "getDiffRangesJsonFilePath").returns("");
   return uploadLib.filterAlertsByDiffRange(logger, input);
 }
 

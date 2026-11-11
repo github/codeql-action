@@ -28,6 +28,50 @@ test.beforeEach(() => {
   getEnv().initialise("1.2.3");
 });
 
+test.serial(
+  "countResultsInSarif counts materialized results across runs",
+  (t) => {
+    const tool = { driver: { name: "test" } };
+    const result = { message: { text: "Finding" } };
+    t.is(uploadLib.countResultsInSarif({ runs: [] }), 0);
+    t.is(
+      uploadLib.countResultsInSarif({
+        runs: [
+          { tool, results: [] },
+          { tool, results: [result, result] },
+          { tool, results: [result] },
+        ],
+      }),
+      3,
+    );
+  },
+);
+
+test.serial("countResultsInSarif preserves malformed array errors", (t) => {
+  for (const value of ["{}", '{"runs":null}', '{"runs":{}}']) {
+    t.throws(
+      () =>
+        uploadLib.countResultsInSarif(JSON.parse(value) as Partial<sarif.Log>),
+      {
+        message: "Invalid SARIF. Missing 'runs' array.",
+      },
+    );
+  }
+  for (const value of [
+    '{"runs":[{}]}',
+    '{"runs":[{"results":null}]}',
+    '{"runs":[{"results":{}}]}',
+  ]) {
+    t.throws(
+      () =>
+        uploadLib.countResultsInSarif(JSON.parse(value) as Partial<sarif.Log>),
+      {
+        message: "Invalid SARIF. Missing 'results' array in run.",
+      },
+    );
+  }
+});
+
 test.serial("validateSarifFileSchema - valid", (t) => {
   const inputFile = `${__dirname}/../src/testdata/valid-sarif.sarif`;
   t.notThrows(() =>

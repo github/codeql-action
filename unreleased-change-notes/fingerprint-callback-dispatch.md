@@ -1,0 +1,1 @@
+- Improved SARIF fingerprint generation for source files with many results without changing the generated fingerprints.

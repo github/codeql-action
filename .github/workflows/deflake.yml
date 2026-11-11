@@ -60,6 +60,7 @@ on:
       - "PR Check - Remote config file"
       - "PR Check - Resolve environment"
       - "PR Check - Ruby analysis"
+      - "PR Check - Runner images"
       - "PR Check - Rust analysis"
       - "PR Check - Split workflow"
       - "PR Check - Start proxy"

@@ -108,6 +108,14 @@ jobs:
         id: push
         run: |
           if [ ! -z "$(git status --porcelain)" ]; then
+            echo "Adding diff to workflow summary"
+            echo "### Rebuild diff" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo '```diff' >> $GITHUB_STEP_SUMMARY
+            git diff --output="$RUNNER_TEMP/rebuild.diff"
+            cat "$RUNNER_TEMP/rebuild.diff" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+
             echo "Changes detected, committing and pushing."
             git add --all
             # If the merge originally had conflicts, finish the merge.

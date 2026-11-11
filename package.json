@@ -37,7 +37,7 @@
     "@octokit/plugin-rest-endpoint-methods": "^18.0.0",
     "@octokit/plugin-retry": "^8.1.1",
     "archiver": "^8.0.0",
-    "follow-redirects": "^1.16.1",
+    "follow-redirects": "^1.16.2",
     "get-folder-size": "^5.0.0",
     "https-proxy-agent": "^7.0.6",
     "js-yaml": "^5.5.0",

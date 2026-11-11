@@ -26,6 +26,8 @@ operatingSystems:
   - os: ubuntu
     runner-image: ubuntu-26.04-arm
   - os: windows
+    runner-image: windows-2022
+  - os: windows
     runner-image: windows-2025
   # Use larger runners for macOS to keep these jobs off the critical path.
   - os: macos

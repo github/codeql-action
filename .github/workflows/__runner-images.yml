@@ -66,6 +66,8 @@ jobs:
             version: linked
           - os: ubuntu-26.04-arm
             version: linked
+          - os: windows-2022
+            version: linked
           - os: windows-2025
             version: linked
           - os: macos-15-large

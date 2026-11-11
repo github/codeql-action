@@ -44,6 +44,7 @@ sizeup:
         color: e50009
   ignoredFilePatterns:
     - ".github/workflows/__*"
+    - ".github/workflows/*.lock.yml"
     - "lib/**/*"
     - "package-lock.json"
   testFilePatterns:

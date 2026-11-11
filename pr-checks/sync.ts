@@ -285,8 +285,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
-          "v6.1.0",
+          "77dd5b2ce225ea11469928ac317850245a74ae78",
+          "v6.2.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -320,8 +320,8 @@ const languageSetups: LanguageSetups = {
         name: "Install .NET",
         uses: pinnedUses(
           "actions/setup-dotnet",
-          "a98b56852c35b8e3190ac28c8c2271da59106c68",
-          "v6.0.0",
+          "0f4a354dd5547a28c70b7853dbd95d5b67886e73",
+          "v6.1.0",
         ),
         with: {
           "dotnet-version": `\${{ inputs.dotnet-version || '${defaultLanguageVersions.csharp}' }}`,

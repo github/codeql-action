@@ -1,0 +1,70 @@
+name: "Runner images"
+description: "An end-to-end integration test checking that CodeQL can analyze interpreted and compiled code on the GitHub-hosted runner images"
+# This check runs on each image listed in
+# https://github.com/actions/runner-images#available-images, except for images that GitHub has
+# retired or is about to retire, and:
+# - `ubuntu-slim`, which is intended for lightweight jobs rather than builds like this one.
+# - `windows-11-arm`, since CodeQL doesn't support Windows on Arm64.
+# - `xcode-27`, a preview image that the `unsupported-macos` check runs on.
+#
+# The `Update runner images` workflow asks Copilot to keep these images up to date, following the
+# instructions in `.github/workflows/update-runner-images.md`.
+operatingSystems:
+  # The Ubuntu 22.04 images have brownouts from 23 March 2027 and are retired on 17 April 2027, so
+  # remove them before the brownouts start.
+  # See https://github.com/actions/runner-images/issues/14254.
+  - os: ubuntu
+    runner-image: ubuntu-22.04
+  - os: ubuntu
+    runner-image: ubuntu-22.04-arm
+  - os: ubuntu
+    runner-image: ubuntu-24.04
+  - os: ubuntu
+    runner-image: ubuntu-24.04-arm
+  - os: ubuntu
+    runner-image: ubuntu-26.04
+  - os: ubuntu
+    runner-image: ubuntu-26.04-arm
+  - os: windows
+    runner-image: windows-2022
+  - os: windows
+    runner-image: windows-2025
+  # Use larger runners for macOS to keep these jobs off the critical path.
+  - os: macos
+    runner-image: macos-15-large
+  - os: macos
+    runner-image: macos-15-xlarge
+  - os: macos
+    runner-image: macos-26-large
+  - os: macos
+    runner-image: macos-26-xlarge
+# Other PR checks cover the supported CodeQL versions, so this check only tests the linked version.
+# Linux Arm64 bundles are only available for CodeQL 2.27.0 and later, so older stable versions
+# can't run on the Arm64 images.
+versions:
+  - linked
+installGo: true
+installDotNet: true
+# The languages to build and analyze. CodeQL only supports Swift on macOS.
+env:
+  LANGUAGES: "cpp,csharp,go,java,javascript,python,ruby${{ startsWith(matrix.os, 'macos') && ',swift' || '' }}"
+steps:
+  - uses: ./../action/init
+    with:
+      languages: ${{ env.LANGUAGES }}
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Build code
+    run: ./build.sh
+  - uses: ./../action/analyze
+    with:
+      upload-database: false
+  - name: Assert databases exist
+    run: |
+      cd "$RUNNER_TEMP/codeql_databases"
+      for lang in ${LANGUAGES//,/ }; do
+        if [[ ! -d "$lang" ]]; then
+          echo "Did not find a database for $lang"
+          exit 1
+        fi
+        echo "Found database for $lang"
+      done

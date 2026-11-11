@@ -1,10 +1,10 @@
-name: 'Publish Immutable Action Version'
+name: "Publish Immutable Action Version"
 
 on:
   push:
     tags:
       # Match version tags, but not the major version tags.
-      - 'v[0-9]+.**'
+      - "v[0-9]+.**"
 
 defaults:
   run:

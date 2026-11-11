@@ -6,6 +6,7 @@ import * as semver from "semver";
 import { getApiClient } from "./api-client";
 import type { CodeQL } from "./codeql";
 import * as defaults from "./defaults.json";
+import { Feature } from "./feature-flags/features";
 import { Logger } from "./logging";
 import {
   CODEQL_OVERLAY_MINIMUM_VERSION,
@@ -20,6 +21,8 @@ import {
 import { RepositoryNwo } from "./repository";
 import { ToolsFeature } from "./tools-features";
 import * as util from "./util";
+
+export { Feature } from "./feature-flags/features";
 
 const DEFAULT_VERSION_FEATURE_FLAG_PREFIX = "default_codeql_version_";
 const DEFAULT_VERSION_FEATURE_FLAG_SUFFIX = "_enabled";
@@ -59,126 +62,6 @@ export interface CodeQLDefaultVersionInfo {
    * version.
    */
   toolsFeatureFlagsValid?: boolean;
-}
-
-/**
- * Features as named by the GitHub API endpoint.
- *
- * Do not include the `codeql_action_` prefix as this is stripped by the API
- * endpoint.
- *
- * Legacy features should end with `_enabled`.
- */
-export enum Feature {
-  /** Allows supported properties of configuration files to be merged. */
-  AllowMergeConfigFiles = "allow_merge_config_files",
-  /** Controls whether we allow multiple values for the `analysis-kinds` input. */
-  AllowMultipleAnalysisKinds = "allow_multiple_analysis_kinds",
-  /**
-   * Controls whether we delete CodeQL bundles that we are not going to use from the toolcache
-   * before downloading a different bundle, in order to reclaim disk space.
-   */
-  CleanupToolcacheBundles = "cleanup_toolcache_bundles",
-  CleanupTrapCaches = "cleanup_trap_caches",
-  /** Whether to allow the `config-file` input to be specified via a repository property. */
-  ConfigFileRepositoryProperty = "config_file_repository_property",
-  CppDependencyInstallation = "cpp_dependency_installation_enabled",
-  CsharpCacheBuildModeNone = "csharp_cache_bmn",
-  CsharpNewCacheKey = "csharp_new_cache_key",
-  DiffInformedQueries = "diff_informed_queries",
-  DisableCsharpBuildless = "disable_csharp_buildless",
-  DisableJavaBuildlessEnabled = "disable_java_buildless_enabled",
-  DisableKotlinAnalysisEnabled = "disable_kotlin_analysis_enabled",
-  ExportDiagnosticsEnabled = "export_diagnostics_enabled",
-  /**
-   * Emergency override that forces the CodeQL CLI to use the JGit-based Git backend instead of its
-   * default backend selection.
-   */
-  ForceJGit = "force_jgit",
-  ForceNightly = "force_nightly",
-  IgnoreGeneratedFiles = "ignore_generated_files",
-  JavaNetworkDebugging = "java_network_debugging",
-  OverlayAnalysis = "overlay_analysis",
-  OverlayAnalysisCodeScanningCpp = "overlay_analysis_code_scanning_cpp",
-  OverlayAnalysisCodeScanningCsharp = "overlay_analysis_code_scanning_csharp",
-  OverlayAnalysisCodeScanningGo = "overlay_analysis_code_scanning_go",
-  OverlayAnalysisCodeScanningJava = "overlay_analysis_code_scanning_java",
-  OverlayAnalysisCodeScanningJavascript = "overlay_analysis_code_scanning_javascript",
-  OverlayAnalysisCodeScanningPython = "overlay_analysis_code_scanning_python",
-  OverlayAnalysisCodeScanningRuby = "overlay_analysis_code_scanning_ruby",
-  OverlayAnalysisCpp = "overlay_analysis_cpp",
-  OverlayAnalysisCsharp = "overlay_analysis_csharp",
-  /** Disable TRAP caching when overlay analysis is enabled. */
-  OverlayAnalysisDisableTrapCaching = "overlay_analysis_disable_trap_caching",
-  OverlayAnalysisGo = "overlay_analysis_go",
-  OverlayAnalysisJava = "overlay_analysis_java",
-  OverlayAnalysisJavascript = "overlay_analysis_javascript",
-  /**
-   * When set, chooses the default CodeQL CLI version as the highest version that is both enabled by
-   * feature flags and present as an overlay-base database in the Actions cache for the configured
-   * languages. Falls back to the highest feature flagged version if no intersecting overlay-base
-   * database exists in the cache.
-   */
-  OverlayAnalysisMatchCodeqlVersion = "overlay_analysis_match_codeql_version",
-  /**
-   * Like `OverlayAnalysisMatchCodeqlVersion`, but only logs a diagnostic with the version that
-   * would have been chosen instead of actually changing the default CodeQL CLI version.
-   * `OverlayAnalysisMatchCodeqlVersion` overrides this flag.
-   */
-  OverlayAnalysisMatchCodeqlVersionDryRun = "overlay_analysis_match_codeql_version_dry_run",
-  /**
-   * Lowers the overlay minimum available disk space to 8 GB. The lowest enabled limit wins; if
-   * none are enabled, the default applies.
-   */
-  OverlayAnalysisMinDisk8Gb = "overlay_analysis_min_disk_8_gb",
-  /**
-   * Lowers the overlay minimum available disk space to 9 GB. The lowest enabled limit wins; if
-   * none are enabled, the default applies.
-   */
-  OverlayAnalysisMinDisk9Gb = "overlay_analysis_min_disk_9_gb",
-  /**
-   * Lowers the overlay minimum available disk space to 10 GB. The lowest enabled limit wins; if
-   * none are enabled, the default applies.
-   */
-  OverlayAnalysisMinDisk10Gb = "overlay_analysis_min_disk_10_gb",
-  /**
-   * Lowers the overlay minimum available disk space to 11 GB. The lowest enabled limit wins; if
-   * none are enabled, the default applies.
-   */
-  OverlayAnalysisMinDisk11Gb = "overlay_analysis_min_disk_11_gb",
-  /**
-   * Lowers the overlay minimum available disk space to 12 GB. The lowest enabled limit wins; if
-   * none are enabled, the default applies.
-   */
-  OverlayAnalysisMinDisk12Gb = "overlay_analysis_min_disk_12_gb",
-  /**
-   * Lowers the overlay minimum available disk space to 13 GB. The lowest enabled limit wins; if
-   * none are enabled, the default applies.
-   */
-  OverlayAnalysisMinDisk13Gb = "overlay_analysis_min_disk_13_gb",
-  OverlayAnalysisPython = "overlay_analysis_python",
-  OverlayAnalysisRuby = "overlay_analysis_ruby",
-  /** Controls whether hardware checks are skipped for overlay analysis. */
-  OverlayAnalysisSkipResourceChecks = "overlay_analysis_skip_resource_checks",
-  /** Controls whether the Actions cache is checked for overlay build outcomes. */
-  OverlayAnalysisStatusCheck = "overlay_analysis_status_check",
-  /** Controls whether overlay build failures on the default branch are stored in the Actions cache. */
-  OverlayAnalysisStatusSave = "overlay_analysis_status_save",
-  /**
-   * Controls whether we may download a bundle containing only the single language being analysed,
-   * rather than the combined bundle that contains every language.
-   */
-  PerLanguageBundles = "per_language_bundles",
-  QaTelemetryEnabled = "qa_telemetry_enabled",
-  /** Routes (some) API requests through the registry proxy. */
-  ProxyApiRequests = "proxy_api_requests",
-  /** Note that this currently only disables baseline file coverage information. */
-  SkipFileCoverageOnPrs = "skip_file_coverage_on_prs",
-  StartProxyUseFeaturesRelease = "start_proxy_use_features_release",
-  /** Whether to allow the `tools` input to be specified via a repository property. */
-  ToolsRepositoryProperty = "tools_repository_property",
-  UploadOverlayDbToApi = "upload_overlay_db_to_api",
-  ValidateDbConfig = "validate_db_config",
 }
 
 export type FeatureConfig = {
@@ -221,14 +104,9 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_ALLOW_MULTIPLE_ANALYSIS_KINDS",
     minimumVersion: undefined,
   },
-  [Feature.CleanupToolcacheBundles]: {
+  [Feature.CheckUnsupportedTracedAnalysis]: {
     defaultValue: false,
-    envVar: "CODEQL_ACTION_CLEANUP_TOOLCACHE_BUNDLES",
-    minimumVersion: undefined,
-  },
-  [Feature.CleanupTrapCaches]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_CLEANUP_TRAP_CACHES",
+    envVar: "CODEQL_ACTION_CHECK_UNSUPPORTED_TRACED_ANALYSIS",
     minimumVersion: undefined,
   },
   [Feature.ConfigFileRepositoryProperty]: {
@@ -240,7 +118,7 @@ export const featureConfig = {
     defaultValue: false,
     envVar: "CODEQL_EXTRACTOR_CPP_AUTOINSTALL_DEPENDENCIES",
     legacyApi: true,
-    minimumVersion: "2.15.0",
+    minimumVersion: undefined,
   },
   [Feature.CsharpCacheBuildModeNone]: {
     defaultValue: false,
@@ -379,21 +257,6 @@ export const featureConfig = {
     minimumVersion: CODEQL_OVERLAY_MINIMUM_VERSION_RUBY,
   },
   // Other overlay-related feature flags
-  [Feature.OverlayAnalysisDisableTrapCaching]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_DISABLE_TRAP_CACHING",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisMatchCodeqlVersion]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION",
-    minimumVersion: undefined,
-  },
-  [Feature.OverlayAnalysisMatchCodeqlVersionDryRun]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MATCH_CODEQL_VERSION_DRY_RUN",
-    minimumVersion: undefined,
-  },
   [Feature.OverlayAnalysisMinDisk8Gb]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_MIN_DISK_8_GB",
@@ -439,11 +302,6 @@ export const featureConfig = {
     envVar: "CODEQL_ACTION_OVERLAY_ANALYSIS_SKIP_RESOURCE_CHECKS",
     minimumVersion: undefined,
   },
-  [Feature.PerLanguageBundles]: {
-    defaultValue: false,
-    envVar: "CODEQL_ACTION_PER_LANGUAGE_BUNDLES",
-    minimumVersion: undefined,
-  },
   [Feature.QaTelemetryEnabled]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_QA_TELEMETRY",
@@ -464,6 +322,11 @@ export const featureConfig = {
   [Feature.StartProxyUseFeaturesRelease]: {
     defaultValue: false,
     envVar: "CODEQL_ACTION_START_PROXY_USE_FEATURES_RELEASE",
+    minimumVersion: undefined,
+  },
+  [Feature.AbortUnsupportedTracedAnalysis]: {
+    defaultValue: false,
+    envVar: "CODEQL_ACTION_ABORT_UNSUPPORTED_TRACED_ANALYSIS",
     minimumVersion: undefined,
   },
   [Feature.ToolsRepositoryProperty]: {
@@ -599,7 +462,7 @@ class OfflineFeatures implements FeatureEnablement {
     // Never use this feature if the CLI version explicitly can't support it.
     const minimumVersion = config.minimumVersion;
     if (codeql && minimumVersion) {
-      if (!(await util.codeQlVersionAtLeast(codeql, minimumVersion))) {
+      if (!(await codeql.isVersionAtLeast(minimumVersion))) {
         this.logger.debug(
           `Feature ${feature} is disabled because the CodeQL CLI version is older than the minimum ` +
             `version ${minimumVersion}.`,

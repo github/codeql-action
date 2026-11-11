@@ -6,11 +6,11 @@ inputs:
     required: true
   use-all-platform-bundle:
     description: "If true, we output a tools URL with codeql-bundle.tar.gz file rather than platform-specific URL"
-    default: 'false'
+    default: "false"
     required: false
   setup-kotlin:
     description: "If true, we setup kotlin"
-    default: 'true'
+    default: "true"
     required: true
 outputs:
   tools-url:
@@ -36,7 +36,14 @@ runs:
         set -e # Fail this Action if `gh release list` fails.
 
         if [[ "$VERSION" == "nightly" || "$VERSION" == "nightly-latest" ]]; then
-          echo "tools-url=nightly" >> "$GITHUB_OUTPUT"
+          if [[ "$USE_ALL_PLATFORM_BUNDLE" == "true" ]]; then
+            # With `tools: nightly`, the Action downloads the bundle for the runner's platform, so look
+            # up the latest nightly release here to get its all-platform bundle instead.
+            tag=$(gh release list --repo dsp-testing/codeql-cli-nightlies --limit 1 --json tagName --jq '.[0].tagName')
+            echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/$tag/codeql-bundle.tar.gz" >> "$GITHUB_OUTPUT"
+          else
+            echo "tools-url=nightly" >> "$GITHUB_OUTPUT"
+          fi
           exit 0
         elif [[ "$VERSION" == "linked" ]]; then
           echo "tools-url=linked" >> "$GITHUB_OUTPUT"
@@ -73,7 +80,10 @@ runs:
           exit 1
         fi
 
-    - uses: fwilhe2/setup-kotlin@9c245a6425255f5e98ba1ce6c15d31fce7eca9da
+    - uses: fwilhe2/setup-kotlin@b325539ca8f6e1d9ee04efed06f49bdbf5426dbb # v2.1
       if: ${{ inputs.setup-kotlin == 'true' }}
       with:
-        version: 1.8.21
+        # Kotlin is installed on the runners by default, but the version that is pre-installed is too new
+        # to be supported by CodeQL. This Kotlin version is selected to be compatible with both the default Java
+        # version on the `ubuntu-latest` runners and CodeQL.
+        version: 2.1.20

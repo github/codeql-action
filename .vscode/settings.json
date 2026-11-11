@@ -7,19 +7,28 @@
     // transpiled JavaScript
     "build": true,
     "lib": true,
+
+    // exclude "tests" by default because it causes VSCode to start language-specific extensions
+    // that are not typically needed during development (or indeed may not work correctly)
+    "tests": true
   },
   "search.exclude": {
     "**/node_modules": true,
     "build": true,
-    "lib": true,
+    "lib": true
   },
   // Installing a new Node package often triggers VS Code's git limit warnings as there is typically
   // an intermediate stage where many files are modified. This setting suppresses these warnings.
   "git.ignoreLimitWarning": true,
   // Use the vendored TypeScript version to have a consistent development experience across
   // machines.
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  "[yaml]": {
+    "editor.tabSize": 2,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "prettier.prettierPath": "./node_modules/prettier"
 }

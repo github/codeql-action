@@ -1,4 +1,9 @@
 import path from "path";
+import { fileURLToPath } from "url";
+
+// For backwards-compatibility.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /** The oldest supported major version of the CodeQL Action. */
 export const OLDEST_SUPPORTED_MAJOR_VERSION = 3;
@@ -25,7 +30,13 @@ export const CHANGENOTES_DIR = path.join(REPO_ROOT, "unreleased-change-notes");
 export const BUNDLE_METADATA_FILE = path.join(REPO_ROOT, "meta.json");
 
 /** The `src` directory. */
-const SOURCE_ROOT = path.join(REPO_ROOT, "src");
+export const SOURCE_ROOT = path.join(REPO_ROOT, "src");
+
+/** The `lib` directory. */
+export const LIB_ROOT = path.join(REPO_ROOT, "lib");
+
+/** The path to `defaults.json`. */
+export const DEFAULTS_FILE = path.join(SOURCE_ROOT, "defaults.json");
 
 /** The path to the built-in languages file. */
 export const BUILTIN_LANGUAGES_FILE = path.join(

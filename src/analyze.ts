@@ -5,10 +5,13 @@ import { performance } from "perf_hooks";
 import * as io from "@actions/io";
 import * as yaml from "js-yaml";
 
+import type { ActionState } from "./action-common";
 import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
 import { type CodeQL } from "./codeql";
+import type { ActionConfig } from "./config/action-config";
+import { defaultSuites } from "./config/db-config";
 import * as configUtils from "./config-utils";
 import {
   getCsharpTempDependencyDir,
@@ -21,6 +24,7 @@ import {
 } from "./diff-informed-analysis-utils";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
+import { getGitRoot } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
 import { Logger, withGroupAsync } from "./logging";
 import { OverlayDatabaseMode } from "./overlay/overlay-database-mode";
@@ -50,7 +54,9 @@ type RunQueriesDurationStatusReport = {
    * The "builtin" designation is now outdated with the move to CLI config parsing: this is the time
    * taken to run _all_ the queries.
    */
-  [L in BuiltInLanguageKey as `analyze_builtin_queries_${L}_duration_ms`]?: number;
+  [
+    L in BuiltInLanguageKey as `analyze_builtin_queries_${L}_duration_ms`
+  ]?: number;
 };
 
 type InterpretResultsDurationStatusReport = {
@@ -59,8 +65,7 @@ type InterpretResultsDurationStatusReport = {
 };
 
 export interface QueriesStatusReport
-  extends RunQueriesDurationStatusReport,
-    InterpretResultsDurationStatusReport {
+  extends RunQueriesDurationStatusReport, InterpretResultsDurationStatusReport {
   /**
    * Whether the analysis is diff-informed (in the sense that the action generates a diff-range data
    * extension for the analysis, regardless of whether the data extension is actually used by queries).
@@ -83,6 +88,58 @@ export interface QueriesStatusReport
   analyze_failure_language?: string;
   /** Reports on discrete events associated with this status report. */
   event_reports?: EventReport[];
+}
+
+/**
+ * Determines the path at which the repository being analysed is checked out at.
+ * Returns the value of the required `checkout_path` input and validates that it
+ * refers to the root of a repository.
+ *
+ * @param action The action state.
+ * @param config The CodeQL Action configuration state.
+ */
+export async function determineCheckoutPath(
+  action: ActionState<["Logger", "Actions"]>,
+  config: configUtils.Config,
+) {
+  const checkoutPathInput = action.actions.getRequiredInput("checkout_path");
+
+  // Try to obtain the root path of the repository and validate that it matches the input.
+  const absCheckoutPathInput = path.resolve(checkoutPathInput);
+  const repositoryRoot = await getGitRoot(absCheckoutPathInput);
+
+  if (repositoryRoot === undefined) {
+    action.logger.warning(
+      [
+        `The directory at '${absCheckoutPathInput}' is not in the work tree of a git repository.`,
+        "If the repository being analyzed is checked out elsewhere,",
+        "you must explicitly set the 'checkout_path' input for the 'codeql-action/analyze' step to",
+        "the checkout path.",
+      ].join(" "),
+    );
+  } else if (repositoryRoot !== absCheckoutPathInput) {
+    action.logger.warning(
+      [
+        `The directory at '${absCheckoutPathInput}' is not the root of the repository ('${repositoryRoot}').`,
+        "Set the 'checkout_path' input for the 'codeql-action/analyze' step to the root path of the checkout.",
+      ].join(" "),
+    );
+  } else if (
+    config.repositoryRoot !== undefined &&
+    repositoryRoot !== config.repositoryRoot
+  ) {
+    // The repository root that was persisted by the `init` step doesn't match the one we have found here.
+    action.logger.warning(
+      [
+        `The repository path at '${repositoryRoot}' does not match that found by the 'codeql-action/init' step: '${config.repositoryRoot}'.`,
+        "Ensure that the 'checkout_path' input for the 'codeql-action/analyze' step is set to the path of the same repository that",
+        "the 'codeql-action/init' step determined. This is either the GitHub Actions workspace or the repository root corresponding to",
+        "the 'source-root' input if that was provided.",
+      ].join(" "),
+    );
+  }
+
+  return absCheckoutPathInput;
 }
 
 async function setupPythonExtractor(logger: Logger) {
@@ -123,7 +180,7 @@ export async function runExtraction(
           language === BuiltInLanguage.cpp &&
           config.buildMode === BuildMode.Autobuild
         ) {
-          await setupCppAutobuild(codeql, logger);
+          await setupCppAutobuild(logger);
         }
 
         // The Java and C# `build-mode: none` extractors place dependencies in the
@@ -170,7 +227,7 @@ async function shouldExtractLanguage(
 }
 
 export function dbIsFinalized(
-  config: configUtils.Config,
+  config: ActionConfig<"dbLocation">,
   language: Language,
   logger: Logger,
 ) {
@@ -263,8 +320,7 @@ export function diffRangeExtensionPackContents(
   ranges: DiffThunkRange[],
   checkoutPath: string,
 ): string {
-  const header = `
-extensions:
+  const header = `extensions:
   - addsTo:
       pack: codeql/util
       extensible: restrictAlertsTo
@@ -285,7 +341,7 @@ extensions:
       // characters are escaped, and that the path is always rendered as a
       // quoted string on a single line.
       return (
-        `      - [${yaml.dump(filename, { forceQuotes: true, quoteStyle: "single" }).trim()}, ` +
+        `      - [${yaml.dump(filename, { forceQuotes: true, quoteStyle: "double" }).trim()}, ` +
         `${range.startLine}, ${range.endLine}]\n`
       );
     })
@@ -356,15 +412,6 @@ dataExtensions:
 
   return diffRangeDir;
 }
-
-// A set of default query suite names that are understood by the CLI.
-export const defaultSuites: Set<string> = new Set([
-  "security-experimental",
-  "security-extended",
-  "security-and-quality",
-  "code-quality",
-  "code-scanning",
-]);
 
 /**
  * If `maybeSuite` is the name of a default query suite, it is resolved into the corresponding

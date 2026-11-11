@@ -5,6 +5,7 @@ import * as actionsUtil from "./actions-util";
 import { getActionVersion, getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { getGitHubVersion } from "./api-client";
+import { getConfig } from "./config-utils";
 import { initFeatures } from "./feature-flags";
 import { Logger } from "./logging";
 import { getRepositoryNwo } from "./repository";
@@ -23,14 +24,12 @@ import {
   ConfigurationError,
   checkActionVersion,
   checkDiskUsage,
-  initializeEnvironment,
   shouldSkipSarifUpload,
   wrapError,
 } from "./util";
 
 interface UploadSarifStatusReport
-  extends StatusReportBase,
-    upload_lib.UploadStatusReport {}
+  extends StatusReportBase, upload_lib.UploadStatusReport {}
 
 async function sendSuccessStatusReport(
   startedAt: Date,
@@ -54,11 +53,13 @@ async function sendSuccessStatusReport(
   }
 }
 
-async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
+async function run(action: ActionState<["Base", "Env", "Logger"]>) {
   // To capture errors appropriately, keep as much code within the try-catch as
   // possible, and only use safe functions outside.
+  const logger = action.logger;
+
   try {
-    initializeEnvironment(getActionVersion());
+    action.env.initialise(getActionVersion());
 
     const gitHubVersion = await getGitHubVersion();
     checkActionVersion(getActionVersion(), gitHubVersion);
@@ -66,18 +67,19 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     // Make inputs accessible in the `post` step.
     actionsUtil.persistInputs();
 
+    const tempDir = getTemporaryDirectory();
     const repositoryNwo = getRepositoryNwo();
     const features = initFeatures(
       gitHubVersion,
       repositoryNwo,
-      getTemporaryDirectory(),
+      tempDir,
       logger,
     );
 
     const startingStatusReportBase = await createStatusReportBase(
       ActionName.UploadSarif,
       "starting",
-      startedAt,
+      action.startedAt,
       undefined,
       await checkDiskUsage(logger),
       logger,
@@ -91,9 +93,13 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     const checkoutPath = actionsUtil.getRequiredInput("checkout_path");
     const category = actionsUtil.getOptionalInput("category");
 
+    // Load the configuration from a previous step if there is one. This allows us to reuse the CLI that
+    // may have been installed by a previous step.
+    const maybeConfig = await getConfig(tempDir, logger);
     const uploadResults = await postProcessAndUploadSarif(
       logger,
       features,
+      maybeConfig,
       "always",
       checkoutPath,
       sarifPath,
@@ -131,7 +137,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
       // so we can't wait for that here.
     }
     await sendSuccessStatusReport(
-      startedAt,
+      action.startedAt,
       codeScanningResult?.statusReport || {},
       logger,
     );
@@ -147,7 +153,7 @@ async function run({ startedAt, logger }: ActionState<["Base", "Logger"]>) {
     const errorStatusReportBase = await createStatusReportBase(
       ActionName.UploadSarif,
       getActionsStatus(error),
-      startedAt,
+      action.startedAt,
       undefined,
       await checkDiskUsage(logger),
       logger,

@@ -92,8 +92,7 @@ runs:
           Please do the following:
 
           - [ ] Approve running the full set of PR checks.
-          - [ ] Approve and merge the PR. When merging the PR, make sure "Create a merge commit" is
-                selected rather than "Squash and merge" or "Rebase and merge".
+          - [ ] Approve and merge the PR. When merging the PR, make sure "Create a merge commit" is selected rather than "Squash and merge" or "Rebase and merge".
         EOF
         )
 

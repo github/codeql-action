@@ -4,10 +4,16 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import { CodeQL, getCodeQLForTesting } from "./codeql";
+import type { CodeQL } from "./codeql";
 import * as configUtils from "./config-utils";
 import { BuiltInLanguage } from "./languages";
-import { createTestConfig, makeVersionInfo, setupTests } from "./testing-utils";
+import {
+  createTestConfig,
+  getCodeQLForTesting,
+  makeVersionInfo,
+  RecordingLogger,
+  setupTests,
+} from "./testing-utils";
 import { ToolsFeature } from "./tools-features";
 import { getCombinedTracerConfig } from "./tracer-config";
 import * as util from "./util";
@@ -42,18 +48,20 @@ async function stubCodeql(
 }
 
 test("getCombinedTracerConfig - return undefined when no languages are traced languages", async (t) => {
+  const logger = new RecordingLogger();
   await util.withTmpDir(async (tmpDir) => {
     const config = getTestConfig(tmpDir);
     // No traced languages
     config.languages = [BuiltInLanguage.javascript, BuiltInLanguage.python];
     t.deepEqual(
-      await getCombinedTracerConfig(await stubCodeql(), config),
+      await getCombinedTracerConfig(logger, await stubCodeql(), config),
       undefined,
     );
   });
 });
 
 test("getCombinedTracerConfig", async (t) => {
+  const logger = new RecordingLogger();
   await util.withTmpDir(async (tmpDir) => {
     const config = getTestConfig(tmpDir);
 
@@ -82,7 +90,11 @@ test("getCombinedTracerConfig", async (t) => {
     );
     fs.writeFileSync(startTracingJson, JSON.stringify(startTracingEnv));
 
-    const result = await getCombinedTracerConfig(await stubCodeql(), config);
+    const result = await getCombinedTracerConfig(
+      logger,
+      await stubCodeql(),
+      config,
+    );
     t.notDeepEqual(result, undefined);
 
     t.false(Object.prototype.hasOwnProperty.call(result?.env, "CODEQL_RUNNER"));

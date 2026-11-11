@@ -8,6 +8,13 @@
     "sourceMap": false,
     "noEmit": true
   },
-  "include": ["./**/*.ts", "./**/*.mts", "../src/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["./**/*.ts", "../src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "../src/testdata/**",
+    "../src/**/*.test.ts",
+    "../src/testing-utils.ts",
+    "../src/json/testing-util.ts",
+    "../src/feature-flags/testing-util.ts"
+  ]
 }

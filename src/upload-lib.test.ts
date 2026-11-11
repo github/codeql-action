@@ -10,17 +10,22 @@ import * as analyses from "./analyses";
 import { AnalysisKind, CodeQuality, CodeScanning } from "./analyses";
 import * as api from "./api-client";
 import * as diffUtils from "./diff-informed-analysis-utils";
-import { getRunnerLogger, Logger } from "./logging";
+import { getEnv } from "./environment";
+import { Logger } from "./logging";
 import * as sarif from "./sarif";
-import { setupTests } from "./testing-utils";
+import {
+  checkExpectedLogMessages,
+  RecordingLogger,
+  setupTests,
+} from "./testing-utils";
 import * as uploadLib from "./upload-lib";
 import { UploadPayload } from "./upload-lib/types";
-import { GitHubVariant, initializeEnvironment, withTmpDir } from "./util";
+import { GitHubVariant, withTmpDir } from "./util";
 
 setupTests(test);
 
 test.beforeEach(() => {
-  initializeEnvironment("1.2.3");
+  getEnv().initialise("1.2.3");
 });
 
 test.serial("validateSarifFileSchema - valid", (t) => {
@@ -29,7 +34,7 @@ test.serial("validateSarifFileSchema - valid", (t) => {
     uploadLib.validateSarifFileSchema(
       uploadLib.readSarifFileOrThrow(inputFile),
       inputFile,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     ),
   );
 });
@@ -40,7 +45,7 @@ test.serial("validateSarifFileSchema - invalid", (t) => {
     uploadLib.validateSarifFileSchema(
       uploadLib.readSarifFileOrThrow(inputFile),
       inputFile,
-      getRunnerLogger(true),
+      new RecordingLogger(),
     ),
   );
 });
@@ -179,7 +184,7 @@ test.serial("finding SARIF files", async (t) => {
     }
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       tmpDir,
     );
 
@@ -200,7 +205,7 @@ test.serial("getGroupedSarifFilePaths - Risk Assessment files", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -218,7 +223,7 @@ test.serial("getGroupedSarifFilePaths - Code Quality file", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -236,7 +241,7 @@ test.serial("getGroupedSarifFilePaths - Code Scanning file", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -254,7 +259,7 @@ test.serial("getGroupedSarifFilePaths - Other file", async (t) => {
     fs.writeFileSync(sarifPath, "");
 
     const groupedSarifFiles = await uploadLib.getGroupedSarifFilePaths(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       sarifPath,
     );
 
@@ -932,7 +937,7 @@ function uploadPayloadFixtures(analysis: analyses.AnalysisConfig) {
         owner: mockData.owner,
         repo: mockData.repo,
       },
-      getRunnerLogger(true),
+      new RecordingLogger(),
       analysis,
     );
 
@@ -1014,12 +1019,62 @@ for (const analysisKind of analyses.supportedAnalysisKinds) {
   );
 }
 
+function createMockSarifWithResults(
+  results: sarif.Result[],
+): Partial<sarif.Log> {
+  return {
+    version: "2.1.0",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "test tool",
+          },
+        },
+        results,
+      },
+    ],
+  };
+}
+
+function createMockResultWithUri(
+  uri: string,
+  startLine = 2,
+  relatedUri?: string,
+): sarif.Result {
+  return {
+    ruleId: "test-rule",
+    message: { text: "test message" },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri },
+          region: { startLine },
+        },
+      },
+    ],
+    ...(relatedUri
+      ? {
+          relatedLocations: [
+            {
+              physicalLocation: {
+                artifactLocation: { uri: relatedUri },
+                region: { startLine },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+}
+
 function runFilterAlertsByDiffRange(
   input: Partial<sarif.Log>,
   diffRanges: diffUtils.DiffThunkRange[],
+  logger: Logger = new RecordingLogger(),
 ): Partial<sarif.Log> {
   sinon.stub(diffUtils, "readDiffRangesJsonFile").returns(diffRanges);
-  return uploadLib.filterAlertsByDiffRange(getRunnerLogger(true), input);
+  return uploadLib.filterAlertsByDiffRange(logger, input);
 }
 
 test.serial(
@@ -1041,5 +1096,141 @@ test.serial(
     );
 
     t.deepEqual(actualOutput, expectedOutput);
+  },
+);
+
+for (const [filePath, uri] of [
+  ["with space/board.js", "with%20space/board.js"],
+  ["src/[id]/board.js", "src/%5Bid%5D/board.js"],
+  ["src/file#1.js", "src/file%231.js"],
+  ["src/100%.js", "src/100%25.js"],
+  ["src/literal%20.js", "src/literal%2520.js"],
+  ["src/foo:bar.js", "src/foo%3Abar.js"],
+  ["src/caf\u00e9.js", "src/caf%C3%A9.js"],
+  ["src/caf\u00e9.js", "src/caf%c3%a9.js"],
+]) {
+  test.serial(
+    `filterAlertsByDiffRange matches percent-encoded URI ${uri}`,
+    (t) => {
+      const matchingResult = createMockResultWithUri(uri);
+      const nonMatchingResult = createMockResultWithUri("other.js");
+      const input = createMockSarifWithResults([
+        matchingResult,
+        nonMatchingResult,
+      ]);
+
+      const actualOutput = runFilterAlertsByDiffRange(input, [
+        { path: filePath, startLine: 1, endLine: 3 },
+      ]);
+
+      t.deepEqual(actualOutput.runs?.[0].results, [matchingResult]);
+    },
+  );
+}
+
+test.serial(
+  "filterAlertsByDiffRange filters out percent-encoded URI when outside diff line range",
+  (t) => {
+    const outOfRangeResult = createMockResultWithUri(
+      "with%20space/board.js",
+      2,
+    );
+    const inRangeResult = createMockResultWithUri("with%20space/board.js", 15);
+    const input = createMockSarifWithResults([outOfRangeResult, inRangeResult]);
+    const actualOutput = runFilterAlertsByDiffRange(input, [
+      { path: "with space/board.js", startLine: 10, endLine: 20 },
+    ]);
+
+    t.deepEqual(actualOutput.runs?.[0].results, [inRangeResult]);
+  },
+);
+
+test.serial(
+  "filterAlertsByDiffRange filters out percent-encoded URI when path does not match",
+  (t) => {
+    const input = createMockSarifWithResults([
+      createMockResultWithUri("with%20space/board.js"),
+    ]);
+    const actualOutput = runFilterAlertsByDiffRange(input, [
+      { path: "other/board.js", startLine: 1, endLine: 3 },
+    ]);
+
+    t.deepEqual(actualOutput.runs?.[0].results, []);
+  },
+);
+
+test.serial(
+  "filterAlertsByDiffRange keeps alert when relatedLocations has a matching percent-encoded URI",
+  (t) => {
+    const matchingRelatedResult = createMockResultWithUri(
+      "src/promiseUtils.js",
+      2,
+      "with%20space/ParseObject.js",
+    );
+    const nonMatchingResult = createMockResultWithUri("other.js");
+    const input = createMockSarifWithResults([
+      matchingRelatedResult,
+      nonMatchingResult,
+    ]);
+
+    const actualOutput = runFilterAlertsByDiffRange(input, [
+      { path: "with space/ParseObject.js", startLine: 1, endLine: 3 },
+    ]);
+
+    t.deepEqual(actualOutput.runs?.[0].results, [matchingRelatedResult]);
+  },
+);
+
+for (const uri of ["dir%ZZ/board.js", "src/bad%.js", "src/bad%C3%28.js"]) {
+  test.serial(
+    `filterAlertsByDiffRange falls back to raw path for malformed URI ${uri}`,
+    (t) => {
+      const logger = new RecordingLogger();
+      const matchingResult = createMockResultWithUri(uri);
+      const input = createMockSarifWithResults([matchingResult]);
+      const actualOutput = runFilterAlertsByDiffRange(
+        input,
+        [{ path: uri, startLine: 1, endLine: 3 }],
+        logger,
+      );
+
+      t.deepEqual(actualOutput.runs?.[0].results, [matchingResult]);
+      checkExpectedLogMessages(t, logger.messages, [
+        `Failed to decode location URI "${uri}", comparing it as a raw path`,
+      ]);
+    },
+  );
+}
+
+test.serial(
+  "filterAlertsByDiffRange filters out malformed URI when raw path does not match",
+  (t) => {
+    const logger = new RecordingLogger();
+    const input = createMockSarifWithResults([
+      createMockResultWithUri("dir%ZZ/board.js"),
+    ]);
+    const actualOutput = runFilterAlertsByDiffRange(
+      input,
+      [{ path: "src/different.js", startLine: 1, endLine: 3 }],
+      logger,
+    );
+
+    t.deepEqual(actualOutput.runs?.[0].results, []);
+    checkExpectedLogMessages(t, logger.messages, [
+      'Failed to decode location URI "dir%ZZ/board.js", comparing it as a raw path',
+    ]);
+  },
+);
+
+test.serial(
+  "filterAlertsByDiffRange matches raw unencoded path containing valid percent-encoding sequence",
+  (t) => {
+    const matchingResult = createMockResultWithUri("dir/100%20done.js");
+    const input = createMockSarifWithResults([matchingResult]);
+    const actualOutput = runFilterAlertsByDiffRange(input, [
+      { path: "dir/100%20done.js", startLine: 1, endLine: 3 },
+    ]);
+
+    t.deepEqual(actualOutput.runs?.[0].results, [matchingResult]);
   },
 );

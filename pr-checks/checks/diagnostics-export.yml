@@ -5,6 +5,7 @@ versions:
   - nightly-latest
 env:
   CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
+installNode: true
 steps:
   - uses: ./../action/init
     id: init
@@ -27,58 +28,15 @@ steps:
       output: "${{ runner.temp }}/results"
       upload-database: false
   - name: Upload SARIF
-    uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+    uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
     with:
       name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
       path: "${{ runner.temp }}/results/javascript.sarif"
       retention-days: 7
+
   - name: Check diagnostics appear in SARIF
-    uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
     env:
       SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
-    with:
-      script: |
-        const fs = require('fs');
-
-        function checkStatusPageNotification(n) {
-          const expectedMessage = 'Plaintext message';
-          if (n.message.text !== expectedMessage) {
-            core.setFailed(`Expected the status page diagnostic to have the message '${expectedMessage}', but found '${n.message.text}'.`);
-          }
-          if (n.locations.length !== 1) {
-            core.setFailed(`Expected the status page diagnostic to have exactly 1 location, but found ${n.locations.length}.`);
-          }
-        }
-
-        const sarif = JSON.parse(fs.readFileSync(process.env['SARIF_PATH'], 'utf8'));
-        const run = sarif.runs[0];
-
-        const toolExecutionNotifications = run.invocations[0].toolExecutionNotifications;
-        const statusPageNotifications = toolExecutionNotifications.filter(n =>
-          n.descriptor.id === 'lang/diagnostics/example' && n.properties?.visibility?.statusPage
-        );
-        if (statusPageNotifications.length !== 1) {
-          core.setFailed(
-            'Expected exactly one status page reporting descriptor for this diagnostic in the ' +
-              `'runs[].invocations[].toolExecutionNotifications[]' SARIF property, but found ` +
-              `${statusPageNotifications.length}. All notification reporting descriptors: ` +
-              `${JSON.stringify(toolExecutionNotifications)}.`
-          );
-        }
-        checkStatusPageNotification(statusPageNotifications[0]);
-
-        const notifications = run.tool.driver.notifications;
-        const diagnosticNotification = notifications.filter(n =>
-          n.id === 'lang/diagnostics/example' && n.name === 'lang/diagnostics/example' &&
-            n.fullDescription.text === 'Diagnostic name'
-        );
-        if (diagnosticNotification.length !== 1) {
-          core.setFailed(
-            'Expected exactly one notification for this diagnostic in the ' +
-              `'runs[].tool.driver.notifications[]' SARIF property, but found ` +
-              `${diagnosticNotification.length}. All notifications: ` +
-              `${JSON.stringify(notifications)}.`
-          );
-        }
-
-        core.info('Finished diagnostic export test');
+    run: |
+      cd ../action
+      npx tsx ./pr-checks/check-diagnostics.ts

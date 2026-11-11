@@ -1,5 +1,6 @@
 import { UploadKind } from "./actions-util";
 import * as analyses from "./analyses";
+import type { ActionConfig } from "./config/action-config";
 import { FeatureEnablement } from "./feature-flags";
 import { Logger } from "./logging";
 import * as upload_lib from "./upload-lib";
@@ -26,6 +27,7 @@ export type UploadSarifResults = Partial<
 export async function postProcessAndUploadSarif(
   logger: Logger,
   features: FeatureEnablement,
+  config: ActionConfig<"codeQLCmd" | "tempDir"> | undefined,
   uploadKind: UploadKind,
   checkoutPath: string,
   sarifPath: string,
@@ -45,6 +47,7 @@ export async function postProcessAndUploadSarif(
     const postProcessingResults = await upload_lib.postProcessSarifFiles(
       logger,
       features,
+      config,
       checkoutPath,
       sarifFiles,
       category,

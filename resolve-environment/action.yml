@@ -1,6 +1,6 @@
-name: 'CodeQL: Resolve Build Environment'
-description: '[Experimental] Attempt to infer a build environment suitable for automatic builds'
-author: 'GitHub'
+name: "CodeQL: Resolve Build Environment"
+description: "[Experimental] Attempt to infer a build environment suitable for automatic builds"
+author: "GitHub"
 inputs:
   token:
     description: "GitHub token to use for authenticating with this instance of GitHub. The token must be the built-in GitHub Actions token, and the workflow must have the `security-events: write` permission. Most of the time it is advisable to avoid specifying this input so that the workflow falls back to using the default value."
@@ -22,4 +22,4 @@ outputs:
     description: The inferred build environment configuration.
 runs:
   using: node24
-  main: '../lib/resolve-environment-entry.js'
+  main: "../lib/resolve-environment-entry.js"

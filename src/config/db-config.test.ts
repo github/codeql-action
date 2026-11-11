@@ -2,15 +2,15 @@ import test, { ExecutionContext } from "ava";
 
 import { RepositoryProperties } from "../feature-flags/properties";
 import { BuiltInLanguage, Language } from "../languages";
-import { getRunnerLogger } from "../logging";
 import {
   checkExpectedLogMessages,
   getRecordingLogger,
   LoggedMessage,
   makeMacro,
   RecordingLogger,
+  setupActionsVars,
 } from "../testing-utils";
-import { ConfigurationError, prettyPrintPack } from "../util";
+import { ConfigurationError, prettyPrintPack, withTmpDir } from "../util";
 
 import * as dbConfig from "./db-config";
 
@@ -384,7 +384,7 @@ calculateAugmentationErrorMacro(
 
 test("parseUserConfig - successfully parses valid YAML", (t) => {
   const result = dbConfig.parseUserConfig(
-    getRunnerLogger(true),
+    new RecordingLogger(),
     "test",
     `
     paths-ignore:
@@ -410,7 +410,7 @@ test("parseUserConfig - throws a ConfigurationError if the file is not valid YAM
   t.throws(
     () =>
       dbConfig.parseUserConfig(
-        getRunnerLogger(true),
+        new RecordingLogger(),
         "test",
         `
         paths-ignore:
@@ -562,66 +562,151 @@ test("mergeDefaultSetupAndUserConfigs - keeps other properties from user-supplie
   t.deepEqual(result, configFile);
 });
 
-test("mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys from Default Setup", async (t) => {
-  const logger = new RecordingLogger();
-  const configFile: dbConfig.UserConfig = {
-    "query-filters": [{ exclude: { a: "b" } }],
-    "paths-ignore": ["path"],
-  };
+test.serial(
+  "mergeDefaultSetupAndUserConfigs - ignores, but warns about, unknown keys from Default Setup",
+  async (t) => {
+    const logger = new RecordingLogger();
+    const configFile: dbConfig.UserConfig = {
+      "query-filters": [{ exclude: { a: "b" } }],
+      "paths-ignore": ["path"],
+    };
 
-  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
-    logger,
-    {
-      "default-setup": {
-        borg: [],
-        org: {
-          unknown: "foo",
-          "model-packs": [],
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+      const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+        logger,
+        {
+          "default-setup": {
+            borg: [],
+            org: {
+              unknown: "foo",
+              "model-packs": [],
+            },
+          } as unknown as dbConfig.DefaultSetupConfig,
+          "paths-ignore": ["other-path"],
         },
-      } as unknown as dbConfig.DefaultSetupConfig,
-      "paths-ignore": ["other-path"],
-    },
-    configFile,
+        configFile,
+      );
+
+      t.deepEqual(result, {
+        ...configFile,
+        "default-setup": { org: { "model-packs": [] } },
+      });
+
+      const expectedUnrecognisedKeys = [
+        ".default-setup.org.unknown",
+        ".default-setup.borg",
+        ".paths-ignore",
+      ].join(", ");
+      checkExpectedLogMessages(t, logger.messages, [
+        `Unrecognised keys in Default Setup configuration: ${expectedUnrecognisedKeys}`,
+      ]);
+    });
+  },
+);
+
+test.serial(
+  "mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Setup",
+  async (t) => {
+    const logger = new RecordingLogger();
+    const configFile: dbConfig.UserConfig = {};
+
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      const result = dbConfig.mergeDefaultSetupAndUserConfigs(
+        logger,
+        {
+          "default-setup": {
+            org: {
+              "model-packs": [123],
+            },
+          } as unknown as dbConfig.DefaultSetupConfig,
+        },
+        configFile,
+      );
+
+      t.deepEqual(result, {
+        ...configFile,
+        "default-setup": { org: { "model-packs": [123] } },
+      });
+
+      const expectedInvalidKeys = [".default-setup.org.model-packs[0]"].join(
+        ", ",
+      );
+      checkExpectedLogMessages(t, logger.messages, [
+        `Invalid keys in Default Setup configuration: ${expectedInvalidKeys}`,
+      ]);
+    });
+  },
+);
+
+/** Parses `contents` as a configuration without validating it. */
+function parseUnvalidatedConfig(contents: string): dbConfig.UserConfig {
+  return dbConfig.parseUserConfig(
+    new RecordingLogger(),
+    "test",
+    contents,
+    false,
   );
+}
 
-  t.deepEqual(result, {
-    ...configFile,
-    "default-setup": { org: { "model-packs": [] } },
-  });
-
-  const expectedUnrecognisedKeys = [
-    ".default-setup.org.unknown",
-    ".default-setup.borg",
-    ".paths-ignore",
-  ].join(", ");
-  checkExpectedLogMessages(t, logger.messages, [
-    `Unrecognised keys in Default Setup configuration: ${expectedUnrecognisedKeys}`,
-  ]);
+test("matchesDefaultSetupConfigSchema - returns true for configurations that only use Default Setup properties", (t) => {
+  for (const contents of [
+    [
+      "default-setup:",
+      "  org:",
+      "    model-packs: [ github/immutable-actions-list@0.0.1 ]",
+      "threat-models: [  ]",
+    ].join("\n"),
+    "threat-models: [ local ]",
+    "{}",
+  ]) {
+    t.true(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
+  }
 });
 
-test("mergeDefaultSetupAndUserConfigs - warns about invalid keys from Default Setup", async (t) => {
-  const logger = new RecordingLogger();
-  const configFile: dbConfig.UserConfig = {};
+test("matchesDefaultSetupConfigSchema - returns false for configurations that use other properties", (t) => {
+  for (const contents of [
+    "queries: [ { uses: ./queries/show_ifs.ql } ]",
+    "paths-ignore: [ tests ]",
+    "default-setup: { org: { model-packs: [], queries: [] } }",
+  ]) {
+    t.false(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
+  }
+});
 
-  const result = dbConfig.mergeDefaultSetupAndUserConfigs(
-    logger,
-    {
-      "default-setup": {
-        org: {
-          "model-packs": [123],
-        },
-      } as unknown as dbConfig.DefaultSetupConfig,
-    },
-    configFile,
-  );
+test("matchesDefaultSetupConfigSchema - returns false for invalid Default Setup properties", (t) => {
+  for (const contents of [
+    "threat-models: local",
+    "default-setup: { org: { model-packs: [ 1 ] } }",
+  ]) {
+    t.false(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
+  }
+});
 
-  t.deepEqual(result, {
-    ...configFile,
-    "default-setup": { org: { "model-packs": [123] } },
-  });
-
-  const expectedInvalidKeys = [".default-setup.org.model-packs[0]"].join(", ");
-  checkExpectedLogMessages(t, logger.messages, [
-    `Invalid keys in Default Setup configuration: ${expectedInvalidKeys}`,
-  ]);
+test("matchesDefaultSetupConfigSchema - returns false for configurations that aren't mappings", (t) => {
+  for (const contents of ["- threat-models", "local", "null"]) {
+    t.false(
+      dbConfig.matchesDefaultSetupConfigSchema(
+        parseUnvalidatedConfig(contents),
+      ),
+      contents,
+    );
+  }
 });

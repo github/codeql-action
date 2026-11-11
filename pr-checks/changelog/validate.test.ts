@@ -1,18 +1,15 @@
 import assert from "node:assert/strict";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { describe, it } from "node:test";
 
-import { withTmpDir, withTmpFile } from "../../src/util";
+import { withTmpFile } from "../../src/util";
 
 import {
   hasValidChangenoteCategory,
-  isValidAllChangenoteFiles,
   isValidChangenoteContent,
   isValidChangenoteFile,
   isValidChangenoteFilename,
   VALID_CHANGE_NOTE_CATEGORIES,
-} from "./validate.mjs";
+} from "./validate";
 
 await describe("isValidChangenoteContent", async () => {
   await it("recognizes an unordered Markdown list", () => {
@@ -157,26 +154,6 @@ await describe("isValidChangenoteFile", async () => {
     assert.equal(isValidChangenoteFile("non-existent-file.md"), false);
   });
 
-  await it("rejects invalid filename", async () => {
-    await withTmpFile(
-      "fix-bug.md",
-      "---\ncategory: fix\n---\n- Fixed a bug\n",
-      (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
-      },
-    );
-  });
-
-  await it("rejects missing frontmatter", async () => {
-    await withTmpFile(
-      "2026-01-01-fix-bug.md",
-      "- Fixed a bug\n",
-      (filePath) => {
-        assert.equal(isValidChangenoteFile(filePath), false);
-      },
-    );
-  });
-
   await it("rejects invalid Markdown", async () => {
     await withTmpFile(
       "2026-01-01-fix-bug.md",
@@ -185,41 +162,5 @@ await describe("isValidChangenoteFile", async () => {
         assert.equal(isValidChangenoteFile(filePath), false);
       },
     );
-  });
-});
-
-await describe("isValidAllChangenoteFiles", async () => {
-  await it("accepts list of file paths of valid change-notes", async () => {
-    await withTmpDir(async (tmpDir) => {
-      const fileName1 = path.join(tmpDir, "2026-01-01-fix-bug.md");
-      const fileName2 = path.join(tmpDir, "2026-01-02-add-feature.md");
-      fs.writeFileSync(fileName1, "---\ncategory: fix\n---\n- Fixed a bug\n");
-      fs.writeFileSync(
-        fileName2,
-        "---\ncategory: feature\n---\n- Added a feature\n",
-      );
-      assert.equal(isValidAllChangenoteFiles([fileName1, fileName2]), true);
-    });
-  });
-
-  await it("accepts the empty list", async () => {
-    assert.equal(isValidAllChangenoteFiles([]), true);
-  });
-
-  await it("accepts list of .gitkeep", async () => {
-    assert.equal(isValidAllChangenoteFiles([".gitkeep"]), true);
-  });
-
-  await it("rejects list containing a file path to an invalid change-note", async () => {
-    await withTmpDir(async (tmpDir) => {
-      const fileName1 = path.join(tmpDir, "2026-01-01-fix-bug.md");
-      const fileName2 = path.join(tmpDir, "2026-01-02-wrong-category.md");
-      fs.writeFileSync(fileName1, "---\ncategory: fix\n---\n- Fixed a bug\n");
-      fs.writeFileSync(
-        fileName2,
-        "---\ncategory: foobar\n---\n- Added a feature\n",
-      );
-      assert.equal(isValidAllChangenoteFiles([fileName1, fileName2]), false);
-    });
   });
 });

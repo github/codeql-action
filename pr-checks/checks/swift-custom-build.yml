@@ -7,6 +7,7 @@ versions:
 operatingSystems:
   - os: macos
     runner-image: macos-latest
+    runner-image: macos-26-xlarge
 installGo: true
 installDotNet: true
 env:

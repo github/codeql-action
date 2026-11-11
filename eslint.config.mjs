@@ -140,6 +140,17 @@ export default [
       "no-async-foreach/no-async-foreach": "error",
       "no-sequences": "error",
       "no-shadow": "off",
+
+      // A basic check that we don't use `exportVariable` from `@actions/core`.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[property.name='exportVariable']",
+          message:
+            "Use the `export` method of an `Env` instance or `exportEnvVar` from `environment.ts` instead.",
+        },
+      ],
+
       // This is overly restrictive with unsetting `EnvVar`s
       "@typescript-eslint/no-dynamic-delete": "off",
       "@typescript-eslint/no-shadow": "error",
@@ -158,7 +169,16 @@ export default [
     },
   },
   {
-    files: ["**/*.ts", "**/*.js", "**/*.mts"],
+    files: ["src/environment.ts"],
+
+    // We allow `exportVariable` from `@actions/core` to be used in this file
+    // since it defines the wrapper around it that other modules use.
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
+  {
+    files: ["**/*.ts", "**/*.js"],
 
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
@@ -180,7 +200,7 @@ export default [
     },
   },
   {
-    files: ["pr-checks/**/*.ts", "pr-checks/**/*.mts"],
+    files: ["pr-checks/**/*.ts"],
 
     languageOptions: {
       parserOptions: {

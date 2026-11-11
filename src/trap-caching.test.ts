@@ -6,29 +6,26 @@ import test from "ava";
 import * as sinon from "sinon";
 
 import * as actionsUtil from "./actions-util";
-import * as apiClient from "./api-client";
 import {
   getTrapCachingExtractorConfigArgs,
   getTrapCachingExtractorConfigArgsForLang,
   createStubCodeQL,
 } from "./codeql";
 import * as configUtils from "./config-utils";
-import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
 import { BuiltInLanguage } from "./languages";
-import { getRunnerLogger } from "./logging";
 import {
-  createFeatures,
+  callee,
   createTestConfig,
   getRecordingLogger,
   makeVersionInfo,
   setupTests,
 } from "./testing-utils";
 import {
-  cleanupTrapCaches,
   downloadTrapCaches,
   getLanguagesSupportingCaching,
   uploadTrapCaches,
+  warnIfTrapCacheCleanupEnvVarIsSet,
 } from "./trap-caching";
 import * as util from "./util";
 
@@ -182,6 +179,7 @@ test.serial(
         stubCodeql,
         [BuiltInLanguage.javascript, BuiltInLanguage.cpp],
         logger,
+        undefined,
       );
       t.assert(
         stubRestore.calledOnceWith(
@@ -199,83 +197,27 @@ test.serial(
   },
 );
 
-test.serial("cleanup removes only old CodeQL TRAP caches", async (t) => {
-  await util.withTmpDir(async (tmpDir) => {
-    // This config specifies that we are analyzing JavaScript and Ruby, but not Swift.
-    const config = getTestConfigWithTempDir(tmpDir);
-
-    sinon.stub(gitUtils, "getRef").resolves("refs/heads/main");
-    sinon.stub(gitUtils, "isAnalyzingDefaultBranch").resolves(true);
-    const listStub = sinon.stub(apiClient, "listActionsCaches").resolves([
-      // Should be kept, since it's not relevant to CodeQL. In reality, the API shouldn't return
-      // this in the first place, but this is a defensive check.
-      {
-        id: 1,
-        key: "some-other-key",
-        created_at: "2024-05-23T14:25:00Z",
-        size_in_bytes: 100 * 1024 * 1024,
-      },
-      // Should be kept, since it's the newest TRAP cache for JavaScript
-      {
-        id: 2,
-        key: "codeql-trap-1-2.0.0-javascript-newest",
-        created_at: "2024-04-23T14:25:00Z",
-        size_in_bytes: 50 * 1024 * 1024,
-      },
-      // Should be cleaned up
-      {
-        id: 3,
-        key: "codeql-trap-1-2.0.0-javascript-older",
-        created_at: "2024-03-22T14:25:00Z",
-        size_in_bytes: 200 * 1024 * 1024,
-      },
-      // Should be cleaned up
-      {
-        id: 4,
-        key: "codeql-trap-1-2.0.0-javascript-oldest",
-        created_at: "2024-02-21T14:25:00Z",
-        size_in_bytes: 300 * 1024 * 1024,
-      },
-      // Should be kept, since it's the newest TRAP cache for Ruby
-      {
-        id: 5,
-        key: "codeql-trap-1-2.0.0-ruby-newest",
-        created_at: "2024-02-20T14:25:00Z",
-        size_in_bytes: 300 * 1024 * 1024,
-      },
-      // Should be kept, since we aren't analyzing Swift
-      {
-        id: 6,
-        key: "codeql-trap-1-2.0.0-swift-newest",
-        created_at: "2024-02-22T14:25:00Z",
-        size_in_bytes: 300 * 1024 * 1024,
-      },
-      // Should be kept, since we aren't analyzing Swift
-      {
-        id: 7,
-        key: "codeql-trap-1-2.0.0-swift-older",
-        created_at: "2024-02-21T14:25:00Z",
-        size_in_bytes: 300 * 1024 * 1024,
-      },
-    ]);
-
-    const deleteStub = sinon.stub(apiClient, "deleteActionsCache").resolves();
-
-    const statusReport = await cleanupTrapCaches(
-      config,
-      createFeatures([Feature.CleanupTrapCaches]),
-      getRunnerLogger(true),
+// `CODEQL_ACTION_CLEANUP_TRAP_CACHES` has no effect with either value, so we warn even when it's
+// set to `false`.
+for (const value of ["true", "false"]) {
+  test(`warnIfTrapCacheCleanupEnvVarIsSet warns when CODEQL_ACTION_CLEANUP_TRAP_CACHES is '${value}'`, async (t) => {
+    const target = callee(warnIfTrapCacheCleanupEnvVarIsSet)
+      .withEnv((env) => env.set("CODEQL_ACTION_CLEANUP_TRAP_CACHES", value))
+      .withArgs()
+      .logs(
+        t,
+        "CODEQL_ACTION_CLEANUP_TRAP_CACHES environment variable no longer has any effect",
+      );
+    await target.passes(t.is, undefined);
+    t.deepEqual(
+      target.getLogger().messages.map((m) => m.type),
+      ["warning"],
     );
-
-    t.is(listStub.callCount, 1);
-    t.assert(listStub.calledWithExactly("codeql-trap", "refs/heads/main"));
-
-    t.deepEqual(statusReport, {
-      trap_cache_cleanup_size_bytes: 500 * 1024 * 1024,
-    });
-
-    t.is(deleteStub.callCount, 2);
-    t.assert(deleteStub.calledWithExactly(3));
-    t.assert(deleteStub.calledWithExactly(4));
   });
+}
+
+test("warnIfTrapCacheCleanupEnvVarIsSet doesn't warn when CODEQL_ACTION_CLEANUP_TRAP_CACHES is unset", async (t) => {
+  const target = callee(warnIfTrapCacheCleanupEnvVarIsSet).withArgs();
+  await target.passes(t.is, undefined);
+  t.deepEqual(target.getLogger().messages, []);
 });

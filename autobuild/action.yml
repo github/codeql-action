@@ -1,6 +1,6 @@
-name: 'CodeQL: Autobuild'
-description: 'Attempt to automatically build the code. Only used for analyzing languages that require a build. Use the `build-mode: autobuild` input in the `init` action instead.'
-author: 'GitHub'
+name: "CodeQL: Autobuild"
+description: "Attempt to automatically build the code. Only used for analyzing languages that require a build. Use the `build-mode: autobuild` input in the `init` action instead."
+author: "GitHub"
 inputs:
   token:
     description: "GitHub token to use for authenticating with this instance of GitHub. The token needs the `security-events: write` permission."
@@ -16,4 +16,4 @@ inputs:
     required: false
 runs:
   using: node24
-  main: '../lib/autobuild-entry.js'
+  main: "../lib/autobuild-entry.js"

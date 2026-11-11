@@ -11,9 +11,12 @@ The CodeQL Action is used in GitHub Actions workflows to run CodeQL scans using 
 
 ## Review instructions
 
-- When wording review comments, be helpful and friendly. Assume that the PR author has written the code with the best of intentions. Word your comments constructively as suggestions for improvements. Do not word suggestions as commands.
+- Prioritise identifying critical issues, such as logic bugs, over comments on documentation or typos.
+- When wording review comments, be helpful and friendly. Assume that the PR author has written the code with the best of intentions. Never word suggestions as commands or using the imperative. Examples of what you should never write: "Preserve that non-fatal behaviour here" or "Please preserve that non-fatal behaviour here".
+- When writing feedback, assume that the PR author is competent and is able to understand whether the point you are making is valid or not, why you are raising it, and how to best address it. While you can suggest how to address a point you are making, don't phrase it as a requirement or assume that it is the only solution.
+- Always word your comments constructively as suggestions for improvements, for example: "It would make sense to ..." or "Could you add ...?" or "Would it make sense to ...?"
 - If you want to comment on a change that you believe will fail a CI check, do not present the CI failure you expect as a fact. Instead, write that you think a change "may" lead to a failure in CI. Suggest that, if such a failure manifests, the changes you are commenting on may be the place responsible for the failure and are worth looking at.
-- If a suggestion you make is suitable for a follow-up, such as a refactoring that doesn't change the behaviour or fixing a typo in a comment, mention that it can be addressed in a later PR rather than blocking this one.
+- If a suggestion you make is suitable for a follow-up, such as a refactoring that doesn't change the behaviour or fixing a typo in a comment, mention that it can be addressed in a later PR rather than blocking this one or prefix your comment with "Minor: ".
 - If a change is a net improvement, for example because it improves on an existing limitation of existing code, do not complain about pre-existing problems that remain. You may comment on them, but you should make it clear that the thing you are commenting on is not new by writing e.g. "Not new in this PR, but [..]" followed by your description of the issue and a suggestion that it could be improved at the same time with e.g. "Consider whether this is worth addressing as part of this PR as well."
 
 ## Generated code
@@ -21,6 +24,16 @@ The CodeQL Action is used in GitHub Actions workflows to run CodeQL scans using 
 The main codebase of the CodeQL Action is written in TypeScript and compiled to JavaScript. Both the TypeScript sources and the **generated** JavaScript code are contained in this repository. The TypeScript sources are contained in the `src` directory and the JavaScript code is contained in the `lib` directory. A GitHub Actions workflow checks that the JavaScript code in `lib` is up-to-date. Therefore, you should not review any changes to the contents of the `lib` folder and it is expected that the JavaScript code in `lib` closely mirrors the TypeScript code it is generated from. The secondary TypeScript codebase has sources in the `pr-checks` directory, which are executed directly with `tsx` and not compiled to JavaScript in the `lib` folder.
 
 GitHub Actions workflows in the `.github/workflows` directory whose filenames start with two underscores (e.g. `__all-platform-bundle.yml`) are automatically generated using the `pr-checks/sync.sh` script from template files in the `pr-checks/checks` directory. Therefore, you do not need to review files in the `.github/workflows` directory that start with two underscores. However, you should review changes to the `pr-checks` directory as well as workflows in the `.github/workflows` directory that do not start with underscores.
+
+## Feature flags
+
+Some functionality in the code may be gated behind feature flags, which are controlled server-side. If the functionality that is gated behind them is user-facing, then this should be documented in a change note at the time that the gated functionality is added. See `CHANGELOG.md` for existing notes that mention "experimental" for examples. These typically include information about when users may expect to see the feature rolled out.
+
+When a feature flag that gates some functionality is removed, this does not need to be documented in a change note since the feature is already rolled out and the notes for the release which introduced the feature already describe it. The only exception is functionality which will start having an effect on GHES as a result of the feature flag removal:
+
+- Most functionality gated behind feature flags does not affect GHES.
+- We can make functionality available on GHES by setting `defaultValue` to `true` first and waiting for this to have had an effect on GHES. No change note is needed if a feature flag is removed where `defaultValue` was `true`.
+- When removing a feature flag where `defaultValue` was `false` and the functionality starts to affect GHES, a change note may be appropriate.
 
 ## Release process
 

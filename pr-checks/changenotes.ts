@@ -14,7 +14,7 @@ import {
   renderChangelog,
   withChangelog,
 } from "./changelog";
-import { isValidAllChangenoteFiles } from "./changelog/validate.mjs";
+import { isValidChangenoteFile } from "./changelog/validate";
 import { CHANGENOTES_DIR } from "./config";
 
 /**
@@ -28,12 +28,12 @@ interface ChangenoteFile {
 
 /**
  * Returns the absolute file paths of all files in
- * {@link CHANGENOTES_DIR} (except ".gitkeep").
+ * {@link CHANGENOTES_DIR} (except ".gitkeep" and "README.md").
  * */
 function listUnreleasedChangenoteDir(): string[] {
   return fs
     .readdirSync(CHANGENOTES_DIR)
-    .filter((name) => name !== ".gitkeep")
+    .filter((name) => ![".gitkeep", "README.md"].includes(name))
     .map((name) => path.join(CHANGENOTES_DIR, name));
 }
 
@@ -48,6 +48,28 @@ function getChangenotes(): ChangenoteFile[] {
       ...matter(fs.readFileSync(absolutePath, "utf-8")),
     };
   });
+}
+
+/**
+ * Populates the '[UNRELEASED]' section of CHANGELOG.md with the contents
+ * of the changenotes in {@link CHANGENOTES_DIR} and then deletes those changenotes.
+ * @param contents The contents of CHANGELOG.md
+ * @returns The updated contents of CHANGELOG.md
+ */
+export function transferChangenotesToChangelog(contents: string): string {
+  const changenotes = getChangenotes();
+  const changenoteBodies = changenotes.map((c) => c.content.trim());
+  const changenotePaths = changenotes.map((c) => c.absolutePath);
+
+  const changelog = parseChangelog(contents);
+  addBodyLinesToUnreleasedSection(changelog, changenoteBodies);
+  const updatedChangelog = renderChangelog(changelog);
+
+  for (const p of changenotePaths) {
+    fs.unlinkSync(p);
+  }
+
+  return updatedChangelog;
 }
 
 const entryPoint = process.argv[1];
@@ -82,41 +104,32 @@ function main(): ExitCode {
 
 function usage(): ExitCode {
   const message =
-    "Usage: changenotes.mts assemble\n" +
-    "       changenotes.mts validate\n" +
-    "       changenotes.mts help";
+    "Usage: changenotes.ts assemble\n" +
+    "       changenotes.ts validate\n" +
+    "       changenotes.ts help";
   console.log(message);
   return ExitCode.Success;
 }
 
 function assemble(): ExitCode {
   try {
-    const changenotes = getChangenotes();
-    const changenoteBodies = changenotes.map((c) => c.content);
-    const changenotePaths = changenotes.map((c) => c.absolutePath);
-
     withChangelog((contents) => {
-      const changelog = parseChangelog(contents);
-      addBodyLinesToUnreleasedSection(changelog, changenoteBodies);
-      return renderChangelog(changelog);
+      return transferChangenotesToChangelog(contents);
     }, {});
-
-    // Delete changenotes only after successful processing.
-    for (const p of changenotePaths) {
-      fs.unlinkSync(p);
-    }
-
     return ExitCode.Success;
   } catch (e) {
     console.error("Failed to assemble changenotes to 'CHANGELOG.md'", e);
   }
-
   return ExitCode.Failure;
 }
 
 function validate(): ExitCode {
   try {
-    if (isValidAllChangenoteFiles(fs.readdirSync(CHANGENOTES_DIR))) {
+    const allChangenotesValid = getChangenotes().reduce(
+      (r, changenote) => r && isValidChangenoteFile(changenote.absolutePath),
+      true,
+    );
+    if (allChangenotesValid) {
       console.log(`All changenotes in '${CHANGENOTES_DIR}' are valid.`);
       return ExitCode.Success;
     }

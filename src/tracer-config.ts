@@ -4,7 +4,7 @@ import * as path from "path";
 import { type CodeQL } from "./codeql";
 import { type Config } from "./config-utils";
 import { Logger } from "./logging";
-import { asyncSome, BuildMode } from "./util";
+import { asyncSome, BuildMode, getErrorMessage } from "./util";
 
 export type TracerConfig = {
   env: { [key: string]: string };
@@ -77,23 +77,28 @@ export async function endTracingForCluster(
 }
 
 async function getTracerConfigForCluster(
+  logger: Logger,
   config: Config,
 ): Promise<TracerConfig> {
-  const tracingEnvVariables = JSON.parse(
-    fs.readFileSync(
-      path.resolve(
-        config.dbLocation,
-        "temp/tracingEnvironment/start-tracing.json",
-      ),
-      "utf8",
-    ),
+  const filePath = path.resolve(
+    config.dbLocation,
+    "temp/tracingEnvironment/start-tracing.json",
   );
-  return {
-    env: tracingEnvVariables,
-  };
+  try {
+    const tracingEnvVariables = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return {
+      env: tracingEnvVariables,
+    };
+  } catch (err) {
+    logger.error(
+      `Failed to parse tracing environment from '${filePath}': ${getErrorMessage(err)}`,
+    );
+    throw new Error(`Failed to parse tracing environment from '${filePath}'.`);
+  }
 }
 
 export async function getCombinedTracerConfig(
+  logger: Logger,
   codeql: CodeQL,
   config: Config,
 ): Promise<TracerConfig | undefined> {
@@ -101,5 +106,5 @@ export async function getCombinedTracerConfig(
     return undefined;
   }
 
-  return await getTracerConfigForCluster(config);
+  return await getTracerConfigForCluster(logger, config);
 }

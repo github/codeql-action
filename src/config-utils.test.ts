@@ -21,7 +21,6 @@ import { RepositoryProperties } from "./feature-flags/properties";
 import * as gitUtils from "./git-utils";
 import { GitVersionInfo } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
-import { getRunnerLogger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import * as overlayDiagnostics from "./overlay/diagnostics";
 import { OverlayDisabledReason } from "./overlay/diagnostics";
@@ -42,6 +41,7 @@ import {
   callee,
   SAMPLE_DOTCOM_API_DETAILS,
   AssertableTarget,
+  RecordingLogger,
 } from "./testing-utils";
 import {
   GitHubVariant,
@@ -102,7 +102,7 @@ function createTestInitConfigInputs(
       features: createFeatures([]),
       repositoryProperties: {},
       enableFileCoverageInformation: true,
-      logger: getRunnerLogger(true),
+      logger: new RecordingLogger(),
     } satisfies configUtils.InitConfigInputs,
     overrides,
   );
@@ -150,7 +150,7 @@ function mockListLanguages(languages: string[]) {
 
 test.serial("load empty config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const languages = "javascript,python";
 
     setupActionsVars(tempDir, tempDir);
@@ -172,6 +172,7 @@ test.serial("load empty config", async (t) => {
       createTestInitConfigInputs({
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
+        sourceRoot: tempDir,
         tempDir,
         codeql,
         logger,
@@ -186,6 +187,7 @@ test.serial("load empty config", async (t) => {
         logger,
       }),
       {},
+      undefined,
     );
 
     t.deepEqual(config, expectedConfig);
@@ -194,7 +196,7 @@ test.serial("load empty config", async (t) => {
 
 test.serial("load code quality config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const languages = "actions";
 
     setupActionsVars(tempDir, tempDir);
@@ -216,6 +218,7 @@ test.serial("load code quality config", async (t) => {
         analysisKinds: [AnalysisKind.CodeQuality],
         languagesInput: languages,
         repository: { owner: "github", repo: "example" },
+        sourceRoot: tempDir,
         tempDir,
         codeql,
         logger,
@@ -249,7 +252,7 @@ test.serial(
   "initActionState doesn't throw if there are queries configured in the repository properties",
   async (t) => {
     return await withTmpDir(async (tempDir) => {
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const languages = "javascript";
 
       setupActionsVars(tempDir, tempDir);
@@ -296,6 +299,7 @@ test.serial(
             analysisKinds: [AnalysisKind.CodeQuality],
             languagesInput: languages,
             repository: { owner: "github", repo: "example" },
+            sourceRoot: tempDir,
             tempDir,
             codeql,
             repositoryProperties,
@@ -311,7 +315,7 @@ test.serial(
 
 test.serial("loading a saved config produces the same config", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -359,7 +363,7 @@ test.serial("loading a saved config produces the same config", async (t) => {
 
 test.serial("loading config with version mismatch throws", async (t) => {
   return await withTmpDir(async (tempDir) => {
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
 
     const codeql = createStubCodeQL({
       async resolveLanguages() {
@@ -473,6 +477,12 @@ const simpleConfigFileContents = `
   queries:
     - uses: ./foo_file`;
 
+/** The configuration in `simpleConfigFileContents`. */
+const simpleConfigInput: UserConfig = {
+  name: "my config",
+  queries: [{ uses: "./foo_file" }],
+};
+
 /** A less minimal configuration file. */
 const otherConfigFileContents = `
   name: my config
@@ -512,6 +522,7 @@ test.serial("load non-empty input", async (t) => {
     // And the config we expect it to parse to
     const expectedConfig = createTestConfig({
       languages: [BuiltInLanguage.javascript],
+      repositoryRoot: undefined,
       buildMode: BuildMode.None,
       originalUserInput: userConfig,
       computedConfig: userConfig,
@@ -532,6 +543,7 @@ test.serial("load non-empty input", async (t) => {
       state,
       createTestInitConfigInputs({
         languagesInput,
+        sourceRoot: tempDir,
         buildModeInput: "none",
         configFile: configFilePath,
         debugArtifactName: "my-artifact",
@@ -558,16 +570,14 @@ test.serial(
         tempDir,
       );
 
-      const configInput = `
-      name: my config
-      queries:
-        - uses: ./foo
-      packs:
-        javascript:
-          - a/b@1.2.3
-        python:
-          - c/d@1.2.3
-    `;
+      const configInput: UserConfig = {
+        name: "my config",
+        queries: [{ uses: "./foo" }],
+        packs: {
+          javascript: ["a/b@1.2.3"],
+          python: ["c/d@1.2.3"],
+        },
+      };
 
       fs.mkdirSync(path.join(tempDir, "foo"));
 
@@ -598,7 +608,16 @@ test.serial(
         }),
       );
 
-      t.deepEqual(config.originalUserInput, yaml.load(configInput));
+      // Compare with a separate object rather than `configInput` itself, so that the test catches
+      // changes made to the input in place.
+      t.deepEqual(config.originalUserInput, {
+        name: "my config",
+        queries: [{ uses: "./foo" }],
+        packs: {
+          javascript: ["a/b@1.2.3"],
+          python: ["c/d@1.2.3"],
+        },
+      });
     });
   },
 );
@@ -769,12 +788,12 @@ test.serial("Unknown languages", async (t) => {
   });
 });
 
-const mockLogger = getRunnerLogger(true);
+const mockLogger = new RecordingLogger();
 
 test.serial("no generateRegistries when registries is undefined", async (t) => {
   return await withTmpDir(async (tmpDir) => {
     const registriesInput = undefined;
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const { registriesAuthTokens, qlconfigFile } =
       await configUtils.generateRegistries(registriesInput, tmpDir, logger);
 
@@ -795,7 +814,7 @@ test.serial(
           token: "not-a-token",
         },
       ]);
-      const logger = getRunnerLogger(true);
+      const logger = new RecordingLogger();
       const { registriesAuthTokens, qlconfigFile } =
         await configUtils.generateRegistries(registriesInput, tmpDir, logger);
 
@@ -1092,11 +1111,6 @@ const checkOverlayEnablementMacro = makeMacro({
             return lang === BuiltInLanguage.java;
           });
 
-        // Mock git root detection
-        if (setup.gitRoot !== undefined) {
-          sinon.stub(gitUtils, "getGitRoot").resolves(setup.gitRoot);
-        }
-
         // Mock submodule detection
         sinon.stub(gitUtils, "hasSubmodules").returns(setup.hasSubmodules);
 
@@ -1109,6 +1123,7 @@ const checkOverlayEnablementMacro = makeMacro({
           codeql,
           features,
           setup.languages,
+          setup.gitRoot, // repositoryRoot
           tempDir, // sourceRoot
           setup.buildMode,
           undefined,
@@ -2111,7 +2126,7 @@ test.serial("getPrimaryAnalysisConfig - Code Scanning + Code Quality", (t) => {
 });
 
 test.serial(
-  "isTrapCachingEnabled: explicit input true is respected",
+  "isTrapCachingEnabled: explicit true input overrides self-hosted default",
   async (t) => {
     return await withTmpDir(async (tmpDir) => {
       setupActionsVars(tmpDir, tmpDir);
@@ -2119,12 +2134,40 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns("true");
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      t.true(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: explicit true input overrides overlay defaults",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, path.join(tmpDir, "hostedtoolcache"));
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns("true");
+      for (const overlayDatabaseMode of [
+        OverlayDatabaseMode.Overlay,
+        OverlayDatabaseMode.OverlayBase,
+      ]) {
+        t.true(configUtils.isTrapCachingEnabled(overlayDatabaseMode));
+      }
+    });
+  },
+);
+
+test.serial(
+  "isTrapCachingEnabled: explicit false input overrides hosted default",
+  async (t) => {
+    return await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, path.join(tmpDir, "hostedtoolcache"));
+      sinon
+        .stub(actionsUtil, "getOptionalInput")
+        .withArgs("trap-caching")
+        .returns("false");
+      t.false(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
     });
   },
 );
@@ -2138,18 +2181,13 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns(undefined);
-      t.false(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      t.false(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
     });
   },
 );
 
 test.serial(
-  "isTrapCachingEnabled: enabled on hosted runner by default",
+  "isTrapCachingEnabled: enabled on hosted runner without overlay analysis",
   async (t) => {
     return await withTmpDir(async (tmpDir) => {
       const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
@@ -2158,18 +2196,13 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns(undefined);
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      t.true(configUtils.isTrapCachingEnabled(OverlayDatabaseMode.None));
     });
   },
 );
 
 test.serial(
-  "isTrapCachingEnabled: enabled on hosted runner when overlay enabled but feature flag off",
+  "isTrapCachingEnabled: disabled on hosted runner with overlay analysis",
   async (t) => {
     return await withTmpDir(async (tmpDir) => {
       const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
@@ -2178,52 +2211,12 @@ test.serial(
         .stub(actionsUtil, "getOptionalInput")
         .withArgs("trap-caching")
         .returns(undefined);
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([]),
-          OverlayDatabaseMode.Overlay,
-        ),
-      );
-    });
-  },
-);
-
-test.serial(
-  "isTrapCachingEnabled: disabled on hosted runner when overlay enabled and feature flag on",
-  async (t) => {
-    return await withTmpDir(async (tmpDir) => {
-      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
-      setupActionsVars(tmpDir, hostedToolCache);
-      sinon
-        .stub(actionsUtil, "getOptionalInput")
-        .withArgs("trap-caching")
-        .returns(undefined);
-      t.false(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([Feature.OverlayAnalysisDisableTrapCaching]),
-          OverlayDatabaseMode.Overlay,
-        ),
-      );
-    });
-  },
-);
-
-test.serial(
-  "isTrapCachingEnabled: enabled on hosted runner when overlay is None even with feature flag on",
-  async (t) => {
-    return await withTmpDir(async (tmpDir) => {
-      const hostedToolCache = path.join(tmpDir, "hostedtoolcache");
-      setupActionsVars(tmpDir, hostedToolCache);
-      sinon
-        .stub(actionsUtil, "getOptionalInput")
-        .withArgs("trap-caching")
-        .returns(undefined);
-      t.true(
-        await configUtils.isTrapCachingEnabled(
-          createFeatures([Feature.OverlayAnalysisDisableTrapCaching]),
-          OverlayDatabaseMode.None,
-        ),
-      );
+      for (const overlayDatabaseMode of [
+        OverlayDatabaseMode.Overlay,
+        OverlayDatabaseMode.OverlayBase,
+      ]) {
+        t.false(configUtils.isTrapCachingEnabled(overlayDatabaseMode));
+      }
     });
   },
 );
@@ -2232,7 +2225,7 @@ test("applyIncrementalAnalysisSettings: no-op when mode is not Overlay and diff 
   const config = createTestConfig({});
   config.overlayDatabaseMode = OverlayDatabaseMode.None;
   const codeql = createStubCodeQL({});
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
 
   await configUtils.applyIncrementalAnalysisSettings(
     config,
@@ -2250,7 +2243,7 @@ test("applyIncrementalAnalysisSettings: keeps overlay mode and adds exclusions w
     overlayDatabaseMode: OverlayDatabaseMode.Overlay,
   });
   const codeql = createStubCodeQL({});
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
 
   await configUtils.applyIncrementalAnalysisSettings(
     config,
@@ -2273,7 +2266,7 @@ test.serial(
     });
     config.useOverlayDatabaseCaching = true;
     const codeql = createStubCodeQL({});
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const addDiagnosticsStub = sinon
       .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
       .resolves();
@@ -2305,7 +2298,7 @@ test.serial(
     config.useOverlayDatabaseCaching = false;
     config.overlayModeSetExplicitly = true;
     const codeql = createStubCodeQL({});
-    const logger = getRunnerLogger(true);
+    const logger = new RecordingLogger();
     const addDiagnosticsStub = sinon
       .stub(overlayDiagnostics, "addOverlayDisablementDiagnostics")
       .resolves();
@@ -2328,7 +2321,7 @@ test("applyIncrementalAnalysisSettings: adds exclusions for diff-informed-only r
   const config = createTestConfig({});
   config.overlayDatabaseMode = OverlayDatabaseMode.None;
   const codeql = createStubCodeQL({});
-  const logger = getRunnerLogger(true);
+  const logger = new RecordingLogger();
 
   await configUtils.applyIncrementalAnalysisSettings(
     config,
@@ -2413,7 +2406,7 @@ test("determineUserConfig - loads config input", async (t) => {
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
     const inputs = createTestInitConfigInputs({
-      configInput: simpleConfigFileContents,
+      configInput: simpleConfigInput,
       configFile: undefined,
       workspacePath: tmpDir,
     });
@@ -2423,17 +2416,15 @@ test("determineUserConfig - loads config input", async (t) => {
 
     await target
       // The input source and path of the generated config file should have been logged.
-      .logs(
-        t,
-        "Using config from action input:",
-        `Using configuration file: ${expectedConfigPath}`,
-      )
-      // The message about no configuration input and
-      // the warning about both inputs should not have been logged.
+      .logs(t, `Using config from action input: ${expectedConfigPath}`)
+      // The message about no configuration input and the warning about both inputs should not have
+      // been logged. The generated config file isn't loaded, since the `config` input has already
+      // been parsed.
       .notLogs(
         t,
         "No configuration file was provided",
         "Both a config file and config input were provided. Ignoring config file.",
+        `Using configuration file: ${expectedConfigPath}`,
       )
       // The loaded configuration should match `simpleConfigFileContents`.
       .passes(t.deepEqual, {
@@ -2452,7 +2443,7 @@ test("determineUserConfig - ignores config file input when both specified", asyn
     const expectedConfigPath = configUtils.userConfigFromActionPath(tmpDir);
 
     const inputs = createTestInitConfigInputs({
-      configInput: simpleConfigFileContents,
+      configInput: simpleConfigInput,
       configFile: configFilePath,
       workspacePath: tmpDir,
     });
@@ -2466,10 +2457,14 @@ test("determineUserConfig - ignores config file input when both specified", asyn
       .logs(
         t,
         `Using config from action input: ${expectedConfigPath}`,
-        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
       )
-      .notLogs(t, "No configuration file was provided")
+      // The generated config file isn't loaded, since the `config` input has already been parsed.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
       // The loaded configuration should match `simpleConfigFileContents`.
       .passes(t.deepEqual, {
         name: "my config",
@@ -2482,11 +2477,14 @@ test("determineUserConfig - ignores config file input when both specified", asyn
 });
 
 /** A `config` input that we might get from Default Setup. */
-const defaultSetupConfigInput = `
-  threat-models: [local, remote]
-  default-setup:
-    org:
-      model-packs: [foo, bar]`;
+const defaultSetupConfigInput: UserConfig = {
+  "threat-models": ["local", "remote"],
+  "default-setup": {
+    org: {
+      "model-packs": ["foo", "bar"],
+    },
+  },
+};
 
 test("determineUserConfig - merges configs if FF is enabled in Default Setup", async (t) => {
   await withTmpDir(async (tmpDir) => {
@@ -2537,7 +2535,7 @@ test("determineUserConfig - merges configs if FF is enabled in Default Setup", a
     // also check whether loading the configuration from disk that was written
     // by `determineUserConfig` matches our expectations.
     const loadedFromDisk = configUtils.getLocalConfig(
-      getRunnerLogger(true),
+      new RecordingLogger(),
       expectedConfigPath,
       false,
     );
@@ -2555,7 +2553,7 @@ test("determineUserConfig - ignores config file input in Default Setup if FF is 
       .withArgs(
         tmpDir,
         createTestInitConfigInputs({
-          configInput: simpleConfigFileContents,
+          configInput: simpleConfigInput,
           configFile: configFilePath,
           workspacePath: tmpDir,
         }),
@@ -2565,10 +2563,14 @@ test("determineUserConfig - ignores config file input in Default Setup if FF is 
       .logs(
         t,
         `Using config from action input: ${expectedConfigPath}`,
-        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
       )
-      .notLogs(t, "No configuration file was provided")
+      // The generated config file isn't loaded, since the `config` input has already been parsed.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
       .passes(t.deepEqual, {
         name: "my config",
         queries: [{ uses: "./foo_file" }],
@@ -2587,7 +2589,7 @@ test("determineUserConfig - ignores config file input outside Default Setup if F
       .withArgs(
         tmpDir,
         createTestInitConfigInputs({
-          configInput: simpleConfigFileContents,
+          configInput: simpleConfigInput,
           configFile: configFilePath,
           workspacePath: tmpDir,
         }),
@@ -2597,10 +2599,14 @@ test("determineUserConfig - ignores config file input outside Default Setup if F
       .logs(
         t,
         `Using config from action input: ${expectedConfigPath}`,
-        `Using configuration file: ${expectedConfigPath}`,
         "Both a config file and config input were provided. Ignoring config file.",
       )
-      .notLogs(t, "No configuration file was provided")
+      // The generated config file isn't loaded, since the `config` input has already been parsed.
+      .notLogs(
+        t,
+        "No configuration file was provided",
+        `Using configuration file: ${expectedConfigPath}`,
+      )
       .passes(t.deepEqual, {
         name: "my config",
         queries: [{ uses: "./foo_file" }],

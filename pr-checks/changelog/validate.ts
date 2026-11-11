@@ -1,5 +1,4 @@
 import * as fs from "node:fs";
-import * as path from "node:path";
 
 import { matter } from "lite-matter";
 import type { List, ListItem } from "mdast";
@@ -95,21 +94,7 @@ export function isValidChangenoteFile(filename: string): boolean {
     return false;
   }
 
-  const { data: frontmatter, content } = matter(fileData);
-
-  if (!isValidChangenoteFilename(path.basename(filename))) {
-    isValid = false;
-    console.error(
-      `${filename}: invalid filename; must match pattern YYYY-MM-DD-id.md`,
-    );
-  }
-  if (!hasValidChangenoteCategory(frontmatter)) {
-    isValid = false;
-    const categories = Object.keys(VALID_CHANGE_NOTE_CATEGORIES).join(", ");
-    console.error(
-      `${filename}: invalid category; must be one of: ${categories}`,
-    );
-  }
+  const { content } = matter(fileData);
   if (!isValidChangenoteContent(content)) {
     isValid = false;
     console.error(
@@ -118,15 +103,4 @@ export function isValidChangenoteFile(filename: string): boolean {
   }
 
   return isValid;
-}
-
-/**
- * Validates the change-note files of the given list of file paths, ignoring ".gitkeep".
- * @param filepaths A list of filepaths to validate
- * @returns True if all the paths are valid, false otherwise.
- */
-export function isValidAllChangenoteFiles(filepaths: string[]): boolean {
-  return filepaths
-    .filter((f) => f !== ".gitkeep")
-    .reduce((r, filePath) => r && isValidChangenoteFile(filePath), true);
 }

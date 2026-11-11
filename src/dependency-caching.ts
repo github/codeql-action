@@ -313,6 +313,7 @@ export async function downloadDependencyCaches(
 
     const primaryKey = await cacheKey(codeql, features, language, patterns);
     const restoreKeys: string[] = [
+      primaryKey,
       await cachePrefix(codeql, features, language),
     ];
 

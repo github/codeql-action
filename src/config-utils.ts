@@ -437,6 +437,7 @@ export async function initActionState(
     logger,
     userConfig,
     augmentationProperties,
+    languages,
   );
 
   return {

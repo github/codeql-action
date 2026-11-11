@@ -541,7 +541,7 @@ async function recordOverlayStatus(
   // one if a CodeQL Action reported an error before the job ended.
   if (!isConclusiveJobStatus(jobStatus) && !didCodeQlReportError(env)) {
     logger.info(
-      "Not recording an improved incremental analysis failure for this job because the job " +
+      "Not recording an overlay analysis failure for this job because the job " +
         `status (${jobStatus ?? "unset"}) does not tell us whether the analysis itself failed.`,
     );
     return;
@@ -576,15 +576,15 @@ async function recordOverlayStatus(
   );
 
   const blurb =
-    "This job attempted to run with improved incremental analysis but it did not complete successfully. " +
-    "One possible reason for this is disk space constraints, since improved incremental analysis can " +
+    "This job attempted to run with overlay analysis but it did not complete successfully. " +
+    "One possible reason for this is disk space constraints, since overlay analysis can " +
     "require a significant amount of disk space for some repositories.";
 
   if (saved) {
     logger.error(
       `${blurb} ` +
         "This failure has been recorded in the Actions cache, so the next CodeQL analysis will run " +
-        "without improved incremental analysis. If you want to enable improved incremental analysis, " +
+        "without overlay analysis. If you want to enable overlay analysis, " +
         "try increasing the disk space available to the runner. " +
         "If that doesn't help, contact GitHub Support for further assistance.",
     );
@@ -592,7 +592,7 @@ async function recordOverlayStatus(
     logger.error(
       `${blurb} ` +
         "The attempt to save this failure status to the Actions cache failed. The Action will attempt to " +
-        "run with improved incremental analysis again.",
+        "run with overlay analysis again.",
     );
   }
 }

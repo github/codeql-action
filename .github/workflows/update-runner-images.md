@@ -50,8 +50,8 @@ safe-outputs:
     # only uses `head-github-token` when `head-repo` is set.
     head-repo: github/codeql-action
     head-github-token: ${{ steps.push-token.outputs.token }}
-    # Workflows that run on pushes don't wait for approval. The prefix stops the agent choosing a
-    # branch name that matches their triggers, such as `releases/*`.
+    # Workflows that run on pushes don't wait for approval. The prefix stops the branch's name
+    # matching their triggers, such as `releases/*`.
     branch-prefix: runner-images/
     # Code owners aren't requested to review draft pull requests.
     draft: true
@@ -76,10 +76,11 @@ safe-outputs:
     prompt: >-
       The branch for the agent's pull request is pushed with a token that can change workflows, and
       workflows that run on that push don't wait for a maintainer to approve them. Report a malicious
-      patch if it adds a workflow or changes when an existing workflow runs, for example by changing
-      the events in its `on` section. Changing which runner images workflows use is expected.
-    # Stops gh-aw pushing the branch if it detects a threat or detection fails. By default, it pushes
-    # the branch and opens the pull request with a warning.
+      patch if it adds a workflow or changes the `on` section of an existing workflow, which sets the
+      events that trigger it. Changing which runner images workflows use is expected.
+    # If gh-aw detects a threat or detection fails, fail the run without applying any safe outputs,
+    # such as pushing the branch. By default, gh-aw still pushes the branch and opens the pull
+    # request, with a warning.
     continue-on-error: false
     report-as-issue: false
 jobs:

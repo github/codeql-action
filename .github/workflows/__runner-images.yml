@@ -60,11 +60,11 @@ jobs:
             version: linked
           - os: ubuntu-24.04
             version: linked
-          - os: ubuntu-24.04-arm
-            version: linked
           - os: ubuntu-26.04
             version: linked
           - os: ubuntu-26.04-arm
+            version: linked
+          - os: windows-2022
             version: linked
           - os: windows-2025
             version: linked

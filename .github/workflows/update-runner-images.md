@@ -47,6 +47,9 @@ safe-outputs:
     # only uses `head-github-token` when `head-repo` is set.
     head-repo: github/codeql-action
     head-github-token: ${{ steps.push-token.outputs.token }}
+    # Workflows that run on pushes don't wait for approval. The prefix stops the agent choosing a
+    # branch name that matches their triggers, such as `releases/*`.
+    branch-prefix: runner-images/
     # Code owners aren't requested to review draft pull requests.
     draft: false
     # The default policy requests changes on pull requests that change workflows, which every pull

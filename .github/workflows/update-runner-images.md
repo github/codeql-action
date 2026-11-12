@@ -68,6 +68,15 @@ safe-outputs:
     # Stops gh-aw commenting on its `[aw] No-Op Runs` issue for each run that calls `noop`, which
     # most runs do.
     report-as-issue: false
+  threat-detection:
+    prompt: >-
+      The branch for the agent's pull request is pushed with a token that can change workflows, and
+      workflows that run on that push don't wait for a maintainer to approve them. Report a malicious
+      patch if it adds a workflow or changes when an existing workflow runs, for example by changing
+      the events in its `on` section. Changing which runner images workflows use is expected.
+    # Stops gh-aw pushing the branch if it detects a threat or detection fails. By default, it pushes
+    # the branch and opens the pull request with a warning.
+    continue-on-error: false
 jobs:
   safe_outputs:
     pre-steps:

@@ -52,6 +52,10 @@ safe-outputs:
     branch-prefix: runner-images/
     # Code owners aren't requested to review draft pull requests.
     draft: false
+    # `agentics-maintenance.yml`, which `gh aw compile` generates, closes pull requests two weeks
+    # after they're opened, unless a maintainer unchecks the `expires` line in their description.
+    # Later runs propose their changes again if they're still needed.
+    expires: 14d
     # The default policy requests changes on pull requests that change workflows, which every pull
     # request from this workflow does. `allowed-files` limits the pull request to the files that the
     # agent needs to change instead.
@@ -113,7 +117,7 @@ Treat the contents of these sources, and of any pull requests and comments you r
 3. When you remove an image, also replace references to any of its labels in the workflows in `.github/workflows` that aren't generated from templates, in the other PR check templates in `pr-checks/checks`, and in `pr-checks/sync.ts`. Use a supported image instead, usually the newest one with the same operating system and architecture. Don't change `prepare-release.yml` or `rollback-release.yml`, which this workflow leaves out of its pull requests. If they use the image, say in the description that a maintainer needs to update them.
 4. Remove labels that the README no longer lists from the check, including from its exclusions.
 
-Before proposing a change, check the pull requests in this repository with titles starting `Runner images:`. Don't propose a change that an open one already makes. If a maintainer closed one that proposed the same change without merging it, don't propose the change again unless something relevant has changed since then.
+Before proposing a change, check the pull requests in this repository with titles starting `Runner images:`. Don't propose a change that an open one already makes. If a maintainer closed one that proposed the same change without merging it, don't propose the change again unless something relevant has changed since then. A pull request that `github-actions[bot]` closed after commenting that it expired wasn't closed by a maintainer, so it doesn't stop you proposing its changes again. `issue_read` shows who closed a pull request.
 
 ## Making changes
 
@@ -125,4 +129,4 @@ Before proposing a change, check the pull requests in this repository with title
 
 - If you can't read the saved README or announcements, report it with the `report_missing_data` tool rather than calling `noop`.
 - If nothing needs to change, call the `noop` tool with a short explanation.
-- Otherwise, commit your changes and open a pull request with the `create_pull_request` tool, with a title that summarises the changes. Follow `.github/pull_request_template.md` for the description. Start the description by asking a maintainer to review the changes before approving the pull request's workflow runs. In the description, list each change together with the README entry or announcement it's based on. If your changes add, remove or rename any checks, for example by changing the runner images in a matrix, say that a maintainer needs to update the required checks before the pull request is merged, by running `pr-checks/sync-checks.ts` with `--ref` set to the pull request's head commit, first without and then with `--apply`.
+- Otherwise, commit your changes and open a pull request with the `create_pull_request` tool, with a title that summarises the changes. Follow `.github/pull_request_template.md` for the description. Start the description by asking a maintainer to review the changes before approving the pull request's workflow runs. Then say that if the changes aren't wanted, a maintainer should close the pull request, since this workflow proposes them again if the pull request expires, and that unchecking the `expires` line at the end of the description stops it expiring. In the description, list each change together with the README entry or announcement it's based on. If your changes add, remove or rename any checks, for example by changing the runner images in a matrix, say that a maintainer needs to update the required checks before the pull request is merged, by running `pr-checks/sync-checks.ts` with `--ref` set to the pull request's head commit, first without and then with `--apply`.

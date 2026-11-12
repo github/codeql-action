@@ -61,7 +61,7 @@
     "@types/sarif": "^2.1.7",
     "@types/semver": "^7.8.0",
     "@types/sinon": "^22.0.1",
-    "ava": "^6.4.1",
+    "ava": "^8.3.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-import-resolver-typescript": "^4.4.5",

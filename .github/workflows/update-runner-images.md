@@ -4,6 +4,8 @@ description: Updates the GitHub-hosted runner images that this repository's work
 on:
   schedule: weekly on monday
   workflow_dispatch:
+  push:
+    branches: [henrymercer/test-runner-images-gh-aw]
 if: github.repository == 'github/codeql-action'
 permissions:
   contents: read
@@ -37,6 +39,7 @@ steps:
         --jq '.[] | {number, title, url: .html_url, body}' \
         > /tmp/gh-aw/agent/runner-images-announcements.jsonl
 safe-outputs:
+  report-failure-as-issue: false
   create-pull-request:
     title-prefix: "Runner images: "
     # Opens the pull request with `GITHUB_TOKEN`, so that its workflow runs wait for someone with
@@ -48,7 +51,8 @@ safe-outputs:
     head-repo: github/codeql-action
     head-github-token: ${{ steps.push-token.outputs.token }}
     # Code owners aren't requested to review draft pull requests.
-    draft: false
+    draft: true
+    base-branch: henrymercer/test-runner-images-gh-aw
     # The default policy requests changes on pull requests that change workflows, which every pull
     # request from this workflow does. `allowed-files` limits the pull request to the files that the
     # agent needs to change instead.

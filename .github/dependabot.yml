@@ -35,6 +35,10 @@ updates:
     directories:
       - "/.github/workflows"
       - "/.github/actions/*/"
+    # `gh aw compile` regenerates gh-aw lock files from their `.md` workflows, which would revert
+    # Dependabot's updates to them.
+    exclude-paths:
+      - "**/*.lock.yml"
     schedule:
       interval: weekly
     cooldown:

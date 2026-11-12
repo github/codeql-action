@@ -41,6 +41,8 @@ updates:
       default-days: 7
     labels:
       - Rebuild
+    ignore:
+      - dependency-name: "github/gh-aw-actions/*" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
     groups:
       actions-minor:
         patterns:

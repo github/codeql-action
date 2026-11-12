@@ -6,6 +6,9 @@ description: "An end-to-end integration test checking that CodeQL can analyze in
 # - `ubuntu-slim`, which is intended for lightweight jobs rather than builds like this one.
 # - `windows-11-arm`, since CodeQL doesn't support Windows on Arm64.
 # - `xcode-27`, a preview image that the `unsupported-macos` check runs on.
+#
+# The `Update runner images` workflow asks Copilot to keep these images up to date, following the
+# instructions in `.github/workflows/update-runner-images.md`.
 operatingSystems:
   # The Ubuntu 22.04 images have brownouts from 23 March 2027 and are retired on 17 April 2027, so
   # remove them before the brownouts start.

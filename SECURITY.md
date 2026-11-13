@@ -37,13 +37,9 @@ privately before vulnerability information becomes public.
 For security-related questions or vulnerability reports, use one of the
 following methods:
 
-- **Preferred:** GitHub Private Vulnerability Reporting
-- **Repository owner:** `beer-sakthai`
-- **Security email:** `[ADD YOUR SECURITY EMAIL HERE]`
-
-When reporting by email, please use:
-
-**Subject:** `Security Vulnerability Report`
+- **Preferred:** GitHub Private Vulnerability Reporting via https://github.com/github/codeql-action/security/advisories/new
+- **GitHub Bug Bounty:** https://bounty.github.com
+- **Security Team:** https://github.com/security
 
 Do not include sensitive vulnerability information in public GitHub issues,
 discussions, or pull requests.

@@ -3,12 +3,12 @@ description: "An end-to-end integration test of a multi-language repository usin
 operatingSystems:
   - ubuntu
   - os: macos
-    runner-image: macos-26-xlarge
+    runner-image: macos-latest
   # Older CodeQL CLI versions only support Swift up to 6.1, which requires Xcode 16. That is
   # not available on macOS 26, so run these versions on macOS 15 where we select Xcode 16
   # below. See https://github.com/actions/runner-images/issues/14167.
   - os: macos
-    runner-image: macos-15-xlarge
+    runner-image: macos-15
     codeql-versions:
       - stable-v2.20.7
       - stable-v2.21.4
@@ -29,7 +29,7 @@ steps:
 
   - name: Use Xcode 16
     # Only the older CodeQL CLI versions need Xcode 16, and these run on macOS 15.
-    if: matrix.os == 'macos-15-xlarge'
+    if: matrix.os == 'macos-15'
     run: sudo xcode-select -s "/Applications/Xcode_16.app"
 
   - uses: ./../action/init

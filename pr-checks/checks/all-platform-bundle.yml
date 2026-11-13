@@ -3,7 +3,7 @@ description: "Tests using an all-platform CodeQL Bundle"
 operatingSystems:
   - ubuntu
   - os: macos
-    runner-image: macos-26-xlarge
+    runner-image: macos-latest
   - windows
 versions:
   - nightly-latest

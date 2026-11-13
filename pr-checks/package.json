@@ -8,7 +8,7 @@
     "checks": "npm run typecheck && npm run test"
   },
   "dependencies": {
-    "@actions/core": "^2.0.3",
+    "@actions/core": "^3.0.1",
     "@actions/github": "^8.0.1",
     "@actions/tool-cache": "^3.0.1",
     "@octokit/core": "^7.0.8",
@@ -17,11 +17,11 @@
     "glob": "^14.0.3",
     "lite-matter": "^0.1.2",
     "mdast-util-from-markdown": "^2.1.0",
-    "semver": "^7.8.5",
+    "semver": "^7.8.6",
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@types/node": "^24.19.0",
+    "@types/node": "^26.6.6",
     "tsx": "^4.23.15"
   }
 }

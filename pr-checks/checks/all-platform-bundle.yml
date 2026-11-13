@@ -4,7 +4,6 @@ operatingSystems:
   - ubuntu
   - os: macos
     runner-image: macos-latest
-    runner-image: macos-26-xlarge
   - windows
 versions:
   - nightly-latest

@@ -74,31 +74,26 @@ jobs:
           - os: ubuntu-26.04
             version: stable-v2.23.9
           - os: macos-latest
-          - os: macos-26-xlarge
             version: stable-v2.23.9
           - os: ubuntu-26.04
             version: stable-v2.24.3
           - os: macos-latest
-          - os: macos-26-xlarge
             version: stable-v2.24.3
           - os: ubuntu-26.04
             version: stable-v2.25.6
-          - os: macos-26-xlarge
+          - os: macos-latest
             version: stable-v2.25.6
           - os: ubuntu-26.04
             version: default
           - os: macos-latest
-          - os: macos-26-xlarge
             version: default
           - os: ubuntu-26.04
             version: linked
           - os: macos-latest
-          - os: macos-26-xlarge
             version: linked
           - os: ubuntu-26.04
             version: nightly-latest
           - os: macos-latest
-          - os: macos-26-xlarge
             version: nightly-latest
     name: Multi-language repository
     if: github.triggering_actor != 'dependabot[bot]'

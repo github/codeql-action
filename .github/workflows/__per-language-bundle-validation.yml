@@ -69,8 +69,6 @@ jobs:
             version: linked
           - language: swift
             os: macos-latest
-            version: nightly-latest
-            os: macos-26-xlarge
             version: linked
             build-mode: autobuild
     name: Per-language bundles

@@ -5,7 +5,6 @@ versions:
 operatingSystems:
   - os: macos
     runner-image: macos-latest
-    runner-image: macos-26-xlarge
 steps:
   - uses: ./../action/init
     id: init

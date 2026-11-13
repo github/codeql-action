@@ -35,7 +35,6 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-          - os: macos-26-xlarge
             version: nightly-latest
     name: Swift analysis using autobuild
     if: github.triggering_actor != 'dependabot[bot]'

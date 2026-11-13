@@ -4,7 +4,6 @@ operatingSystems:
   - ubuntu
   - os: macos
     runner-image: macos-latest
-    runner-image: macos-26-xlarge
   # Older CodeQL CLI versions only support Swift up to 6.1, which requires Xcode 16. That is
   # not available on macOS 26, so run these versions on macOS 15 where we select Xcode 16
   # below. See https://github.com/actions/runner-images/issues/14167.

@@ -57,7 +57,6 @@ jobs:
           - os: ubuntu-26.04
             version: nightly-latest
           - os: macos-latest
-          - os: macos-26-xlarge
             version: nightly-latest
           - os: windows-2025
             version: nightly-latest

@@ -3,6 +3,7 @@ import * as path from "path";
 
 import * as yaml from "js-yaml";
 
+import { getErrorMessage } from "../errors";
 import type { Logger } from "../logging";
 
 /** The subset of an extractor's `codeql-extractor.yml` file that we read. */
@@ -38,7 +39,7 @@ export function getExtractorFileExtensions(
     ) as ExtractorFileTypesConfig | undefined;
   } catch (e) {
     logger.debug(
-      `Could not read file types from ${extractorConfigPath}: ${String(e)}`,
+      `Could not read file types from ${extractorConfigPath}: ${getErrorMessage(e)}`,
     );
     return undefined;
   }

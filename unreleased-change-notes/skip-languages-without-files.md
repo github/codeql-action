@@ -1,0 +1,1 @@
+- When the CodeQL Action autodetects languages, it now skips a language that has no source files in the checkout. Previously, the GitHub languages API could report a language whose last file had been removed, and the analysis for that language failed. [#4335](https://github.com/github/codeql-action/pull/4335)

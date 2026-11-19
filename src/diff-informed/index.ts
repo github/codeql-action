@@ -1,23 +1,43 @@
 import * as fs from "fs";
+import path from "path";
 
-import * as actionsUtil from "./actions-util";
-import type { PullRequestBranches } from "./actions-util";
-import { getApiClient, getGitHubVersion } from "./api-client";
-import type { CodeQL } from "./codeql";
-import { Feature, FeatureEnablement } from "./feature-flags";
-import { Logger } from "./logging";
-import { getRepositoryNwoFromEnv } from "./repository";
-import { getErrorMessage, GitHubVariant, satisfiesGHESVersion } from "./util";
+import * as actionsUtil from "../actions-util";
+import type { PullRequestBranches } from "../actions-util";
+import { getApiClient, getGitHubVersion } from "../api-client";
+import type { CodeQL } from "../codeql";
+import { type Env, getEnv } from "../environment";
+import type { FeatureEnablement } from "../feature-flags";
+import { Feature } from "../feature-flags/features";
+import { Logger } from "../logging";
+import { getRepositoryNwoFromEnv } from "../repository";
+import { getErrorMessage, GitHubVariant, satisfiesGHESVersion } from "../util";
+
+/** The filename used to persist PR diff ranges. */
+const PR_DIFF_RANGE_JSON_FILENAME = "pr-diff-range.json";
+
+/**
+ * Gets the full path of the file used to persist PR diff ranges.
+ */
+export function getDiffRangesJsonFilePath(env: Env = getEnv()): string {
+  return path.join(
+    actionsUtil.getTemporaryDirectory(env),
+    PR_DIFF_RANGE_JSON_FILENAME,
+  );
+}
 
 /**
  * This interface is an abbreviated version of the file diff object returned by
  * the GitHub API.
  */
-interface FileDiff {
+export interface FileDiff {
+  /** The name of the file that has changed. */
   filename: string;
+  /** The number of changes. */
   changes: number;
-  // A patch may be absent if the file is binary, if the file diff is too large,
-  // or if the file is unchanged.
+  /**
+   * The diff, if available. It may be absent if the file is binary, if the file diff is too large,
+   * or if the file is unchanged.
+   */
   patch?: string | undefined;
 }
 
@@ -63,9 +83,10 @@ export async function getDiffInformedAnalysisBranches(
  *   and are therefore available for use, `false` otherwise.
  */
 export async function prepareDiffInformedAnalysis(
-  codeql: CodeQL,
-  features: FeatureEnablement,
   logger: Logger,
+  features: FeatureEnablement,
+  codeql: CodeQL,
+  jsonFilePath: string,
 ): Promise<boolean> {
   let branches: PullRequestBranches | undefined;
   try {
@@ -84,7 +105,7 @@ export async function prepareDiffInformedAnalysis(
   }
 
   try {
-    return await computeAndPersistDiffRanges(branches, logger);
+    return await computeAndPersistDiffRanges(logger, jsonFilePath, branches);
   } catch (e) {
     logger.warning(
       `Failed to compute diff-informed analysis ranges: ${getErrorMessage(e)}`,
@@ -93,29 +114,45 @@ export async function prepareDiffInformedAnalysis(
   }
 }
 
+/** Describes a changed line range in a file. */
 export interface DiffThunkRange {
   /** Relative path from the repository root, using forward slashes as separators. */
   path: string;
+  /** The starting line of the change (1-based and inclusive). */
   startLine: number;
+  /** The last line of the change (1-based and inclusive). */
   endLine: number;
 }
 
+/**
+ * Writes an array of {@link DiffThunkRange} objects to the file given by {@link jsonFilePath}.
+ *
+ * @param logger The logger to use.
+ * @param jsonFilePath The path of the file to write.
+ * @param ranges The changed line ranges to write.
+ */
 export function writeDiffRangesJsonFile(
   logger: Logger,
+  jsonFilePath: string,
   ranges: DiffThunkRange[],
 ): void {
   const jsonContents = JSON.stringify(ranges, null, 2);
-  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
   fs.writeFileSync(jsonFilePath, jsonContents);
   logger.debug(
     `Wrote pr-diff-range JSON file to ${jsonFilePath}:\n${jsonContents}`,
   );
 }
 
+/**
+ * Reads an array of {@link DiffThunkRange} objects from the file given by {@link jsonFilePath}.
+ *
+ * @param logger The logger to use.
+ * @returns The array of {@link DiffThunkRange} objects or `undefined` if the file couldn't be read.
+ */
 export function readDiffRangesJsonFile(
   logger: Logger,
+  jsonFilePath: string,
 ): DiffThunkRange[] | undefined {
-  const jsonFilePath = actionsUtil.getDiffRangesJsonFilePath();
   if (!fs.existsSync(jsonFilePath)) {
     logger.debug(`Diff ranges JSON file does not exist at ${jsonFilePath}`);
     return undefined;
@@ -138,12 +175,12 @@ export function readDiffRangesJsonFile(
  * Return the file line ranges that were added or modified in the pull request.
  *
  * @param branches The base and head branches of the pull request.
- * @param logger
- * @returns An array of tuples, where each tuple contains the relative path of a
- * file (relative to the repository root, as returned by the GitHub compare API),
- * the start line and the end line (both 1-based and inclusive) of an
- * added or modified range in that file. Returns `undefined` if the action was
- * not triggered by a pull request or if there was an error.
+ * @param logger The logger to use.
+ *
+ * @returns
+ *  An array of {@link DiffThunkRange} objects, where each describes a line range in a file
+ *  that was changed in the pull request described by {@link branches} or `undefined` if
+ *  we were unable to compute them.
  */
 export async function getPullRequestEditedDiffRanges(
   branches: PullRequestBranches,
@@ -180,22 +217,25 @@ export async function getPullRequestEditedDiffRanges(
  * diff from the GitHub API and writes it to the diff ranges JSON file so that
  * CodeQL can use it for diff-informed analysis.
  *
+ * @param logger The logger to use.
+ * @param jsonFilePath The path of the JSON file to write.
  * @param branches The base and head branches of the pull request, as returned
  *   by `getDiffInformedAnalysisBranches`.
- * @param logger
+ *
  * @returns `true` if the diff ranges were successfully computed and persisted,
  *   otherwise `false`.
  */
 export async function computeAndPersistDiffRanges(
-  branches: PullRequestBranches,
   logger: Logger,
+  jsonFilePath: string,
+  branches: PullRequestBranches,
 ): Promise<boolean> {
   logger.info("Computing PR diff ranges...");
   const ranges = await getPullRequestEditedDiffRanges(branches, logger);
   if (ranges === undefined) {
     return false;
   }
-  writeDiffRangesJsonFile(logger, ranges);
+  writeDiffRangesJsonFile(logger, jsonFilePath, ranges);
   const distinctFiles = new Set(ranges.map((r) => r.path)).size;
   logger.info(
     `Persisted ${ranges.length} diff range(s) across ${distinctFiles} file(s).`,
@@ -203,6 +243,19 @@ export async function computeAndPersistDiffRanges(
   return true;
 }
 
+/**
+ * Fetch an array of {@link FileDiff} objects using the GitHub API describing the changed files
+ * in the pull request with the base and head refs given by {@link branches}.
+ *
+ * @param branches The pull request branch refs.
+ * @param logger The logger to use.
+ *
+ * @throws Non-HTTP errors that occur while fetching the file diffs.
+ *
+ * @returns
+ *  An array of {@link FileDiff} objects describing the changed files in the PR, or
+ *  `undefined` if we couldn't obtain the changed files from the API.
+ */
 async function getFileDiffsWithBasehead(
   branches: PullRequestBranches,
   logger: Logger,
@@ -243,6 +296,16 @@ async function getFileDiffsWithBasehead(
   }
 }
 
+/**
+ * Extracts an array of {@link DiffThunkRange} objects from {@link fileDiff}.
+ *
+ * @param fileDiff The {@link FileDiff} object describing changes to a particular file.
+ * @param logger The logger to use.
+ *
+ * @returns
+ *  The {@link DiffThunkRange} objects extracted from {@link fileDiff},
+ *  or `undefined` if there are none that could be extracted.
+ */
 function getDiffRanges(
   fileDiff: FileDiff,
   logger: Logger,

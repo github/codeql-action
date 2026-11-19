@@ -15,7 +15,7 @@ is:
   - "copilot-pull-request-reviewer"
   - "Dependabot"
   - "Label PR with size"
-  - "Post repo size comment"
+  - "Post PR comments"
   - "Prepare"
   - "Release info"
   - "Upload results"

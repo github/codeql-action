@@ -1,0 +1,1 @@
+- Fixed remote configuration files corrupting Unicode names and paths or failing to parse when they contain non-ASCII characters.

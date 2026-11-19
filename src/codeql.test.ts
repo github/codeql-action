@@ -668,6 +668,7 @@ const injectedConfigMacro = makeMacro({
         new RecordingLogger(),
         thisStubConfig.originalUserInput,
         augmentationProperties,
+        thisStubConfig.languages,
       );
 
       await codeqlObject.databaseInitCluster(
@@ -735,6 +736,54 @@ injectedConfigMacro.serial(
       cpp: ["codeql/something-else", "xxx", "yyy"],
     },
   },
+);
+
+const additivePackConfigurations: Array<Record<string, string[]>> = [
+  {
+    javascript: ["acme/javascript-queries"],
+    python: ["acme/python-queries"],
+  },
+  {
+    python: ["acme/python-queries"],
+    javascript: ["acme/javascript-queries"],
+  },
+  { javascript: ["acme/javascript-queries"] },
+  { javascript: ["acme/javascript-queries"], python: [] },
+  {},
+];
+for (const packs of additivePackConfigurations) {
+  injectedConfigMacro.serial(
+    `additive packs target the analyzed language in ${JSON.stringify(packs)}`,
+    {
+      ...defaultAugmentationProperties,
+      packsInputCombines: true,
+      packsInput: ["acme/python-extra"],
+    },
+    {
+      languages: [BuiltInLanguage.python],
+      originalUserInput: { packs },
+    },
+    {
+      packs: {
+        ...packs,
+        python: [...(packs.python || []), "acme/python-extra"],
+      },
+    },
+  );
+}
+
+injectedConfigMacro.serial(
+  "additive packs preserve an existing array",
+  {
+    ...defaultAugmentationProperties,
+    packsInputCombines: true,
+    packsInput: ["acme/python-extra"],
+  },
+  {
+    languages: [BuiltInLanguage.python],
+    originalUserInput: { packs: ["acme/python-queries"] },
+  },
+  { packs: ["acme/python-queries", "acme/python-extra"] },
 );
 
 injectedConfigMacro.serial(

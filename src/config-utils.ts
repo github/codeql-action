@@ -66,6 +66,7 @@ import {
   isAnalyzingDefaultBranch,
 } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
+import { filterLanguagesWithSourceFiles } from "./languages/source-files";
 import { Logger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import {
@@ -139,10 +140,20 @@ const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
  */
 const CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE = "2.24.3";
 
+/**
+ * Resolves the languages that the CodeQL CLI supports.
+ *
+ * @returns `languageMap`, which maps each supported language name and alias
+ * to its canonical language, and `extractorRoots`, which maps each canonical
+ * language to the root directory of its extractor.
+ */
 async function getSupportedLanguageMap(
   codeql: CodeQL,
   logger: Logger,
-): Promise<Record<string, string>> {
+): Promise<{
+  languageMap: Record<string, string>;
+  extractorRoots: Record<string, string | undefined>;
+}> {
   const resolveSupportedLanguagesUsingCli = await codeql.supportsFeature(
     ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   );
@@ -155,6 +166,7 @@ async function getSupportedLanguageMap(
     );
   }
   const supportedLanguages: Record<string, string> = {};
+  const extractorRoots: Record<string, string | undefined> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
     // If the CLI supports resolving languages with default queries, use these
@@ -165,6 +177,8 @@ async function getSupportedLanguageMap(
       BuiltInLanguage[extractor] !== undefined
     ) {
       supportedLanguages[extractor] = extractor;
+      extractorRoots[extractor] =
+        resolveResult.extractors[extractor][0]?.extractor_root;
     }
   }
   // Populate language aliases
@@ -173,7 +187,7 @@ async function getSupportedLanguageMap(
       supportedLanguages[alias] = extractor;
     }
   }
-  return supportedLanguages;
+  return { languageMap: supportedLanguages, extractorRoots };
 }
 
 const baseWorkflowsPath = ".github/workflows";
@@ -255,7 +269,10 @@ export async function getLanguages(
     logger,
   );
 
-  const languageMap = await getSupportedLanguageMap(codeql, logger);
+  const { languageMap, extractorRoots } = await getSupportedLanguageMap(
+    codeql,
+    logger,
+  );
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -269,7 +286,18 @@ export async function getLanguages(
     }
   }
 
-  const languages = Array.from(languagesSet);
+  let languages = Array.from(languagesSet);
+
+  // The languages API can report languages that are no longer in the
+  // checkout, so only analyze autodetected languages that have source files.
+  if (autodetected) {
+    languages = filterLanguagesWithSourceFiles(
+      languages,
+      extractorRoots,
+      sourceRoot,
+      logger,
+    );
+  }
 
   if (!autodetected && unknownLanguages.length > 0) {
     throw new ConfigurationError(

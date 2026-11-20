@@ -66,7 +66,6 @@ import {
   isAnalyzingDefaultBranch,
 } from "./git-utils";
 import { BuiltInLanguage, Language } from "./languages";
-import { filterLanguagesWithSourceFiles } from "./languages/source-files";
 import { Logger } from "./logging";
 import { CODEQL_OVERLAY_MINIMUM_VERSION } from "./overlay";
 import {
@@ -140,20 +139,10 @@ const OVERLAY_MINIMUM_MEMORY_MB = 5 * 1024;
  */
 const CODEQL_VERSION_REDUCED_OVERLAY_MEMORY_USAGE = "2.24.3";
 
-/**
- * Resolves the languages that the CodeQL CLI supports.
- *
- * @returns `languageMap`, which maps each supported language name and alias
- * to its canonical language, and `extractorRoots`, which maps each canonical
- * language to the root directory of its extractor.
- */
 async function getSupportedLanguageMap(
   codeql: CodeQL,
   logger: Logger,
-): Promise<{
-  languageMap: Record<string, string>;
-  extractorRoots: Record<string, string | undefined>;
-}> {
+): Promise<Record<string, string>> {
   const resolveSupportedLanguagesUsingCli = await codeql.supportsFeature(
     ToolsFeature.BuiltinExtractorsSpecifyDefaultQueries,
   );
@@ -166,7 +155,6 @@ async function getSupportedLanguageMap(
     );
   }
   const supportedLanguages: Record<string, string> = {};
-  const extractorRoots: Record<string, string | undefined> = {};
   // Populate canonical language names
   for (const extractor of Object.keys(resolveResult.extractors)) {
     // If the CLI supports resolving languages with default queries, use these
@@ -177,8 +165,6 @@ async function getSupportedLanguageMap(
       BuiltInLanguage[extractor] !== undefined
     ) {
       supportedLanguages[extractor] = extractor;
-      extractorRoots[extractor] =
-        resolveResult.extractors[extractor][0]?.extractor_root;
     }
   }
   // Populate language aliases
@@ -187,7 +173,7 @@ async function getSupportedLanguageMap(
       supportedLanguages[alias] = extractor;
     }
   }
-  return { languageMap: supportedLanguages, extractorRoots };
+  return supportedLanguages;
 }
 
 const baseWorkflowsPath = ".github/workflows";
@@ -253,6 +239,9 @@ async function getRawLanguagesInRepo(
  *
  * If no languages could be detected from either the workflow or the repository
  * then throw an error.
+ *
+ * @returns The languages, and whether they were autodetected from the
+ * repository rather than set by the `languages` input.
  */
 export async function getLanguages(
   codeql: CodeQL,
@@ -260,7 +249,7 @@ export async function getLanguages(
   repository: RepositoryNwo,
   sourceRoot: string,
   logger: Logger,
-): Promise<Language[]> {
+): Promise<{ languages: Language[]; autodetected: boolean }> {
   // Obtain languages without filtering them.
   const { rawLanguages, autodetected } = await getRawLanguages(
     languagesInput,
@@ -269,10 +258,7 @@ export async function getLanguages(
     logger,
   );
 
-  const { languageMap, extractorRoots } = await getSupportedLanguageMap(
-    codeql,
-    logger,
-  );
+  const languageMap = await getSupportedLanguageMap(codeql, logger);
   const languagesSet = new Set<Language>();
   const unknownLanguages: string[] = [];
 
@@ -286,18 +272,7 @@ export async function getLanguages(
     }
   }
 
-  let languages = Array.from(languagesSet);
-
-  // The languages API can report languages that are no longer in the
-  // checkout, so only analyze autodetected languages that have source files.
-  if (autodetected) {
-    languages = filterLanguagesWithSourceFiles(
-      languages,
-      extractorRoots,
-      sourceRoot,
-      logger,
-    );
-  }
+  const languages = Array.from(languagesSet);
 
   if (!autodetected && unknownLanguages.length > 0) {
     throw new ConfigurationError(
@@ -317,7 +292,7 @@ export async function getLanguages(
     logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
-  return languages;
+  return { languages, autodetected };
 }
 
 /** Splits the `languages` input into a list of raw languages without checking if they are supported by CodeQL. */
@@ -419,7 +394,7 @@ export async function initActionState(
   userConfig: UserConfig,
   repositoryRoot: string | undefined,
 ): Promise<Config> {
-  const languages = await getLanguages(
+  const { languages, autodetected: languagesAutodetected } = await getLanguages(
     codeql,
     languagesInput,
     repository,
@@ -472,6 +447,7 @@ export async function initActionState(
     repositoryRoot,
     analysisKinds,
     languages,
+    languagesAutodetected,
     buildMode,
     originalUserInput: userConfig,
     computedConfig,

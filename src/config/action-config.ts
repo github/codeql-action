@@ -30,6 +30,13 @@ export interface Config {
    */
   languages: Language[];
   /**
+   * Whether `languages` was autodetected from the GitHub languages API, rather
+   * than set by the `languages` input. The API describes the default branch and
+   * can be out of date, so `analyze` skips an autodetected language that has no
+   * source code in the checkout.
+   */
+  languagesAutodetected: boolean;
+  /**
    * Build mode, if set. Currently only a single build mode is supported per job.
    */
   buildMode: BuildMode | undefined;

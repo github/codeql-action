@@ -1,0 +1,1 @@
+- Reduced SARIF upload postprocessing overhead by counting results directly from the existing SARIF object instead of parsing the serialized payload again.

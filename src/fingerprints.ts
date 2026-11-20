@@ -266,7 +266,9 @@ export async function addFingerprints(
   );
   // Gather together results for the same file and construct
   // callbacks to accept hashes for that file and update the location
-  const callbacksByFile: { [filename: string]: hashCallback[] } = {};
+  const callbacksByFile: {
+    [filename: string]: Map<number, hashCallback[]>;
+  } = {};
   for (const run of sarifLog.runs || []) {
     // We may need the list of artifacts to resolve against
     const artifacts = run.artifacts || [];
@@ -298,19 +300,20 @@ export async function addFingerprints(
         continue;
       }
       if (!callbacksByFile[filepath]) {
-        callbacksByFile[filepath] = [];
+        callbacksByFile[filepath] = new Map();
       }
-      callbacksByFile[filepath].push(
-        locationUpdateCallback(result, primaryLocation, logger),
-      );
+      const startLine = primaryLocation.physicalLocation.region.startLine;
+      const callbacks = callbacksByFile[filepath].get(startLine) ?? [];
+      callbacks.push(locationUpdateCallback(result, primaryLocation, logger));
+      callbacksByFile[filepath].set(startLine, callbacks);
     }
   }
 
   // Now hash each file that was found
   for (const [filepath, callbacks] of Object.entries(callbacksByFile)) {
-    // A callback that forwards the hash to all other callbacks for that file
+    // Forward each hash only to results on that line.
     const teeCallback = function (lineNumber: number, hashValue: string) {
-      for (const c of Object.values(callbacks)) {
+      for (const c of callbacks.get(lineNumber) ?? []) {
         c(lineNumber, hashValue);
       }
     };

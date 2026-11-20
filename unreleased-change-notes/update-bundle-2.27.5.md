@@ -1,1 +1,0 @@
-- Update default CodeQL bundle version to [2.27.5](https://github.com/github/codeql-action/releases/tag/codeql-bundle-v2.27.5). [#4333](https://github.com/github/codeql-action/pull/4333)

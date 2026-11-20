@@ -3,6 +3,7 @@ import * as sinon from "sinon";
 
 import { CommandInvocationError } from "./actions-util";
 import {
+  CliConfigurationError,
   CliError,
   CliConfigErrorCategory,
   wrapCliConfigurationError,
@@ -235,6 +236,10 @@ test("wrapCliConfigurationError - no source code seen by exit code", (t) => {
   const wrappedError = wrapCliConfigurationError(cliError);
 
   t.true(wrappedError instanceof ConfigurationError);
+  t.is(
+    (wrappedError as CliConfigurationError).category,
+    CliConfigErrorCategory.NoSourceCodeSeen,
+  );
 });
 
 test("wrapCliConfigurationError - no source code seen by message", (t) => {
@@ -249,6 +254,10 @@ test("wrapCliConfigurationError - no source code seen by message", (t) => {
   const wrappedError = wrapCliConfigurationError(cliError);
 
   t.true(wrappedError instanceof ConfigurationError);
+  t.is(
+    (wrappedError as CliConfigurationError).category,
+    CliConfigErrorCategory.NoSourceCodeSeen,
+  );
 });
 
 test("wrapCliConfigurationError - out of memory error with additional message", (t) => {

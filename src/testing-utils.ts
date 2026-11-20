@@ -1013,6 +1013,7 @@ export function createTestConfig(overrides: Partial<Config>): Config {
       repositoryRoot: undefined,
       analysisKinds: [AnalysisKind.CodeScanning],
       languages: [],
+      languagesAutodetected: false,
       buildMode: undefined,
       originalUserInput: {},
       computedConfig: {},

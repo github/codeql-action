@@ -150,6 +150,20 @@ export enum CliConfigErrorCategory {
   UnsupportedBuildMode = "UnsupportedBuildMode",
 }
 
+/**
+ * A configuration error from a CodeQL CLI invocation, with the category of the
+ * CLI error. Use the category to handle specific CLI configuration errors, such
+ * as no source code seen.
+ */
+export class CliConfigurationError extends ConfigurationError {
+  public readonly category: CliConfigErrorCategory;
+
+  constructor(message: string, category: CliConfigErrorCategory) {
+    super(message);
+    this.category = category;
+  }
+}
+
 type CliErrorConfiguration = {
   /** One of these candidates, or the exit code, must be present in the error message. */
   cliErrorMessageCandidates: RegExp[];
@@ -376,5 +390,5 @@ export function wrapCliConfigurationError(cliError: CliError): Error {
     errorMessageBuilder = `${errorMessageBuilder} ${additionalErrorMessageToAppend}`;
   }
 
-  return new ConfigurationError(errorMessageBuilder);
+  return new CliConfigurationError(errorMessageBuilder, cliConfigErrorCategory);
 }

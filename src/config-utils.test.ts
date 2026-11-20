@@ -931,7 +931,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 
     if (args.expectedLanguages) {
       // happy path
-      const actualLanguages = await configUtils.getLanguages(
+      const { languages, autodetected } = await configUtils.getLanguages(
         codeQL,
         args.languagesInput,
         mockRepositoryNwo,
@@ -939,7 +939,8 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
         mockLogger,
       );
 
-      t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
+      t.deepEqual(languages.sort(), args.expectedLanguages.sort());
+      t.is(autodetected, args.expectedApiCall);
     } else {
       // there is an error
       await t.throwsAsync(
@@ -957,61 +958,6 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
     t.deepEqual(mockRequest.called, args.expectedApiCall);
   });
 });
-
-test.serial(
-  "getLanguages: skips autodetected languages without source files",
-  async (t) => {
-    await withTmpDir(async (tmpDir) => {
-      const mockRequest = mockLanguagesInRepo(["Go", "Python"]);
-      const extractorRoot = (language: string, extension: string) => {
-        const root = path.join(tmpDir, "extractors", language);
-        fs.mkdirSync(root, { recursive: true });
-        fs.writeFileSync(
-          path.join(root, "codeql-extractor.yml"),
-          `file_types:\n  - name: ${language}\n    extensions: [${extension}]\n`,
-        );
-        return root;
-      };
-      const codeQL = createStubCodeQL({
-        resolveLanguages: () =>
-          Promise.resolve({
-            extractors: {
-              go: [{ extractor_root: extractorRoot("go", ".go") }],
-              python: [{ extractor_root: extractorRoot("python", ".py") }],
-            },
-          }),
-      });
-      const sourceRoot = path.join(tmpDir, "source");
-      fs.mkdirSync(sourceRoot);
-      fs.writeFileSync(path.join(sourceRoot, "main.go"), "");
-
-      // Languages from the API are filtered by the files in the checkout.
-      t.deepEqual(
-        await configUtils.getLanguages(
-          codeQL,
-          "",
-          mockRepositoryNwo,
-          sourceRoot,
-          mockLogger,
-        ),
-        [BuiltInLanguage.go],
-      );
-      t.true(mockRequest.called);
-
-      // Languages from the input are not filtered.
-      t.deepEqual(
-        await configUtils.getLanguages(
-          codeQL,
-          "go, python",
-          mockRepositoryNwo,
-          sourceRoot,
-          mockLogger,
-        ),
-        [BuiltInLanguage.go, BuiltInLanguage.python],
-      );
-    });
-  },
-);
 
 for (const { displayName, language, feature } of [
   {

@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 
 import { CommandInvocationError } from "./actions-util";
 import {
-  CliConfigurationError,
   CliError,
   CliConfigErrorCategory,
   wrapCliConfigurationError,
@@ -225,20 +224,24 @@ test("wrapCliConfigurationError - init called twice", (t) => {
 });
 
 test("wrapCliConfigurationError - no source code seen by exit code", (t) => {
+  const diagnostic =
+    "CodeQL detected code written in JavaScript/TypeScript, but not any written in Python.";
   const commandError = new CommandInvocationError(
     "codeql",
     ["database", "finalize"],
     32,
-    "Some other error message",
+    diagnostic,
   );
   const cliError = new CliError(commandError);
 
   const wrappedError = wrapCliConfigurationError(cliError);
 
   t.true(wrappedError instanceof ConfigurationError);
-  t.is(
-    (wrappedError as CliConfigurationError).category,
-    CliConfigErrorCategory.NoSourceCodeSeen,
+  t.true(wrappedError.message.includes(diagnostic));
+  t.true(
+    wrappedError.message.includes(
+      "set the `languages` input on the `init` step to the languages you want to analyze.",
+    ),
   );
 });
 
@@ -254,10 +257,6 @@ test("wrapCliConfigurationError - no source code seen by message", (t) => {
   const wrappedError = wrapCliConfigurationError(cliError);
 
   t.true(wrappedError instanceof ConfigurationError);
-  t.is(
-    (wrappedError as CliConfigurationError).category,
-    CliConfigErrorCategory.NoSourceCodeSeen,
-  );
 });
 
 test("wrapCliConfigurationError - out of memory error with additional message", (t) => {

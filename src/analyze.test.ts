@@ -4,7 +4,6 @@ import * as path from "path";
 import test from "ava";
 import * as sinon from "sinon";
 
-import { CommandInvocationError } from "./actions-util";
 import { CodeQuality, CodeScanning, RiskAssessment } from "./analyses";
 import {
   runQueries,
@@ -12,18 +11,12 @@ import {
   addSarifExtension,
   diffRangeExtensionPackContents,
   determineCheckoutPath,
-  runFinalize,
 } from "./analyze";
-import {
-  CliConfigurationError,
-  CliError,
-  wrapCliConfigurationError,
-} from "./cli-errors";
 import { createStubCodeQL } from "./codeql";
 import { defaultSuites } from "./config/db-config";
 import { Feature } from "./feature-flags";
 import * as gitUtils from "./git-utils";
-import { BuiltInLanguage, type Language } from "./languages";
+import { BuiltInLanguage } from "./languages";
 import {
   setupTests,
   setupActionsVars,
@@ -273,146 +266,3 @@ test("diffRangeExtensionPackContents", (t) => {
   );
   t.deepEqual(output, expected);
 });
-
-/**
- * Runs `runFinalize` for databases of `languages`. Finalization fails with a
- * no-source-code-seen error for each language in `languagesWithoutSourceCode`.
- */
-function runFinalizeWithoutSourceCode(
-  tmpDir: string,
-  {
-    languages,
-    languagesWithoutSourceCode,
-    languagesAutodetected,
-    tracedLanguages = [],
-  }: {
-    languages: Language[];
-    languagesWithoutSourceCode: Language[];
-    languagesAutodetected: boolean;
-    tracedLanguages?: Language[];
-  },
-) {
-  const config = createTestConfig({
-    languages,
-    languagesAutodetected,
-    dbLocation: path.join(tmpDir, "dbs"),
-    tempDir: tmpDir,
-  });
-  for (const language of languages) {
-    const dbPath = util.getCodeQLDatabasePath(config, language);
-    fs.mkdirSync(dbPath, { recursive: true });
-    fs.writeFileSync(
-      path.join(dbPath, "codeql-database.yml"),
-      "inProgress: true\n",
-    );
-  }
-  const codeql = createStubCodeQL({
-    isTracedLanguage: async (language) => tracedLanguages.includes(language),
-    isScannedLanguage: async (language) => !tracedLanguages.includes(language),
-    extractScannedLanguage: async () => {},
-    finalizeDatabase: async (databasePath) => {
-      const language = path.basename(databasePath);
-      if (languagesWithoutSourceCode.includes(language)) {
-        throw wrapCliConfigurationError(
-          new CliError(
-            new CommandInvocationError(
-              "codeql",
-              ["database", "finalize", databasePath],
-              32,
-              `CodeQL detected code written in JavaScript/TypeScript, but not any written in ${language}.`,
-            ),
-          ),
-        );
-      }
-    },
-  });
-  const logger = new RecordingLogger(false);
-  const finalize = runFinalize(
-    createFeatures([]),
-    path.join(tmpDir, "output"),
-    "--threads=1",
-    "--ram=2048",
-    codeql,
-    config,
-    logger,
-  );
-  return { config, logger, finalize };
-}
-
-test.serial(
-  "runFinalize skips autodetected languages without source code",
-  async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      const { config, logger, finalize } = runFinalizeWithoutSourceCode(
-        tmpDir,
-        {
-          languages: [BuiltInLanguage.javascript, BuiltInLanguage.ruby],
-          languagesWithoutSourceCode: [BuiltInLanguage.ruby],
-          languagesAutodetected: true,
-        },
-      );
-      await finalize;
-      t.deepEqual(config.languages, [BuiltInLanguage.javascript]);
-      t.true(
-        logger.hasMessage(
-          "Skipping analysis of ruby: CodeQL found no ruby source code in the checkout.",
-        ),
-      );
-    });
-  },
-);
-
-test.serial(
-  "runFinalize fails for languages from the input without source code",
-  async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      const { finalize } = runFinalizeWithoutSourceCode(tmpDir, {
-        languages: [BuiltInLanguage.javascript, BuiltInLanguage.ruby],
-        languagesWithoutSourceCode: [BuiltInLanguage.ruby],
-        languagesAutodetected: false,
-      });
-      await t.throwsAsync(finalize, {
-        instanceOf: CliConfigurationError,
-        message: /but not any written in ruby/,
-      });
-    });
-  },
-);
-
-test.serial(
-  "runFinalize fails for autodetected traced languages without source code",
-  async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      const { finalize } = runFinalizeWithoutSourceCode(tmpDir, {
-        languages: [BuiltInLanguage.javascript, BuiltInLanguage.go],
-        languagesWithoutSourceCode: [BuiltInLanguage.go],
-        languagesAutodetected: true,
-        tracedLanguages: [BuiltInLanguage.go],
-      });
-      await t.throwsAsync(finalize, {
-        instanceOf: CliConfigurationError,
-        message: /but not any written in go/,
-      });
-    });
-  },
-);
-
-test.serial(
-  "runFinalize fails when no autodetected language has source code",
-  async (t) => {
-    await util.withTmpDir(async (tmpDir) => {
-      const { finalize } = runFinalizeWithoutSourceCode(tmpDir, {
-        languages: [BuiltInLanguage.javascript, BuiltInLanguage.ruby],
-        languagesWithoutSourceCode: [
-          BuiltInLanguage.javascript,
-          BuiltInLanguage.ruby,
-        ],
-        languagesAutodetected: true,
-      });
-      await t.throwsAsync(finalize, {
-        instanceOf: CliConfigurationError,
-        message: /but not any written in javascript/,
-      });
-    });
-  },
-);

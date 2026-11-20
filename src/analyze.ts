@@ -9,7 +9,6 @@ import type { ActionState } from "./action-common";
 import { getTemporaryDirectory } from "./actions-util";
 import * as analyses from "./analyses";
 import { setupCppAutobuild } from "./autobuild";
-import { CliConfigErrorCategory, CliConfigurationError } from "./cli-errors";
 import { type CodeQL } from "./codeql";
 import type { ActionConfig } from "./config/action-config";
 import { defaultSuites } from "./config/db-config";
@@ -246,32 +245,6 @@ export function dbIsFinalized(
   }
 }
 
-/**
- * Whether a database finalization error means that CodeQL saw no source code
- * for an autodetected language that the CodeQL Action can skip.
- *
- * The GitHub languages API describes the default branch and can be out of
- * date, so it can report a language that has no files in the checkout. This
- * check applies only to languages that CodeQL extracts by reading the
- * checkout: scanned languages and `build-mode: none`. For a traced language,
- * no source code seen usually means that the build did not compile the code,
- * so the analysis still fails and reports the build problem.
- */
-async function isAutodetectedLanguageWithoutSourceCode(
-  codeql: CodeQL,
-  config: configUtils.Config,
-  language: Language,
-  error: unknown,
-): Promise<boolean> {
-  return (
-    config.languagesAutodetected &&
-    error instanceof CliConfigurationError &&
-    error.category === CliConfigErrorCategory.NoSourceCodeSeen &&
-    (config.buildMode === BuildMode.None ||
-      (await codeql.isScannedLanguage(language)))
-  );
-}
-
 async function finalizeDatabaseCreation(
   codeql: CodeQL,
   features: FeatureEnablement,
@@ -285,7 +258,6 @@ async function finalizeDatabaseCreation(
   const extractionTime = performance.now() - extractionStart;
 
   const trapImportStart = performance.now();
-  const skippedLanguages: Array<{ language: Language; error: unknown }> = [];
   for (const language of config.languages) {
     if (dbIsFinalized(config, language, logger)) {
       logger.info(
@@ -293,50 +265,16 @@ async function finalizeDatabaseCreation(
       );
     } else {
       logger.startGroup(`Finalizing ${language}`);
-      try {
-        await codeql.finalizeDatabase(
-          util.getCodeQLDatabasePath(config, language),
-          threadsFlag,
-          memoryFlag,
-          config.debugMode,
-        );
-      } catch (error) {
-        if (
-          !(await isAutodetectedLanguageWithoutSourceCode(
-            codeql,
-            config,
-            language,
-            error,
-          ))
-        ) {
-          throw error;
-        }
-        skippedLanguages.push({ language, error });
-      }
+      await codeql.finalizeDatabase(
+        util.getCodeQLDatabasePath(config, language),
+        threadsFlag,
+        memoryFlag,
+        config.debugMode,
+      );
       logger.endGroup();
     }
   }
   const trapImportTime = performance.now() - trapImportStart;
-
-  // If no language has source code, the analysis cannot produce results, so
-  // fail as CodeQL does.
-  if (
-    skippedLanguages.length > 0 &&
-    skippedLanguages.length === config.languages.length
-  ) {
-    throw skippedLanguages[0].error;
-  }
-  for (const { language } of skippedLanguages) {
-    logger.warning(
-      `Skipping analysis of ${language}: CodeQL found no ${language} source code in the checkout. ` +
-        `The CodeQL Action detected ${language} with the GitHub languages API, which describes the default branch and can be out of date. ` +
-        "To choose which languages to analyze, set the `languages` input.",
-    );
-  }
-  config.languages = config.languages.filter(
-    (language) =>
-      !skippedLanguages.some((skipped) => skipped.language === language),
-  );
 
   return {
     scanned_language_extraction_duration_ms: Math.round(extractionTime),

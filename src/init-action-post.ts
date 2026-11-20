@@ -30,6 +30,7 @@ import {
 import { EnvVar, type ReadOnlyEnv } from "./environment";
 import { initFeatures } from "./feature-flags";
 import * as gitUtils from "./git-utils";
+import type { GitHubVersion } from "./github";
 import * as initActionPostHelper from "./init-action-post-helper";
 import { getRepositoryNwo } from "./repository";
 import {
@@ -40,6 +41,7 @@ import {
   ActionName,
   getJobStatusDisplayName,
   JobStatus,
+  supportsCancelledJobStatus,
 } from "./status-report";
 import { checkDiskUsage, checkGitHubVersionInRange, wrapError } from "./util";
 
@@ -55,7 +57,9 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
   // possible, and only use safe functions outside.
   const logger = action.logger;
 
+  let actionsJobStatus: string | undefined;
   let config: Config | AbortedInitConfig | undefined;
+  let gitHubVersion: GitHubVersion;
   let uploadFailedSarifResult:
     initActionPostHelper.UploadFailedSarifResult | undefined;
   let dependencyCachingUsage: DependencyCachingUsageReport | undefined;
@@ -64,7 +68,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
     // Read the job status before restoring inputs, since it is provided by the Actions runtime
     // environment for this step and would otherwise be overwritten by the value that the `init`
     // Action saw, which is always a success.
-    const jobStatus = getOptionalInput("job-status");
+    actionsJobStatus = getOptionalInput("job-status");
 
     // Restore inputs from `init` Action.
     restoreInputs(logger);
@@ -82,7 +86,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
       config = getAbortedInitConfig(action, tmpDir);
     }
 
-    const gitHubVersion = config?.gitHubVersion ?? (await getGitHubVersion());
+    gitHubVersion = config?.gitHubVersion ?? (await getGitHubVersion());
     checkGitHubVersionInRange(gitHubVersion, logger);
 
     const repositoryNwo = getRepositoryNwo();
@@ -107,7 +111,7 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
         config,
         repositoryNwo,
         features,
-        jobStatus,
+        actionsJobStatus,
         action.env,
         logger,
       );
@@ -146,7 +150,12 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
     }
     return;
   }
-  const jobStatus = getFinalJobStatus(action, config);
+  const jobStatus = getFinalJobStatus(
+    action,
+    config,
+    actionsJobStatus,
+    gitHubVersion,
+  );
   logger.info(`CodeQL job status was ${getJobStatusDisplayName(jobStatus)}.`);
 
   const statusReportBase = await createStatusReportBase(
@@ -175,11 +184,21 @@ async function run(action: ActionState<["Base", "Logger", "Env"]>) {
  *
  * If the job status has already been set by another step, we use that.
  * Otherwise, we determine the job status based on whether the analyze step
- * completed successfully and whether we have a valid CodeQL config.
+ * completed successfully, whether the job was cancelled, and whether we have a
+ * valid CodeQL config.
+ *
+ * Exported for testing.
+ *
+ * @param actionsJobStatus The status of the job, as reported by the Actions
+ * runtime environment.
+ * @param gitHubVersion The version of the GitHub instance that the status
+ * report is sent to.
  */
-function getFinalJobStatus(
+export function getFinalJobStatus(
   action: ActionState<["Env"]>,
   config: Partial<Config> | undefined,
+  actionsJobStatus: string | undefined,
+  gitHubVersion: GitHubVersion,
 ): JobStatus {
   const existingJobStatus = getJobStatusFromEnvironment(action.env);
   if (existingJobStatus !== undefined) {
@@ -193,21 +212,28 @@ function getFinalJobStatus(
   ) {
     action.env.export(EnvVar.JOB_STATUS, JobStatus.SuccessStatus);
     jobStatus = JobStatus.SuccessStatus;
+  } else if (
+    actionsJobStatus === "cancelled" &&
+    supportsCancelledJobStatus(gitHubVersion)
+  ) {
+    // The job was cancelled before the analysis completed, and no CodeQL
+    // Action step reported an error.
+    jobStatus = JobStatus.CancelledStatus;
   } else if (config !== undefined) {
     // - We have computed a CodeQL config
     // - Analyze didn't complete successfully
     // - The job status hasn't already been set to Failure/ConfigurationError
     //
     // This means that something along the way failed in a step that is not
-    // owned by the Action, for example a manual build step. We consider this a
-    // configuration error.
+    // owned by the Action, for example a manual build step, or that the job
+    // was cancelled and the GitHub instance isn't known to accept
+    // `JobStatus.CancelledStatus`. We consider this a configuration error.
     jobStatus = JobStatus.ConfigErrorStatus;
   } else {
     // If we didn't manage to compute a CodeQL config, it is unclear at this
     // point why the analyze Action didn't complete.
-    // - One possibility is that the workflow run was cancelled. We could
-    //   consider determining workflow cancellation using the GitHub API, but
-    //   for now we treat all these cases as unknown.
+    // - One possibility is that the job was cancelled and the GitHub instance
+    //   isn't known to accept `JobStatus.CancelledStatus`.
     // - Another possibility is that we're running a workflow that only runs
     //   `init`, for instance a workflow that was created before `setup-codeql`
     //   was available and uses `init` just to set up the CodeQL tools.

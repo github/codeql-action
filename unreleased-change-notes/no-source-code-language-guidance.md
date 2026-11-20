@@ -1,0 +1,1 @@
+- The CodeQL Action now suggests setting the `languages` input when automatic language detection selects a language that is absent from the checkout and CodeQL reports that it saw no source code. [#4335](https://github.com/github/codeql-action/pull/4335)

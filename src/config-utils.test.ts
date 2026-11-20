@@ -931,7 +931,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
 
     if (args.expectedLanguages) {
       // happy path
-      const { languages, autodetected } = await configUtils.getLanguages(
+      const actualLanguages = await configUtils.getLanguages(
         codeQL,
         args.languagesInput,
         mockRepositoryNwo,
@@ -939,8 +939,7 @@ const mockRepositoryNwo = parseRepositoryNwo("owner/repo");
         mockLogger,
       );
 
-      t.deepEqual(languages.sort(), args.expectedLanguages.sort());
-      t.is(autodetected, args.expectedApiCall);
+      t.deepEqual(actualLanguages.sort(), args.expectedLanguages.sort());
     } else {
       // there is an error
       await t.throwsAsync(

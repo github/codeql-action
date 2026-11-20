@@ -239,9 +239,6 @@ async function getRawLanguagesInRepo(
  *
  * If no languages could be detected from either the workflow or the repository
  * then throw an error.
- *
- * @returns The languages, and whether they were autodetected from the
- * repository rather than set by the `languages` input.
  */
 export async function getLanguages(
   codeql: CodeQL,
@@ -249,7 +246,7 @@ export async function getLanguages(
   repository: RepositoryNwo,
   sourceRoot: string,
   logger: Logger,
-): Promise<{ languages: Language[]; autodetected: boolean }> {
+): Promise<Language[]> {
   // Obtain languages without filtering them.
   const { rawLanguages, autodetected } = await getRawLanguages(
     languagesInput,
@@ -292,7 +289,7 @@ export async function getLanguages(
     logger.info(`Languages from configuration: ${languages.join(", ")}`);
   }
 
-  return { languages, autodetected };
+  return languages;
 }
 
 /** Splits the `languages` input into a list of raw languages without checking if they are supported by CodeQL. */
@@ -394,7 +391,7 @@ export async function initActionState(
   userConfig: UserConfig,
   repositoryRoot: string | undefined,
 ): Promise<Config> {
-  const { languages, autodetected: languagesAutodetected } = await getLanguages(
+  const languages = await getLanguages(
     codeql,
     languagesInput,
     repository,
@@ -447,7 +444,6 @@ export async function initActionState(
     repositoryRoot,
     analysisKinds,
     languages,
-    languagesAutodetected,
     buildMode,
     originalUserInput: userConfig,
     computedConfig,

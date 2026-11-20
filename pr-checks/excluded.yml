@@ -15,7 +15,7 @@ is:
   - "copilot-pull-request-reviewer"
   - "Dependabot"
   - "Label PR with size"
-  - "Post repo size comment"
+  - "Post PR comments"
   - "Prepare"
   - "Release info"
   - "Upload results"
@@ -24,3 +24,5 @@ is:
   # PRs), so requiring them would block the PRs they don't run on.
   - "github-advanced-security"
   - "License compliance check"
+  # Only runs when a PR is removed from the merge queue.
+  - "Notify"

@@ -48,7 +48,10 @@ import {
   addNoLanguageDiagnostic,
   makeTelemetryDiagnostic,
 } from "./diagnostics";
-import { prepareDiffInformedAnalysis } from "./diff-informed-analysis-utils";
+import {
+  getDiffRangesJsonFilePath,
+  prepareDiffInformedAnalysis,
+} from "./diff-informed";
 import { EnvVar, exportEnvVar, getEnv } from "./environment";
 import * as errorMessages from "./error-messages";
 import { Feature, FeatureEnablement, FeatureWithoutCLI } from "./feature-flags";
@@ -1288,9 +1291,10 @@ export async function initConfig(
   }
 
   const hasDiffRanges = await prepareDiffInformedAnalysis(
-    inputs.codeql,
-    inputs.features,
     logger,
+    inputs.features,
+    inputs.codeql,
+    getDiffRangesJsonFilePath(actionState.env),
   );
 
   await applyIncrementalAnalysisSettings(

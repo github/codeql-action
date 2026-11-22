@@ -19,9 +19,10 @@ import {
 } from "./dependency-caching";
 import { addDiagnostic, makeDiagnostic } from "./diagnostics";
 import {
-  DiffThunkRange,
+  type DiffThunkRange,
+  getDiffRangesJsonFilePath,
   readDiffRangesJsonFile,
-} from "./diff-informed-analysis-utils";
+} from "./diff-informed";
 import { EnvVar } from "./environment";
 import { FeatureEnablement, Feature } from "./feature-flags";
 import { getGitRoot } from "./git-utils";
@@ -295,7 +296,10 @@ export async function setupDiffInformedQueryRun(
   return await withGroupAsync(
     "Generating diff range extension pack",
     async () => {
-      const diffRanges = readDiffRangesJsonFile(logger);
+      const diffRanges = readDiffRangesJsonFile(
+        logger,
+        getDiffRangesJsonFilePath(),
+      );
       if (diffRanges === undefined) {
         logger.info(
           "No precomputed diff ranges found; skipping diff-informed analysis stage.",

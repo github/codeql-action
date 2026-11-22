@@ -13,7 +13,10 @@ import * as api from "./api-client";
 import { getGitHubVersion, wrapApiConfigurationError } from "./api-client";
 import { CodeQL, getCodeQL } from "./codeql";
 import type { ActionConfig } from "./config/action-config";
-import { readDiffRangesJsonFile } from "./diff-informed-analysis-utils";
+import {
+  getDiffRangesJsonFilePath,
+  readDiffRangesJsonFile,
+} from "./diff-informed";
 import { ActionsEnvVars, EnvVar, exportEnvVar } from "./environment";
 import { FeatureEnablement } from "./feature-flags";
 import * as fingerprints from "./fingerprints";
@@ -1079,7 +1082,10 @@ export function filterAlertsByDiffRange(
   logger: Logger,
   sarifLog: Partial<sarif.Log>,
 ): Partial<sarif.Log> {
-  const diffRanges = readDiffRangesJsonFile(logger);
+  const diffRanges = readDiffRangesJsonFile(
+    logger,
+    getDiffRangesJsonFilePath(),
+  );
   if (!diffRanges?.length) {
     return sarifLog;
   }

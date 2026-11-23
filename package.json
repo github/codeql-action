@@ -22,7 +22,7 @@
     "pr-checks"
   ],
   "dependencies": {
-    "@actions/artifact": "^5.0.3",
+    "@actions/artifact": "^6.3.1",
     "@actions/artifact-legacy": "npm:@actions/artifact@^1.1.2",
     "@actions/cache": "^5.3.0",
     "@actions/core": "^2.0.3",

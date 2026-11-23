@@ -8,3 +8,14 @@ export function getApiClient(token: string): ApiClient {
   const opts = githubUtils.getOctokitOptions(token);
   return new githubUtils.GitHub(opts);
 }
+
+/** Resolves the GitHub API token to use, from `GH_TOKEN` or `GITHUB_TOKEN`. */
+export function resolveToken(env: NodeJS.ProcessEnv): string {
+  const token = env.GH_TOKEN?.trim() || env.GITHUB_TOKEN?.trim();
+  if (!token) {
+    throw new Error(
+      "Missing authentication token. Set GH_TOKEN or GITHUB_TOKEN.",
+    );
+  }
+  return token;
+}

@@ -1821,7 +1821,8 @@ function createToolcacheEntry(
 /**
  * Stubs out the download and the diagnostic sink, then downloads the CodeQL tools.
  *
- * @returns the extraction directory and the toolcache cleanup diagnostic, if emitted.
+ * @returns the extraction directory and, if the toolcache cleanup diagnostic was emitted, the
+ * cleanup duration it reports and its other attributes.
  */
 async function runDownloadCodeQL(
   toolcacheRoot: string,
@@ -1837,6 +1838,7 @@ async function runDownloadCodeQL(
 ): Promise<{
   codeqlFolder: string;
   cleanupDiagnostic: toolsDownload.ToolcacheCleanupResult | undefined;
+  cleanupDurationMs: number | undefined;
 }> {
   stubDownloadAndExtract();
   const addDiagnostic = sinon.stub(diagnostics, "addNoLanguageDiagnostic");
@@ -1866,11 +1868,21 @@ async function runDownloadCodeQL(
     .map((call) => call.args[1])
     .find((d) => d.source?.id === "codeql-action/toolcache-bundle-cleanup");
 
-  return {
-    codeqlFolder,
-    cleanupDiagnostic: diagnostic?.attributes as
-      toolsDownload.ToolcacheCleanupResult | undefined,
-  };
+  if (diagnostic === undefined) {
+    return {
+      codeqlFolder,
+      cleanupDiagnostic: undefined,
+      cleanupDurationMs: undefined,
+    };
+  }
+
+  // The duration varies between runs, so split it out to let tests compare the other attributes
+  // exactly.
+  const { durationMs, ...cleanupDiagnostic } =
+    diagnostic.attributes as toolsDownload.ToolcacheCleanupResult & {
+      durationMs: number;
+    };
+  return { codeqlFolder, cleanupDiagnostic, cleanupDurationMs: durationMs };
 }
 
 /**
@@ -1988,6 +2000,35 @@ test.serial(
         });
       },
     );
+  },
+);
+
+test.serial(
+  "downloadCodeQLBundle reports the total time taken to clean up the toolcache",
+  async (t) => {
+    await withTmpDir(async (tmpDir) => {
+      setupActionsVars(tmpDir, tmpDir);
+
+      createToolcacheEntry(tmpDir, "CodeQL", CLEANUP_CLI_VERSION);
+      createToolcacheEntry(tmpDir, "CodeQL", CLEANUP_STALE_VERSION);
+
+      // Advance the clock by 1.5s each time a path is deleted, so that deleting both versions
+      // takes 3s.
+      let elapsedMs = 1000;
+      sinon.stub(performance, "now").callsFake(() => elapsedMs);
+      const rm = fs.promises.rm;
+      sinon.stub(fs.promises, "rm").callsFake(async (...args) => {
+        elapsedMs += 1500;
+        await rm(...args);
+      });
+
+      const { cleanupDurationMs } = await runDownloadCodeQL(
+        tmpDir,
+        CLEANUP_BUNDLE_VERSION,
+      );
+
+      t.is(cleanupDurationMs, 3000);
+    });
   },
 );
 

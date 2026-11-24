@@ -1,6 +1,6 @@
 {
   "name": "codeql",
-  "version": "3.39.4",
+  "version": "3.39.5",
   "private": true,
   "description": "CodeQL action",
   "scripts": {
@@ -89,6 +89,9 @@
     },
     "@octokit/plugin-paginate-rest": {
       "semver": ">=9.2.2"
+    },
+    "archiver@^8.0.0": {
+      "readdir-glob": "^4.0.0"
     },
     "eslint-plugin-import": {
       "semver": ">=6.3.1"

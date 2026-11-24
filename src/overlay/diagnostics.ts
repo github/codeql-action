@@ -84,18 +84,18 @@ export async function addOverlayDisablementDiagnostics(
       config,
       makeDiagnostic(
         "codeql-action/overlay-disabled-due-to-cached-status",
-        "Skipped improved incremental analysis because it failed previously with similar hardware resources",
+        "Skipped overlay analysis because it failed previously with similar hardware resources",
         {
           attributes: {
             languages: config.languages,
           },
           markdownMessage:
-            `Improved incremental analysis was skipped because it previously failed for this repository ` +
+            `Overlay analysis was skipped because it previously failed for this repository ` +
             `with CodeQL version ${(await codeql.getVersion()).version} on a runner with similar hardware resources. ` +
-            "One possible reason for this is that improved incremental analysis can require a significant amount of disk space for some repositories. " +
-            "If you want to try re-enabling improved incremental analysis, increase the disk space available " +
+            "One possible reason for this is that overlay analysis can require a significant amount of disk space for some repositories. " +
+            "If you want to try re-enabling overlay analysis, increase the disk space available " +
             "to the runner. If that doesn't help, contact GitHub Support for further assistance.\n\n" +
-            "Improved incremental analysis will be automatically retried when the next version of CodeQL is released. " +
+            "Overlay analysis will be automatically retried when the next version of CodeQL is released. " +
             `You can also manually trigger a retry by [removing](${DocUrl.DELETE_ACTIONS_CACHE_ENTRIES}) \`codeql-overlay-status-*\` entries from the Actions cache.`,
           severity: "note",
           visibility: {
@@ -115,15 +115,15 @@ export async function addOverlayDisablementDiagnostics(
       config,
       makeDiagnostic(
         "codeql-action/overlay-disabled-by-repository-property",
-        "Improved incremental analysis disabled by repository property",
+        "Overlay analysis disabled by repository property",
         {
           attributes: {
             languages: config.languages,
           },
           markdownMessage:
-            "Improved incremental analysis has been disabled because the " +
+            "Overlay analysis has been disabled because the " +
             `\`${RepositoryPropertyName.DISABLE_OVERLAY}\` repository property is set to \`true\`. ` +
-            "To re-enable improved incremental analysis, set this property to `false` or remove it.",
+            "To re-enable overlay analysis, set this property to `false` or remove it.",
           severity: "note",
           visibility: {
             cliSummaryTable: true,

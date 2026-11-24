@@ -425,15 +425,14 @@ export async function getGroupedSarifFilePaths(
   return results;
 }
 
-// Counts the number of results in the given SARIF file
-function countResultsInSarif(sarifLog: string): number {
+// Counts the number of results in the given SARIF object.
+export function countResultsInSarif(sarifLog: Partial<sarif.Log>): number {
   let numResults = 0;
-  const parsedSarif = JSON.parse(sarifLog);
-  if (!Array.isArray(parsedSarif.runs)) {
+  if (!Array.isArray(sarifLog.runs)) {
     throw new InvalidSarifUploadError("Invalid SARIF. Missing 'runs' array.");
   }
 
-  for (const run of parsedSarif.runs) {
+  for (const run of sarifLog.runs) {
     if (!Array.isArray(run.results)) {
       throw new InvalidSarifUploadError(
         "Invalid SARIF. Missing 'results' array in run.",
@@ -799,7 +798,7 @@ export async function uploadPostProcessedFiles(
   logger.debug(`Raw upload size: ${rawUploadSizeBytes} bytes`);
   const zippedUploadSizeBytes = zippedSarif.length;
   logger.debug(`Base64 zipped upload size: ${zippedUploadSizeBytes} bytes`);
-  const numResultInSarif = countResultsInSarif(sarifPayload);
+  const numResultInSarif = countResultsInSarif(sarifLog);
   logger.debug(`Number of results in upload: ${numResultInSarif}`);
 
   // Make the upload

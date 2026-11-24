@@ -108,6 +108,67 @@ test("getConfigFileInput ignores repository property value when FF is off", asyn
     .passes(t.is, undefined);
 });
 
+for (const { name, contents } of [
+  ...["Security", "Sécurité", "日本語", "🛡️"].map((configName) => ({
+    name: configName,
+    contents: `name: ${configName}
+paths:
+  - "src/${configName}"
+paths-ignore:
+  - "generated/${configName}"
+`,
+  })),
+  {
+    name: "Café",
+    contents: `name: "Caf\\u00e9"
+paths:
+  - "src/Caf\\u00e9"
+paths-ignore:
+  - "generated/Caf\\u00e9"
+`,
+  },
+]) {
+  test.serial(
+    `getRemoteConfig preserves UTF-8 configuration: ${name}`,
+    async (t) => {
+      const configFile = "octo-org/codeql-config/config.yml@main";
+      const config = {
+        name,
+        paths: [`src/${name}`],
+        "paths-ignore": [`generated/${name}`],
+      };
+      const client = github.getOctokit("123");
+      const response = {
+        data: {
+          content: Buffer.from(contents, "utf8").toString("base64"),
+          encoding: "base64",
+        },
+      };
+      const getContent = sinon
+        .stub(client.rest.repos, "getContent")
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        .resolves(response as any);
+      sinon.stub(api, "getApiClientWithExternalAuth").returns(client);
+
+      for (const features of [[], [Feature.ValidateDbConfig]]) {
+        await callee(getRemoteConfig)
+          .withFeatures(features)
+          .withArgs(configFile, SAMPLE_DOTCOM_API_DETAILS)
+          .passes(t.deepEqual, config);
+      }
+
+      t.assert(
+        getContent.alwaysCalledWithExactly({
+          owner: "octo-org",
+          repo: "codeql-config",
+          path: "config.yml",
+          ref: "main",
+        }),
+      );
+    },
+  );
+}
+
 test.serial("getRemoteConfig uses proxy when it is supposed to", async (t) => {
   const client = github.getOctokit("123");
   const response = {

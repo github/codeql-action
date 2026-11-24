@@ -131,7 +131,7 @@ export async function getRemoteConfig(
   return parseUserConfig(
     actionState.logger,
     configFile,
-    Buffer.from(fileContents, "base64").toString("binary"),
+    Buffer.from(fileContents, "base64").toString("utf8"),
     validateConfig,
   );
 }

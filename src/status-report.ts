@@ -31,7 +31,7 @@ import {
   exportEnvVar,
 } from "./environment";
 import { getRef } from "./git-utils";
-import { GITHUB_DOTCOM_URL } from "./github";
+import { GITHUB_DOTCOM_URL, GitHubVariant, type GitHubVersion } from "./github";
 import * as json from "./json";
 import type { Logger } from "./logging";
 import type { OverlayBaseDatabaseDownloadStats } from "./overlay/caching";
@@ -137,6 +137,22 @@ export enum JobStatus {
   SuccessStatus = "JOB_STATUS_SUCCESS",
   FailureStatus = "JOB_STATUS_FAILURE",
   ConfigErrorStatus = "JOB_STATUS_CONFIGURATION_ERROR",
+  /** The job was cancelled before the analysis completed. */
+  CancelledStatus = "JOB_STATUS_CANCELLED",
+}
+
+/**
+ * Whether the status report API of the GitHub instance is known to accept
+ * `JobStatus.CancelledStatus`. The API rejects status reports with a job status
+ * that it doesn't recognise.
+ */
+export function supportsCancelledJobStatus(
+  gitHubVersion: GitHubVersion,
+): boolean {
+  return (
+    gitHubVersion.type === GitHubVariant.DOTCOM ||
+    gitHubVersion.type === GitHubVariant.GHEC_DR
+  );
 }
 
 export interface StatusReportBase {
@@ -268,6 +284,8 @@ export function getJobStatusDisplayName(status: JobStatus): string {
       return "configuration error";
     case JobStatus.UnknownStatus:
       return "unknown";
+    case JobStatus.CancelledStatus:
+      return "cancelled";
     default:
       assertNever(status);
   }

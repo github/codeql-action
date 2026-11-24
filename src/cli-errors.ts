@@ -238,6 +238,9 @@ const cliErrorsConfig: Record<CliConfigErrorCategory, CliErrorConfiguration> = {
         "CodeQL did not detect any code written in languages supported by CodeQL",
       ),
     ],
+    additionalErrorMessageToAppend:
+      "If automatic language detection selected a language that is absent from the checkout, " +
+      "set the `languages` input on the `init` step to the languages you want to analyze.",
   },
   [CliConfigErrorCategory.NoSupportedBuildCommandSucceeded]: {
     cliErrorMessageCandidates: [

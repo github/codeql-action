@@ -224,17 +224,25 @@ test("wrapCliConfigurationError - init called twice", (t) => {
 });
 
 test("wrapCliConfigurationError - no source code seen by exit code", (t) => {
+  const diagnostic =
+    "CodeQL detected code written in JavaScript/TypeScript, but not any written in Python.";
   const commandError = new CommandInvocationError(
     "codeql",
     ["database", "finalize"],
     32,
-    "Some other error message",
+    diagnostic,
   );
   const cliError = new CliError(commandError);
 
   const wrappedError = wrapCliConfigurationError(cliError);
 
   t.true(wrappedError instanceof ConfigurationError);
+  t.true(wrappedError.message.includes(diagnostic));
+  t.true(
+    wrappedError.message.includes(
+      "set the `languages` input on the `init` step to the languages you want to analyze.",
+    ),
+  );
 });
 
 test("wrapCliConfigurationError - no source code seen by message", (t) => {

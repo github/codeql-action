@@ -5,7 +5,9 @@ description: "An end-to-end integration test checking that CodeQL can analyze in
 # retired or is about to retire, and:
 # - `ubuntu-slim`, which is intended for lightweight jobs rather than builds like this one.
 # - `windows-11-arm`, since CodeQL doesn't support Windows on Arm64.
-# - `xcode-27`, a preview image that the `unsupported-macos` check runs on.
+# - Images with macOS 27 or later, or whose default Xcode is 27 or later, such as `xcode-27`, since
+#   CodeQL doesn't support traced analysis on them. The `unsupported-macos` check runs on `xcode-27`
+#   instead.
 #
 # The `Update runner images` workflow asks Copilot to keep these images up to date, following the
 # instructions in `.github/workflows/update-runner-images.md`.

@@ -78,6 +78,17 @@ safe-outputs:
       workflows that run on that push don't wait for a maintainer to approve them. Report a malicious
       patch if it adds a workflow or changes the `on` section of an existing workflow, which sets the
       events that trigger it. Changing which runner images workflows use is expected.
+    # Fails detection if the agent's changes add, delete or replace a workflow, or change anything
+    # in an existing workflow apart from its jobs, comments and formatting, without relying on a
+    # model. These steps run before the detection model, which can write to the checkout and the
+    # staged changes.
+    steps:
+      - name: Check the agent's changes to workflows
+        # The detection job only checks out the repository when the agent proposes changes.
+        if: needs.agent.outputs.has_patch == 'true'
+        run: |
+          npm ci
+          npx tsx pr-checks/check-workflow-changes.ts /tmp/gh-aw/threat-detection
     # If gh-aw detects a threat or detection fails, fail the run without applying any safe outputs,
     # such as pushing the branch. By default, gh-aw still pushes the branch and opens the pull
     # request, with a warning.

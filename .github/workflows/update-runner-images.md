@@ -99,6 +99,8 @@ jobs:
       # gh-aw's `head-github-app` option mints tokens without permission to change workflows.
       - name: Generate token for pushing the pull request's branch
         id: push-token
+        # Only runs when the agent asks for a pull request, so that other runs don't use the app's key.
+        if: contains(needs.agent.outputs.output_types, 'create_pull_request')
         # In the lock file, `gh aw compile` pins this tag to a commit. Dependabot doesn't update this
         # file, but `gh aw upgrade` replaces the tag with the latest release's exact version.
         uses: actions/create-github-app-token@v3

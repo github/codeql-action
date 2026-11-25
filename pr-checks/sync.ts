@@ -266,8 +266,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Go",
         uses: pinnedUses(
           "actions/setup-go",
-          "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
-          "v7.0.0",
+          "d8cbb8045d7f43706b9177cceb36c1f91a6644d5",
+          "v7.1.0",
         ),
         with: {
           "go-version": `\${{ inputs.go-version || '${defaultLanguageVersions.go}' }}`,
@@ -286,8 +286,8 @@ const languageSetups: LanguageSetups = {
         name: "Install Java",
         uses: pinnedUses(
           "actions/setup-java",
-          "b843ebf9b913146b38da2eaa7aeddf76074ae1ad",
-          "v6.1.0",
+          "d1374f8ac74474200d16ef8ecee22c7ae7a51880",
+          "v6.3.0",
         ),
         with: {
           "java-version": `\${{ inputs.java-version || '${defaultLanguageVersions.java}' }}`,
@@ -321,8 +321,8 @@ const languageSetups: LanguageSetups = {
         name: "Install .NET",
         uses: pinnedUses(
           "actions/setup-dotnet",
-          "a98b56852c35b8e3190ac28c8c2271da59106c68",
-          "v6.0.0",
+          "0f4a354dd5547a28c70b7853dbd95d5b67886e73",
+          "v6.1.0",
         ),
         with: {
           "dotnet-version": `\${{ inputs.dotnet-version || '${defaultLanguageVersions.csharp}' }}`,

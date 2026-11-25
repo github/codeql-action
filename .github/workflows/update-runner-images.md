@@ -4,6 +4,8 @@ description: Updates the GitHub-hosted runner images that this repository's work
 on:
   schedule: weekly on monday
   workflow_dispatch:
+  push:
+    branches: [henrymercer/test-runner-images-gh-aw]
 if: github.repository == 'github/codeql-action'
 permissions:
   contents: read
@@ -37,6 +39,7 @@ steps:
         --jq '.[] | {number, title, url: .html_url, body}' \
         > /tmp/gh-aw/agent/runner-images-announcements.jsonl
 safe-outputs:
+  report-failure-as-issue: false
   create-pull-request:
     title-prefix: "Runner images: "
     # Opens the pull request with `GITHUB_TOKEN`, so that its workflow runs wait for someone with
@@ -51,7 +54,8 @@ safe-outputs:
     # matching their triggers, such as `releases/*`.
     branch-prefix: runner-images/
     # Code owners aren't requested to review draft pull requests.
-    draft: false
+    draft: true
+    base-branch: henrymercer/test-runner-images-gh-aw
     # `agentics-maintenance.yml`, which `gh aw compile` generates, closes pull requests two weeks
     # after they're opened, unless a maintainer unchecks the `expires` line in their description.
     # Later runs propose their changes again if they're still needed.
@@ -73,6 +77,7 @@ safe-outputs:
     # most runs do.
     report-as-issue: false
   threat-detection:
+    report-as-issue: false
     prompt: >-
       The branch for the agent's pull request is pushed with a token that can change workflows, and
       workflows that run on that push don't wait for a maintainer to approve them. Report a malicious

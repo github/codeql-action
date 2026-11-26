@@ -37,12 +37,16 @@ steps:
         --jq '.[] | {number, title, url: .html_url, body}' \
         > /tmp/gh-aw/agent/runner-images-announcements.jsonl
 safe-outputs:
+  # Makes gh-aw use `GITHUB_TOKEN` rather than the `GH_AW_GITHUB_TOKEN` secret, if it's set,
+  # including to open and edit the pull request. Its workflow runs then wait for someone with write
+  # access to approve them, which lets maintainers check the agent's changes to workflows before
+  # those runs use the repository's secrets.
+  github-token: ${{ secrets.GITHUB_TOKEN }}
   create-pull-request:
     title-prefix: "Runner images: "
-    # Opens the pull request with `GITHUB_TOKEN`, so that its workflow runs wait for someone with
-    # write access to approve them. This lets maintainers check the agent's changes to workflows
-    # before those runs use the repository's secrets.
-    github-token: ${{ secrets.GITHUB_TOKEN }}
+    # Stops gh-aw pushing an empty commit to the pull request with the `GH_AW_CI_TRIGGER_TOKEN`
+    # secret, if it's set, which would start the pull request's workflow runs without approval.
+    github-token-for-extra-empty-commit: none
     # `GITHUB_TOKEN` can't push changes to workflows, so push the branch as the CodeQL CI app. gh-aw
     # only uses `head-github-token` when `head-repo` is set.
     head-repo: github/codeql-action

@@ -622,6 +622,47 @@ test.serial(
   },
 );
 
+test.serial(
+  "additive packs use the job language with a shared config file",
+  async (t) => {
+    await withTmpDir(async (tempDir) => {
+      setupActionsVars(tempDir, tempDir);
+      const userConfig: UserConfig = {
+        packs: {
+          javascript: ["acme/javascript-queries"],
+          python: ["acme/python-queries"],
+        },
+      };
+      const codeql = createStubCodeQL({
+        async resolveLanguages() {
+          return {
+            extractors: { python: [{ extractor_root: "" }] },
+          };
+        },
+      });
+      const config = await configUtils.initConfig(
+        initAllState(),
+        createTestInitConfigInputs({
+          languagesInput: "python",
+          packsInput: "+acme/python-extra",
+          configFile: createConfigFile(yaml.dump(userConfig), tempDir),
+          tempDir,
+          codeql,
+          workspacePath: tempDir,
+        }),
+      );
+
+      t.deepEqual(config.computedConfig, {
+        packs: {
+          javascript: ["acme/javascript-queries"],
+          python: ["acme/python-queries", "acme/python-extra"],
+        },
+      });
+      t.deepEqual(config.originalUserInput, userConfig);
+    });
+  },
+);
+
 test.serial("API client used when reading remote config", async (t) => {
   return await withTmpDir(async (tempDir) => {
     const codeql = createStubCodeQL({

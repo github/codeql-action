@@ -8,7 +8,6 @@ import * as yaml from "yaml";
 import { BuiltInLanguage } from "../src/languages";
 
 import { PR_CHECKS_DIR, REPO_ROOT } from "./config";
-import { updateDeflakeWorkflow } from "./deflake";
 
 /**
  * Returns a `uses` value for `action` pinned to a commit SHA, with the
@@ -748,7 +747,6 @@ function main(): void {
 
   console.log(`Found ${checkFiles.length} check specification(s).`);
 
-  const generatedWorkflowNames: string[] = [];
   const collections: Record<
     string,
     Array<{
@@ -836,7 +834,6 @@ function main(): void {
 
     const outputPath = path.join(OUTPUT_DIR, `__${checkName}.yml`);
     writeYaml(outputPath, workflow);
-    generatedWorkflowNames.push(workflow.name);
   }
 
   // Write workflow files for collections.
@@ -881,10 +878,7 @@ function main(): void {
 
     const outputPath = path.join(OUTPUT_DIR, `__${collectionName}.yml`);
     writeYaml(outputPath, collectionWorkflow);
-    generatedWorkflowNames.push(collectionWorkflow.name);
   }
-
-  updateDeflakeWorkflow(generatedWorkflowNames);
 
   console.log(
     `\nDone. Wrote ${checkFiles.length} workflow file(s) to ${OUTPUT_DIR}`,

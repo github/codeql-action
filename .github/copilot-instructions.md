@@ -25,6 +25,8 @@ The main codebase of the CodeQL Action is written in TypeScript and compiled to 
 
 GitHub Actions workflows in the `.github/workflows` directory whose filenames start with two underscores (e.g. `__all-platform-bundle.yml`) are automatically generated using the `pr-checks/sync.sh` script from template files in the `pr-checks/checks` directory. Therefore, you do not need to review files in the `.github/workflows` directory that start with two underscores. However, you should review changes to the `pr-checks` directory as well as workflows in the `.github/workflows` directory that do not start with underscores.
 
+Similarly, `gh aw compile` generates a `.lock.yml` workflow in the `.github/workflows` directory from each gh-aw agentic workflow's `.md` file, as well as `.github/workflows/agentics-maintenance.yml` and `.github/aw/actions-lock.json`. Therefore, you do not need to review these generated files, but you should review changes to the `.md` files.
+
 ## Feature flags
 
 Some functionality in the code may be gated behind feature flags, which are controlled server-side. If the functionality that is gated behind them is user-facing, then this should be documented in a change note at the time that the gated functionality is added. See `CHANGELOG.md` for existing notes that mention "experimental" for examples. These typically include information about when users may expect to see the feature rolled out.

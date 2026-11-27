@@ -45,6 +45,7 @@ sizeup:
   ignoredFilePatterns:
     - ".github/workflows/__*"
     - ".github/workflows/*.lock.yml"
+    - ".github/workflows/agentics-maintenance.yml"
     - "lib/**/*"
     - "package-lock.json"
   testFilePatterns:

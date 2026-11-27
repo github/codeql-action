@@ -1,0 +1,14 @@
+{
+  "maintenance": {
+    "disabled_jobs": [
+      "activity_report",
+      "apply_safe_outputs",
+      "close_agentic_workflows_issues",
+      "create_labels",
+      "forecast_report",
+      "run_operation",
+      "update_pull_request_branches",
+      "validate_workflows"
+    ]
+  }
+}

@@ -8,6 +8,9 @@
 # The check runs on each image listed in
 # https://github.com/actions/runner-images#available-images, apart from the ones under `excluded`
 # and any that GitHub is about to retire.
+#
+# The `Update runner images` workflow asks Copilot to keep this file up to date, following the
+# instructions in `.github/workflows/update-runner-images.md`.
 images:
   # The Ubuntu 22.04 images have brownouts from 23 March 2027 and are retired on 17 April 2027, so
   # remove them before the brownouts start.

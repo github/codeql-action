@@ -1,6 +1,10 @@
 # The GitHub-hosted runner images that the `runner-images` PR check runs on, identified by their
 # labels.
 #
+# Each image has a required check. Before merging a PR that adds or removes images, a maintainer
+# needs to wait for the PR's checks to finish, then update the required checks by running
+# `pr-checks/sync-checks.ts` with `--ref` set to the PR's head commit.
+#
 # The check runs on each image listed in
 # https://github.com/actions/runner-images#available-images, apart from the ones under `excluded`
 # and any that GitHub is about to retire.

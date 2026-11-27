@@ -28,4 +28,5 @@ excluded:
   windows-11-arm: >
     CodeQL doesn't support Windows on Arm64.
   xcode-27: >
-    It's a preview image that the `unsupported-macos` check runs on.
+    CodeQL doesn't support traced analysis on macOS 27 or later, or with Xcode 27 or later.
+    The `unsupported-macos` check runs on this image instead.

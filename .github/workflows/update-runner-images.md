@@ -4,6 +4,9 @@ description: Updates the GitHub-hosted runner images that the `runner-images` PR
 on:
   schedule: weekly on monday
   workflow_dispatch:
+  push:
+    branches:
+      - henrymercer/test-runner-images-github-token
 if: github.repository == 'github/codeql-action'
 permissions:
   contents: read
@@ -44,6 +47,7 @@ safe-outputs:
   # with write access to approve them, which lets maintainers check the agent's changes before those
   # runs use the repository's secrets.
   github-token: ${{ secrets.GITHUB_TOKEN }}
+  report-failure-as-issue: false
   create-pull-request:
     title-prefix: "Runner images: "
     # Stops gh-aw pushing an empty commit to the pull request with the `GH_AW_CI_TRIGGER_TOKEN`
@@ -51,7 +55,8 @@ safe-outputs:
     github-token-for-extra-empty-commit: none
     branch-prefix: runner-images/
     # Code owners aren't requested to review draft pull requests.
-    draft: false
+    draft: true
+    base-branch: henrymercer/test-runner-images-github-token
     # `agentics-maintenance.yml`, which `gh aw compile` generates, closes pull requests two weeks
     # after they're opened, unless a maintainer unchecks the `expires` line in their description.
     # Later runs propose their changes again if they're still needed.

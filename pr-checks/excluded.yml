@@ -26,3 +26,10 @@ is:
   - "License compliance check"
   # Only runs when a PR is removed from the merge queue.
   - "Notify"
+  # Jobs that `gh aw compile` generates for the `Update runner images` workflow, which only runs on
+  # a schedule or when dispatched.
+  - "activation"
+  - "agent"
+  - "conclusion"
+  - "detection"
+  - "safe_outputs"

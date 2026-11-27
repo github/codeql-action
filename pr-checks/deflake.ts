@@ -26,6 +26,7 @@ const NON_GENERATED_WORKFLOWS_TO_RERUN = [
   "CodeQL action",
   "PR Check - Debug artifact upload",
   "PR Check - Debug artifacts after failure",
+  "PR Check - Runner images",
   "PR Checks",
   "Query filters tests",
   "Test that the workaround for python 3.12 on windows works",

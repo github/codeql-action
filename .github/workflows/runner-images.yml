@@ -25,34 +25,34 @@ defaults:
     shell: bash
 
 jobs:
+  read-runner-images:
+    name: Read runner images
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    # A lightweight runner is enough for this job, and this one has `yq` installed.
+    runs-on: ubuntu-slim
+    outputs:
+      images: ${{ steps.read.outputs.images }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read runner images
+        id: read
+        # Assigning the output of `yq` to a variable first makes the step fail if `yq` fails.
+        run: |
+          images=$(yq -o=json -I=0 '.images' pr-checks/runner-images.yml)
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+
   runner-images:
     name: Runner images
     if: github.triggering_actor != 'dependabot[bot]'
+    needs: read-runner-images
     strategy:
       fail-fast: false
       matrix:
-        # This check runs on each image listed in
-        # https://github.com/actions/runner-images#available-images, except for:
-        # - `ubuntu-slim`, which is intended for lightweight jobs rather than builds like this one.
-        # - `windows-11-arm`, since CodeQL doesn't support Windows on Arm64.
-        # - `xcode-27`, a preview image that the `unsupported-macos` check runs on.
-        os:
-          # The Ubuntu 22.04 images have brownouts from 23 March 2027 and are retired on 17 April
-          # 2027, so remove them before the brownouts start.
-          # See https://github.com/actions/runner-images/issues/14254.
-          - ubuntu-22.04
-          - ubuntu-22.04-arm
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
-          - ubuntu-26.04
-          - ubuntu-26.04-arm
-          - windows-2022
-          - windows-2025
-          # Use larger runners for macOS to keep these jobs off the critical path.
-          - macos-15-large
-          - macos-15-xlarge
-          - macos-26-large
-          - macos-26-xlarge
+        os: ${{ fromJSON(needs.read-runner-images.outputs.images) }}
         # Other PR checks cover the supported CodeQL versions, so this check only tests the linked
         # version. Linux Arm64 bundles are only available for CodeQL 2.27.0 and later, so older
         # stable versions can't run on the Arm64 images.

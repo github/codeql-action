@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Runner images",
+  "description": "The GitHub-hosted runner images that the `runner-images` PR check runs on",
+  "type": "object",
+  "properties": {
+    "images": {
+      "description": "Labels of the runner images that the check runs on",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "excluded": {
+      "description": "Labels of the runner images that the check doesn't run on, mapped to the reasons",
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    }
+  },
+  "required": ["images"],
+  "additionalProperties": false
+}

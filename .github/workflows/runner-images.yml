@@ -1,0 +1,105 @@
+# An end-to-end integration test checking that CodeQL can analyze interpreted and compiled code on
+# the GitHub-hosted runner images.
+name: PR Check - Runner images
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  read-runner-images:
+    name: Read runner images
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    # A lightweight runner is enough for this job, and this one has `yq` installed.
+    runs-on: ubuntu-slim
+    outputs:
+      images: ${{ steps.read.outputs.images }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read runner images
+        id: read
+        # Assigning the output of `yq` to a variable first makes the step fail if `yq` fails.
+        run: |
+          images=$(yq -o=json -I=0 '.images' pr-checks/runner-images.yml)
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+
+  runner-images:
+    name: Runner images
+    if: github.triggering_actor != 'dependabot[bot]'
+    needs: read-runner-images
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(needs.read-runner-images.outputs.images) }}
+        # Other PR checks cover the supported CodeQL versions, so this check only tests the linked
+        # version. Linux Arm64 bundles are only available for CodeQL 2.27.0 and later, so older
+        # stable versions can't run on the Arm64 images.
+        version: [linked]
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    env:
+      # The languages to build and analyze. CodeQL only supports Swift on macOS.
+      LANGUAGES: "cpp,csharp,go,java,javascript,python,ruby${{ startsWith(matrix.os, 'macos') && ',swift' || '' }}"
+      CODEQL_ACTION_TEST_MODE: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 9.x
+      - name: Install Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ">=1.21.0"
+          # Don't cache dependencies, so that the autobuilder has to download them.
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+      - uses: ./../action/init
+        with:
+          languages: ${{ env.LANGUAGES }}
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+      - name: Build code
+        run: ./build.sh
+      - uses: ./../action/analyze
+        with:
+          upload-database: false
+      - name: Assert databases exist
+        run: |
+          cd "$RUNNER_TEMP/codeql_databases"
+          for lang in ${LANGUAGES//,/ }; do
+            if [[ ! -d "$lang" ]]; then
+              echo "Did not find a database for $lang"
+              exit 1
+            fi
+            echo "Found database for $lang"
+          done

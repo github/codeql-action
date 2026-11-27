@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.19.0",
+    "jsonschema": "^1.5.0",
     "tsx": "^4.23.15"
   }
 }

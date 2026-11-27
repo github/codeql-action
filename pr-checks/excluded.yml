@@ -26,3 +26,12 @@ is:
   - "License compliance check"
   # Only runs when a PR is removed from the merge queue.
   - "Notify"
+  # Jobs in the workflows that `gh aw compile` generates, which don't run on pull requests.
+  - "activation"
+  - "agent"
+  - "conclusion"
+  - "detection"
+  - "safe_outputs"
+  - "Close expired discussions"
+  - "Close expired issues"
+  - "Close expired pull requests"

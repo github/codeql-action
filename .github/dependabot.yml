@@ -35,12 +35,18 @@ updates:
     directories:
       - "/.github/workflows"
       - "/.github/actions/*/"
+    # `gh aw compile` generates these workflows, so it would revert Dependabot's updates to them.
+    exclude-paths:
+      - "**/*.lock.yml"
+      - "**/agentics-maintenance.yml"
     schedule:
       interval: weekly
     cooldown:
       default-days: 7
     labels:
       - Rebuild
+    ignore:
+      - dependency-name: "github/gh-aw-actions/*" # Managed by gh aw compile. Version-locked to the gh-aw compiler; do not bump.
     groups:
       actions-minor:
         patterns:
